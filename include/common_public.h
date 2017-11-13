@@ -1,0 +1,1449 @@
+//
+// Do NOT modify or remove this copyright and license
+//
+// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//
+// This software is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// ******************************************************************************************
+// \file common.h
+// \brief Defines the constants structures and function headers that are common to OS & Non-OS code.
+
+
+#pragma once
+
+#include "common.h"
+#include "version.h"
+
+#if defined (__cplusplus)
+#define __STDC_FORMAT_MACROS
+extern "C"
+{
+#endif
+
+    //This is a bunch of stuff for creating opensea-transport as a dynamic library (DLL in Windows or shared object in linux)
+    #if defined(OPENSEA_TRANSPORT_API)
+        #undef(OPENSEA_TRANSPORT_API)
+    #endif
+    
+    #if defined(_WIN32) //DLL/LIB....be VERY careful making modifications to this unless you know what you are doing!
+        #if defined (EXPORT_OPENSEA_TRANSPORT) && defined(STATIC_OPENSEA_TRANSPORT)
+            #error "The preprocessor definitions EXPORT_OPENSEA_TRANSPORT and STATIC_OPENSEA_TRANSPORT cannot be combined!"
+        #elif defined(STATIC_OPENSEA_TRANSPORT)
+            #pragma message("Compiling opensea-transport as a static library!")
+            #define OPENSEA_TRANSPORT_API
+        #elif defined(EXPORT_OPENSEA_TRANSPORT)
+            #pragma message("Compiling opensea-transport as exporting DLL!")
+            #define OPENSEA_TRANSPORT_API __declspec(dllexport)
+        #elif defined(IMPORT_OPENSEA_TRANSPORT)
+            #pragma message("Compiling opensea-transport as importing DLL!")
+            #define OPENSEA_TRANSPORT_API __declspec(dllimport)
+        #else
+            #error "You must specify STATIC_OPENSEA_TRANSPORT or EXPORT_OPENSEA_TRANSPORT or IMPORT_OPENSEA_TRANSPORT in the preprocessor definitions!"
+        #endif
+    #else //SO/A....as far as I know, nothing needs to be done here
+        #define OPENSEA_TRANSPORT_API
+    #endif
+
+    #define SEAGATE_VENDOR_ID       (0x1BB1)
+
+    #define MAX_CONTROLLERS (8U)
+    #define MAX_DEVICES_PER_CONTROLLER (256U)
+    #define MAX_DEVICES_TO_SCAN (MAX_CONTROLLERS * MAX_DEVICES_PER_CONTROLLER)
+    
+    #define SERIAL_NUM_LEN          (20) //Going with ATA lengths
+    #define MODEL_NUM_LEN           (40)
+    #define FW_REV_LEN              (10)
+    #define T10_VENDOR_ID_LEN       (8)
+
+	typedef struct _apiVersionInfo 
+	{
+		uint8_t	majorVersion;
+		uint8_t minorVersion;
+		uint8_t patchVersion; 
+		uint8_t reserved; 
+	} apiVersionInfo;
+
+// These need to be moved to ata_helper.h
+    #pragma pack(push, 1)
+    typedef struct
+    {
+        union {
+            uint16_t Config; //This has to be firs
+            uint16_t Word000;
+        };
+        union {
+            uint16_t DefCyln;
+            uint16_t Word001;
+        };
+        union {
+            uint16_t Resv1;
+            uint16_t Word002;
+        };
+        union {
+            uint16_t DefHead;
+            uint16_t Word003;
+        };
+        uint16_t Word004;
+        uint16_t Word005;
+        union {
+            uint16_t DefSector;
+            uint16_t Word006;
+        };
+        uint16_t Word007;
+        uint16_t Word008;
+        uint16_t Word009;
+
+        uint8_t  SerNum[20];
+
+        uint16_t Word020;
+        union {
+            uint16_t BufSize;           // 21
+            uint16_t Word021;
+        };
+        union {
+            uint16_t RWLongByte;        // 22
+            uint16_t Word022;
+        };
+        uint8_t  FirmVer[8];        // 23 24 25 26
+        uint8_t  ModelNum[40];      // 27 ... 46
+        union {
+            uint8_t  BLK_SIZE[2];       // 47
+            uint16_t Word047;
+        };
+        union {
+            uint16_t DoubleWordIO;      // 48
+            uint16_t Word048;
+        };
+        union {
+            uint16_t Capability;        // 49
+            uint16_t Word049;
+        };
+
+        uint16_t Word050;
+        union {
+            uint16_t PIOCycleTimeMode;  // 51
+            uint16_t Word051;
+        };
+        union {
+            uint16_t DMACycleTimeMode;  // 52
+            uint16_t Word052;
+        };
+        union {
+            uint16_t ValidWord;         // 53
+            uint16_t Word053;
+        };
+        union {
+            uint16_t CurCyln;           // 54
+            uint16_t Word054;
+        };
+        union {
+            uint16_t CurHead;           // 55
+            uint16_t Word055;
+        };
+        union {
+            uint16_t CurSector;         // 56
+            uint16_t Word056;
+        };
+        uint32_t TotSectNumCHS;     // 57 58
+        union {
+            uint16_t MultiSectNum;      // 59
+            uint16_t Word059;
+        };
+
+        uint32_t TotSectNumLBA;     // 60 61
+        union {
+            uint16_t SingleDMAMode;     // 62
+            uint16_t Word062;
+        };
+        union {
+            struct {
+                uint8_t  MwDmaModesSupported;
+                uint8_t  MultiDMAMode; // 63
+            }mwdmaInfo;
+            uint16_t Word063;
+        };
+        union {
+            uint16_t AdvanPIOMode;      // 64
+            uint16_t Word064;
+        };
+        union {
+            uint16_t MinDMACycleTime;      // 65
+            uint16_t Word065;
+        };
+        union {
+            uint16_t RecDMACycleTime;      // 66
+            uint16_t Word066;
+        };
+        union {
+            uint16_t MinPIOCycleTime;      // 67
+            uint16_t Word067;
+        };
+        union {
+            uint16_t MinPIOCycleTimeIORDY; // 68
+            uint16_t Word068;
+        };
+        uint16_t Word069;
+
+        uint16_t Word070;
+        uint16_t Word071;
+        uint16_t Word072;
+        uint16_t Word073;
+        uint16_t Word074;
+        union {
+            uint16_t MaxQueueTag; // 75, bits 0-4 only
+            uint16_t Word075;
+        };
+        union {
+            uint16_t SataCapabilities; // 76
+            uint16_t Word076;
+        };
+        uint16_t Word077;
+        uint16_t Word078;
+        uint16_t Word079;
+
+        uint16_t Word080;
+        uint16_t Word081;
+        union {
+            uint16_t CommandsAndFeaturesSupported1; // 82
+            uint16_t Word082;
+        };
+        union {
+            uint16_t CommandsAndFeaturesSupported2; // 83
+            uint16_t Word083;
+        };
+        union {
+            uint16_t CommandsAndFeaturesSupported3; // 84
+            uint16_t Word084;
+        };
+        union {
+            uint16_t CommandsAndFeaturesEnabled1;   // 85
+            uint16_t Word085;
+        };
+        union {
+            uint16_t CommandsAndFeaturesEnabled2;   // 86
+            uint16_t Word086;
+        };
+        union {
+            uint16_t CommandsAndFeaturesEnabled3;   // 87
+            uint16_t Word087;
+        };
+        union {
+            struct {
+                uint8_t  UDmaModesSupported;
+                uint8_t  UDmaMode; // 88
+            }udmaModeInfo;
+            uint16_t Word088;
+        };
+        uint16_t Word089;
+
+        uint16_t Word090;
+        uint16_t Word091;
+        uint16_t Word092;
+        uint16_t Word093;
+        uint16_t Word094;
+        uint16_t Word095;
+        uint16_t Word096;
+        uint16_t Word097;
+        uint16_t Word098;
+        uint16_t Word099;
+
+
+        //Both Changed from tUINT32 to 16
+        uint32_t TotSectNumLBALo;
+        uint32_t TotSectNumLBAHi;
+
+        uint16_t Word104;
+        uint16_t Word105;
+        //union {  // 106
+        //   uint16_t AsWord;
+        //   struct  {
+        //      uint16_t LogicalSectorCount:4; // Bits 0-3
+        //      uint16_t Reserved4_11:8;       // Bits 4-11
+        //      uint16_t LargeSectors:1;       // Bit 12
+        //      uint16_t LogicalSectors:1;     // Bit 13
+        //      uint16_t FeatureSupport:2;     // Bits 14-15
+        //   } bitfields;
+        //} SectorSizeReport;
+        // Commentedout the above because of portability issues with bit fields.
+        union {
+            uint16_t SectorSizeReport;
+            uint16_t Word106;
+        };
+        uint16_t Word107;
+        uint16_t Word108;
+        uint16_t Word109;
+
+        uint16_t Word110;
+        uint16_t Word111;
+        uint16_t Word112;
+        uint16_t Word113;
+        uint16_t Word114;
+        uint16_t Word115;
+        uint16_t Word116;
+        uint16_t SectorSize[2]; // 117-118
+        uint16_t Word119;
+
+        uint16_t Word120;
+        uint16_t Word121;
+        uint16_t Word122;
+        uint16_t Word123;
+        uint16_t Word124;
+        uint16_t Word125;
+        uint16_t Word126;
+        uint16_t Word127;
+        uint16_t Word128;
+        uint16_t Word129;
+
+        uint16_t Word130;
+        uint16_t Word131;
+        uint16_t Word132;
+        uint16_t Word133;
+        uint16_t Word134;
+        uint16_t Word135;
+        uint16_t Word136;
+        uint16_t Word137;
+        uint16_t Word138;
+        uint16_t Word139;
+
+        uint16_t Word140;
+        uint16_t Word141;
+        uint16_t Word142;
+        uint16_t Word143;
+        uint16_t Word144;
+        uint16_t Word145;
+        uint16_t Word146;
+        uint16_t Word147;
+        uint16_t Word148;
+        uint16_t Word149;
+
+        union {
+            uint16_t VendorUniqueTDSupport; // 150
+            uint16_t Word150;
+        };
+        uint16_t Word151;
+        uint16_t Word152;
+        uint16_t Word153;
+        uint16_t Word154;
+        uint16_t Word155;
+        uint16_t Word156;
+        uint16_t Word157;
+        uint16_t Word158;
+        uint16_t Word159;
+
+        uint16_t Word160;
+        uint16_t Word161;
+        uint16_t Word162;
+        uint16_t Word163;
+        uint16_t Word164;
+        uint16_t Word165;
+        uint16_t Word166;
+        uint16_t Word167;
+        uint16_t Word168;
+        uint16_t Word169;
+
+        uint16_t Word170;
+        uint16_t Word171;
+        uint16_t Word172;
+        uint16_t Word173;
+        uint16_t Word174;
+        uint16_t Word175;
+        uint16_t Word176;
+        uint16_t Word177;
+        uint16_t Word178;
+        uint16_t Word179;
+
+        uint16_t Word180;
+        uint16_t Word181;
+        uint16_t Word182;
+        uint16_t Word183;
+        uint16_t Word184;
+        uint16_t Word185;
+        uint16_t Word186;
+        uint16_t Word187;
+        uint16_t Word188;
+        uint16_t Word189;
+
+        uint16_t Word190;
+        uint16_t Word191;
+        uint16_t Word192;
+        uint16_t Word193;
+        uint16_t Word194;
+        uint16_t Word195;
+        uint16_t Word196;
+        uint16_t Word197;
+        uint16_t Word198;
+        uint16_t Word199;
+
+        uint16_t Word200;
+        uint16_t Word201;
+        uint16_t Word202;
+        uint16_t Word203;
+        uint16_t Word204;
+        uint16_t Word205;
+        uint16_t Word206;
+        uint16_t Word207;
+        uint16_t Word208;
+        uint16_t Word209;
+
+        uint16_t Word210;
+        uint16_t Word211;
+        uint16_t Word212;
+        uint16_t Word213;
+        uint16_t Word214;
+        uint16_t Word215;
+        uint16_t Word216;
+        uint16_t Word217;
+        uint16_t Word218;
+        uint16_t Word219;
+
+        uint16_t Word220;
+        uint16_t Word221;
+        uint16_t Word222;
+        uint16_t Word223;
+        uint16_t Word224;
+        uint16_t Word225;
+        uint16_t Word226;
+        uint16_t Word227;
+        uint16_t Word228;
+        uint16_t Word229;
+
+        uint16_t Word230;
+        uint16_t Word231;
+        uint16_t Word232;
+        uint16_t Word233;
+        uint16_t Word234;
+        uint16_t Word235;
+        uint16_t Word236;
+        uint16_t Word237;
+        uint16_t Word238;
+        uint16_t Word239;
+
+        uint16_t Word240;
+        uint16_t Word241;
+        uint16_t Word242;
+        uint16_t Word243;
+        uint16_t Word244;
+        uint16_t Word245;
+        uint16_t Word246;
+        uint16_t Word247;
+        uint16_t Word248;
+        uint16_t Word249;
+
+        uint16_t Word250;
+        uint16_t Word251;
+        uint16_t Word252;
+        uint16_t Word253;
+        uint16_t Word254;
+        uint16_t Word255;
+    } tAtaIdentifyData, *ptAtaIdentifyData;
+    
+
+    #if !defined(DISABLE_NVME_PASSTHROUGH)
+    //All of the NVME structs in here were moved here to fix a circular include issue
+    typedef struct _nvmeIDPowerState {
+    	uint16_t 			maxPower;	/* centiwatts */
+    	uint8_t 			rsvd2;
+    	uint8_t 			flags;
+    	uint32_t 			entryLat;	/* microseconds */
+    	uint32_t 			exitLat;	/* microseconds */
+    	uint8_t 			readTPut;
+    	uint8_t 			readLat;
+    	uint8_t 			writeLput;
+    	uint8_t 			writeLat;
+    	uint16_t 			idlePower;
+    	uint8_t 			idleScale;
+    	uint8_t 			rsvd19;
+    	uint16_t 			activePower;
+    	uint8_t 			activeWorkScale;
+    	uint8_t 			rsvd23[9];
+    } nvmeIDPowerState;
+
+    typedef struct _nvmeIDCtrl {
+        //controller capabilities and features
+        uint16_t 			vid;
+        uint16_t 			ssvid;
+    	char			    sn[20];
+    	char			    mn[40];
+    	char			    fr[8];
+    	uint8_t 			rab;
+    	uint8_t 			ieee[3];
+    	uint8_t 			cmic;
+    	uint8_t 			mdts;
+    	uint16_t 			cntlid;
+    	uint32_t 			ver;
+        uint32_t            rtd3r;
+        uint32_t            rtd3e;
+        uint32_t            oaes;
+        uint32_t            ctratt;
+        uint8_t             reservedBytes111_100[12];
+        uint8_t             fguid[16];//128bit identifier
+        uint8_t             reservedBytes239_128[112];
+        uint8_t             nvmManagement[16];
+        //Admin command set attribues & optional controller capabilities
+    	uint16_t 			oacs;
+    	uint8_t 			acl;
+    	uint8_t 			aerl;
+    	uint8_t 			frmw;
+    	uint8_t 			lpa;
+    	uint8_t 			elpe;
+    	uint8_t 			npss;
+    	uint8_t 			avscc;
+    	uint8_t 			apsta;
+    	uint16_t 			wctemp;
+    	uint16_t 			cctemp;
+        uint16_t            mtfa;
+        uint32_t            hmpre;
+        uint32_t            hmmin;
+        uint8_t             tnvmcap[16];
+        uint8_t             unvmcap[16];
+        uint32_t            rpmbs;
+        uint16_t            edstt;
+        uint8_t             dsto;
+        uint8_t             fwug;
+        uint16_t            kas;
+        uint16_t            hctma;
+        uint16_t            mntmt;
+        uint16_t            mxtmt;
+        uint32_t            sanicap;
+        uint8_t             reservedBytes511_332[180];
+        //NVM command set attributes;
+    	uint8_t 			sqes;
+    	uint8_t 			cqes;
+        uint16_t            maxcmd;
+    	uint32_t 			nn;
+    	uint16_t 			oncs;
+    	uint16_t 			fuses;
+    	uint8_t 			fna;
+    	uint8_t 			vwc;
+    	uint16_t 			awun;
+    	uint16_t 			awupf;
+    	uint8_t 			nvscc;
+    	uint8_t 		    reservedByte531;
+    	uint16_t 			acwu;
+    	uint8_t 			rsvd534[2];
+    	uint32_t 			sgls;
+        uint8_t             reservedBytes767_540[228];
+        char                subnqn[256];
+        uint8_t             reservedBytes1791_1024[768];
+        uint8_t             nvmeOverFabrics[256];
+    	nvmeIDPowerState	psd[32];
+    	uint8_t 			vs[1024];
+    } nvmeIDCtrl;
+
+    typedef struct _nvmeLBAF {
+    	uint16_t 			ms;
+    	uint8_t 			lbaDS;
+    	uint8_t 			rp;
+    } nvmeLBAF;
+
+    typedef struct _nvmeIDNameSpaces {
+    	uint64_t 			nsze;
+    	uint64_t 			ncap;
+    	uint64_t 			nuse;
+    	uint8_t 			nsfeat;
+    	uint8_t 			nlbaf;
+    	uint8_t 			flbas;
+    	uint8_t 			mc;
+    	uint8_t 			dpc;
+    	uint8_t 			dps;
+    	uint8_t 			nmic;
+    	uint8_t 			rescap;
+    	uint8_t 			fpi;
+    	uint8_t 			rsvd33;
+    	uint16_t 			nawun;
+    	uint16_t 			nawupf;
+    	uint16_t 			nacwu;
+    	uint8_t 			rsvd40[80];
+    	uint8_t 			eui64[8];
+    	nvmeLBAF	        lbaf[16];
+    	uint8_t 			rsvd192[192];
+    	uint8_t 			vs[3712];
+    } nvmeIDNameSpaces;
+
+    typedef struct _nvmeIdentifyData {
+        nvmeIDCtrl          ctrl;
+        nvmeIDNameSpaces    ns; // Currently we only support 1 NS - Revisit.  
+    } nvmeIdentifyData;
+
+    #endif
+
+    typedef struct _ataReturnTFRs
+    {
+        uint8_t                error;
+        uint8_t                secCntExt;
+        uint8_t                secCnt;
+        uint8_t                lbaLowExt;
+        uint8_t                lbaLow;
+        uint8_t                lbaMidExt;
+        uint8_t                lbaMid;
+        uint8_t                lbaHiExt;
+        uint8_t                lbaHi;
+        uint8_t                device;
+        uint8_t                status;
+    } ataReturnTFRs;
+    #pragma pack(pop)
+
+    // Defined by SPC3 as the maximum sense length
+    #define SPC3_SENSE_LEN  (252)
+
+#pragma pack(push, 1)
+
+    typedef struct _tVpdData {
+        uint8_t  inquiryData[96]; //INQ_RETURN_DATA_LENGTH
+        uint8_t  vpdPage83[64];
+    } tVpdData;
+
+    typedef enum _eMediaType {
+        MEDIA_HDD       = 0,    // rotating media, HDD (ata or scsi)
+        MEDIA_SSD       = 1,    // SSD (ata or scsi or nvme)
+        MEDIA_SSM_FLASH = 2,    // Solid state flash module - USB flash drive/thumb drive
+        MEDIA_SSHD      = 3,    // Hybrid drive.
+        MEDIA_OPTICAL   = 4,    // CD/DVD/etc drive media
+        MEDIA_TAPE      = 5,    // Tape Drive media
+        MEDIA_NVM       = 6,    // All NVM drives 
+        MEDIA_UNKNOWN           // anything else we find should get this
+    } eMediaType;
+
+    typedef enum _eDriveType {
+        UNKNOWN_DRIVE,
+        ATA_DRIVE,
+        SCSI_DRIVE,
+        RAID_DRIVE,
+        NVME_DRIVE,
+        ATAPI_DRIVE,
+        FLASH_DRIVE,//This is a USB thumb drive/flash drive or an SD card, or compact flash, etc
+        TAPE_DRIVE,//not currently used...
+    } eDriveType;
+
+    typedef enum _eInterfaceType {
+        UNKNOWN_INTERFACE,
+        IDE_INTERFACE,
+        SCSI_INTERFACE,
+        RAID_INTERFACE,
+        NVME_INTERFACE,
+        USB_INTERFACE,
+        MMC_INTERFACE,
+        SD_INTERFACE,
+        IEEE_1394_INTERFACE
+    } eInterfaceType;
+
+    //revisit this later as this may not be the best way we want to do this
+    typedef struct _bridgeInfo
+    {
+        bool isValid;
+        uint16_t productID;
+        uint16_t vendorID;
+        char childDriveMN[MODEL_NUM_LEN + 1];
+        char childDriveSN[SERIAL_NUM_LEN + 1];
+        char childDriveFW[FW_REV_LEN + 1];
+        uint64_t childWWN;
+        char t10SATvendorID[9];//VPD page 89h
+        char SATproductID[17];//VPD page 89h
+        char SATfwRev[9];//VPD page 89h
+        uint32_t childDeviceBlockSize; //This is the logical block size reported by the drive
+        uint32_t childDevicePhyBlockSize; // This is the physical block size reported by the drive. 
+        uint16_t childSectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
+        uint64_t childDeviceMaxLba;
+    }bridgeInfo;
+
+    typedef enum _eATASynchronousDMAMode
+    {
+        ATA_DMA_MODE_NO_DMA,
+        ATA_DMA_MODE_DMA,
+        ATA_DMA_MODE_MWDMA,
+        ATA_DMA_MODE_UDMA
+    }eATASynchronousDMAMode;
+
+    typedef enum _ePassthroughType
+    {
+        ATA_PASSTHROUGH_SAT = 0,//Should be used unless you know EXACTLY the right pass through to use for a device.
+        //All values below are for legacy USB support. They should only be used when you know what you are doing.
+        ATA_PASSTHROUGH_CYPRESS,
+        ATA_PASSTHROUGH_PROLIFIC,
+        ATA_PASSTHROUGH_TI,
+        ATA_PASSTHROUGH_NEC,
+        ATA_PASSTHROUGH_PSP, //Some PSP drives use this passthrough and others use SAT...
+        ATA_PASSTHROUGH_UNKNOWN
+    }ePassthroughType;
+
+    typedef struct _ataOptions
+    {
+        bool use12ByteSATCDBs;
+        bool dmaSupported;
+        bool readLogWriteLogDMASupported;
+        bool readBufferDMASupported;
+        bool writeBufferDMASupported;
+        bool downloadMicrocodeDMASupported;
+        eATASynchronousDMAMode dmaMode;
+        bool taggedCommandQueuingSupported;
+        bool nativeCommandQueuingSupported;
+        uint8_t logicalSectorsPerDRQDataBlock;
+        bool isParallelTransport;
+        bool writeUncorrectableExtSupported;
+        bool fourtyEightBitAddressFeatureSetSupported;
+        bool generalPurposeLoggingSupported;
+        ePassthroughType passthroughType;//This should be left alone unless you know for a fact which passthrough to use. SAT is the default and should be used unless you know you need a legacy (pre-SAT) passthrough type.
+        bool followUpRequestRTFRcommandSupported;//Some devices may support this command, but not all. Some USB device reset when issued this, which is why this boolean flag exists
+        bool alwaysSetCheckConditionBit;//this will cause all commands to set the check condition bit. This means any ATA Passthrough command should always get back an ATA status which may help with sense data and judging what went wrong better. Be aware that this may not be liked on some devices and some may just ignore it.
+        bool enableLegacyPassthroughDetectionThroughTrialAndError;//This must be set to true in order to work on legacy (ancient) passthrough if the VID/PID is not in the list and not read from the system.
+        bool senseDataReportingEnabled;//this is to track when the RTFRs may contain a sense data bit so it can be read automatically.
+    }ataOptions;
+
+    typedef enum _eZonedDeviceType {
+        ZONED_TYPE_NOT_ZONED = 0,
+        ZONED_TYPE_HOST_AWARE = 1,
+        ZONED_TYPE_DEVICE_MANAGED = 2,
+        ZONED_TYPE_RESERVED = 3,
+        ZONED_TYPE_HOST_MANAGED = 4
+    }eZonedDeviceType;
+
+    //This is used by the software SAT translation layer. DO NOT Update this directly
+    typedef struct _softwareSATFlags
+    {
+        bool deviceStatisticsSupported; //if set to true, any 1 of the bools in the following struct is set to true (supported)
+        struct
+        {
+            bool rotatingMediaStatisticsPageSupported;
+            bool generalErrorStatisticsSupported;
+            bool temperatureStatisticsSupported;
+            bool solidStateDeviceStatisticsSupported;
+            bool generalStatisitcsSupported;
+            bool dateAndTimeTimestampSupported;//on general statistics page
+        }deviceStatsPages;
+        bool currentInternalStatusLogSupported;//Needed for Error history mode of the read buffer command
+        bool savedInternalStatusLogSupported;//Needed for Error history mode of the read buffer command
+        bool deferredDownloadSupported;//Read from the identify device data log
+        bool hostLogsSupported;//log addresses 80h - 9Fh
+        bool senseDataDescriptorFormat;//DO NOT SET DIRECTLY! This should be changed through a mode select command to the software SAT layer. false = fixed format, true = descriptor format
+        uint8_t rtfrIndex;
+        ataReturnTFRs ataPassthroughResults[16];
+    }softwareSATFlags;
+
+    typedef struct _driveInfo {
+        eMediaType     media_type;
+        eDriveType     drive_type;
+        eInterfaceType interface_type;
+        eZonedDeviceType zonedType;//most drives will report ZONED_TYPE_NOT_ZONED
+        uint32_t       deviceBlockSize; //This is the logical block size reported by the drive
+		uint32_t	   devicePhyBlockSize; // This is the physical block size reported by the drive. 
+        uint16_t       sectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
+        uint64_t       deviceMaxLba;
+        uint32_t       lunOrNSID; //shared between SCSI / NVMe 
+        char           serialNumber[SERIAL_NUM_LEN + 1];
+        char           T10_vendor_ident[T10_VENDOR_ID_LEN + 1];
+        char           product_identification[MODEL_NUM_LEN + 1]; //not INQ
+        char           product_revision[FW_REV_LEN + 1];
+        uint64_t       worldWideName;
+        union{
+            tAtaIdentifyData ata;
+#if !defined(DISABLE_NVME_PASSTHROUGH)
+            nvmeIdentifyData nvme;
+#endif
+        }IdentifyData;
+        tVpdData         scsiVpdData; // Intentionally not part of the above IdentifyData union 
+        ataReturnTFRs lastCommandRTFRs;//This holds the RTFRs for the last command to be sent to the device. This is not necessarily the last function called as functions may send multiple commands to the device.
+        struct {
+            bool validData;//must be true for any other fields to be useful
+            uint8_t senseKey;
+            uint8_t additionalSenseCode;
+            uint8_t additionalSenseCodeQualifier;
+        }ataSenseData;
+        uint8_t lastCommandSenseData[SPC3_SENSE_LEN];//This holds the sense data for the last command to be sent to the device. This is not necessarily the last function called as functions may send multiple commands to the device.
+        bridgeInfo      bridge_info;
+        ataOptions      ata_Options;
+        uint64_t        lastCommandTimeNanoSeconds;//The time the last command took in nanoseconds
+        softwareSATFlags softSATFlags;//This is used by the software SAT translation layer. DO NOT Update this directly. This should only be updated by the lower layers of opensea-transport.
+        uint32_t defaultTimeoutSeconds;//If this is not set (set to zero), a default value of 15 seconds will be used.
+        uint32_t namespaceID;//This is the current namespace you are talking with. If this is zero, then this value is invalid. This may not be available on all OS's or driver interfaces
+        uint8_t currentProtectionType;//Useful for certain operations. Read in readCapacityOnSCSI. TODO: NVMe
+        uint8_t piExponent;//Only valid for protection types 2 & 3 I believe...-TJE
+    } driveInfo;
+
+
+#if defined (_WIN32)
+    //TODO: see if we can move these WIndows specific enums out to the windows unique files.
+    typedef enum _eWindowsIOCTLType
+    {
+        WIN_IOCTL_NOT_SET = 0,//this should only be like this when allocating memory...
+        WIN_IOCTL_ATA_PASSTHROUGH,//Set when using ATA Pass-through IOCTLs (direct and double buffered)
+        WIN_IOCTL_SCSI_PASSTHROUGH,//Set when using SCSI Pass-through IOCTLs (direct and double buffered)
+        WIN_IOCTL_SCSI_PASSTHROUGH_EX,//Set when using SCSI Pass-through IOCTLs (direct and double buffered) //Win 8 and newer only! You can set this to force using the EX passthrough in Win8, BUT not many drivers support this and it will automatically be used for 32 byte CDBs when supported...that's the only real gain right now. - TJE
+        WIN_IOCTL_SMART_ONLY,//Only the legacy SMART command IOCTL is supported, so only ATA identify and SMART commands are available
+        WIN_IOCTL_IDE_PASSTHROUGH_ONLY,//Only the old & undocumented IDE pass-through is supported. Do not use this unless absolutely nothing else works.
+        WIN_IOCTL_SMART_AND_IDE,//Only the legacy SMART and IDE IOCTLs are supported, so 28bit limitations abound
+        WIN_IOCTL_STORAGE_PROTOCOL_COMMAND, //Win10 + only. Should be used with NVMe. Might work with SCSI or ATA, but that is unknown...development hasn't started for this yet. Just a placeholder - TJE
+    }eWindowsIOCTLType;
+
+    typedef enum _eWindowsIOCTLMethod
+    {
+        WIN_IOCTL_DEFAULT_METHOD,
+        WIN_IOCTL_FORCE_ALWAYS_DIRECT,
+        WIN_IOCTL_FORCE_ALWAYS_DOUBLE_BUFFERED,
+        WIN_IOCTL_MAX_METHOD
+    }eWindowsIOCTLMethod;
+#endif
+    // \struct typedef struct _OSDriveInfo
+    typedef struct _OSDriveInfo
+    {
+        char                name[30];//handle name (string)
+        eOSType             osType;//useful for lower layers to do OS specific things
+        #if !defined (_WIN32)
+        int                 fd;
+        #else
+        HANDLE              fd;
+        SCSI_ADDRESS        scsi_addr;
+        int                 os_drive_number;
+        int                 srbtype; //this will be used to filter when a controller supports the new SCSI PassThrough EX IOCTLs
+        int                 alignmentMask;//save the alignment mask. This may be needed on some controllers....not currently used but SHOULD be added later for the SCSI IOCTL DIRECT EX
+        eWindowsIOCTLType   ioType;//This will be set during get_Device so we know how to talk to the drive (Mostly for ATA). Only change this if you know what you're doing.
+        eWindowsIOCTLMethod ioMethod;//Use this to force using DIRECT or Double Buffered IOCTLs for each command. By default the library will decide...typically 16KiB or less will use double buffered for compatibility purposes. This is ignored for IDE and SMART IOCTLs since they are only double buffered.
+        struct {
+            bool smartIOSupported;//if this is false, nothing below this is valid. This just tracks whether the SMART IO is available or not. it will only be set when other ATA Pass-through methods fail. - TJE
+            bool ataIDsupported;//EC command can be sent through this IO
+            bool atapiIDsupported;//A1 command can be sent through this IO
+            bool smartSupported;//B0 command can be sent through this IO
+            uint8_t deviceBitmap;//This specifies which channel the drive is on (PATA)...might need this for sending this IO on some legacy systems. See bIDEDeviceMap here https://msdn.microsoft.com/en-us/library/windows/hardware/ff554977(v=vs.85).aspx
+        }winSMARTCmdSupport;
+#if WINVER >= SEA_WIN32_WINNT_WIN10
+		struct {
+			bool fwdlIOSupported;
+			uint32_t payloadAlignment; //From MSDN: The alignment of the image payload, in number of bytes. The maximum is PAGE_SIZE. The transfer size is a mutliple of this size. Some protocols require at least sector size. When this value is set to 0, this means that this value is invalid.
+			uint32_t maxXferSize; //From MSDN: The image payload maximum size, this is used for a single command
+			bool isLastSegmentOfDownload;//This should be set only when we are issuing a download command...We should find a better place for this.
+			//TODO: expand this struct if we need other data when we check for firmware download support on a device.
+		}fwdlIOsupport;
+#endif
+        #endif
+        bool                osReadWriteRecommended;//This will be set to true when it is recommended that OS read/write calls are used instead of IO read/write (typically when using SMART or IDE IOCTLs in Windows since they may not work right for read/write)
+        unsigned int        last_error; // errno in Linux or GetLastError in Windows.
+        struct {
+            bool fileSystemInfoValid;//This must be set to true for the other bools to have any meaning. This is here because some OS's may not have support for detecting this information
+            bool hasFileSystem;//This will only be true for filesystems the current OS can detect. Ex: Windows will only set this for mounted volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem types since it can handle more than Windows by default
+            bool isSystemDisk;//This will be set if the drive has a file system and the OS is running off of it. Ex: Windows' C:\Windows\System32, Linux's / & /boot, etc
+        }fileSystemInfo;
+    } OSDriveInfo;
+
+    typedef enum _eDiscoveryOptions
+    {
+        DEFAULT_DISCOVERY,
+        FAST_SCAN, //Gets the basic information for a quick scan like SeaChest displays on the command line.
+        DO_NOT_WAKE_DRIVE, //e.g OK to send commands that do NOT access media
+        NO_DRIVE_CMD,
+        OPEN_HANDLE_ONLY,
+		BUS_RESCAN_ALLOWED = BIT15,//this may wake the drive!
+        //Flags below are bitfields...so multiple can be set. Flags above should be checked by only checking the first word of this enum.
+        FORCE_ATA_PIO_ONLY = BIT16, //troubleshooting option to only send PIO versions of commands (used in get_Device/fill_Drive_Info).
+        FORCE_ATA_DMA_SAT_MODE = BIT17, //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
+        FORCE_ATA_UDMA_SAT_MODE = BIT18, //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
+        GET_DEVICE_FUNCS_IGNORE_CSMI = BIT19, //use this bit in get_Device_Count and get_Device_List to ignore CSMI devices.
+#if defined (ENABLE_CSMI)
+        CSMI_FLAG_IGNORE_PORT = BIT25,
+        CSMI_FLAG_USE_PORT = BIT26,
+        CSMI_FLAG_FORCE_PRE_SAT_VU_PASSTHROUGH = BIT27, //This is for DEBUG. This uses a pre-sat passthrough CDB which may not work properly...
+        CSMI_FLAG_FORCE_SSP = BIT28,
+        CSMI_FLAG_FORCE_STP = BIT29,
+        CSMI_FLAG_VERBOSE = BIT30,
+#endif
+    } eDiscoveryOptions;
+
+#pragma pack(pop)
+
+    typedef int (*issue_io_func)( void * );
+
+	#define DEVICE_BLOCK_VERSION	(3)
+
+#pragma pack(push, 1)
+	// verification for compatibility checking
+	typedef struct _versionBlock
+	{
+		uint32_t size;      // size of enclosing structure
+		uint32_t version;   // version of enclosing structure
+	} versionBlock;
+
+    // \struct typedef struct _tDevice
+	typedef struct _tDevice
+    {
+		versionBlock	    sanity;
+        OSDriveInfo		    os_info;
+        driveInfo           drive_info;
+        void                *raid_device;
+        issue_io_func       issue_io;
+        eDiscoveryOptions   dFlags;
+    } tDevice;
+
+     //Common enum for getting/setting power states. 
+     //This enum encompasses Mode Sense/Select commands for SCSI, Set Features for ATA 
+     //And Get/Set Features for NVMe. Lower layers must translated bits according to interface.
+    typedef enum _eFeatureModeSelect
+    {
+        CURRENT_VALUE,
+        CHANGEABLE_VALUE,
+        DEFAULT_VALUE,
+        SAVED_VALUE,
+        CAPABILITIES
+    } eFeatureModeSelect;
+
+    //this enum is used to know which power conditions we are interested in...it is here so that both ATA and SCSI can see it
+    typedef enum _ePowerConditionID
+    {
+        PWR_CND_NOT_SET = -1,
+        PWR_CND_STANDBY_Z = 0x00, //value according to ATA spec. 
+        PWR_CND_STANDBY_Y = 0x01, //value according to ATA spec. 
+        PWR_CND_IDLE_A    = 0x81, //value according to ATA spec. 
+        PWR_CND_IDLE_B    = 0x82, //value according to ATA spec. 
+        PWR_CND_IDLE_C    = 0x83, //value according to ATA spec. 
+        PWR_CND_ACTIVE    = 0x84, //value is just for continuation (not ATA spec SCSI has 0)
+        PWR_CND_ALL       = 0xFF,
+        PWR_CND_RESERVED
+    } ePowerConditionID;
+#pragma pack(pop)
+
+    #define LEGACY_DRIVE_SEC_SIZE         (512U)
+    #define COMMON_4K_SIZE                (4096U)
+    #define MAX_28_BIT_LBA                (0xFFFFFFF)
+    #define MAX_48_BIT_LBA                (0xFFFFFFFFFFFFULL)
+
+    //the following link can be used to look-up and add additional OUIs https://standards.ieee.org/develop/regauth/oui/public.html
+    typedef enum _eIEEE_OUIs
+    {
+        IEEE_UNKNOWN                = 0,
+        IEEE_MAXTOR                 = 0x0010B9,
+        IEEE_SEAGATE_SAMSUNG_HDD    = 0x0004CF,//appears to be what Seagate Samsung drives have for OUI
+        IEEE_SEAGATE_NVME           = 0x0004CF,
+        IEEE_SEAGATE1               = 0x000C50,
+        IEEE_SEAGATE2               = 0x0011C6,
+        IEEE_SEAGATE3               = 0x0014C3,
+        IEEE_SEAGATE4               = 0x001862,
+        IEEE_SEAGATE5               = 0x001D38,
+        IEEE_SEAGATE6               = 0x002037,
+        IEEE_SEAGATE7               = 0x0024B6,
+        IEEE_SEAGATE8               = 0xB45253,
+        IEEE_SAMSUNG_SSD            = 0x002538,
+        IEEE_SAMSUNG_HDD1           = 0x0000F0,
+        IEEE_SAMSUNG_HDD2           = 0x0024E9,
+        IEEE_VENDOR_A                 = 0x00242F,
+        IEEE_VENDOR_A_TECHNOLOGY      = 0x00A075,
+    }eIEEE_OUIs;
+
+    typedef enum _eSeagateFamily
+    {
+        NON_SEAGATE = 0,
+        SEAGATE = BIT1,
+        MAXTOR = BIT2,
+        SAMSUNG = BIT3,
+        LACIE = BIT4,
+        SEAGATE_VENDOR_A = BIT5,
+        SEAGATE_VENDOR_B = BIT6,
+        SEAGATE_VENDOR_C = BIT7,
+        SEAGATE_VENDOR_D = BIT8,
+        SEAGATE_VENDOR_E = BIT9,
+        //Ancient history 
+        SEAGATE_QUANTUM = BIT10, //Quantum Corp. Vendor ID QUANTUM (SCSI)
+        SEAGATE_CDC = BIT11, //Control Data Systems. Vendor ID CDC (SCSI)
+        SEAGATE_CONNER = BIT12, //Conner Peripherals. Vendor ID CONNER (SCSI)
+        SEAGATE_MINISCRIBE = BIT13, //MiniScribe. Vendor ID MINSCRIB (SCSI)
+        SEAGATE_DEC = BIT14, //Digital Equipment Corporation. Vendor ID DEC (SCSI)
+        SEAGATE_PRARIETEK = BIT15, //PrarieTek. Vendor ID PRAIRIE (SCSI).
+        SEAGATE_PLUS_DEVELOPMENT = BIT16, //Plus Development. Unknown detection
+        SEAGATE_CODATA = BIT17, //CoData. Unknown detection
+    }eSeagateFamily;
+
+    //The scan flags should each be a bit in a 32bit unsigned integer.
+    // bits 0:7 Will be used for drive type selection.
+    // bits 8:15 will be used for interface selection. So this is slightly different because if you say SCSI interface you can get back both ATA and SCSI drives if they are connected to say a SAS card
+    // Linux - bit 16 will be used to change the handle that shows up from the scan. 
+    // Linux - bit 17 will be used to show the SD to SG mapping in linux.
+    // Windows - bit 16 will be used to show the long device handle name
+    // RAID interfaces (including csmi) may use bits 31:26 (so far those are the only ones used by CSMI)
+    
+    #define DEFAULT_SCAN 0
+	#define AGRESSIVE_SCAN BIT20 //this can wake a drive up because a bus rescan may be issued. (currently only implemented in Windows)
+    #define ALL_DRIVES 0xFF
+    #define ATA_DRIVES BIT0
+    #define USB_DRIVES BIT1
+    #define SCSI_DRIVES BIT2
+    #define NVME_DRIVES BIT3
+    #define RAID_DRIVES BIT4
+    #define ALL_INTERFACES 0xFF00
+    #define IDE_INTERFACE_DRIVES BIT8
+    #define SCSI_INTERFACE_DRIVES BIT9
+    #define USB_INTERFACE_DRIVES BIT10
+    #define NVME_INTERFACE_DRIVES BIT11
+    #define RAID_INTERFACE_DRIVES BIT12
+    #define SD_HANDLES BIT16 //this is a Linux specific flag to show SDX handles instead of SGX handles
+    #define SG_TO_SD BIT17
+    #define SAT_12_BYTE BIT18
+#if defined (ENABLE_CSMI)
+    #define ALLOW_DUPLICATE_DEVICE BIT24 //This is ONLY used by the scan_And_Print_Devs function to filter what is output from it. This does NOT affect get_Device_List.
+    #define IGNORE_CSMI BIT25 //only works in Windows since Linux never adopted CSMI support. Set this to ignore CSMI devices, or compile opensea-transport without the ENABLE_CSMI preprocessor definition.
+#endif
+
+    typedef enum _eZoneReportingOptions
+    {
+        ZONE_REPORT_LIST_ALL_ZONES                              = 0x00,
+        ZONE_REPORT_LIST_EMPTY_ZONES                            = 0x01,
+        ZONE_REPORT_LIST_IMPLICIT_OPEN_ZONES                    = 0x02,
+        ZONE_REPORT_LIST_EXPLICIT_OPEN_ZONES                    = 0x03,
+        ZONE_REPORT_LIST_CLOSED_ZONES                           = 0x04,
+        ZONE_REPORT_LIST_FULL_ZONES                             = 0x05,
+        ZONE_REPORT_LIST_READ_ONLY_ZONES                        = 0x06,
+        ZONE_REPORT_LIST_OFFLINE_ZONES                          = 0x07,
+        ZONE_REPORT_LIST_ZONES_WITH_RESET_SET_TO_ONE            = 0x10,
+        ZONE_REPORT_LIST_ZONES_WITH_NON_SEQ_SET_TO_ONE          = 0x11,
+        ZONE_REPORT_LIST_ALL_ZONES_THAT_ARE_NOT_WRITE_POINTERS  = 0x3F
+    }eZoneReportingOptions;
+
+    typedef enum _eZMAction
+    {
+        ZM_ACTION_REPORT_ZONES          = 0x00,//dma in-in
+        ZM_ACTION_CLOSE_ZONE            = 0x01,//non data-out
+        ZM_ACTION_FINISH_ZONE           = 0x02,//non data-out
+        ZM_ACTION_OPEN_ZONE             = 0x03,//non data-out
+        ZM_ACTION_RESET_WRITE_POINTERS  = 0x04,//non data-out
+    }eZMAction;
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Opensea_Transport_Version()
+	//
+	//! \brief   Description:  Get the API version. Alternative way is to 
+	//							read OPENSEA_TRANSPORT_VERSION from version.h
+	//
+	//  Entry:
+	//!   \param[out] ver = apiVersionInfo version block to be filled. 
+		//!
+	//  Exit:
+	//!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API int get_Opensea_Transport_Version(apiVersionInfo *ver);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Version_Block()
+	//
+	//! \brief   Description:  Get the library device block version. 
+	//
+	//  Entry:
+	//!   \param[out] ver = versionBlock structure to be filled. 
+	//!
+	//  Exit:
+	//!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API int get_Version_Block(versionBlock * ver);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Device()
+    //
+    //! \brief   Description:  Given a device name (e.g.\\PhysicalDrive0) returns the file descriptor.
+    //!                        Function opens the device if everything goes well,
+    //!                        it returns a file handle
+    //
+    //  Entry:
+    //!   \param[in] filename = name of the device to open
+    //!   \param[in] device = device struct to hold the handle among other information
+    //!
+    //  Exit:
+    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int get_Device(const char *filename, tDevice *device);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_Count()
+	//
+	//! \brief   Description:  Get the count of devices in the system that this library
+	//!                        can talk to. This function is used in conjunction with
+	//!                        get_Device_List, so that enough memory is allocated.
+	//
+	//  Entry:
+	//!   \param[out] numberOfDevices = integer to hold the number of devices found. 
+	//!   \param[in] flags = bit field based mask to let application control. 
+	//!						 NOTE: only csmi flags are used right now.
+	//!
+	//  Exit:
+	//!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_List()
+	//
+	//! \brief   Description:  Get a list of devices that the library supports. 
+	//!                        Use get_Device_Count to figure out how much memory is
+	//!                        needed to be allocated for the device list. The memory 
+	//!						   allocated must be the multiple of device structure. 
+	//!						   The application can pass in less memory than needed 
+	//!						   for all devices in the system, in which case the library 
+	//!                        will fill the provided memory with how ever many device 
+	//!						   structures it can hold. 
+	//  Entry:
+	//!   \param[out] ptrToDeviceList = pointer to the allocated memory for the device list
+	//!   \param[in]  sizeInBytes = size of the entire list in bytes. 
+	//!   \param[in]  ver = versionBlock structure filled in by application for 
+	//!								 sanity check by library. 
+	//!   \param[in] flags = bitfield based mask to let application control. 
+	//!						 NOTE: only csmi flags are used right now
+	//!
+	//  Exit:
+	//!   \return SUCCESS - pass, WARN_NOT_ALL_DEVICES_ENUMERATED - some deviec had trouble being enumerated. Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags);
+
+
+	//-----------------------------------------------------------------------------
+	//
+	//  close_Device()
+	//
+	//! \brief   Description:  Given a tDevice, close it's handle. 
+	//
+	//  Entry:
+	//!   \param[in] device = device struct that holds device information. 
+	//!
+	//  Exit:
+	//!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API int close_Device(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  scan_And_Print_Devs()
+    //
+    //! \brief   Description:  Scan for devices on the supported interfaces & print info.
+    //!                        Function that scans for valid devices on all interfaces.
+    //                         IMPORTANT: Try best to not send a command to the device.
+    //
+    //  Entry:
+    //!   \param[in] flags = Flags for future use to control the scan
+    //!   \param[in] outputInfo = pointer to an outputInfo struct to control how to output the scan information. If this is NULL, standard screen output is assumed
+    //!
+    //  Exit:
+    //!   \return VOID
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  load_Bin_Buf()
+    //
+    //! \brief   Description:  load contents of binary file to buffer
+    //
+    //  Entry:
+    //!   \param[in] filename = name of file to be read from
+    //!   \param[in] myBuf = the buffer to be filled
+    //!   \param[in] bufSize = amount of data to be written
+    //!
+    //  Exit:
+    //!   \return SUCCESS on successful completion, !SUCCESS if problems encountered
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int load_Bin_Buf(char *filename, void *myBuf, size_t bufSize);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  scan_Drive_Type_Filter()
+    //
+    //! \brief   Description:  This is a filter function used by scan to determine which drives found we want to show
+    //
+    //  Entry:
+    //!   \param[in] device - pointer to the device structure that has already been filled in by get_Device()
+    //!   \param[in] scanFlags = flags used to control scan. All flags that don't pertain to drive type are ignored.
+    //!
+    //  Exit:
+    //!   \return true = show drive, false = don't show drive
+    //
+    //-----------------------------------------------------------------------------
+    bool scan_Drive_Type_Filter(tDevice *device, uint32_t scanFlags);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  scan_Drive_Type_Filter()
+    //
+    //! \brief   Description:  This is a filter function used by scan to determine which drive interfaces found we want to show
+    //
+    //  Entry:
+    //!   \param[in] device - pointer to the device structure that has already been filled in by get_Device()
+    //!   \param[in] scanFlags = flags used to control scan. All flags that don't pertain to drive interface are ignored.
+    //!
+    //  Exit:
+    //!   \return true = show drive, false = don't show drive
+    //
+    //-----------------------------------------------------------------------------
+    bool scan_Interface_Type_Filter(tDevice *device, uint32_t scanFlags);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Seagate_Family( tDevice * device )
+    //
+    //! \brief   Checks if the device is a Seagate drive, a Samsung HDD drive, a Maxtor Drive, or a LaCie Drive. This should be used for features we want to allow only on Seagate Supported products (erase, etc).
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!
+    //  Exit:
+    //!   \return eSeagateFamily enum value. See enum for meanings
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API eSeagateFamily is_Seagate_Family(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Seagate_MN( tDevice * device )
+    //
+    //! \brief   Checks if the passed in model number string starts with ST which means it's a seagate MN
+    //
+    //  Entry:
+    //!   \param[in]  string - the  model number string to check
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Seagate Drive, 0 - Not a Seagate Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Seagate_MN(char* string);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Seagate_VendorID( tDevice * device )
+    //
+    //! \brief   Checks if the vendor ID for a device is Seagate or SEAGATE. Useful for determinging a SAS or USB drive is a seagate drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Seagate Drive, 0 - Not a Seagate Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Seagate_VendorID(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Seagate( tDevice * device )
+    //
+    //! \brief   Checks if the device is a Seagate drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Seagate Drive, 0 - Not a Seagate Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Seagate(tDevice *device, bool USBchildDrive);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_LaCie( tDevice * device )
+    //
+    //! \brief   Checks if the device is a LaCie drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!
+    //  Exit:
+    //!   \return 1 = It is a LaCie Drive, 0 - Not a LaCie Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_LaCie(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Samsung_String( tDevice * device )
+    //
+    //! \brief   Checks if the passed in string (model number or vendor id) are SAMSUNG
+    //
+    //  Entry:
+    //!   \param[in]  string - string to check for Samsung
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Samsung Drive, 0 - Not a Samsung Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Samsung_String(char* string);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Samsung_HDD( tDevice * device )
+    //
+    //! \brief   Checks if the device is a Samsung HDD drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Samsung Drive, 0 - Not a Samsung Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Samsung_HDD(tDevice *device, bool USBchildDrive);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Maxtor_String( tDevice * device )
+    //
+    //! \brief   Checks if the passed in string (model number or vendor id) are MAXTOR
+    //
+    //  Entry:
+    //!   \param[in]  string - string to check if it is a maxtor name
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Maxtor Drive, 0 - Not a Maxtor Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Maxtor_String(char* string);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Maxtor( tDevice * device )
+    //
+    //! \brief   Checks if the device is a Maxtor drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Maxtor Drive, 0 - Not a Maxtor Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Maxtor(tDevice *device, bool USBchildDrive);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Seagate_Model_Vendor_A( tDevice * device )
+    //
+    //! \brief   Checks if the device is a Seagate partnership product 
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Seagate Partner Drive, 0 - Not a Seagate-Partner Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Vendor_A(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Vendor_A( tDevice * device )
+    //
+    //! \brief   Checks if the device is a Partner drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Partner Drive, 0 - Not a Partner Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Vendor_A(tDevice *device, bool USBchildDrive);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_SSD( tDevice * device )
+    //
+    //! \brief   Checks if the device is an SSD or not. This just looks at the media type to see if it is MEDIA_SSD or MEDIA_NVM
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!
+    //  Exit:
+    //!   \return 1 = It is a SSD Drive, 0 - Not a SSD Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_SSD(tDevice *device);
+
+    OPENSEA_TRANSPORT_API bool is_SATA(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Sector_Size_Emulation_Active( tDevice * device )
+    //
+    //! \brief   Checks if sector size emulation is active. This is only really useful on SAT interfaces/drivers. This will always be false when the isValid bool is set to false in thebridge info struct
+    //!          This will likely only be true for some USB devices greater than 2.2TB, but SAT spec allows SAT devices to emulate different sector sizes (although any emulation is vendor specific to the SATL)
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!
+    //  Exit:
+    //!   \return true = sector size emulation is active, false = sector size emulation is inactive, i.e. SATL reported block size = device reported block size
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Sector_Size_Emulation_Active(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  calculate_Checksum( uint8_t buf,  ) (OBSOLETE)
+    //
+    //! \brief  Calculates the ATA Spec. version of the checksum & returns the data
+    //!         NOTE: 511th byte of the buffer will be changed. 
+    //!         This function has been replaced with a couple others in ata_helper_func.h since this is specific to ATA.
+    //! 
+    //! A.14.7 Checksum
+    //! The data structure checksum is the two?s complement of the sum of the first 511 bytes in the data structure. Each
+    //! byte shall be added with eight-bit unsigned arithmetic and overflow shall be ignored. The sum of all 512 bytes of
+    //! the data structure shall be zero.
+    //
+    //  Entry:
+    //!   \param[in, out] pBuf = uint8_t buffer to perform checksum on 
+    //!   \param[in] blockSize = uint32_t block size    
+    //  Exit:
+    //!   \return int SUCCESS if passes !SUCCESS if fails for some reason. 
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int calculate_Checksum(uint8_t *pBuf, uint32_t blockSize);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Sector_Count_For_Read_Write(tDevice *device, uint32_t *sectorCount)
+    //
+    //! \brief  Gets the sectorCount based on the device interface. The value set is one that is most compatible across controllers/bridges and OSs
+    //!         Will set 64K transfers for internal interfaces (SATA, SAS) and 32K for external (USB, IEEE1394)
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to the device struct.
+    //
+    //  Exit:
+    //!   \return uint32_t value to use for a sector count
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_Read_Write(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  align_LBA()
+    //
+    //! \brief   Description:  This function takes an LBA, then aligns it to the beginning of a physical block. The return value is the LBA at the beginning of the physical block.
+    //
+    //  Entry:
+    //!   \param[in] device = file descriptor
+    //!   \param[in] LBA = the LBA that will be checked for alignment
+    //!
+    //  Exit:
+    //!   \return The aligned LBA
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API uint64_t align_LBA(tDevice *device, uint64_t LBA);
+
+    OPENSEA_TRANSPORT_API void print_Command_Time(uint64_t timeInNanoSeconds);
+
+	OPENSEA_TRANSPORT_API void print_Time(uint64_t timeInNanoSeconds);
+
+    OPENSEA_TRANSPORT_API void write_JSON_To_File(void *customData, char *message); //callback function
+
+#if defined (__cplusplus)
+} //extern "C"
+#endif
