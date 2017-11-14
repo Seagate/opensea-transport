@@ -5016,12 +5016,12 @@ int win10_Translate_Read(nvmeCmdCtx *nvmeIoCtx)
         if (expectedLogicalBlockAccessTag != 0 || expectedLogicalBlockApplicationTag != 0 || expectedLogicalBlockTagMask != 0)
         {
             //read 32 command
-            ret = scsi_Read_32(nvmeIoCtx->device, rdProtect, false, fua, false, startingLBA, 0, numberOfLogicalBlocks, nvmeIoCtx->ptrData, expectedLogicalBlockAccessTag, expectedLogicalBlockApplicationTag, expectedLogicalBlockTagMask);
+            ret = scsi_Read_32(nvmeIoCtx->device, rdProtect, false, fua, false, startingLBA, 0, numberOfLogicalBlocks, nvmeIoCtx->ptrData, expectedLogicalBlockAccessTag, expectedLogicalBlockApplicationTag, expectedLogicalBlockTagMask, nvmeIoCtx->dataSize);
         }
         else
         {
             //read 16 should work
-            ret = scsi_Read_16(nvmeIoCtx->device, rdProtect, false, fua, false, startingLBA, 0, numberOfLogicalBlocks, nvmeIoCtx->ptrData);
+            ret = scsi_Read_16(nvmeIoCtx->device, rdProtect, false, fua, false, startingLBA, 0, numberOfLogicalBlocks, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
         }
     }
     g_verbosity = inVerbosity;
@@ -5090,12 +5090,12 @@ int win10_Translate_Write(nvmeCmdCtx *nvmeIoCtx)
         if (initialLogicalBlockAccessTag != 0 || logicalBlockTagMask != 0 || logicalBlockApplicationTag != 0)
         {
             //write 32 command
-            ret = scsi_Write_32(nvmeIoCtx->device, wrProtect, false, fua, startingLBA, 0, numberOfLogicalBlocks, nvmeIoCtx->ptrData, initialLogicalBlockAccessTag, logicalBlockApplicationTag, logicalBlockTagMask);
+            ret = scsi_Write_32(nvmeIoCtx->device, wrProtect, false, fua, startingLBA, 0, numberOfLogicalBlocks, nvmeIoCtx->ptrData, initialLogicalBlockAccessTag, logicalBlockApplicationTag, logicalBlockTagMask, nvmeIoCtx->dataSize);
         }
         else
         {
             //write 16 should work
-            ret = scsi_Write_16(nvmeIoCtx->device, wrProtect, false, fua, startingLBA, 0, numberOfLogicalBlocks, nvmeIoCtx->ptrData);
+            ret = scsi_Write_16(nvmeIoCtx->device, wrProtect, false, fua, startingLBA, 0, numberOfLogicalBlocks, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
         }
     }
     g_verbosity = inVerbosity;
