@@ -13,6 +13,7 @@ by exposing a common API to send a command set to a particular device.
 
 Source
 ------
+https://github.com/Seagate/opensea-transport.git
 
 Building
 --------
