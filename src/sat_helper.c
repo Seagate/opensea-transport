@@ -40,6 +40,8 @@
 //SAT 2 optional feature flags
 //SAT optional feature flags
 
+//TODO: SPC and SBC optional feature flag translations. A good SATL should enable everything to make the drive look more and act more like a SCSI device
+
 int get_Return_TFRs_From_Passthrough_Results_Log(tDevice *device, ataReturnTFRs *ataRTFRs, uint16_t parameterCode)
 {
     int ret = NOT_SUPPORTED;//Many devices don't support this log page.
@@ -859,7 +861,20 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
         if (sendIOret != OS_PASSTHROUGH_FAILURE && gotRTFRs)//If we got this error, then there's nothing we can do as far as judging command result since the failure was an OS failure..so we just want to pass this up
         {
             //Determine the command completion status to set the error code.
-            //This is written after reviewing AAM, AST, APT, SATA Specs, and legacy drive specs.
+            //This is written after reviewing SAT, AAM, AST, APT, SATA Specs, and legacy drive specs.
+            //if ((ataCommandOptions->commadProtocol == ATA_PROTOCOL_PIO && ataCommandOptions->commandDirection == XFER_DATA_IN)
+            //    ||
+            //    ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA_FPDMA)
+            //{
+            //    //If we get here, then the result register bits will be zero if the command completes successfully.
+            //    //If the command failed, then we should see the error bit in the error register set to 1.
+            //    //This was added in SAT3.
+            //    //TODO: separate error handling for these cases here!!! - TJE
+            //}
+            //else
+            //{
+            //    //Normal error handling for all other commands
+            //}
             //Check the status register to see if the busy bit is set
             bool checkError = false;
             bool requestATASenseData = false;
@@ -2151,13 +2166,11 @@ int translate_Mode_Page_Policy_VPD_Page_87h(tDevice *device, ScsiIoCtx *scsiIoCt
     pageOffset += 4;
 #if SAT_SPEC_SUPPORTED > 2
     //power condition
-    /*
     modePagePolicy[pageOffset + 0] = 0x1A;//pageCode
     modePagePolicy[pageOffset + 1] = 0x00;//subpage code
     modePagePolicy[pageOffset + 2] = 0x01;//mlus = 0 | modePagePolicy = 01b (per target port)
     modePagePolicy[pageOffset + 3] = RESERVED;//Reserved
     pageOffset += 4;
-    */
 #endif
     //ATA power condition
     if (device->drive_info.IdentifyData.ata.Word083 & BIT3)
@@ -2188,14 +2201,15 @@ int translate_Mode_Page_Policy_VPD_Page_87h(tDevice *device, ScsiIoCtx *scsiIoCt
     modePagePolicy[pageOffset + 3] = RESERVED;//Reserved
     pageOffset += 4;
 #endif
-    //pata control
-    /*
-    modePagePolicy[pageOffset + 0] = 0xA0;//pageCode
-    modePagePolicy[pageOffset + 1] = 0xF1;//subpage code
-    modePagePolicy[pageOffset + 2] = 0x01;//mlus = 0 | modePagePolicy = 01b (per target port)
-    modePagePolicy[pageOffset + 3] = RESERVED;//Reserved
-    pageOffset += 4;
-    */
+    if (device->drive_info.IdentifyData.ata.Word076 == 0 || device->drive_info.IdentifyData.ata.Word076 == 0xFFFF)//Only Serial ATA Devices will set the bits in words 76-79. Bit zero should always be set to zero, so the FFFF case won't be an issue
+    {
+        //pata control
+        modePagePolicy[pageOffset + 0] = 0xA0;//pageCode
+        modePagePolicy[pageOffset + 1] = 0xF1;//subpage code
+        modePagePolicy[pageOffset + 2] = 0x01;//mlus = 0 | modePagePolicy = 01b (per target port)
+        modePagePolicy[pageOffset + 3] = RESERVED;//Reserved
+        pageOffset += 4;
+    }
     //set the page length last
     modePagePolicy[2] = M_Byte1(pageOffset - 4);
     modePagePolicy[3] = M_Byte0(pageOffset - 4);
