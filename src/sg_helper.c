@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <errno.h>
+#include <libgen.h>//for basename and dirname
 #include "sg_helper.h"
 #include "cmds.h"
 #include "scsi_helper_func.h"
@@ -128,6 +129,14 @@ static void set_Device_Interface(const char* filename, tDevice *device)
             {
                 scsiHandleLocation = strstr(filename,"sd") - filename;
             }
+            else if (strstr(filename,"sr") != NULL)
+            {
+                scsiHandleLocation = strstr(filename,"sr") - filename;
+            }
+            else if (strstr(filename,"scd") != NULL)
+            {
+                scsiHandleLocation = strstr(filename,"scd") - filename;
+            }
             else
             {
                 scsiHandleLocation = strstr(filename,"sg") - filename;
@@ -215,6 +224,237 @@ static int sd_filter( const struct dirent *entry )
         return !sdHandle;
     }
 }
+
+bool does_Kernel_Support_SysFS_Link_Mapping()
+{
+    bool linkMappingSupported = false;
+    //kernel version 2.6 and higher is required to map the handles between sg and sd/sr/st/scd
+    OSVersionNumber linuxVersion;
+    memset(&linuxVersion, 0, sizeof(OSVersionNumber));
+    if(SUCCESS == get_Operating_System_Version_And_Name(&linuxVersion, NULL))
+    {
+        if (linuxVersion.versionType.linuxVersion.kernelVersion >= 2 && linuxVersion.versionType.linuxVersion.majorVersion >= 6)
+        {
+            linkMappingSupported = true;
+        }
+    }
+    return linkMappingSupported;
+}
+
+bool is_Block_Device_Handle(char *handle)
+{
+    bool isBlockDevice = false;
+    if (handle && strlen(handle))
+    {
+        if(strstr(handle,"sd") || strstr(handle, "st") || strstr(handle, "sr") || strstr(handle, "scd"))
+        {
+            isBlockDevice = true;
+        }
+    }
+    return isBlockDevice;
+}
+
+bool is_SCSI_Generic_Handle(char *handle)
+{
+    bool isGenericDevice = false;
+    if (handle && strlen(handle))
+    {
+        if(strstr(handle,"sg") && !strstr(handle, "bsg"))
+        {
+            isGenericDevice = true;
+        }
+    }
+    return isGenericDevice;
+}
+
+bool is_Block_SCSI_Generic_Handle(char *handle)
+{
+    bool isBlockGenericDevice = false;
+    if (handle && strlen(handle))
+    {
+        if(strstr(handle,"bsg"))
+        {
+            isBlockGenericDevice = true;
+        }
+    }
+    return isBlockGenericDevice;
+}
+
+//while similar to the function below, this is used only by get_Device to set up some fields in the device structure for the above layers
+void set_Device_Fields_From_Handle(const char* filename, tDevice *device)
+{
+    //check if it's a block handle, bsg, or scsi_generic handle, then setup the path we need to read.
+}
+
+//map a block handle (sd) to a generic handle (sg or bsg)
+//incoming handle can be either sd, sg, or bsg type
+int map_Block_To_Generic_Handle(char *handle, char *genericHandle, char *blockHandle)
+{
+    if (handle == NULL || genericHandle == NULL || blockHandle == NULL)
+    {
+        return BAD_PARAMETER;
+    }
+    //if the handle passed in contains "nvme" then we know it's a device on the nvme interface
+    if (strstr(handle,"nvme") != NULL)
+    {
+        return NOT_SUPPORTED;
+    }
+    else
+    {
+        bool incomingBlock = false;//only set for SD!
+        char incomingHandleClassPath[PATH_MAX] = { 0 };
+        char incomingClassName[13] = { 0 };
+        strcat(incomingHandleClassPath, "/sys/class/");
+        if (is_Block_Device_Handle(handle))
+        {
+            strcat(incomingHandleClassPath, "block/");
+            incomingBlock = true;
+            strcat(incomingClassName, "block");
+        }
+        else if (is_Block_SCSI_Generic_Handle(handle))
+        {
+            strcat(incomingHandleClassPath, "bsg/");
+            strcat(incomingClassName, "bsg");
+        }
+        else if (is_SCSI_Generic_Handle(handle))
+        {
+            strcat(incomingHandleClassPath, "scsi_generic/");
+            strcat(incomingClassName, "scsi_generic");
+        }
+        //first make sure this directory exists
+        struct stat inHandleStat;
+        if (stat(incomingHandleClassPath, &inHandleStat) == 0 && S_ISDIR(inHandleStat.st_mode))
+        {
+            strcat(incomingHandleClassPath, basename(handle));
+            //now read the link with the handle appended on the end
+            char inHandleLink[PATH_MAX] = { 0 };
+            if (readlink(incomingHandleClassPath, inHandleLink, PATH_MAX) > 0)
+            {
+                //printf("full in handleLink = %s\n", inHandleLink);
+                //now we need to map it to a generic handle (sg...if sg not available, bsg)
+                const char* scsiGenericClass = "/sys/class/scsi_generic/";
+                const char* bsgClass = "/sys/class/bsg/";
+                const char* blockClass = "/sys/class/block/";
+                struct stat mapStat;
+                char classPath[PATH_MAX] = { 0 };
+                bool bsg = false;
+                if (incomingBlock)
+                {
+                    //check for sg, then bsg
+                    if (stat(scsiGenericClass, &mapStat) == 0 && S_ISDIR(mapStat.st_mode))
+                    {
+                        strcpy(classPath, scsiGenericClass);
+                    }
+                    else if (stat(bsgClass, &mapStat) == 0 && S_ISDIR(mapStat.st_mode))
+                    {
+                        strcpy(classPath, bsgClass);
+                        bsg = true;
+                    }
+                    else
+                    {
+                        //printf ("could not map to generic class");
+                        return NOT_SUPPORTED;
+                    }
+                }
+                else
+                {
+                    //check for block
+                    strcpy(classPath, blockClass);
+                    if (!(stat(classPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode)))
+                    {
+                        //printf ("could not map to block class");
+                        return NOT_SUPPORTED;
+                    }
+                }
+                //now we need to loop through each think in the class folder, read the link, and check if we match.
+                struct dirent **classList;
+                int numberOfItems = scandir(classPath, &classList, NULL /*not filtering anything. Just go through each item*/, alphasort);
+                for (int iter = 0; iter < numberOfItems; ++iter)
+                {
+                    //printf("item = %s\n", classList[iter]->d_name);
+                    //now we need to read the link for classPath/d_name into a buffer...then compare it to the one we read earlier.
+                    char temp[PATH_MAX] = { 0 };
+                    strcpy(temp, classPath);
+                    strcat(temp, classList[iter]->d_name);
+                    struct stat tempStat;
+                    if (lstat(temp,&tempStat) == 0 && S_ISLNK(tempStat.st_mode))/*check if this is a link*/
+                    {
+                        char mapLink[PATH_MAX] = { 0 };
+                        if (readlink(temp, mapLink, PATH_MAX) > 0)
+                        {
+                            char *className = NULL;
+                            //printf("read link as: %s\n", mapLink);
+                            //now, we need to check the links and see if they match.
+                            //NOTE: If we are in the block class, we will see sda, sda1, sda 2. These are all matches (technically)
+                            //      We SHOULD match on the first disk without partition numbers since we did alphasort
+                            //We need to match up until the class name (ex: block, bsg, scsi_generic)
+                            if (incomingBlock)//block class
+                            {
+                                className = (char*)calloc(strlen("scsi_generic") + 1, sizeof(char));
+                                if (className)
+                                {
+                                    strcat(className, "scsi_generic");
+                                }
+                            }
+                            else if (bsg) //bsg class
+                            {
+                                className = (char*)calloc(strlen("bsg") + 1, sizeof(char));
+                                if (className)
+                                {
+                                    strcat(className, "bsg");
+                                }
+                            }
+                            else //scsi_generic class
+                            {
+                                className = (char*)calloc(strlen("block") + 1, sizeof(char));
+                                if (className)
+                                {
+                                    strcat(className, "block");
+                                }
+                            }
+                            if (className)
+                            {
+                                char *classPtr = strstr(mapLink, className);
+                                //need to match up to the classname
+                                if (NULL != classPtr && strncmp(mapLink, inHandleLink, (classPtr - mapLink)) == 0)
+                                {
+                                    if (incomingBlock)
+                                    {
+                                        strncpy(blockHandle, basename(handle), 3);
+                                        strcpy(genericHandle, basename(classPtr));
+                                    }
+                                    else
+                                    {
+                                        strncpy(blockHandle, basename(classPtr), 3);
+                                        strncpy(genericHandle, basename(handle));
+                                    }
+                                    safe_Free(className);
+                                    break;//found a match, exit the loop
+                                }
+                            }
+                            safe_Free(className);
+                        }
+                    }
+                }
+                safe_Free(classList);
+            }
+            else
+            {
+                //printf("Error in readlink\n");
+                //not a link, or some other error....probably an old kernel
+                return NOT_SUPPORTED;
+            }
+        }
+        else
+        {
+            //printf("Error in stat\n");
+            //Mapping is not supported...probably an old kernel
+            return NOT_SUPPORTED;
+        }
+        return SUCCESS;
+    }
+}
+
 
 //what we're going to do is similar to finding the interface, but read the links and see if they match (other than the obvious different at the end of the link due to differences in sd and sg)
 int map_sg_to_sd(char* filename, char *sgName, char *sdName)
@@ -410,6 +650,9 @@ int get_Device(const char *filename, tDevice *device)
     int driverMinorVersion=0;
     int driverPatchVersion=0;
 #endif
+char sg[8] = { 0 }, sd[8] = { 0 };
+    map_Block_To_Generic_Handle((char*)filename, sg, sd);
+    printf("sg = %s\tsd = %s\n", sg, sd);
 
     if(strstr(filename,"sd"))
     {
