@@ -288,9 +288,9 @@ void set_Device_Fields_From_Handle(const char* filename, tDevice *device)
 
 //map a block handle (sd) to a generic handle (sg or bsg)
 //incoming handle can be either sd, sg, or bsg type
-int map_Block_To_Generic_Handle(char *handle, char *genericHandle, char *blockHandle)
+int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **blockHandle)
 {
-    if (handle == NULL || genericHandle == NULL || blockHandle == NULL)
+    if (handle == NULL)
     {
         return BAD_PARAMETER;
     }
@@ -303,23 +303,23 @@ int map_Block_To_Generic_Handle(char *handle, char *genericHandle, char *blockHa
     {
         bool incomingBlock = false;//only set for SD!
         char incomingHandleClassPath[PATH_MAX] = { 0 };
-        char incomingClassName[13] = { 0 };
+        char *incomingClassName = NULL;
         strcat(incomingHandleClassPath, "/sys/class/");
         if (is_Block_Device_Handle(handle))
         {
             strcat(incomingHandleClassPath, "block/");
             incomingBlock = true;
-            strcat(incomingClassName, "block");
+            incomingClassName = strdup("block");
         }
         else if (is_Block_SCSI_Generic_Handle(handle))
         {
             strcat(incomingHandleClassPath, "bsg/");
-            strcat(incomingClassName, "bsg");
+            incomingClassName = strdup("bsg");
         }
         else if (is_SCSI_Generic_Handle(handle))
         {
             strcat(incomingHandleClassPath, "scsi_generic/");
-            strcat(incomingClassName, "scsi_generic");
+            incomingClassName = strdup("scsi_generic");
         }
         //first make sure this directory exists
         struct stat inHandleStat;
@@ -353,6 +353,7 @@ int map_Block_To_Generic_Handle(char *handle, char *genericHandle, char *blockHa
                     else
                     {
                         //printf ("could not map to generic class");
+                        safe_Free(incomingClassName);
                         return NOT_SUPPORTED;
                     }
                 }
@@ -363,6 +364,7 @@ int map_Block_To_Generic_Handle(char *handle, char *genericHandle, char *blockHa
                     if (!(stat(classPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode)))
                     {
                         //printf ("could not map to block class");
+                        safe_Free(incomingClassName);
                         return NOT_SUPPORTED;
                     }
                 }
@@ -420,13 +422,13 @@ int map_Block_To_Generic_Handle(char *handle, char *genericHandle, char *blockHa
                                 {
                                     if (incomingBlock)
                                     {
-                                        strncpy(blockHandle, basename(handle), 3);
-                                        strcpy(genericHandle, basename(classPtr));
+                                        *blockHandle = strndup(basename(handle), 3);
+                                        *genericHandle = strdup(basename(classPtr));
                                     }
                                     else
                                     {
-                                        strncpy(blockHandle, basename(classPtr), 3);
-                                        strncpy(genericHandle, basename(handle));
+                                        *blockHandle = strndup(basename(classPtr), 3);
+                                        *genericHandle = strdup(basename(handle));
                                     }
                                     safe_Free(className);
                                     break;//found a match, exit the loop
@@ -440,19 +442,21 @@ int map_Block_To_Generic_Handle(char *handle, char *genericHandle, char *blockHa
             }
             else
             {
-                //printf("Error in readlink\n");
                 //not a link, or some other error....probably an old kernel
+                safe_Free(incomingClassName);
                 return NOT_SUPPORTED;
             }
         }
         else
         {
-            //printf("Error in stat\n");
             //Mapping is not supported...probably an old kernel
+            safe_Free(incomingClassName);
             return NOT_SUPPORTED;
         }
+        safe_Free(incomingClassName);
         return SUCCESS;
     }
+    return UNKNOWN;
 }
 
 
@@ -650,9 +654,14 @@ int get_Device(const char *filename, tDevice *device)
     int driverMinorVersion=0;
     int driverPatchVersion=0;
 #endif
-char sg[8] = { 0 }, sd[8] = { 0 };
-    map_Block_To_Generic_Handle((char*)filename, sg, sd);
-    printf("sg = %s\tsd = %s\n", sg, sd);
+    char *sgHandle = NULL;
+    char *sdHandle = NULL;
+    map_Block_To_Generic_Handle((char*)filename, &sgHandle, &sdHandle);
+    printf("sg = %s\tsd = %s\n", sgHandle, sdHandle);
+    safe_Free(sgHandle);
+    safe_Free(sdHandle);
+
+    printf("Mapped handles and free'd them from memory\n");
 
     if(strstr(filename,"sd"))
     {
