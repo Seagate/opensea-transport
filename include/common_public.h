@@ -789,10 +789,29 @@ extern "C"
     typedef struct _OSDriveInfo
     {
         char                name[30];//handle name (string)
+        char                friendlyName[20];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
         eOSType             osType;//useful for lower layers to do OS specific things
-        #if !defined (_WIN32)
-        int                 fd;
-        #else
+        #if defined (__linux__)
+        int                 fd;//primary handle
+        bool                scsiAddressValid;//will be true if the SCSI address is a valid address
+        struct {
+            uint8_t         host;//AKA SCSI adapter #
+            uint8_t         channel;//AKA bus
+            uint8_t         target;//AKA id number
+            uint8_t         lun;//logical unit number
+        }scsiAddress;
+        bool                secondHandleValid;//must be true for remaining fields to be used.
+        char                secondName[30];
+        char                secondFriendlyName[30];
+        bool                secondHandleOpened;
+        int                 fd2;//secondary handle. Ex: fd = sg handle opened, fd2 = sd handle opened.
+        struct {
+            bool            driverVersionValid;
+            uint8_t         majorVersion;
+            uint8_t         minorVersion;
+            uint8_t         revision;
+        }sgDriverVersion;
+        #elif defined (_WIN32)
         HANDLE              fd;
         SCSI_ADDRESS        scsi_addr;
         int                 os_drive_number;
@@ -816,6 +835,8 @@ extern "C"
 			//TODO: expand this struct if we need other data when we check for firmware download support on a device.
 		}fwdlIOsupport;
 #endif
+        #else
+        int                 fd;//some other nix system that only needs a integer file handle
         #endif
         bool                osReadWriteRecommended;//This will be set to true when it is recommended that OS read/write calls are used instead of IO read/write (typically when using SMART or IDE IOCTLs in Windows since they may not work right for read/write)
         unsigned int        last_error; // errno in Linux or GetLastError in Windows.

@@ -14,7 +14,7 @@
 #if defined (__linux__)
 //including sg_helper.h here to for the map sg to sd function
 #include "sg_helper.h"
-extern int map_sg_to_sd(char* filename, char *sgName, char *sdName);
+//extern int map_sg_to_sd(char* filename, char *sgName, char *sdName);
 #endif
 
 #if defined (ENABLE_CSMI)
@@ -396,36 +396,38 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo)
                     }
 #elif defined (__sun)
                     sprintf(displayHandle, "/dev/rdsk/%s", deviceList[devIter].os_info.name);
+#elif defined (__linux__)
+                    sprintf(displayHandle, "%s", deviceList[devIter].os_info.name);
 #else
-                    //TODO: Make sure this displays the handle as the user should enter it for each OS!
+                    //TODO: Update lower level for other supported OS's to make this only need a %s
                     sprintf(displayHandle, "/dev/%s", deviceList[devIter].os_info.name);
 #endif
 #if defined (__linux__)
                     if ((flags & SG_TO_SD) > 0)
                     {
-                        char *sgName = (char*)calloc(5, sizeof(char));
-                        char *sdName = (char*)calloc(5, sizeof(char));
-                        if (SUCCESS == map_sg_to_sd(displayHandle, sgName, sdName))
+                        char *genName = NULL;
+                        char *blockName = NULL;
+                        if (SUCCESS == map_Block_To_Generic_Handle(displayHandle, &genName, &blockName))
                         {
                             memset(displayHandle, 0, sizeof(displayHandle));
-                            strcpy(displayHandle, sgName);
+                            strcpy(displayHandle, genName);
                             strcat(displayHandle, "<->");
-                            strcat(displayHandle, sdName);
+                            strcat(displayHandle, blockName);
                         }
-                        safe_Free(sgName);
-                        safe_Free(sdName);
+                        safe_Free(genName);
+                        safe_Free(blockName);
                     }
                     else if ((flags & SD_HANDLES) > 0)
                     {
-                        char *sgName = (char*)calloc(5, sizeof(char));
-                        char *sdName = (char*)calloc(5, sizeof(char));
-                        if (SUCCESS == map_sg_to_sd(displayHandle, sgName, sdName))
+                        char *genName = NULL;
+                        char *blockName = NULL;
+                        if (SUCCESS == map_Block_To_Generic_Handle(displayHandle, &genName, &blockName))
                         {
                             memset(displayHandle, 0, sizeof(displayHandle));
-                            sprintf(displayHandle, "/dev/%s", sdName);
+                            sprintf(displayHandle, "/dev/%s", blockName);
                         }
-                        safe_Free(sgName);
-                        safe_Free(sdName);
+                        safe_Free(genName);
+                        safe_Free(blockName);
                     }
 #endif
                     char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
