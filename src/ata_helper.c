@@ -15,6 +15,19 @@
 #include "ata_helper.h"
 #include "ata_helper_func.h"
 
+bool is_Buffer_Non_Zero(uint8_t* ptrData, uint32_t dataLen)
+{
+    bool isNonZero = false;
+    for (uint32_t iter = 0; iter < dataLen; ++iter)
+    {
+        if (ptrData[iter] != 0)
+        {
+            isNonZero = true;
+            break;
+        }
+    }
+    return isNonZero;
+}
 
 int fill_In_ATA_Drive_Info(tDevice *device)
 {
@@ -28,8 +41,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
 
     bool retrievedIdentifyData = false;
     //try an identify command, then also try an identify packet device command. The data we care about parsing will be in the same location so everything inside this if should work as expected
-    if (SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) || SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData))
-        )
+    if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
     {
         retrievedIdentifyData = true;
     }
@@ -50,8 +62,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 //send check power mode to help clear out any stale RTFRs or sense data from the drive...needed by some devices. Won't hurt other devices.
                 uint8_t mode = 0;
                 ata_Check_Power_Mode(device, &mode);
-                if (SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) || SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData))
-                    )
+                if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
                 {
                     retrievedIdentifyData = true;
                 }
@@ -65,6 +76,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     }
     if (retrievedIdentifyData)
     {
+        //print_Data_Buffer((uint8_t*)ident_word, 512, true);
         ret = SUCCESS;
         if (ident_word[0] & BIT15)
         {

@@ -223,9 +223,22 @@ int fill_Drive_Info_Data(tDevice *device)
 		switch (device->drive_info.interface_type)
 		{
         case IDE_INTERFACE:
-            //if we already know it's ata, save time from trying the complete fill_In_Device_Info call and just call an ATA Identify command
-            status = fill_In_ATA_Drive_Info(device);
-			break;
+            //We know this is an ATA interface and we SHOULD be able to send either an ATA or ATAPI identify...but that doesn't work right, so if the OS layer told us it is ATAPI, do SCSI device discovery
+            if (device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == TAPE_DRIVE)
+            {
+                status = fill_In_Device_Info(device);
+            }
+            else
+            {
+                status = fill_In_ATA_Drive_Info(device);
+                if (status == FAILURE || status == UNKNOWN)
+                {
+                    //printf("trying scsi discovery\n");
+                    //could not enumerate as ATA, try SCSI in case it's taking CDBs at the low layer to communicate and not translating more than the A1 op-code to check it if's a SAT command.
+                    status = fill_In_Device_Info(device);
+                }
+            }
+            break;
         case NVME_INTERFACE:
 			#if !defined(DISABLE_NVME_PASSTHROUGH)
 			status = fill_In_NVMe_Device_Info(device);
