@@ -341,125 +341,153 @@ extern "C"
 
 //added these packs to make sure this structure gets interpreted correctly
 // in the code when I point it to a buffer and try and access it.
-   #pragma pack(push, 1)
-   typedef struct _ataSMARTAttribute
-   {
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _ataSMARTAttribute
+    {
         uint8_t     attributeNumber;
         uint16_t    status;//bit 0 = prefail warranty bit, bit 1 = online collection, bit 2 = performance, bit 3 = error rate, bit 4 = even counter, bit 5 = self preserving
         uint8_t     nominal;
         uint8_t     worstEver;
         uint8_t     rawData[7];//attribute and vendor specific
+    #if !defined (__GNUC__)
     }ataSMARTAttribute;
-
-   typedef struct _ataSMARTThreshold
-   {
-       uint8_t      attributeNumber;
-       uint8_t      thresholdValue;
-       uint8_t      reservedBytes[10];
-   }ataSMARTThreshold;
-
-   /*
-   RO  - Log is read only.
-   R/W - Log is read or written.
-   VS  - Log is vendor specific thus read/write ability is vendor specific.
-   GPL - General Purpose Logging
-   SL  - SMART Logging
-   (a) - The device shall return command aborted if a GPL feature set (see 4.11) command accesses a log that
-   is marked only with SL.
-   (b) - The device shall return command aborted if a SMART feature set (see 4.19) command accesses a log that
-   is marked only with GPL.
-   */
-   typedef struct _ataLogDirectorySector
-   {
-       //  Log Address | Log Name                                  | Feature Set   | R/W   | Access 
-       uint16_t LogDir;                     //  00          | Log directory                             | none          | RO    | GPL,SL
-       uint16_t SummarySMARTErrLog;         //  01          | Summary SMART Error Log                   | SMART         | RO    | SL (a)
-       uint16_t CompSMARTErrLog;            //  02          | Comprehensive SMART Error Log             | SMART         | RO    | SL (a)
-       uint16_t ExtCompSMARTErrLog;         //  03          | Ext. Comprehensive SMART Error Log        | SMART         | RO    | GPL (b)
-       uint16_t DeviceStatistics;           //  04          | Device Statistics                         | none          | RO    | GPL, SL
-       uint16_t ReservedCFA1;               //  05          |                                           |               |       |   
-       uint16_t SMARTSelfTestLog;           //  06          | SMART Self-Test Log                       | SMART         | RO    | SL (a)
-       uint16_t ExtSMARTSelfTestLog;        //  07          | Ext. SMART Self-Test Log                  | SMART         | RO    | GLB (b)
-       uint16_t PowerConditions;            //  08          | Power Conditions                          | EPC           | RO    | GPL (b)
-       uint16_t SelectiveSelfTestLog;       //  09          | Selective Self-Test Log                   | SMART         | R/W   | SL (a)
-       uint16_t DeviceStatNotification;     //  0A          | Device Statistics Notification            | DSN           | R/W   | GPL (b)
-       uint16_t ReservedCFA2;               //  0B          |                                           |               |       |       
-       uint16_t Reserved1;                  //  0C          |                                           |               |       |       
-       uint16_t LPSMisAlignLog;             //  0D          | LPS Mis-alignment Log                     | LPS           | RO    | GPL,SL
-       uint16_t Reserved2[2];               //  OE..0F      |                                           |               |       |
-       uint16_t NCQCmdErrLog;               //  10          | NCQ Command Error Log                     | NCQ           | RO    | GPL (b)
-       uint16_t SATAPhyEventCountLog;       //  11          | SATA Phy Event Counters Log               | none          | RO    | GPL (b)
-       uint16_t SATANCQQueueManageLog;      //  12          | SATA NCQ Queue Management Log             | NCQ           | RO    | GPL (b)
-       uint16_t SATANCQSendRecvLog;         //  13          | SATA NCQ Send & Receive Log               | NCQ           | RO    | GPL (b)
-       uint16_t ReservedSATA[4];            //  14..17      | Reserved for Serial ATA                   |               |       |       
-       uint16_t LBAStatus;                  //  18          | LBA Status                                | none          | RO    | GPL (b)
-       uint16_t Reserved3[7];               //  19..20      | Reserved, 20h is Obsolete                 |               |       |           
-       uint16_t WriteStreamErrLog;          //  21          | Write Stream Error Log                    | Streaming     | RO    | GPL (b)
-       uint16_t ReadStreamErrLog;           //  22          | Read Stream Error Log                     | Streaming     | RO    | GPL (b)
-       uint16_t Obsolete1;                  //  23          |                                           |               |       |       
-       uint16_t CurrDevInternalStsDataLog;  //  24          | Current Device Internal Status Data Log   | none          | RO    | GPL (b)
-       uint16_t SavedDevInternalStsDataLog; //  25          | Saved Device Internal Status Data Log     | none          | RO    | GPL (b)
-       uint16_t Reserved4[10];              //  26..2F      |                                           |               |       |           
-       uint16_t IdentifyDeviceData;         //  30          | IDENTIFY DEVICE data                      | none          | RO    | GPL, SL
-       uint16_t Reserved5[79];              //  31..7F      |                                           |               |       |        
-       uint16_t HostSpecific[32];           //  80..9F      | Host Specific                             | SMART         | R/W   | GPL, SL
-       uint16_t DeviceVendorSpecific[64];   //  A0..DF      | Device Vendor Specific                    | SMART         | VS    | GPL, SL
-       uint16_t SCTCmdSts;                  //  E0          | SCT Command / Status                      | SCT           | R/W   | GPL, SL
-       uint16_t SCTDataXfer;                //  E1          | SCT Data Transfer                         | SCT           | R/W   | GPL, SL
-       uint16_t Reserved6[30];              //  E2..FF      |                                           |               |       |           
-
-   } ataLogDirectorySector;
-
-   typedef struct _ataPowerConditionsDescriptor
-   {
-       uint8_t reserved;
-       uint8_t powerConditionFlags;
-       uint16_t reserved2;
-       uint32_t defaultTimerSetting;
-       uint32_t savedTimerSetting;
-       uint32_t currentTimerSetting;
-       uint32_t nomincalRecoveryTimeToPM0;
-       uint32_t minimumTimerSetting;
-       uint32_t maximumTimerSetting;
-       uint8_t reserved3[36];
-   }ataPowerConditionsDescriptor;
-
     #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) ataSMARTAttribute;
+    #endif
 
-   typedef struct _ataSMARTValue {
-       ataSMARTAttribute    data;
-       bool                 valid;
-       ataSMARTThreshold    thresholdData;
-       bool                 thresholdDataValid;//new ATA specs no longer support the threshold sector so some drives may not report thresholds
-       bool                 isWarrantied;
-   } ataSMARTValue;
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _ataSMARTThreshold
+    {
+        uint8_t      attributeNumber;
+        uint8_t      thresholdValue;
+        uint8_t      reservedBytes[10];
+    #if !defined (__GNUC__)
+    }ataSMARTThreshold;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) ataSMARTThreshold;
+    #endif
 
-   typedef struct _ataSMARTLog 
-   {
-       ataSMARTValue    attributes[256];//attribute numbers 1 - 255 are valid (check valid bit to make sure it's a used attribute)
-   } ataSMARTLog;
+    /*
+    RO  - Log is read only.
+    R/W - Log is read or written.
+    VS  - Log is vendor specific thus read/write ability is vendor specific.
+    GPL - General Purpose Logging
+    SL  - SMART Logging
+    (a) - The device shall return command aborted if a GPL feature set (see 4.11) command accesses a log that
+    is marked only with SL.
+    (b) - The device shall return command aborted if a SMART feature set (see 4.19) command accesses a log that
+    is marked only with GPL.
+    */
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _ataLogDirectorySector
+    {
+        //  Log Address | Log Name                                  | Feature Set   | R/W   | Access 
+        uint16_t LogDir;                     //  00          | Log directory                             | none          | RO    | GPL,SL
+        uint16_t SummarySMARTErrLog;         //  01          | Summary SMART Error Log                   | SMART         | RO    | SL (a)
+        uint16_t CompSMARTErrLog;            //  02          | Comprehensive SMART Error Log             | SMART         | RO    | SL (a)
+        uint16_t ExtCompSMARTErrLog;         //  03          | Ext. Comprehensive SMART Error Log        | SMART         | RO    | GPL (b)
+        uint16_t DeviceStatistics;           //  04          | Device Statistics                         | none          | RO    | GPL, SL
+        uint16_t ReservedCFA1;               //  05          |                                           |               |       |   
+        uint16_t SMARTSelfTestLog;           //  06          | SMART Self-Test Log                       | SMART         | RO    | SL (a)
+        uint16_t ExtSMARTSelfTestLog;        //  07          | Ext. SMART Self-Test Log                  | SMART         | RO    | GLB (b)
+        uint16_t PowerConditions;            //  08          | Power Conditions                          | EPC           | RO    | GPL (b)
+        uint16_t SelectiveSelfTestLog;       //  09          | Selective Self-Test Log                   | SMART         | R/W   | SL (a)
+        uint16_t DeviceStatNotification;     //  0A          | Device Statistics Notification            | DSN           | R/W   | GPL (b)
+        uint16_t ReservedCFA2;               //  0B          |                                           |               |       |       
+        uint16_t Reserved1;                  //  0C          |                                           |               |       |       
+        uint16_t LPSMisAlignLog;             //  0D          | LPS Mis-alignment Log                     | LPS           | RO    | GPL,SL
+        uint16_t Reserved2[2];               //  OE..0F      |                                           |               |       |
+        uint16_t NCQCmdErrLog;               //  10          | NCQ Command Error Log                     | NCQ           | RO    | GPL (b)
+        uint16_t SATAPhyEventCountLog;       //  11          | SATA Phy Event Counters Log               | none          | RO    | GPL (b)
+        uint16_t SATANCQQueueManageLog;      //  12          | SATA NCQ Queue Management Log             | NCQ           | RO    | GPL (b)
+        uint16_t SATANCQSendRecvLog;         //  13          | SATA NCQ Send & Receive Log               | NCQ           | RO    | GPL (b)
+        uint16_t ReservedSATA[4];            //  14..17      | Reserved for Serial ATA                   |               |       |       
+        uint16_t LBAStatus;                  //  18          | LBA Status                                | none          | RO    | GPL (b)
+        uint16_t Reserved3[7];               //  19..20      | Reserved, 20h is Obsolete                 |               |       |           
+        uint16_t WriteStreamErrLog;          //  21          | Write Stream Error Log                    | Streaming     | RO    | GPL (b)
+        uint16_t ReadStreamErrLog;           //  22          | Read Stream Error Log                     | Streaming     | RO    | GPL (b)
+        uint16_t Obsolete1;                  //  23          |                                           |               |       |       
+        uint16_t CurrDevInternalStsDataLog;  //  24          | Current Device Internal Status Data Log   | none          | RO    | GPL (b)
+        uint16_t SavedDevInternalStsDataLog; //  25          | Saved Device Internal Status Data Log     | none          | RO    | GPL (b)
+        uint16_t Reserved4[10];              //  26..2F      |                                           |               |       |           
+        uint16_t IdentifyDeviceData;         //  30          | IDENTIFY DEVICE data                      | none          | RO    | GPL, SL
+        uint16_t Reserved5[79];              //  31..7F      |                                           |               |       |        
+        uint16_t HostSpecific[32];           //  80..9F      | Host Specific                             | SMART         | R/W   | GPL, SL
+        uint16_t DeviceVendorSpecific[64];   //  A0..DF      | Device Vendor Specific                    | SMART         | VS    | GPL, SL
+        uint16_t SCTCmdSts;                  //  E0          | SCT Command / Status                      | SCT           | R/W   | GPL, SL
+        uint16_t SCTDataXfer;                //  E1          | SCT Data Transfer                         | SCT           | R/W   | GPL, SL
+        uint16_t Reserved6[30];              //  E2..FF      |                                           |               |       |           
+    #if !defined (__GNUC__)
+    }ataLogDirectorySector;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) ataLogDirectorySector;
+    #endif
 
-   typedef enum _eNVCacheFeatures {
-       NV_SET_NV_CACHE_POWER_MODE              = 0x0000,
-       NV_RETURN_FROM_NV_CACHE_POWER_MODE      = 0x0001,
-       NV_ADD_LBAS_TO_NV_CACHE_PINNED_SET      = 0x0010,
-       NV_REMOVE_LBAS_FROM_NV_CACHE_PINNED_SET = 0x0011,
-       NV_QUERY_NV_CACHE_PINNED_SET            = 0x0012,
-       NV_QUERY_NV_CACHE_MISSES                = 0x0013,
-       NV_FLUSH_NV_CACHE                       = 0x0014,
-       NV_CACHE_ENABLE                         = 0x0015,
-       NV_CACHE_DISABLE                        = 0x0016,
-       NV_CACHE_UNKNOWN
-   }eNVCacheFeatures;
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _ataPowerConditionsDescriptor
+    {
+        uint8_t reserved;
+        uint8_t powerConditionFlags;
+        uint16_t reserved2;
+        uint32_t defaultTimerSetting;
+        uint32_t savedTimerSetting;
+        uint32_t currentTimerSetting;
+        uint32_t nomincalRecoveryTimeToPM0;
+        uint32_t minimumTimerSetting;
+        uint32_t maximumTimerSetting;
+        uint8_t reserved3[36];
+    #if !defined (__GNUC__)
+    }ataPowerConditionsDescriptor;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) ataPowerConditionsDescriptor;
+    #endif
 
-   typedef enum _eDCOFeatures {
-       DCO_RESTORE      = 0xC0,
-       DCO_FREEZE_LOCK  = 0xC1,
-       DCO_IDENTIFY     = 0xC2,
-       DCO_SET          = 0xC3,
-       DCO_IDENTIFY_DMA = 0xC4,
-       DCO_SET_DMA      = 0xC5
-   }eDCOFeatures;
+    typedef struct _ataSMARTValue {
+        ataSMARTAttribute    data;
+        bool                 valid;
+        ataSMARTThreshold    thresholdData;
+        bool                 thresholdDataValid;//new ATA specs no longer support the threshold sector so some drives may not report thresholds
+        bool                 isWarrantied;
+    } ataSMARTValue;
+
+    typedef struct _ataSMARTLog 
+    {
+        ataSMARTValue    attributes[256];//attribute numbers 1 - 255 are valid (check valid bit to make sure it's a used attribute)
+    } ataSMARTLog;
+
+    typedef enum _eNVCacheFeatures {
+        NV_SET_NV_CACHE_POWER_MODE              = 0x0000,
+        NV_RETURN_FROM_NV_CACHE_POWER_MODE      = 0x0001,
+        NV_ADD_LBAS_TO_NV_CACHE_PINNED_SET      = 0x0010,
+        NV_REMOVE_LBAS_FROM_NV_CACHE_PINNED_SET = 0x0011,
+        NV_QUERY_NV_CACHE_PINNED_SET            = 0x0012,
+        NV_QUERY_NV_CACHE_MISSES                = 0x0013,
+        NV_FLUSH_NV_CACHE                       = 0x0014,
+        NV_CACHE_ENABLE                         = 0x0015,
+        NV_CACHE_DISABLE                        = 0x0016,
+        NV_CACHE_UNKNOWN
+    }eNVCacheFeatures;
+
+    typedef enum _eDCOFeatures {
+        DCO_RESTORE      = 0xC0,
+        DCO_FREEZE_LOCK  = 0xC1,
+        DCO_IDENTIFY     = 0xC2,
+        DCO_SET          = 0xC3,
+        DCO_IDENTIFY_DMA = 0xC4,
+        DCO_SET_DMA      = 0xC5
+    }eDCOFeatures;
 
     typedef enum _eEPCFeatureSet 
     {

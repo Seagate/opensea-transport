@@ -67,7 +67,9 @@ extern "C"
 	} apiVersionInfo;
 
 // These need to be moved to ata_helper.h
+    #if !defined (__GNUC__)
     #pragma pack(push, 1)
+    #endif
     typedef struct
     {
         union {
@@ -438,10 +440,18 @@ extern "C"
         uint16_t Word253;
         uint16_t Word254;
         uint16_t Word255;
-    } tAtaIdentifyData, *ptAtaIdentifyData;
+    #if !defined (__GNUC__)
+    }tAtaIdentifyData, *ptAtaIdentifyData;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) tAtaIdentifyData, *ptAtaIdentifyData;
+    #endif
     
 
     #if !defined(DISABLE_NVME_PASSTHROUGH)
+    #if !defined (__GNUC__)
+    #pragma pack(push,1)
+    #endif
     //All of the NVME structs in here were moved here to fix a circular include issue
     typedef struct _nvmeIDPowerState {
     	uint16_t 			maxPower;	/* centiwatts */
@@ -459,8 +469,16 @@ extern "C"
     	uint16_t 			activePower;
     	uint8_t 			activeWorkScale;
     	uint8_t 			rsvd23[9];
-    } nvmeIDPowerState;
+    #if !defined (__GNUC__)
+    }nvmeIDPowerState;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) nvmeIDPowerState;
+    #endif
 
+    #if !defined (__GNUC__)
+    #pragma pack(push,1)
+    #endif
     typedef struct _nvmeIDCtrl {
         //controller capabilities and features
         uint16_t 			vid;
@@ -531,14 +549,30 @@ extern "C"
         uint8_t             nvmeOverFabrics[256];
     	nvmeIDPowerState	psd[32];
     	uint8_t 			vs[1024];
-    } nvmeIDCtrl;
+    #if !defined (__GNUC__)
+    }nvmeIDCtrl;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) nvmeIDCtrl;
+    #endif
 
+    #if !defined (__GNUC__)
+    #pragma pack(push,1)
+    #endif
     typedef struct _nvmeLBAF {
     	uint16_t 			ms;
     	uint8_t 			lbaDS;
     	uint8_t 			rp;
-    } nvmeLBAF;
+    #if !defined (__GNUC__)
+    }nvmeLBAF;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) nvmeLBAF;
+    #endif
 
+    #if !defined (__GNUC__)
+    #pragma pack(push,1)
+    #endif
     typedef struct _nvmeIDNameSpaces {
     	uint64_t 			nsze;
     	uint64_t 			ncap;
@@ -561,15 +595,31 @@ extern "C"
     	nvmeLBAF	        lbaf[16];
     	uint8_t 			rsvd192[192];
     	uint8_t 			vs[3712];
-    } nvmeIDNameSpaces;
+    #if !defined (__GNUC__)
+    }nvmeIDNameSpaces;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) nvmeIDNameSpaces;
+    #endif
 
+    #if !defined (__GNUC__)
+    #pragma pack(push,1)
+    #endif
     typedef struct _nvmeIdentifyData {
         nvmeIDCtrl          ctrl;
         nvmeIDNameSpaces    ns; // Currently we only support 1 NS - Revisit.  
-    } nvmeIdentifyData;
-
+    #if !defined (__GNUC__)
+    }nvmeIdentifyData;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) nvmeIdentifyData;
     #endif
 
+    #endif //disable NVME passthrough
+
+    #if !defined (__GNUC__)
+    #pragma pack(push,1)
+    #endif
     typedef struct _ataReturnTFRs
     {
         uint8_t                error;
@@ -583,18 +633,28 @@ extern "C"
         uint8_t                lbaHi;
         uint8_t                device;
         uint8_t                status;
-    } ataReturnTFRs;
+    #if !defined (__GNUC__)
+    }ataReturnTFRs;
     #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) ataReturnTFRs;
+    #endif
 
     // Defined by SPC3 as the maximum sense length
-    #define SPC3_SENSE_LEN  (252)
+    #define SPC3_SENSE_LEN  UINT8_C(252)
 
-#pragma pack(push, 1)
-
+    #if !defined (__GNUC__)
+    #pragma pack(push,1)
+    #endif
     typedef struct _tVpdData {
         uint8_t  inquiryData[96]; //INQ_RETURN_DATA_LENGTH
         uint8_t  vpdPage83[64];
-    } tVpdData;
+    #if !defined (__GNUC__)
+    }tVpdData;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) tVpdData;
+    #endif
 
     typedef enum _eMediaType {
         MEDIA_HDD       = 0,    // rotating media, HDD (ata or scsi)
@@ -630,6 +690,9 @@ extern "C"
         IEEE_1394_INTERFACE
     } eInterfaceType;
 
+    #if !defined (__GNUC__)
+    #pragma pack(push,1)
+    #endif
     //revisit this later as this may not be the best way we want to do this
     typedef struct _bridgeInfo
     {
@@ -647,7 +710,13 @@ extern "C"
         uint32_t childDevicePhyBlockSize; // This is the physical block size reported by the drive. 
         uint16_t childSectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
         uint64_t childDeviceMaxLba;
+    #if !defined (__GNUC__)
     }bridgeInfo;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) bridgeInfo;
+    #endif
+
 
     typedef enum _eATASynchronousDMAMode
     {
@@ -669,6 +738,9 @@ extern "C"
         ATA_PASSTHROUGH_UNKNOWN
     }ePassthroughType;
 
+    #if !defined (__GNUC__)
+    #pragma pack(push,1)
+    #endif
     typedef struct _ataOptions
     {
         bool use12ByteSATCDBs;
@@ -690,7 +762,12 @@ extern "C"
         bool alwaysSetCheckConditionBit;//this will cause all commands to set the check condition bit. This means any ATA Passthrough command should always get back an ATA status which may help with sense data and judging what went wrong better. Be aware that this may not be liked on some devices and some may just ignore it.
         bool enableLegacyPassthroughDetectionThroughTrialAndError;//This must be set to true in order to work on legacy (ancient) passthrough if the VID/PID is not in the list and not read from the system.
         bool senseDataReportingEnabled;//this is to track when the RTFRs may contain a sense data bit so it can be read automatically.
+    #if !defined (__GNUC__)
     }ataOptions;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) ataOptions;
+    #endif
 
     typedef enum _eZonedDeviceType {
         ZONED_TYPE_NOT_ZONED = 0,
@@ -701,6 +778,9 @@ extern "C"
     }eZonedDeviceType;
 
     //This is used by the software SAT translation layer. DO NOT Update this directly
+    #if !defined (__GNUC__)
+    #pragma pack(push,1)
+    #endif
     typedef struct _softwareSATFlags
     {
         bool deviceStatisticsSupported; //if set to true, any 1 of the bools in the following struct is set to true (supported)
@@ -720,8 +800,16 @@ extern "C"
         bool senseDataDescriptorFormat;//DO NOT SET DIRECTLY! This should be changed through a mode select command to the software SAT layer. false = fixed format, true = descriptor format
         uint8_t rtfrIndex;
         ataReturnTFRs ataPassthroughResults[16];
+    #if !defined (__GNUC__)
     }softwareSATFlags;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) softwareSATFlags;
+    #endif
 
+    #if !defined (__GNUC__)
+    #pragma pack(push,1)
+    #endif
     typedef struct _driveInfo {
         eMediaType     media_type;
         eDriveType     drive_type;
@@ -760,7 +848,12 @@ extern "C"
         uint32_t namespaceID;//This is the current namespace you are talking with. If this is zero, then this value is invalid. This may not be available on all OS's or driver interfaces
         uint8_t currentProtectionType;//Useful for certain operations. Read in readCapacityOnSCSI. TODO: NVMe
         uint8_t piExponent;//Only valid for protection types 2 & 3 I believe...-TJE
-    } driveInfo;
+    #if !defined (__GNUC__)
+    }driveInfo;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) driveInfo;
+    #endif
 
 
 #if defined (_WIN32)
@@ -785,6 +878,9 @@ extern "C"
         WIN_IOCTL_MAX_METHOD
     }eWindowsIOCTLMethod;
 #endif
+    #if !defined (__GNUC__)
+    #pragma pack(push,1)
+    #endif
     // \struct typedef struct _OSDriveInfo
     typedef struct _OSDriveInfo
     {
@@ -824,7 +920,12 @@ extern "C"
             bool hasFileSystem;//This will only be true for filesystems the current OS can detect. Ex: Windows will only set this for mounted volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem types since it can handle more than Windows by default
             bool isSystemDisk;//This will be set if the drive has a file system and the OS is running off of it. Ex: Windows' C:\Windows\System32, Linux's / & /boot, etc
         }fileSystemInfo;
-    } OSDriveInfo;
+    #if !defined (__GNUC__)
+    }OSDriveInfo;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) OSDriveInfo;
+    #endif
 
     typedef enum _eDiscoveryOptions
     {
@@ -849,21 +950,29 @@ extern "C"
 #endif
     } eDiscoveryOptions;
 
-#pragma pack(pop)
-
     typedef int (*issue_io_func)( void * );
 
 	#define DEVICE_BLOCK_VERSION	(3)
 
-#pragma pack(push, 1)
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
 	// verification for compatibility checking
 	typedef struct _versionBlock
 	{
 		uint32_t size;      // size of enclosing structure
 		uint32_t version;   // version of enclosing structure
-	} versionBlock;
+    #if !defined (__GNUC__)
+    }versionBlock;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) versionBlock;
+    #endif
 
     // \struct typedef struct _tDevice
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
 	typedef struct _tDevice
     {
 		versionBlock	    sanity;
@@ -872,7 +981,12 @@ extern "C"
         void                *raid_device;
         issue_io_func       issue_io;
         eDiscoveryOptions   dFlags;
-    } tDevice;
+    #if !defined (__GNUC__)
+    }tDevice;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) tDevice;
+    #endif
 
      //Common enum for getting/setting power states. 
      //This enum encompasses Mode Sense/Select commands for SCSI, Set Features for ATA 
@@ -899,12 +1013,11 @@ extern "C"
         PWR_CND_ALL       = 0xFF,
         PWR_CND_RESERVED
     } ePowerConditionID;
-#pragma pack(pop)
 
-    #define LEGACY_DRIVE_SEC_SIZE         (512U)
-    #define COMMON_4K_SIZE                (4096U)
-    #define MAX_28_BIT_LBA                (0xFFFFFFF)
-    #define MAX_48_BIT_LBA                (0xFFFFFFFFFFFFULL)
+    #define LEGACY_DRIVE_SEC_SIZE         UINT16_C(512)
+    #define COMMON_4K_SIZE                UINT16_C(4096)
+    #define MAX_28_BIT_LBA                UINT32_C(0xFFFFFFF)
+    #define MAX_48_BIT_LBA                UINT64_C(0xFFFFFFFFFFFF)
 
     //the following link can be used to look-up and add additional OUIs https://standards.ieee.org/develop/regauth/oui/public.html
     typedef enum _eIEEE_OUIs

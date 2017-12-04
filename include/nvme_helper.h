@@ -76,7 +76,9 @@ extern "C"
     } eNvmeNameSpace ;
 
     //Figure 78: Get Log Page - Error Information Log Entry (Log Identifier 01h)
+    #if !defined (__GNUC__)
     #pragma pack(push, 1)
+    #endif
     typedef struct _nvmeErrLogEntry {
         uint64_t            errorCount;
         uint16_t            subQueueID;
@@ -89,8 +91,16 @@ extern "C"
         uint8_t             resv1[3]; 
         uint64_t            cmdSpecificInfo;
         uint8_t             resv2[24];
+    #if !defined (__GNUC__)
     } nvmeErrLogEntry;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) nvmeErrLogEntry;
+    #endif
 
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
     typedef struct _nvmeSmartLog {
     	uint8_t 			criticalWarning;
     	uint8_t 			temperature[2];
@@ -112,15 +122,28 @@ extern "C"
     	uint32_t 			criticalCompTime;
     	uint16_t 			tempSensor[8];
     	uint8_t 			rsvd216[296];
+    #if !defined (__GNUC__)
     } nvmeSmartLog;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) nvmeSmartLog;
+    #endif
 
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
     typedef struct _nvmeFirmwareSlotInfo {
         uint8_t     afi; //Active Firmware Info Bit 2:0 indicates the firmware slot 
         uint8_t     rsvd1[7];
         uint64_t    FSR[7];
         uint8_t     rsvd2[448];
+    #if !defined (__GNUC__)
     } nvmeFirmwareSlotInfo;
     #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) nvmeFirmwareSlotInfo;
+    #endif
+
 
     typedef enum _eNvmeSmartAttr{
     	NVME_SMART_CRIT_SPARE_		= 1 << 0,
