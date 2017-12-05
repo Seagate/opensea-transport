@@ -339,8 +339,8 @@ extern "C"
         bool                            forceCheckConditionBit;//Set this to force setting the check condition bit on a command. This is here because by default,only non-data gets this bit due to some weird chipsets. This is an override that can be used in certain commands.
     } ataPassthroughCommand;
 
-//added these packs to make sure this structure gets interpreted correctly
-// in the code when I point it to a buffer and try and access it.
+    //added these packs to make sure this structure gets interpreted correctly
+    // in the code when I point it to a buffer and try and access it.
     #if !defined (__GNUC__)
     #pragma pack(push, 1)
     #endif
