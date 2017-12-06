@@ -5259,6 +5259,11 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
         //always do this on IDE_INTERFACE since we know it will work here. Doesn't matter if the VPD page read fails or not
         issueSATIdentify = true;
     }
+    if (device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == TAPE_DRIVE)
+    {
+        //DO NOT try a SAT identify on these devices if we already know what they are. These should be treated as SCSI since they are either SCSI or ATA packet devices
+        return NOT_SUPPORTED;
+    }
     uint8_t *ataInformation = (uint8_t *)calloc(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t));
     if (!ataInformation)
     {
@@ -5336,8 +5341,11 @@ int fill_In_Device_Info(tDevice *device)
     switch (device->drive_info.interface_type)
     {
     case IDE_INTERFACE:
-        device->drive_info.drive_type = ATA_DRIVE;
-        device->drive_info.media_type = MEDIA_HDD;
+        if (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != TAPE_DRIVE)
+        {
+            device->drive_info.drive_type = ATA_DRIVE;
+            device->drive_info.media_type = MEDIA_HDD;
+        }
         break;
 	case RAID_INTERFACE:
 		//This has already been set by the RAID level, don't change it.
@@ -5357,8 +5365,11 @@ int fill_In_Device_Info(tDevice *device)
     case SCSI_INTERFACE:
     case USB_INTERFACE:
     case IEEE_1394_INTERFACE:
-        device->drive_info.drive_type = SCSI_DRIVE;
-        device->drive_info.media_type = MEDIA_HDD;
+        if (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != TAPE_DRIVE)
+        {
+            device->drive_info.drive_type = SCSI_DRIVE;
+            device->drive_info.media_type = MEDIA_HDD;
+        }
         break;
     case MMC_INTERFACE:
     case SD_INTERFACE:
@@ -5487,7 +5498,10 @@ int fill_In_Device_Info(tDevice *device)
                 }
             }
             //We actually need to try issuing an ATA/ATAPI identify to the drive to set the drive type...but I'm going to try and ONLY do it for ATA drives with the if statement below...it should catch almost all cases (which is good enough for now)
-            if (satVersionDescriptorFound || strncmp(device->drive_info.T10_vendor_ident, "ATA", 3) == 0 || device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE || device->drive_info.interface_type == IDE_INTERFACE)
+            if ((satVersionDescriptorFound || strncmp(device->drive_info.T10_vendor_ident, "ATA", 3) == 0 || device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE || device->drive_info.interface_type == IDE_INTERFACE)
+                &&
+                (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != TAPE_DRIVE)
+               )
             {
                 ret = fill_In_ATA_Drive_Info(device);
             }

@@ -13770,6 +13770,9 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     if (device->drive_info.drive_type == ATAPI_DRIVE)
     {
         //TODO: set up an ata packet command and send it to the device to let it handle the scsi command translation
+        //NOTE: There are a few things that actually do need translation to an ATAPI:
+        //      1) ATA Information VPD page
+        //      2) A1h CDB. This could be a Blank command, or a SAT ATA Passthrough command. Need to do some checking of the fields to figure this out and handle it properly!!!
         return NOT_SUPPORTED;
     }
     else

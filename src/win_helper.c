@@ -252,7 +252,35 @@ int get_Device(const char *filename, tDevice *device )
     {
         //set the handle name
 		strncpy_s(device->os_info.name, 30, filename, 30);
-        device->os_info.os_drive_number = get_os_drive_number((char*)filename);
+
+        if (strstr(device->os_info.name, "Physical"))
+        {
+            uint32_t drive = UINT32_MAX;
+            sscanf_s(device->os_info.name, "\\\\.\\PhysicalDrive%" SCNu32, &drive);
+            sprintf(device->os_info.friendlyName, "PD%" PRIu32, drive);
+            device->os_info.os_drive_number = drive;
+        }
+        else if (strstr(device->os_info.name, "CDROM"))
+        {
+            uint32_t drive = UINT32_MAX;
+            sscanf_s(device->os_info.name, "\\\\.\\CDROM%" SCNu32, &drive);
+            sprintf(device->os_info.friendlyName, "CDROM%" PRIu32, drive);
+            device->os_info.os_drive_number = drive;
+        }
+        else if (strstr(device->os_info.name, "Tape"))
+        {
+            uint32_t drive = UINT32_MAX;
+            sscanf_s(device->os_info.name, "\\\\.\\Tape%" SCNu32, &drive);
+            sprintf(device->os_info.friendlyName, "TAPE%" PRIu32, drive);
+            device->os_info.os_drive_number = drive;
+        }
+        else if (strstr(device->os_info.name, "Changer"))
+        {
+            uint32_t drive = UINT32_MAX;
+            sscanf_s(device->os_info.name, "\\\\.\\Changer%" SCNu32, &drive);
+            sprintf(device->os_info.friendlyName, "CHGR%" PRIu32, drive);
+            device->os_info.os_drive_number = drive;
+        }
 
         //map the drive to a volume letter
         DWORD driveLetters = 0;

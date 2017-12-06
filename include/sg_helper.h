@@ -80,8 +80,9 @@ extern "C"
     #include "nvme_helper.h"
 #endif
 
-#define SG_PHYSICAL_DRIVE	"/dev/sg"
-#define SD_PHYSICAL_DRIVE   "/dev/sd"
+#define SG_PHYSICAL_DRIVE	"/dev/sg" //followed by a number
+#define SD_PHYSICAL_DRIVE   "/dev/sd" //followed by a letter
+#define BSG_PHYSICAL_DRIVE  "/dev/bsg/" //remaining part of the handle is h:c:t:l
 
 // \fn get_Device(char * filename)
 // \brief Given a device name (e.g. /dev/sg0) returns the device descriptor
@@ -132,8 +133,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
 
 #endif
 
-int map_sg_to_sd(char* filename, char *sgName, char *sdName);
-
+int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **blockHandle);
 
 int device_Reset(int fd);
 
