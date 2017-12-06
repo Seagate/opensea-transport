@@ -1187,10 +1187,25 @@ int get_CSMI_Device(const char *filename, tDevice *device)
     //Need to open this handle and setup some information then fill in the device information.
     //printf("%s -->\n Opening Device %s\n",__FUNCTION__, filename);
     if (!(validate_Device_Struct(device->sanity)))
+    {
         return LIBRARY_MISMATCH;
-
+    }
     //set the handle name first...since the tokenizing below will break it apart
     memcpy(device->os_info.name, filename, strlen(filename));
+#if defined (_WIN32)
+    uint64_t controllerNum = 0, portNum = 0;
+    int sscanfret = sscanf(filename, "\\\\.\\SCSI%"SCNu64":%"SCNu64"", &controllerNum, &portNum);
+    if (sscanfret != 0 && sscanfret != EOF)
+    {
+        sprintf(device->os_info.friendlyName, "SCSI%" PRIu64 ":%" PRIu64, controllerNum, portNum);
+    }
+    else
+    {
+        //TODO: what should we do when we fail to parse this from the handle???
+    }
+#else
+    //TODO: handle non-Windows OS with CSMI
+#endif
 
     uint8_t portNumber = 0xFF;//something crazy and likely not used.
     //need to copy the incoming file name into - \\.\SCSI1: and a separate port

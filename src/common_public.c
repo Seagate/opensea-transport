@@ -366,41 +366,9 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo)
                 {
                     char displayHandle[26] = { 0 };
 #if defined(_WIN32)
-                    uint16_t handleNumber = UINT16_MAX;
-                    int sscanfret = sscanf(deviceList[devIter].os_info.name, "\\\\.\\PHYSICALDRIVE%"SCNu16"", &handleNumber);
-                    if (sscanfret == 0 || sscanfret == EOF)
-                    {
-#if defined (ENABLE_CSMI)
-                        if (strncmp(deviceList[devIter].os_info.name, "\\\\.\\SCSI", 8) == 0)
-                        {
-                            uint32_t controllerNum = 0, portNum = 0;
-                            sscanfret = sscanf(deviceList[devIter].os_info.name, "\\\\.\\SCSI%"SCNu32":%"SCNu32"", &controllerNum, &portNum);
-                            if (sscanfret == 0 || sscanfret == EOF)
-                            {
-                                strcpy(displayHandle, deviceList[devIter].os_info.name);
-                            }
-                            else
-                            {
-                                sprintf(displayHandle, "SCSI%"PRIu32":%"PRIu32"", controllerNum, portNum);
-                            }
-                        }
-                        else
-#endif
-                        {
-                            strcpy(displayHandle, deviceList[devIter].os_info.name);
-                        }
-                    }
-                    else
-                    {
-                        sprintf(displayHandle, "PD%"PRIu16"", handleNumber);
-                    }
-#elif defined (__sun)
-                    sprintf(displayHandle, "/dev/rdsk/%s", deviceList[devIter].os_info.name);
-#elif defined (__linux__)
-                    sprintf(displayHandle, "%s", deviceList[devIter].os_info.name);
+                    strcpy(displayHandle, deviceList[devIter].os_info.friendlyName);
 #else
-                    //TODO: Update lower level for other supported OS's to make this only need a %s
-                    sprintf(displayHandle, "/dev/%s", deviceList[devIter].os_info.name);
+                    strcpy(displayHandle, deviceList[devIter].os_info.name);
 #endif
 #if defined (__linux__)
                     if ((flags & SG_TO_SD) > 0)
