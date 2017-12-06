@@ -103,7 +103,7 @@ int get_Device( const char *filename, tDevice *device )
                         {
                             device->drive_info.interface_type = IDE_INTERFACE;
                             device->drive_info.drive_type = ATA_DRIVE;
-                            if (cgd.protocol == PROTO_ATA)
+                            if (cgd.protocol == PROTO_ATAPI)
                             {
                                 device->drive_info.drive_type = ATAPI_DRIVE;
                             }
