@@ -20,29 +20,16 @@ extern bool validate_Device_Struct(versionBlock);
 
 static struct cam_device *cam_dev = NULL;
 
-/*
-Return the device name without the path.
-e.g. return da0 from /dev/da0
-*/
-static void set_Device_Name(const char* filename, char * name, int sizeOfName)
-{
-    //TODO: use strrstr...avoiding it now for some include issues on compilers. 
-    char * s = strstr(filename, "/");
-    while (s != NULL)
-    {
-        strncpy(name, ++s, sizeOfName);
-        s = strstr(s, "/");
-    }
-}
-
 int get_Device( const char *filename, tDevice *device )
 {
     struct ccb_getdev cgd;
     struct ccb_pathinq cpi;
     union ccb         *ccb = NULL;
     int               ret  = SUCCESS, this_drive_type = 0;
+    char devName[20] = { 0 };
+    int devUnit = 0;
     
-    if ( cam_get_device(filename, device->os_info.name, sizeof(device->os_info.name), &device->os_info.fd) == -1 )
+    if (cam_get_device(filename, devName, 20, &devUnit) == -1)
     {
         ret = FAILURE;
         device->os_info.fd = -1;
@@ -53,11 +40,16 @@ int get_Device( const char *filename, tDevice *device )
         //printf("%s fd %d name %s\n",__FUNCTION__, device->os_info.fd, device->os_info.name);
         // cam_dev = cam_open_device(filename, O_RDWR)
         // The following API function looks more approriate to call
-        cam_dev = cam_open_spec_device(device->os_info.name, device->os_info.fd, O_RDWR, NULL);
+        cam_dev = cam_open_spec_device(devName, devUnit, O_RDWR, NULL);
         if (cam_dev != NULL)
         {
-            //set the handle name
-            set_Device_Name(filename, device->os_info.name, sizeof(device->os_info.name));
+            //Set name and friendly name
+            //name
+            strcpy(device->os_info.name, filename);
+            //friendly name
+            sprintf(device->os_info.friendlyName, "%s%d", devName, devUnit);
+
+            device->os_info.fd = devUnit;
 
             //set the OS Type
             device->os_info.osType = OS_FREEBSD;

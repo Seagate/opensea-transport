@@ -42,10 +42,10 @@ extern "C"
 #define SRB_TYPE_SCSI_REQUEST_BLOCK 0
 #endif
 
-#define WIN_PHYSICAL_DRIVE	"\\\\.\\PHYSICALDRIVE"
-#define WIN_TAPE_DRIVE "\\\\.\\TAPE"
+#define WIN_PHYSICAL_DRIVE	"\\\\.\\PhysicalDrive"
+#define WIN_TAPE_DRIVE "\\\\.\\Tape"
 #define WIN_CDROM_DRIVE "\\\\.\\CDROM" //Most likely an ATAPI device, but it could be a really old SCSI interface device...
-#define WIN_CHANGER_DEVICE "\\\\.\\CHANGER" //This is a SCSI type device
+#define WIN_CHANGER_DEVICE "\\\\.\\Changer" //This is a SCSI type device
 
 #define DOUBLE_BUFFERED_MAX_TRANSFER_SIZE   16384 //Bytes....16KiB to be exact since that is what MS documentation says. - TJE
 

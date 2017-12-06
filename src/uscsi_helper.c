@@ -63,8 +63,10 @@ int get_Device(const char *filename, tDevice *device)
 
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
-        //set the handle name
-        set_Device_Name(filename, device->os_info.name, sizeof(device->os_info.name));
+        //set the name
+        strcpy(device->os_info.name, filename);
+        //set the friendly name
+        set_Device_Name(filename, device->os_info.friendlyName, sizeof(device->os_info.friendlyName));
 
         //set the OS Type
         device->os_info.osType = OS_SOLARIS;
