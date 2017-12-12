@@ -844,6 +844,29 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
+    //  ata_SCT_Read_Write_Long(tDevice *device, bool useGPL, bool useDMA, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested)
+    //
+    //! \brief   Description:  This command sends a SCT (SMART Command Transport) read long or write long command to a device
+    //
+    //  Entry:
+    //!   \param device - device handle
+    //!   \param useGPL - Use the GPL feature set instead of the SMART feature set (max number of bytes transported: SMART-130,560 B    GPL-33,553,920 B)
+    //!   \param useDMA - This bool specifies to use the readlogextDMA/writelogextDMA commands. This only applies when useGPL is set to true.
+    //!   \param mode - set to read long or write long
+    //!   \param lba - set the LBA to read or write long
+    //!   \param dataBuf - pointer to data buffer to use for read or write long data transfer
+    //!   \param dataSize - length of data buffer
+    //!   \param numberOfECCCRCBytes - (optional) if successful at getting RTFRs, this will be set to the number of ECC or CRC bytes returned by the device
+    //!   \param numberOfBlocksRequested - (optional) if successful at getting RTFRs, this will be set to the number of 512B sectors the device expects to be transferred
+    //
+    //  Exit:
+    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int ata_SCT_Read_Write_Long(tDevice *device, bool useGPL, bool useDMA, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested);
+
+    //-----------------------------------------------------------------------------
+    //
     //  ata_SCT_Write_Same()
     //
     //! \brief   Description:  This command sends a SCT (SMART Command Transport) write same command to a device

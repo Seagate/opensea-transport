@@ -543,10 +543,63 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
         {
             ret = ata_Write_Uncorrectable(device, 0x55, logicalPerPhysicalBlocks, corruptLBA);
         }
-        else
+        else if (device->drive_info.IdentifyData.ata.Word206 & BIT1)
         {
-            //use SCT read/write long
-            ret = NOT_SUPPORTED;//we'll add this in later-TJE
+            //use SCT read & write long commands
+            uint16_t numberOfECCCRCBytes = 0;
+            uint16_t numberOfBlocksRequested = 0;
+            uint32_t dataSize = device->drive_info.deviceBlockSize + LEGACY_DRIVE_SEC_SIZE;
+            uint8_t *data = (uint8_t*)calloc(dataSize, sizeof(uint8_t));
+            if (!data)
+            {
+                return MEMORY_FAILURE;
+            }
+            ret = ata_SCT_Read_Write_Long(device, device->drive_info.ata_Options.generalPurposeLoggingSupported, device->drive_info.ata_Options.readLogWriteLogDMASupported, SCT_RWL_READ_LONG, corruptLBA, data, dataSize, &numberOfECCCRCBytes, &numberOfBlocksRequested);
+            if (ret == SUCCESS)
+            {
+                seed_64(time(NULL));
+                //modify the user data to cause a uncorrectable error
+                for (uint32_t iter = 0; iter < device->drive_info.deviceBlockSize - 1; ++iter)
+                {
+                    data[iter] = random_Range_64(0, UINT8_MAX);
+                }
+                if (numberOfBlocksRequested)
+                {
+                    //The drive responded through SAT enough to tell us exactly how many blocks are expected...so we can set the data transfer length as is expected...since this wasn't clear on non 512B logical sector drives.
+                    dataSize = LEGACY_DRIVE_SEC_SIZE * numberOfBlocksRequested;
+                }
+                //now write back the data with a write long command
+                ret = ata_SCT_Read_Write_Long(device, device->drive_info.ata_Options.generalPurposeLoggingSupported, device->drive_info.ata_Options.readLogWriteLogDMASupported, SCT_RWL_WRITE_LONG, corruptLBA, data, dataSize, NULL, NULL);
+            }
+            safe_Free(data);
+        }
+        else if (device->drive_info.IdentifyData.ata.Word022 > 0 && device->drive_info.IdentifyData.ata.Word022 < UINT16_MAX && corruptLBA < MAX_28_BIT_LBA)
+        {
+            uint32_t dataSize = device->drive_info.deviceBlockSize + device->drive_info.IdentifyData.ata.Word022;
+            uint8_t *data = (uint8_t*)calloc(dataSize, sizeof(uint8_t));
+            if (!data)
+            {
+                return MEMORY_FAILURE;
+            }
+            //This drive supports the legacy 28bit read/write long commands from ATA...
+            //These commands are really old and transfer weir dbyte based values.
+            //While these transfer lengths shouldbe supported by SAT, there are some SATLs that won't handle this odd case. It may or may not go through...-TJE
+            ret = ata_Legacy_Read_Long(device, true, (uint32_t)corruptLBA, data, dataSize);
+            if (ret == SUCCESS)
+            {
+                seed_64(time(NULL));
+                //modify the user data to cause a uncorrectable error
+                for (uint32_t iter = 0; iter < device->drive_info.deviceBlockSize - 1; ++iter)
+                {
+                    data[iter] = random_Range_64(0, UINT8_MAX);
+                }
+                ret = ata_Legacy_Write_Long(device, true, (uint32_t)corruptLBA, data, dataSize);
+            }   
+            safe_Free(data);
+        }
+        else //no other standardized way to write a error to this location.
+        {
+            ret = NOT_SUPPORTED;
         }
     }
     else if (device->drive_info.drive_type == SCSI_DRIVE)

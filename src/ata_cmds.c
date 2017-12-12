@@ -1352,6 +1352,72 @@ int ata_SCT_Data_Transfer(tDevice *device, bool useGPL, bool useDMA, eDataTransf
     return ret;
 }
 
+int ata_SCT_Read_Write_Long(tDevice *device, bool useGPL, bool useDMA, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested)
+{
+    int ret = UNKNOWN;
+    uint8_t readWriteLongCommandSector[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+
+    //action code
+    readWriteLongCommandSector[0] = M_Byte0(SCT_READ_WRITE_LONG);
+    readWriteLongCommandSector[1] = M_Byte1(SCT_READ_WRITE_LONG);
+    //function code set in if below
+    //LBA
+    readWriteLongCommandSector[4] = M_Byte0(lba);
+    readWriteLongCommandSector[5] = M_Byte1(lba);
+    readWriteLongCommandSector[6] = M_Byte2(lba);
+    readWriteLongCommandSector[7] = M_Byte3(lba);
+    readWriteLongCommandSector[8] = M_Byte4(lba);
+    readWriteLongCommandSector[9] = M_Byte5(lba);
+    readWriteLongCommandSector[10] = RESERVED;
+    readWriteLongCommandSector[11] = RESERVED;
+
+    if (mode == SCT_RWL_READ_LONG)
+    {
+        readWriteLongCommandSector[2] = M_Byte0(SCT_RWL_READ_LONG);
+        readWriteLongCommandSector[3] = M_Byte1(SCT_RWL_READ_LONG);
+
+        //send a SCT command
+        if (SUCCESS == ata_SCT_Command(device, useGPL, useDMA, readWriteLongCommandSector, LEGACY_DRIVE_SEC_SIZE, true))
+        {
+            if (numberOfECCCRCBytes)
+            {
+                *numberOfECCCRCBytes = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
+            }
+            if (numberOfBlocksRequested)
+            {
+                *numberOfBlocksRequested = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaHi, device->drive_info.lastCommandRTFRs.lbaMid);
+            }
+            //Read the SCT data log
+            ret = ata_SCT_Data_Transfer(device, useGPL, useDMA, XFER_DATA_IN, dataBuf, dataSize);
+        }
+    }
+    else if (mode == SCT_RWL_WRITE_LONG)
+    {
+        readWriteLongCommandSector[2] = M_Byte0(SCT_RWL_WRITE_LONG);
+        readWriteLongCommandSector[3] = M_Byte1(SCT_RWL_WRITE_LONG);
+
+        //send a SCT command
+        if (SUCCESS == ata_SCT_Command(device, useGPL, useDMA, readWriteLongCommandSector, LEGACY_DRIVE_SEC_SIZE, true))
+        {
+            if (numberOfECCCRCBytes)
+            {
+                *numberOfECCCRCBytes = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
+            }
+            if (numberOfBlocksRequested)
+            {
+                *numberOfBlocksRequested = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaHi, device->drive_info.lastCommandRTFRs.lbaMid);
+            }
+            //Write the SCT data log
+            ret = ata_SCT_Data_Transfer(device, useGPL, useDMA, XFER_DATA_OUT, dataBuf, dataSize);
+        }
+    }
+    else
+    {
+        ret = NOT_SUPPORTED;
+    }
+    return ret;
+}
+
 int ata_SCT_Write_Same(tDevice *device, bool useGPL, bool useDMA, eSCTWriteSameFunctions functionCode, uint64_t startLBA, uint64_t fillCount, uint8_t *pattern, uint64_t patternLength)
 {
     int ret = UNKNOWN;

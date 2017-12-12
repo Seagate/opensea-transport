@@ -247,6 +247,12 @@ extern "C"
         UNKNOWN_ACTION
     }eAtaSCTActionCodes;
 
+    typedef enum _eSCTRWLMode {
+        SCT_RWL_RESERVED,
+        SCT_RWL_READ_LONG,
+        SCT_RWL_WRITE_LONG
+    }eSCTRWLMode;
+
     typedef enum _eAtaCmdType {
         ATA_CMD_TYPE_UNKNOWN,
         ATA_CMD_TYPE_TASKFILE,
