@@ -573,8 +573,17 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
             }
             safe_Free(data);
         }
-        else if (device->drive_info.IdentifyData.ata.Word022 > 0 && device->drive_info.IdentifyData.ata.Word022 < UINT16_MAX && corruptLBA < MAX_28_BIT_LBA)
+        else if (device->drive_info.IdentifyData.ata.Word022 > 0 && device->drive_info.IdentifyData.ata.Word022 < UINT16_MAX && corruptLBA < MAX_28_BIT_LBA)/*a value of zero may be valid on really old drives which otherwise accept this command, but this should be ok for now*/
         {
+            bool setFeaturesToChangeECCBytes = false;
+            if (device->drive_info.IdentifyData.ata.Word022 != 4)
+            {
+                //need to issue a set features command to specify the number of ECC bytes before doing a read or write long (according to old Seagate ATA reference manual from the web)
+                if (SUCCESS == ata_Set_Features(device, SF_LEGACY_SET_VENDOR_SPECIFIC_ECC_BYTES_FOR_READ_WRITE_LONG, M_Byte0(device->drive_info.IdentifyData.ata.Word022), 0, 0, 0))
+                {
+                    setFeaturesToChangeECCBytes = true;
+                }
+            }
             uint32_t dataSize = device->drive_info.deviceBlockSize + device->drive_info.IdentifyData.ata.Word022;
             uint8_t *data = (uint8_t*)calloc(dataSize, sizeof(uint8_t));
             if (!data)
@@ -595,6 +604,14 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
                 }
                 ret = ata_Legacy_Write_Long(device, true, (uint32_t)corruptLBA, data, dataSize);
             }   
+            if (setFeaturesToChangeECCBytes)
+            {
+                //reverting back to drive defaults again so that we don't mess anyone else up.
+                if (SUCCESS == ata_Set_Features(device, SF_LEGACY_SET_4_BYTES_ECC_FOR_READ_WRITE_LONG, 0, 0, 0, 0))
+                {
+                    setFeaturesToChangeECCBytes = false;
+                }
+            }
             safe_Free(data);
         }
         else //no other standardized way to write a error to this location.
