@@ -561,7 +561,7 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
                 //modify the user data to cause a uncorrectable error
                 for (uint32_t iter = 0; iter < device->drive_info.deviceBlockSize - 1; ++iter)
                 {
-                    data[iter] = random_Range_64(0, UINT8_MAX);
+                    data[iter] = (uint8_t)random_Range_64(0, UINT8_MAX);
                 }
                 if (numberOfBlocksRequested)
                 {
@@ -600,7 +600,7 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
                 //modify the user data to cause a uncorrectable error
                 for (uint32_t iter = 0; iter < device->drive_info.deviceBlockSize - 1; ++iter)
                 {
-                    data[iter] = random_Range_64(0, UINT8_MAX);
+                    data[iter] = (uint8_t)random_Range_64(0, UINT8_MAX);
                 }
                 ret = ata_Legacy_Write_Long(device, true, (uint32_t)corruptLBA, data, dataSize);
             }   
