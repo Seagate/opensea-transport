@@ -521,7 +521,7 @@ int get_Device(const char *filename, tDevice *device )
                                 }								
                                 else if (device_desc->BusType == BusTypeNvme)
                                 {
-#if WINVER >= SEA_WIN32_WINNT_WIN10
+#if WINVER >= SEA_WIN32_WINNT_WIN10 && !defined(DISABLE_NVME_PASSTHROUGH)
                                     device->drive_info.drive_type = NVME_DRIVE;
                                     device->drive_info.interface_type = NVME_INTERFACE;
                                     set_Namespace_ID_For_Device(device);
