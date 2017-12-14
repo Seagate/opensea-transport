@@ -5155,6 +5155,100 @@ void get_Sense_Key_ASC_ASCQ_FRU(uint8_t *pbuf, uint32_t pbufSize, uint8_t *sense
     }
 }
 
+void get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp)
+{
+	if (ptrSenseData && sksp && senseDataLength > 0)
+	{
+		uint8_t senseKey = 0;
+		uint8_t format = ptrSenseData[0] & 0x7F; //Stripping the last bit so we just get the format
+		uint16_t returnedLength = 8;//assume length returned is at least 8 bytes
+		bool sksv = false;
+		uint8_t senseKeySpecificOffset = 0;
+		uint8_t descriptorLength = 0;//for descriptor format sense data
+		switch (format)
+		{
+		case SCSI_SENSE_NO_SENSE_DATA:
+			break;
+		case SCSI_SENSE_CUR_INFO_FIXED:
+		case SCSI_SENSE_DEFER_ERR_FIXED:
+			senseKey = M_Nibble0(ptrSenseData[2]);
+			returnedLength += ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
+			senseKeySpecificOffset = 15;
+			sksv = ptrSenseData[senseKeySpecificOffset] & BIT7;
+			break;
+		case SCSI_SENSE_CUR_INFO_DESC:
+		case SCSI_SENSE_DEFER_ERR_DESC:
+			returnedLength += ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
+			senseKey = M_Nibble0(ptrSenseData[2]);
+			//loop through the descriptors to see if a sense key specific descriptor was provided
+			for (uint8_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
+			{
+				bool senseKeySpecificDescriptorFound = false;
+				uint8_t descriptorType = ptrSenseData[offset];
+				descriptorLength = ptrSenseData[offset + 1];
+				switch (descriptorType)
+				{
+				case SENSE_DESCRIPTOR_SENSE_KEY_SPECIFIC:
+					senseKeySpecificOffset = offset;
+					senseKeySpecificDescriptorFound = true;
+					break;
+				default: //not a descriptor we care about, so skip it
+					break;
+				}
+				if (senseKeySpecificDescriptorFound || descriptorLength == 0)
+				{
+					break;
+				}
+			}
+			break;
+		default:
+			returnedLength = SPC3_SENSE_LEN;
+			break;
+		}
+		if (senseKeySpecificOffset > 0U && sksv && returnedLength >= (senseKeySpecificOffset + 2U) && senseDataLength >= (senseKeySpecificOffset + 2U))
+		{
+			sksp->senseKeySpecificValid = sksv;
+			//Need at least 17 bytes to read this field
+			switch (senseKey)
+			{
+			case SENSE_KEY_NO_ERROR:
+			case SENSE_KEY_NOT_READY:
+				sksp->type = SENSE_KEY_SPECIFIC_PROGRESS_INDICATION;
+				sksp->progress.progressIndication = M_BytesTo2ByteValue(ptrSenseData[senseKeySpecificOffset + 1], ptrSenseData[senseKeySpecificOffset + 2]);
+				break;
+			case SENSE_KEY_ILLEGAL_REQUEST:
+				sksp->type = SENSE_KEY_SPECIFIC_FIELD_POINTER;
+				sksp->field.cdbOrData = ptrSenseData[senseKeySpecificOffset] & BIT6;
+				sksp->field.bitPointerValid = ptrSenseData[senseKeySpecificOffset] & BIT3;
+				sksp->field.bitPointer = M_GETBITRANGE(ptrSenseData[senseKeySpecificOffset], 2, 0);
+				sksp->field.fieldPointer = M_BytesTo2ByteValue(ptrSenseData[senseKeySpecificOffset + 1], ptrSenseData[senseKeySpecificOffset + 2]);
+				break;
+			case SENSE_KEY_HARDWARE_ERROR:
+			case SENSE_KEY_RECOVERED_ERROR:
+			case SENSE_KEY_MEDIUM_ERROR:
+				sksp->type = SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT;
+				sksp->retryCount.actualRetryCount = M_BytesTo2ByteValue(ptrSenseData[senseKeySpecificOffset + 1], ptrSenseData[senseKeySpecificOffset + 2]);
+				break;
+			case SENSE_KEY_COPY_ABORTED:
+				sksp->type = SENSE_KEY_SPECIFIC_SEGMENT_POINTER;
+				sksp->segment.segmentDescriptor = ptrSenseData[senseKeySpecificOffset] & BIT5;
+				sksp->segment.bitPointerValid = ptrSenseData[senseKeySpecificOffset] & BIT3;
+				sksp->segment.bitPointer = M_GETBITRANGE(ptrSenseData[senseKeySpecificOffset], 2, 0);
+				sksp->segment.fieldPointer = M_BytesTo2ByteValue(ptrSenseData[senseKeySpecificOffset + 1], ptrSenseData[senseKeySpecificOffset + 2]);
+				break;
+			case SENSE_KEY_UNIT_ATTENTION:
+				sksp->type = SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW;
+				sksp->unitAttention.overflow = ptrSenseData[senseKeySpecificOffset] & BIT0;
+				break;
+			default:
+				sksp->type = SENSE_KEY_SPECIFIC_UNKNOWN;
+				memcpy(&sksp->unknownDataType, &ptrSenseData[senseKeySpecificOffset], 3);
+				break;
+			}
+		}
+	}
+}
+
 uint16_t get_Returned_Sense_Data_Length(uint8_t *pbuf)
 {
     uint16_t length = 8;

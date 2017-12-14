@@ -101,7 +101,7 @@ extern "C"
     //
     //  Entry:
     //!   \param pbuf - pointer to the sense buffer to analyze
-    //!   \param pbufSize - size of the send buffer pointed to by pbuf
+    //!   \param pbufSize - size of the sense buffer pointed to by pbuf
     //!   \param senseKey - pointer to the variable to hold the senseKey
     //!   \param asc - pointer to the variable to hold the additional code qualifier
     //!   \param ascq - pointer to the variable to hold the additional code sense qualifier
@@ -112,6 +112,23 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void get_Sense_Key_ASC_ASCQ_FRU(uint8_t *pbuf, uint32_t pbufSize, uint8_t *senseKey, uint8_t *asc, uint8_t *ascq, uint8_t *fru);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp)
+	//
+	//! \brief   Description:  Will get the sense key specific information from a sense data buffer if one is available.
+	//
+	//  Entry:
+	//!   \param ptrSenseData - pointer to the sense buffer to analyze
+	//!   \param senseDataLength - size of the sense buffer pointed to by ptrSenseData
+	//!   \param sksp - pointer to the structure that will hold the returned data. check the valid bit to make sure something was filled in, use the type to parse the info out correctly
+	//!
+	//  Exit:
+	//!   \return none
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API void get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp);
 
     //-----------------------------------------------------------------------------
     //

@@ -93,6 +93,62 @@ extern "C"
     #define SCSI_SENSE_INFO_FIELD_MSB_INDEX  (3)
     #define SCSI_FIXED_FORMAT_CMD_INFO_INDEX (8)
 
+	typedef enum _eSenseKeySpecificType
+	{
+		SENSE_KEY_SPECIFIC_UNKNOWN,
+		SENSE_KEY_SPECIFIC_FIELD_POINTER,
+		SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT,
+		SENSE_KEY_SPECIFIC_PROGRESS_INDICATION,
+		SENSE_KEY_SPECIFIC_SEGMENT_POINTER,
+		SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW
+	}eSenseKeySpecificType;
+
+	typedef struct _senseKeySpecificFieldPointer
+	{
+		bool cdbOrData;//true = cdb, false = data
+		bool bitPointerValid;
+		uint8_t bitPointer;
+		uint16_t fieldPointer;
+	}senseKeySpecificFieldPointer;
+
+	typedef struct _senseKeySpecificActualRetryCount
+	{
+		uint16_t actualRetryCount;
+	}senseKeySpecificActualRetryCount;
+
+	typedef struct _senseKeySpecificProgressIndication
+	{
+		uint16_t progressIndication;
+	}senseKeySpecificProgressIndication;
+
+	typedef struct _senseKeySpecificSegmentPointer
+	{
+		bool segmentDescriptor;
+		bool bitPointerValid;
+		uint8_t bitPointer;
+		uint16_t fieldPointer;
+	}senseKeySpecificSegmentPointer;
+
+	typedef struct _senseKeySpecificUnitAttentionQueueOverflow
+	{
+		bool overflow;
+	}senseKeySpecificUnitAttentionQueueOverflow;
+
+	typedef struct _senseKeySpecific
+	{
+		bool senseKeySpecificValid; //Will be set when the sense data contains sense key specific information
+		eSenseKeySpecificType type; //use this to parse the correct structure from the union below.
+		union
+		{
+			uint8_t unknownDataType[3];
+			senseKeySpecificFieldPointer field;
+			senseKeySpecificActualRetryCount retryCount;
+			senseKeySpecificProgressIndication progress;
+			senseKeySpecificSegmentPointer segment;
+			senseKeySpecificUnitAttentionQueueOverflow unitAttention;
+		};
+	}senseKeySpecific, *ptrSenseKeySpecific;
+
 // \struct scsiStatus
 // \param senseKey
 // \param acq
