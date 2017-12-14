@@ -1099,6 +1099,26 @@ int scsi_Verify(tDevice *device, uint64_t lba, uint32_t range)
     return ret;
 }
 
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+int nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
+{
+	//NVME doesn't have a verify command like ATA or SCSI, so we're going to substitute by doing a read with FUA set....should be the same minus doing a data transfer.
+	int ret = SUCCESS;
+	uint32_t dataLength = device->drive_info.deviceBlockSize * range;
+	uint8_t *data = (uint8_t*)calloc(dataLength, sizeof(uint8_t));
+	if (data)
+	{
+		ret = nvme_Read(device, lba, range, false, true, 0, data, dataLength);
+	}
+	else
+	{
+		ret = MEMORY_FAILURE;
+	}
+	safe_Free(data);
+	return ret;
+}
+#endif
+
 int verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
 {
     if (device->os_info.osReadWriteRecommended)
@@ -1123,9 +1143,7 @@ int verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
             break;
         case NVME_INTERFACE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-            return NOT_SUPPORTED;
-            //TODO: The NVMe compare command is available but we aren't checking for matching data here, just if the data is readable.
-            //Maybe use read with FUA instead? - TJE
+			return nvme_Verify_LBA(device, lba, range);
 #endif
         case RAID_INTERFACE:
             //perform SCSI verifies for now. We may need to add unique functions for NVMe and RAID writes later
