@@ -42,8 +42,18 @@ LIB_SRC_FILES = \
 	$(SRC_DIR)cypress_legacy_helper.c\
 	$(SRC_DIR)ti_legacy_helper.c\
 	$(SRC_DIR)nec_legacy_helper.c\
-	$(SRC_DIR)prolific_legacy_helper.c\
-	$(SRC_DIR)sg_helper.c
+	$(SRC_DIR)prolific_legacy_helper.c
+
+UNAME := $(shell uname)
+ifeq ($(UNAME),Linux)
+	LIB_SRC_FILES += $(SRC_DIR)sg_helper.c
+endif
+ifeq ($(UNAME),SunOS)
+    LIB_SRC_FILES += $(SRC_DIR)uscsi_helper.c
+endif
+ifeq (($UNAME),FreeBSD)
+    LIB_SRC_FILES += $(SRC_DIR)cam_helper.c
+endif
 
 PROJECT_DEFINES += #-DDISABLE_NVME_PASSTHROUGH #-D_DEBUG
 
