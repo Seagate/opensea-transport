@@ -19,6 +19,7 @@
 #include <wchar.h>
 #include <string.h>
 #include <windows.h>                // added for forced PnP rescan
+//NOTE: ARM requires 10.0.16299.0 API to get this library!
 #include <cfgmgr32.h>               // added for forced PnP rescan
 #include <WinBase.h>
 #if !defined(DISABLE_NVME_PASSTHROUGH)
@@ -678,6 +679,8 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     wchar_t deviceName[40];
 #endif
 
+	//Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
+#if !defined (_M_ARM) && !defined (_M_ARM_ARMV7VE) && !defined (_M_ARM_FP ) && !defined (_M_ARM64)
     //try forcing a system rescan before opening the list. This should help with crappy drivers or bad hotplug support - TJE
     DEVINST deviceInstance;
     DEVINSTID tree = NULL;//set to null for root of device tree
@@ -687,6 +690,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
         ULONG reenumerateFlags = 0;
         CM_Reenumerate_DevNode(deviceInstance, reenumerateFlags);
     }
+#endif
 
 	int  driveNumber = 0, found = 0;
     for (driveNumber = 0; driveNumber < MAX_DEVICES_TO_SCAN; driveNumber++)

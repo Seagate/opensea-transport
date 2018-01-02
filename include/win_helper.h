@@ -49,6 +49,8 @@ extern "C"
 
 #define DOUBLE_BUFFERED_MAX_TRANSFER_SIZE   16384 //Bytes....16KiB to be exact since that is what MS documentation says. - TJE
 
+	//Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
+	//NOTE: ARM requires 10.0.16299.0 API to get this library!
     #pragma comment(lib,"Cfgmgr32.lib")//make sure this get's linked in
 
     // \fn send_IO(scsiIoCtx * scsiIoCtx)
