@@ -833,3 +833,101 @@ int set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize)
     }
     return ret;
 }
+
+bool is_LBA_Mode_Supported(tDevice *device)
+{
+    bool lbaSupported = true;
+    if (!(device->drive_info.IdentifyData.ata.Word049 & BIT9))
+    {
+        lbaSupported = false;
+    }
+    return lbaSupported;
+}
+
+bool is_CHS_Mode_Supported(tDevice *device)
+{
+    bool chsSupported = true;
+    uint8_t* identifyPtr = (uint8_t*)&device->drive_info.IdentifyData.ata.Word000;
+    uint16_t userAddressableCapacityCHS = M_BytesTo4ByteValue(identifyPtr[117], identifyPtr[116], identifyPtr[115], identifyPtr[114]);
+    //Check words 1, 3, 6, 54, 55, 56, 58:57 for values
+    if (device->drive_info.IdentifyData.ata.Word001 == 0 ||
+        device->drive_info.IdentifyData.ata.Word003 == 0 ||
+        device->drive_info.IdentifyData.ata.Word006 == 0 ||
+        device->drive_info.IdentifyData.ata.Word054 == 0 ||
+        device->drive_info.IdentifyData.ata.Word055 == 0 ||
+        device->drive_info.IdentifyData.ata.Word056 == 0 ||
+        userAddressableCapacityCHS == 0)
+    {
+        chsSupported = false;
+    }
+
+    return chsSupported;
+}
+
+//device parameter needed so we can see the current CHS configuration and translate properly...
+int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t *lba)
+{
+    int ret = SUCCESS;
+    if (lba)
+    {
+        if (is_CHS_Mode_Supported(device))
+        {
+            uint16_t headsPerCylinder = 0;//from current ID configuration
+            uint16_t sectorsPerTrack = 0;//from current ID configuration
+            *lba = UINT32_MAX;
+            *lba = ((uint32_t)((uint32_t)((uint32_t)cylinder * (uint32_t)headsPerCylinder) + (uint32_t)head) * (uint32_t)sectorsPerTrack) + (uint32_t)sector + UINT32_C(1);
+        }
+        else
+        {
+            ret = NOT_SUPPORTED;
+        }
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_t *head, uint16_t *sector)
+{
+    int ret = SUCCESS;
+    lba &= MAX_28_BIT_LBA;
+    if (cylinder && head &&sector)
+    {
+        uint8_t* identifyPtr = (uint8_t*)&device->drive_info.IdentifyData.ata.Word000;
+        uint32_t lbaCapacity = M_BytesTo4ByteValue(identifyPtr[123], identifyPtr[122], identifyPtr[121], identifyPtr[120]);//28bit LBA value
+        uint16_t userAddressableCapacityCHS = M_BytesTo4ByteValue(identifyPtr[117], identifyPtr[116], identifyPtr[115], identifyPtr[114]);//CHS max sector capacity
+        if (lba < lbaCapacity)
+        {
+            if (is_CHS_Mode_Supported(device))
+            {
+                //TODO: check word 53 BIT0 so we know words 54-58 are valid?
+                uint32_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word055;
+                uint32_t sectorsPerTrack = device->drive_info.IdentifyData.ata.Word056;
+                *cylinder = lba / (uint32_t)(headsPerCylinder * sectorsPerTrack);
+                *head = (uint8_t)((lba / sectorsPerTrack) % headsPerCylinder);
+                *sector = (uint16_t)((lba % sectorsPerTrack) + UINT32_C(1));
+                //check that this isn't above the value of words 58:57
+                if ((*cylinder) * (*head) * (*sector) > userAddressableCapacityCHS)
+                {
+                    //change the return value, but leave the calculated values as they are
+                    ret = NOT_SUPPORTED;
+                }
+            }
+            else
+            {
+                ret = NOT_SUPPORTED;
+            }
+        }
+        else
+        {
+            ret = NOT_SUPPORTED;
+        }
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}

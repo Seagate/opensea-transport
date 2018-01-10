@@ -51,6 +51,9 @@ extern "C"
 
     #define MAX_28BIT  (0xFFFFFFF)
 
+    #define LBA_MODE_BIT BIT6 //Set this in the device/head register to set LBA mode
+    #define DEVICE_REG_BACKWARDS_COMPATIBLE_BITS 0xA0 //device/head in ATA & ATA3 say these bits should be set on every command. New specs mark these obsolete in commands that are from old specs. New commands may use these for other purposes.
+
     #define ATA_CHECKSUM_VALIDITY_INDICATOR 0xA5
 
     typedef enum _eDownloadMicrocodeFeatures
@@ -286,15 +289,32 @@ extern "C"
     {
         uint8_t                CommandStatus;
         uint8_t                ErrorFeature;
-
-        uint8_t                LbaLow;
-        uint8_t                LbaMid;
-        uint8_t                LbaHi;
+        union {
+            uint8_t            LbaLow;
+            uint8_t            SectorNumber;
+        };
+        union {
+            uint8_t            LbaMid;
+            uint8_t            CylinderLow;
+        };
+        union {
+            uint8_t            LbaHi;
+            uint8_t            CylinderHigh;
+        };
         uint8_t                DeviceHead;
 
-        uint8_t                LbaLow48;
-        uint8_t                LbaMid48;
-        uint8_t                LbaHi48;
+        union {
+            uint8_t            LbaLow48;
+            uint8_t            SectorNumberExt;
+        };
+        union {
+            uint8_t            LbaMid48;
+            uint8_t            CylinderLowExt;
+        };
+        union {
+            uint8_t            LbaHi48;
+            uint8_t            CylinderHighExt;
+        };
         uint8_t                Feature48;
 
         uint8_t                SectorCount;

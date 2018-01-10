@@ -149,5 +149,8 @@
     <ClCompile Include="..\..\..\..\src\csmi_helper.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\src\ata_legacy_cmds.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

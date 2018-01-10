@@ -2138,6 +2138,14 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize);
 
+    //A couple helper functions to help with Legacu drives
+    bool is_LBA_Mode_Supported(tDevice *device);
+
+    bool is_CHS_Mode_Supported(tDevice *device);
+
+    int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t *lba);
+
+    int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_t *head, uint16_t *sector);
 
     /////////////////////////////////////////////////////////////////////////////////
     /// Obsolete ATA Commands. These commands are from specs prior to ATA-ATAPI 7 ///
@@ -2147,7 +2155,7 @@ extern "C"
     OPENSEA_TRANSPORT_API int ata_Legacy_Format_Track(tDevice *device, uint8_t feature, uint8_t sectorCount, uint8_t sectorNumber, uint8_t cylinderLow, uint8_t cylinderHigh, uint8_t *ptrData, uint32_t dataSize, eAtaProtocol protocol, bool lbaMode);
 
     //Last seen in ATA-3. Prior to ATA3, the lower nibble of the command could be 0 - F. This is not supported right now
-    OPENSEA_TRANSPORT_API int ata_Legacy_Recalibrate(tDevice *device);
+    OPENSEA_TRANSPORT_API int ata_Legacy_Recalibrate(tDevice *device, bool chsMode);
 
     //last seen in ATA-ATAPI 6.
     OPENSEA_TRANSPORT_API int ata_Legacy_Seek(tDevice *device, uint32_t lba);
