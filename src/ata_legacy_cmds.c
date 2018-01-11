@@ -621,6 +621,40 @@ int ata_Legacy_Write_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t hea
     return ret;
 }
 
+int ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector)
+{
+    int ret = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions;
+    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    ataCommandOptions.commandDirection = XFER_NO_DATA;
+    ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
+    ataCommandOptions.ptrData = NULL;
+    ataCommandOptions.dataSize = 0;
+    ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
+    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    ataCommandOptions.tfr.SectorNumber = sector;
+    ataCommandOptions.tfr.CylinderLow = M_Byte0(cylinder);
+    ataCommandOptions.tfr.CylinderHigh = M_Byte1(cylinder);
+    ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);
+    ataCommandOptions.tfr.SectorCount = 0;
+    ataCommandOptions.tfr.ErrorFeature = 0;
+    ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
+    ataCommandOptions.tfr.CommandStatus = ATA_SEEK_CMD;
+
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        printf("Sending ATA Seek (CHS)\n");
+    }
+
+    ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        print_Return_Enum("Seek (CHS)", ret);
+    }
+    return ret;
+}
+
 int ata_Legacy_Seek(tDevice *device, uint32_t lba)
 {
     int ret = UNKNOWN;
@@ -653,6 +687,54 @@ int ata_Legacy_Seek(tDevice *device, uint32_t lba)
     {
         print_Return_Enum("Seek", ret);
     }
+    return ret;
+}
+
+int ata_Legacy_Read_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize)
+{
+    int ret = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions;
+    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
+    ataCommandOptions.commandDirection = XFER_DATA_IN;
+    ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;//this must be used since the transfer is some number of bytes
+    ataCommandOptions.ataTransferBlocks = ATA_PT_NUMBER_OF_BYTES;
+    ataCommandOptions.ptrData = ptrData;
+    ataCommandOptions.dataSize = dataSize;
+    ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
+    ataCommandOptions.tfr.SectorNumber = sector;
+    ataCommandOptions.tfr.CylinderLow = M_Byte0(cylinder);
+    ataCommandOptions.tfr.CylinderHigh = M_Byte1(cylinder);
+    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);
+    ataCommandOptions.tfr.SectorCount = 1;
+
+    if (retires)
+    {
+        ataCommandOptions.tfr.CommandStatus = ATA_READ_LONG_RETRY;//0x22
+    }
+    else
+    {
+        ataCommandOptions.tfr.CommandStatus = ATA_READ_LONG_NORETRY;//0x23
+    }
+
+    if (ptrData == NULL)
+    {
+        return BAD_PARAMETER;
+    }
+
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        printf("Sending ATA Read Long (CHS)\n");
+    }
+
+    ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        print_Return_Enum("Read Long (CHS)", ret);
+    }
+
     return ret;
 }
 
@@ -705,6 +787,53 @@ int ata_Legacy_Read_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *p
     return ret;
 }
 
+int ata_Legacy_Write_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize)
+{
+    int ret = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions;
+    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
+    ataCommandOptions.commandDirection = XFER_DATA_OUT;
+    ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;//this must be used since the transfer is some number of bytes
+    ataCommandOptions.ataTransferBlocks = ATA_PT_NUMBER_OF_BYTES;
+    ataCommandOptions.ptrData = ptrData;
+    ataCommandOptions.dataSize = dataSize;
+    ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
+    ataCommandOptions.tfr.SectorNumber = sector;
+    ataCommandOptions.tfr.CylinderLow = M_Byte0(cylinder);
+    ataCommandOptions.tfr.CylinderHigh = M_Byte1(cylinder);
+    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);
+    ataCommandOptions.tfr.SectorCount = 1;
+
+    if (retires)
+    {
+        ataCommandOptions.tfr.CommandStatus = ATA_WRITE_LONG_RETRY;//0x32
+    }
+    else
+    {
+        ataCommandOptions.tfr.CommandStatus = ATA_WRITE_LONG_NORETRY;//0x33
+    }
+
+    if (ptrData == NULL)
+    {
+        return BAD_PARAMETER;
+    }
+
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        printf("Sending ATA Write Long (CHS)\n");
+    }
+
+    ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        print_Return_Enum("Write Long (CHS)", ret);
+    }
+
+    return ret;
+}
 
 int ata_Legacy_Write_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *ptrData, uint32_t dataSize)
 {
@@ -755,6 +884,49 @@ int ata_Legacy_Write_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *
     return ret;
 }
 
+int ata_Legacy_Write_Same_CHS(tDevice *device, uint8_t subcommand, uint8_t numberOfSectorsToWrite, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize)
+{
+    int ret = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions;
+    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
+    ataCommandOptions.commandDirection = XFER_DATA_OUT;
+    ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;//this must be used since the transfer is always 1 sector to the drive. The sector count says how many sectors to write the data sent to
+    ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;//or number of bytes?
+    ataCommandOptions.ptrData = ptrData;
+    ataCommandOptions.dataSize = dataSize;
+    ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
+    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (subcommand == 0x22)
+    {
+        ataCommandOptions.tfr.SectorCount = numberOfSectorsToWrite;
+        ataCommandOptions.tfr.SectorNumber = sector;
+        ataCommandOptions.tfr.CylinderLow = M_Byte0(cylinder);
+        ataCommandOptions.tfr.CylinderHigh = M_Byte1(cylinder);
+        ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);
+    }
+    ataCommandOptions.tfr.CommandStatus = ATA_LEGACY_WRITE_SAME;//0xE9
+
+    if (ptrData == NULL)
+    {
+        return BAD_PARAMETER;
+    }
+
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        printf("Sending ATA Write Same (CHS), subcommand %" PRIX8"h\n", subcommand);
+    }
+
+    ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        print_Return_Enum("Write Same (CHS)", ret);
+    }
+
+    return ret;
+}
+
 int ata_Legacy_Write_Same(tDevice *device, uint8_t subcommand, uint8_t numberOfSectorsToWrite, uint32_t lba, uint8_t *ptrData, uint32_t dataSize)
 {
     int ret = UNKNOWN;
@@ -794,6 +966,46 @@ int ata_Legacy_Write_Same(tDevice *device, uint8_t subcommand, uint8_t numberOfS
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
         print_Return_Enum("Write Same", ret);
+    }
+
+    return ret;
+}
+
+int ata_Legacy_Write_Verify_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize)
+{
+    int ret = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions;
+    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
+    ataCommandOptions.commandDirection = XFER_DATA_OUT;
+    ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;//this must be used since the transfer is always 1 sector to the drive. The sector count says how many sectors to write the data sent to
+    ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;//or number of bytes?
+    ataCommandOptions.ptrData = ptrData;
+    ataCommandOptions.dataSize = dataSize;
+    ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
+    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    ataCommandOptions.tfr.SectorCount = dataSize / LEGACY_DRIVE_SEC_SIZE;
+    ataCommandOptions.tfr.SectorNumber = sector;
+    ataCommandOptions.tfr.CylinderLow = M_Byte0(cylinder);
+    ataCommandOptions.tfr.CylinderHigh = M_Byte1(cylinder);
+    ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);
+    ataCommandOptions.tfr.CommandStatus = ATA_WRITE_SECTV_RETRY;//0x3C
+
+    if (ptrData == NULL)
+    {
+        return BAD_PARAMETER;
+    }
+
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        printf("Sending ATA Write Verify (CHS)\n");
+    }
+
+    ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        print_Return_Enum("Write Verify (CHS)", ret);
     }
 
     return ret;
