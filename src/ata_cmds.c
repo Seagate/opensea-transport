@@ -2034,14 +2034,28 @@ int ata_Read_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t secto
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending ATA Read DMA\n");
+        if (extendedCmd)
+        {
+            printf("Sending ATA Read DMA Ext\n");
+        }
+        else
+        {
+            printf("Sending ATA Read DMA\n");
+        }
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        print_Return_Enum("Read DMA", ret);
+        if (extendedCmd)
+        {
+            print_Return_Enum("Read DMA Ext", ret);
+        }
+        else
+        {
+            print_Return_Enum("Read DMA", ret);
+        }
     }
 
     return ret;
@@ -2095,14 +2109,28 @@ int ata_Read_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t 
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending ATA Read Multiple\n");
+        if (extendedCmd)
+        {
+            printf("Sending ATA Read Multiple Ext\n");
+        }
+        else
+        {
+            printf("Sending ATA Read Multiple\n");
+        }
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        print_Return_Enum("Read Multiple", ret);
+        if (extendedCmd)
+        {
+            print_Return_Enum("Read Multiple Ext", ret);
+        }
+        else
+        {
+            print_Return_Enum("Read Multiple", ret);
+        }
     }
 
     return ret;
@@ -2148,14 +2176,28 @@ int ata_Read_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t s
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending ATA Read Sectors\n");
+        if (extendedCmd)
+        {
+            printf("Sending ATA Read Sectors Ext\n");
+        }
+        else
+        {
+            printf("Sending ATA Read Sectors\n");
+        }
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        print_Return_Enum("Read Sectors", ret);
+        if (extendedCmd)
+        {
+            print_Return_Enum("Read Sectors Ext", ret);
+        }
+        else
+        {
+            print_Return_Enum("Read Sectors", ret);
+        }
     }
 
     return ret;
@@ -2288,14 +2330,28 @@ int ata_Read_Verify_Sectors(tDevice *device, bool extendedCmd, uint16_t numberOf
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending ATA Read Verify Sectors\n");
+        if (extendedCmd)
+        {
+            printf("Sending ATA Read Verify Sectors Ext\n");
+        }
+        else
+        {
+            printf("Sending ATA Read Verify Sectors\n");
+        }
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        print_Return_Enum("Read Verify Sectors", ret);
+        if (extendedCmd)
+        {
+            print_Return_Enum("Read Verify Sectors Ext", ret);
+        }
+        else
+        {
+            print_Return_Enum("Read Verify Sectors", ret);
+        }
     }
 
     return ret;
@@ -2791,14 +2847,28 @@ int ata_Write_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t data
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending ATA Write DMA\n");
+        if (extendedCmd)
+        {
+            printf("Sending ATA Write DMA Ext\n");
+        }
+        else
+        {
+            printf("Sending ATA Write DMA\n");
+        }
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        print_Return_Enum("Write DMA", ret);
+        if (extendedCmd)
+        {
+            print_Return_Enum("Write DMA Ext", ret);
+        }
+        else
+        {
+            print_Return_Enum("Write DMA", ret);
+        }
     }
 
     return ret;
@@ -2859,14 +2929,28 @@ int ata_Write_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending ATA Write Multiple\n");
+        if (extendedCmd)
+        {
+            printf("Sending ATA Write Multiple Ext\n");
+        }
+        else
+        {
+            printf("Sending ATA Write Multiple\n");
+        }
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        print_Return_Enum("Write Multiple", ret);
+        if (extendedCmd)
+        {
+            print_Return_Enum("Write Multiple Ext", ret);
+        }
+        else
+        {
+            print_Return_Enum("Write Multiple", ret);
+        }
     }
 
     return ret;
@@ -2912,14 +2996,28 @@ int ata_Write_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t 
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending ATA Write Sectors\n");
+        if (extendedCmd)
+        {
+            printf("Sending ATA Write Sectors Ext\n");
+        }
+        else
+        {
+            printf("Sending ATA Write Sectors\n");
+        }
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        print_Return_Enum("Write Sectors", ret);
+        if (extendedCmd)
+        {
+            print_Return_Enum("Write Sectors Ext", ret);
+        }
+        else
+        {
+            print_Return_Enum("Write Sectors", ret);
+        }
     }
 
     return ret;

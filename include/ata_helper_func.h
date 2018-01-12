@@ -2143,9 +2143,9 @@ extern "C"
 
     bool is_CHS_Mode_Supported(tDevice *device);
 
-    int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t *lba);
+    OPENSEA_TRANSPORT_API int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t *lba);
 
-    int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_t *head, uint16_t *sector);
+    OPENSEA_TRANSPORT_API int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_t *head, uint16_t *sector);
 
     /////////////////////////////////////////////////////////////////////////////////
     /// Obsolete ATA Commands. These commands are from specs prior to ATA-ATAPI 7 ///
@@ -2154,23 +2154,47 @@ extern "C"
     //Last seen in ATA-3. All inputs are vendor specific and outputs are vendor specific. Protocol is vendor specific.
     OPENSEA_TRANSPORT_API int ata_Legacy_Format_Track(tDevice *device, uint8_t feature, uint8_t sectorCount, uint8_t sectorNumber, uint8_t cylinderLow, uint8_t cylinderHigh, uint8_t *ptrData, uint32_t dataSize, eAtaProtocol protocol, bool lbaMode);
 
-    //Last seen in ATA-3. Prior to ATA3, the lower nibble of the command could be 0 - F. This is not supported right now
-    OPENSEA_TRANSPORT_API int ata_Legacy_Recalibrate(tDevice *device, bool chsMode);
+    //Last seen in ATA-3. Prior to ATA3, the lower nibble of the command could be 0 - F.
+    OPENSEA_TRANSPORT_API int ata_Legacy_Recalibrate(tDevice *device, uint8_t lowCmdNibble, bool chsMode);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Set_Max_Address_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volitileValue);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Set_Max_Address_Ext_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volatileValue);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Verify_Sectors_CHS(tDevice *device, bool extendedCmd, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector);
 
     //last seen in ATA-ATAPI 6.
     OPENSEA_TRANSPORT_API int ata_Legacy_Seek(tDevice *device, uint32_t lba);
 
     //last seen in ATA-3
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
     OPENSEA_TRANSPORT_API int ata_Legacy_Read_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
     //last seen in ATA-3
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
     OPENSEA_TRANSPORT_API int ata_Legacy_Write_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
 
     //last seen in ATA-2
     //Sub command 22h = LBA (or Cyl lo, hi, head#), and sec number specify where to start. count specifies how many sectors to write. Taking in lba mode by default since CHS is dead. (528MB and higher are recommended to implement LBA)
     //Sub command DDh = initialize all usable sectors. Number of sectors field is ignored
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Same_CHS(tDevice *device, uint8_t subcommand, uint8_t numberOfSectorsToWrite, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
     OPENSEA_TRANSPORT_API int ata_Legacy_Write_Same(tDevice *device, uint8_t subcommand, uint8_t numberOfSectorsToWrite, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
 
     //last seen in ATA-3
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Verify_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
     OPENSEA_TRANSPORT_API int ata_Legacy_Write_Verify(tDevice *device, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
 
     //last seen in ATA-3

@@ -76,7 +76,7 @@ int ata_Legacy_Format_Track(tDevice *device, uint8_t feature, uint8_t sectorCoun
     return ret;
 }
 
-int ata_Legacy_Recalibrate(tDevice *device, bool chsMode)
+int ata_Legacy_Recalibrate(tDevice *device, uint8_t lowCmdNibble, bool chsMode)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -104,6 +104,7 @@ int ata_Legacy_Recalibrate(tDevice *device, bool chsMode)
     ataCommandOptions.tfr.ErrorFeature = 0;
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.tfr.CommandStatus = ATA_RECALIBRATE;
+    ataCommandOptions.tfr.CommandStatus |= M_Nibble0(lowCmdNibble);
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
@@ -133,7 +134,7 @@ int ata_Legacy_Recalibrate(tDevice *device, bool chsMode)
     return ret;
 }
 
-int ata_Read_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd)
+int ata_Legacy_Read_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -186,20 +187,34 @@ int ata_Read_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t s
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending ATA Read DMA (CHS)\n");
+        if (extendedCmd)
+        {
+            printf("Sending ATA Read DMA Ext (CHS)\n");
+        }
+        else
+        {
+            printf("Sending ATA Read DMA (CHS)\n");
+        }
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        print_Return_Enum("Read DMA (CHS)", ret);
+        if (extendedCmd)
+        {
+            print_Return_Enum("Read DMA Ext (CHS)", ret);
+        }
+        else
+        {
+            print_Return_Enum("Read DMA (CHS)", ret);
+        }
     }
 
     return ret;
 }
 
-int ata_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd)
+int ata_Legacy_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -245,20 +260,34 @@ int ata_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending ATA Read Multiple (CHS)\n");
+        if (extendedCmd)
+        {
+            printf("Sending ATA Read Multiple Ext (CHS)\n");
+        }
+        else
+        {
+            printf("Sending ATA Read Multiple (CHS)\n");
+        }
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        print_Return_Enum("Read Multiple (CHS)", ret);
+        if (extendedCmd)
+        {
+            print_Return_Enum("Read Multiple Ext (CHS)", ret);
+        }
+        else
+        {
+            print_Return_Enum("Read Multiple (CHS)", ret);
+        }
     }
 
     return ret;
 }
 
-int ata_Set_Max_Address_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volitileValue)
+int ata_Legacy_Set_Max_Address_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volitileValue)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -294,7 +323,7 @@ int ata_Set_Max_Address_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t ne
     return ret;
 }
 
-int ata_Set_Max_Address_Ext_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volatileValue)
+int ata_Legacy_Set_Max_Address_Ext_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volatileValue)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -332,7 +361,7 @@ int ata_Set_Max_Address_Ext_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_
     return ret;
 }
 
-int ata_Read_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd)
+int ata_Legacy_Read_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -371,20 +400,34 @@ int ata_Read_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending ATA Read Sectors (CHS)\n");
+        if (extendedCmd)
+        {
+            printf("Sending ATA Read Sectors Ext (CHS)\n");
+        }
+        else
+        {
+            printf("Sending ATA Read Sectors (CHS)\n");
+        }
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        print_Return_Enum("Read Sectors (CHS)", ret);
+        if (extendedCmd)
+        {
+            print_Return_Enum("Read Sectors Ext (CHS)", ret);
+        }
+        else
+        {
+            print_Return_Enum("Read Sectors (CHS)", ret);
+        }
     }
 
     return ret;
 }
 
-int ata_Read_Verify_Sectors_CHS(tDevice *device, bool extendedCmd, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector)
+int ata_Legacy_Read_Verify_Sectors_CHS(tDevice *device, bool extendedCmd, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -417,20 +460,34 @@ int ata_Read_Verify_Sectors_CHS(tDevice *device, bool extendedCmd, uint16_t numb
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending ATA Read Verify Sectors (CHS)\n");
+        if (extendedCmd)
+        {
+            printf("Sending ATA Read Verify Sectors Ext (CHS)\n");
+        }
+        else
+        {
+            printf("Sending ATA Read Verify Sectors (CHS)\n");
+        }
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        print_Return_Enum("Read Verify Sectors (CHS)", ret);
+        if (extendedCmd)
+        {
+            print_Return_Enum("Read Verify Sectors Ext (CHS)", ret);
+        }
+        else
+        {
+            print_Return_Enum("Read Verify Sectors (CHS)", ret);
+        }
     }
 
     return ret;
 }
 
-int ata_Write_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua)
+int ata_Legacy_Write_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -489,20 +546,34 @@ int ata_Write_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t 
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending ATA Write DMA (CHS)\n");
+        if (extendedCmd)
+        {
+            printf("Sending ATA Write DMA Ext (CHS)\n");
+        }
+        else
+        {
+            printf("Sending ATA Write DMA (CHS)\n");
+        }
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        print_Return_Enum("Write DMA (CHS)", ret);
+        if (extendedCmd)
+        {
+            print_Return_Enum("Write DMA Ext (CHS)", ret);
+        }
+        else
+        {
+            print_Return_Enum("Write DMA (CHS)", ret);
+        }
     }
 
     return ret;
 }
 
-int ata_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua)
+int ata_Legacy_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -556,20 +627,34 @@ int ata_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uin
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending ATA Write Multiple (CHS)\n");
+        if (extendedCmd)
+        {
+            printf("Sending ATA Write Multiple Ext (CHS)\n");
+        }
+        else
+        {
+            printf("Sending ATA Write Multiple (CHS)\n");
+        }
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        print_Return_Enum("Write Multiple (CHS)", ret);
+        if (extendedCmd)
+        {
+            print_Return_Enum("Write Multiple Ext (CHS)", ret);
+        }
+        else
+        {
+            print_Return_Enum("Write Multiple (CHS)", ret);
+        }
     }
 
     return ret;
 }
 
-int ata_Legacy_Write_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool retires)
+int ata_Legacy_Write_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -608,14 +693,28 @@ int ata_Legacy_Write_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t hea
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending ATA Write Sectors (CHS)\n");
+        if (extendedCmd)
+        {
+            printf("Sending ATA Write Sectors Ext (CHS)\n");
+        }
+        else
+        {
+            printf("Sending ATA Write Sectors (CHS)\n");
+        }
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        print_Return_Enum("Write Sectors (CHS)", ret);
+        if (extendedCmd)
+        {
+            print_Return_Enum("Write Sectors Ext (CHS)", ret);
+        }
+        else
+        {
+            print_Return_Enum("Write Sectors (CHS)", ret);
+        }
     }
 
     return ret;
@@ -897,13 +996,22 @@ int ata_Legacy_Write_Same_CHS(tDevice *device, uint8_t subcommand, uint8_t numbe
     ataCommandOptions.dataSize = dataSize;
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
-    if (subcommand == 0x22)
+    if (subcommand == LEGACY_WRITE_SAME_INITIALIZE_SPECIFIED_SECTORS)
     {
+        ataCommandOptions.tfr.ErrorFeature = LEGACY_WRITE_SAME_INITIALIZE_SPECIFIED_SECTORS;
         ataCommandOptions.tfr.SectorCount = numberOfSectorsToWrite;
         ataCommandOptions.tfr.SectorNumber = sector;
         ataCommandOptions.tfr.CylinderLow = M_Byte0(cylinder);
         ataCommandOptions.tfr.CylinderHigh = M_Byte1(cylinder);
         ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);
+    }
+    else if (subcommand == LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS)
+    {
+        ataCommandOptions.tfr.ErrorFeature = LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS;
+    }
+    else
+    {
+        return BAD_PARAMETER;
     }
     ataCommandOptions.tfr.CommandStatus = ATA_LEGACY_WRITE_SAME;//0xE9
 
@@ -940,13 +1048,23 @@ int ata_Legacy_Write_Same(tDevice *device, uint8_t subcommand, uint8_t numberOfS
     ataCommandOptions.dataSize = dataSize;
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
-    if (subcommand == 0x22)
+
+    if (subcommand == LEGACY_WRITE_SAME_INITIALIZE_SPECIFIED_SECTORS)
     {
+        ataCommandOptions.tfr.ErrorFeature = LEGACY_WRITE_SAME_INITIALIZE_SPECIFIED_SECTORS;
         ataCommandOptions.tfr.SectorCount = numberOfSectorsToWrite;
         ataCommandOptions.tfr.LbaLow = M_Byte0(lba);
         ataCommandOptions.tfr.LbaMid = M_Byte1(lba);
         ataCommandOptions.tfr.LbaHi = M_Byte2(lba);
         ataCommandOptions.tfr.DeviceHead |= M_Nibble6(lba);//set the high 4 bits for the LBA (24:28)
+    }
+    else if(subcommand == LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS)
+    {
+        ataCommandOptions.tfr.ErrorFeature = LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS;
+    }
+    else
+    {
+        return BAD_PARAMETER;
     }
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;//LBA mode bit
     ataCommandOptions.tfr.CommandStatus = ATA_LEGACY_WRITE_SAME;//0xE9
