@@ -875,7 +875,7 @@ int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_
             uint16_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word055;//from current ID configuration
             uint16_t sectorsPerTrack = device->drive_info.IdentifyData.ata.Word056;//from current ID configuration
             *lba = UINT32_MAX;
-            *lba = ((uint32_t)((uint32_t)((uint32_t)cylinder * (uint32_t)headsPerCylinder) + (uint32_t)head) * (uint32_t)sectorsPerTrack) + (uint32_t)sector + UINT32_C(1);
+            *lba = ((uint32_t)((uint32_t)((uint32_t)cylinder * (uint32_t)headsPerCylinder) + (uint32_t)head) * (uint32_t)sectorsPerTrack) + (uint32_t)sector - UINT32_C(1);
         }
         else
         {
