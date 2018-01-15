@@ -2175,10 +2175,10 @@ extern "C"
 
     OPENSEA_TRANSPORT_API int ata_Legacy_Write_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd);
 
-    OPENSEA_TRANSPORT_API int ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector);
+    OPENSEA_TRANSPORT_API int ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t lowCmdNibble);
 
     //last seen in ATA-ATAPI 6.
-    OPENSEA_TRANSPORT_API int ata_Legacy_Seek(tDevice *device, uint32_t lba);
+    OPENSEA_TRANSPORT_API int ata_Legacy_Seek(tDevice *device, uint32_t lba, uint8_t lowCmdNibble);
 
     //last seen in ATA-3
     OPENSEA_TRANSPORT_API int ata_Legacy_Read_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);

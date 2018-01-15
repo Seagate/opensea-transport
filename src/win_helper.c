@@ -3041,6 +3041,10 @@ int get_Windows_SMART_IO_Support(tDevice *device)
                 }
                 //TODO: Save driver version info? skipping for now since it doesn't appear useful.-TJE
                 device->os_info.winSMARTCmdSupport.deviceBitmap = smartVersionInfo.bIDEDeviceMap;
+                if (smartVersionInfo.bIDEDeviceMap & (BIT1 | BIT3 | BIT5 | BIT7))
+                {
+                    device->drive_info.ata_Options.isDevice1 = true;
+                }
             }
         }
     }

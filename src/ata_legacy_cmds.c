@@ -43,6 +43,10 @@ int ata_Legacy_Format_Track(tDevice *device, uint8_t feature, uint8_t sectorCoun
     {
         ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
     }
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     ataCommandOptions.tfr.SectorCount = sectorCount;
     ataCommandOptions.tfr.ErrorFeature = feature;
     ataCommandOptions.commadProtocol = protocol;
@@ -87,6 +91,10 @@ int ata_Legacy_Recalibrate(tDevice *device, uint8_t lowCmdNibble, bool chsMode)
     ataCommandOptions.dataSize = 0;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     if (chsMode)
     {
         ataCommandOptions.tfr.SectorNumber = 1;
@@ -162,6 +170,10 @@ int ata_Legacy_Read_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, ui
     ataCommandOptions.tfr.CylinderHighExt = 0;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     ataCommandOptions.tfr.SectorCount = M_Byte0(sectorCount);
 
     if (extendedCmd)
@@ -230,6 +242,10 @@ int ata_Legacy_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t hea
     ataCommandOptions.tfr.CylinderHigh = M_Byte1(cylinder);
     ataCommandOptions.tfr.SectorCount = M_Byte0(sectorCount);
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);
     if (extendedCmd)
     {
@@ -305,6 +321,10 @@ int ata_Legacy_Set_Max_Address_CHS(tDevice *device, uint16_t newMaxCylinder, uin
     ataCommandOptions.tfr.CylinderHigh = M_Byte1(newMaxCylinder);
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     ataCommandOptions.tfr.DeviceHead |= newMaxHead;
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     if (volitileValue)
     {
         ataCommandOptions.tfr.SectorCount |= BIT0;
@@ -342,7 +362,11 @@ int ata_Legacy_Set_Max_Address_Ext_CHS(tDevice *device, uint16_t newMaxCylinder,
     ataCommandOptions.tfr.CylinderLowExt = 0;
     ataCommandOptions.tfr.CylinderHighExt = 0;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
-    ataCommandOptions.tfr.DeviceHead |= newMaxHead;
+    ataCommandOptions.tfr.DeviceHead |= M_Nibble0(newMaxHead);
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     if (volatileValue)
     {
         ataCommandOptions.tfr.SectorCount |= BIT0;
@@ -378,6 +402,10 @@ int ata_Legacy_Read_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head
     ataCommandOptions.tfr.SectorCount = M_Byte0(sectorCount);
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     if (extendedCmd)
     {
         ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
@@ -443,6 +471,10 @@ int ata_Legacy_Read_Verify_Sectors_CHS(tDevice *device, bool extendedCmd, uint16
     ataCommandOptions.tfr.SectorCount = M_Byte0(numberOfSectors);
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     if (extendedCmd)
     {
         ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
@@ -487,6 +519,83 @@ int ata_Legacy_Read_Verify_Sectors_CHS(tDevice *device, bool extendedCmd, uint16
     return ret;
 }
 
+int ata_Legacy_Read_Verify_Sectors_No_Retry_CHS(tDevice *device, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector)
+{
+    int ret = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions;
+    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    ataCommandOptions.commandDirection = XFER_NO_DATA;
+    ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
+    ataCommandOptions.ptrData = NULL;
+    ataCommandOptions.dataSize = 0;
+    ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
+    ataCommandOptions.tfr.SectorNumber = sector;
+    ataCommandOptions.tfr.CylinderLow = M_Byte0(cylinder);
+    ataCommandOptions.tfr.CylinderHigh = M_Byte1(cylinder);
+    ataCommandOptions.tfr.SectorCount = M_Byte0(numberOfSectors);
+    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
+    ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
+    ataCommandOptions.tfr.CommandStatus = ATA_READ_VERIFY_NORETRY;
+
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        printf("Sending ATA Read Verify Sectors - No Retry (CHS)\n");
+    }
+
+    ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        print_Return_Enum("Read Verify Sectors - No Retry (CHS)", ret);
+    }
+
+    return ret;
+}
+
+int ata_Read_Verify_Sectors_No_Retry(tDevice *device, uint16_t numberOfSectors, uint64_t LBA)
+{
+    int ret = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions;
+    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    ataCommandOptions.commandDirection = XFER_NO_DATA;
+    ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
+    ataCommandOptions.ptrData = NULL;
+    ataCommandOptions.dataSize = 0;
+    ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
+    ataCommandOptions.tfr.LbaLow = M_Byte0(LBA);
+    ataCommandOptions.tfr.LbaMid = M_Byte1(LBA);
+    ataCommandOptions.tfr.LbaHi = M_Byte2(LBA);
+    ataCommandOptions.tfr.SectorCount = M_Byte0(numberOfSectors);
+    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
+    ataCommandOptions.tfr.DeviceHead |= M_Nibble6(LBA);//set the high 4 bits for the LBA (24:28)
+    ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
+    ataCommandOptions.tfr.CommandStatus = ATA_READ_VERIFY_NORETRY;
+
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        printf("Sending ATA Read Verify Sectors - No Retry\n");
+    }
+
+    ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        print_Return_Enum("Read Verify Sectors - No Retry", ret);
+    }
+
+    return ret;
+}
+
 int ata_Legacy_Write_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua)
 {
     int ret = UNKNOWN;
@@ -516,6 +625,10 @@ int ata_Legacy_Write_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, u
     ataCommandOptions.tfr.SectorCount = M_Byte0(dataSize / device->drive_info.deviceBlockSize);
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     ataCommandOptions.tfr.DeviceHead |= head;
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     if (extendedCmd)
     {
         ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
@@ -590,6 +703,10 @@ int ata_Legacy_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t he
     ataCommandOptions.tfr.SectorCount = M_Byte0(dataSize / device->drive_info.deviceBlockSize);
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     if (extendedCmd)
     {
         ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
@@ -685,7 +802,10 @@ int ata_Legacy_Write_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t hea
     }
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);//head bits are lower nibble, or them into this register
-
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     if (!ptrData)
     {
         return BAD_PARAMETER;
@@ -719,8 +839,8 @@ int ata_Legacy_Write_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t hea
 
     return ret;
 }
-
-int ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector)
+//Lower nibble of command opcode is allowed on really really old drives.
+int ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t lowCmdNibble)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -739,7 +859,11 @@ int ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_
     ataCommandOptions.tfr.ErrorFeature = 0;
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.tfr.CommandStatus = ATA_SEEK_CMD;
-
+    ataCommandOptions.tfr.CommandStatus |= M_Nibble0(lowCmdNibble);
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
         printf("Sending ATA Seek (CHS)\n");
@@ -754,7 +878,7 @@ int ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_
     return ret;
 }
 
-int ata_Legacy_Seek(tDevice *device, uint32_t lba)
+int ata_Legacy_Seek(tDevice *device, uint32_t lba, uint8_t lowCmdNibble)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -774,7 +898,7 @@ int ata_Legacy_Seek(tDevice *device, uint32_t lba)
     ataCommandOptions.tfr.ErrorFeature = 0;
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.tfr.CommandStatus = ATA_SEEK_CMD;
-
+    ataCommandOptions.tfr.CommandStatus |= M_Nibble0(lowCmdNibble);
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
         printf("Sending ATA Seek\n");
@@ -807,6 +931,10 @@ int ata_Legacy_Read_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, u
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);
     ataCommandOptions.tfr.SectorCount = 1;
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
 
     if (retires)
     {
@@ -856,7 +984,10 @@ int ata_Legacy_Read_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *p
     ataCommandOptions.tfr.DeviceHead |= M_Nibble6(lba);//set the high 4 bits for the LBA (24:28)
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;//LBA mode bit
     ataCommandOptions.tfr.SectorCount = 1;
-
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     if (retires)
     {
         ataCommandOptions.tfr.CommandStatus = ATA_READ_LONG_RETRY;//0x22
@@ -904,7 +1035,10 @@ int ata_Legacy_Write_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, 
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);
     ataCommandOptions.tfr.SectorCount = 1;
-
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     if (retires)
     {
         ataCommandOptions.tfr.CommandStatus = ATA_WRITE_LONG_RETRY;//0x32
@@ -953,7 +1087,10 @@ int ata_Legacy_Write_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *
     ataCommandOptions.tfr.DeviceHead |= M_Nibble6(lba);//set the high 4 bits for the LBA (24:28)
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;//LBA mode bit
     ataCommandOptions.tfr.SectorCount = 1;
-
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     if (retires)
     {
         ataCommandOptions.tfr.CommandStatus = ATA_WRITE_LONG_RETRY;//0x32
@@ -991,11 +1128,16 @@ int ata_Legacy_Write_Same_CHS(tDevice *device, uint8_t subcommand, uint8_t numbe
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;//this must be used since the transfer is always 1 sector to the drive. The sector count says how many sectors to write the data sent to
-    ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;//or number of bytes?
+    ataCommandOptions.ataTransferBlocks = ATA_PT_NUMBER_OF_BYTES;
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.dataSize = dataSize;
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    ataCommandOptions.timeout = UINT32_MAX;
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     if (subcommand == LEGACY_WRITE_SAME_INITIALIZE_SPECIFIED_SECTORS)
     {
         ataCommandOptions.tfr.ErrorFeature = LEGACY_WRITE_SAME_INITIALIZE_SPECIFIED_SECTORS;
@@ -1043,12 +1185,16 @@ int ata_Legacy_Write_Same(tDevice *device, uint8_t subcommand, uint8_t numberOfS
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;//this must be used since the transfer is always 1 sector to the drive. The sector count says how many sectors to write the data sent to
-    ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;//or number of bytes?
+    ataCommandOptions.ataTransferBlocks = ATA_PT_NUMBER_OF_BYTES;
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.dataSize = dataSize;
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
-
+    ataCommandOptions.timeout = UINT32_MAX;
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     if (subcommand == LEGACY_WRITE_SAME_INITIALIZE_SPECIFIED_SECTORS)
     {
         ataCommandOptions.tfr.ErrorFeature = LEGACY_WRITE_SAME_INITIALIZE_SPECIFIED_SECTORS;
@@ -1108,7 +1254,10 @@ int ata_Legacy_Write_Verify_CHS(tDevice *device, uint16_t cylinder, uint8_t head
     ataCommandOptions.tfr.CylinderHigh = M_Byte1(cylinder);
     ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);
     ataCommandOptions.tfr.CommandStatus = ATA_WRITE_SECTV_RETRY;//0x3C
-
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     if (ptrData == NULL)
     {
         return BAD_PARAMETER;
@@ -1149,7 +1298,10 @@ int ata_Legacy_Write_Verify(tDevice *device, uint32_t lba, uint8_t *ptrData, uin
     ataCommandOptions.tfr.DeviceHead |= M_Nibble6(lba);//set the high 4 bits for the LBA (24:28)
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;//LBA mode bit
     ataCommandOptions.tfr.CommandStatus = ATA_WRITE_SECTV_RETRY;//0x3C
-
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
     if (ptrData == NULL)
     {
         return BAD_PARAMETER;
@@ -1196,6 +1348,10 @@ int ata_Legacy_Identify_Device_DMA(tDevice *device, uint8_t *ptrData, uint32_t d
     identify.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     identify.ptrData = ptrData;
     identify.dataSize = dataSize;
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        identify.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
@@ -1229,6 +1385,48 @@ int ata_Legacy_Identify_Device_DMA(tDevice *device, uint8_t *ptrData, uint32_t d
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
         print_Return_Enum("Identify DMA", ret);
+    }
+    return ret;
+}
+
+int ata_Legacy_Check_Power_Mode(tDevice *device, uint8_t *powerMode)
+{
+    int ret = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions;
+    memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
+    ataCommandOptions.commandDirection = XFER_NO_DATA;
+    ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
+    ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
+    ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
+    ataCommandOptions.dataSize = 0; //non-data command
+    ataCommandOptions.ptrData = NULL;
+    ataCommandOptions.tfr.CommandStatus = ATA_LEGACY_ALT_CHECK_POWER_MODE;
+    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
+
+    if (powerMode == NULL)
+    {
+        return BAD_PARAMETER;
+    }
+
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        printf("Sending ATA Check Power Mode (Legacy 98h)\n");
+    }
+
+    ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+    if (ret == SUCCESS)
+    {
+        *powerMode = ataCommandOptions.rtfr.secCnt;
+    }
+
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        print_Return_Enum("Check Power Mode (Legacy 98h)", ret);
     }
     return ret;
 }

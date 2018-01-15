@@ -500,14 +500,73 @@ int write_Same(tDevice *device, bool useGPL, bool useDMA, uint64_t startingLba, 
     }
     if (device->drive_info.drive_type == ATA_DRIVE)
     {
-        if (noDataTransfer)
+        if (device->drive_info.IdentifyData.ata.Word206 & BIT2)
         {
-            uint8_t zeroPattern[4] = { 0 };
-            ret = ata_SCT_Write_Same(device, useGPL, useDMA, WRITE_SAME_BACKGROUND_USE_PATTERN_FIELD, startingLba, numberOfLogicalBlocks, zeroPattern, sizeof(zeroPattern) / sizeof(*zeroPattern));
+            if (noDataTransfer)
+            {
+                uint8_t zeroPattern[4] = { 0 };
+                ret = ata_SCT_Write_Same(device, useGPL, useDMA, WRITE_SAME_BACKGROUND_USE_PATTERN_FIELD, startingLba, numberOfLogicalBlocks, zeroPattern, sizeof(zeroPattern) / sizeof(*zeroPattern));
+            }
+            else
+            {
+                ret = ata_SCT_Write_Same(device, useGPL, useDMA, WRITE_SAME_BACKGROUND_USE_SINGLE_LOGICAL_SECTOR, startingLba, numberOfLogicalBlocks, pattern, 1);
+            }
+        }
+        else if (((device->drive_info.IdentifyData.ata.Word080 == 0 || device->drive_info.IdentifyData.ata.Word080 == UINT16_MAX) || /*check for device not setting spec support bits*/
+            (device->drive_info.IdentifyData.ata.Word080 & BIT1 || device->drive_info.IdentifyData.ata.Word080 & BIT2)) && /*check for ATA or ATA-2 support*/
+            !(device->drive_info.IdentifyData.ata.Word069 & BIT11))//Legacy Write same uses same op-code as read buffer DMA, so that command cannot be supported or the drive won't do the right thing
+        {
+            bool localPattern = false;
+            bool performWriteSame = false;
+            uint8_t feature = LEGACY_WRITE_SAME_INITIALIZE_SPECIFIED_SECTORS;
+            if (noDataTransfer)
+            {
+                pattern = (uint8_t*)calloc(device->drive_info.deviceBlockSize, sizeof(uint8_t));
+                localPattern = true;
+            }
+            //Check range to see which feature to use
+            if (startingLba == 0 && numberOfLogicalBlocks == device->drive_info.deviceMaxLba)
+            {
+                feature = LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS;
+                numberOfLogicalBlocks = 0;
+                performWriteSame = true;
+            }
+            else if(numberOfLogicalBlocks < UINT8_MAX)
+            {
+                performWriteSame = true;
+            }
+            if (performWriteSame)
+            {
+                if (device->drive_info.ata_Options.chsModeOnly)
+                {
+                    uint16_t cylinder = 0;
+                    uint8_t head = 0, sector = 0;
+                    if (SUCCESS == convert_LBA_To_CHS(device, startingLba, &cylinder, &head, &sector))
+                    {
+                        ret = ata_Legacy_Write_Same_CHS(device, feature, numberOfLogicalBlocks, cylinder, head, sector, pattern, device->drive_info.deviceBlockSize);
+                    }
+                    else
+                    {
+                        ret = NOT_SUPPORTED;
+                    }
+                }
+                else
+                {
+                    ret = ata_Legacy_Write_Same(device, feature, numberOfLogicalBlocks, startingLba, pattern, device->drive_info.deviceBlockSize);
+                }
+            }
+            else
+            {
+                ret = NOT_SUPPORTED;
+            }
+            if (localPattern)
+            {
+                safe_Free(pattern);
+            }
         }
         else
         {
-            ret = ata_SCT_Write_Same(device, useGPL, useDMA, WRITE_SAME_BACKGROUND_USE_SINGLE_LOGICAL_SECTOR, startingLba, numberOfLogicalBlocks, pattern, 1);
+            ret = NOT_SUPPORTED;
         }
     }
     else if (device->drive_info.drive_type == SCSI_DRIVE)
@@ -591,19 +650,46 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
                 return MEMORY_FAILURE;
             }
             //This drive supports the legacy 28bit read/write long commands from ATA...
-            //These commands are really old and transfer weir dbyte based values.
+            //These commands are really old and transfer weird byte based values.
             //While these transfer lengths shouldbe supported by SAT, there are some SATLs that won't handle this odd case. It may or may not go through...-TJE
-            ret = ata_Legacy_Read_Long(device, true, (uint32_t)corruptLBA, data, dataSize);
-            if (ret == SUCCESS)
+            if (device->drive_info.ata_Options.chsModeOnly)
             {
-                seed_64(time(NULL));
-                //modify the user data to cause a uncorrectable error
-                for (uint32_t iter = 0; iter < device->drive_info.deviceBlockSize - 1; ++iter)
+                uint16_t cylinder = 0;
+                uint8_t head = 0;
+                uint8_t sector = 0;
+                if (SUCCESS == convert_LBA_To_CHS(device, corruptLBA, &cylinder, &head, &sector))
                 {
-                    data[iter] = (uint8_t)random_Range_64(0, UINT8_MAX);
+                    ret = ata_Legacy_Read_Long_CHS(device, true, cylinder, head, sector, data, dataSize);
+                    if (ret == SUCCESS)
+                    {
+                        seed_64(time(NULL));
+                        //modify the user data to cause a uncorrectable error
+                        for (uint32_t iter = 0; iter < device->drive_info.deviceBlockSize - 1; ++iter)
+                        {
+                            data[iter] = (uint8_t)random_Range_64(0, UINT8_MAX);
+                        }
+                        ret = ata_Legacy_Write_Long_CHS(device, true, cylinder, head, sector, data, dataSize);
+                    }
                 }
-                ret = ata_Legacy_Write_Long(device, true, (uint32_t)corruptLBA, data, dataSize);
-            }   
+                else //Couldn't convert or the LBA is greater than the current CHS mode
+                {
+                    ret = NOT_SUPPORTED;
+                }
+            }
+            else
+            {
+                ret = ata_Legacy_Read_Long(device, true, (uint32_t)corruptLBA, data, dataSize);
+                if (ret == SUCCESS)
+                {
+                    seed_64(time(NULL));
+                    //modify the user data to cause a uncorrectable error
+                    for (uint32_t iter = 0; iter < device->drive_info.deviceBlockSize - 1; ++iter)
+                    {
+                        data[iter] = (uint8_t)random_Range_64(0, UINT8_MAX);
+                    }
+                    ret = ata_Legacy_Write_Long(device, true, (uint32_t)corruptLBA, data, dataSize);
+                }
+            }
             if (setFeaturesToChangeECCBytes)
             {
                 //reverting back to drive defaults again so that we don't mess anyone else up.
@@ -716,12 +802,46 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                     if (device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA)
                     {
                         //use PIO commands
-                        ret = ata_Read_Sectors(device, lba, ptrData, sectors, dataSize, true);
+                        if (device->drive_info.ata_Options.chsModeOnly)
+                        {
+                            uint16_t cylinder = 0;
+                            uint8_t head = 0;
+                            uint8_t sector = 0;
+                            if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                            {
+                                ret = ata_Legacy_Read_Sectors_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, true);
+                            }
+                            else //Couldn't convert or the LBA is greater than the current CHS mode
+                            {
+                                ret = NOT_SUPPORTED;
+                            }
+                        }
+                        else
+                        {
+                            ret = ata_Read_Sectors(device, lba, ptrData, sectors, dataSize, true);
+                        }
                     }
                     else
                     {
-                        //use DMA commands
-                        ret = ata_Read_DMA(device, lba, ptrData, sectors, dataSize, true);
+                        if (device->drive_info.ata_Options.chsModeOnly)
+                        {
+                            uint16_t cylinder = 0;
+                            uint8_t head = 0;
+                            uint8_t sector = 0;
+                            if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                            {
+                                ret = ata_Legacy_Read_DMA_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, true);
+                            }
+                            else //Couldn't convert or the LBA is greater than the current CHS mode
+                            {
+                                ret = NOT_SUPPORTED;
+                            }
+                        }
+                        else
+                        {
+                            //use DMA commands
+                            ret = ata_Read_DMA(device, lba, ptrData, sectors, dataSize, true);
+                        }
                     }                    
                 }
             }
@@ -749,12 +869,46 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                     if (device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA)
                     {
                         //use PIO commands
-                        ret = ata_Read_Sectors(device, lba, ptrData, sectors, dataSize, false);
+                        if (device->drive_info.ata_Options.chsModeOnly)
+                        {
+                            uint16_t cylinder = 0;
+                            uint8_t head = 0;
+                            uint8_t sector = 0;
+                            if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                            {
+                                ret = ata_Legacy_Read_Sectors_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, false);
+                            }
+                            else //Couldn't convert or the LBA is greater than the current CHS mode
+                            {
+                                ret = NOT_SUPPORTED;
+                            }
+                        }
+                        else
+                        {
+                            ret = ata_Read_Sectors(device, lba, ptrData, sectors, dataSize, false);
+                        }
                     }
                     else
                     {
-                        //use DMA commands
-                        ret = ata_Read_DMA(device, lba, ptrData, sectors, dataSize, false);
+                        if (device->drive_info.ata_Options.chsModeOnly)
+                        {
+                            uint16_t cylinder = 0;
+                            uint8_t head = 0;
+                            uint8_t sector = 0;
+                            if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                            {
+                                ret = ata_Legacy_Read_DMA_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, false);
+                            }
+                            else //Couldn't convert or the LBA is greater than the current CHS mode
+                            {
+                                ret = NOT_SUPPORTED;
+                            }
+                        }
+                        else
+                        {
+                            //use DMA commands
+                            ret = ata_Read_DMA(device, lba, ptrData, sectors, dataSize, false);
+                        }
                     }
                 }
             }
@@ -803,12 +957,46 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                     if (device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA)
                     {
                         //use PIO commands
-                        ret = ata_Write_Sectors(device, lba, ptrData, dataSize, true);
+                        if (device->drive_info.ata_Options.chsModeOnly)
+                        {
+                            uint16_t cylinder = 0;
+                            uint8_t head = 0;
+                            uint8_t sector = 0;
+                            if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                            {
+                                ret = ata_Legacy_Write_Sectors_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, true);
+                            }
+                            else //Couldn't convert or the LBA is greater than the current CHS mode
+                            {
+                                ret = NOT_SUPPORTED;
+                            }
+                        }
+                        else
+                        {
+                            ret = ata_Write_Sectors(device, lba, ptrData, dataSize, true);
+                        }
                     }
                     else
                     {
                         //use DMA commands
-                        ret = ata_Write_DMA(device, lba, ptrData, dataSize, true, false);
+                        if (device->drive_info.ata_Options.chsModeOnly)
+                        {
+                            uint16_t cylinder = 0;
+                            uint8_t head = 0;
+                            uint8_t sector = 0;
+                            if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                            {
+                                ret = ata_Legacy_Write_DMA_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, true, false);
+                            }
+                            else //Couldn't convert or the LBA is greater than the current CHS mode
+                            {
+                                ret = NOT_SUPPORTED;
+                            }
+                        }
+                        else
+                        {
+                            ret = ata_Write_DMA(device, lba, ptrData, dataSize, true, false);
+                        }
                     }
                 }
             }
@@ -836,12 +1024,46 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                     if (device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA)
                     {
                         //use PIO commands
-                        ret = ata_Write_Sectors(device, lba, ptrData, dataSize, false);
+                        if (device->drive_info.ata_Options.chsModeOnly)
+                        {
+                            uint16_t cylinder = 0;
+                            uint8_t head = 0;
+                            uint8_t sector = 0;
+                            if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                            {
+                                ret = ata_Legacy_Write_Sectors_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, false);
+                            }
+                            else //Couldn't convert or the LBA is greater than the current CHS mode
+                            {
+                                ret = NOT_SUPPORTED;
+                            }
+                        }
+                        else
+                        {
+                            ret = ata_Write_Sectors(device, lba, ptrData, dataSize, false);
+                        }
                     }
                     else
                     {
                         //use DMA commands
-                        ret = ata_Write_DMA(device, lba, ptrData, dataSize, false, false);
+                        if (device->drive_info.ata_Options.chsModeOnly)
+                        {
+                            uint16_t cylinder = 0;
+                            uint8_t head = 0;
+                            uint8_t sector = 0;
+                            if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                            {
+                                ret = ata_Legacy_Write_DMA_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, false, false);
+                            }
+                            else //Couldn't convert or the LBA is greater than the current CHS mode
+                            {
+                                ret = NOT_SUPPORTED;
+                            }
+                        }
+                        else
+                        {
+                            ret = ata_Write_DMA(device, lba, ptrData, dataSize, false, false);
+                        }
                     }
                 }
             }
@@ -1050,7 +1272,24 @@ int ata_Read_Verify(tDevice *device, uint64_t lba, uint32_t range)
             else
             {
                 //send read verify ext
-                ret = ata_Read_Verify_Sectors(device, true, (uint16_t)range, lba);
+                if (device->drive_info.ata_Options.chsModeOnly)
+                {
+                    uint16_t cylinder = 0;
+                    uint8_t head = 0;
+                    uint8_t sector = 0;
+                    if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                    {
+                        ret = ata_Legacy_Read_Verify_Sectors_CHS(device, true, (uint16_t)range, cylinder, head, sector);
+                    }
+                    else //Couldn't convert or the LBA is greater than the current CHS mode
+                    {
+                        ret = NOT_SUPPORTED;
+                    }
+                }
+                else
+                {
+                    ret = ata_Read_Verify_Sectors(device, true, (uint16_t)range, lba);
+                }
             }
         }
     }
@@ -1075,7 +1314,24 @@ int ata_Read_Verify(tDevice *device, uint64_t lba, uint32_t range)
             else
             {
                 //send read verify (28bit)
-                ret = ata_Read_Verify_Sectors(device, false, (uint16_t)range, lba);
+                if (device->drive_info.ata_Options.chsModeOnly)
+                {
+                    uint16_t cylinder = 0;
+                    uint8_t head = 0;
+                    uint8_t sector = 0;
+                    if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                    {
+                        ret = ata_Legacy_Read_Verify_Sectors_CHS(device, false, (uint16_t)range, cylinder, head, sector);
+                    }
+                    else //Couldn't convert or the LBA is greater than the current CHS mode
+                    {
+                        ret = NOT_SUPPORTED;
+                    }
+                }
+                else
+                {
+                    ret = ata_Read_Verify_Sectors(device, false, (uint16_t)range, lba);
+                }
             }
         }
     }

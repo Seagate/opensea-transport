@@ -215,6 +215,26 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         }
         *fillMaxLba -= 1;
 
+        //This flag will get set so we can do a software translation of LBA to CHS during read/write
+        if (!is_LBA_Mode_Supported(device) && is_CHS_Mode_Supported(device))
+        {
+            device->drive_info.ata_Options.chsModeOnly = true;
+            //simulate a max LBA into device information
+            uint16_t cylinder = M_BytesTo2ByteValue(identifyData[109], identifyData[108]);//word 54
+            uint8_t head = identifyData[110];//Word55
+            uint8_t sector = identifyData[112];//Word56
+            //if (cylinder == 0 && head == 0 && sector == 0)
+            //{
+            //    //current inforation isn't there....so use default values
+            //    cylinder = M_BytesTo2ByteValue(identifyData[3], identifyData[2]);//word 1
+            //    head = identifyData[6];//Word3
+            //    sector = identifyData[12];//Word6
+            //}
+            uint32_t lba = 0;
+            convert_CHS_To_LBA(device, cylinder, head, sector, &lba);
+            *fillMaxLba = lba;
+        }
+
         //Now determine if the drive supports DMA and which DMA modes it supports
         if (ident_word[49] & BIT8)
         {

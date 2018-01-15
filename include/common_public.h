@@ -754,6 +754,8 @@ extern "C"
         bool nativeCommandQueuingSupported;
         uint8_t logicalSectorsPerDRQDataBlock;
         bool isParallelTransport;
+        bool isDevice1;//Don't rely on this. Only here for some OS's/passthroughs. Most shouldn't need this. SAT or the OS's passthrough will ignore this bit in the commands anyways.
+        bool chsModeOnly;//AKA LBA not supported. Only really REALLY old drives should set this.
         bool writeUncorrectableExtSupported;
         bool fourtyEightBitAddressFeatureSetSupported;
         bool generalPurposeLoggingSupported;
