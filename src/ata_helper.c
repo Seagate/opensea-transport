@@ -230,8 +230,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             //    head = identifyData[6];//Word3
             //    sector = identifyData[12];//Word6
             //}
-            uint32_t lba = 0;
-            convert_CHS_To_LBA(device, cylinder, head, sector, &lba);
+            uint32_t lba = cylinder * head * sector;
             *fillMaxLba = lba;
         }
 
@@ -883,6 +882,45 @@ bool is_CHS_Mode_Supported(tDevice *device)
 
     return chsSupported;
 }
+
+//Code to test LBA to CHS conversion Below
+//FILE * chsTest = fopen("chsToLBATest.txt", "w");
+//if (chsTest)
+//{
+//    fprintf(chsTest, "%5s | %2s | %2s - LBA\n", "C", "H", "S");
+//    uint32_t cyl = 0;
+//    uint16_t head = 0, sector = 0;
+//    for (cyl = 0; cyl < deviceList[deviceIter].drive_info.IdentifyData.ata.Word054; ++cyl)
+//    {
+//        for (head = 0; head < deviceList[deviceIter].drive_info.IdentifyData.ata.Word055; ++head)
+//        {
+//            for (sector = 1; sector <= deviceList[deviceIter].drive_info.IdentifyData.ata.Word056; ++sector)
+//            {
+//                uint32_t lba = 0;
+//                convert_CHS_To_LBA(&deviceList[deviceIter], cyl, head, sector, &lba);
+//                fprintf(chsTest, "%5" PRIu32 " | %2" PRIu16 " | %2" PRIu16 " - %" PRIu32 "\n", cyl, head, sector, lba);
+//            }
+//        }
+//    }
+//    fflush(chsTest);
+//    fclose(chsTest);
+//}
+//
+//FILE *lbaToCHSTest = fopen("lbaToCHSTest.txt", "w");
+//if (lbaToCHSTest)
+//{
+//    fprintf(lbaToCHSTest, "%8s - %5s | %2s | %2s\n", "LBA", "C", "H", "S");
+//    for (uint32_t lba = 0; lba < 12706470; ++lba)
+//    {
+//        uint16_t cylinder = 0;
+//        uint8_t head = 0;
+//        uint8_t sector = 0;
+//        convert_LBA_To_CHS(&deviceList[deviceIter], lba, &cylinder, &head, &sector);
+//        fprintf(lbaToCHSTest, "%8" PRIu32 " - %5" PRIu16 " | %2" PRIu8 " | %2" PRIu8 "\n", lba, cylinder, head, sector);
+//    }
+//    fflush(lbaToCHSTest);
+//    fclose(lbaToCHSTest);
+//}
 
 //device parameter needed so we can see the current CHS configuration and translate properly...
 int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t *lba)
