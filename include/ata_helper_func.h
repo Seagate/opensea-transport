@@ -2145,7 +2145,7 @@ extern "C"
 
     OPENSEA_TRANSPORT_API int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t *lba);
 
-    OPENSEA_TRANSPORT_API int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_t *head, uint16_t *sector);
+    OPENSEA_TRANSPORT_API int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_t *head, uint8_t *sector);
 
     /////////////////////////////////////////////////////////////////////////////////
     /// Obsolete ATA Commands. These commands are from specs prior to ATA-ATAPI 7 ///

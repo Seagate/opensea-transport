@@ -541,9 +541,9 @@ int write_Same(tDevice *device, bool useGPL, bool useDMA, uint64_t startingLba, 
                 {
                     uint16_t cylinder = 0;
                     uint8_t head = 0, sector = 0;
-                    if (SUCCESS == convert_LBA_To_CHS(device, startingLba, &cylinder, &head, &sector))
+                    if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)startingLba, &cylinder, &head, &sector))
                     {
-                        ret = ata_Legacy_Write_Same_CHS(device, feature, numberOfLogicalBlocks, cylinder, head, sector, pattern, device->drive_info.deviceBlockSize);
+                        ret = ata_Legacy_Write_Same_CHS(device, feature, (uint8_t)numberOfLogicalBlocks, cylinder, head, sector, pattern, device->drive_info.deviceBlockSize);
                     }
                     else
                     {
@@ -552,7 +552,7 @@ int write_Same(tDevice *device, bool useGPL, bool useDMA, uint64_t startingLba, 
                 }
                 else
                 {
-                    ret = ata_Legacy_Write_Same(device, feature, numberOfLogicalBlocks, startingLba, pattern, device->drive_info.deviceBlockSize);
+                    ret = ata_Legacy_Write_Same(device, feature, (uint8_t)numberOfLogicalBlocks, (uint32_t)startingLba, pattern, device->drive_info.deviceBlockSize);
                 }
             }
             else
@@ -657,7 +657,7 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
                 uint16_t cylinder = 0;
                 uint8_t head = 0;
                 uint8_t sector = 0;
-                if (SUCCESS == convert_LBA_To_CHS(device, corruptLBA, &cylinder, &head, &sector))
+                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)corruptLBA, &cylinder, &head, &sector))
                 {
                     ret = ata_Legacy_Read_Long_CHS(device, true, cylinder, head, sector, data, dataSize);
                     if (ret == SUCCESS)
@@ -807,7 +807,7 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                             uint16_t cylinder = 0;
                             uint8_t head = 0;
                             uint8_t sector = 0;
-                            if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                            if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
                             {
                                 ret = ata_Legacy_Read_Sectors_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, true);
                             }
@@ -828,7 +828,7 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                             uint16_t cylinder = 0;
                             uint8_t head = 0;
                             uint8_t sector = 0;
-                            if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                            if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
                             {
                                 ret = ata_Legacy_Read_DMA_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, true);
                             }
@@ -874,7 +874,7 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                             uint16_t cylinder = 0;
                             uint8_t head = 0;
                             uint8_t sector = 0;
-                            if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                            if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
                             {
                                 ret = ata_Legacy_Read_Sectors_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, false);
                             }
@@ -895,7 +895,7 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                             uint16_t cylinder = 0;
                             uint8_t head = 0;
                             uint8_t sector = 0;
-                            if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                            if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
                             {
                                 ret = ata_Legacy_Read_DMA_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, false);
                             }
@@ -962,9 +962,9 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                             uint16_t cylinder = 0;
                             uint8_t head = 0;
                             uint8_t sector = 0;
-                            if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                            if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
                             {
-                                ret = ata_Legacy_Write_Sectors_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, true);
+                                ret = ata_Legacy_Write_Sectors_CHS(device, cylinder, head, sector, ptrData, dataSize, true);
                             }
                             else //Couldn't convert or the LBA is greater than the current CHS mode
                             {
@@ -984,9 +984,9 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                             uint16_t cylinder = 0;
                             uint8_t head = 0;
                             uint8_t sector = 0;
-                            if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                            if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
                             {
-                                ret = ata_Legacy_Write_DMA_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, true, false);
+                                ret = ata_Legacy_Write_DMA_CHS(device, cylinder, head, sector, ptrData, dataSize, true, false);
                             }
                             else //Couldn't convert or the LBA is greater than the current CHS mode
                             {
@@ -1029,9 +1029,9 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                             uint16_t cylinder = 0;
                             uint8_t head = 0;
                             uint8_t sector = 0;
-                            if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                            if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
                             {
-                                ret = ata_Legacy_Write_Sectors_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, false);
+                                ret = ata_Legacy_Write_Sectors_CHS(device, cylinder, head, sector, ptrData, dataSize, false);
                             }
                             else //Couldn't convert or the LBA is greater than the current CHS mode
                             {
@@ -1051,9 +1051,9 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                             uint16_t cylinder = 0;
                             uint8_t head = 0;
                             uint8_t sector = 0;
-                            if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                            if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
                             {
-                                ret = ata_Legacy_Write_DMA_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, false, false);
+                                ret = ata_Legacy_Write_DMA_CHS(device, cylinder, head, sector, ptrData, dataSize, false, false);
                             }
                             else //Couldn't convert or the LBA is greater than the current CHS mode
                             {
@@ -1277,7 +1277,7 @@ int ata_Read_Verify(tDevice *device, uint64_t lba, uint32_t range)
                     uint16_t cylinder = 0;
                     uint8_t head = 0;
                     uint8_t sector = 0;
-                    if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                    if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
                     {
                         ret = ata_Legacy_Read_Verify_Sectors_CHS(device, true, (uint16_t)range, cylinder, head, sector);
                     }
@@ -1319,7 +1319,7 @@ int ata_Read_Verify(tDevice *device, uint64_t lba, uint32_t range)
                     uint16_t cylinder = 0;
                     uint8_t head = 0;
                     uint8_t sector = 0;
-                    if (SUCCESS == convert_LBA_To_CHS(device, lba, &cylinder, &head, &sector))
+                    if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
                     {
                         ret = ata_Legacy_Read_Verify_Sectors_CHS(device, false, (uint16_t)range, cylinder, head, sector);
                     }

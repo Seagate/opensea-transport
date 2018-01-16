@@ -947,7 +947,7 @@ int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_
     return ret;
 }
 
-int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_t *head, uint16_t *sector)
+int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_t *head, uint8_t *sector)
 {
     int ret = SUCCESS;
     lba &= MAX_28_BIT_LBA;
@@ -965,7 +965,7 @@ int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_
                 uint32_t sectorsPerTrack = device->drive_info.IdentifyData.ata.Word056;
                 *cylinder = lba / (uint32_t)(headsPerCylinder * sectorsPerTrack);
                 *head = (uint8_t)((lba / sectorsPerTrack) % headsPerCylinder);
-                *sector = (uint16_t)((lba % sectorsPerTrack) + UINT32_C(1));
+                *sector = (uint8_t)((lba % sectorsPerTrack) + UINT8_C(1));
                 //check that this isn't above the value of words 58:57
                 if ((*cylinder) * (*head) * (*sector) > userAddressableCapacityCHS)
                 {
