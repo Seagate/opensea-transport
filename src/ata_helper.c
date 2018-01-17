@@ -955,7 +955,7 @@ int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_
     {
         uint8_t* identifyPtr = (uint8_t*)&device->drive_info.IdentifyData.ata.Word000;
         uint32_t lbaCapacity = M_BytesTo4ByteValue(identifyPtr[123], identifyPtr[122], identifyPtr[121], identifyPtr[120]);//28bit LBA value
-        uint16_t userAddressableCapacityCHS = M_BytesTo4ByteValue(identifyPtr[117], identifyPtr[116], identifyPtr[115], identifyPtr[114]);//CHS max sector capacity
+        uint32_t userAddressableCapacityCHS = M_BytesTo4ByteValue(identifyPtr[117], identifyPtr[116], identifyPtr[115], identifyPtr[114]);//CHS max sector capacity
         if (lba < lbaCapacity)
         {
             if (is_CHS_Mode_Supported(device))
@@ -967,7 +967,8 @@ int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_
                 *head = (uint8_t)((lba / sectorsPerTrack) % headsPerCylinder);
                 *sector = (uint8_t)((lba % sectorsPerTrack) + UINT8_C(1));
                 //check that this isn't above the value of words 58:57
-                if ((*cylinder) * (*head) * (*sector) > userAddressableCapacityCHS)
+                uint32_t currentSector = (*cylinder) * (*head) * (*sector);
+                if (currentSector > userAddressableCapacityCHS)
                 {
                     //change the return value, but leave the calculated values as they are
                     ret = NOT_SUPPORTED;

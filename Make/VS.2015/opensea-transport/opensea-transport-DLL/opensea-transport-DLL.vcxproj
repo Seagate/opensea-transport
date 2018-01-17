@@ -357,6 +357,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\..\src\ata_cmds.c" />
     <ClCompile Include="..\..\..\..\src\ata_helper.c" />
+    <ClCompile Include="..\..\..\..\src\ata_legacy_cmds.c" />
     <ClCompile Include="..\..\..\..\src\cam_helper.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>

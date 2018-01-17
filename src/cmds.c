@@ -525,7 +525,7 @@ int write_Same(tDevice *device, bool useGPL, bool useDMA, uint64_t startingLba, 
                 localPattern = true;
             }
             //Check range to see which feature to use
-            if (startingLba == 0 && numberOfLogicalBlocks == device->drive_info.deviceMaxLba)
+            if (startingLba == 0 && numberOfLogicalBlocks == (device->drive_info.deviceMaxLba + 1))
             {
                 feature = LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS;
                 numberOfLogicalBlocks = 0;

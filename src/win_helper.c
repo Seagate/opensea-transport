@@ -1888,6 +1888,7 @@ int send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
                 ret = PERMISSION_DENIED;
                 break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
+            case ERROR_INVALID_PARAMETER://Or command not supported?
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
                 break;

@@ -967,6 +967,10 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
         {
             ret = senseRet;//We didn't get RTFRs to judge and there wasn't an issue sending the command through the OS or driver...so go with what the sense data says
         }
+        else
+        {
+            ret = sendIOret;
+        }
     }
     safe_Free(satCDB);
     if (ret == UNKNOWN && (device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= ataCommandOptions->timeout)
