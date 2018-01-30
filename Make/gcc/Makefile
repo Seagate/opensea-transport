@@ -30,6 +30,7 @@ CFLAGS += -c -fPIC -I. -std=gnu99
 LFLAGS = -Wall ../../../opensea-common/Make/gcc/lib/$(FILE_OUTPUT_DIR)/libopensea-common.a
 LIB_SRC_FILES = \
 	$(SRC_DIR)ata_cmds.c\
+	$(SRC_DIR)ata_legacy_cmds.c\
 	$(SRC_DIR)ata_helper.c\
 	$(SRC_DIR)cmds.c\
 	$(SRC_DIR)common_public.c\
