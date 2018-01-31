@@ -2076,7 +2076,7 @@ int scsi_Read_Defect_Data_10(tDevice *device, bool requestPList, bool requestGLi
     }
     if (requestGList)
     {
-        cdb[2] |= BIT5;
+        cdb[2] |= BIT3;
     }
     cdb[2] |= defectListFormat & 0x07;
     cdb[3] = RESERVED;
@@ -2118,7 +2118,7 @@ int scsi_Read_Defect_Data_12(tDevice *device, bool requestPList, bool requestGLi
     }
     if (requestGList)
     {
-        cdb[1] |= BIT5;
+        cdb[1] |= BIT3;
     }
     cdb[1] |= defectListFormat & 0x07;
     cdb[2] = M_Byte3(addressDescriptorIndex);
