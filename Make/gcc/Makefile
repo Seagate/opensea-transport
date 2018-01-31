@@ -24,6 +24,7 @@ VERSION=$(MAJOR).$(MINOR).$(PATCH)
 SRC_DIR=../../src/
 INC_DIR=-I../../include -I../../../opensea-common/include
 CC=gcc
+AR=ar
 #override CFLAGS = -Wall -c -fPIC -I. -std=gnu99
 CFLAGS ?= -Wall 
 CFLAGS += -c -fPIC -I. -std=gnu99
@@ -77,7 +78,7 @@ opensea-libs:
 
 $(LIBS): $(LIB_OBJ_FILES) opensea-libs
 	rm -f $(FILE_OUTPUT_DIR)/$@
-	ar cq $(FILE_OUTPUT_DIR)/$@ $(LIB_OBJ_FILES)
+	$(AR) cq $(FILE_OUTPUT_DIR)/$@ $(LIB_OBJ_FILES)
 	$(CC) -shared $(LIB_OBJ_FILES) -o $(FILE_OUTPUT_DIR)/lib$(NAME).so.$(VERSION)
 clean:
 	rm -f $(FILE_OUTPUT_DIR)/lib$(NAME).a $(FILE_OUTPUT_DIR)/lib$(NAME).so.$(VERSION) *.o ../../src/*.o
