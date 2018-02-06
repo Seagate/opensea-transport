@@ -336,7 +336,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             }
                             else if (strstr(block, "st"))
                             {
-                                device->drive_info.drive_type = TAPE_DRIVE;
+                                device->drive_info.drive_type = LEGACY_TAPE_DRIVE;
                             }
                         }
                         //printf("Finish handle mapping\n");

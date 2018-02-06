@@ -224,7 +224,7 @@ int fill_Drive_Info_Data(tDevice *device)
 		{
         case IDE_INTERFACE:
             //We know this is an ATA interface and we SHOULD be able to send either an ATA or ATAPI identify...but that doesn't work right, so if the OS layer told us it is ATAPI, do SCSI device discovery
-            if (device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == TAPE_DRIVE)
+            if (device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE)
             {
                 status = fill_In_Device_Info(device);
             }

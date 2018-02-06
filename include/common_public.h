@@ -675,7 +675,7 @@ extern "C"
         NVME_DRIVE,
         ATAPI_DRIVE,
         FLASH_DRIVE,//This is a USB thumb drive/flash drive or an SD card, or compact flash, etc
-        TAPE_DRIVE,//not currently used...
+        LEGACY_TAPE_DRIVE//not currently used...
     } eDriveType;
 
     typedef enum _eInterfaceType {

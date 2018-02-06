@@ -53,8 +53,8 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         {
             //we aren't trying 12 byte...we should try it...BUT if we suspect that this is an ATAPI drive, we should NOT. This is because ATAPI uses the same opcode for the "blank"
             //command. Since these are the same, the SATL may not filter it properly and we may issue this command instead. Since I don't know what this does, let's avoid that if possible. - TJE
-            //Filter out ATAPI_DRIVE, TAPE_DRIVE, MEDIA_OPTICAL, & MEDIA_TAPE to be safe...this should be pretty good. -TJE
-            if (!(device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == TAPE_DRIVE
+            //Filter out ATAPI_DRIVE, LEGACY_TAPE_DRIVE, MEDIA_OPTICAL, & MEDIA_TAPE to be safe...this should be pretty good. -TJE
+            if (!(device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE
                 || device->drive_info.media_type == MEDIA_OPTICAL || device->drive_info.media_type == MEDIA_TAPE))
             {
                 device->drive_info.ata_Options.use12ByteSATCDBs = true;
