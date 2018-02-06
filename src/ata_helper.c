@@ -213,7 +213,10 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         {
             *fillMaxLba = M_BytesTo4ByteValue(identifyData[123], identifyData[122], identifyData[121], identifyData[120]);
         }
-        *fillMaxLba -= 1;
+        if (*fillMaxLba > 0)
+        {
+            *fillMaxLba -= 1;
+        }
 
         //This flag will get set so we can do a software translation of LBA to CHS during read/write
         if (!is_LBA_Mode_Supported(device) && is_CHS_Mode_Supported(device))
@@ -231,6 +234,14 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             //    sector = identifyData[12];//Word6
             //}
             uint32_t lba = cylinder * head * sector;
+            if (lba == 0)
+            {
+                //Cannot use "current" settings on this drive...use default (really old drive)
+                cylinder = M_BytesTo2ByteValue(identifyData[3], identifyData[2]);//word 1
+                head = identifyData[6];//Word3
+                sector = identifyData[12];//Word6
+                lba = cylinder * head * sector;
+            }
             *fillMaxLba = lba;
         }
 
@@ -867,9 +878,25 @@ bool is_CHS_Mode_Supported(tDevice *device)
 {
     bool chsSupported = true;
     uint8_t* identifyPtr = (uint8_t*)&device->drive_info.IdentifyData.ata.Word000;
+    //Check words 1, 3, 6
+    if (device->drive_info.IdentifyData.ata.Word001 == 0 ||
+        device->drive_info.IdentifyData.ata.Word003 == 0 ||
+        device->drive_info.IdentifyData.ata.Word006 == 0 )
+    {
+        chsSupported = false;
+    }
+
+    return chsSupported;
+}
+
+bool is_Current_CHS_Info_Valid(tDevice *device)
+{
+    bool chsSupported = true;
+    uint8_t* identifyPtr = (uint8_t*)&device->drive_info.IdentifyData.ata.Word000;
     uint16_t userAddressableCapacityCHS = M_BytesTo4ByteValue(identifyPtr[117], identifyPtr[116], identifyPtr[115], identifyPtr[114]);
     //Check words 1, 3, 6, 54, 55, 56, 58:57 for values
-    if (device->drive_info.IdentifyData.ata.Word001 == 0 ||
+    if (!(device->drive_info.IdentifyData.ata.Word053 & BIT0) || //if this bit is set, then the current fields are valid. If not, they may or may not be valid
+        device->drive_info.IdentifyData.ata.Word001 == 0 ||
         device->drive_info.IdentifyData.ata.Word003 == 0 ||
         device->drive_info.IdentifyData.ata.Word006 == 0 ||
         device->drive_info.IdentifyData.ata.Word054 == 0 ||
@@ -954,35 +981,53 @@ int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_
     if (cylinder && head &&sector)
     {
         uint8_t* identifyPtr = (uint8_t*)&device->drive_info.IdentifyData.ata.Word000;
-        uint32_t lbaCapacity = M_BytesTo4ByteValue(identifyPtr[123], identifyPtr[122], identifyPtr[121], identifyPtr[120]);//28bit LBA value
+        //uint32_t lbaCapacity = M_BytesTo4ByteValue(identifyPtr[123], identifyPtr[122], identifyPtr[121], identifyPtr[120]);//28bit LBA value
         uint32_t userAddressableCapacityCHS = M_BytesTo4ByteValue(identifyPtr[117], identifyPtr[116], identifyPtr[115], identifyPtr[114]);//CHS max sector capacity
-        if (lba < lbaCapacity)
-        {
+        //if (lba < lbaCapacity)
+        //{
             if (is_CHS_Mode_Supported(device))
             {
-                //TODO: check word 53 BIT0 so we know words 54-58 are valid?
-                uint32_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word055;
-                uint32_t sectorsPerTrack = device->drive_info.IdentifyData.ata.Word056;
-                *cylinder = lba / (uint32_t)(headsPerCylinder * sectorsPerTrack);
-                *head = (uint8_t)((lba / sectorsPerTrack) % headsPerCylinder);
-                *sector = (uint8_t)((lba % sectorsPerTrack) + UINT8_C(1));
-                //check that this isn't above the value of words 58:57
-                uint32_t currentSector = (*cylinder) * (*head) * (*sector);
-                if (currentSector > userAddressableCapacityCHS)
+                if (is_Current_CHS_Info_Valid(device))
                 {
-                    //change the return value, but leave the calculated values as they are
-                    ret = NOT_SUPPORTED;
+                    uint32_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word055;
+                    uint32_t sectorsPerTrack = device->drive_info.IdentifyData.ata.Word056;
+                    *cylinder = lba / (uint32_t)(headsPerCylinder * sectorsPerTrack);
+                    *head = (uint8_t)((lba / sectorsPerTrack) % headsPerCylinder);
+                    *sector = (uint8_t)((lba % sectorsPerTrack) + UINT8_C(1));
+                    //check that this isn't above the value of words 58:57
+                    uint32_t currentSector = (*cylinder) * (*head) * (*sector);
+                    if (currentSector > userAddressableCapacityCHS)
+                    {
+                        //change the return value, but leave the calculated values as they are
+                        ret = NOT_SUPPORTED;
+                    }
+                }
+                else
+                {
+                    uint32_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word003;
+                    uint32_t sectorsPerTrack = device->drive_info.IdentifyData.ata.Word006;
+                    *cylinder = lba / (uint32_t)(headsPerCylinder * sectorsPerTrack);
+                    *head = (uint8_t)((lba / sectorsPerTrack) % headsPerCylinder);
+                    *sector = (uint8_t)((lba % sectorsPerTrack) + UINT8_C(1));
+                    userAddressableCapacityCHS = device->drive_info.IdentifyData.ata.Word001 * device->drive_info.IdentifyData.ata.Word003 * device->drive_info.IdentifyData.ata.Word006;
+                    //check that this isn't above the value of words 58:57
+                    uint32_t currentSector = (*cylinder) * (*head) * (*sector);
+                    if (currentSector > userAddressableCapacityCHS)
+                    {
+                        //change the return value, but leave the calculated values as they are
+                        ret = NOT_SUPPORTED;
+                    }
                 }
             }
             else
             {
                 ret = NOT_SUPPORTED;
             }
-        }
-        else
-        {
-            ret = NOT_SUPPORTED;
-        }
+        //}
+        //else
+        //{
+        //    ret = NOT_SUPPORTED;
+        //}
     }
     else
     {
