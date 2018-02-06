@@ -1421,7 +1421,7 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     int fd = -1;
 #endif
     int  controllerNumber = 0, driveNumber = 0, found = 0;
-    for (controllerNumber = 0; controllerNumber < MAX_CONTROLLERS; ++controllerNumber)
+    for (controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS; ++controllerNumber)
     {
 #if defined (_WIN32)
 #if defined (__MINGW32__)
@@ -1540,7 +1540,7 @@ int get_CSMI_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, 
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
-        for (controllerNumber = 0; controllerNumber < MAX_CONTROLLERS && (found < numberOfDevices); ++controllerNumber)
+        for (controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS && (found < numberOfDevices); ++controllerNumber)
         {
             //TODO: get controller info and only try to go further when we have a phy/port with an attached device.
 #if defined(_WIN32)

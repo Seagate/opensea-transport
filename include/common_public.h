@@ -49,9 +49,9 @@ extern "C"
 
     #define SEAGATE_VENDOR_ID       (0x1BB1)
 
-    #define MAX_CONTROLLERS (8U)
+    #define OPENSEA_MAX_CONTROLLERS (8U)
     #define MAX_DEVICES_PER_CONTROLLER (256U)
-    #define MAX_DEVICES_TO_SCAN (MAX_CONTROLLERS * MAX_DEVICES_PER_CONTROLLER)
+    #define MAX_DEVICES_TO_SCAN (OPENSEA_MAX_CONTROLLERS * MAX_DEVICES_PER_CONTROLLER)
     
     #define SERIAL_NUM_LEN          (20) //Going with ATA lengths
     #define MODEL_NUM_LEN           (40)
