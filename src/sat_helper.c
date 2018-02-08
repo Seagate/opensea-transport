@@ -1540,12 +1540,53 @@ int satl_Sequential_Write_Commands(ScsiIoCtx *scsiIoCtx, uint64_t startLba, uint
     return ret;
 }
 
+bool are_RTFRs_Non_Zero_From_Identify(ataReturnTFRs *identRTFRs)
+{
+    bool nonZero = false;
+    if (identRTFRs->device != 0 ||
+        identRTFRs->lbaHi  != 0 ||
+        identRTFRs->lbaMid != 0 ||
+        identRTFRs->lbaLow != 0 ||
+        identRTFRs->secCnt != 0
+        //NOTE: Not checking error or status because those could be dummied up in low level passthrough stuff on some occasions - TJE
+        )
+    {
+        nonZero = true;
+    }
+    return nonZero;
+}
+
 int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t peripheralDevice = 0;
+    uint8_t commandCode = ATA_IDENTIFY;
     uint8_t ataInformation[572] = { 0 };
-    if (SUCCESS != ata_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
+#if SAT_SPEC_SUPPORTED > 3
+    if (device->drive_info.softSATFlags.identifyDeviceDataLogSupported)
+    {
+        if (SUCCESS != ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+        {
+            if (SUCCESS != ata_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
+            {
+                return FAILURE;
+            }
+        }
+        else
+        {
+            if (device->drive_info.ata_Options.readLogWriteLogDMASupported)
+            {
+                commandCode = ATA_READ_LOG_EXT_DMA;
+            }
+            else
+            {
+                commandCode = ATA_READ_LOG_EXT;
+            }
+        }
+    }
+    else 
+#endif
+        if (SUCCESS != ata_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
     {
         //that failed, so try an identify packet device
         if (SUCCESS != ata_Identify_Packet_Device(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
@@ -1554,6 +1595,7 @@ int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *scsiIoCtx
             return FAILURE;
         }
         peripheralDevice = 0x05;
+        commandCode = ATAPI_IDENTIFY;
     }
     set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL);
 #if SAT_SPEC_SUPPORTED > 3
@@ -1615,65 +1657,101 @@ int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *scsiIoCtx
         ataInformation[36] = 0x00;
     }
     //leaving PMPort and other stuff at 0 since I don't know those-TJE
-    if (peripheralDevice == 0 || peripheralDevice == 0x14) //ATA
+    if ((commandCode == ATA_IDENTIFY || commandCode == ATAPI_IDENTIFY)
+        && are_RTFRs_Non_Zero_From_Identify(&device->drive_info.lastCommandRTFRs))
     {
-        //Set ATA Device signature (need to add an if for zoned devices since they have a different signature in SATA 3.3, which is currently commented out below) - TJE
-        //this is set by what I could find in the SATA spec. I'm assuming if we made it to here in the code, the drive sent a good signature. - TJE
-        ataInformation[38] = 0x50;//status - 00h..70h
-        ataInformation[39] = 0x01;//error - 01h
-        ataInformation[40] = 0x01;//lbalo - 01h
-        ataInformation[41] = 0x00;//lbamid - 00h
-        ataInformation[42] = 0x00;//lbahi - 00h
-        ataInformation[43] = 0x00;//device - NA
-        ataInformation[44] = 0x00;//lbaloext - not specified
-        ataInformation[45] = 0x00;//lbamidext - not specified
-        ataInformation[46] = 0x00;//lbahiext - not specified
+        //In this case, we got the rtfrs from the drive and can use them to set the signature instead of dummying it up
+        ataInformation[38] = device->drive_info.lastCommandRTFRs.status;
+        ataInformation[39] = device->drive_info.lastCommandRTFRs.error;
+        ataInformation[40] = device->drive_info.lastCommandRTFRs.lbaLow;
+        ataInformation[41] = device->drive_info.lastCommandRTFRs.lbaMid;
+        ataInformation[42] = device->drive_info.lastCommandRTFRs.lbaHi;
+        ataInformation[43] = device->drive_info.lastCommandRTFRs.device;
+        ataInformation[44] = device->drive_info.lastCommandRTFRs.lbaLowExt;
+        ataInformation[45] = device->drive_info.lastCommandRTFRs.lbaMidExt;
+        ataInformation[46] = device->drive_info.lastCommandRTFRs.lbaHiExt;
         ataInformation[47] = RESERVED;
-        ataInformation[48] = 0x01;//seccnt - 01h
-        ataInformation[49] = 0x00;//seccntext - not specified
+        ataInformation[48] = device->drive_info.lastCommandRTFRs.secCnt;
+        ataInformation[49] = device->drive_info.lastCommandRTFRs.secCntExt;
         ataInformation[50] = RESERVED;
         ataInformation[51] = RESERVED;
         ataInformation[52] = RESERVED;
         ataInformation[53] = RESERVED;
         ataInformation[54] = RESERVED;
         ataInformation[55] = RESERVED;
-        if (peripheralDevice == 0x14)
+    }
+    else
+    {
+        if (peripheralDevice == 0 || peripheralDevice == 0x14) //ATA
         {
-            ataInformation[41] = 0xCD;//lbamid - CDh
-            ataInformation[42] = 0xAB;//lbahi - ABh
+            //Set ATA Device signature
+            //this is set by what I could find in the SATA spec. I'm assuming if we made it to here in the code, the drive sent a good signature. - TJE
+            ataInformation[38] = 0x50;//status - 00h..70h
+            ataInformation[39] = 0x01;//error - 01h
+            ataInformation[40] = 0x01;//lbalo - 01h
+            ataInformation[41] = 0x00;//lbamid - 00h
+            ataInformation[42] = 0x00;//lbahi - 00h
+            ataInformation[43] = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;//device - NA
+            if (device->drive_info.ata_Options.isDevice1)
+            {
+                ataInformation[43] |= DEVICE_SELECT_BIT;
+            }
+            ataInformation[44] = 0x00;//lbaloext - not specified
+            ataInformation[45] = 0x00;//lbamidext - not specified
+            ataInformation[46] = 0x00;//lbahiext - not specified
+            ataInformation[47] = RESERVED;
+            ataInformation[48] = 0x01;//seccnt - 01h
+            ataInformation[49] = 0x00;//seccntext - not specified
+            ataInformation[50] = RESERVED;
+            ataInformation[51] = RESERVED;
+            ataInformation[52] = RESERVED;
+            ataInformation[53] = RESERVED;
+            ataInformation[54] = RESERVED;
+            ataInformation[55] = RESERVED;
+            if (peripheralDevice == 0x14)
+            {
+                ataInformation[41] = 0xCD;//lbamid - CDh
+                ataInformation[42] = 0xAB;//lbahi - ABh
+            }
+        }
+        else //ATAPI
+        {
+            //this is set by what I could find in the SATA spec. I'm assuming if we made it to here in the code, the drive sent a good signature. - TJE
+            ataInformation[38] = 0x00;//status - 00h
+            ataInformation[39] = 0x01;//error - 01h
+            ataInformation[40] = 0x01;//lbalo - 01h
+            ataInformation[41] = 0x14;//lbamid - 14h
+            ataInformation[42] = 0xEB;//lbahi - EBh
+            ataInformation[43] = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;//device - NA
+            if (device->drive_info.ata_Options.isDevice1)
+            {
+                ataInformation[43] |= DEVICE_SELECT_BIT;
+            }
+            ataInformation[44] = 0x00;//lbaloext - not specified
+            ataInformation[45] = 0x00;//lbamidext - not specified
+            ataInformation[46] = 0x00;//lbahiext - not specified
+            ataInformation[47] = RESERVED;
+            ataInformation[48] = 0x01;//seccnt - 01h
+            ataInformation[49] = 0x00;//seccntext - not specified
+            ataInformation[50] = RESERVED;
+            ataInformation[51] = RESERVED;
+            ataInformation[52] = RESERVED;
+            ataInformation[53] = RESERVED;
+            ataInformation[54] = RESERVED;
+            ataInformation[55] = RESERVED;
         }
     }
-    else //ATAPI
-    {
-        //this is set by what I could find in the SATA spec. I'm assuming if we made it to here in the code, the drive sent a good signature. - TJE
-        ataInformation[38] = 0x00;//status - 00h
-        ataInformation[39] = 0x01;//error - 01h
-        ataInformation[40] = 0x01;//lbalo - 01h
-        ataInformation[41] = 0x14;//lbamid - 14h
-        ataInformation[42] = 0xEB;//lbahi - EBh
-        ataInformation[43] = 0x00;//device - NA
-        ataInformation[44] = 0x00;//lbaloext - not specified
-        ataInformation[45] = 0x00;//lbamidext - not specified
-        ataInformation[46] = 0x00;//lbahiext - not specified
-        ataInformation[47] = RESERVED;
-        ataInformation[48] = 0x01;//seccnt - 01h
-        ataInformation[49] = 0x00;//seccntext - not specified
-        ataInformation[50] = RESERVED;
-        ataInformation[51] = RESERVED;
-        ataInformation[52] = RESERVED;
-        ataInformation[53] = RESERVED;
-        ataInformation[54] = RESERVED;
-        ataInformation[55] = RESERVED;
-    }
     //command code
-    if (peripheralDevice == 0x05)
+    ataInformation[56] = commandCode;
+    //Old code below, now using variable to set command code since we may read identify data with a read log ext command
+    /*if (peripheralDevice == 0x05)
     {
         ataInformation[56] = ATAPI_IDENTIFY;
     }
     else
     {
         ataInformation[56] = ATA_IDENTIFY;
-    }
+    }*/
     //reserved
     ataInformation[57] = RESERVED;
     ataInformation[58] = RESERVED;

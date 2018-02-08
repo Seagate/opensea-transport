@@ -5370,8 +5370,16 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
         memcpy(&device->drive_info.bridge_info.t10SATvendorID[0], &ataInformation[8], 8);
         memcpy(&device->drive_info.bridge_info.SATproductID[0], &ataInformation[16], 16);
         memcpy(&device->drive_info.bridge_info.SATfwRev[0], &ataInformation[32], 4);
+
+        if (ataInformation[36] == 0) //checking for PATA drive
+        {
+            if (ataInformation[43] & DEVICE_SELECT_BIT)//ATA signature device register is here. Checking for the device select bit being set to know it's device 1 (Not that we really need it)
+            {
+                device->drive_info.ata_Options.isDevice1 = true;
+            }
+        }
         
-        if (ataInformation[56] == ATA_IDENTIFY)
+        if (ataInformation[56] == ATA_IDENTIFY || ataInformation[56] == ATA_READ_LOG_EXT || ataInformation[56] == ATA_READ_LOG_EXT_DMA)//Added read log commands here since they are in SAT4. Only HDD/SSD should use these.
         {
             issueSATIdentify = true;
             device->drive_info.media_type = MEDIA_HDD;

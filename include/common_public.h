@@ -785,6 +785,7 @@ extern "C"
     #endif
     typedef struct _softwareSATFlags
     {
+        bool identifyDeviceDataLogSupported;
         bool deviceStatisticsSupported; //if set to true, any 1 of the bools in the following struct is set to true (supported)
         struct
         {

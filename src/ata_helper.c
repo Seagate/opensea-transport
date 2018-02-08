@@ -78,6 +78,11 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     {
         //print_Data_Buffer((uint8_t*)ident_word, 512, true);
         ret = SUCCESS;
+        if (device->drive_info.lastCommandRTFRs.device & DEVICE_SELECT_BIT)//Checking for the device select bit being set to know it's device 1 (Not that we really need it). This may not always be reported correctly depending on the lower layers of the OS and hardware. - TJE
+        {
+            device->drive_info.ata_Options.isDevice1 = true;
+        }
+
         if (ident_word[0] & BIT15)
         {
             device->drive_info.drive_type = ATAPI_DRIVE;
@@ -455,6 +460,11 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             //now read the couple pages of logs we care about to set some more flags for software SAT
             if (readIDDataLog)
             {
+                memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
+                if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                {
+                    device->drive_info.softSATFlags.identifyDeviceDataLogSupported = true;
+                }
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
                 if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
                 {
