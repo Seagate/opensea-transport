@@ -121,7 +121,11 @@ extern "C"
     	uint32_t 			warningTempTime;
     	uint32_t 			criticalCompTime;
     	uint16_t 			tempSensor[8];
-    	uint8_t 			rsvd216[296];
+		uint32_t			thermalMgmtTemp1TransCount;
+		uint32_t			thermalMgmtTemp2TransCount;
+		uint32_t			totalTimeThermalMgmtTemp1;
+		uint32_t			totalTimeThermalMgmtTemp2;
+    	uint8_t 			rsvd216[280];
     #if !defined (__GNUC__)
     } nvmeSmartLog;
     #pragma pack(pop)
