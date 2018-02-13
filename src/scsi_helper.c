@@ -5489,7 +5489,26 @@ int fill_In_Device_Info(tDevice *device)
 		bool readCapacity = true;
         ret = SUCCESS;
         copy_Inquiry_Data(inq_buf, &device->drive_info);
-
+        //uint8_t responseFormat = M_GETBITRANGE(inq_buf[3], 3, 0);
+        uint8_t version = inq_buf[2];
+        switch (version) //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
+        {
+        case 0x81:
+            version = 1;//changing to 1 for SCSI
+            break;
+        case 0x80:
+        case 0x82:
+            version = 2;//changing to 2 for SCSI 2
+            break;
+        case 0x83:
+            version = 3;//changing to 3 for SPC
+            break;
+        case 0x84:
+            version = 4;//changing to 4 for SPC2
+            break;
+        default:
+            break;
+        }
         //set the media type as best we can
         uint8_t peripheralQualifier = (inq_buf[0] & (BIT7 | BIT6 | BIT5)) >> 5;
         uint8_t peripheralDeviceType = inq_buf[0] & (BIT4 | BIT3 | BIT2 | BIT1 | BIT0);
@@ -5580,23 +5599,26 @@ int fill_In_Device_Info(tDevice *device)
             printf("Quiting device discovery early per DO_NOT_WAKE_DRIVE\n");
             #endif
             bool satVersionDescriptorFound = false;
-            uint16_t versionDescriptor = 0;
-            for (uint16_t versionIter = 0, offset = 58; versionIter < 7; ++versionIter, offset += 2)
+            if (version >= 4)
             {
-                versionDescriptor = M_BytesTo2ByteValue(device->drive_info.scsiVpdData.inquiryData[offset + 0], device->drive_info.scsiVpdData.inquiryData[offset + 1]);
-                if (is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT)
-                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT2)
-                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT3)
-                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT4)
-                    //Next version descriptors aren't sat but should only appear on a SAT interface...at least we know they are ATA/ATAPI so it won't hurt to try issuing a command to the drive.
-                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI6)
-                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI7)
-                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI8)
-                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ACSx)
-                    )
+                uint16_t versionDescriptor = 0;
+                for (uint16_t versionIter = 0, offset = 58; versionIter < 7; ++versionIter, offset += 2)
                 {
-                    satVersionDescriptorFound = true;
-                    break;
+                    versionDescriptor = M_BytesTo2ByteValue(device->drive_info.scsiVpdData.inquiryData[offset + 0], device->drive_info.scsiVpdData.inquiryData[offset + 1]);
+                    if (is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT)
+                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT2)
+                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT3)
+                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT4)
+                        //Next version descriptors aren't sat but should only appear on a SAT interface...at least we know they are ATA/ATAPI so it won't hurt to try issuing a command to the drive.
+                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI6)
+                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI7)
+                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI8)
+                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ACSx)
+                        )
+                    {
+                        satVersionDescriptorFound = true;
+                        break;
+                    }
                 }
             }
             //We actually need to try issuing an ATA/ATAPI identify to the drive to set the drive type...but I'm going to try and ONLY do it for ATA drives with the if statement below...it should catch almost all cases (which is good enough for now)
@@ -5612,104 +5634,17 @@ int fill_In_Device_Info(tDevice *device)
         
         if (M_Word0(device->dFlags) == FAST_SCAN)
         {
-            //I'm reading only the unit serial number page here for a quick scan and the device information page for WWN - TJE
-            uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
-            uint8_t *unitSerialNumber = (uint8_t*)calloc(unitSerialNumberPageLength, sizeof(uint8_t));
-            if (!unitSerialNumber)
+            if (version >= 2)//unit serial number added in SCSI2
             {
-                perror("Error allocating memory to read the unit serial number");
-                return MEMORY_FAILURE;
-            }
-            if (SUCCESS == scsi_Inquiry(device, unitSerialNumber, unitSerialNumberPageLength, UNIT_SERIAL_NUMBER, true, false))
-            {
-                uint16_t serialNumberLength = M_BytesTo2ByteValue(unitSerialNumber[2], unitSerialNumber[3]);
-                if (serialNumberLength > 0)
-                {
-                    memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
-                    device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
-                    remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
-                }
-            }
-            safe_Free(unitSerialNumber);
-            uint8_t *deviceIdentification = (uint8_t*)calloc(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t));
-            if (!deviceIdentification)
-            {
-                perror("Error allocating memory to read device identification VPD page");
-                return MEMORY_FAILURE;
-            }
-            if (SUCCESS == scsi_Inquiry(device, deviceIdentification, INQ_RETURN_DATA_LENGTH, DEVICE_IDENTIFICATION, true, false))
-            {
-                //this SHOULD work for getting a WWN 90% of the time, but if it doesn't, then we will need to go through the descriptors from the device and set it from the correct one. See the SATChecker util code for how to do this
-                memcpy(&device->drive_info.worldWideName, &deviceIdentification[8], 8);
-                byte_Swap_64(&device->drive_info.worldWideName);
-            }
-            safe_Free(deviceIdentification);
-            //One last thing...Need to do a SAT scan...
-            check_SAT_Compliance_And_Set_Drive_Type(device);
-            return ret;
-        }
-
-        //from here on we need to check if a VPD page is supported and read it if there is anything in it that we care about to store info in the device struct
-        memset(inq_buf, 0, INQ_RETURN_DATA_LENGTH);
-        bool dummyUpVPDSupport = false;
-        if (SUCCESS != scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, 0, true, false))
-        {
-            //for whatever reason, this device didn't return support for the list of supported pages, so set a flag telling us to dummy up a list so that we can still attempt to issue commands to pages we do need to try and get (this is a workaround for some really stupid USB bridges)
-            dummyUpVPDSupport = true;
-        }
-        if (dummyUpVPDSupport == false)
-        {
-            uint8_t zeroedMem[INQ_RETURN_DATA_LENGTH] = { 0 };
-            if (memcmp(inq_buf, zeroedMem, INQ_RETURN_DATA_LENGTH) == 0)
-            {
-                //this case means that the command was successful, but we got nothing but zeros....which happens on some craptastic USB bridges
-                dummyUpVPDSupport = true;
-            }
-        }
-        if (dummyUpVPDSupport)
-        {
-            //in here we will set up a fake supported VPD pages buffer so that we try to read the unit serial number page, the SAT page, and device identification page
-            inq_buf[0] = peripheralQualifier << 5;
-            inq_buf[0] |= peripheralDeviceType;
-            //set page code
-            inq_buf[1] = 0x00;
-            //set page length (n-3)
-            inq_buf[2] = 0;//msb
-            inq_buf[3] = 5;//lsb
-            //now each byte will reference a supported VPD page we want to dummy up. These should be in ascending order
-            inq_buf[4] = SUPPORTED_VPD_PAGES;
-            inq_buf[5] = UNIT_SERIAL_NUMBER;
-            inq_buf[6] = DEVICE_IDENTIFICATION;
-            inq_buf[7] = ATA_INFORMATION;
-            inq_buf[8] = BLOCK_DEVICE_CHARACTERISTICS;
-            //TODO: Add more pages to the dummy information as we need to. This may be useful to do in the future in case a device decides not to support a MANDATORY page or another page we care about
-        }
-        //first, get the length of the supported pages
-        uint16_t supportedVPDPagesLength = M_BytesTo2ByteValue(inq_buf[2], inq_buf[3]);
-        uint8_t *supportedVPDPages = (uint8_t*)calloc(supportedVPDPagesLength, sizeof(uint8_t));
-        if (!supportedVPDPages)
-        {
-            perror("Error allocating memory for supported VPD pages!\n");
-            return MEMORY_FAILURE;
-        }
-        memcpy(supportedVPDPages, &inq_buf[4], supportedVPDPagesLength);
-        //now loop through and read pages as we need to, only reading the pages that we care about
-        bool satVPDPageRead = false;
-        uint16_t vpdIter = 0;
-        for (vpdIter = 0; vpdIter < supportedVPDPagesLength; vpdIter++)
-        {
-            switch (supportedVPDPages[vpdIter])
-            {
-            case UNIT_SERIAL_NUMBER://Device serial number (only grab 20 characters worth since that's what we need for the device struct)
-            {
+                //I'm reading only the unit serial number page here for a quick scan and the device information page for WWN - TJE
                 uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
                 uint8_t *unitSerialNumber = (uint8_t*)calloc(unitSerialNumberPageLength, sizeof(uint8_t));
                 if (!unitSerialNumber)
                 {
                     perror("Error allocating memory to read the unit serial number");
-                    continue;//continue the loop
+                    return MEMORY_FAILURE;
                 }
-                if (SUCCESS == scsi_Inquiry(device, unitSerialNumber, unitSerialNumberPageLength, supportedVPDPages[vpdIter], true, false))
+                if (SUCCESS == scsi_Inquiry(device, unitSerialNumber, unitSerialNumberPageLength, UNIT_SERIAL_NUMBER, true, false))
                 {
                     uint16_t serialNumberLength = M_BytesTo2ByteValue(unitSerialNumber[2], unitSerialNumber[3]);
                     if (serialNumberLength > 0)
@@ -5720,15 +5655,20 @@ int fill_In_Device_Info(tDevice *device)
                     }
                 }
                 safe_Free(unitSerialNumber);
-                break;
             }
-            case DEVICE_IDENTIFICATION://World wide name
+            else
+            {
+                //SN may not be available...just going to read where it may otherwise show up in inquiry data like some vendors like to put it
+                memcpy(&device->drive_info.serialNumber[0], &inq_buf[36], SERIAL_NUM_LEN);
+                device->drive_info.serialNumber[SERIAL_NUM_LEN] = '\0';
+            }
+            if (version >= 3)//device identification added in SPC
             {
                 uint8_t *deviceIdentification = (uint8_t*)calloc(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t));
                 if (!deviceIdentification)
                 {
                     perror("Error allocating memory to read device identification VPD page");
-                    continue;
+                    return MEMORY_FAILURE;
                 }
                 if (SUCCESS == scsi_Inquiry(device, deviceIdentification, INQ_RETURN_DATA_LENGTH, DEVICE_IDENTIFICATION, true, false))
                 {
@@ -5737,100 +5677,224 @@ int fill_In_Device_Info(tDevice *device)
                     byte_Swap_64(&device->drive_info.worldWideName);
                 }
                 safe_Free(deviceIdentification);
-                break;
             }
-            case ATA_INFORMATION: //use this to determine if it's SAT compliant
+            //One last thing...Need to do a SAT scan...
+            check_SAT_Compliance_And_Set_Drive_Type(device);
+            return ret;
+        }
+
+        bool satVPDPageRead = false;
+        bool satComplianceChecked = false;
+        if (version >= 2)//SCSI 2 added VPD pages
+        {
+            //from here on we need to check if a VPD page is supported and read it if there is anything in it that we care about to store info in the device struct
+            memset(inq_buf, 0, INQ_RETURN_DATA_LENGTH);
+            bool dummyUpVPDSupport = false;
+            if (SUCCESS != scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, 0, true, false))
             {
-                if (SUCCESS == check_SAT_Compliance_And_Set_Drive_Type(device))
-                {
-                    satVPDPageRead = true;
-                }
-                break;
+                //for whatever reason, this device didn't return support for the list of supported pages, so set a flag telling us to dummy up a list so that we can still attempt to issue commands to pages we do need to try and get (this is a workaround for some really stupid USB bridges)
+                dummyUpVPDSupport = true;
             }
-            case BLOCK_DEVICE_CHARACTERISTICS: //use this to determine if it's SSD or HDD and whether it's a HDD or not
+            if (dummyUpVPDSupport == false)
             {
-                uint8_t *blockDeviceCharacteristics = (uint8_t*)calloc(VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, sizeof(uint8_t));
-                if (!blockDeviceCharacteristics)
+                uint8_t zeroedMem[INQ_RETURN_DATA_LENGTH] = { 0 };
+                if (memcmp(inq_buf, zeroedMem, INQ_RETURN_DATA_LENGTH) == 0)
                 {
-                    perror("Error allocating memory to read block device characteistics VPD page");
-                    continue;
+                    //this case means that the command was successful, but we got nothing but zeros....which happens on some craptastic USB bridges
+                    dummyUpVPDSupport = true;
                 }
-                if (SUCCESS == scsi_Inquiry(device, blockDeviceCharacteristics, VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, BLOCK_DEVICE_CHARACTERISTICS, true, false))
+            }
+            if (dummyUpVPDSupport)
+            {
+                uint16_t offset = 4;//start of pages to dummy up
+                //in here we will set up a fake supported VPD pages buffer so that we try to read the unit serial number page, the SAT page, and device identification page
+                inq_buf[0] = peripheralQualifier << 5;
+                inq_buf[0] |= peripheralDeviceType;
+                //set page code
+                inq_buf[1] = 0x00;
+                
+                //now each byte will reference a supported VPD page we want to dummy up. These should be in ascending order
+                inq_buf[offset] = SUPPORTED_VPD_PAGES;
+                ++offset;
+                inq_buf[offset] = UNIT_SERIAL_NUMBER;
+                ++offset;
+                if (version >= 3)//SPC
                 {
-                    uint16_t mediumRotationRate = M_BytesTo2ByteValue(blockDeviceCharacteristics[4], blockDeviceCharacteristics[5]);
-                    uint8_t productType = blockDeviceCharacteristics[6];
-                    if (mediumRotationRate == 0x0001)
+                    inq_buf[offset] = DEVICE_IDENTIFICATION;
+                    ++offset;
+                }
+                //TODO: Always add ATA Information attempt?
+                inq_buf[offset] = ATA_INFORMATION;
+                ++offset;
+                if (version >= 3)//SPC
+                {
+                    if (peripheralDeviceType == PERIPHERAL_DIRECT_ACCESS_BLOCK_DEVICE || peripheralDeviceType == PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE || peripheralDeviceType == PERIPHERAL_HOST_MANAGED_ZONED_BLOCK_DEVICE)
                     {
-                        if (!satVPDPageRead)
+                        inq_buf[offset] = BLOCK_DEVICE_CHARACTERISTICS;
+                    }
+                }
+                //TODO: Add more pages to the dummy information as we need to. This may be useful to do in the future in case a device decides not to support a MANDATORY page or another page we care about
+
+                //set page length (n-3)
+                inq_buf[2] = M_Byte1(offset);//msb
+                inq_buf[3] = M_Byte0(offset);//lsb
+            }
+            //first, get the length of the supported pages
+            uint16_t supportedVPDPagesLength = M_BytesTo2ByteValue(inq_buf[2], inq_buf[3]);
+            uint8_t *supportedVPDPages = (uint8_t*)calloc(supportedVPDPagesLength, sizeof(uint8_t));
+            if (!supportedVPDPages)
+            {
+                perror("Error allocating memory for supported VPD pages!\n");
+                return MEMORY_FAILURE;
+            }
+            memcpy(supportedVPDPages, &inq_buf[4], supportedVPDPagesLength);
+            //now loop through and read pages as we need to, only reading the pages that we care about
+            uint16_t vpdIter = 0;
+            for (vpdIter = 0; vpdIter < supportedVPDPagesLength; vpdIter++)
+            {
+                switch (supportedVPDPages[vpdIter])
+                {
+                case UNIT_SERIAL_NUMBER://Device serial number (only grab 20 characters worth since that's what we need for the device struct)
+                {
+                    uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
+                    uint8_t *unitSerialNumber = (uint8_t*)calloc(unitSerialNumberPageLength, sizeof(uint8_t));
+                    if (!unitSerialNumber)
+                    {
+                        perror("Error allocating memory to read the unit serial number");
+                        continue;//continue the loop
+                    }
+                    if (SUCCESS == scsi_Inquiry(device, unitSerialNumber, unitSerialNumberPageLength, supportedVPDPages[vpdIter], true, false))
+                    {
+                        uint16_t serialNumberLength = M_BytesTo2ByteValue(unitSerialNumber[2], unitSerialNumber[3]);
+                        if (serialNumberLength > 0)
                         {
-                            device->drive_info.media_type = MEDIA_SSD;
+                            memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
+                            device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
+                            remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
                         }
                     }
-                    else if (mediumRotationRate >= 0x401 && mediumRotationRate <= 0xFFFE)
+                    safe_Free(unitSerialNumber);
+                    break;
+                }
+                case DEVICE_IDENTIFICATION://World wide name
+                {
+                    uint8_t *deviceIdentification = (uint8_t*)calloc(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t));
+                    if (!deviceIdentification)
                     {
-                        if (!satVPDPageRead)
-                        {
-                            device->drive_info.media_type = MEDIA_HDD;
-                        }
+                        perror("Error allocating memory to read device identification VPD page");
+                        continue;
+                    }
+                    if (SUCCESS == scsi_Inquiry(device, deviceIdentification, INQ_RETURN_DATA_LENGTH, DEVICE_IDENTIFICATION, true, false))
+                    {
+                        //this SHOULD work for getting a WWN 90% of the time, but if it doesn't, then we will need to go through the descriptors from the device and set it from the correct one. See the SATChecker util code for how to do this
+                        memcpy(&device->drive_info.worldWideName, &deviceIdentification[8], 8);
+                        byte_Swap_64(&device->drive_info.worldWideName);
+                    }
+                    safe_Free(deviceIdentification);
+                    break;
+                }
+                case ATA_INFORMATION: //use this to determine if it's SAT compliant
+                {
+                    if (SUCCESS == check_SAT_Compliance_And_Set_Drive_Type(device))
+                    {
+                        satVPDPageRead = true;
                     }
                     else
                     {
-                        if (!satVPDPageRead)
-                        {
-                            device->drive_info.media_type = MEDIA_UNKNOWN;
-                        }
+                        //send test unit ready to get the device responding again (For better performance on some USB devices that don't support this page)
+                        scsi_Test_Unit_Ready(device, NULL);
                     }
-                    switch (productType)
-                    {
-                    case 0x01://CFAST
-                    case 0x02://compact flash
-                    case 0x03://Memory Stick
-                    case 0x04://MultiMediaCard
-                    case 0x05://SecureDigitalCard
-                    case 0x06://XQD
-                    case 0x07://Universal Flash Storage
-                        if (!satVPDPageRead)
-                        {
-                            device->drive_info.media_type = MEDIA_SSM_FLASH;
-                        }
-                        break;
-                    default://not indicated or reserved or vendor unique so do nothing
-                        break;
-                    }
-                    //get zoned information (as long as it isn't already set from SAT passthrough)
-                    if (device->drive_info.zonedType == ZONED_TYPE_NOT_ZONED)
-                    {
-                        switch ((blockDeviceCharacteristics[8] & 0x30) >> 4)
-                        {
-                        case 0:
-                            device->drive_info.zonedType = ZONED_TYPE_NOT_ZONED;
-                            break;
-                        case 1:
-                            device->drive_info.zonedType = ZONED_TYPE_HOST_AWARE;
-                            break;
-                        case 2:
-                            device->drive_info.zonedType = ZONED_TYPE_DEVICE_MANAGED;
-                            break;
-                        case 3:
-                            device->drive_info.zonedType = ZONED_TYPE_RESERVED;
-                            break;
-                        default:
-                            break;
-                        }
-                    }
+                    satComplianceChecked = true;
+                    break;
                 }
-                safe_Free(blockDeviceCharacteristics);
-                break;
+                case BLOCK_DEVICE_CHARACTERISTICS: //use this to determine if it's SSD or HDD and whether it's a HDD or not
+                {
+                    uint8_t *blockDeviceCharacteristics = (uint8_t*)calloc(VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, sizeof(uint8_t));
+                    if (!blockDeviceCharacteristics)
+                    {
+                        perror("Error allocating memory to read block device characteistics VPD page");
+                        continue;
+                    }
+                    if (SUCCESS == scsi_Inquiry(device, blockDeviceCharacteristics, VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, BLOCK_DEVICE_CHARACTERISTICS, true, false))
+                    {
+                        uint16_t mediumRotationRate = M_BytesTo2ByteValue(blockDeviceCharacteristics[4], blockDeviceCharacteristics[5]);
+                        uint8_t productType = blockDeviceCharacteristics[6];
+                        if (mediumRotationRate == 0x0001)
+                        {
+                            if (!satVPDPageRead)
+                            {
+                                device->drive_info.media_type = MEDIA_SSD;
+                            }
+                        }
+                        else if (mediumRotationRate >= 0x401 && mediumRotationRate <= 0xFFFE)
+                        {
+                            if (!satVPDPageRead)
+                            {
+                                device->drive_info.media_type = MEDIA_HDD;
+                            }
+                        }
+                        else
+                        {
+                            if (!satVPDPageRead)
+                            {
+                                device->drive_info.media_type = MEDIA_UNKNOWN;
+                            }
+                        }
+                        switch (productType)
+                        {
+                        case 0x01://CFAST
+                        case 0x02://compact flash
+                        case 0x03://Memory Stick
+                        case 0x04://MultiMediaCard
+                        case 0x05://SecureDigitalCard
+                        case 0x06://XQD
+                        case 0x07://Universal Flash Storage
+                            if (!satVPDPageRead)
+                            {
+                                device->drive_info.media_type = MEDIA_SSM_FLASH;
+                            }
+                            break;
+                        default://not indicated or reserved or vendor unique so do nothing
+                            break;
+                        }
+                        //get zoned information (as long as it isn't already set from SAT passthrough)
+                        if (device->drive_info.zonedType == ZONED_TYPE_NOT_ZONED)
+                        {
+                            switch ((blockDeviceCharacteristics[8] & 0x30) >> 4)
+                            {
+                            case 0:
+                                device->drive_info.zonedType = ZONED_TYPE_NOT_ZONED;
+                                break;
+                            case 1:
+                                device->drive_info.zonedType = ZONED_TYPE_HOST_AWARE;
+                                break;
+                            case 2:
+                                device->drive_info.zonedType = ZONED_TYPE_DEVICE_MANAGED;
+                                break;
+                            case 3:
+                                device->drive_info.zonedType = ZONED_TYPE_RESERVED;
+                                break;
+                            default:
+                                break;
+                            }
+                        }
+                    }
+                    safe_Free(blockDeviceCharacteristics);
+                    break;
+                }
+                default:
+                    //do nothing, we don't care about reading this page (at least not right now)
+                    break;
+                }
             }
-            default:
-                //do nothing, we don't care about reading this page (at least not right now)
-                break;
-            }
+            safe_Free(supportedVPDPages);
         }
-        safe_Free(supportedVPDPages);
 
         if(readCapacity)
         {
+            //if inquiry says SPC or lower (3), then only do read capacity 10
+            //Anything else can have read capacity 16 command available
+
             //send a read capacity command to get the device's logical block size...read capacity 10 should be enough for this
             uint8_t *readCapBuf = (uint8_t*)calloc(READ_CAPACITY_10_LEN, sizeof(uint8_t));
             if (!readCapBuf)
@@ -5841,35 +5905,38 @@ int fill_In_Device_Info(tDevice *device)
             if (SUCCESS == scsi_Read_Capacity_10(device, readCapBuf, READ_CAPACITY_10_LEN))
             {
                 copy_Read_Capacity_Info(&device->drive_info.deviceBlockSize, &device->drive_info.devicePhyBlockSize, &device->drive_info.deviceMaxLba, &device->drive_info.sectorAlignment, readCapBuf, false);
-                //try a read capacity 16 anyways and see if the data from that was valid or not since that will give us a physical sector size whereas readcap10 data will not
-                uint8_t* temp = (uint8_t*)realloc(readCapBuf, READ_CAPACITY_16_LEN * sizeof(uint8_t));
-                if (!temp)
+                if (version > 3)//SPC2 and higher can reference SBC2 and higher which introduced read capacity 16
                 {
-                    safe_Free(inq_buf);
-                    return MEMORY_FAILURE;
-                }
-                readCapBuf = temp;
-                memset(readCapBuf, 0, READ_CAPACITY_16_LEN);
-                if (SUCCESS == scsi_Read_Capacity_16(device, readCapBuf, READ_CAPACITY_16_LEN))
-                {
-                    uint32_t logicalBlockSize = 0;
-                    uint32_t physicalBlockSize = 0;
-                    uint64_t maxLBA = 0;
-                    uint16_t sectorAlignment = 0;
-                    copy_Read_Capacity_Info(&logicalBlockSize, &physicalBlockSize, &maxLBA, &sectorAlignment, readCapBuf, true);
-                    //some USB drives will return success and no data, so check if this local var is 0 or not...if not, we can use this data
-                    if (maxLBA != 0)
+                    //try a read capacity 16 anyways and see if the data from that was valid or not since that will give us a physical sector size whereas readcap10 data will not
+                    uint8_t* temp = (uint8_t*)realloc(readCapBuf, READ_CAPACITY_16_LEN * sizeof(uint8_t));
+                    if (!temp)
                     {
-                        device->drive_info.deviceBlockSize = logicalBlockSize;
-                        device->drive_info.devicePhyBlockSize = physicalBlockSize;
-                        device->drive_info.deviceMaxLba = maxLBA;
-                        device->drive_info.sectorAlignment = sectorAlignment;
+                        safe_Free(inq_buf);
+                        return MEMORY_FAILURE;
                     }
-                    device->drive_info.currentProtectionType = 0;
-                    device->drive_info.piExponent = M_GETBITRANGE(readCapBuf[13], 7, 4);
-                    if (readCapBuf[12] & BIT0)
+                    readCapBuf = temp;
+                    memset(readCapBuf, 0, READ_CAPACITY_16_LEN);
+                    if (SUCCESS == scsi_Read_Capacity_16(device, readCapBuf, READ_CAPACITY_16_LEN))
                     {
-                        device->drive_info.currentProtectionType = M_GETBITRANGE(readCapBuf[12], 3, 1) + 1;
+                        uint32_t logicalBlockSize = 0;
+                        uint32_t physicalBlockSize = 0;
+                        uint64_t maxLBA = 0;
+                        uint16_t sectorAlignment = 0;
+                        copy_Read_Capacity_Info(&logicalBlockSize, &physicalBlockSize, &maxLBA, &sectorAlignment, readCapBuf, true);
+                        //some USB drives will return success and no data, so check if this local var is 0 or not...if not, we can use this data
+                        if (maxLBA != 0)
+                        {
+                            device->drive_info.deviceBlockSize = logicalBlockSize;
+                            device->drive_info.devicePhyBlockSize = physicalBlockSize;
+                            device->drive_info.deviceMaxLba = maxLBA;
+                            device->drive_info.sectorAlignment = sectorAlignment;
+                        }
+                        device->drive_info.currentProtectionType = 0;
+                        device->drive_info.piExponent = M_GETBITRANGE(readCapBuf[13], 7, 4);
+                        if (readCapBuf[12] & BIT0)
+                        {
+                            device->drive_info.currentProtectionType = M_GETBITRANGE(readCapBuf[12], 3, 1) + 1;
+                        }
                     }
                 }
             }
@@ -5896,10 +5963,17 @@ int fill_In_Device_Info(tDevice *device)
                 }
             }
             safe_Free(readCapBuf);
+            if (device->drive_info.devicePhyBlockSize == 0)
+            {
+                //If we did not get a physical blocksize, we need to set it to the blocksize (logical).
+                //This will help with old devices or those that don't support the read capacity 16 command or return other weird invalid data.
+                device->drive_info.devicePhyBlockSize = device->drive_info.deviceBlockSize;
+            }
         }
 
         //if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just issue a SAT identify in here to set things up...might reduce multiple commands later
-        if ((device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE) && satVPDPageRead == false && device->drive_info.media_type != MEDIA_UNKNOWN)
+        if ((device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE) 
+            && satVPDPageRead == false && device->drive_info.media_type != MEDIA_UNKNOWN && satComplianceChecked == false)
         {
             check_SAT_Compliance_And_Set_Drive_Type(device);
         }

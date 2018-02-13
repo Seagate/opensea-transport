@@ -1414,7 +1414,10 @@ int scsi_Test_Unit_Ready(tDevice *device, scsiStatus * pReturnStatus)
 
     //send the command
     ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
-    get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &pReturnStatus->senseKey, &pReturnStatus->acq, &pReturnStatus->ascq, &pReturnStatus->fru);
+    if (pReturnStatus)
+    {
+        get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &pReturnStatus->senseKey, &pReturnStatus->acq, &pReturnStatus->ascq, &pReturnStatus->fru);
+    }
     //leave this here or else the verbose output gets confusing to look at when debugging- this only prints the ret for the function, not the acs/acsq stuff
     print_Return_Enum("Test Unit Ready", ret);
 

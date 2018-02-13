@@ -518,8 +518,8 @@ extern "C"
         PERIPHERAL_OPTICAL_MEMORY_DEVICE                = 0x07,
         PERIPHERAL_MEDIUM_CHANGER_DEVICE                = 0x08,
         PERIPHERAL_COMMUNICATIONS_DEVICE                = 0x09,
-        PERIPHERAL_OBSOLETE1                            = 0x0A,
-        PERIPHERAL_OBSOLETE2                            = 0x0B,
+        PERIPHERAL_OBSOLETE1                            = 0x0A,//ASC IT8 (Graphic arts pre-press devices)
+        PERIPHERAL_OBSOLETE2                            = 0x0B,//ASC IT8 (Graphic arts pre-press devices)
         PERIPHERAL_STORAGE_ARRAY_CONTROLLER_DEVICE      = 0x0C,
         PERIPHERAL_ENCLOSURE_SERVICES_DEVICE            = 0x0D,
         PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE      = 0x0E,
