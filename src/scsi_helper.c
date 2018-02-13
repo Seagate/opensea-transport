@@ -5889,6 +5889,12 @@ int fill_In_Device_Info(tDevice *device)
             }
             safe_Free(supportedVPDPages);
         }
+        else
+        {
+            //SN may not be available...just going to read where it may otherwise show up in inquiry data like some vendors like to put it
+            memcpy(&device->drive_info.serialNumber[0], &inq_buf[36], SERIAL_NUM_LEN);
+            device->drive_info.serialNumber[SERIAL_NUM_LEN] = '\0';
+        }
 
         if(readCapacity)
         {
