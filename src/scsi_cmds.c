@@ -728,6 +728,11 @@ int scsi_Inquiry(tDevice *device, uint8_t *pdata, uint32_t dataLength, uint8_t p
     if (dataLength > 0)
     {
         ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), pdata, dataLength, XFER_DATA_IN, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+        if (ret == SUCCESS && !evpd && !cmdDt && pdata != device->drive_info.scsiVpdData.inquiryData && pageCode == 0)
+        {
+            //this should only be copying std inquiry data to thislocation in the device struct to keep it up to date each time an inquiry is sent to the drive.
+            memcpy(device->drive_info.scsiVpdData.inquiryData, pdata, M_Min(dataLength, 96));
+        }
     }
     else
     {
