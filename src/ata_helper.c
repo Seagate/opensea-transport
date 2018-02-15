@@ -764,7 +764,8 @@ void set_ATA_Passthrough_Type_By_PID_and_VID(tDevice *device)
             case 0x0502:
                 device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_TI;
                 break;
-                
+            case 0x0888://0BC2 VID
+                device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_NEC;
             default: //unknown
                 set_ATA_Passthrough_Type_By_Trial_And_Error(device);
                 break;
