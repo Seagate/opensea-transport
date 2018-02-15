@@ -5694,6 +5694,11 @@ int fill_In_Device_Info(tDevice *device)
             {
                 //for whatever reason, this device didn't return support for the list of supported pages, so set a flag telling us to dummy up a list so that we can still attempt to issue commands to pages we do need to try and get (this is a workaround for some really stupid USB bridges)
                 dummyUpVPDSupport = true;
+                if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
+                {
+                    //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
+                    scsi_Test_Unit_Ready(device, NULL);
+                }
             }
             if (dummyUpVPDSupport == false)
             {
@@ -5731,13 +5736,14 @@ int fill_In_Device_Info(tDevice *device)
                     if (peripheralDeviceType == PERIPHERAL_DIRECT_ACCESS_BLOCK_DEVICE || peripheralDeviceType == PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE || peripheralDeviceType == PERIPHERAL_HOST_MANAGED_ZONED_BLOCK_DEVICE)
                     {
                         inq_buf[offset] = BLOCK_DEVICE_CHARACTERISTICS;
+                        ++offset;
                     }
                 }
                 //TODO: Add more pages to the dummy information as we need to. This may be useful to do in the future in case a device decides not to support a MANDATORY page or another page we care about
 
                 //set page length (n-3)
-                inq_buf[2] = M_Byte1(offset);//msb
-                inq_buf[3] = M_Byte0(offset);//lsb
+                inq_buf[2] = M_Byte1(offset - 4);//msb
+                inq_buf[3] = M_Byte0(offset - 4);//lsb
             }
             //first, get the length of the supported pages
             uint16_t supportedVPDPagesLength = M_BytesTo2ByteValue(inq_buf[2], inq_buf[3]);
@@ -5773,6 +5779,11 @@ int fill_In_Device_Info(tDevice *device)
                             remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
                         }
                     }
+                    else if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
+                    {
+                        //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
+                        scsi_Test_Unit_Ready(device, NULL);
+                    }
                     safe_Free(unitSerialNumber);
                     break;
                 }
@@ -5789,6 +5800,11 @@ int fill_In_Device_Info(tDevice *device)
                         //this SHOULD work for getting a WWN 90% of the time, but if it doesn't, then we will need to go through the descriptors from the device and set it from the correct one. See the SATChecker util code for how to do this
                         memcpy(&device->drive_info.worldWideName, &deviceIdentification[8], 8);
                         byte_Swap_64(&device->drive_info.worldWideName);
+                    }
+                    else if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
+                    {
+                        //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
+                        scsi_Test_Unit_Ready(device, NULL);
                     }
                     safe_Free(deviceIdentification);
                     break;
@@ -5879,6 +5895,11 @@ int fill_In_Device_Info(tDevice *device)
                             }
                         }
                     }
+                    else if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
+                    {
+                        //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
+                        scsi_Test_Unit_Ready(device, NULL);
+                    }
                     safe_Free(blockDeviceCharacteristics);
                     break;
                 }
@@ -5944,6 +5965,11 @@ int fill_In_Device_Info(tDevice *device)
                             device->drive_info.currentProtectionType = M_GETBITRANGE(readCapBuf[12], 3, 1) + 1;
                         }
                     }
+                    else if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
+                    {
+                        //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
+                        scsi_Test_Unit_Ready(device, NULL);
+                    }
                 }
             }
             else
@@ -5957,6 +5983,11 @@ int fill_In_Device_Info(tDevice *device)
                 }
                 readCapBuf = temp;
                 memset(readCapBuf, 0, READ_CAPACITY_16_LEN);
+                if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
+                {
+                    //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
+                    scsi_Test_Unit_Ready(device, NULL);
+                }
                 if (SUCCESS == scsi_Read_Capacity_16(device, readCapBuf, READ_CAPACITY_16_LEN))
                 {
                     copy_Read_Capacity_Info(&device->drive_info.deviceBlockSize, &device->drive_info.devicePhyBlockSize, &device->drive_info.deviceMaxLba, &device->drive_info.sectorAlignment, readCapBuf, true);
@@ -5966,6 +5997,11 @@ int fill_In_Device_Info(tDevice *device)
                     {
                         device->drive_info.currentProtectionType = M_GETBITRANGE(readCapBuf[12], 3, 1) + 1;
                     }
+                }
+                else if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
+                {
+                    //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
+                    scsi_Test_Unit_Ready(device, NULL);
                 }
             }
             safe_Free(readCapBuf);
