@@ -93,6 +93,10 @@ extern "C"
     #define SCSI_SENSE_INFO_FIELD_MSB_INDEX  (3)
     #define SCSI_FIXED_FORMAT_CMD_INFO_INDEX (8)
 
+    #define SCSI_MAX_21_LBA 0x001FFFFF //read/write 6byte commands
+    #define SCSI_MAX_32_LBA UINT32_MAX
+    #define SCSI_MAX_64_LBA UINT64_MAX
+
 	typedef enum _eSenseKeySpecificType
 	{
 		SENSE_KEY_SPECIFIC_UNKNOWN,

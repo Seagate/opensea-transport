@@ -5510,6 +5510,7 @@ int fill_In_Device_Info(tDevice *device)
         default:
             break;
         }
+        device->drive_info.scsiVpdData.inquiryData[2] = version;//changing this to one of these version numbers to keep the rest of the library code that would use this simple. - TJE
         //set the media type as best we can
         uint8_t peripheralQualifier = (inq_buf[0] & (BIT7 | BIT6 | BIT5)) >> 5;
         uint8_t peripheralDeviceType = inq_buf[0] & (BIT4 | BIT3 | BIT2 | BIT1 | BIT0);

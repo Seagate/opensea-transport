@@ -1089,16 +1089,32 @@ int scsi_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
     }
     else //synchronous reads
     {
-        //there's no real way to tell when scsi drive supports read 10 vs read 16 (which are all we will care about in here), so just based on transfer length and the maxLBA
-        if (device->drive_info.deviceMaxLba <= UINT32_MAX && sectors <= UINT16_MAX && lba <= UINT32_MAX)
+        if (device->drive_info.scsiVpdData.inquiryData[2] >= 5)//SBC2 introduced read 16 command, so checking for SPC3
         {
-            //use read 10
-            ret = scsi_Read_10(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+            //there's no real way to tell when scsi drive supports read 10 vs read 16 (which are all we will care about in here), so just based on transfer length and the maxLBA
+            if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && sectors <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
+            {
+                //use read 10
+                ret = scsi_Read_10(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+            }
+            else
+            {
+                //use read 16
+                ret = scsi_Read_16(device, 0, false, false, false, lba, 0, sectors, ptrData, dataSize);
+            }
         }
         else
         {
-            //use read 16
-            ret = scsi_Read_16(device, 0, false, false, false, lba, 0, sectors, ptrData, dataSize);
+            //Read 6 and read 10 should be supported on these devices...checking the LBA to make sure it will work though
+            if (device->drive_info.deviceMaxLba <= SCSI_MAX_21_LBA && sectors <= UINT8_MAX && lba <= SCSI_MAX_21_LBA)
+            {
+                ret = scsi_Read_6(device, (uint32_t)lba, sectors, ptrData, dataSize);
+            }
+            else
+            {
+                //use read 10
+                ret = scsi_Read_10(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+            }
         }
     }
     return ret;
@@ -1121,16 +1137,32 @@ int scsi_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint
     }
     else //synchronous reads
     {
-        //there's no real way to tell when scsi drive supports write 10 vs write 16 (which are all we will care about in here), so just based on transfer length and the maxLBA
-        if (device->drive_info.deviceMaxLba <= UINT32_MAX && sectors <= UINT16_MAX && lba <= UINT32_MAX)
+        if (device->drive_info.scsiVpdData.inquiryData[2] >= 5)//SBC2 introduced write 16 command, so checking for SPC3
         {
-            //use write 10
-            ret = scsi_Write_10(device, 0, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+            //there's no real way to tell when scsi drive supports write 10 vs write 16 (which are all we will care about in here), so just based on transfer length and the maxLBA
+            if (device->drive_info.deviceMaxLba <= UINT32_MAX && sectors <= UINT16_MAX && lba <= UINT32_MAX)
+            {
+                //use write 10
+                ret = scsi_Write_10(device, 0, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+            }
+            else
+            {
+                //use write 16
+                ret = scsi_Write_16(device, 0, false, false, lba, 0, sectors, ptrData, dataSize);
+            }
         }
         else
         {
-            //use write 16
-            ret = scsi_Write_16(device, 0, false, false, lba, 0, sectors, ptrData, dataSize);
+            //Write 6 and write 10 should be supported on these devices...checking the LBA to make sure it will work though
+            if (device->drive_info.deviceMaxLba <= SCSI_MAX_21_LBA && sectors <= UINT8_MAX && lba <= SCSI_MAX_21_LBA)
+            {
+                ret = scsi_Write_6(device, (uint32_t)lba, sectors, ptrData, dataSize);
+            }
+            else
+            {
+                //use write 10
+                ret = scsi_Write_10(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+            }
         }
     }
     return ret;
@@ -1342,14 +1374,14 @@ int scsi_Verify(tDevice *device, uint64_t lba, uint32_t range)
 {
     int ret = SUCCESS;//assume success
     //there's no real way to tell when scsi drive supports verify 10 vs verify 16 (which are all we will care about in here), so just based on transfer length and the maxLBA
-    if (device->drive_info.deviceMaxLba <= UINT32_MAX && range <= UINT16_MAX && lba <= UINT32_MAX)
+    if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && range <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
     {
         //use verify 10
         ret = scsi_Verify_10(device, 0, false, 00, (uint32_t)lba, 0, (uint16_t)range, NULL, 0);
     }
     else
     {
-        //use verify 16
+        //use verify 16 (SPC3-SBC2 brought this command in)
         ret = scsi_Verify_16(device, 0, false, 00, lba, 0, range, NULL, 0);
     }
     return ret;
@@ -1425,8 +1457,9 @@ int ata_Flush_Cache_Command(tDevice *device)
 
 int scsi_Synchronize_Cache_Command(tDevice *device)
 {
+    //synch/flush cache introduced in SCSI2. Not going to check for it though since some USB drives do support this command and report SCSI or no version. - TJE
     //there's no real way to tell when SCSI drive supports synchronize cache 10 vs synchronize cache 16 (which are all we will care about in here), so just based on the maxLBA
-    if (device->drive_info.deviceMaxLba <= UINT32_MAX)
+    if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA)
     {
         return scsi_Synchronize_Cache_10(device, false, 0, 0, 0);
     }

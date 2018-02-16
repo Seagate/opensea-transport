@@ -732,6 +732,26 @@ int scsi_Inquiry(tDevice *device, uint8_t *pdata, uint32_t dataLength, uint8_t p
         {
             //this should only be copying std inquiry data to thislocation in the device struct to keep it up to date each time an inquiry is sent to the drive.
             memcpy(device->drive_info.scsiVpdData.inquiryData, pdata, M_Min(dataLength, 96));
+            uint8_t version = device->drive_info.scsiVpdData.inquiryData[2];
+            switch (version) //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
+            {
+            case 0x81:
+                version = 1;//changing to 1 for SCSI
+                break;
+            case 0x80:
+            case 0x82:
+                version = 2;//changing to 2 for SCSI 2
+                break;
+            case 0x83:
+                version = 3;//changing to 3 for SPC
+                break;
+            case 0x84:
+                version = 4;//changing to 4 for SPC2
+                break;
+            default:
+                break;
+            }
+            device->drive_info.scsiVpdData.inquiryData[2] = version;//changing this to one of these version numbers to keep the rest of the library code that would use this simple. - TJE
         }
     }
     else
