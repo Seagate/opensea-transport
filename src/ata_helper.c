@@ -14,6 +14,7 @@
 #include "common_public.h"
 #include "ata_helper.h"
 #include "ata_helper_func.h"
+#include "scsi_helper_func.h"
 
 bool is_Buffer_Non_Zero(uint8_t* ptrData, uint32_t dataLen)
 {
@@ -59,9 +60,20 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             {
                 device->drive_info.ata_Options.use12ByteSATCDBs = true;
                 memset(identifyData, 0, 512);
-                //send check power mode to help clear out any stale RTFRs or sense data from the drive...needed by some devices. Won't hurt other devices.
-                uint8_t mode = 0;
-                ata_Check_Power_Mode(device, &mode);
+                if (device->drive_info.interface_type == IDE_INTERFACE)
+                {
+                    //send check power mode to help clear out any stale RTFRs or sense data from the drive...needed by some devices. Won't hurt other devices.
+                    uint8_t mode = 0;
+                    ata_Check_Power_Mode(device, &mode);
+                }
+                else
+                {
+                    //SCSI/USB interfaces will do a test unit ready command first, then check power mode as passthrough, then one last test unit ready to get everything refreshed
+                    uint8_t mode = 0;
+                    scsi_Test_Unit_Ready(device, NULL);
+                    ata_Check_Power_Mode(device, &mode);
+                    scsi_Test_Unit_Ready(device, NULL);
+                }
                 if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
                 {
                     retrievedIdentifyData = true;
