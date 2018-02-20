@@ -1306,6 +1306,12 @@ int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subComman
     ataCommandOptions.tfr.LbaMid = M_Byte0(bufferOffset);
     ataCommandOptions.tfr.LbaHi = M_Byte1(bufferOffset);
 
+    if (ataCommandOptions.tfr.LbaLow > 0)
+    {
+        //change length location to TPSIU so the SATL knows how to calculate the transfer length correctly since it is no longer just the sector count field.
+        ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;
+    }
+
     //if we are told to use the activate command, we need to set the protocol to non-data, set pdata to NULL, and dataSize to 0
     if (subCommand == ATA_DL_MICROCODE_ACTIVATE)
     {
@@ -2760,6 +2766,11 @@ int ata_Trusted_Receive(tDevice *device, bool useDMA, uint8_t securityProtocol, 
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
+    if (ataCommandOptions.tfr.LbaLow > 0)
+    {
+        //change length location to TPSIU so the SATL knows how to calculate the transfer length correctly since it is no longer just the sector count field.
+        ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;
+    }
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
@@ -2830,6 +2841,11 @@ int ata_Trusted_Send(tDevice *device, bool useDMA, uint8_t securityProtocol, uin
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
+    if (ataCommandOptions.tfr.LbaLow > 0)
+    {
+        //change length location to TPSIU so the SATL knows how to calculate the transfer length correctly since it is no longer just the sector count field.
+        ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;
     }
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
