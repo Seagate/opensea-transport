@@ -1161,7 +1161,7 @@ int scsi_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint
             else
             {
                 //use write 10
-                ret = scsi_Write_10(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                ret = scsi_Write_10(device, 0, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
             }
         }
     }
