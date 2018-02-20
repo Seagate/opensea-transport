@@ -842,7 +842,7 @@ bool is_Checksum_Valid(uint8_t *ptrData, uint32_t dataSize, uint32_t *firstInval
     {
         for (uint32_t counter = 0; counter <= 511; ++counter)
         {
-            checksumCalc = checksumCalc + ptrData[counter];
+            checksumCalc = checksumCalc + ptrData[counter + (blockIter * 512)];
         }
         if (checksumCalc == 0)
         {
