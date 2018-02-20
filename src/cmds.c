@@ -1167,6 +1167,9 @@ int io_Read(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32_
 #if !defined (DISABLE_NVME_PASSTHROUGH)
         //TODO: validate that the protection information input value of 0 works!
         return nvme_Read(device, lba, dataSize / device->drive_info.deviceBlockSize, false, false, 0, ptrData, dataSize);
+#else 
+        //perform SCSI reads
+        return scsi_Read(device, lba, async, ptrData, dataSize);
 #endif
     case RAID_INTERFACE:
         //perform SCSI reads for now. We may need to add unique functions for NVMe and RAID reads later
@@ -1210,6 +1213,9 @@ int io_Write(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32
 #if !defined (DISABLE_NVME_PASSTHROUGH)
         //TODO: validate that the protection information input value of 0 works!
         return nvme_Write(device, lba, dataSize / device->drive_info.deviceBlockSize, false, false, 0, 0, ptrData, dataSize);
+#else 
+        //perform SCSI writes
+        return scsi_Write(device, lba, async, ptrData, dataSize);
 #endif
     case RAID_INTERFACE:
         //perform SCSI writes for now. We may need to add unique functions for NVMe and RAID writes later
@@ -1400,6 +1406,9 @@ int verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
         case NVME_INTERFACE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
 			return nvme_Verify_LBA(device, lba, range);
+#else 
+            //perform SCSI verifies
+            return scsi_Verify(device, lba, range);
 #endif
         case RAID_INTERFACE:
             //perform SCSI verifies for now. We may need to add unique functions for NVMe and RAID writes later
@@ -1461,6 +1470,9 @@ int flush_Cache(tDevice *device)
         case NVME_INTERFACE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
             return nvme_Flush(device);
+#else
+            //perform SCSI writes
+            return scsi_Synchronize_Cache_Command(device);
 #endif
         case RAID_INTERFACE:
             //perform SCSI writes for now. We may need to add unique functions for NVMe and RAID writes later
