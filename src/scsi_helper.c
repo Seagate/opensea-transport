@@ -5488,6 +5488,7 @@ int fill_In_Device_Info(tDevice *device)
     {
 		bool readCapacity = true;
         ret = SUCCESS;
+        memcpy(device->drive_info.scsiVpdData.inquiryData, inq_buf, 96);//store this in the device structure to make sure it is available elsewhere in the library as well.
         copy_Inquiry_Data(inq_buf, &device->drive_info);
 
         //set the media type as best we can

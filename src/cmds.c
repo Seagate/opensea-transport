@@ -167,7 +167,7 @@ int spin_down_drive(tDevice *device, bool sleepState)
     int ret = UNKNOWN;
     if (device->drive_info.drive_type == ATA_DRIVE)
     {
-        if (sleepState == true)//send sleep command
+        if (sleepState)//send sleep command
         {
             ret = ata_Sleep(device);
         }
@@ -178,8 +178,28 @@ int spin_down_drive(tDevice *device, bool sleepState)
     }
     else if (device->drive_info.drive_type == SCSI_DRIVE)
     {
-        //standby_z to spin the drive down. set the immediate bit as well.
-        ret = scsi_Start_Stop_Unit(device, true, 0, PC_STANDBY, false, false, false);
+        if (device->drive_info.scsiVpdData.inquiryData[2] > 2)
+        {
+            if (sleepState)
+            {
+                ret = scsi_Start_Stop_Unit(device, false, 0, PC_SLEEP, false, false, false);
+            }
+            else
+            {
+                ret = scsi_Start_Stop_Unit(device, false, 0, PC_FORCE_STANDBY_0, false, false, false);
+            }
+        }
+        else
+        {
+            if (sleepState)
+            {
+                ret = NOT_SUPPORTED;
+            }
+            else
+            {
+                ret = scsi_Start_Stop_Unit(device, false, 0, PC_START_VALID, false, false, false);
+            }
+        }
     }
     else
     {
