@@ -449,10 +449,11 @@ extern "C"
 
     typedef enum _eScsiPowerConditionValues
     {
-        PC_START_VALID     = 0x0,
+        PC_START_VALID     = 0x0,//process START and LOEJ bits
         PC_ACTIVE          = 0x1,
         PC_IDLE            = 0x2,
         PC_STANDBY         = 0x3,
+        PC_SLEEP           = 0x5, //Obsolete since SBC2. Requires a reset to wake
         PC_LU_CONTROL      = 0x7,
         PC_FORCE_IDLE_0    = 0xA,
         PC_FORCE_STANDBY_0 = 0xB,
