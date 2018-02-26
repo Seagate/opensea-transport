@@ -30,6 +30,7 @@
 #include "ata_helper_func.h"
 #include "win_helper.h"
 #include "sat_helper_func.h"
+#include "usb_hacks.h"
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper.h"
@@ -546,8 +547,8 @@ int get_Device(const char *filename, tDevice *device )
 
                                 if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
                                 {
-                                    //TODO: Actually get the VID and PID set before calling this...currently it just issues an identify command to test which passthrough to use until it works. - TJE
-                                    set_ATA_Passthrough_Type_By_PID_and_VID(device);
+                                    //TODO: Actually get the VID and PID set before calling this.
+                                    set_ATA_Passthrough_Type(device);
                                 }
 
                                 //For now force direct IO all the time to match previous functionality.

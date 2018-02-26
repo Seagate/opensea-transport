@@ -31,6 +31,9 @@ int ata_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCommandO
     int ret = UNKNOWN;
     switch (device->drive_info.ata_Options.passthroughType)
     {
+    case ATA_PASSTHROUGH_UNKNOWN://catch this case and return BAD_PARAMETER
+        ret = BAD_PARAMETER;
+        break;
     case ATA_PASSTHROUGH_PSP:
         ret = send_PSP_Legacy_Passthrough_Command(device, ataCommandOptions);
         break;

@@ -15,6 +15,7 @@
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
 #include "sat_helper_func.h"
+#include "usb_hacks.h"
 
 extern bool validate_Device_Struct(versionBlock);
 
@@ -147,8 +148,8 @@ int get_Device( const char *filename, tDevice *device )
                         //let the library now go out and set up the device struct after sending some commands.
                         if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
                         {
-                            //TODO: Actually get the VID and PID set before calling this...currently it just issues an identify command to test which passthrough to use until it works. - TJE
-                            set_ATA_Passthrough_Type_By_PID_and_VID(device);
+                            //TODO: Actually get the VID and PID set before calling this.
+                            set_ATA_Passthrough_Type(device);
                         }
                         ret = fill_Drive_Info_Data(device);
                     }

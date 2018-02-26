@@ -851,6 +851,7 @@ extern "C"
         uint32_t namespaceID;//This is the current namespace you are talking with. If this is zero, then this value is invalid. This may not be available on all OS's or driver interfaces
         uint8_t currentProtectionType;//Useful for certain operations. Read in readCapacityOnSCSI. TODO: NVMe
         uint8_t piExponent;//Only valid for protection types 2 & 3 I believe...-TJE
+        uint8_t scsiVersion;//from STD Inquiry. Can be used elsewhere to help filter capabilities. NOTE: not an exact copy for old products where there was also EMCA and ISO versions. Set to ANSI version number in those cases.
     #if !defined (__GNUC__)
     }driveInfo;
     #pragma pack(pop)

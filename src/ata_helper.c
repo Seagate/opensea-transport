@@ -88,6 +88,10 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     }
     if (retrievedIdentifyData)
     {
+        if (device->drive_info.interface_type == IDE_INTERFACE && device->drive_info.scsiVersion == 0)
+        {
+            device->drive_info.scsiVersion = 0x07;//SPC5. This is what software translator will set at the moment. Can make this configurable later, but this should be ok
+        }
         //print_Data_Buffer((uint8_t*)ident_word, 512, true);
         ret = SUCCESS;
         if (device->drive_info.lastCommandRTFRs.device & DEVICE_SELECT_BIT)//Checking for the device select bit being set to know it's device 1 (Not that we really need it). This may not always be reported correctly depending on the lower layers of the OS and hardware. - TJE
@@ -713,118 +717,6 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataComm
         printf("\t[Device] = %02"PRIX8"h\n", ataCommandOptions->rtfr.device);
         printf("\t[Status] = %02"PRIX8"h\n", ataCommandOptions->rtfr.status);
         printf("\n");
-    }
-}
-
-void set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice *device)
-{
-    if ((device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE) && device->drive_info.ata_Options.enableLegacyPassthroughDetectionThroughTrialAndError)
-    {
-#if defined (_DEBUG)
-        printf("\n\tAttempting to set USB passthrough type with identify commands\n");
-#endif
-        while (device->drive_info.ata_Options.passthroughType != ATA_PASSTHROUGH_UNKNOWN)
-        {
-            uint8_t identifyData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
-            if (SUCCESS == ata_Identify(device, identifyData, LEGACY_DRIVE_SEC_SIZE))
-            {
-                //command succeeded so this is most likely the correct pass-through type to use for this device
-                //setting drive type while we're in here since it could help with a faster scan
-                device->drive_info.drive_type = ATA_DRIVE;
-                break;
-            }
-            else if (SUCCESS == ata_Identify_Packet_Device(device, identifyData, LEGACY_DRIVE_SEC_SIZE))
-            {
-                //command succeeded so this is most likely the correct pass-through type to use for this device
-                //setting drive type while we're in here since it could help with a faster scan
-                device->drive_info.drive_type = ATAPI_DRIVE;
-                break;
-            }
-            ++device->drive_info.ata_Options.passthroughType;
-        }
-    }
-}
-
-typedef enum _eUSBVendorIDs
-{
-    evVendorSeagate = 0x0477,
-    evVendorOxford = 0x0928,
-    evVendorJMicron = 0x152d,
-    evVendorDell = 0x413C,
-    evVendorUSeagate = 0x0BC2,
-    evVendorSamsung = 0x04E8,
-    // Add new enumerations above this line!
-    evVendorUnknown = 0
-} eUSBVendorIDs;
-
-void set_ATA_Passthrough_Type_By_PID_and_VID(tDevice *device)
-{
-    //only change the ATA Passthrough type for USB (for legacy USB bridges)
-    if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
-    {
-        //Most USB bridges are SAT so they'll probably fall into the default cases and issue an identify command for SAT
-        switch (device->drive_info.bridge_info.vendorID)
-        {
-        case evVendorUSeagate:
-        case evVendorSeagate:
-            switch (device->drive_info.bridge_info.productID)
-            {
-            case 0x0501:
-            case 0x0503:
-                device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_CYPRESS;
-                break;
-            case 0x0502:
-                device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_TI;
-                break;
-            case 0x0888://0BC2 VID
-                device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_NEC;
-            default: //unknown
-                set_ATA_Passthrough_Type_By_Trial_And_Error(device);
-                break;
-            }
-            break;
-        case evVendorOxford:
-            switch (device->drive_info.bridge_info.productID)
-            {
-            case 0x0008:
-                device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_SAT;
-                break;
-            default: //unknown
-                set_ATA_Passthrough_Type_By_Trial_And_Error(device);
-                break;
-            }
-            break;
-        case evVendorJMicron:
-            switch (device->drive_info.bridge_info.productID)
-            {
-            case 0x2339://MiniD2
-                device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_SAT;
-                break;
-            default: //unknown
-                set_ATA_Passthrough_Type_By_Trial_And_Error(device);
-                break;
-            }
-            break;
-        case evVendorDell:
-            switch (device->drive_info.bridge_info.productID)
-            {
-            default: //unknown
-                set_ATA_Passthrough_Type_By_Trial_And_Error(device);
-                break;
-            }
-            break;
-        case evVendorSamsung:
-            switch (device->drive_info.bridge_info.productID)
-            {
-            default: //unknown
-                set_ATA_Passthrough_Type_By_Trial_And_Error(device);
-                break;
-            }
-            break;
-        default: //unknown
-            set_ATA_Passthrough_Type_By_Trial_And_Error(device);
-            break;
-        }
     }
 }
 

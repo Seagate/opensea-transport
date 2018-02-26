@@ -728,11 +728,14 @@ int scsi_Inquiry(tDevice *device, uint8_t *pdata, uint32_t dataLength, uint8_t p
     if (dataLength > 0)
     {
         ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), pdata, dataLength, XFER_DATA_IN, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
-        if (ret == SUCCESS && !evpd && !cmdDt && pdata != device->drive_info.scsiVpdData.inquiryData && pageCode == 0)
+        if (ret == SUCCESS && !evpd && !cmdDt && pageCode == 0)
         {
-            //this should only be copying std inquiry data to thislocation in the device struct to keep it up to date each time an inquiry is sent to the drive.
-            memcpy(device->drive_info.scsiVpdData.inquiryData, pdata, M_Min(dataLength, 96));
-            uint8_t version = device->drive_info.scsiVpdData.inquiryData[2];
+            if (pdata != device->drive_info.scsiVpdData.inquiryData)
+            {
+                //this should only be copying std inquiry data to thislocation in the device struct to keep it up to date each time an inquiry is sent to the drive.
+                memcpy(device->drive_info.scsiVpdData.inquiryData, pdata, M_Min(dataLength, 96));
+            }
+            uint8_t version = pdata[2];
             switch (version) //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
             {
             case 0x81:
@@ -749,9 +752,19 @@ int scsi_Inquiry(tDevice *device, uint8_t *pdata, uint32_t dataLength, uint8_t p
                 version = 4;//changing to 4 for SPC2
                 break;
             default:
+                //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
+                if (version >= 0x08 && version <= 0x0C ||
+                    version >= 0x40 && version <= 0x44 ||
+                    version >= 0x48 && version <= 0x4C ||
+                    version >= 0x80 && version <= 0x84 ||
+                    version >= 0x88 && version <= 0x8C)
+                {
+                    //these are obsolete version numbers
+                    version = M_GETBITRANGE(version, 3, 0);
+                }
                 break;
             }
-            device->drive_info.scsiVpdData.inquiryData[2] = version;//changing this to one of these version numbers to keep the rest of the library code that would use this simple. - TJE
+            device->drive_info.scsiVersion = version;//changing this to one of these version numbers to keep the rest of the library code that would use this simple. - TJE
         }
     }
     else

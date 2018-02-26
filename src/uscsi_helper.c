@@ -26,7 +26,7 @@
 #include "cmds.h"
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
-
+#include "usb_hacks.h"
 
 
 
@@ -76,8 +76,8 @@ int get_Device(const char *filename, tDevice *device)
         device->drive_info.drive_type = SCSI_DRIVE;
         if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
         {
-            //TODO: Actually get the VID and PID set before calling this...currently it just issues an identify command to test which passthrough to use until it works. - TJE
-            set_ATA_Passthrough_Type_By_PID_and_VID(device);
+            //TODO: Actually get the VID and PID set before calling this.
+            set_ATA_Passthrough_Type(device);
         }
         //fill in the device info
         ret = fill_Drive_Info_Data(device);
