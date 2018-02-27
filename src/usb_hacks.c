@@ -115,6 +115,13 @@ bool set_ATA_Passthrough_Type_By_Inquiry_Data(tDevice *device)
             20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20
             20 20 20 20 20 20 20 20 20 20 20 20 20 20 10 80                .€
             00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+            //Example 3:
+            00 00 02 01 1f 00 00 00 53 61 6d 73 75 6e 67 20  ........Samsung
+            53 32 20 50 6f 72 74 61 62 6c 65 00 08 12 00 00  S2 Portable.....
+            00 00 00 00 6a 33 33 39 cd cd cd cd cd cd cd cd  ....j339ออออออออ
+            cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ออออออออออออออออ
+            cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ออออออออออออออออ
+            cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ออออออออออออออออ
             */
             memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], 8);
             remove_Leading_And_Trailing_Whitespace(vendorID);
@@ -133,6 +140,13 @@ bool set_ATA_Passthrough_Type_By_Inquiry_Data(tDevice *device)
                     passthroughTypeSet = true;
                     device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_CYPRESS;
                 }
+            }
+            else if (strcmp(vendorID, "Samsung") == 0)
+            {
+                memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], 16);
+                memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[36], 4);
+                remove_Leading_And_Trailing_Whitespace(vendorID);
+                remove_Leading_And_Trailing_Whitespace(productID);
             }
             else
             {
@@ -342,7 +356,7 @@ int fill_Drive_Info_USB(tDevice *device)
 #ifdef _DEBUG
     printf("%s: -->\n", __FUNCTION__);
 #endif
-    uint8_t *inq_buf = (uint8_t*)calloc(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t));
+    uint8_t *inq_buf = (uint8_t*)calloc(255, sizeof(uint8_t));
     if (!inq_buf)
     {
         perror("Error allocating memory for standard inquiry data");
@@ -358,7 +372,7 @@ int fill_Drive_Info_USB(tDevice *device)
         device->drive_info.media_type = MEDIA_HDD;
     }
     //now start getting data from the device itself
-    if (SUCCESS == scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, 0, false, false))
+    if (SUCCESS == scsi_Inquiry(device, inq_buf, 255, 0, false, false))
     {
         bool readCapacity = true;
         ret = SUCCESS;
