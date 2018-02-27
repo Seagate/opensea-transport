@@ -44,7 +44,8 @@ LIB_SRC_FILES = \
 	$(SRC_DIR)cypress_legacy_helper.c\
 	$(SRC_DIR)ti_legacy_helper.c\
 	$(SRC_DIR)nec_legacy_helper.c\
-	$(SRC_DIR)prolific_legacy_helper.c
+	$(SRC_DIR)prolific_legacy_helper.c\
+	$(SRC_DIR)usb_hacks.c
 
 UNAME := $(shell uname)
 ifeq ($(UNAME),Linux)
