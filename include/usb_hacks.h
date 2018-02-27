@@ -21,6 +21,7 @@ extern "C"
 {
 #endif
 
+    //http://www.linux-usb.org/usb.ids
     typedef enum _eUSBVendorIDs
     {
         evVendorSeagate = 0x0477,
@@ -29,6 +30,7 @@ extern "C"
         evVendorDell = 0x413C,
         evVendorUSeagate = 0x0BC2,
         evVendorSamsung = 0x04E8,
+        evVendorMaxtor = 0x0D49,
         // Add new enumerations above this line!
         evVendorUnknown = 0
     } eUSBVendorIDs;
