@@ -271,8 +271,8 @@ bool set_ATA_Passthrough_Type_By_PID_and_VID(tDevice *device)
             {
             case 0x1000://Flash Drive - Rev1100
                 //Don't set a passthrough type! This is a USB flash memory, that responds to one of the legacy command requests and it will break it!
-                device->drive_info.media_type == MEDIA_SSM_FLASH;
-                device->drive_info.ata_Options.passthroughType == ATA_PASSTHROUGH_UNKNOWN;
+                device->drive_info.media_type = MEDIA_SSM_FLASH;
+                device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_UNKNOWN;
                 passthroughTypeSet = true;
                 break;
             default:
@@ -287,8 +287,8 @@ bool set_ATA_Passthrough_Type_By_PID_and_VID(tDevice *device)
             case 0x9380://flash drive
             case 0x9381://flash drive
             case 0x9382://flash drive
-                device->drive_info.media_type == MEDIA_SSM_FLASH;
-                device->drive_info.ata_Options.passthroughType == ATA_PASSTHROUGH_UNKNOWN;
+                device->drive_info.media_type = MEDIA_SSM_FLASH;
+                device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_UNKNOWN;
                 passthroughTypeSet = true;
                 break;
             default:
@@ -300,8 +300,8 @@ bool set_ATA_Passthrough_Type_By_PID_and_VID(tDevice *device)
             {
             case 0x1172://flash drive
             case 0x1176://flash drive - rev 0100
-                device->drive_info.media_type == MEDIA_SSM_FLASH;
-                device->drive_info.ata_Options.passthroughType == ATA_PASSTHROUGH_UNKNOWN;
+                device->drive_info.media_type = MEDIA_SSM_FLASH;
+                device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_UNKNOWN;
                 passthroughTypeSet = true;
                 break;
             default:
