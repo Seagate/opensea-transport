@@ -495,12 +495,12 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                                 {
                                     if (incomingBlock)
                                     {
-                                        *blockHandle = strndup(basename(handle), 3);
+                                        *blockHandle = strndup(basename(handle), strlen(basename(handle)));
                                         *genericHandle = strdup(basename(classPtr));
                                     }
                                     else
                                     {
-                                        *blockHandle = strndup(basename(classPtr), 3);
+                                        *blockHandle = strndup(basename(classPtr), strlen(basename(classPtr));
                                         *genericHandle = strdup(basename(handle));
                                     }
                                     safe_Free(className);
