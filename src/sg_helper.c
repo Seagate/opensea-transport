@@ -500,7 +500,7 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                                     }
                                     else
                                     {
-                                        *blockHandle = strndup(basename(classPtr), strlen(basename(classPtr));
+                                        *blockHandle = strndup(basename(classPtr), strlen(basename(classPtr)));
                                         *genericHandle = strdup(basename(handle));
                                     }
                                     safe_Free(className);
