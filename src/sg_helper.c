@@ -177,19 +177,19 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
             char incomingHandleClassPath[PATH_MAX] = { 0 };
             char *incomingClassName = NULL;
             strcat(incomingHandleClassPath, "/sys/class/");
-            if (is_Block_Device_Handle(handle))
+            if (is_Block_Device_Handle((char*)handle))
             {
                 strcat(incomingHandleClassPath, "block/");
                 incomingBlock = true;
                 incomingClassName = strdup("block");
             }
-            else if (is_Block_SCSI_Generic_Handle(handle))
+            else if (is_Block_SCSI_Generic_Handle((char*)handle))
             {
                 bsg = true;
                 strcat(incomingHandleClassPath, "bsg/");
                 incomingClassName = strdup("bsg");
             }
-            else if (is_SCSI_Generic_Handle(handle))
+            else if (is_SCSI_Generic_Handle((char*)handle))
             {
                 strcat(incomingHandleClassPath, "scsi_generic/");
                 incomingClassName = strdup("scsi_generic");
@@ -200,14 +200,14 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                 device->drive_info.interface_type = SCSI_INTERFACE;
                 device->drive_info.drive_type = UNKNOWN_DRIVE;
                 device->drive_info.media_type = MEDIA_UNKNOWN;
-                return UNKNOWN;
+                return;
             }
             //first make sure this directory exists
             struct stat inHandleStat;
             if (stat(incomingHandleClassPath, &inHandleStat) == 0 && S_ISDIR(inHandleStat.st_mode))
             {
                 struct stat link;
-                strcat(incomingHandleClassPath, basename(handle));
+                strcat(incomingHandleClassPath, basename((char*)handle));
                 //now read the link with the handle appended on the end
                 if (lstat(incomingHandleClassPath,&link) == 0 && S_ISLNK(link.st_mode))
                 {

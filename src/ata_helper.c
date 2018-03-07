@@ -792,7 +792,6 @@ bool is_LBA_Mode_Supported(tDevice *device)
 bool is_CHS_Mode_Supported(tDevice *device)
 {
     bool chsSupported = true;
-    uint8_t* identifyPtr = (uint8_t*)&device->drive_info.IdentifyData.ata.Word000;
     //Check words 1, 3, 6
     if (device->drive_info.IdentifyData.ata.Word001 == 0 ||
         device->drive_info.IdentifyData.ata.Word003 == 0 ||

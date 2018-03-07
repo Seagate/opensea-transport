@@ -753,11 +753,11 @@ int scsi_Inquiry(tDevice *device, uint8_t *pdata, uint32_t dataLength, uint8_t p
                 break;
             default:
                 //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
-                if (version >= 0x08 && version <= 0x0C ||
-                    version >= 0x40 && version <= 0x44 ||
-                    version >= 0x48 && version <= 0x4C ||
-                    version >= 0x80 && version <= 0x84 ||
-                    version >= 0x88 && version <= 0x8C)
+                if ((version >= 0x08 && version <= 0x0C) ||
+                    (version >= 0x40 && version <= 0x44) ||
+                    (version >= 0x48 && version <= 0x4C) ||
+                    (version >= 0x80 && version <= 0x84) ||
+                    (version >= 0x88 && version <= 0x8C))
                 {
                     //these are obsolete version numbers
                     version = M_GETBITRANGE(version, 3, 0);

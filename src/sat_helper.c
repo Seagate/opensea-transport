@@ -1636,11 +1636,11 @@ int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *scsiIoCtx
 
     if (strlen(openseaVersionString) < 8)
     {
-        snprintf(&ataInformation[24], 8, " %-8s", openseaVersionString);
+        snprintf((char*)(&ataInformation[24]), 8, " %-8s", openseaVersionString);
     }
     else
     {
-        snprintf(&ataInformation[24], 8, "%-8s", openseaVersionString);
+        snprintf((char*)(&ataInformation[24]), 8, "%-8s", openseaVersionString);
     }
     //SAT Product Revision -set to SAT Version supported by library
     ataInformation[32] = 'S';
@@ -3206,7 +3206,6 @@ int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
 
 int translate_SCSI_Read_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
-    int ret = SUCCESS;
     uint64_t lba = 0;
     uint32_t transferLength = 0;
     bool fua = false;
@@ -3281,7 +3280,6 @@ int translate_SCSI_Read_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 
 int translate_SCSI_Write_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
-    int ret = SUCCESS;
     bool fua = false;
     uint64_t lba = 0;
     uint32_t transferLength = 0;
@@ -3570,20 +3568,8 @@ int translate_SCSI_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t byteCheck = 0;
-    bool dmaSupported = false;
     uint64_t lba = 0;
     uint32_t verificationLength = 0;
-    if (device->drive_info.IdentifyData.ata.Capability & BIT8)
-    {
-        if (device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2))
-        {
-            dmaSupported = true;
-        }
-        else if (device->drive_info.IdentifyData.ata.Word088 & 0xFF)
-        {
-            dmaSupported = true;
-        }
-    }
     bool invalidField = false;
     //check the read command and get the LBA from it
     switch (scsiIoCtx->cdb[OPERATION_CODE])
@@ -3905,7 +3891,7 @@ int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             //Parameter header information
             uint8_t protectionFieldUsage = M_GETBITRANGE(scsiIoCtx->pdata[0], 2, 0);
             bool formatOptionsValid = scsiIoCtx->pdata[1] & BIT7;
-            bool disablePrimary = scsiIoCtx->pdata[1] & BIT6;
+            //bool disablePrimary = scsiIoCtx->pdata[1] & BIT6; //SATL ignores this bit. Commented out so we can use it if we ever need to.
             bool disableCertification = scsiIoCtx->pdata[1] & BIT5;
             bool stopFormat = scsiIoCtx->pdata[1] & BIT4;
             bool initializationPattern = scsiIoCtx->pdata[1] & BIT3;
@@ -3942,6 +3928,7 @@ int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 || stopFormat //Doesn't make sense to support since we cannot accept a defect list. We could also ignore this, but this should be fine
                 || p_i_information != 0
                 || protectionIntervalExponent != 0
+                || vendorSpecific //We don't have a vendor specific functionality in here
                 )
             {
                 //invalid field in parameter list
@@ -4517,7 +4504,6 @@ int translate_SCSI_Security_Protocol_In_Command(tDevice *device, ScsiIoCtx *scsi
                         uint32_t descriptorLength = 0;//will be changed within the loop
                         for (uint32_t offset = 4; offset < (lengthOfComplianceDescriptors + 4) && offset < scsiIoCtx->dataLength; offset += descriptorLength + 8)
                         {
-                            bool exitLoop = false;
                             uint16_t descriptorType = M_BytesTo2ByteValue(scsiIoCtx->pdata[offset + 1], scsiIoCtx->pdata[offset + 0]);
                             scsiIoCtx->pdata[offset + 1] = M_Byte0(descriptorType);
                             scsiIoCtx->pdata[offset + 0] = M_Byte1(descriptorType);
@@ -4611,7 +4597,6 @@ int translate_SCSI_Security_Protocol_In_Command(tDevice *device, ScsiIoCtx *scsi
                         uint32_t descriptorLength = 0;//will be changed within the loop
                         for (uint32_t offset = 4; offset < (lengthOfComplianceDescriptors + 4) && offset < paddedLength; offset += descriptorLength + 8)
                         {
-                            bool exitLoop = false;
                             uint16_t descriptorType = M_BytesTo2ByteValue(tempSecurityMemory[offset + 1], tempSecurityMemory[offset + 0]);
                             tempSecurityMemory[offset + 1] = M_Byte0(descriptorType);
                             tempSecurityMemory[offset + 0] = M_Byte1(descriptorType);
@@ -7705,7 +7690,6 @@ int translate_Application_Client_Log_Sense_0x0F(tDevice *device, ScsiIoCtx *scsi
     //TODO: set the page length
     uint16_t offset = 4;
     //now we need to go through and save the most recent entries to the log we'll return
-    uint16_t parameterIncrement = 1;//This will get set when we set multiple parameters in the cases below...This will save read-log commands to the drive.
     uint16_t parameterCounter = 0; 
     while (parameterCode <= 0x01FF && offset < allocationLength && parameterCounter < numberOfParametersToReturn)
     {
@@ -9055,7 +9039,6 @@ int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *scsiIoCt
         //EPC supported; perform EPC supported translation here
         //need to read the EPC log
         uint8_t ataPowerConditionsLog[2 * LEGACY_DRIVE_SEC_SIZE] = { 0 };
-        uint32_t *temp = NULL;
         ata_Read_Log_Ext(device, ATA_LOG_POWER_CONDITIONS, 0, ataPowerConditionsLog, 2 * LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0);
         //TODO: handle command error
         switch (pageControl)
