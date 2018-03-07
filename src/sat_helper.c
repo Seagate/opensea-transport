@@ -1342,7 +1342,7 @@ int satl_Read_Verify_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba, uint8_t *ptrDat
 {
     int ret = SUCCESS;
     bool dmaSupported = false;
-    uint16_t verificationLength = dataSize / scsiIoCtx->device->drive_info.deviceBlockSize;
+    uint32_t verificationLength = dataSize / scsiIoCtx->device->drive_info.deviceBlockSize;
     if (scsiIoCtx->device->drive_info.IdentifyData.ata.Capability & BIT8)
     {
         if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2))
@@ -10607,9 +10607,9 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     int ret = SUCCESS;
     //There are only three pages that we care about changing...Power conditions and caching and control
     bool pageFormat = false;
-    bool saveParameters = false;
+    //bool saveParameters = false;
     bool tenByteCommand = false;
-    uint16_t parameterListLength = 0;
+    //uint16_t parameterListLength = 0;
     bool reservedBytesNonZero = false;
     if (scsiIoCtx->cdb[OPERATION_CODE] == 0x15 || scsiIoCtx->cdb[OPERATION_CODE] == 0x55)
     {
@@ -10617,15 +10617,15 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         {
             pageFormat = true;
         }
-        if (scsiIoCtx->cdb[1] & BIT0)
-        {
-            saveParameters = true;
-        }
-        parameterListLength = scsiIoCtx->cdb[4];
+//      if (scsiIoCtx->cdb[1] & BIT0)
+//      {
+//          saveParameters = true;
+//      }
+        //parameterListLength = scsiIoCtx->cdb[4];
         if (scsiIoCtx->cdb[OPERATION_CODE] == 0x55)
         {
             tenByteCommand = true;
-            parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            //parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
             if (scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0 ||
                 scsiIoCtx->cdb[2] & (BIT7 | BIT6 | BIT5 | BIT3 | BIT2 | BIT1)
                 )
@@ -10659,7 +10659,7 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     if (pageFormat)
     {
         bool invalidFieldInParameterList = false;
-        uint16_t modeDataLength = scsiIoCtx->pdata[0];
+        //uint16_t modeDataLength = scsiIoCtx->pdata[0];
         uint8_t mediumType = scsiIoCtx->pdata[1];
         uint8_t deviceSpecificParameter = scsiIoCtx->pdata[2];
         bool writeProtected = false;//Don't allow write protection. This makes no sense for this software implementation. - TJE
@@ -10668,7 +10668,7 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         uint16_t blockDescriptorLength = scsiIoCtx->pdata[3];
         if (tenByteCommand)
         {
-            modeDataLength = M_BytesTo2ByteValue(scsiIoCtx->pdata[0], scsiIoCtx->pdata[1]);
+            //modeDataLength = M_BytesTo2ByteValue(scsiIoCtx->pdata[0], scsiIoCtx->pdata[1]);
             mediumType = scsiIoCtx->pdata[2];
             deviceSpecificParameter = scsiIoCtx->pdata[3];
             if (scsiIoCtx->pdata[4])

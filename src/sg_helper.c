@@ -175,24 +175,24 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
             bool incomingBlock = false;//only set for SD!
             bool bsg = false;
             char incomingHandleClassPath[PATH_MAX] = { 0 };
-            char *incomingClassName = NULL;
+            //char *incomingClassName = NULL;
             strcat(incomingHandleClassPath, "/sys/class/");
             if (is_Block_Device_Handle((char*)handle))
             {
                 strcat(incomingHandleClassPath, "block/");
                 incomingBlock = true;
-                incomingClassName = strdup("block");
+                //incomingClassName = strdup("block");
             }
             else if (is_Block_SCSI_Generic_Handle((char*)handle))
             {
                 bsg = true;
                 strcat(incomingHandleClassPath, "bsg/");
-                incomingClassName = strdup("bsg");
+                //incomingClassName = strdup("bsg");
             }
             else if (is_SCSI_Generic_Handle((char*)handle))
             {
                 strcat(incomingHandleClassPath, "scsi_generic/");
-                incomingClassName = strdup("scsi_generic");
+                //incomingClassName = strdup("scsi_generic");
             }
             else
             {
