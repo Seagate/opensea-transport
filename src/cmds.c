@@ -410,7 +410,7 @@ int security_Send(tDevice *device, bool useDMA, uint8_t securityProtocol, uint16
             if (dataSize < LEGACY_DRIVE_SEC_SIZE || dataSize % LEGACY_DRIVE_SEC_SIZE != 0)
             {
                 //round up to nearest 512byte sector
-                size_t newBufferSize = ((dataSize + LEGACY_DRIVE_SEC_SIZE) - 1) / LEGACY_DRIVE_SEC_SIZE;
+                size_t newBufferSize = (((dataSize + LEGACY_DRIVE_SEC_SIZE) - 1) / LEGACY_DRIVE_SEC_SIZE) * LEGACY_DRIVE_SEC_SIZE;
                 tcgBufPtr = (uint8_t*)calloc(newBufferSize, sizeof(uint8_t));
                 if (tcgBufPtr == NULL)
                 {
@@ -470,7 +470,7 @@ int security_Receive(tDevice *device, bool useDMA, uint8_t securityProtocol, uin
             if (dataSize < LEGACY_DRIVE_SEC_SIZE || dataSize % LEGACY_DRIVE_SEC_SIZE != 0)
             {
                 //round up to nearest 512byte sector
-                tcgDataSize = ((dataSize + LEGACY_DRIVE_SEC_SIZE) - 1) / LEGACY_DRIVE_SEC_SIZE;
+                tcgDataSize = (((dataSize + LEGACY_DRIVE_SEC_SIZE) - 1) / LEGACY_DRIVE_SEC_SIZE) * LEGACY_DRIVE_SEC_SIZE;
                 tcgBufPtr = (uint8_t*)calloc(tcgDataSize, sizeof(uint8_t));
                 if (!tcgBufPtr)
                 {
