@@ -4524,7 +4524,7 @@ int translate_SCSI_Security_Protocol_In_Command(tDevice *device, ScsiIoCtx *scsi
                                 //Bytes 16 - 143 are ATA string for hardware version...must be swapped...up to the end of the buffer! Don't go over!
                                 //Bytes 144 - 271 are ATA string for version...must be swapped...up to the end of the buffer! Don't go over!
                                 //Bytes 272 - 527 are ATA string for module name...must be swapped...up to the end of the buffer! Don't go over!
-                                for (uint32_t swapOffset = offset + 16 /*16 is the start of the ATA strings*/; swapOffset < scsiIoCtx->dataLength && swapOffset < offset + descriptorLength + 8 /*8 byte header*/; swapOffset += 2 /*swap 2 bytes at a time*/)
+                                for (uint32_t swapOffset = offset + 16 /*16 is the start of the ATA strings*/; swapOffset < scsiIoCtx->dataLength && swapOffset < (offset + descriptorLength + 8) /*8 byte header*/; swapOffset += 2 /*swap 2 bytes at a time*/)
                                 {
                                     uint8_t tempByte = scsiIoCtx->pdata[swapOffset];
                                     scsiIoCtx->pdata[swapOffset] = scsiIoCtx->pdata[swapOffset + 1];
@@ -4617,7 +4617,7 @@ int translate_SCSI_Security_Protocol_In_Command(tDevice *device, ScsiIoCtx *scsi
                                 //Bytes 16 - 143 are ATA string for hardware version...must be swapped...up to the end of the buffer! Don't go over!
                                 //Bytes 144 - 271 are ATA string for version...must be swapped...up to the end of the buffer! Don't go over!
                                 //Bytes 272 - 527 are ATA string for module name...must be swapped...up to the end of the buffer! Don't go over!
-                                for (uint32_t swapOffset = offset + 16 /*16 is the start of the ATA strings*/; swapOffset < paddedLength && swapOffset < offset + descriptorLength + 8 /*8 byte header*/; swapOffset += 2 /*swap 2 bytes at a time*/)
+                                for (uint32_t swapOffset = offset + 16 /*16 is the start of the ATA strings*/; swapOffset < paddedLength && swapOffset < (offset + descriptorLength + 8) /*8 byte header*/; swapOffset += 2 /*swap 2 bytes at a time*/)
                                 {
                                     uint8_t tempByte = tempSecurityMemory[swapOffset];
                                     tempSecurityMemory[swapOffset] = tempSecurityMemory[swapOffset + 1];
