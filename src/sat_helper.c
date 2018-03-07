@@ -10889,6 +10889,10 @@ int translate_SCSI_Zone_Management_In_Command(tDevice *device, ScsiIoCtx *scsiIo
     {
         dataBufLength = 512;
         dataBuf = (uint8_t*)calloc(dataBufLength * sizeof(uint8_t), sizeof(uint8_t));
+        if (!dataBuf)
+        {
+            return MEMORY_FAILURE;
+        }
         localMemory = true;
     }
     else

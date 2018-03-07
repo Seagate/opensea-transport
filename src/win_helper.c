@@ -2619,6 +2619,10 @@ int get_Windows_FWDL_IO_Support(tDevice *device)
 	uint8_t slotCount = 7;//Max of 7 firmware slots on NVMe...might as well read in everything even if we aren't using it today.-TJE
 	uint32_t outputDataSize = sizeof(STORAGE_HW_FIRMWARE_INFO) + sizeof(STORAGE_HW_FIRMWARE_SLOT_INFO) * (slotCount - 1);//this is what MSDN says to do...
 	uint8_t *outputData = (uint8_t*)malloc(outputDataSize);
+    if (!outputData)
+    {
+        return MEMORY_FAILURE;
+    }
 	memset(outputData, 0, outputDataSize);
 	DWORD returned_data = 0;
 	//STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER can be set to request controller properties instead of what is associated with the handle...we may or maynot need this
@@ -2679,6 +2683,10 @@ bool is_Activate_Command(ScsiIoCtx *scsiIoCtx)
 int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
+    if (!scsiIoCtx)
+    {
+        return BAD_PARAMETER;
+    }
 	if (is_Activate_Command(scsiIoCtx))
 	{
 		//send the activate IOCTL
@@ -2834,6 +2842,10 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
 		//send download IOCTL
 		DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + dataLength;
 		PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD)malloc(downloadStructureSize);
+        if (!downloadIO)
+        {
+            return MEMORY_FAILURE;
+        }
 		memset(downloadIO, 0, downloadStructureSize);
 		downloadIO->Version = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD);
 		downloadIO->Size = downloadStructureSize;
@@ -2860,6 +2872,10 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
         {
             //get offset from the cdb
             downloadIO->Offset = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+        }
+        else
+        {
+            return BAD_PARAMETER;
         }
 		//set the size of the buffer
 		downloadIO->BufferSize = dataLength;
@@ -3900,7 +3916,12 @@ void set_Namespace_ID_For_Device(tDevice *device)
                 char currentHandleString[31] = { 0 };
                 memcpy(&currentHandleString, device->os_info.name, 30);
                 convert_String_To_Upper_Case(currentHandleString);
-                sscanf(currentHandleString, WIN_PHYSICAL_DRIVE "%" PRId32, &currentHandleNumber);//This will get the handle value we are talking to right now...
+                int sscanfRet = sscanf(currentHandleString, WIN_PHYSICAL_DRIVE "%" PRId32, &currentHandleNumber);//This will get the handle value we are talking to right now...
+                if (sscanfRet == 0 || sscanfRet == EOF)
+                {
+                    //couldn't parse the handle name for this, so stop and return
+                    return;
+                }
 
                 uint32_t startHandleValue = 0;
                 if ((int32_t)(currentHandleNumber - maxNamespaces) > 0)
@@ -4504,6 +4525,10 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     //send download IOCTL
     DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + dataLength;
     PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD)malloc(downloadStructureSize);
+    if (!downloadIO)
+    {
+        return MEMORY_FAILURE;
+    }
     memset(downloadIO, 0, downloadStructureSize);
     downloadIO->Version = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD);
     downloadIO->Size = downloadStructureSize;
