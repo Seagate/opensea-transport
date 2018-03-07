@@ -494,7 +494,7 @@ int get_Device(const char *filename, tDevice *device )
                                 }
                                 else if ((device_desc->BusType == BusTypeSata))
                                 {
-                                    if (strncmp(WIN_CDROM_DRIVE, filename, strlen(WIN_CDROM_DRIVE)))
+                                    if (strncmp(WIN_CDROM_DRIVE, filename, strlen(WIN_CDROM_DRIVE)) == 0)
                                     {
                                         device->drive_info.drive_type = ATAPI_DRIVE;
                                     }
