@@ -2061,36 +2061,6 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* device)
-    //
-    //! \brief   Description:  Attempts to figure out the ATA passthrough method of external (USB and IEEE1394) products by issueing identify commands with different passthrough types until success is found
-    //
-    //  Entry:
-    //!   \param[in] device = file descriptor
-    //!
-    //  Exit:
-    //!   \return VOID
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* device);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  set_ATA_Passthrough_Type_By_PID_and_VID(tDevice* device)
-    //
-    //! \brief   Description:  Sets the passthrough type based off theVID/PID combo. If no match is found, set_ATA_Passthrough_Type_By_Trial_And_Error(device) is called to set the passthrough type.
-    //
-    //  Entry:
-    //!   \param[in] device = file descriptor
-    //!
-    //  Exit:
-    //!   \return VOID
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void set_ATA_Passthrough_Type_By_PID_and_VID(tDevice *device);
-
-    //-----------------------------------------------------------------------------
-    //
     //  set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize)
     //
     //! \brief   Description:  Use this function to calculate and set a checksum into a data buffer. Useful for some SMART commands and DCO commands.

@@ -93,6 +93,10 @@ extern "C"
     #define SCSI_SENSE_INFO_FIELD_MSB_INDEX  (3)
     #define SCSI_FIXED_FORMAT_CMD_INFO_INDEX (8)
 
+    #define SCSI_MAX_21_LBA 0x001FFFFF //read/write 6byte commands
+    #define SCSI_MAX_32_LBA UINT32_MAX
+    #define SCSI_MAX_64_LBA UINT64_MAX
+
 	typedef enum _eSenseKeySpecificType
 	{
 		SENSE_KEY_SPECIFIC_UNKNOWN,
@@ -519,8 +523,8 @@ extern "C"
         PERIPHERAL_OPTICAL_MEMORY_DEVICE                = 0x07,
         PERIPHERAL_MEDIUM_CHANGER_DEVICE                = 0x08,
         PERIPHERAL_COMMUNICATIONS_DEVICE                = 0x09,
-        PERIPHERAL_OBSOLETE1                            = 0x0A,
-        PERIPHERAL_OBSOLETE2                            = 0x0B,
+        PERIPHERAL_OBSOLETE1                            = 0x0A,//ASC IT8 (Graphic arts pre-press devices)
+        PERIPHERAL_OBSOLETE2                            = 0x0B,//ASC IT8 (Graphic arts pre-press devices)
         PERIPHERAL_STORAGE_ARRAY_CONTROLLER_DEVICE      = 0x0C,
         PERIPHERAL_ENCLOSURE_SERVICES_DEVICE            = 0x0D,
         PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE      = 0x0E,
