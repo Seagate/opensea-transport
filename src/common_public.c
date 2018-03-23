@@ -335,6 +335,13 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo)
                     {
                         continue;
                     }
+					if (flags & SCAN_SEAGATE_ONLY)
+					{
+						if (is_Seagate_Family(&deviceList[devIter]) == NON_SEAGATE)
+						{
+							continue;
+						}
+					}
 #if defined (ENABLE_CSMI)
                     if (csmiDeviceCountValid && devIter >= (deviceCount - csmiDeviceCount))//if the csmi device count is valid then we found some for the scan and need to see if we need to check for duplicates.
                     {

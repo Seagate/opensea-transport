@@ -1098,7 +1098,6 @@ extern "C"
     // RAID interfaces (including csmi) may use bits 31:26 (so far those are the only ones used by CSMI)
     
     #define DEFAULT_SCAN 0
-	#define AGRESSIVE_SCAN BIT20 //this can wake a drive up because a bus rescan may be issued. (currently only implemented in Windows)
     #define ALL_DRIVES 0xFF
     #define ATA_DRIVES BIT0
     #define USB_DRIVES BIT1
@@ -1114,6 +1113,8 @@ extern "C"
     #define SD_HANDLES BIT16 //this is a Linux specific flag to show SDX handles instead of SGX handles
     #define SG_TO_SD BIT17
     #define SAT_12_BYTE BIT18
+	#define SCAN_SEAGATE_ONLY BIT19
+	#define AGRESSIVE_SCAN BIT20 //this can wake a drive up because a bus rescan may be issued. (currently only implemented in Windows)
 #if defined (ENABLE_CSMI)
     #define ALLOW_DUPLICATE_DEVICE BIT24 //This is ONLY used by the scan_And_Print_Devs function to filter what is output from it. This does NOT affect get_Device_List.
     #define IGNORE_CSMI BIT25 //only works in Windows since Linux never adopted CSMI support. Set this to ignore CSMI devices, or compile opensea-transport without the ENABLE_CSMI preprocessor definition.
