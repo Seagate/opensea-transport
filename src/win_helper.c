@@ -1029,6 +1029,9 @@ int send_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -1236,6 +1239,9 @@ int send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -1481,6 +1487,9 @@ int send_SCSI_Pass_Through(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -1611,6 +1620,9 @@ int send_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -1888,6 +1900,9 @@ int send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             case ERROR_INVALID_PARAMETER://Or command not supported?
             default:
@@ -2203,6 +2218,9 @@ int send_ATA_Passthrough_Ex(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
