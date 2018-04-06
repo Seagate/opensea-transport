@@ -407,8 +407,8 @@ extern "C"
     //
     //  Entry:
     //!   \param device - pointer to the device structure
-    //!   \param pcr - set the pcr bit
-    //!   \param sp - set the sp bit
+    //!   \param pcr - set the pcr bit (parameter code reset)
+    //!   \param sp - set the sp bit (save parameters)
     //!   \param pageControl - the value of the page control field. Only bits 1:0 are valid 
     //!   \param pageCode - the logpage you wish to read
     //!   \param subpageCode - the subpage you wish to read
