@@ -308,7 +308,7 @@ int nvme_Firmware_Image_Dl(tDevice *device,\
 	ImageDl.cmd.adminCmd.opcode = NVME_ADMIN_CMD_DOWNLOAD_FW;
     ImageDl.commandType = NVM_ADMIN_CMD;
     ImageDl.commandDirection = XFER_DATA_OUT;
-	ImageDl.cmd.adminCmd.addr = (unsigned long)ptrData;
+	ImageDl.cmd.adminCmd.addr = (uint64_t)ptrData;
 	ImageDl.cmd.adminCmd.dataLen = numberOfBytes;
 	ImageDl.cmd.adminCmd.cdw10 = (numberOfBytes >> 2) - 1; //Since this is, 0 based, number of DWords not Bytes. 
     ImageDl.cmd.adminCmd.cdw11 = bufferOffset >> 2;
