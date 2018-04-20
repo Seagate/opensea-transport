@@ -446,8 +446,9 @@ AR=ar
 #override CFLAGS = -Wall -c -fPIC -I. -std=gnu99
 CFLAGS ?= -Wall 
 CFLAGS += -c -fPIC -I. $(VMW_$(VMW_TARGET)_COMPILEFLAGS) -std=gnu99
+CFLAGS += -DVMK_CROSS_COMP
 LFLAGS = -Wall ../../../opensea-common/Make/gcc/$(FILE_OUTPUT_DIR)/libopensea-common.a $(VMW_LINK_FLAGS)
-LFLAGS += -L /opt/vmware/toolchain/cayman_esx_glibc-7fc626201c38c3a7e2472179c969a565b101f7ba/sysroot/usr/lib
+#LFLAGS += -L /opt/vmware/toolchain/cayman_esx_glibc-7fc626201c38c3a7e2472179c969a565b101f7ba/sysroot/usr/lib
 LIB_SRC_FILES = \
 	$(SRC_DIR)ata_cmds.c\
 	$(SRC_DIR)ata_legacy_cmds.c\
@@ -468,7 +469,8 @@ LIB_SRC_FILES = \
 
 UNAME := $(shell uname)
 ifeq ($(UNAME),Linux)
-	LIB_SRC_FILES += $(SRC_DIR)sg_helper.c
+	#LIB_SRC_FILES += $(SRC_DIR)sg_helper.c
+	LIB_SRC_FILES += $(SRC_DIR)vm_helper.c $(SRC_DIR)vm_nvme_lib.c $(SRC_DIR)vm_nvme_mgmt_common.c
 endif
 ifeq ($(UNAME),SunOS)
     LIB_SRC_FILES += $(SRC_DIR)uscsi_helper.c
@@ -478,7 +480,7 @@ ifeq (($UNAME),FreeBSD)
 endif
 
 PROJECT_DEFINES += $(VMW_EXTRA_DEFS) #-DDISABLE_NVME_PASSTHROUGH #-D_DEBUG
-PROJECT_DEFINES += -DDISABLE_NVME_PASSTHROUGH #-D_DEBUG
+#PROJECT_DEFINES += -DDISABLE_NVME_PASSTHROUGH #-D_DEBUG
 
 #All of the source files have associated object files
 LIB_OBJ_FILES = $(LIB_SRC_FILES:.c=.o)

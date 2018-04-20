@@ -12,9 +12,13 @@
 #include "common_public.h"
 
 #if defined (__linux__)
+#if defined (VMK_CROSS_COMP)
+#include "vm_helper.h"
+#else
 //including sg_helper.h here to for the map sg to sd function
 #include "sg_helper.h"
 //extern int map_sg_to_sd(char* filename, char *sgName, char *sdName);
+#endif
 #endif
 
 #if defined (ENABLE_CSMI)
@@ -379,7 +383,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo)
 #else
                         strcpy(displayHandle, deviceList[devIter].os_info.name);
 #endif
-#if defined (__linux__)
+#if defined (__linux__) && !defined(VMK_CROSS_COMP)
                         if ((flags & SG_TO_SD) > 0)
                         {
                             char *genName = NULL;
