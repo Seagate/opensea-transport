@@ -613,6 +613,7 @@ int get_Device(const char *filename, tDevice *device)
         device->drive_info.interface_type = NVME_INTERFACE;
         device->drive_info.drive_type = NVME_DRIVE;
         device->os_info.osType = OS_ESX;
+        memcpy(&(device->os_info.name), filename, strlen(filename) + 1);
 
         #if 0
         // Check we have a valid device by trying an ioctl

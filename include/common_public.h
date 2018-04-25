@@ -915,6 +915,7 @@ extern "C"
         struct nvme_handle *fd2;
         #else
         int                 fd2;//secondary handle. Ex: fd = sg handle opened, fd2 = sd handle opened.
+        #endif
         struct {
             bool            driverVersionValid;
             uint8_t         majorVersion;
