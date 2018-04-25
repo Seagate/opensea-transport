@@ -612,6 +612,8 @@ int get_Device(const char *filename, tDevice *device)
 
         device->drive_info.interface_type = NVME_INTERFACE;
         device->drive_info.drive_type = NVME_DRIVE;
+        device->drive_info.media_type = MEDIA_NVM;
+        memcmp(device->drive_info.T10_vendor_ident, "NVMe",4);
         device->os_info.osType = OS_ESX;
         memcpy(&(device->os_info.name), filename, strlen(filename) + 1);
 
