@@ -4319,7 +4319,7 @@ int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
 	protocolData->ProtocolType = ProtocolTypeNvme;
 	protocolData->DataType = NVMeDataTypeLogPage;
 	protocolData->ProtocolDataRequestValue = nvmeIoCtx->cmd.adminCmd.cdw10 & 0x000000FF;
-	protocolData->ProtocolDataRequestSubValue = 0;
+	protocolData->ProtocolDataRequestSubValue = M_Nibble2(nvmeIoCtx->cmd.adminCmd.cdw10);//bits 11:08 log page specific
 	protocolData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA);
 	protocolData->ProtocolDataLength = nvmeIoCtx->cmd.adminCmd.dataLen;
 	
