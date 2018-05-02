@@ -859,8 +859,20 @@ extern "C"
     }__attribute__((packed,aligned(1))) driveInfo;
     #endif
 
+#if defined (UEFI)
+    typedef enum _eUEFIPassthroughType
+    {
+        UEFI_PASSTHROUGH_UNKNOWN,
+        UEFI_PASSTHROUGH_SCSI,
+        UEFI_PASSTHROUGH_SCSI_EXT,
+        UEFI_PASSTHROUGH_ATA,
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+        UEFI_PASSTHROUGH_NVME,
+#endif
+    }eUEFIPassthroughType;
+#endif
 
-#if defined (_WIN32)
+#if defined (_WIN32) && !defined (UEFI)
     //TODO: see if we can move these WIndows specific enums out to the windows unique files.
     typedef enum _eWindowsIOCTLType
     {
@@ -891,7 +903,12 @@ extern "C"
         char                name[30];//handle name (string)
         char                friendlyName[20];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
         eOSType             osType;//useful for lower layers to do OS specific things
-        #if defined (__linux__)
+        #if defined (UEFI)
+        EFI_HANDLE          fd;
+        eUEFIPassthroughType passthroughType;
+        uint16_t            controllerID;
+        uint16_t            deviceID;
+        #elif defined (__linux__)
         int                 fd;//primary handle
         bool                scsiAddressValid;//will be true if the SCSI address is a valid address
         struct {
