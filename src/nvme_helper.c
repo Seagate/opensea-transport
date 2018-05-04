@@ -520,7 +520,8 @@ int nvme_Get_SMART_Log_Page(tDevice *device, uint32_t nsid, uint8_t * pData, uin
     smartLog = (nvmeSmartLog *)pData;
 
     cmdOpts.nsid = nsid;
-    cmdOpts.addr = (uint64_t)smartLog;
+    //cmdOpts.addr = (uint64_t)smartLog;
+    cmdOpts.addr = smartLog;
     cmdOpts.dataLen = NVME_SMART_HEALTH_LOG_LEN;
     cmdOpts.lid = NVME_LOG_SMART_ID;
 

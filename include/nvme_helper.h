@@ -366,7 +366,8 @@ extern "C"
     typedef struct _nvmeGetLogPageCmdOpts {
         uint32_t    nsid;
     	uint64_t	metadata; // MPTR
-    	uint64_t	addr;   //PRP Entry 1
+    	//uint64_t	addr;   //PRP Entry 1
+        uint8_t	    *addr;   //PRP Entry 1
     	uint32_t 	metadataLen;
     	uint32_t 	dataLen;
         uint8_t     lid; //Log Page identifier, part of Command Dword 10(CDW10)

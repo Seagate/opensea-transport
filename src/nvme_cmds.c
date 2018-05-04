@@ -558,7 +558,11 @@ int nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts
     getLogPage.cmd.adminCmd.opcode = NVME_ADMIN_CMD_GET_LOG_PAGE;
     getLogPage.commandType = NVM_ADMIN_CMD;
     getLogPage.commandDirection = XFER_DATA_IN;
-    getLogPage.cmd.adminCmd.addr = getLogPageCmdOpts->addr;
+    #if defined(VMK_CROSS_COMP)
+    getLogPage.cmd.adminCmd.addr = (uint32_t)getLogPageCmdOpts->addr;
+    #else
+    getLogPage.cmd.adminCmd.addr = (uint64_t)getLogPageCmdOpts->addr;
+    #endif
     getLogPage.cmd.adminCmd.dataLen = getLogPageCmdOpts->dataLen;
     getLogPage.cmd.adminCmd.nsid = getLogPageCmdOpts->nsid;
 
