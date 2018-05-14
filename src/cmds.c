@@ -260,16 +260,16 @@ int fill_Drive_Info_Data(tDevice *device)
                 }
             }
             break;
-        case NVME_INTERFACE:
-			#if !defined(DISABLE_NVME_PASSTHROUGH)
-			status = fill_In_NVMe_Device_Info(device);
-			break;
-			#endif
         case IEEE_1394_INTERFACE:
 		case USB_INTERFACE:
             //On USB and firewire, call this instead since this includes various hacks/workarounds for some USB devices.
             status = fill_Drive_Info_USB(device);
             break;
+		case NVME_INTERFACE:
+#if !defined(DISABLE_NVME_PASSTHROUGH)
+			status = fill_In_NVMe_Device_Info(device);
+			break;
+#endif
         case SCSI_INTERFACE:
         default:
             //call this instead. It will handle issuing scsi commands and at the end will attempt an ATA Identify if needed
