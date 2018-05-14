@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,7 +14,21 @@
 #include "common_public.h"
 #include "ata_helper.h"
 #include "ata_helper_func.h"
+#include "scsi_helper_func.h"
 
+bool is_Buffer_Non_Zero(uint8_t* ptrData, uint32_t dataLen)
+{
+    bool isNonZero = false;
+    for (uint32_t iter = 0; iter < dataLen; ++iter)
+    {
+        if (ptrData[iter] != 0)
+        {
+            isNonZero = true;
+            break;
+        }
+    }
+    return isNonZero;
+}
 
 int fill_In_ATA_Drive_Info(tDevice *device)
 {
@@ -28,8 +42,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
 
     bool retrievedIdentifyData = false;
     //try an identify command, then also try an identify packet device command. The data we care about parsing will be in the same location so everything inside this if should work as expected
-    if (SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) || SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData))
-        )
+    if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
     {
         retrievedIdentifyData = true;
     }
@@ -41,17 +54,27 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         {
             //we aren't trying 12 byte...we should try it...BUT if we suspect that this is an ATAPI drive, we should NOT. This is because ATAPI uses the same opcode for the "blank"
             //command. Since these are the same, the SATL may not filter it properly and we may issue this command instead. Since I don't know what this does, let's avoid that if possible. - TJE
-            //Filter out ATAPI_DRIVE, TAPE_DRIVE, MEDIA_OPTICAL, & MEDIA_TAPE to be safe...this should be pretty good. -TJE
-            if (!(device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == TAPE_DRIVE
+            //Filter out ATAPI_DRIVE, LEGACY_TAPE_DRIVE, MEDIA_OPTICAL, & MEDIA_TAPE to be safe...this should be pretty good. -TJE
+            if (!(device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE
                 || device->drive_info.media_type == MEDIA_OPTICAL || device->drive_info.media_type == MEDIA_TAPE))
             {
                 device->drive_info.ata_Options.use12ByteSATCDBs = true;
                 memset(identifyData, 0, 512);
-                //send check power mode to help clear out any stale RTFRs or sense data from the drive...needed by some devices. Won't hurt other devices.
-                uint8_t mode = 0;
-                ata_Check_Power_Mode(device, &mode);
-                if (SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) || SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData))
-                    )
+                if (device->drive_info.interface_type == IDE_INTERFACE)
+                {
+                    //send check power mode to help clear out any stale RTFRs or sense data from the drive...needed by some devices. Won't hurt other devices.
+                    uint8_t mode = 0;
+                    ata_Check_Power_Mode(device, &mode);
+                }
+                else
+                {
+                    //SCSI/USB interfaces will do a test unit ready command first, then check power mode as passthrough, then one last test unit ready to get everything refreshed
+                    uint8_t mode = 0;
+                    scsi_Test_Unit_Ready(device, NULL);
+                    ata_Check_Power_Mode(device, &mode);
+                    scsi_Test_Unit_Ready(device, NULL);
+                }
+                if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
                 {
                     retrievedIdentifyData = true;
                 }
@@ -65,7 +88,17 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     }
     if (retrievedIdentifyData)
     {
+        if (device->drive_info.interface_type == IDE_INTERFACE && device->drive_info.scsiVersion == 0)
+        {
+            device->drive_info.scsiVersion = 0x07;//SPC5. This is what software translator will set at the moment. Can make this configurable later, but this should be ok
+        }
+        //print_Data_Buffer((uint8_t*)ident_word, 512, true);
         ret = SUCCESS;
+        if (device->drive_info.lastCommandRTFRs.device & DEVICE_SELECT_BIT)//Checking for the device select bit being set to know it's device 1 (Not that we really need it). This may not always be reported correctly depending on the lower layers of the OS and hardware. - TJE
+        {
+            device->drive_info.ata_Options.isDevice1 = true;
+        }
+
         if (ident_word[0] & BIT15)
         {
             device->drive_info.drive_type = ATAPI_DRIVE;
@@ -201,7 +234,37 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         {
             *fillMaxLba = M_BytesTo4ByteValue(identifyData[123], identifyData[122], identifyData[121], identifyData[120]);
         }
-        *fillMaxLba -= 1;
+        if (*fillMaxLba > 0)
+        {
+            *fillMaxLba -= 1;
+        }
+
+        //This flag will get set so we can do a software translation of LBA to CHS during read/write
+        if (!is_LBA_Mode_Supported(device) && is_CHS_Mode_Supported(device))
+        {
+            device->drive_info.ata_Options.chsModeOnly = true;
+            //simulate a max LBA into device information
+            uint16_t cylinder = M_BytesTo2ByteValue(identifyData[109], identifyData[108]);//word 54
+            uint8_t head = identifyData[110];//Word55
+            uint8_t sector = identifyData[112];//Word56
+            //if (cylinder == 0 && head == 0 && sector == 0)
+            //{
+            //    //current inforation isn't there....so use default values
+            //    cylinder = M_BytesTo2ByteValue(identifyData[3], identifyData[2]);//word 1
+            //    head = identifyData[6];//Word3
+            //    sector = identifyData[12];//Word6
+            //}
+            uint32_t lba = cylinder * head * sector;
+            if (lba == 0)
+            {
+                //Cannot use "current" settings on this drive...use default (really old drive)
+                cylinder = M_BytesTo2ByteValue(identifyData[3], identifyData[2]);//word 1
+                head = identifyData[6];//Word3
+                sector = identifyData[12];//Word6
+                lba = cylinder * head * sector;
+            }
+            *fillMaxLba = lba;
+        }
 
         //Now determine if the drive supports DMA and which DMA modes it supports
         if (ident_word[49] & BIT8)
@@ -413,6 +476,11 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             //now read the couple pages of logs we care about to set some more flags for software SAT
             if (readIDDataLog)
             {
+                memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
+                if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                {
+                    device->drive_info.softSATFlags.identifyDeviceDataLogSupported = true;
+                }
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
                 if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
                 {
@@ -652,117 +720,6 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataComm
     }
 }
 
-void set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice *device)
-{
-    if ((device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE) && device->drive_info.ata_Options.enableLegacyPassthroughDetectionThroughTrialAndError)
-    {
-#if defined (_DEBUG)
-        printf("\n\tAttempting to set USB passthrough type with identify commands\n");
-#endif
-        while (device->drive_info.ata_Options.passthroughType != ATA_PASSTHROUGH_UNKNOWN)
-        {
-            uint8_t identifyData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
-            if (SUCCESS == ata_Identify(device, identifyData, LEGACY_DRIVE_SEC_SIZE))
-            {
-                //command succeeded so this is most likely the correct pass-through type to use for this device
-                //setting drive type while we're in here since it could help with a faster scan
-                device->drive_info.drive_type = ATA_DRIVE;
-                break;
-            }
-            else if (SUCCESS == ata_Identify_Packet_Device(device, identifyData, LEGACY_DRIVE_SEC_SIZE))
-            {
-                //command succeeded so this is most likely the correct pass-through type to use for this device
-                //setting drive type while we're in here since it could help with a faster scan
-                device->drive_info.drive_type = ATAPI_DRIVE;
-                break;
-            }
-            ++device->drive_info.ata_Options.passthroughType;
-        }
-    }
-}
-
-typedef enum _eUSBVendorIDs
-{
-    evVendorSeagate = 0x0477,
-    evVendorOxford = 0x0928,
-    evVendorJMicron = 0x152d,
-    evVendorDell = 0x413C,
-    evVendorUSeagate = 0x0BC2,
-    evVendorSamsung = 0x04E8,
-    // Add new enumerations above this line!
-    evVendorUnknown = 0
-} eUSBVendorIDs;
-
-void set_ATA_Passthrough_Type_By_PID_and_VID(tDevice *device)
-{
-    //only change the ATA Passthrough type for USB (for legacy USB bridges)
-    if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
-    {
-        //Most USB bridges are SAT so they'll probably fall into the default cases and issue an identify command for SAT
-        switch (device->drive_info.bridge_info.vendorID)
-        {
-        case evVendorUSeagate:
-        case evVendorSeagate:
-            switch (device->drive_info.bridge_info.productID)
-            {
-            case 0x0501:
-            case 0x0503:
-                device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_CYPRESS;
-                break;
-            case 0x0502:
-                device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_TI;
-                break;
-                
-            default: //unknown
-                set_ATA_Passthrough_Type_By_Trial_And_Error(device);
-                break;
-            }
-            break;
-        case evVendorOxford:
-            switch (device->drive_info.bridge_info.productID)
-            {
-            case 0x0008:
-                device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_SAT;
-                break;
-            default: //unknown
-                set_ATA_Passthrough_Type_By_Trial_And_Error(device);
-                break;
-            }
-            break;
-        case evVendorJMicron:
-            switch (device->drive_info.bridge_info.productID)
-            {
-            case 0x2339://MiniD2
-                device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_SAT;
-                break;
-            default: //unknown
-                set_ATA_Passthrough_Type_By_Trial_And_Error(device);
-                break;
-            }
-            break;
-        case evVendorDell:
-            switch (device->drive_info.bridge_info.productID)
-            {
-            default: //unknown
-                set_ATA_Passthrough_Type_By_Trial_And_Error(device);
-                break;
-            }
-            break;
-        case evVendorSamsung:
-            switch (device->drive_info.bridge_info.productID)
-            {
-            default: //unknown
-                set_ATA_Passthrough_Type_By_Trial_And_Error(device);
-                break;
-            }
-            break;
-        default: //unknown
-            set_ATA_Passthrough_Type_By_Trial_And_Error(device);
-            break;
-        }
-    }
-}
-
 uint8_t calculate_ATA_Checksum(uint8_t *ptrData)
 {
     uint8_t checksum = 0;
@@ -790,7 +747,7 @@ bool is_Checksum_Valid(uint8_t *ptrData, uint32_t dataSize, uint32_t *firstInval
     {
         for (uint32_t counter = 0; counter <= 511; ++counter)
         {
-            checksumCalc = checksumCalc + ptrData[counter];
+            checksumCalc = checksumCalc + ptrData[counter + (blockIter * 512)];
         }
         if (checksumCalc == 0)
         {
@@ -818,6 +775,177 @@ int set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize)
     {
         checksum = calculate_ATA_Checksum(&ptrData[blockIter]);
         ptrData[blockIter + 511] = (~checksum + 1);
+    }
+    return ret;
+}
+
+bool is_LBA_Mode_Supported(tDevice *device)
+{
+    bool lbaSupported = true;
+    if (!(device->drive_info.IdentifyData.ata.Word049 & BIT9))
+    {
+        lbaSupported = false;
+    }
+    return lbaSupported;
+}
+
+bool is_CHS_Mode_Supported(tDevice *device)
+{
+    bool chsSupported = true;
+    //Check words 1, 3, 6
+    if (device->drive_info.IdentifyData.ata.Word001 == 0 ||
+        device->drive_info.IdentifyData.ata.Word003 == 0 ||
+        device->drive_info.IdentifyData.ata.Word006 == 0 )
+    {
+        chsSupported = false;
+    }
+
+    return chsSupported;
+}
+
+bool is_Current_CHS_Info_Valid(tDevice *device)
+{
+    bool chsSupported = true;
+    uint8_t* identifyPtr = (uint8_t*)&device->drive_info.IdentifyData.ata.Word000;
+    uint16_t userAddressableCapacityCHS = M_BytesTo4ByteValue(identifyPtr[117], identifyPtr[116], identifyPtr[115], identifyPtr[114]);
+    //Check words 1, 3, 6, 54, 55, 56, 58:57 for values
+    if (!(device->drive_info.IdentifyData.ata.Word053 & BIT0) || //if this bit is set, then the current fields are valid. If not, they may or may not be valid
+        device->drive_info.IdentifyData.ata.Word001 == 0 ||
+        device->drive_info.IdentifyData.ata.Word003 == 0 ||
+        device->drive_info.IdentifyData.ata.Word006 == 0 ||
+        device->drive_info.IdentifyData.ata.Word054 == 0 ||
+        device->drive_info.IdentifyData.ata.Word055 == 0 ||
+        device->drive_info.IdentifyData.ata.Word056 == 0 ||
+        userAddressableCapacityCHS == 0)
+    {
+        chsSupported = false;
+    }
+
+    return chsSupported;
+}
+
+//Code to test LBA to CHS conversion Below
+//FILE * chsTest = fopen("chsToLBATest.txt", "w");
+//if (chsTest)
+//{
+//    fprintf(chsTest, "%5s | %2s | %2s - LBA\n", "C", "H", "S");
+//    uint32_t cyl = 0;
+//    uint16_t head = 0, sector = 0;
+//    for (cyl = 0; cyl < deviceList[deviceIter].drive_info.IdentifyData.ata.Word054; ++cyl)
+//    {
+//        for (head = 0; head < deviceList[deviceIter].drive_info.IdentifyData.ata.Word055; ++head)
+//        {
+//            for (sector = 1; sector <= deviceList[deviceIter].drive_info.IdentifyData.ata.Word056; ++sector)
+//            {
+//                uint32_t lba = 0;
+//                convert_CHS_To_LBA(&deviceList[deviceIter], cyl, head, sector, &lba);
+//                fprintf(chsTest, "%5" PRIu32 " | %2" PRIu16 " | %2" PRIu16 " - %" PRIu32 "\n", cyl, head, sector, lba);
+//            }
+//        }
+//    }
+//    fflush(chsTest);
+//    fclose(chsTest);
+//}
+//
+//FILE *lbaToCHSTest = fopen("lbaToCHSTest.txt", "w");
+//if (lbaToCHSTest)
+//{
+//    fprintf(lbaToCHSTest, "%8s - %5s | %2s | %2s\n", "LBA", "C", "H", "S");
+//    for (uint32_t lba = 0; lba < 12706470; ++lba)
+//    {
+//        uint16_t cylinder = 0;
+//        uint8_t head = 0;
+//        uint8_t sector = 0;
+//        convert_LBA_To_CHS(&deviceList[deviceIter], lba, &cylinder, &head, &sector);
+//        fprintf(lbaToCHSTest, "%8" PRIu32 " - %5" PRIu16 " | %2" PRIu8 " | %2" PRIu8 "\n", lba, cylinder, head, sector);
+//    }
+//    fflush(lbaToCHSTest);
+//    fclose(lbaToCHSTest);
+//}
+
+//device parameter needed so we can see the current CHS configuration and translate properly...
+int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t *lba)
+{
+    int ret = SUCCESS;
+    if (lba)
+    {
+        if (is_CHS_Mode_Supported(device))
+        {
+            uint16_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word055;//from current ID configuration
+            uint16_t sectorsPerTrack = device->drive_info.IdentifyData.ata.Word056;//from current ID configuration
+            *lba = UINT32_MAX;
+            *lba = ((uint32_t)((uint32_t)((uint32_t)cylinder * (uint32_t)headsPerCylinder) + (uint32_t)head) * (uint32_t)sectorsPerTrack) + (uint32_t)sector - UINT32_C(1);
+        }
+        else
+        {
+            ret = NOT_SUPPORTED;
+        }
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_t *head, uint8_t *sector)
+{
+    int ret = SUCCESS;
+    lba &= MAX_28_BIT_LBA;
+    if (cylinder && head &&sector)
+    {
+        uint8_t* identifyPtr = (uint8_t*)&device->drive_info.IdentifyData.ata.Word000;
+        //uint32_t lbaCapacity = M_BytesTo4ByteValue(identifyPtr[123], identifyPtr[122], identifyPtr[121], identifyPtr[120]);//28bit LBA value
+        uint32_t userAddressableCapacityCHS = M_BytesTo4ByteValue(identifyPtr[117], identifyPtr[116], identifyPtr[115], identifyPtr[114]);//CHS max sector capacity
+        //if (lba < lbaCapacity)
+        //{
+            if (is_CHS_Mode_Supported(device))
+            {
+                if (is_Current_CHS_Info_Valid(device))
+                {
+                    uint32_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word055;
+                    uint32_t sectorsPerTrack = device->drive_info.IdentifyData.ata.Word056;
+                    *cylinder = lba / (uint32_t)(headsPerCylinder * sectorsPerTrack);
+                    *head = (uint8_t)((lba / sectorsPerTrack) % headsPerCylinder);
+                    *sector = (uint8_t)((lba % sectorsPerTrack) + UINT8_C(1));
+                    //check that this isn't above the value of words 58:57
+                    uint32_t currentSector = (*cylinder) * (*head) * (*sector);
+                    if (currentSector > userAddressableCapacityCHS)
+                    {
+                        //change the return value, but leave the calculated values as they are
+                        ret = NOT_SUPPORTED;
+                    }
+                }
+                else
+                {
+                    uint32_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word003;
+                    uint32_t sectorsPerTrack = device->drive_info.IdentifyData.ata.Word006;
+                    *cylinder = lba / (uint32_t)(headsPerCylinder * sectorsPerTrack);
+                    *head = (uint8_t)((lba / sectorsPerTrack) % headsPerCylinder);
+                    *sector = (uint8_t)((lba % sectorsPerTrack) + UINT8_C(1));
+                    userAddressableCapacityCHS = device->drive_info.IdentifyData.ata.Word001 * device->drive_info.IdentifyData.ata.Word003 * device->drive_info.IdentifyData.ata.Word006;
+                    //check that this isn't above the value of words 58:57
+                    uint32_t currentSector = (*cylinder) * (*head) * (*sector);
+                    if (currentSector > userAddressableCapacityCHS)
+                    {
+                        //change the return value, but leave the calculated values as they are
+                        ret = NOT_SUPPORTED;
+                    }
+                }
+            }
+            else
+            {
+                ret = NOT_SUPPORTED;
+            }
+        //}
+        //else
+        //{
+        //    ret = NOT_SUPPORTED;
+        //}
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
     }
     return ret;
 }

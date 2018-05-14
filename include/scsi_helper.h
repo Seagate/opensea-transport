@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -92,6 +92,66 @@ extern "C"
     #define SCSI_DESC_FORMAT_DESC_LEN        (9)
     #define SCSI_SENSE_INFO_FIELD_MSB_INDEX  (3)
     #define SCSI_FIXED_FORMAT_CMD_INFO_INDEX (8)
+
+    #define SCSI_MAX_21_LBA 0x001FFFFF //read/write 6byte commands
+    #define SCSI_MAX_32_LBA UINT32_MAX
+    #define SCSI_MAX_64_LBA UINT64_MAX
+
+	typedef enum _eSenseKeySpecificType
+	{
+		SENSE_KEY_SPECIFIC_UNKNOWN,
+		SENSE_KEY_SPECIFIC_FIELD_POINTER,
+		SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT,
+		SENSE_KEY_SPECIFIC_PROGRESS_INDICATION,
+		SENSE_KEY_SPECIFIC_SEGMENT_POINTER,
+		SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW
+	}eSenseKeySpecificType;
+
+	typedef struct _senseKeySpecificFieldPointer
+	{
+		bool cdbOrData;//true = cdb, false = data
+		bool bitPointerValid;
+		uint8_t bitPointer;
+		uint16_t fieldPointer;
+	}senseKeySpecificFieldPointer;
+
+	typedef struct _senseKeySpecificActualRetryCount
+	{
+		uint16_t actualRetryCount;
+	}senseKeySpecificActualRetryCount;
+
+	typedef struct _senseKeySpecificProgressIndication
+	{
+		uint16_t progressIndication;
+	}senseKeySpecificProgressIndication;
+
+	typedef struct _senseKeySpecificSegmentPointer
+	{
+		bool segmentDescriptor;
+		bool bitPointerValid;
+		uint8_t bitPointer;
+		uint16_t fieldPointer;
+	}senseKeySpecificSegmentPointer;
+
+	typedef struct _senseKeySpecificUnitAttentionQueueOverflow
+	{
+		bool overflow;
+	}senseKeySpecificUnitAttentionQueueOverflow;
+
+	typedef struct _senseKeySpecific
+	{
+		bool senseKeySpecificValid; //Will be set when the sense data contains sense key specific information
+		eSenseKeySpecificType type; //use this to parse the correct structure from the union below.
+		union
+		{
+			uint8_t unknownDataType[3];
+			senseKeySpecificFieldPointer field;
+			senseKeySpecificActualRetryCount retryCount;
+			senseKeySpecificProgressIndication progress;
+			senseKeySpecificSegmentPointer segment;
+			senseKeySpecificUnitAttentionQueueOverflow unitAttention;
+		};
+	}senseKeySpecific, *ptrSenseKeySpecific;
 
 // \struct scsiStatus
 // \param senseKey
@@ -389,10 +449,11 @@ extern "C"
 
     typedef enum _eScsiPowerConditionValues
     {
-        PC_START_VALID     = 0x0,
+        PC_START_VALID     = 0x0,//process START and LOEJ bits
         PC_ACTIVE          = 0x1,
         PC_IDLE            = 0x2,
         PC_STANDBY         = 0x3,
+        PC_SLEEP           = 0x5, //Obsolete since SBC2. Requires a reset to wake
         PC_LU_CONTROL      = 0x7,
         PC_FORCE_IDLE_0    = 0xA,
         PC_FORCE_STANDBY_0 = 0xB,
@@ -462,8 +523,8 @@ extern "C"
         PERIPHERAL_OPTICAL_MEMORY_DEVICE                = 0x07,
         PERIPHERAL_MEDIUM_CHANGER_DEVICE                = 0x08,
         PERIPHERAL_COMMUNICATIONS_DEVICE                = 0x09,
-        PERIPHERAL_OBSOLETE1                            = 0x0A,
-        PERIPHERAL_OBSOLETE2                            = 0x0B,
+        PERIPHERAL_OBSOLETE1                            = 0x0A,//ASC IT8 (Graphic arts pre-press devices)
+        PERIPHERAL_OBSOLETE2                            = 0x0B,//ASC IT8 (Graphic arts pre-press devices)
         PERIPHERAL_STORAGE_ARRAY_CONTROLLER_DEVICE      = 0x0C,
         PERIPHERAL_ENCLOSURE_SERVICES_DEVICE            = 0x0D,
         PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE      = 0x0E,

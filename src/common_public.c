@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,7 +14,7 @@
 #if defined (__linux__)
 //including sg_helper.h here to for the map sg to sd function
 #include "sg_helper.h"
-extern int map_sg_to_sd(char* filename, char *sgName, char *sdName);
+//extern int map_sg_to_sd(char* filename, char *sgName, char *sdName);
 #endif
 
 #if defined (ENABLE_CSMI)
@@ -201,300 +201,284 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo)
 	}
 	if (SUCCESS == get_Device_Count(&deviceCount, getCountFlags))
     {
-        tDevice * deviceList = (tDevice*)calloc(deviceCount * sizeof(tDevice), sizeof(tDevice));
-        versionBlock version;
-        if (!deviceList)
+        if (deviceCount > 0)
         {
-            perror("calloc failure!");
-            return;
-        }
-        memset(&version, 0, sizeof(versionBlock));
-        version.size = sizeof(tDevice);
-        version.version = DEVICE_BLOCK_VERSION;
-        uint64_t getDeviceflags = FAST_SCAN;
-#if defined (ENABLE_CSMI)
-        if (flags & IGNORE_CSMI)
-        {
-            getDeviceflags |= GET_DEVICE_FUNCS_IGNORE_CSMI;
-        }
-#endif
-        int ret = get_Device_List(deviceList, deviceCount * sizeof(tDevice), version, getDeviceflags);
-        if (ret == SUCCESS || ret == WARN_NOT_ALL_DEVICES_ENUMERATED)
-        {
-            bool printToScreen = true;
-            bool fileOpened = false;
-            JSONContext *scanjsonContext = NULL;//allocate if we use it.
-            if (outputInfo)
+            tDevice * deviceList = (tDevice*)calloc(deviceCount * sizeof(tDevice), sizeof(tDevice));
+            versionBlock version;
+            if (!deviceList)
             {
-                switch (outputInfo->outputFormat)
+                perror("calloc failure!");
+                return;
+            }
+            memset(&version, 0, sizeof(versionBlock));
+            version.size = sizeof(tDevice);
+            version.version = DEVICE_BLOCK_VERSION;
+            uint64_t getDeviceflags = FAST_SCAN;
+#if defined (ENABLE_CSMI)
+            if (flags & IGNORE_CSMI)
+            {
+                getDeviceflags |= GET_DEVICE_FUNCS_IGNORE_CSMI;
+            }
+#endif
+            int ret = get_Device_List(deviceList, deviceCount * sizeof(tDevice), version, getDeviceflags);
+            if (ret == SUCCESS || ret == WARN_NOT_ALL_DEVICES_ENUMERATED)
+            {
+                bool printToScreen = true;
+                bool fileOpened = false;
+                JSONContext *scanjsonContext = NULL;//allocate if we use it.
+                if (outputInfo)
                 {
-                case SEAC_OUTPUT_JSON:
-                    printToScreen = false;
-                    scanjsonContext = (JSONContext*)calloc(sizeof(JSONContext) * 1, sizeof(JSONContext));
-                    if (!scanjsonContext)
+                    switch (outputInfo->outputFormat)
                     {
-                        perror("could not allocate memory!");
-                        return;
-                    }
-                    //find the file to print to
-                    if (!outputInfo->outputFilePtr)
-                    {
-                        char fileNameAndPath[OPENSEA_PATH_MAX] = { 0 };
-                        if (outputInfo->outputPath && *outputInfo->outputPath && strlen(*outputInfo->outputPath))
+                    case SEAC_OUTPUT_JSON:
+                        printToScreen = false;
+                        scanjsonContext = (JSONContext*)calloc(sizeof(JSONContext) * 1, sizeof(JSONContext));
+                        if (!scanjsonContext)
                         {
-                            strcpy(fileNameAndPath, *outputInfo->outputPath);
-                            strcat(fileNameAndPath, "/");
-                        }
-                        if (outputInfo->outputFileName && *outputInfo->outputFileName && strlen(*outputInfo->outputFileName))
-                        {
-                            strcat(fileNameAndPath, *outputInfo->outputFileName);
-                        }
-                        else
-                        {
-                            strcat(fileNameAndPath, "scanOutput");
-                        }
-                        strcat(fileNameAndPath, ".json");
-                        if (!(outputInfo->outputFilePtr = fopen(fileNameAndPath, "w+")))
-                        {
-                            safe_Free(deviceList);
-                            perror("could not open file!");
+                            perror("could not allocate memory!");
                             return;
                         }
-                    }
-                    fileOpened = true;
-                    //setup JSON context
-                    InitializeJSONContextData(scanjsonContext, write_JSON_To_File, (void*)outputInfo->outputFilePtr, 2, 20);
-                    break;
-                case SEAC_OUTPUT_TEXT:
-                    //make sure that the file it open to write...
-                    if (!outputInfo->outputFilePtr)
-                    {
-                        char fileNameAndPath[OPENSEA_PATH_MAX] = { 0 };
-                        if (outputInfo->outputPath && *outputInfo->outputPath && strlen(*outputInfo->outputPath))
+                        //find the file to print to
+                        if (!outputInfo->outputFilePtr)
                         {
-                            strcpy(fileNameAndPath, *outputInfo->outputPath);
-                            strcat(fileNameAndPath, "/");
-                        }
-                        if (outputInfo->outputFileName && *outputInfo->outputFileName && strlen(*outputInfo->outputFileName))
-                        {
-                            strcat(fileNameAndPath, *outputInfo->outputFileName);
-                        }
-                        else
-                        {
-                            strcat(fileNameAndPath, "scanOutput");
-                        }
-                        strcat(fileNameAndPath, ".txt");
-                        if (!(outputInfo->outputFilePtr = fopen(fileNameAndPath, "w+")))
-                        {
-                            safe_Free(deviceList);
-                            perror("could not open file!");
-                            return;
-                        }
-                    }
-                    fileOpened = true;
-                    break;
-                default://assume standard text output
-                    break;
-                }
-            }
-            if (printToScreen)
-            {
-                printf("%-8s %-12s %-23s %-22s %-10s\n", "Vendor", "Handle", "Model Number", "Serial Number", "FwRev");
-            }
-            else
-            {
-                //if json, open and put header
-                switch (outputInfo->outputFormat)
-                {
-                case SEAC_OUTPUT_JSON:
-                    OpenJSON(scanjsonContext);
-                    OpenJSONObject("Scan Output", scanjsonContext);
-                    break;
-                case SEAC_OUTPUT_TEXT:
-                    fprintf(outputInfo->outputFilePtr, "%-8s %-12s %-23s %-22s %-10s\n", "Vendor", "Handle", "Model Number", "Serial Number", "FwRev");
-                    break;
-                default:
-                    break;
-                }
-            }
-#if defined (ENABLE_CSMI)
-            if (!(flags & IGNORE_CSMI))
-            {
-                int csmiRet = get_CSMI_Device_Count(&csmiDeviceCount, flags);//get number of CSMI devices that are in the device list so we know when to start looking for duplicates in the csmi devices
-                if (csmiRet == SUCCESS && csmiDeviceCount > 0)
-                {
-                    csmiDeviceCountValid = true;
-                }
-            }
-#endif
-            for (uint32_t devIter = 0; devIter < deviceCount; ++devIter)
-            {
-                if (ret == WARN_NOT_ALL_DEVICES_ENUMERATED && UNKNOWN_DRIVE == deviceList[devIter].drive_info.drive_type)
-                {
-                    continue;
-                }
-#if defined (ENABLE_CSMI)
-                if (csmiDeviceCountValid && devIter >= (deviceCount - csmiDeviceCount))//if the csmi device count is valid then we found some for the scan and need to see if we need to check for duplicates.
-                {
-                    //check if we are being asked to show duplicates or not.
-                    if (!(flags & ALLOW_DUPLICATE_DEVICE))
-                    {
-                        bool skipThisDevice = false;
-                        for (uint32_t dupCheck = 0; dupCheck < (deviceCount - csmiDeviceCount); ++dupCheck)
-                        {
-                            //check if the WWN is valid (non-zero value) and then check if it matches anything else already in the list...this should be faster than the SN comparison below. - TJE
-                            if (deviceList[devIter].drive_info.worldWideName != 0 && deviceList[devIter].drive_info.worldWideName == deviceList[dupCheck].drive_info.worldWideName)
+                            char fileNameAndPath[OPENSEA_PATH_MAX] = { 0 };
+                            if (outputInfo->outputPath && *outputInfo->outputPath && strlen(*outputInfo->outputPath))
                             {
-                                skipThisDevice = true;
-                                break;
+                                strcpy(fileNameAndPath, *outputInfo->outputPath);
+                                strcat(fileNameAndPath, "/");
                             }
-                            //check if the SN is valid (non-zero length) and then check if it matches anything already seen in the list... - TJE
-                            else if (strlen(deviceList[devIter].drive_info.serialNumber) && strcmp(deviceList[devIter].drive_info.serialNumber, deviceList[dupCheck].drive_info.serialNumber) == 0)
+                            if (outputInfo->outputFileName && *outputInfo->outputFileName && strlen(*outputInfo->outputFileName))
                             {
-                                skipThisDevice = true;
-                                break;
-                            }
-                        }
-                        if (skipThisDevice)
-                        {
-                            continue;
-                        }
-                    }
-                }
-#endif
-                if (scan_Drive_Type_Filter(&deviceList[devIter], flags) && scan_Interface_Type_Filter(&deviceList[devIter], flags))
-                {
-                    char displayHandle[26] = { 0 };
-#if defined(_WIN32)
-                    uint16_t handleNumber = UINT16_MAX;
-                    int sscanfret = sscanf(deviceList[devIter].os_info.name, "\\\\.\\PHYSICALDRIVE%"SCNu16"", &handleNumber);
-                    if (sscanfret == 0 || sscanfret == EOF)
-                    {
-#if defined (ENABLE_CSMI)
-                        if (strncmp(deviceList[devIter].os_info.name, "\\\\.\\SCSI", 8) == 0)
-                        {
-                            uint32_t controllerNum = 0, portNum = 0;
-                            sscanfret = sscanf(deviceList[devIter].os_info.name, "\\\\.\\SCSI%"SCNu32":%"SCNu32"", &controllerNum, &portNum);
-                            if (sscanfret == 0 || sscanfret == EOF)
-                            {
-                                strcpy(displayHandle, deviceList[devIter].os_info.name);
+                                strcat(fileNameAndPath, *outputInfo->outputFileName);
                             }
                             else
                             {
-                                sprintf(displayHandle, "SCSI%"PRIu32":%"PRIu32"", controllerNum, portNum);
+                                strcat(fileNameAndPath, "scanOutput");
+                            }
+                            strcat(fileNameAndPath, ".json");
+                            if (!(outputInfo->outputFilePtr = fopen(fileNameAndPath, "w+")))
+                            {
+                                safe_Free(deviceList);
+                                perror("could not open file!");
+                                return;
                             }
                         }
-                        else
-#endif
+                        fileOpened = true;
+                        //setup JSON context
+                        InitializeJSONContextData(scanjsonContext, write_JSON_To_File, (void*)outputInfo->outputFilePtr, 2, 20);
+                        break;
+                    case SEAC_OUTPUT_TEXT:
+                        //make sure that the file it open to write...
+                        if (!outputInfo->outputFilePtr)
                         {
-                            strcpy(displayHandle, deviceList[devIter].os_info.name);
+                            char fileNameAndPath[OPENSEA_PATH_MAX] = { 0 };
+                            if (outputInfo->outputPath && *outputInfo->outputPath && strlen(*outputInfo->outputPath))
+                            {
+                                strcpy(fileNameAndPath, *outputInfo->outputPath);
+                                strcat(fileNameAndPath, "/");
+                            }
+                            if (outputInfo->outputFileName && *outputInfo->outputFileName && strlen(*outputInfo->outputFileName))
+                            {
+                                strcat(fileNameAndPath, *outputInfo->outputFileName);
+                            }
+                            else
+                            {
+                                strcat(fileNameAndPath, "scanOutput");
+                            }
+                            strcat(fileNameAndPath, ".txt");
+                            if (!(outputInfo->outputFilePtr = fopen(fileNameAndPath, "w+")))
+                            {
+                                safe_Free(deviceList);
+                                perror("could not open file!");
+                                return;
+                            }
+                        }
+                        fileOpened = true;
+                        break;
+                    default://assume standard text output
+                        break;
+                    }
+                }
+                if (printToScreen)
+                {
+                    printf("%-8s %-12s %-23s %-22s %-10s\n", "Vendor", "Handle", "Model Number", "Serial Number", "FwRev");
+                }
+                else
+                {
+                    //if json, open and put header
+                    switch (outputInfo->outputFormat)
+                    {
+                    case SEAC_OUTPUT_JSON:
+                        OpenJSON(scanjsonContext);
+                        OpenJSONObject("Scan Output", scanjsonContext);
+                        break;
+                    case SEAC_OUTPUT_TEXT:
+                        fprintf(outputInfo->outputFilePtr, "%-8s %-12s %-23s %-22s %-10s\n", "Vendor", "Handle", "Model Number", "Serial Number", "FwRev");
+                        break;
+                    default:
+                        break;
+                    }
+                }
+#if defined (ENABLE_CSMI)
+                if (!(flags & IGNORE_CSMI))
+                {
+                    int csmiRet = get_CSMI_Device_Count(&csmiDeviceCount, flags);//get number of CSMI devices that are in the device list so we know when to start looking for duplicates in the csmi devices
+                    if (csmiRet == SUCCESS && csmiDeviceCount > 0)
+                    {
+                        csmiDeviceCountValid = true;
+                    }
+                }
+#endif
+                for (uint32_t devIter = 0; devIter < deviceCount; ++devIter)
+                {
+                    if (ret == WARN_NOT_ALL_DEVICES_ENUMERATED && UNKNOWN_DRIVE == deviceList[devIter].drive_info.drive_type)
+                    {
+                        continue;
+                    }
+					if (flags & SCAN_SEAGATE_ONLY)
+					{
+						if (is_Seagate_Family(&deviceList[devIter]) == NON_SEAGATE)
+						{
+							continue;
+						}
+					}
+#if defined (ENABLE_CSMI)
+                    if (csmiDeviceCountValid && devIter >= (deviceCount - csmiDeviceCount))//if the csmi device count is valid then we found some for the scan and need to see if we need to check for duplicates.
+                    {
+                        //check if we are being asked to show duplicates or not.
+                        if (!(flags & ALLOW_DUPLICATE_DEVICE))
+                        {
+                            bool skipThisDevice = false;
+                            for (uint32_t dupCheck = 0; dupCheck < (deviceCount - csmiDeviceCount); ++dupCheck)
+                            {
+                                //check if the WWN is valid (non-zero value) and then check if it matches anything else already in the list...this should be faster than the SN comparison below. - TJE
+                                if (deviceList[devIter].drive_info.worldWideName != 0 && deviceList[devIter].drive_info.worldWideName == deviceList[dupCheck].drive_info.worldWideName)
+                                {
+                                    skipThisDevice = true;
+                                    break;
+                                }
+                                //check if the SN is valid (non-zero length) and then check if it matches anything already seen in the list... - TJE
+                                else if (strlen(deviceList[devIter].drive_info.serialNumber) && strcmp(deviceList[devIter].drive_info.serialNumber, deviceList[dupCheck].drive_info.serialNumber) == 0)
+                                {
+                                    skipThisDevice = true;
+                                    break;
+                                }
+                            }
+                            if (skipThisDevice)
+                            {
+                                continue;
+                            }
                         }
                     }
-                    else
+#endif
+                    if (scan_Drive_Type_Filter(&deviceList[devIter], flags) && scan_Interface_Type_Filter(&deviceList[devIter], flags))
                     {
-                        sprintf(displayHandle, "PD%"PRIu16"", handleNumber);
-                    }
-#elif defined (__sun)
-                    sprintf(displayHandle, "/dev/rdsk/%s", deviceList[devIter].os_info.name);
+                        char displayHandle[26] = { 0 };
+#if defined(_WIN32)
+                        strcpy(displayHandle, deviceList[devIter].os_info.friendlyName);
 #else
-                    //TODO: Make sure this displays the handle as the user should enter it for each OS!
-                    sprintf(displayHandle, "/dev/%s", deviceList[devIter].os_info.name);
+                        strcpy(displayHandle, deviceList[devIter].os_info.name);
 #endif
 #if defined (__linux__)
-                    if ((flags & SG_TO_SD) > 0)
-                    {
-                        char *sgName = (char*)calloc(5, sizeof(char));
-                        char *sdName = (char*)calloc(5, sizeof(char));
-                        if (SUCCESS == map_sg_to_sd(displayHandle, sgName, sdName))
+                        if ((flags & SG_TO_SD) > 0)
                         {
-                            memset(displayHandle, 0, sizeof(displayHandle));
-                            strcpy(displayHandle, sgName);
-                            strcat(displayHandle, "<->");
-                            strcat(displayHandle, sdName);
+                            char *genName = NULL;
+                            char *blockName = NULL;
+                            if (SUCCESS == map_Block_To_Generic_Handle(displayHandle, &genName, &blockName))
+                            {
+                                memset(displayHandle, 0, sizeof(displayHandle));
+                                strcpy(displayHandle, genName);
+                                strcat(displayHandle, "<->");
+                                strcat(displayHandle, blockName);
+                            }
+                            safe_Free(genName);
+                            safe_Free(blockName);
                         }
-                        safe_Free(sgName);
-                        safe_Free(sdName);
-                    }
-                    else if ((flags & SD_HANDLES) > 0)
-                    {
-                        char *sgName = (char*)calloc(5, sizeof(char));
-                        char *sdName = (char*)calloc(5, sizeof(char));
-                        if (SUCCESS == map_sg_to_sd(displayHandle, sgName, sdName))
+                        else if ((flags & SD_HANDLES) > 0)
                         {
-                            memset(displayHandle, 0, sizeof(displayHandle));
-                            sprintf(displayHandle, "/dev/%s", sdName);
+                            char *genName = NULL;
+                            char *blockName = NULL;
+                            if (SUCCESS == map_Block_To_Generic_Handle(displayHandle, &genName, &blockName))
+                            {
+                                memset(displayHandle, 0, sizeof(displayHandle));
+                                sprintf(displayHandle, "/dev/%s", blockName);
+                            }
+                            safe_Free(genName);
+                            safe_Free(blockName);
                         }
-                        safe_Free(sgName);
-                        safe_Free(sdName);
-                    }
 #endif
-                    char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
-                    strncpy(printable_sn, deviceList[devIter].drive_info.serialNumber, SERIAL_NUM_LEN);
-                    //if seagate scsi, need to truncate to 8 digits
-                    if (deviceList[devIter].drive_info.drive_type == SCSI_DRIVE && is_Seagate_Family(&deviceList[devIter]) == SEAGATE)
-                    {
-                        memset(printable_sn, 0, SERIAL_NUM_LEN);
-                        strncpy(printable_sn, deviceList[devIter].drive_info.serialNumber, 8);
-                    }
-                    //now show the results (or save to a file)
-                    if (printToScreen)
-                    {
-                        printf("%-8s %-12s %-23s %-22s %-10s\n", \
-                            deviceList[devIter].drive_info.T10_vendor_ident, displayHandle, \
-                            deviceList[devIter].drive_info.product_identification, \
-                            printable_sn, \
-                            deviceList[devIter].drive_info.product_revision);
-                    }
-                    else
-                    {
-                        switch (outputInfo->outputFormat)
+                        char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
+                        strncpy(printable_sn, deviceList[devIter].drive_info.serialNumber, SERIAL_NUM_LEN);
+                        //if seagate scsi, need to truncate to 8 digits
+                        if (deviceList[devIter].drive_info.drive_type == SCSI_DRIVE && is_Seagate_Family(&deviceList[devIter]) == SEAGATE)
                         {
-                        case SEAC_OUTPUT_JSON:
-                            OpenJSONObject("Device", scanjsonContext);
-                            WriteJSONPair("Handle", displayHandle, scanjsonContext);
-                            WriteJSONPair("Vendor ID", deviceList[devIter].drive_info.T10_vendor_ident, scanjsonContext);
-                            WriteJSONPair("Model Number", deviceList[devIter].drive_info.product_identification, scanjsonContext);
-                            WriteJSONPair("Serial Number", printable_sn, scanjsonContext);
-                            WriteJSONPair("Firmware Version", deviceList[devIter].drive_info.product_revision, scanjsonContext);
-                            CloseJSONObject(scanjsonContext);
-                            break;
-                        case SEAC_OUTPUT_TEXT:
-                            fprintf(outputInfo->outputFilePtr, "%-8s %-12s %-23s %-22s %-10s\n", \
+                            memset(printable_sn, 0, SERIAL_NUM_LEN);
+                            strncpy(printable_sn, deviceList[devIter].drive_info.serialNumber, 8);
+                        }
+                        //now show the results (or save to a file)
+                        if (printToScreen)
+                        {
+                            printf("%-8s %-12s %-23s %-22s %-10s\n", \
                                 deviceList[devIter].drive_info.T10_vendor_ident, displayHandle, \
                                 deviceList[devIter].drive_info.product_identification, \
                                 printable_sn, \
                                 deviceList[devIter].drive_info.product_revision);
-                            break;
-                        default://TODO: add other output format types
-                            break;
                         }
+                        else
+                        {
+                            switch (outputInfo->outputFormat)
+                            {
+                            case SEAC_OUTPUT_JSON:
+                                OpenJSONObject("Device", scanjsonContext);
+                                WriteJSONPair("Handle", displayHandle, scanjsonContext);
+                                WriteJSONPair("Vendor ID", deviceList[devIter].drive_info.T10_vendor_ident, scanjsonContext);
+                                WriteJSONPair("Model Number", deviceList[devIter].drive_info.product_identification, scanjsonContext);
+                                WriteJSONPair("Serial Number", printable_sn, scanjsonContext);
+                                WriteJSONPair("Firmware Version", deviceList[devIter].drive_info.product_revision, scanjsonContext);
+                                CloseJSONObject(scanjsonContext);
+                                break;
+                            case SEAC_OUTPUT_TEXT:
+                                fprintf(outputInfo->outputFilePtr, "%-8s %-12s %-23s %-22s %-10s\n", \
+                                    deviceList[devIter].drive_info.T10_vendor_ident, displayHandle, \
+                                    deviceList[devIter].drive_info.product_identification, \
+                                    printable_sn, \
+                                    deviceList[devIter].drive_info.product_revision);
+                                break;
+                            default://TODO: add other output format types
+                                break;
+                            }
+                        }
+                        fflush(stdout);
                     }
-                    fflush(stdout);
                 }
-            }
-            if (!printToScreen)
-            {
-                switch (outputInfo->outputFormat)
+                if (!printToScreen)
                 {
-                case SEAC_OUTPUT_JSON:
-                    CloseJSONObject(scanjsonContext);
-                    CloseJSON(scanjsonContext);
-                    break;
-                case SEAC_OUTPUT_TEXT:
-                    //nothing that we need to do....(maybe put some new line characters?)
-                    break;
-                default:
-                    break;
+                    switch (outputInfo->outputFormat)
+                    {
+                    case SEAC_OUTPUT_JSON:
+                        CloseJSONObject(scanjsonContext);
+                        CloseJSON(scanjsonContext);
+                        break;
+                    case SEAC_OUTPUT_TEXT:
+                        //nothing that we need to do....(maybe put some new line characters?)
+                        break;
+                    default:
+                        break;
+                    }
+                    if (fileOpened)
+                    {
+                        fflush(outputInfo->outputFilePtr);
+                        fclose(outputInfo->outputFilePtr);
+                    }
                 }
-                if (fileOpened)
-                {
-                    fflush(outputInfo->outputFilePtr);
-                    fclose(outputInfo->outputFilePtr);
-                }
+                safe_Free(scanjsonContext);
             }
-            safe_Free(scanjsonContext);
+            safe_Free(deviceList);
         }
-        safe_Free(deviceList);
+        else
+        {
+            printf("No devices found\n");
+        }
     }
     else
     {

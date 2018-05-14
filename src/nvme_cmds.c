@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -308,7 +308,7 @@ int nvme_Firmware_Image_Dl(tDevice *device,\
 	ImageDl.cmd.adminCmd.opcode = NVME_ADMIN_CMD_DOWNLOAD_FW;
     ImageDl.commandType = NVM_ADMIN_CMD;
     ImageDl.commandDirection = XFER_DATA_OUT;
-	ImageDl.cmd.adminCmd.addr = (unsigned long)ptrData;
+	ImageDl.cmd.adminCmd.addr = (uint64_t)ptrData;
 	ImageDl.cmd.adminCmd.dataLen = numberOfBytes;
 	ImageDl.cmd.adminCmd.cdw10 = (numberOfBytes >> 2) - 1; //Since this is, 0 based, number of DWords not Bytes. 
     ImageDl.cmd.adminCmd.cdw11 = bufferOffset >> 2;

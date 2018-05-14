@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -39,6 +39,8 @@
 //SAT 3 optional feature flags
 //SAT 2 optional feature flags
 //SAT optional feature flags
+
+//TODO: SPC and SBC optional feature flag translations. A good SATL should enable everything to make the drive look more and act more like a SCSI device
 
 int get_Return_TFRs_From_Passthrough_Results_Log(tDevice *device, ataReturnTFRs *ataRTFRs, uint16_t parameterCode)
 {
@@ -859,7 +861,20 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
         if (sendIOret != OS_PASSTHROUGH_FAILURE && gotRTFRs)//If we got this error, then there's nothing we can do as far as judging command result since the failure was an OS failure..so we just want to pass this up
         {
             //Determine the command completion status to set the error code.
-            //This is written after reviewing AAM, AST, APT, SATA Specs, and legacy drive specs.
+            //This is written after reviewing SAT, AAM, AST, APT, SATA Specs, and legacy drive specs.
+            //if ((ataCommandOptions->commadProtocol == ATA_PROTOCOL_PIO && ataCommandOptions->commandDirection == XFER_DATA_IN)
+            //    ||
+            //    ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA_FPDMA)
+            //{
+            //    //If we get here, then the result register bits will be zero if the command completes successfully.
+            //    //If the command failed, then we should see the error bit in the error register set to 1.
+            //    //This was added in SAT3.
+            //    //TODO: separate error handling for these cases here!!! - TJE
+            //}
+            //else
+            //{
+            //    //Normal error handling for all other commands
+            //}
             //Check the status register to see if the busy bit is set
             bool checkError = false;
             bool requestATASenseData = false;
@@ -951,6 +966,10 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
         else if (sendIOret != OS_PASSTHROUGH_FAILURE && !gotRTFRs)
         {
             ret = senseRet;//We didn't get RTFRs to judge and there wasn't an issue sending the command through the OS or driver...so go with what the sense data says
+        }
+        else
+        {
+            ret = sendIOret;
         }
     }
     safe_Free(satCDB);
@@ -1323,7 +1342,7 @@ int satl_Read_Verify_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba, uint8_t *ptrDat
 {
     int ret = SUCCESS;
     bool dmaSupported = false;
-    uint16_t verificationLength = dataSize / scsiIoCtx->device->drive_info.deviceBlockSize;
+    uint32_t verificationLength = dataSize / scsiIoCtx->device->drive_info.deviceBlockSize;
     if (scsiIoCtx->device->drive_info.IdentifyData.ata.Capability & BIT8)
     {
         if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2))
@@ -1521,12 +1540,53 @@ int satl_Sequential_Write_Commands(ScsiIoCtx *scsiIoCtx, uint64_t startLba, uint
     return ret;
 }
 
+bool are_RTFRs_Non_Zero_From_Identify(ataReturnTFRs *identRTFRs)
+{
+    bool nonZero = false;
+    if (identRTFRs->device != 0 ||
+        identRTFRs->lbaHi  != 0 ||
+        identRTFRs->lbaMid != 0 ||
+        identRTFRs->lbaLow != 0 ||
+        identRTFRs->secCnt != 0
+        //NOTE: Not checking error or status because those could be dummied up in low level passthrough stuff on some occasions - TJE
+        )
+    {
+        nonZero = true;
+    }
+    return nonZero;
+}
+
 int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t peripheralDevice = 0;
+    uint8_t commandCode = ATA_IDENTIFY;
     uint8_t ataInformation[572] = { 0 };
-    if (SUCCESS != ata_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
+#if SAT_SPEC_SUPPORTED > 3
+    if (device->drive_info.softSATFlags.identifyDeviceDataLogSupported)
+    {
+        if (SUCCESS != ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+        {
+            if (SUCCESS != ata_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
+            {
+                return FAILURE;
+            }
+        }
+        else
+        {
+            if (device->drive_info.ata_Options.readLogWriteLogDMASupported)
+            {
+                commandCode = ATA_READ_LOG_EXT_DMA;
+            }
+            else
+            {
+                commandCode = ATA_READ_LOG_EXT;
+            }
+        }
+    }
+    else 
+#endif
+        if (SUCCESS != ata_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
     {
         //that failed, so try an identify packet device
         if (SUCCESS != ata_Identify_Packet_Device(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
@@ -1535,6 +1595,7 @@ int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *scsiIoCtx
             return FAILURE;
         }
         peripheralDevice = 0x05;
+        commandCode = ATAPI_IDENTIFY;
     }
     set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL);
 #if SAT_SPEC_SUPPORTED > 3
@@ -1575,11 +1636,11 @@ int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *scsiIoCtx
 
     if (strlen(openseaVersionString) < 8)
     {
-        snprintf(&ataInformation[24], 8, " %-8s", openseaVersionString);
+        snprintf((char*)(&ataInformation[24]), 8, " %-8s", openseaVersionString);
     }
     else
     {
-        snprintf(&ataInformation[24], 8, "%-8s", openseaVersionString);
+        snprintf((char*)(&ataInformation[24]), 8, "%-8s", openseaVersionString);
     }
     //SAT Product Revision -set to SAT Version supported by library
     ataInformation[32] = 'S';
@@ -1596,65 +1657,101 @@ int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *scsiIoCtx
         ataInformation[36] = 0x00;
     }
     //leaving PMPort and other stuff at 0 since I don't know those-TJE
-    if (peripheralDevice == 0 || peripheralDevice == 0x14) //ATA
+    if ((commandCode == ATA_IDENTIFY || commandCode == ATAPI_IDENTIFY)
+        && are_RTFRs_Non_Zero_From_Identify(&device->drive_info.lastCommandRTFRs))
     {
-        //Set ATA Device signature (need to add an if for zoned devices since they have a different signature in SATA 3.3, which is currently commented out below) - TJE
-        //this is set by what I could find in the SATA spec. I'm assuming if we made it to here in the code, the drive sent a good signature. - TJE
-        ataInformation[38] = 0x50;//status - 00h..70h
-        ataInformation[39] = 0x01;//error - 01h
-        ataInformation[40] = 0x01;//lbalo - 01h
-        ataInformation[41] = 0x00;//lbamid - 00h
-        ataInformation[42] = 0x00;//lbahi - 00h
-        ataInformation[43] = 0x00;//device - NA
-        ataInformation[44] = 0x00;//lbaloext - not specified
-        ataInformation[45] = 0x00;//lbamidext - not specified
-        ataInformation[46] = 0x00;//lbahiext - not specified
+        //In this case, we got the rtfrs from the drive and can use them to set the signature instead of dummying it up
+        ataInformation[38] = device->drive_info.lastCommandRTFRs.status;
+        ataInformation[39] = device->drive_info.lastCommandRTFRs.error;
+        ataInformation[40] = device->drive_info.lastCommandRTFRs.lbaLow;
+        ataInformation[41] = device->drive_info.lastCommandRTFRs.lbaMid;
+        ataInformation[42] = device->drive_info.lastCommandRTFRs.lbaHi;
+        ataInformation[43] = device->drive_info.lastCommandRTFRs.device;
+        ataInformation[44] = device->drive_info.lastCommandRTFRs.lbaLowExt;
+        ataInformation[45] = device->drive_info.lastCommandRTFRs.lbaMidExt;
+        ataInformation[46] = device->drive_info.lastCommandRTFRs.lbaHiExt;
         ataInformation[47] = RESERVED;
-        ataInformation[48] = 0x01;//seccnt - 01h
-        ataInformation[49] = 0x00;//seccntext - not specified
+        ataInformation[48] = device->drive_info.lastCommandRTFRs.secCnt;
+        ataInformation[49] = device->drive_info.lastCommandRTFRs.secCntExt;
         ataInformation[50] = RESERVED;
         ataInformation[51] = RESERVED;
         ataInformation[52] = RESERVED;
         ataInformation[53] = RESERVED;
         ataInformation[54] = RESERVED;
         ataInformation[55] = RESERVED;
-        if (peripheralDevice == 0x14)
+    }
+    else
+    {
+        if (peripheralDevice == 0 || peripheralDevice == 0x14) //ATA
         {
-            ataInformation[41] = 0xCD;//lbamid - CDh
-            ataInformation[42] = 0xAB;//lbahi - ABh
+            //Set ATA Device signature
+            //this is set by what I could find in the SATA spec. I'm assuming if we made it to here in the code, the drive sent a good signature. - TJE
+            ataInformation[38] = 0x50;//status - 00h..70h
+            ataInformation[39] = 0x01;//error - 01h
+            ataInformation[40] = 0x01;//lbalo - 01h
+            ataInformation[41] = 0x00;//lbamid - 00h
+            ataInformation[42] = 0x00;//lbahi - 00h
+            ataInformation[43] = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;//device - NA
+            if (device->drive_info.ata_Options.isDevice1)
+            {
+                ataInformation[43] |= DEVICE_SELECT_BIT;
+            }
+            ataInformation[44] = 0x00;//lbaloext - not specified
+            ataInformation[45] = 0x00;//lbamidext - not specified
+            ataInformation[46] = 0x00;//lbahiext - not specified
+            ataInformation[47] = RESERVED;
+            ataInformation[48] = 0x01;//seccnt - 01h
+            ataInformation[49] = 0x00;//seccntext - not specified
+            ataInformation[50] = RESERVED;
+            ataInformation[51] = RESERVED;
+            ataInformation[52] = RESERVED;
+            ataInformation[53] = RESERVED;
+            ataInformation[54] = RESERVED;
+            ataInformation[55] = RESERVED;
+            if (peripheralDevice == 0x14)
+            {
+                ataInformation[41] = 0xCD;//lbamid - CDh
+                ataInformation[42] = 0xAB;//lbahi - ABh
+            }
+        }
+        else //ATAPI
+        {
+            //this is set by what I could find in the SATA spec. I'm assuming if we made it to here in the code, the drive sent a good signature. - TJE
+            ataInformation[38] = 0x00;//status - 00h
+            ataInformation[39] = 0x01;//error - 01h
+            ataInformation[40] = 0x01;//lbalo - 01h
+            ataInformation[41] = 0x14;//lbamid - 14h
+            ataInformation[42] = 0xEB;//lbahi - EBh
+            ataInformation[43] = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;//device - NA
+            if (device->drive_info.ata_Options.isDevice1)
+            {
+                ataInformation[43] |= DEVICE_SELECT_BIT;
+            }
+            ataInformation[44] = 0x00;//lbaloext - not specified
+            ataInformation[45] = 0x00;//lbamidext - not specified
+            ataInformation[46] = 0x00;//lbahiext - not specified
+            ataInformation[47] = RESERVED;
+            ataInformation[48] = 0x01;//seccnt - 01h
+            ataInformation[49] = 0x00;//seccntext - not specified
+            ataInformation[50] = RESERVED;
+            ataInformation[51] = RESERVED;
+            ataInformation[52] = RESERVED;
+            ataInformation[53] = RESERVED;
+            ataInformation[54] = RESERVED;
+            ataInformation[55] = RESERVED;
         }
     }
-    else //ATAPI
-    {
-        //this is set by what I could find in the SATA spec. I'm assuming if we made it to here in the code, the drive sent a good signature. - TJE
-        ataInformation[38] = 0x00;//status - 00h
-        ataInformation[39] = 0x01;//error - 01h
-        ataInformation[40] = 0x01;//lbalo - 01h
-        ataInformation[41] = 0x14;//lbamid - 14h
-        ataInformation[42] = 0xEB;//lbahi - EBh
-        ataInformation[43] = 0x00;//device - NA
-        ataInformation[44] = 0x00;//lbaloext - not specified
-        ataInformation[45] = 0x00;//lbamidext - not specified
-        ataInformation[46] = 0x00;//lbahiext - not specified
-        ataInformation[47] = RESERVED;
-        ataInformation[48] = 0x01;//seccnt - 01h
-        ataInformation[49] = 0x00;//seccntext - not specified
-        ataInformation[50] = RESERVED;
-        ataInformation[51] = RESERVED;
-        ataInformation[52] = RESERVED;
-        ataInformation[53] = RESERVED;
-        ataInformation[54] = RESERVED;
-        ataInformation[55] = RESERVED;
-    }
     //command code
-    if (peripheralDevice == 0x05)
+    ataInformation[56] = commandCode;
+    //Old code below, now using variable to set command code since we may read identify data with a read log ext command
+    /*if (peripheralDevice == 0x05)
     {
         ataInformation[56] = ATAPI_IDENTIFY;
     }
     else
     {
         ataInformation[56] = ATA_IDENTIFY;
-    }
+    }*/
     //reserved
     ataInformation[57] = RESERVED;
     ataInformation[58] = RESERVED;
@@ -2151,13 +2248,11 @@ int translate_Mode_Page_Policy_VPD_Page_87h(tDevice *device, ScsiIoCtx *scsiIoCt
     pageOffset += 4;
 #if SAT_SPEC_SUPPORTED > 2
     //power condition
-    /*
     modePagePolicy[pageOffset + 0] = 0x1A;//pageCode
     modePagePolicy[pageOffset + 1] = 0x00;//subpage code
     modePagePolicy[pageOffset + 2] = 0x01;//mlus = 0 | modePagePolicy = 01b (per target port)
     modePagePolicy[pageOffset + 3] = RESERVED;//Reserved
     pageOffset += 4;
-    */
 #endif
     //ATA power condition
     if (device->drive_info.IdentifyData.ata.Word083 & BIT3)
@@ -2188,14 +2283,15 @@ int translate_Mode_Page_Policy_VPD_Page_87h(tDevice *device, ScsiIoCtx *scsiIoCt
     modePagePolicy[pageOffset + 3] = RESERVED;//Reserved
     pageOffset += 4;
 #endif
-    //pata control
-    /*
-    modePagePolicy[pageOffset + 0] = 0xA0;//pageCode
-    modePagePolicy[pageOffset + 1] = 0xF1;//subpage code
-    modePagePolicy[pageOffset + 2] = 0x01;//mlus = 0 | modePagePolicy = 01b (per target port)
-    modePagePolicy[pageOffset + 3] = RESERVED;//Reserved
-    pageOffset += 4;
-    */
+    if (device->drive_info.IdentifyData.ata.Word076 == 0 || device->drive_info.IdentifyData.ata.Word076 == 0xFFFF)//Only Serial ATA Devices will set the bits in words 76-79. Bit zero should always be set to zero, so the FFFF case won't be an issue
+    {
+        //pata control
+        modePagePolicy[pageOffset + 0] = 0xA0;//pageCode
+        modePagePolicy[pageOffset + 1] = 0xF1;//subpage code
+        modePagePolicy[pageOffset + 2] = 0x01;//mlus = 0 | modePagePolicy = 01b (per target port)
+        modePagePolicy[pageOffset + 3] = RESERVED;//Reserved
+        pageOffset += 4;
+    }
     //set the page length last
     modePagePolicy[2] = M_Byte1(pageOffset - 4);
     modePagePolicy[3] = M_Byte0(pageOffset - 4);
@@ -3110,7 +3206,6 @@ int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
 
 int translate_SCSI_Read_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
-    int ret = SUCCESS;
     uint64_t lba = 0;
     uint32_t transferLength = 0;
     bool fua = false;
@@ -3185,7 +3280,6 @@ int translate_SCSI_Read_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 
 int translate_SCSI_Write_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
-    int ret = SUCCESS;
     bool fua = false;
     uint64_t lba = 0;
     uint32_t transferLength = 0;
@@ -3474,20 +3568,8 @@ int translate_SCSI_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t byteCheck = 0;
-    bool dmaSupported = false;
     uint64_t lba = 0;
     uint32_t verificationLength = 0;
-    if (device->drive_info.IdentifyData.ata.Capability & BIT8)
-    {
-        if (device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2))
-        {
-            dmaSupported = true;
-        }
-        else if (device->drive_info.IdentifyData.ata.Word088 & 0xFF)
-        {
-            dmaSupported = true;
-        }
-    }
     bool invalidField = false;
     //check the read command and get the LBA from it
     switch (scsiIoCtx->cdb[OPERATION_CODE])
@@ -3809,7 +3891,7 @@ int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             //Parameter header information
             uint8_t protectionFieldUsage = M_GETBITRANGE(scsiIoCtx->pdata[0], 2, 0);
             bool formatOptionsValid = scsiIoCtx->pdata[1] & BIT7;
-            bool disablePrimary = scsiIoCtx->pdata[1] & BIT6;
+            //bool disablePrimary = scsiIoCtx->pdata[1] & BIT6; //SATL ignores this bit. Commented out so we can use it if we ever need to.
             bool disableCertification = scsiIoCtx->pdata[1] & BIT5;
             bool stopFormat = scsiIoCtx->pdata[1] & BIT4;
             bool initializationPattern = scsiIoCtx->pdata[1] & BIT3;
@@ -3846,6 +3928,7 @@ int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 || stopFormat //Doesn't make sense to support since we cannot accept a defect list. We could also ignore this, but this should be fine
                 || p_i_information != 0
                 || protectionIntervalExponent != 0
+                || vendorSpecific //We don't have a vendor specific functionality in here
                 )
             {
                 //invalid field in parameter list
@@ -4421,7 +4504,6 @@ int translate_SCSI_Security_Protocol_In_Command(tDevice *device, ScsiIoCtx *scsi
                         uint32_t descriptorLength = 0;//will be changed within the loop
                         for (uint32_t offset = 4; offset < (lengthOfComplianceDescriptors + 4) && offset < scsiIoCtx->dataLength; offset += descriptorLength + 8)
                         {
-                            bool exitLoop = false;
                             uint16_t descriptorType = M_BytesTo2ByteValue(scsiIoCtx->pdata[offset + 1], scsiIoCtx->pdata[offset + 0]);
                             scsiIoCtx->pdata[offset + 1] = M_Byte0(descriptorType);
                             scsiIoCtx->pdata[offset + 0] = M_Byte1(descriptorType);
@@ -4442,7 +4524,7 @@ int translate_SCSI_Security_Protocol_In_Command(tDevice *device, ScsiIoCtx *scsi
                                 //Bytes 16 - 143 are ATA string for hardware version...must be swapped...up to the end of the buffer! Don't go over!
                                 //Bytes 144 - 271 are ATA string for version...must be swapped...up to the end of the buffer! Don't go over!
                                 //Bytes 272 - 527 are ATA string for module name...must be swapped...up to the end of the buffer! Don't go over!
-                                for (uint32_t swapOffset = offset + 16 /*16 is the start of the ATA strings*/; swapOffset < scsiIoCtx->dataLength && swapOffset < offset + descriptorLength + 8 /*8 byte header*/; swapOffset += 2 /*swap 2 bytes at a time*/)
+                                for (uint32_t swapOffset = offset + 16 /*16 is the start of the ATA strings*/; swapOffset < scsiIoCtx->dataLength && swapOffset < (offset + descriptorLength + 8) /*8 byte header*/; swapOffset += 2 /*swap 2 bytes at a time*/)
                                 {
                                     uint8_t tempByte = scsiIoCtx->pdata[swapOffset];
                                     scsiIoCtx->pdata[swapOffset] = scsiIoCtx->pdata[swapOffset + 1];
@@ -4515,7 +4597,6 @@ int translate_SCSI_Security_Protocol_In_Command(tDevice *device, ScsiIoCtx *scsi
                         uint32_t descriptorLength = 0;//will be changed within the loop
                         for (uint32_t offset = 4; offset < (lengthOfComplianceDescriptors + 4) && offset < paddedLength; offset += descriptorLength + 8)
                         {
-                            bool exitLoop = false;
                             uint16_t descriptorType = M_BytesTo2ByteValue(tempSecurityMemory[offset + 1], tempSecurityMemory[offset + 0]);
                             tempSecurityMemory[offset + 1] = M_Byte0(descriptorType);
                             tempSecurityMemory[offset + 0] = M_Byte1(descriptorType);
@@ -4536,7 +4617,7 @@ int translate_SCSI_Security_Protocol_In_Command(tDevice *device, ScsiIoCtx *scsi
                                 //Bytes 16 - 143 are ATA string for hardware version...must be swapped...up to the end of the buffer! Don't go over!
                                 //Bytes 144 - 271 are ATA string for version...must be swapped...up to the end of the buffer! Don't go over!
                                 //Bytes 272 - 527 are ATA string for module name...must be swapped...up to the end of the buffer! Don't go over!
-                                for (uint32_t swapOffset = offset + 16 /*16 is the start of the ATA strings*/; swapOffset < paddedLength && swapOffset < offset + descriptorLength + 8 /*8 byte header*/; swapOffset += 2 /*swap 2 bytes at a time*/)
+                                for (uint32_t swapOffset = offset + 16 /*16 is the start of the ATA strings*/; swapOffset < paddedLength && swapOffset < (offset + descriptorLength + 8) /*8 byte header*/; swapOffset += 2 /*swap 2 bytes at a time*/)
                                 {
                                     uint8_t tempByte = tempSecurityMemory[swapOffset];
                                     tempSecurityMemory[swapOffset] = tempSecurityMemory[swapOffset + 1];
@@ -7609,7 +7690,6 @@ int translate_Application_Client_Log_Sense_0x0F(tDevice *device, ScsiIoCtx *scsi
     //TODO: set the page length
     uint16_t offset = 4;
     //now we need to go through and save the most recent entries to the log we'll return
-    uint16_t parameterIncrement = 1;//This will get set when we set multiple parameters in the cases below...This will save read-log commands to the drive.
     uint16_t parameterCounter = 0; 
     while (parameterCode <= 0x01FF && offset < allocationLength && parameterCounter < numberOfParametersToReturn)
     {
@@ -8959,7 +9039,6 @@ int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *scsiIoCt
         //EPC supported; perform EPC supported translation here
         //need to read the EPC log
         uint8_t ataPowerConditionsLog[2 * LEGACY_DRIVE_SEC_SIZE] = { 0 };
-        uint32_t *temp = NULL;
         ata_Read_Log_Ext(device, ATA_LOG_POWER_CONDITIONS, 0, ataPowerConditionsLog, 2 * LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0);
         //TODO: handle command error
         switch (pageControl)
@@ -10528,9 +10607,9 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     int ret = SUCCESS;
     //There are only three pages that we care about changing...Power conditions and caching and control
     bool pageFormat = false;
-    bool saveParameters = false;
+    //bool saveParameters = false;
     bool tenByteCommand = false;
-    uint16_t parameterListLength = 0;
+    //uint16_t parameterListLength = 0;
     bool reservedBytesNonZero = false;
     if (scsiIoCtx->cdb[OPERATION_CODE] == 0x15 || scsiIoCtx->cdb[OPERATION_CODE] == 0x55)
     {
@@ -10538,15 +10617,15 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         {
             pageFormat = true;
         }
-        if (scsiIoCtx->cdb[1] & BIT0)
-        {
-            saveParameters = true;
-        }
-        parameterListLength = scsiIoCtx->cdb[4];
+//      if (scsiIoCtx->cdb[1] & BIT0)
+//      {
+//          saveParameters = true;
+//      }
+        //parameterListLength = scsiIoCtx->cdb[4];
         if (scsiIoCtx->cdb[OPERATION_CODE] == 0x55)
         {
             tenByteCommand = true;
-            parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            //parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
             if (scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0 ||
                 scsiIoCtx->cdb[2] & (BIT7 | BIT6 | BIT5 | BIT3 | BIT2 | BIT1)
                 )
@@ -10580,7 +10659,7 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     if (pageFormat)
     {
         bool invalidFieldInParameterList = false;
-        uint16_t modeDataLength = scsiIoCtx->pdata[0];
+        //uint16_t modeDataLength = scsiIoCtx->pdata[0];
         uint8_t mediumType = scsiIoCtx->pdata[1];
         uint8_t deviceSpecificParameter = scsiIoCtx->pdata[2];
         bool writeProtected = false;//Don't allow write protection. This makes no sense for this software implementation. - TJE
@@ -10589,7 +10668,7 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         uint16_t blockDescriptorLength = scsiIoCtx->pdata[3];
         if (tenByteCommand)
         {
-            modeDataLength = M_BytesTo2ByteValue(scsiIoCtx->pdata[0], scsiIoCtx->pdata[1]);
+            //modeDataLength = M_BytesTo2ByteValue(scsiIoCtx->pdata[0], scsiIoCtx->pdata[1]);
             mediumType = scsiIoCtx->pdata[2];
             deviceSpecificParameter = scsiIoCtx->pdata[3];
             if (scsiIoCtx->pdata[4])
@@ -10810,6 +10889,10 @@ int translate_SCSI_Zone_Management_In_Command(tDevice *device, ScsiIoCtx *scsiIo
     {
         dataBufLength = 512;
         dataBuf = (uint8_t*)calloc(dataBufLength * sizeof(uint8_t), sizeof(uint8_t));
+        if (!dataBuf)
+        {
+            return MEMORY_FAILURE;
+        }
         localMemory = true;
     }
     else
@@ -13756,6 +13839,9 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     if (device->drive_info.drive_type == ATAPI_DRIVE)
     {
         //TODO: set up an ata packet command and send it to the device to let it handle the scsi command translation
+        //NOTE: There are a few things that actually do need translation to an ATAPI:
+        //      1) ATA Information VPD page
+        //      2) A1h CDB. This could be a Blank command, or a SAT ATA Passthrough command. Need to do some checking of the fields to figure this out and handle it properly!!!
         return NOT_SUPPORTED;
     }
     else

@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -15,25 +15,11 @@
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
 #include "sat_helper_func.h"
+#include "usb_hacks.h"
 
 extern bool validate_Device_Struct(versionBlock);
 
 static struct cam_device *cam_dev = NULL;
-
-/*
-Return the device name without the path.
-e.g. return da0 from /dev/da0
-*/
-static void set_Device_Name(const char* filename, char * name, int sizeOfName)
-{
-    //TODO: use strrstr...avoiding it now for some include issues on compilers. 
-    char * s = strstr(filename, "/");
-    while (s != NULL)
-    {
-        strncpy(name, ++s, sizeOfName);
-        s = strstr(s, "/");
-    }
-}
 
 int get_Device( const char *filename, tDevice *device )
 {
@@ -41,8 +27,10 @@ int get_Device( const char *filename, tDevice *device )
     struct ccb_pathinq cpi;
     union ccb         *ccb = NULL;
     int               ret  = SUCCESS, this_drive_type = 0;
+    char devName[20] = { 0 };
+    int devUnit = 0;
     
-    if ( cam_get_device(filename, device->os_info.name, sizeof(device->os_info.name), &device->os_info.fd) == -1 )
+    if (cam_get_device(filename, devName, 20, &devUnit) == -1)
     {
         ret = FAILURE;
         device->os_info.fd = -1;
@@ -53,11 +41,16 @@ int get_Device( const char *filename, tDevice *device )
         //printf("%s fd %d name %s\n",__FUNCTION__, device->os_info.fd, device->os_info.name);
         // cam_dev = cam_open_device(filename, O_RDWR)
         // The following API function looks more approriate to call
-        cam_dev = cam_open_spec_device(device->os_info.name, device->os_info.fd, O_RDWR, NULL);
+        cam_dev = cam_open_spec_device(devName, devUnit, O_RDWR, NULL);
         if (cam_dev != NULL)
         {
-            //set the handle name
-            set_Device_Name(filename, device->os_info.name, sizeof(device->os_info.name));
+            //Set name and friendly name
+            //name
+            strcpy(device->os_info.name, filename);
+            //friendly name
+            sprintf(device->os_info.friendlyName, "%s%d", devName, devUnit);
+
+            device->os_info.fd = devUnit;
 
             //set the OS Type
             device->os_info.osType = OS_FREEBSD;
@@ -111,7 +104,7 @@ int get_Device( const char *filename, tDevice *device )
                         {
                             device->drive_info.interface_type = IDE_INTERFACE;
                             device->drive_info.drive_type = ATA_DRIVE;
-                            if (cgd.protocol == PROTO_ATA)
+                            if (cgd.protocol == PROTO_ATAPI)
                             {
                                 device->drive_info.drive_type = ATAPI_DRIVE;
                             }
@@ -155,8 +148,8 @@ int get_Device( const char *filename, tDevice *device )
                         //let the library now go out and set up the device struct after sending some commands.
                         if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
                         {
-                            //TODO: Actually get the VID and PID set before calling this...currently it just issues an identify command to test which passthrough to use until it works. - TJE
-                            set_ATA_Passthrough_Type_By_PID_and_VID(device);
+                            //TODO: Actually get the VID and PID set before calling this.
+                            set_ATA_Passthrough_Type(device);
                         }
                         ret = fill_Drive_Info_Data(device);
                     }

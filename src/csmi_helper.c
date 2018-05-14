@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -1187,10 +1187,25 @@ int get_CSMI_Device(const char *filename, tDevice *device)
     //Need to open this handle and setup some information then fill in the device information.
     //printf("%s -->\n Opening Device %s\n",__FUNCTION__, filename);
     if (!(validate_Device_Struct(device->sanity)))
+    {
         return LIBRARY_MISMATCH;
-
+    }
     //set the handle name first...since the tokenizing below will break it apart
     memcpy(device->os_info.name, filename, strlen(filename));
+#if defined (_WIN32)
+    uint64_t controllerNum = 0, portNum = 0;
+    int sscanfret = sscanf(filename, "\\\\.\\SCSI%"SCNu64":%"SCNu64"", &controllerNum, &portNum);
+    if (sscanfret != 0 && sscanfret != EOF)
+    {
+        sprintf(device->os_info.friendlyName, "SCSI%" PRIu64 ":%" PRIu64, controllerNum, portNum);
+    }
+    else
+    {
+        //TODO: what should we do when we fail to parse this from the handle???
+    }
+#else
+    //TODO: handle non-Windows OS with CSMI
+#endif
 
     uint8_t portNumber = 0xFF;//something crazy and likely not used.
     //need to copy the incoming file name into - \\.\SCSI1: and a separate port
@@ -1406,7 +1421,7 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     int fd = -1;
 #endif
     int  controllerNumber = 0, driveNumber = 0, found = 0;
-    for (controllerNumber = 0; controllerNumber < MAX_CONTROLLERS; ++controllerNumber)
+    for (controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS; ++controllerNumber)
     {
 #if defined (_WIN32)
 #if defined (__MINGW32__)
@@ -1525,7 +1540,7 @@ int get_CSMI_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, 
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
-        for (controllerNumber = 0; controllerNumber < MAX_CONTROLLERS && (found < numberOfDevices); ++controllerNumber)
+        for (controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS && (found < numberOfDevices); ++controllerNumber)
         {
             //TODO: get controller info and only try to go further when we have a phy/port with an attached device.
 #if defined(_WIN32)

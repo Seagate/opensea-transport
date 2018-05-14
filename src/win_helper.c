@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -19,6 +19,7 @@
 #include <wchar.h>
 #include <string.h>
 #include <windows.h>                // added for forced PnP rescan
+//NOTE: ARM requires 10.0.16299.0 API to get this library!
 #include <cfgmgr32.h>               // added for forced PnP rescan
 #include <WinBase.h>
 #if !defined(DISABLE_NVME_PASSTHROUGH)
@@ -29,6 +30,7 @@
 #include "ata_helper_func.h"
 #include "win_helper.h"
 #include "sat_helper_func.h"
+#include "usb_hacks.h"
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper.h"
@@ -252,7 +254,35 @@ int get_Device(const char *filename, tDevice *device )
     {
         //set the handle name
 		strncpy_s(device->os_info.name, 30, filename, 30);
-        device->os_info.os_drive_number = get_os_drive_number((char*)filename);
+
+        if (strstr(device->os_info.name, "Physical"))
+        {
+            uint32_t drive = UINT32_MAX;
+            sscanf_s(device->os_info.name, "\\\\.\\PhysicalDrive%" SCNu32, &drive);
+            sprintf(device->os_info.friendlyName, "PD%" PRIu32, drive);
+            device->os_info.os_drive_number = drive;
+        }
+        else if (strstr(device->os_info.name, "CDROM"))
+        {
+            uint32_t drive = UINT32_MAX;
+            sscanf_s(device->os_info.name, "\\\\.\\CDROM%" SCNu32, &drive);
+            sprintf(device->os_info.friendlyName, "CDROM%" PRIu32, drive);
+            device->os_info.os_drive_number = drive;
+        }
+        else if (strstr(device->os_info.name, "Tape"))
+        {
+            uint32_t drive = UINT32_MAX;
+            sscanf_s(device->os_info.name, "\\\\.\\Tape%" SCNu32, &drive);
+            sprintf(device->os_info.friendlyName, "TAPE%" PRIu32, drive);
+            device->os_info.os_drive_number = drive;
+        }
+        else if (strstr(device->os_info.name, "Changer"))
+        {
+            uint32_t drive = UINT32_MAX;
+            sscanf_s(device->os_info.name, "\\\\.\\Changer%" SCNu32, &drive);
+            sprintf(device->os_info.friendlyName, "CHGR%" PRIu32, drive);
+            device->os_info.os_drive_number = drive;
+        }
 
         //map the drive to a volume letter
         DWORD driveLetters = 0;
@@ -464,7 +494,7 @@ int get_Device(const char *filename, tDevice *device )
                                 }
                                 else if ((device_desc->BusType == BusTypeSata))
                                 {
-                                    if (strncmp(WIN_CDROM_DRIVE, filename, strlen(WIN_CDROM_DRIVE)))
+                                    if (strncmp(WIN_CDROM_DRIVE, filename, strlen(WIN_CDROM_DRIVE)) == 0)
                                     {
                                         device->drive_info.drive_type = ATAPI_DRIVE;
                                     }
@@ -493,7 +523,7 @@ int get_Device(const char *filename, tDevice *device )
                                 }								
                                 else if (device_desc->BusType == BusTypeNvme)
                                 {
-#if WINVER >= SEA_WIN32_WINNT_WIN10
+#if WINVER >= SEA_WIN32_WINNT_WIN10 && !defined(DISABLE_NVME_PASSTHROUGH)
                                     device->drive_info.drive_type = NVME_DRIVE;
                                     device->drive_info.interface_type = NVME_INTERFACE;
                                     set_Namespace_ID_For_Device(device);
@@ -517,8 +547,8 @@ int get_Device(const char *filename, tDevice *device )
 
                                 if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
                                 {
-                                    //TODO: Actually get the VID and PID set before calling this...currently it just issues an identify command to test which passthrough to use until it works. - TJE
-                                    set_ATA_Passthrough_Type_By_PID_and_VID(device);
+                                    //TODO: Actually get the VID and PID set before calling this.
+                                    set_ATA_Passthrough_Type(device);
                                 }
 
                                 //For now force direct IO all the time to match previous functionality.
@@ -650,6 +680,8 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     wchar_t deviceName[40];
 #endif
 
+	//Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
+#if !defined (_M_ARM) && !defined (_M_ARM_ARMV7VE) && !defined (_M_ARM_FP ) && !defined (_M_ARM64)
     //try forcing a system rescan before opening the list. This should help with crappy drivers or bad hotplug support - TJE
     DEVINST deviceInstance;
     DEVINSTID tree = NULL;//set to null for root of device tree
@@ -659,6 +691,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
         ULONG reenumerateFlags = 0;
         CM_Reenumerate_DevNode(deviceInstance, reenumerateFlags);
     }
+#endif
 
 	int  driveNumber = 0, found = 0;
     for (driveNumber = 0; driveNumber < MAX_DEVICES_TO_SCAN; driveNumber++)
@@ -996,6 +1029,9 @@ int send_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -1203,6 +1239,9 @@ int send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -1448,6 +1487,9 @@ int send_SCSI_Pass_Through(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -1578,6 +1620,9 @@ int send_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -1855,7 +1900,11 @@ int send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
+            case ERROR_INVALID_PARAMETER://Or command not supported?
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
                 break;
@@ -2169,6 +2218,9 @@ int send_ATA_Passthrough_Ex(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -2535,7 +2587,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
             {
                 //We know it's a download command, now we need to make sure it's a multiple of the Windows alignment requirement and that it isn't larger than the maximum allowed
                 uint16_t transferSizeSectors = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaLow, scsiIoCtx->pAtaCmdOpts->tfr.SectorCount);
-                if ((transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && ((transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
+                if ((uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && ((uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
                 {
                     return true;
                 }
@@ -2585,6 +2637,10 @@ int get_Windows_FWDL_IO_Support(tDevice *device)
 	uint8_t slotCount = 7;//Max of 7 firmware slots on NVMe...might as well read in everything even if we aren't using it today.-TJE
 	uint32_t outputDataSize = sizeof(STORAGE_HW_FIRMWARE_INFO) + sizeof(STORAGE_HW_FIRMWARE_SLOT_INFO) * (slotCount - 1);//this is what MSDN says to do...
 	uint8_t *outputData = (uint8_t*)malloc(outputDataSize);
+    if (!outputData)
+    {
+        return MEMORY_FAILURE;
+    }
 	memset(outputData, 0, outputDataSize);
 	DWORD returned_data = 0;
 	//STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER can be set to request controller properties instead of what is associated with the handle...we may or maynot need this
@@ -2645,6 +2701,10 @@ bool is_Activate_Command(ScsiIoCtx *scsiIoCtx)
 int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
+    if (!scsiIoCtx)
+    {
+        return BAD_PARAMETER;
+    }
 	if (is_Activate_Command(scsiIoCtx))
 	{
 		//send the activate IOCTL
@@ -2657,6 +2717,11 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
         {
             downloadActivate.Slot = scsiIoCtx->cdb[2];//Set the slot number to the buffer ID number...This is the closest this translates.
         }
+		if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)
+		{
+			//if we are on NVMe, but the command comes to here, then someone forced SCSI mode, so let's set this flag correctly
+			downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;
+		}
         DWORD returned_data = 0;
         SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
         seatimer_t commandTimer;
@@ -2800,6 +2865,10 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
 		//send download IOCTL
 		DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + dataLength;
 		PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD)malloc(downloadStructureSize);
+        if (!downloadIO)
+        {
+            return MEMORY_FAILURE;
+        }
 		memset(downloadIO, 0, downloadStructureSize);
 		downloadIO->Version = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD);
 		downloadIO->Size = downloadStructureSize;
@@ -2811,6 +2880,11 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
 			downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_LAST_SEGMENT;
 		}
 #endif
+		if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)
+		{
+			//if we are on NVMe, but the command comes to here, then someone forced SCSI mode, so let's set this flag correctly
+			downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;
+		}
 		if (scsiIoCtx && !scsiIoCtx->pAtaCmdOpts)
 		{
 			downloadIO->Slot = scsiIoCtx->cdb[2];//Set the slot number to the buffer ID number...This is the closest this translates.
@@ -2826,6 +2900,10 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
         {
             //get offset from the cdb
             downloadIO->Offset = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+        }
+        else
+        {
+            return BAD_PARAMETER;
         }
 		//set the size of the buffer
 		downloadIO->BufferSize = dataLength;
@@ -3009,6 +3087,10 @@ int get_Windows_SMART_IO_Support(tDevice *device)
                 }
                 //TODO: Save driver version info? skipping for now since it doesn't appear useful.-TJE
                 device->os_info.winSMARTCmdSupport.deviceBitmap = smartVersionInfo.bIDEDeviceMap;
+                if (smartVersionInfo.bIDEDeviceMap & (BIT1 | BIT3 | BIT5 | BIT7))
+                {
+                    device->drive_info.ata_Options.isDevice1 = true;
+                }
             }
         }
     }
@@ -3862,7 +3944,12 @@ void set_Namespace_ID_For_Device(tDevice *device)
                 char currentHandleString[31] = { 0 };
                 memcpy(&currentHandleString, device->os_info.name, 30);
                 convert_String_To_Upper_Case(currentHandleString);
-                sscanf(currentHandleString, WIN_PHYSICAL_DRIVE "%" PRId32, &currentHandleNumber);//This will get the handle value we are talking to right now...
+                int sscanfRet = sscanf(currentHandleString, WIN_PHYSICAL_DRIVE "%" PRId32, &currentHandleNumber);//This will get the handle value we are talking to right now...
+                if (sscanfRet == 0 || sscanfRet == EOF)
+                {
+                    //couldn't parse the handle name for this, so stop and return
+                    return;
+                }
 
                 uint32_t startHandleValue = 0;
                 if ((int32_t)(currentHandleNumber - maxNamespaces) > 0)
@@ -4403,9 +4490,11 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
     downloadActivate.Version = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
     downloadActivate.Size = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
     uint8_t activateAction = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3);
-    if (activateAction == 0x2 || activateAction == 0x01 || activateAction == 0x03)//check the activate action
+	downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;//this command must go to the controller, not the namespace
+    if (activateAction == 0x2 || activateAction == 0x03)//check the activate action
     {
-        //Activate actions 1, 2, & 3 sound like the closest match to this flag. Each of these requests switching to the new firmware.
+        //Activate actions 2, & 3 sound like the closest match to this flag. Each of these requests switching to the a firmware already on the drive.
+		//Activate action 0 & 1 say to replace a firmware image in a specified slot (and to or not to activate).
         downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
     }
     //TODO: FIgure out when to set this flag: STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER
@@ -4466,6 +4555,10 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     //send download IOCTL
     DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + dataLength;
     PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD)malloc(downloadStructureSize);
+    if (!downloadIO)
+    {
+        return MEMORY_FAILURE;
+    }
     memset(downloadIO, 0, downloadStructureSize);
     downloadIO->Version = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD);
     downloadIO->Size = downloadStructureSize;

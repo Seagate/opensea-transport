@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -46,12 +46,27 @@ extern "C"
     #define ATA_ERROR_BIT_ADDRESS_MARK_NOT_FOUND BIT0 //old/obsolete
     #define ATA_ERROR_BIT_COMMAND_COMPLETION_TIME_OUT BIT0 //streaming feature
 
-    #define ATA_DL_MICROCODE_OFFSET_SAVE		(0x03)
-    #define ATA_DL_MICROCODE_SAVE				(0x07)
+    #define ATA_DL_MICROCODE_OFFSET_SAVE (0x03)
+    #define ATA_DL_MICROCODE_SAVE (0x07)
 
-    #define MAX_28BIT  (0xFFFFFFF)
+    #define MAX_28BIT UINT32_C(0xFFFFFFF)
+
+    #define LBA_MODE_BIT BIT6 //Set this in the device/head register to set LBA mode.
+    #define DEVICE_SELECT_BIT BIT4 //On PATA, this is to select drive 1 (aka slave). Device/Head register
+    #define DEVICE_REG_BACKWARDS_COMPATIBLE_BITS 0xA0 //device/head in ATA & ATA3 say these bits should be set on every command. New specs mark these obsolete in commands that are from old specs. New commands may use these for other purposes.
 
     #define ATA_CHECKSUM_VALIDITY_INDICATOR 0xA5
+
+    #define IDLE_IMMEDIATE_UNLOAD_LBA 0x0554E4C
+    #define IDLE_IMMEDIATE_UNLOAD_FEATURE 0x44
+
+    #define WRITE_UNCORRECTABLE_PSEUDO_UNCORRECTABLE_WITH_LOGGING 0x55
+    #define WRITE_UNCORRECTABLE_VENDOR_SPECIFIC_5AH 0x5A
+    #define WRITE_UNCORRECTABLE_VENDOR_SPECIFIC_A5H 0xA5
+    #define WRITE_UNCORRECTABLE_FLAGGED_WITHOUT_LOGGING 0xAA
+
+    #define LEGACY_WRITE_SAME_INITIALIZE_SPECIFIED_SECTORS 0x22
+    #define LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS 0xDD
 
     typedef enum _eDownloadMicrocodeFeatures
     {
@@ -115,123 +130,129 @@ extern "C"
     #define ATA_SMART_THRESHOLD_ALWAYS_FAILING 0xFF //Test code purposes only to test system or software's ability to detect SMART trips
 
     typedef enum _eATA_CMDS {
-        ATA_NOP_CMD                     = 0x00,
-        ATASET                          = 0x04,
-		ATA_DATA_SET_MANAGEMENT_CMD     = 0x06,
-        ATA_DATA_SET_MANAGEMENT_XL_CMD  = 0x07,
-        ATAPI_RESET                     = 0x08,
-        ATA_DEV_RESET                   = 0x08,
-        ATA_REQUEST_SENSE_DATA          = 0x0B,
-        ATA_RECALIBRATE                 = 0x10,
-        ATA_GET_PHYSICAL_ELEMENT_STATUS = 0x12,
-        ATA_READ_SECT                   = 0x20,
-        ATA_READ_SECT_NORETRY           = 0x21,
-        ATA_READ_LONG_RETRY             = 0x22,
-        ATA_READ_LONG_NORETRY           = 0x23,
-        ATA_READ_SECT_EXT               = 0x24,
-        ATA_READ_DMA_EXT                = 0x25,
-        ATA_READ_DMA_QUE_EXT            = 0x26,
-        ATA_READ_MAX_ADDRESS_EXT        = 0x27,
-        ATA_READ_READ_MULTIPLE_EXT      = 0x29,
-        ATA_READ_STREAM_DMA_EXT         = 0x2A,
-        ATA_READ_STREAM_EXT             = 0x2B,
-        ATA_READ_LOG_EXT                = 0x2F,
-        ATA_WRITE_SECT                  = 0x30,
-        ATA_WRITE_SECT_NORETRY          = 0x31,
-        ATA_WRITE_LONG_RETRY            = 0x32,
-        ATA_WRITE_LONG_NORETRY          = 0x33,
-        ATA_WRITE_SECT_EXT              = 0x34,
-        ATA_WRITE_DMA_EXT               = 0x35,
-        ATA_WRITE_DMA_QUE_EXT           = 0x36,
-        ATA_SET_MAX_EXT                 = 0x37,
-        ATA_WRITE_MULTIPLE_EXT          = 0x39,
-        ATA_WRITE_STREAM_DMA_EXT        = 0x3A,
-        ATA_WRITE_STREAM_EXT            = 0x3B,
-        ATA_WRITE_SECTV_RETRY           = 0x3C,
-        ATA_WRITE_DMA_FUA_EXT           = 0x3D,
-        ATA_WRITE_DMA_QUE_FUA_EXT       = 0x3E,
-        ATA_WRITE_LOG_EXT_CMD           = 0x3F,
-        ATA_READ_VERIFY_RETRY           = 0x40,
-        ATA_READ_VERIFY_NORETRY         = 0x41,
-        ATA_READ_VERIFY_EXT             = 0x42,
-        ATA_ZEROS_EXT                   = 0x44,
-        ATA_WRITE_UNCORRECTABLE_EXT     = 0x45,
-        ATA_READ_LOG_EXT_DMA            = 0x47,
-        ATA_ZONE_MANAGEMENT_IN          = 0x4A,
-        ATA_FORMAT_TRACK                = 0x50,
-		ATA_CONFIGURE_STREAM            = 0x51,
-        ATA_WRITE_LOG_EXT_DMA           = 0x57,
-        ATA_TRUSTED_NON_DATA            = 0x5B,
-        ATA_TRUSTED_RECEIVE             = 0x5C,
-        ATA_TRUSTED_RECEIVE_DMA         = 0x5D,
-        ATA_TRUSTED_SEND                = 0x5E,
-        ATA_TRUSTED_SEND_DMA            = 0x5F,
-        ATA_READ_FPDMA_QUEUED_CMD       = 0x60, // Added _CMD because FreeBSD had a symbol conflict
-        ATA_WRITE_FPDMA_QUEUED_CMD      = 0x61,
-        ATA_FPDMA_NON_DATA              = 0x63,
-        ATA_SEND_FPDMA                  = 0x64,
-        ATA_RECEIVE_FPDMA               = 0x65,
-        ATA_SEEK_CMD                    = 0x70,
-        ATA_SET_DATE_AND_TIME_EXT       = 0x77,
-        ATA_ACCESSABLE_MAX_ADDR         = 0x78,
-        ATA_REMOVE_AND_TRUNCATE         = 0x7C,
-        ATA_EXEC_DRV_DIAG               = 0x90,
-        ATA_INIT_DRV_PARAM              = 0x91,
-        ATA_DLND_CODE                   = 0x92,
-        ATA_DOWNLOAD_MICROCODE          = 0x92,
-        ATA_DOWNLOAD_MICROCODE_DMA      = 0x93,
-        ATA_ZONE_MANAGEMENT_OUT         = 0x9F,
-        ATAPI_COMMAND                   = 0xA0,
-        ATAPI_IDENTIFY                  = 0xA1,
-        ATA_SMART                       = 0xB0,
-        ATA_DCO                         = 0xB1,
-        ATA_SET_SECTOR_CONFIG_EXT       = 0xB2,
-        ATA_SANITIZE                    = 0xB4,
-        ATA_NV_CACHE                    = 0xB6,
-        ATA_READ_MULTIPLE               = 0xC4,
-        ATA_WRITE_MULTIPLE              = 0xC5,
-        ATA_SET_MULTIPLE                = 0xC6,
-        ATA_READ_DMA_QUEUED_CMD         = 0xC7,
-        ATA_READ_DMA_RETRY              = 0xC8,
-        ATA_READ_DMA_NORETRY            = 0xC9,
-        ATA_WRITE_DMA_RETRY             = 0xCA,
-        ATA_WRITE_DMA_NORETRY           = 0xCB,
-        ATA_WRITE_DMA_QUEUED_CMD        = 0xCC,
-        ATA_WRITE_MULTIPLE_FUA_EXT      = 0xCE,
-        ATA_GET_MEDIA_STATUS            = 0xDA,
-        ATA_ACK_MEDIA_CHANGE            = 0xDB,
-        ATA_POST_BOOT                   = 0xDC,
-        ATA_PRE_BOOT                    = 0xDD,
-        ATA_DOOR_LOCK                   = 0xDE,
-        ATA_DOOR_UNLOCK                 = 0xDF,
-        ATA_STANDBY_IMMD                = 0xE0,
-        ATA_IDLE_IMMEDIATE_CMD          = 0xE1,
-        ATA_STANDBY                     = 0xE2,
-        ATA_IDLE                        = 0xE3,
-        ATA_READ_BUF                    = 0xE4,
-        ATA_CHECK_POWER_MODE            = 0xE5,
-        ATA_SLEEP_CMD                   = 0xE6,
-        ATA_FLUSH_CACHE                 = 0xE7,
-        ATA_WRITE_BUF                   = 0xE8,
-        ATA_READ_BUF_DMA                = 0xE9,
-        ATA_LEGACY_WRITE_SAME           = 0xE9,
-        ATA_FLUSH_CACHE_EXT             = 0xEA,
-        ATA_WRITE_BUF_DMA               = 0xEB,
-        ATA_IDENTIFY                    = 0xEC,
-        ATA_MEDIA_EJECT                 = 0xED,
-        ATA_IDENTIFY_DMA                = 0xEE,
-        ATA_SET_FEATURE                 = 0xEF,
-        ATA_SECURITY_SET_PASS           = 0xF1,
-        ATA_SECURITY_UNLOCK_CMD         = 0xF2,
-        ATA_SECURITY_ERASE_PREP         = 0xF3,
-        ATA_SECURITY_ERASE_UNIT_CMD     = 0xF4,
-        ATA_SECURITY_FREEZE_LOCK_CMD    = 0xF5,
-        ATA_SECURITY_DISABLE_PASS       = 0xF6,
-        ATA_LEGACY_TRUSTED_RECEIVE      = 0xF7,
-        ATA_READ_MAX_ADDRESS            = 0xF8,
-        ATA_SET_MAX                     = 0xF9,
-        ATA_LEGACY_TRUSTED_SEND         = 0xFB,
-        ATA_SEEK_EXT                    = 0xFC
+        ATA_NOP_CMD                         = 0x00,
+        ATASET                              = 0x04,
+		ATA_DATA_SET_MANAGEMENT_CMD         = 0x06,
+        ATA_DATA_SET_MANAGEMENT_XL_CMD      = 0x07,
+        ATAPI_RESET                         = 0x08,
+        ATA_DEV_RESET                       = 0x08,
+        ATA_REQUEST_SENSE_DATA              = 0x0B,
+        ATA_RECALIBRATE                     = 0x10,
+        ATA_GET_PHYSICAL_ELEMENT_STATUS     = 0x12,
+        ATA_READ_SECT                       = 0x20,
+        ATA_READ_SECT_NORETRY               = 0x21,
+        ATA_READ_LONG_RETRY                 = 0x22,
+        ATA_READ_LONG_NORETRY               = 0x23,
+        ATA_READ_SECT_EXT                   = 0x24,
+        ATA_READ_DMA_EXT                    = 0x25,
+        ATA_READ_DMA_QUE_EXT                = 0x26,
+        ATA_READ_MAX_ADDRESS_EXT            = 0x27,
+        ATA_READ_READ_MULTIPLE_EXT          = 0x29,
+        ATA_READ_STREAM_DMA_EXT             = 0x2A,
+        ATA_READ_STREAM_EXT                 = 0x2B,
+        ATA_READ_LOG_EXT                    = 0x2F,
+        ATA_WRITE_SECT                      = 0x30,
+        ATA_WRITE_SECT_NORETRY              = 0x31,
+        ATA_WRITE_LONG_RETRY                = 0x32,
+        ATA_WRITE_LONG_NORETRY              = 0x33,
+        ATA_WRITE_SECT_EXT                  = 0x34,
+        ATA_WRITE_DMA_EXT                   = 0x35,
+        ATA_WRITE_DMA_QUE_EXT               = 0x36,
+        ATA_SET_MAX_EXT                     = 0x37,
+        ATA_WRITE_MULTIPLE_EXT              = 0x39,
+        ATA_WRITE_STREAM_DMA_EXT            = 0x3A,
+        ATA_WRITE_STREAM_EXT                = 0x3B,
+        ATA_WRITE_SECTV_RETRY               = 0x3C,
+        ATA_WRITE_DMA_FUA_EXT               = 0x3D,
+        ATA_WRITE_DMA_QUE_FUA_EXT           = 0x3E,
+        ATA_WRITE_LOG_EXT_CMD               = 0x3F,
+        ATA_READ_VERIFY_RETRY               = 0x40,
+        ATA_READ_VERIFY_NORETRY             = 0x41,
+        ATA_READ_VERIFY_EXT                 = 0x42,
+        ATA_ZEROS_EXT                       = 0x44,
+        ATA_WRITE_UNCORRECTABLE_EXT         = 0x45,
+        ATA_READ_LOG_EXT_DMA                = 0x47,
+        ATA_ZONE_MANAGEMENT_IN              = 0x4A,
+        ATA_FORMAT_TRACK                    = 0x50,
+		ATA_CONFIGURE_STREAM                = 0x51,
+        ATA_WRITE_LOG_EXT_DMA               = 0x57,
+        ATA_TRUSTED_NON_DATA                = 0x5B,
+        ATA_TRUSTED_RECEIVE                 = 0x5C,
+        ATA_TRUSTED_RECEIVE_DMA             = 0x5D,
+        ATA_TRUSTED_SEND                    = 0x5E,
+        ATA_TRUSTED_SEND_DMA                = 0x5F,
+        ATA_READ_FPDMA_QUEUED_CMD           = 0x60, // Added _CMD because FreeBSD had a symbol conflict
+        ATA_WRITE_FPDMA_QUEUED_CMD          = 0x61,
+        ATA_FPDMA_NON_DATA                  = 0x63,
+        ATA_SEND_FPDMA                      = 0x64,
+        ATA_RECEIVE_FPDMA                   = 0x65,
+        ATA_SEEK_CMD                        = 0x70,
+        ATA_SET_DATE_AND_TIME_EXT           = 0x77,
+        ATA_ACCESSABLE_MAX_ADDR             = 0x78,
+        ATA_REMOVE_AND_TRUNCATE             = 0x7C,
+        ATA_EXEC_DRV_DIAG                   = 0x90,
+        ATA_INIT_DRV_PARAM                  = 0x91,
+        ATA_DLND_CODE                       = 0x92,
+        ATA_DOWNLOAD_MICROCODE              = 0x92,
+        ATA_DOWNLOAD_MICROCODE_DMA          = 0x93,
+        ATA_LEGACY_ALT_STANDBY_IMMEDIATE    = 0x94,
+        ATA_LEGACY_ALT_IDLE_IMMEDIATE       = 0x95,
+        ATA_LEGACY_ALT_STANDBY              = 0x96,
+        ATA_LEGACY_ALT_IDLE                 = 0x97,
+        ATA_LEGACY_ALT_CHECK_POWER_MODE     = 0x98,
+        ATA_LEGACY_ALT_SLEEP                = 0x99,
+        ATA_ZONE_MANAGEMENT_OUT             = 0x9F,
+        ATAPI_COMMAND                       = 0xA0,
+        ATAPI_IDENTIFY                      = 0xA1,
+        ATA_SMART                           = 0xB0,
+        ATA_DCO                             = 0xB1,
+        ATA_SET_SECTOR_CONFIG_EXT           = 0xB2,
+        ATA_SANITIZE                        = 0xB4,
+        ATA_NV_CACHE                        = 0xB6,
+        ATA_READ_MULTIPLE                   = 0xC4,
+        ATA_WRITE_MULTIPLE                  = 0xC5,
+        ATA_SET_MULTIPLE                    = 0xC6,
+        ATA_READ_DMA_QUEUED_CMD             = 0xC7,
+        ATA_READ_DMA_RETRY                  = 0xC8,
+        ATA_READ_DMA_NORETRY                = 0xC9,
+        ATA_WRITE_DMA_RETRY                 = 0xCA,
+        ATA_WRITE_DMA_NORETRY               = 0xCB,
+        ATA_WRITE_DMA_QUEUED_CMD            = 0xCC,
+        ATA_WRITE_MULTIPLE_FUA_EXT          = 0xCE,
+        ATA_GET_MEDIA_STATUS                = 0xDA,
+        ATA_ACK_MEDIA_CHANGE                = 0xDB,
+        ATA_POST_BOOT                       = 0xDC,
+        ATA_PRE_BOOT                        = 0xDD,
+        ATA_DOOR_LOCK                       = 0xDE,
+        ATA_DOOR_UNLOCK                     = 0xDF,
+        ATA_STANDBY_IMMD                    = 0xE0,
+        ATA_IDLE_IMMEDIATE_CMD              = 0xE1,
+        ATA_STANDBY                         = 0xE2,
+        ATA_IDLE                            = 0xE3,
+        ATA_READ_BUF                        = 0xE4,
+        ATA_CHECK_POWER_MODE                = 0xE5,
+        ATA_SLEEP_CMD                       = 0xE6,
+        ATA_FLUSH_CACHE                     = 0xE7,
+        ATA_WRITE_BUF                       = 0xE8,
+        ATA_READ_BUF_DMA                    = 0xE9,
+        ATA_LEGACY_WRITE_SAME               = 0xE9,
+        ATA_FLUSH_CACHE_EXT                 = 0xEA,
+        ATA_WRITE_BUF_DMA                   = 0xEB,
+        ATA_IDENTIFY                        = 0xEC,
+        ATA_MEDIA_EJECT                     = 0xED,
+        ATA_IDENTIFY_DMA                    = 0xEE,
+        ATA_SET_FEATURE                     = 0xEF,
+        ATA_SECURITY_SET_PASS               = 0xF1,
+        ATA_SECURITY_UNLOCK_CMD             = 0xF2,
+        ATA_SECURITY_ERASE_PREP             = 0xF3,
+        ATA_SECURITY_ERASE_UNIT_CMD         = 0xF4,
+        ATA_SECURITY_FREEZE_LOCK_CMD        = 0xF5,
+        ATA_SECURITY_DISABLE_PASS           = 0xF6,
+        ATA_LEGACY_TRUSTED_RECEIVE          = 0xF7,
+        ATA_READ_MAX_ADDRESS                = 0xF8,
+        ATA_SET_MAX                         = 0xF9,
+        ATA_LEGACY_TRUSTED_SEND             = 0xFB,
+        ATA_SEEK_EXT                        = 0xFC
     } eATA_CMDS;
 
     typedef enum _eAtaSCTActionCodes {
@@ -246,6 +267,12 @@ extern "C"
         //as new things are added to the ATA spec, add them from here
         UNKNOWN_ACTION
     }eAtaSCTActionCodes;
+
+    typedef enum _eSCTRWLMode {
+        SCT_RWL_RESERVED,
+        SCT_RWL_READ_LONG,
+        SCT_RWL_WRITE_LONG
+    }eSCTRWLMode;
 
     typedef enum _eAtaCmdType {
         ATA_CMD_TYPE_UNKNOWN,
@@ -280,15 +307,32 @@ extern "C"
     {
         uint8_t                CommandStatus;
         uint8_t                ErrorFeature;
-
-        uint8_t                LbaLow;
-        uint8_t                LbaMid;
-        uint8_t                LbaHi;
+        union {
+            uint8_t            LbaLow;
+            uint8_t            SectorNumber;
+        };
+        union {
+            uint8_t            LbaMid;
+            uint8_t            CylinderLow;
+        };
+        union {
+            uint8_t            LbaHi;
+            uint8_t            CylinderHigh;
+        };
         uint8_t                DeviceHead;
 
-        uint8_t                LbaLow48;
-        uint8_t                LbaMid48;
-        uint8_t                LbaHi48;
+        union {
+            uint8_t            LbaLow48;
+            uint8_t            SectorNumberExt;
+        };
+        union {
+            uint8_t            LbaMid48;
+            uint8_t            CylinderLowExt;
+        };
+        union {
+            uint8_t            LbaHi48;
+            uint8_t            CylinderHighExt;
+        };
         uint8_t                Feature48;
 
         uint8_t                SectorCount;
@@ -339,127 +383,155 @@ extern "C"
         bool                            forceCheckConditionBit;//Set this to force setting the check condition bit on a command. This is here because by default,only non-data gets this bit due to some weird chipsets. This is an override that can be used in certain commands.
     } ataPassthroughCommand;
 
-//added these packs to make sure this structure gets interpreted correctly
-// in the code when I point it to a buffer and try and access it.
-   #pragma pack(push, 1)
-   typedef struct _ataSMARTAttribute
-   {
+    //added these packs to make sure this structure gets interpreted correctly
+    // in the code when I point it to a buffer and try and access it.
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _ataSMARTAttribute
+    {
         uint8_t     attributeNumber;
         uint16_t    status;//bit 0 = prefail warranty bit, bit 1 = online collection, bit 2 = performance, bit 3 = error rate, bit 4 = even counter, bit 5 = self preserving
         uint8_t     nominal;
         uint8_t     worstEver;
         uint8_t     rawData[7];//attribute and vendor specific
+    #if !defined (__GNUC__)
     }ataSMARTAttribute;
-
-   typedef struct _ataSMARTThreshold
-   {
-       uint8_t      attributeNumber;
-       uint8_t      thresholdValue;
-       uint8_t      reservedBytes[10];
-   }ataSMARTThreshold;
-
-   /*
-   RO  - Log is read only.
-   R/W - Log is read or written.
-   VS  - Log is vendor specific thus read/write ability is vendor specific.
-   GPL - General Purpose Logging
-   SL  - SMART Logging
-   (a) - The device shall return command aborted if a GPL feature set (see 4.11) command accesses a log that
-   is marked only with SL.
-   (b) - The device shall return command aborted if a SMART feature set (see 4.19) command accesses a log that
-   is marked only with GPL.
-   */
-   typedef struct _ataLogDirectorySector
-   {
-       //  Log Address | Log Name                                  | Feature Set   | R/W   | Access 
-       uint16_t LogDir;                     //  00          | Log directory                             | none          | RO    | GPL,SL
-       uint16_t SummarySMARTErrLog;         //  01          | Summary SMART Error Log                   | SMART         | RO    | SL (a)
-       uint16_t CompSMARTErrLog;            //  02          | Comprehensive SMART Error Log             | SMART         | RO    | SL (a)
-       uint16_t ExtCompSMARTErrLog;         //  03          | Ext. Comprehensive SMART Error Log        | SMART         | RO    | GPL (b)
-       uint16_t DeviceStatistics;           //  04          | Device Statistics                         | none          | RO    | GPL, SL
-       uint16_t ReservedCFA1;               //  05          |                                           |               |       |   
-       uint16_t SMARTSelfTestLog;           //  06          | SMART Self-Test Log                       | SMART         | RO    | SL (a)
-       uint16_t ExtSMARTSelfTestLog;        //  07          | Ext. SMART Self-Test Log                  | SMART         | RO    | GLB (b)
-       uint16_t PowerConditions;            //  08          | Power Conditions                          | EPC           | RO    | GPL (b)
-       uint16_t SelectiveSelfTestLog;       //  09          | Selective Self-Test Log                   | SMART         | R/W   | SL (a)
-       uint16_t DeviceStatNotification;     //  0A          | Device Statistics Notification            | DSN           | R/W   | GPL (b)
-       uint16_t ReservedCFA2;               //  0B          |                                           |               |       |       
-       uint16_t Reserved1;                  //  0C          |                                           |               |       |       
-       uint16_t LPSMisAlignLog;             //  0D          | LPS Mis-alignment Log                     | LPS           | RO    | GPL,SL
-       uint16_t Reserved2[2];               //  OE..0F      |                                           |               |       |
-       uint16_t NCQCmdErrLog;               //  10          | NCQ Command Error Log                     | NCQ           | RO    | GPL (b)
-       uint16_t SATAPhyEventCountLog;       //  11          | SATA Phy Event Counters Log               | none          | RO    | GPL (b)
-       uint16_t SATANCQQueueManageLog;      //  12          | SATA NCQ Queue Management Log             | NCQ           | RO    | GPL (b)
-       uint16_t SATANCQSendRecvLog;         //  13          | SATA NCQ Send & Receive Log               | NCQ           | RO    | GPL (b)
-       uint16_t ReservedSATA[4];            //  14..17      | Reserved for Serial ATA                   |               |       |       
-       uint16_t LBAStatus;                  //  18          | LBA Status                                | none          | RO    | GPL (b)
-       uint16_t Reserved3[7];               //  19..20      | Reserved, 20h is Obsolete                 |               |       |           
-       uint16_t WriteStreamErrLog;          //  21          | Write Stream Error Log                    | Streaming     | RO    | GPL (b)
-       uint16_t ReadStreamErrLog;           //  22          | Read Stream Error Log                     | Streaming     | RO    | GPL (b)
-       uint16_t Obsolete1;                  //  23          |                                           |               |       |       
-       uint16_t CurrDevInternalStsDataLog;  //  24          | Current Device Internal Status Data Log   | none          | RO    | GPL (b)
-       uint16_t SavedDevInternalStsDataLog; //  25          | Saved Device Internal Status Data Log     | none          | RO    | GPL (b)
-       uint16_t Reserved4[10];              //  26..2F      |                                           |               |       |           
-       uint16_t IdentifyDeviceData;         //  30          | IDENTIFY DEVICE data                      | none          | RO    | GPL, SL
-       uint16_t Reserved5[79];              //  31..7F      |                                           |               |       |        
-       uint16_t HostSpecific[32];           //  80..9F      | Host Specific                             | SMART         | R/W   | GPL, SL
-       uint16_t DeviceVendorSpecific[64];   //  A0..DF      | Device Vendor Specific                    | SMART         | VS    | GPL, SL
-       uint16_t SCTCmdSts;                  //  E0          | SCT Command / Status                      | SCT           | R/W   | GPL, SL
-       uint16_t SCTDataXfer;                //  E1          | SCT Data Transfer                         | SCT           | R/W   | GPL, SL
-       uint16_t Reserved6[30];              //  E2..FF      |                                           |               |       |           
-
-   } ataLogDirectorySector;
-
-   typedef struct _ataPowerConditionsDescriptor
-   {
-       uint8_t reserved;
-       uint8_t powerConditionFlags;
-       uint16_t reserved2;
-       uint32_t defaultTimerSetting;
-       uint32_t savedTimerSetting;
-       uint32_t currentTimerSetting;
-       uint32_t nomincalRecoveryTimeToPM0;
-       uint32_t minimumTimerSetting;
-       uint32_t maximumTimerSetting;
-       uint8_t reserved3[36];
-   }ataPowerConditionsDescriptor;
-
     #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) ataSMARTAttribute;
+    #endif
 
-   typedef struct _ataSMARTValue {
-       ataSMARTAttribute    data;
-       bool                 valid;
-       ataSMARTThreshold    thresholdData;
-       bool                 thresholdDataValid;//new ATA specs no longer support the threshold sector so some drives may not report thresholds
-       bool                 isWarrantied;
-   } ataSMARTValue;
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _ataSMARTThreshold
+    {
+        uint8_t      attributeNumber;
+        uint8_t      thresholdValue;
+        uint8_t      reservedBytes[10];
+    #if !defined (__GNUC__)
+    }ataSMARTThreshold;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) ataSMARTThreshold;
+    #endif
 
-   typedef struct _ataSMARTLog 
-   {
-       ataSMARTValue    attributes[256];//attribute numbers 1 - 255 are valid (check valid bit to make sure it's a used attribute)
-   } ataSMARTLog;
+    /*
+    RO  - Log is read only.
+    R/W - Log is read or written.
+    VS  - Log is vendor specific thus read/write ability is vendor specific.
+    GPL - General Purpose Logging
+    SL  - SMART Logging
+    (a) - The device shall return command aborted if a GPL feature set (see 4.11) command accesses a log that
+    is marked only with SL.
+    (b) - The device shall return command aborted if a SMART feature set (see 4.19) command accesses a log that
+    is marked only with GPL.
+    */
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _ataLogDirectorySector
+    {
+        //  Log Address | Log Name                                  | Feature Set   | R/W   | Access 
+        uint16_t LogDir;                     //  00          | Log directory                             | none          | RO    | GPL,SL
+        uint16_t SummarySMARTErrLog;         //  01          | Summary SMART Error Log                   | SMART         | RO    | SL (a)
+        uint16_t CompSMARTErrLog;            //  02          | Comprehensive SMART Error Log             | SMART         | RO    | SL (a)
+        uint16_t ExtCompSMARTErrLog;         //  03          | Ext. Comprehensive SMART Error Log        | SMART         | RO    | GPL (b)
+        uint16_t DeviceStatistics;           //  04          | Device Statistics                         | none          | RO    | GPL, SL
+        uint16_t ReservedCFA1;               //  05          |                                           |               |       |   
+        uint16_t SMARTSelfTestLog;           //  06          | SMART Self-Test Log                       | SMART         | RO    | SL (a)
+        uint16_t ExtSMARTSelfTestLog;        //  07          | Ext. SMART Self-Test Log                  | SMART         | RO    | GLB (b)
+        uint16_t PowerConditions;            //  08          | Power Conditions                          | EPC           | RO    | GPL (b)
+        uint16_t SelectiveSelfTestLog;       //  09          | Selective Self-Test Log                   | SMART         | R/W   | SL (a)
+        uint16_t DeviceStatNotification;     //  0A          | Device Statistics Notification            | DSN           | R/W   | GPL (b)
+        uint16_t ReservedCFA2;               //  0B          |                                           |               |       |       
+        uint16_t Reserved1;                  //  0C          |                                           |               |       |       
+        uint16_t LPSMisAlignLog;             //  0D          | LPS Mis-alignment Log                     | LPS           | RO    | GPL,SL
+        uint16_t Reserved2[2];               //  OE..0F      |                                           |               |       |
+        uint16_t NCQCmdErrLog;               //  10          | NCQ Command Error Log                     | NCQ           | RO    | GPL (b)
+        uint16_t SATAPhyEventCountLog;       //  11          | SATA Phy Event Counters Log               | none          | RO    | GPL (b)
+        uint16_t SATANCQQueueManageLog;      //  12          | SATA NCQ Queue Management Log             | NCQ           | RO    | GPL (b)
+        uint16_t SATANCQSendRecvLog;         //  13          | SATA NCQ Send & Receive Log               | NCQ           | RO    | GPL (b)
+        uint16_t ReservedSATA[4];            //  14..17      | Reserved for Serial ATA                   |               |       |       
+        uint16_t LBAStatus;                  //  18          | LBA Status                                | none          | RO    | GPL (b)
+        uint16_t Reserved3[7];               //  19..20      | Reserved, 20h is Obsolete                 |               |       |           
+        uint16_t WriteStreamErrLog;          //  21          | Write Stream Error Log                    | Streaming     | RO    | GPL (b)
+        uint16_t ReadStreamErrLog;           //  22          | Read Stream Error Log                     | Streaming     | RO    | GPL (b)
+        uint16_t Obsolete1;                  //  23          |                                           |               |       |       
+        uint16_t CurrDevInternalStsDataLog;  //  24          | Current Device Internal Status Data Log   | none          | RO    | GPL (b)
+        uint16_t SavedDevInternalStsDataLog; //  25          | Saved Device Internal Status Data Log     | none          | RO    | GPL (b)
+        uint16_t Reserved4[10];              //  26..2F      |                                           |               |       |           
+        uint16_t IdentifyDeviceData;         //  30          | IDENTIFY DEVICE data                      | none          | RO    | GPL, SL
+        uint16_t Reserved5[79];              //  31..7F      |                                           |               |       |        
+        uint16_t HostSpecific[32];           //  80..9F      | Host Specific                             | SMART         | R/W   | GPL, SL
+        uint16_t DeviceVendorSpecific[64];   //  A0..DF      | Device Vendor Specific                    | SMART         | VS    | GPL, SL
+        uint16_t SCTCmdSts;                  //  E0          | SCT Command / Status                      | SCT           | R/W   | GPL, SL
+        uint16_t SCTDataXfer;                //  E1          | SCT Data Transfer                         | SCT           | R/W   | GPL, SL
+        uint16_t Reserved6[30];              //  E2..FF      |                                           |               |       |           
+    #if !defined (__GNUC__)
+    }ataLogDirectorySector;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) ataLogDirectorySector;
+    #endif
 
-   typedef enum _eNVCacheFeatures {
-       NV_SET_NV_CACHE_POWER_MODE              = 0x0000,
-       NV_RETURN_FROM_NV_CACHE_POWER_MODE      = 0x0001,
-       NV_ADD_LBAS_TO_NV_CACHE_PINNED_SET      = 0x0010,
-       NV_REMOVE_LBAS_FROM_NV_CACHE_PINNED_SET = 0x0011,
-       NV_QUERY_NV_CACHE_PINNED_SET            = 0x0012,
-       NV_QUERY_NV_CACHE_MISSES                = 0x0013,
-       NV_FLUSH_NV_CACHE                       = 0x0014,
-       NV_CACHE_ENABLE                         = 0x0015,
-       NV_CACHE_DISABLE                        = 0x0016,
-       NV_CACHE_UNKNOWN
-   }eNVCacheFeatures;
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _ataPowerConditionsDescriptor
+    {
+        uint8_t reserved;
+        uint8_t powerConditionFlags;
+        uint16_t reserved2;
+        uint32_t defaultTimerSetting;
+        uint32_t savedTimerSetting;
+        uint32_t currentTimerSetting;
+        uint32_t nomincalRecoveryTimeToPM0;
+        uint32_t minimumTimerSetting;
+        uint32_t maximumTimerSetting;
+        uint8_t reserved3[36];
+    #if !defined (__GNUC__)
+    }ataPowerConditionsDescriptor;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) ataPowerConditionsDescriptor;
+    #endif
 
-   typedef enum _eDCOFeatures {
-       DCO_RESTORE      = 0xC0,
-       DCO_FREEZE_LOCK  = 0xC1,
-       DCO_IDENTIFY     = 0xC2,
-       DCO_SET          = 0xC3,
-       DCO_IDENTIFY_DMA = 0xC4,
-       DCO_SET_DMA      = 0xC5
-   }eDCOFeatures;
+    typedef struct _ataSMARTValue {
+        ataSMARTAttribute    data;
+        bool                 valid;
+        ataSMARTThreshold    thresholdData;
+        bool                 thresholdDataValid;//new ATA specs no longer support the threshold sector so some drives may not report thresholds
+        bool                 isWarrantied;
+    } ataSMARTValue;
+
+    typedef struct _ataSMARTLog 
+    {
+        ataSMARTValue    attributes[256];//attribute numbers 1 - 255 are valid (check valid bit to make sure it's a used attribute)
+    } ataSMARTLog;
+
+    typedef enum _eNVCacheFeatures {
+        NV_SET_NV_CACHE_POWER_MODE              = 0x0000,
+        NV_RETURN_FROM_NV_CACHE_POWER_MODE      = 0x0001,
+        NV_ADD_LBAS_TO_NV_CACHE_PINNED_SET      = 0x0010,
+        NV_REMOVE_LBAS_FROM_NV_CACHE_PINNED_SET = 0x0011,
+        NV_QUERY_NV_CACHE_PINNED_SET            = 0x0012,
+        NV_QUERY_NV_CACHE_MISSES                = 0x0013,
+        NV_FLUSH_NV_CACHE                       = 0x0014,
+        NV_CACHE_ENABLE                         = 0x0015,
+        NV_CACHE_DISABLE                        = 0x0016,
+        NV_CACHE_UNKNOWN
+    }eNVCacheFeatures;
+
+    typedef enum _eDCOFeatures {
+        DCO_RESTORE      = 0xC0,
+        DCO_FREEZE_LOCK  = 0xC1,
+        DCO_IDENTIFY     = 0xC2,
+        DCO_SET          = 0xC3,
+        DCO_IDENTIFY_DMA = 0xC4,
+        DCO_SET_DMA      = 0xC5
+    }eDCOFeatures;
 
     typedef enum _eEPCFeatureSet 
     {
@@ -505,29 +577,31 @@ extern "C"
    //if the subcommand you are looking for is not in this enum, please add it
    typedef enum _eATASetFeaturesSubcommands
    {
-       SF_ENABLE_VOLITILE_WRITE_CACHE                     = 0x02,
-       SF_SET_TRANSFER_MODE                               = 0x03,
-       SF_ENABLE_APM_FEATURE                              = 0x05,
-       SF_ENABLE_PUIS_FEATURE                             = 0x06,
-       SF_PUIS_DEVICE_SPIN_UP                             = 0x07,
-       SF_ENABLE_WRITE_READ_VERIFY_FEATURE                = 0x0B,
-       SF_ENABLE_SATA_FEATURE                             = 0x10,
-       SF_ENABLE_FREE_FALL_CONTROL_FEATURE                = 0x41,
-       SF_MAXIMUM_HOST_INTERFACE_SECTOR_TIMES             = 0x43,
-       SF_EXTENDED_POWER_CONDITIONS                       = 0x4A,
-       SF_DISABLE_READ_LOOK_AHEAD_FEATURE                 = 0x55,
-       SF_LONG_PHYSICAL_SECTOR_ALIGNMENT_ERROR_REPORTING  = 0x62,
-       SF_ENABLE_DISABLE_DSN_FEATURE                      = 0x63,
-       SF_DISABLE_REVERTING_TO_POWERON_DEFAULTS           = 0x66,
-       SF_DISABLE_VOLITILE_WRITE_CACHE                    = 0x82,
-       SF_DISABLE_APM_FEATURE                             = 0x85,
-       SF_DISABLE_PUIS_FEATURE                            = 0x86,
-       SF_DISABLE_WRITE_READ_VERIFY_FEATURE               = 0x8B,
-       SF_DISABLE_SATA_FEATURE                            = 0x90,
-       SF_ENABLE_READ_LOOK_AHEAD_FEATURE                  = 0xAA,
-       SF_DISABLE_FREE_FALL_CONTROL_FEATURE               = 0xC1,
-       SF_ENABLE_DISABLE_SENSE_DATA_REPORTING_FEATURE     = 0xC3,
-       SF_ENABLE_REVERTING_TO_POWER_ON_DEFAULTS           = 0xCC,
+       SF_ENABLE_VOLITILE_WRITE_CACHE                               = 0x02,
+       SF_SET_TRANSFER_MODE                                         = 0x03,
+       SF_ENABLE_APM_FEATURE                                        = 0x05,
+       SF_ENABLE_PUIS_FEATURE                                       = 0x06,
+       SF_PUIS_DEVICE_SPIN_UP                                       = 0x07,
+       SF_ENABLE_WRITE_READ_VERIFY_FEATURE                          = 0x0B,
+       SF_ENABLE_SATA_FEATURE                                       = 0x10,
+       SF_ENABLE_FREE_FALL_CONTROL_FEATURE                          = 0x41,
+       SF_MAXIMUM_HOST_INTERFACE_SECTOR_TIMES                       = 0x43,
+       SF_LEGACY_SET_VENDOR_SPECIFIC_ECC_BYTES_FOR_READ_WRITE_LONG  = 0x44,
+       SF_EXTENDED_POWER_CONDITIONS                                 = 0x4A,
+       SF_DISABLE_READ_LOOK_AHEAD_FEATURE                           = 0x55,
+       SF_LONG_PHYSICAL_SECTOR_ALIGNMENT_ERROR_REPORTING            = 0x62,
+       SF_ENABLE_DISABLE_DSN_FEATURE                                = 0x63,
+       SF_DISABLE_REVERTING_TO_POWERON_DEFAULTS                     = 0x66,
+       SF_DISABLE_VOLITILE_WRITE_CACHE                              = 0x82,
+       SF_DISABLE_APM_FEATURE                                       = 0x85,
+       SF_DISABLE_PUIS_FEATURE                                      = 0x86,
+       SF_DISABLE_WRITE_READ_VERIFY_FEATURE                         = 0x8B,
+       SF_DISABLE_SATA_FEATURE                                      = 0x90,
+       SF_ENABLE_READ_LOOK_AHEAD_FEATURE                            = 0xAA,
+       SF_LEGACY_SET_4_BYTES_ECC_FOR_READ_WRITE_LONG                = 0xBB,
+       SF_DISABLE_FREE_FALL_CONTROL_FEATURE                         = 0xC1,
+       SF_ENABLE_DISABLE_SENSE_DATA_REPORTING_FEATURE               = 0xC3,
+       SF_ENABLE_REVERTING_TO_POWER_ON_DEFAULTS                     = 0xCC,
        SF_UNKNOWN_FEATURE
    } eATASetFeaturesSubcommands;
 

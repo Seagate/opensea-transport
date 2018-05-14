@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -26,7 +26,7 @@
 #include "cmds.h"
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
-
+#include "usb_hacks.h"
 
 
 
@@ -63,8 +63,10 @@ int get_Device(const char *filename, tDevice *device)
 
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
-        //set the handle name
-        set_Device_Name(filename, device->os_info.name, sizeof(device->os_info.name));
+        //set the name
+        strcpy(device->os_info.name, filename);
+        //set the friendly name
+        set_Device_Name(filename, device->os_info.friendlyName, sizeof(device->os_info.friendlyName));
 
         //set the OS Type
         device->os_info.osType = OS_SOLARIS;
@@ -74,8 +76,8 @@ int get_Device(const char *filename, tDevice *device)
         device->drive_info.drive_type = SCSI_DRIVE;
         if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
         {
-            //TODO: Actually get the VID and PID set before calling this...currently it just issues an identify command to test which passthrough to use until it works. - TJE
-            set_ATA_Passthrough_Type_By_PID_and_VID(device);
+            //TODO: Actually get the VID and PID set before calling this.
+            set_ATA_Passthrough_Type(device);
         }
         //fill in the device info
         ret = fill_Drive_Info_Data(device);

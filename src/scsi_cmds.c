@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -728,6 +728,44 @@ int scsi_Inquiry(tDevice *device, uint8_t *pdata, uint32_t dataLength, uint8_t p
     if (dataLength > 0)
     {
         ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), pdata, dataLength, XFER_DATA_IN, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+        if (ret == SUCCESS && !evpd && !cmdDt && pageCode == 0)
+        {
+            if (pdata != device->drive_info.scsiVpdData.inquiryData)
+            {
+                //this should only be copying std inquiry data to thislocation in the device struct to keep it up to date each time an inquiry is sent to the drive.
+                memcpy(device->drive_info.scsiVpdData.inquiryData, pdata, M_Min(dataLength, 96));
+            }
+            uint8_t version = pdata[2];
+            switch (version) //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
+            {
+            case 0x81:
+                version = 1;//changing to 1 for SCSI
+                break;
+            case 0x80:
+            case 0x82:
+                version = 2;//changing to 2 for SCSI 2
+                break;
+            case 0x83:
+                version = 3;//changing to 3 for SPC
+                break;
+            case 0x84:
+                version = 4;//changing to 4 for SPC2
+                break;
+            default:
+                //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
+                if ((version >= 0x08 && version <= 0x0C) ||
+                    (version >= 0x40 && version <= 0x44) ||
+                    (version >= 0x48 && version <= 0x4C) ||
+                    (version >= 0x80 && version <= 0x84) ||
+                    (version >= 0x88 && version <= 0x8C))
+                {
+                    //these are obsolete version numbers
+                    version = M_GETBITRANGE(version, 3, 0);
+                }
+                break;
+            }
+            device->drive_info.scsiVersion = version;//changing this to one of these version numbers to keep the rest of the library code that would use this simple. - TJE
+        }
     }
     else
     {
@@ -1414,7 +1452,10 @@ int scsi_Test_Unit_Ready(tDevice *device, scsiStatus * pReturnStatus)
 
     //send the command
     ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
-    get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &pReturnStatus->senseKey, &pReturnStatus->acq, &pReturnStatus->ascq, &pReturnStatus->fru);
+    if (pReturnStatus)
+    {
+        get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &pReturnStatus->senseKey, &pReturnStatus->acq, &pReturnStatus->ascq, &pReturnStatus->fru);
+    }
     //leave this here or else the verbose output gets confusing to look at when debugging- this only prints the ret for the function, not the acs/acsq stuff
     print_Return_Enum("Test Unit Ready", ret);
 
@@ -2076,7 +2117,7 @@ int scsi_Read_Defect_Data_10(tDevice *device, bool requestPList, bool requestGLi
     }
     if (requestGList)
     {
-        cdb[2] |= BIT5;
+        cdb[2] |= BIT3;
     }
     cdb[2] |= defectListFormat & 0x07;
     cdb[3] = RESERVED;
@@ -2118,7 +2159,7 @@ int scsi_Read_Defect_Data_12(tDevice *device, bool requestPList, bool requestGLi
     }
     if (requestGList)
     {
-        cdb[1] |= BIT5;
+        cdb[1] |= BIT3;
     }
     cdb[1] |= defectListFormat & 0x07;
     cdb[2] = M_Byte3(addressDescriptorIndex);

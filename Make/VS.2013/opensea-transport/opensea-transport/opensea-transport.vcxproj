@@ -319,6 +319,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\..\src\ata_cmds.c" />
     <ClCompile Include="..\..\..\..\src\ata_helper.c" />
+    <ClCompile Include="..\..\..\..\src\ata_legacy_cmds.c" />
     <ClCompile Include="..\..\..\..\src\cam_helper.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
@@ -352,6 +353,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\..\..\src\ti_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\usb_hacks.c" />
     <ClCompile Include="..\..\..\..\src\uscsi_helper.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
@@ -404,6 +406,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\ti_legacy_helper.h" />
+    <ClInclude Include="..\..\..\..\include\usb_hacks.h" />
     <ClInclude Include="..\..\..\..\include\uscsi_helper.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>

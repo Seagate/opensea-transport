@@ -167,7 +167,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -182,7 +182,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -198,7 +198,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -213,7 +213,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -231,7 +231,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -250,7 +250,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -270,7 +270,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -289,7 +289,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -341,6 +341,7 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\tcg_helper.h" />
     <ClInclude Include="..\..\..\..\include\ti_legacy_helper.h" />
+    <ClInclude Include="..\..\..\..\include\usb_hacks.h" />
     <ClInclude Include="..\..\..\..\include\uscsi_helper.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
@@ -357,6 +358,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\..\src\ata_cmds.c" />
     <ClCompile Include="..\..\..\..\src\ata_helper.c" />
+    <ClCompile Include="..\..\..\..\src\ata_legacy_cmds.c" />
     <ClCompile Include="..\..\..\..\src\cam_helper.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
@@ -390,6 +392,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\..\..\src\ti_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\usb_hacks.c" />
     <ClCompile Include="..\..\..\..\src\uscsi_helper.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>

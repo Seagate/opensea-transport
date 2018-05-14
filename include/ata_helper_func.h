@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -841,6 +841,29 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_SCT_Data_Transfer(tDevice *device, bool useGPL, bool useDMA, eDataTransferDirection direction, uint8_t *dataBuf, uint32_t dataSize);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  ata_SCT_Read_Write_Long(tDevice *device, bool useGPL, bool useDMA, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested)
+    //
+    //! \brief   Description:  This command sends a SCT (SMART Command Transport) read long or write long command to a device
+    //
+    //  Entry:
+    //!   \param device - device handle
+    //!   \param useGPL - Use the GPL feature set instead of the SMART feature set (max number of bytes transported: SMART-130,560 B    GPL-33,553,920 B)
+    //!   \param useDMA - This bool specifies to use the readlogextDMA/writelogextDMA commands. This only applies when useGPL is set to true.
+    //!   \param mode - set to read long or write long
+    //!   \param lba - set the LBA to read or write long
+    //!   \param dataBuf - pointer to data buffer to use for read or write long data transfer
+    //!   \param dataSize - length of data buffer
+    //!   \param numberOfECCCRCBytes - (optional) if successful at getting RTFRs, this will be set to the number of ECC or CRC bytes returned by the device
+    //!   \param numberOfBlocksRequested - (optional) if successful at getting RTFRs, this will be set to the number of 512B sectors the device expects to be transferred
+    //
+    //  Exit:
+    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int ata_SCT_Read_Write_Long(tDevice *device, bool useGPL, bool useDMA, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested);
 
     //-----------------------------------------------------------------------------
     //
@@ -2038,36 +2061,6 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* device)
-    //
-    //! \brief   Description:  Attempts to figure out the ATA passthrough method of external (USB and IEEE1394) products by issueing identify commands with different passthrough types until success is found
-    //
-    //  Entry:
-    //!   \param[in] device = file descriptor
-    //!
-    //  Exit:
-    //!   \return VOID
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* device);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  set_ATA_Passthrough_Type_By_PID_and_VID(tDevice* device)
-    //
-    //! \brief   Description:  Sets the passthrough type based off theVID/PID combo. If no match is found, set_ATA_Passthrough_Type_By_Trial_And_Error(device) is called to set the passthrough type.
-    //
-    //  Entry:
-    //!   \param[in] device = file descriptor
-    //!
-    //  Exit:
-    //!   \return VOID
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void set_ATA_Passthrough_Type_By_PID_and_VID(tDevice *device);
-
-    //-----------------------------------------------------------------------------
-    //
     //  set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize)
     //
     //! \brief   Description:  Use this function to calculate and set a checksum into a data buffer. Useful for some SMART commands and DCO commands.
@@ -2115,6 +2108,14 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize);
 
+    //A couple helper functions to help with Legacu drives
+    bool is_LBA_Mode_Supported(tDevice *device);
+
+    bool is_CHS_Mode_Supported(tDevice *device);
+
+    OPENSEA_TRANSPORT_API int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t *lba);
+
+    OPENSEA_TRANSPORT_API int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_t *head, uint8_t *sector);
 
     /////////////////////////////////////////////////////////////////////////////////
     /// Obsolete ATA Commands. These commands are from specs prior to ATA-ATAPI 7 ///
@@ -2123,23 +2124,47 @@ extern "C"
     //Last seen in ATA-3. All inputs are vendor specific and outputs are vendor specific. Protocol is vendor specific.
     OPENSEA_TRANSPORT_API int ata_Legacy_Format_Track(tDevice *device, uint8_t feature, uint8_t sectorCount, uint8_t sectorNumber, uint8_t cylinderLow, uint8_t cylinderHigh, uint8_t *ptrData, uint32_t dataSize, eAtaProtocol protocol, bool lbaMode);
 
-    //Last seen in ATA-3. Prior to ATA3, the lower nibble of the command could be 0 - F. This is not supported right now
-    OPENSEA_TRANSPORT_API int ata_Legacy_Recalibrate(tDevice *device);
+    //Last seen in ATA-3. Prior to ATA3, the lower nibble of the command could be 0 - F.
+    OPENSEA_TRANSPORT_API int ata_Legacy_Recalibrate(tDevice *device, uint8_t lowCmdNibble, bool chsMode);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Set_Max_Address_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volitileValue);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Set_Max_Address_Ext_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volatileValue);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Verify_Sectors_CHS(tDevice *device, bool extendedCmd, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t lowCmdNibble);
 
     //last seen in ATA-ATAPI 6.
-    OPENSEA_TRANSPORT_API int ata_Legacy_Seek(tDevice *device, uint32_t lba);
+    OPENSEA_TRANSPORT_API int ata_Legacy_Seek(tDevice *device, uint32_t lba, uint8_t lowCmdNibble);
 
     //last seen in ATA-3
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
     OPENSEA_TRANSPORT_API int ata_Legacy_Read_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
     //last seen in ATA-3
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
     OPENSEA_TRANSPORT_API int ata_Legacy_Write_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
 
     //last seen in ATA-2
     //Sub command 22h = LBA (or Cyl lo, hi, head#), and sec number specify where to start. count specifies how many sectors to write. Taking in lba mode by default since CHS is dead. (528MB and higher are recommended to implement LBA)
     //Sub command DDh = initialize all usable sectors. Number of sectors field is ignored
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Same_CHS(tDevice *device, uint8_t subcommand, uint8_t numberOfSectorsToWrite, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
     OPENSEA_TRANSPORT_API int ata_Legacy_Write_Same(tDevice *device, uint8_t subcommand, uint8_t numberOfSectorsToWrite, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
 
     //last seen in ATA-3
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Verify_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
     OPENSEA_TRANSPORT_API int ata_Legacy_Write_Verify(tDevice *device, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
 
     //last seen in ATA-3
