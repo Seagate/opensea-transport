@@ -27,7 +27,7 @@ extern "C"
     #if defined(OPENSEA_TRANSPORT_API)
         #undef(OPENSEA_TRANSPORT_API)
     #endif
-    
+
     #if defined(_WIN32) //DLL/LIB....be VERY careful making modifications to this unless you know what you are doing!
         #if defined (EXPORT_OPENSEA_TRANSPORT) && defined(STATIC_OPENSEA_TRANSPORT)
             #error "The preprocessor definitions EXPORT_OPENSEA_TRANSPORT and STATIC_OPENSEA_TRANSPORT cannot be combined!"
@@ -52,18 +52,18 @@ extern "C"
     #define OPENSEA_MAX_CONTROLLERS (8U)
     #define MAX_DEVICES_PER_CONTROLLER (256U)
     #define MAX_DEVICES_TO_SCAN (OPENSEA_MAX_CONTROLLERS * MAX_DEVICES_PER_CONTROLLER)
-    
+
     #define SERIAL_NUM_LEN          (20) //Going with ATA lengths
     #define MODEL_NUM_LEN           (40)
     #define FW_REV_LEN              (10)
     #define T10_VENDOR_ID_LEN       (8)
 
-	typedef struct _apiVersionInfo 
+	typedef struct _apiVersionInfo
 	{
 		uint8_t	majorVersion;
 		uint8_t minorVersion;
-		uint8_t patchVersion; 
-		uint8_t reserved; 
+		uint8_t patchVersion;
+		uint8_t reserved;
 	} apiVersionInfo;
 
 // These need to be moved to ata_helper.h
@@ -446,7 +446,7 @@ extern "C"
     #else
     }__attribute__((packed,aligned(1))) tAtaIdentifyData, *ptAtaIdentifyData;
     #endif
-    
+
 
     #if !defined(DISABLE_NVME_PASSTHROUGH)
     #if !defined (__GNUC__)
@@ -607,7 +607,7 @@ extern "C"
     #endif
     typedef struct _nvmeIdentifyData {
         nvmeIDCtrl          ctrl;
-        nvmeIDNameSpaces    ns; // Currently we only support 1 NS - Revisit.  
+        nvmeIDNameSpaces    ns; // Currently we only support 1 NS - Revisit.
     #if !defined (__GNUC__)
     }nvmeIdentifyData;
     #pragma pack(pop)
@@ -663,7 +663,7 @@ extern "C"
         MEDIA_SSHD      = 3,    // Hybrid drive.
         MEDIA_OPTICAL   = 4,    // CD/DVD/etc drive media
         MEDIA_TAPE      = 5,    // Tape Drive media
-        MEDIA_NVM       = 6,    // All NVM drives 
+        MEDIA_NVM       = 6,    // All NVM drives
         MEDIA_UNKNOWN           // anything else we find should get this
     } eMediaType;
 
@@ -707,7 +707,7 @@ extern "C"
         char SATproductID[17];//VPD page 89h
         char SATfwRev[9];//VPD page 89h
         uint32_t childDeviceBlockSize; //This is the logical block size reported by the drive
-        uint32_t childDevicePhyBlockSize; // This is the physical block size reported by the drive. 
+        uint32_t childDevicePhyBlockSize; // This is the physical block size reported by the drive.
         uint16_t childSectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
         uint64_t childDeviceMaxLba;
     #if !defined (__GNUC__)
@@ -819,10 +819,10 @@ extern "C"
         eInterfaceType interface_type;
         eZonedDeviceType zonedType;//most drives will report ZONED_TYPE_NOT_ZONED
         uint32_t       deviceBlockSize; //This is the logical block size reported by the drive
-		uint32_t	   devicePhyBlockSize; // This is the physical block size reported by the drive. 
+		uint32_t	   devicePhyBlockSize; // This is the physical block size reported by the drive.
         uint16_t       sectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
         uint64_t       deviceMaxLba;
-        uint32_t       lunOrNSID; //shared between SCSI / NVMe 
+        uint32_t       lunOrNSID; //shared between SCSI / NVMe
         char           serialNumber[SERIAL_NUM_LEN + 1];
         char           T10_vendor_ident[T10_VENDOR_ID_LEN + 1];
         char           product_identification[MODEL_NUM_LEN + 1]; //not INQ
@@ -834,7 +834,7 @@ extern "C"
             nvmeIdentifyData nvme;
 #endif
         }IdentifyData;
-        tVpdData         scsiVpdData; // Intentionally not part of the above IdentifyData union 
+        tVpdData         scsiVpdData; // Intentionally not part of the above IdentifyData union
         ataReturnTFRs lastCommandRTFRs;//This holds the RTFRs for the last command to be sent to the device. This is not necessarily the last function called as functions may send multiple commands to the device.
         struct {
             bool validData;//must be true for any other fields to be useful
@@ -905,7 +905,27 @@ extern "C"
         eOSType             osType;//useful for lower layers to do OS specific things
         #if defined (UEFI)
         EFI_HANDLE          fd;
+        //TODO: do we need to store a device path? Not sure if we need this or not...-TJE
         eUEFIPassthroughType passthroughType;
+        union _uefiAddress {
+            struct _scsiAddress{
+                uint32_t target;
+                uint64_t lun;
+            }scsi;
+            struct _scsiExtAddress{
+                uint8_t target[16];
+                uint64_t lun;
+            }
+            struct _ataAddress{
+                uint16_t port;
+                uint16_t portMultiplierPort;
+            }ata;
+            #if !defined (DISABLE_NVME_PASSTHROUGH)
+            struct _nvmeAddress{
+                uint32_t namespaceID;
+            }nvme;
+            #endif
+        }address;
         uint16_t            controllerID;
         uint16_t            deviceID;
         #elif defined (__linux__)
@@ -1030,8 +1050,8 @@ extern "C"
     }__attribute__((packed,aligned(1))) tDevice;
     #endif
 
-     //Common enum for getting/setting power states. 
-     //This enum encompasses Mode Sense/Select commands for SCSI, Set Features for ATA 
+     //Common enum for getting/setting power states.
+     //This enum encompasses Mode Sense/Select commands for SCSI, Set Features for ATA
      //And Get/Set Features for NVMe. Lower layers must translated bits according to interface.
     typedef enum _eFeatureModeSelect
     {
@@ -1046,11 +1066,11 @@ extern "C"
     typedef enum _ePowerConditionID
     {
         PWR_CND_NOT_SET = -1,
-        PWR_CND_STANDBY_Z = 0x00, //value according to ATA spec. 
-        PWR_CND_STANDBY_Y = 0x01, //value according to ATA spec. 
-        PWR_CND_IDLE_A    = 0x81, //value according to ATA spec. 
-        PWR_CND_IDLE_B    = 0x82, //value according to ATA spec. 
-        PWR_CND_IDLE_C    = 0x83, //value according to ATA spec. 
+        PWR_CND_STANDBY_Z = 0x00, //value according to ATA spec.
+        PWR_CND_STANDBY_Y = 0x01, //value according to ATA spec.
+        PWR_CND_IDLE_A    = 0x81, //value according to ATA spec.
+        PWR_CND_IDLE_B    = 0x82, //value according to ATA spec.
+        PWR_CND_IDLE_C    = 0x83, //value according to ATA spec.
         PWR_CND_ACTIVE    = 0x84, //value is just for continuation (not ATA spec SCSI has 0)
         PWR_CND_ALL       = 0xFF,
         PWR_CND_RESERVED
@@ -1095,7 +1115,7 @@ extern "C"
         SEAGATE_VENDOR_C = BIT7,
         SEAGATE_VENDOR_D = BIT8,
         SEAGATE_VENDOR_E = BIT9,
-        //Ancient history 
+        //Ancient history
         SEAGATE_QUANTUM = BIT10, //Quantum Corp. Vendor ID QUANTUM (SCSI)
         SEAGATE_CDC = BIT11, //Control Data Systems. Vendor ID CDC (SCSI)
         SEAGATE_CONNER = BIT12, //Conner Peripherals. Vendor ID CONNER (SCSI)
@@ -1109,11 +1129,11 @@ extern "C"
     //The scan flags should each be a bit in a 32bit unsigned integer.
     // bits 0:7 Will be used for drive type selection.
     // bits 8:15 will be used for interface selection. So this is slightly different because if you say SCSI interface you can get back both ATA and SCSI drives if they are connected to say a SAS card
-    // Linux - bit 16 will be used to change the handle that shows up from the scan. 
+    // Linux - bit 16 will be used to change the handle that shows up from the scan.
     // Linux - bit 17 will be used to show the SD to SG mapping in linux.
     // Windows - bit 16 will be used to show the long device handle name
     // RAID interfaces (including csmi) may use bits 31:26 (so far those are the only ones used by CSMI)
-    
+
     #define DEFAULT_SCAN 0
     #define ALL_DRIVES 0xFF
     #define ATA_DRIVES BIT0
@@ -1165,11 +1185,11 @@ extern "C"
 	//
 	//  get_Opensea_Transport_Version()
 	//
-	//! \brief   Description:  Get the API version. Alternative way is to 
+	//! \brief   Description:  Get the API version. Alternative way is to
 	//							read OPENSEA_TRANSPORT_VERSION from version.h
 	//
 	//  Entry:
-	//!   \param[out] ver = apiVersionInfo version block to be filled. 
+	//!   \param[out] ver = apiVersionInfo version block to be filled.
 		//!
 	//  Exit:
 	//!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -1181,10 +1201,10 @@ extern "C"
 	//
 	//  get_Version_Block()
 	//
-	//! \brief   Description:  Get the library device block version. 
+	//! \brief   Description:  Get the library device block version.
 	//
 	//  Entry:
-	//!   \param[out] ver = versionBlock structure to be filled. 
+	//!   \param[out] ver = versionBlock structure to be filled.
 	//!
 	//  Exit:
 	//!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -1219,8 +1239,8 @@ extern "C"
 	//!                        get_Device_List, so that enough memory is allocated.
 	//
 	//  Entry:
-	//!   \param[out] numberOfDevices = integer to hold the number of devices found. 
-	//!   \param[in] flags = bit field based mask to let application control. 
+	//!   \param[out] numberOfDevices = integer to hold the number of devices found.
+	//!   \param[in] flags = bit field based mask to let application control.
 	//!						 NOTE: only csmi flags are used right now.
 	//!
 	//  Exit:
@@ -1233,20 +1253,20 @@ extern "C"
 	//
 	//  get_Device_List()
 	//
-	//! \brief   Description:  Get a list of devices that the library supports. 
+	//! \brief   Description:  Get a list of devices that the library supports.
 	//!                        Use get_Device_Count to figure out how much memory is
-	//!                        needed to be allocated for the device list. The memory 
-	//!						   allocated must be the multiple of device structure. 
-	//!						   The application can pass in less memory than needed 
-	//!						   for all devices in the system, in which case the library 
-	//!                        will fill the provided memory with how ever many device 
-	//!						   structures it can hold. 
+	//!                        needed to be allocated for the device list. The memory
+	//!						   allocated must be the multiple of device structure.
+	//!						   The application can pass in less memory than needed
+	//!						   for all devices in the system, in which case the library
+	//!                        will fill the provided memory with how ever many device
+	//!						   structures it can hold.
 	//  Entry:
 	//!   \param[out] ptrToDeviceList = pointer to the allocated memory for the device list
-	//!   \param[in]  sizeInBytes = size of the entire list in bytes. 
-	//!   \param[in]  ver = versionBlock structure filled in by application for 
-	//!								 sanity check by library. 
-	//!   \param[in] flags = bitfield based mask to let application control. 
+	//!   \param[in]  sizeInBytes = size of the entire list in bytes.
+	//!   \param[in]  ver = versionBlock structure filled in by application for
+	//!								 sanity check by library.
+	//!   \param[in] flags = bitfield based mask to let application control.
 	//!						 NOTE: only csmi flags are used right now
 	//!
 	//  Exit:
@@ -1260,10 +1280,10 @@ extern "C"
 	//
 	//  close_Device()
 	//
-	//! \brief   Description:  Given a tDevice, close it's handle. 
+	//! \brief   Description:  Given a tDevice, close it's handle.
 	//
 	//  Entry:
-	//!   \param[in] device = device struct that holds device information. 
+	//!   \param[in] device = device struct that holds device information.
 	//!
 	//  Exit:
 	//!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -1480,7 +1500,7 @@ extern "C"
     //
     //  is_Seagate_Model_Vendor_A( tDevice * device )
     //
-    //! \brief   Checks if the device is a Seagate partnership product 
+    //! \brief   Checks if the device is a Seagate partnership product
     //
     //  Entry:
     //!   \param[in]  device - file descriptor
@@ -1545,19 +1565,19 @@ extern "C"
     //  calculate_Checksum( uint8_t buf,  ) (OBSOLETE)
     //
     //! \brief  Calculates the ATA Spec. version of the checksum & returns the data
-    //!         NOTE: 511th byte of the buffer will be changed. 
+    //!         NOTE: 511th byte of the buffer will be changed.
     //!         This function has been replaced with a couple others in ata_helper_func.h since this is specific to ATA.
-    //! 
+    //!
     //! A.14.7 Checksum
     //! The data structure checksum is the two?s complement of the sum of the first 511 bytes in the data structure. Each
     //! byte shall be added with eight-bit unsigned arithmetic and overflow shall be ignored. The sum of all 512 bytes of
     //! the data structure shall be zero.
     //
     //  Entry:
-    //!   \param[in, out] pBuf = uint8_t buffer to perform checksum on 
-    //!   \param[in] blockSize = uint32_t block size    
+    //!   \param[in, out] pBuf = uint8_t buffer to perform checksum on
+    //!   \param[in] blockSize = uint32_t block size
     //  Exit:
-    //!   \return int SUCCESS if passes !SUCCESS if fails for some reason. 
+    //!   \return int SUCCESS if passes !SUCCESS if fails for some reason.
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int calculate_Checksum(uint8_t *pBuf, uint32_t blockSize);
