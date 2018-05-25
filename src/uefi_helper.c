@@ -735,7 +735,7 @@ uint32_t get_ATA_Device_Count()
     return deviceCount;
 }
 
-int get_ATA_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, uint32_t *index)
+int get_ATA_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint32_t *index)
 {
     int ret = NOT_SUPPORTED;
     uint16_t port = UINT16_MAX;//start here since this will make the api find the first available ata port
@@ -819,7 +819,7 @@ uint32_t get_SCSI_Device_Count()
     return deviceCount;
 }
 
-int get_SCSI_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, uint32_t *index)
+int get_SCSI_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint32_t *index)
 {
     int ret = NOT_SUPPORTED;
     uint32_t target = UINT32_MAX;//start here since this will make the api find the first available scsi target
@@ -830,7 +830,7 @@ int get_SCSI_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, uint
     while (uefiStatus == EFI_SUCCESS)
     {
         uefiStatus = pPassthru->GetNextDevice(pPassthru, &target, & lun);
-        if(uefiStatus == EFI_SUCCESS && target != UINT16_MAX)
+        if(uefiStatus == EFI_SUCCESS && target != UINT32_MAX)
         {
             //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
             EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
@@ -895,7 +895,7 @@ uint32_t get_SCSIEx_Device_Count()
     return deviceCount;
 }
 
-int get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, uint32_t *index)
+int get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint32_t *index)
 {
     int ret = NOT_SUPPORTED;
     uint8_t target[16] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
@@ -942,6 +942,82 @@ int get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, ui
     return ret;
 }
 
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+uint32_t get_NVMe_Device_Count()
+{
+    uint32_t namespaceID = UINT32_MAX;//start here since this will make the api find the first available nvme namespace
+    uint32_t deviceCount = 0;
+    EFI_STATUS uefiStatus = EFI_SUCCESS;
+    EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL *pPassthru;
+    while (uefiStatus == EFI_SUCCESS)
+    {
+        uefiStatus = pPassthru->GetNextNamespace(pPassthru, &namespaceID);
+        if(uefiStatus == EFI_SUCCESS && namespaceID != UINT32_MAX)
+        {
+            //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
+            EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
+            EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, namespaceID, &devicePath);
+            if(buildPath == EFI_SUCCESS)
+            {
+                //found a device!!!
+                ++deviceCount;
+            }
+            //EFI_NOT_FOUND means no device at this place.
+            //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
+            //EFI_OUT_OF_RESOURCES means cannot allocate memory.
+            safe_Free(devicePath);
+        }
+    }
+    return deviceCount;
+}
+
+int get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint32_t *index)
+{
+    int ret = NOT_SUPPORTED;
+    uint32_t namespaceID = UINT32_MAX;//start here since this will make the api find the first available nvme namespace
+    uint32_t deviceCount = 0;
+    EFI_STATUS uefiStatus = EFI_SUCCESS;
+    EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL *pPassthru;
+    while (uefiStatus == EFI_SUCCESS)
+    {
+        uefiStatus = pPassthru->GetNextNamespace(pPassthru, &namespaceID);
+        if(uefiStatus == EFI_SUCCESS && namespaceID != UINT32_MAX)
+        {
+            //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
+            EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
+            EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, namespaceID, &devicePath);
+            if(buildPath == EFI_SUCCESS)
+            {
+                //found a device!!!
+                char nvmeHandle[64] = { 0 };
+                sprintf(nvmeHandle, "nvme:%" PRIx32, namespaceID);
+                int result = get_Device(nvmeHandle, &ptrToDeviceList[*index]);
+                if(result != SUCCESS)
+                {
+                    ret = WARN_NOT_ALL_DEVICES_ENUMERATED;
+                }
+                ++(*index);
+                ++deviceCount;
+            }
+            //EFI_NOT_FOUND means no device at this place.
+            //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
+            //EFI_OUT_OF_RESOURCES means cannot allocate memory.
+            safe_Free(devicePath);
+        }
+    }
+    if(uefiStatus == EFI_NOT_FOUND)
+    {
+        //loop finished and we found a port/device
+        if(deviceCount > 0)
+        {
+            //assuming that since we enumerated something, that everything worked and we are able to talk to something
+            ret = SUCCESS;
+        }
+    }
+    return ret;
+}
+#endif
+
 //-----------------------------------------------------------------------------
 //
 //  get_Device_Count()
@@ -963,6 +1039,9 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
     //TODO: handle flags
     *numberOfDevices = get_ATA_Device_Count() + get_SCSI_Device_Count() + get_SCSIEx_Device_Count();
+    #if !defined (DISABLE_NVME_PASSTHROUGH)
+    *numberOfDevices += get_NVMe_Device_Count();
+    #endif
     return SUCCESS;
 }
 
@@ -994,9 +1073,12 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 {
     uint32_t index = 0;
     //TODO: handle flags and validate size of device list and version block
-    get_ATA_Devices(ptrToDeviceList, sizeInBytes, &index);
-    get_SCSI_Devices(ptrToDeviceList, sizeInBytes, &index);
-    get_SCSIEx_Devices(ptrToDeviceList, sizeInBytes, &index);
+    get_ATA_Devices(ptrToDeviceList, sizeInBytes, ver, &index);
+    get_SCSI_Devices(ptrToDeviceList, sizeInBytes, ver, &index);
+    get_SCSIEx_Devices(ptrToDeviceList, sizeInBytes, ver, &index);
+    #if !defined (DISABLE_NVME_PASSTHROUGH)
+    get_NVMe_Devices(ptrToDeviceList, sizeInBytes, ver, &index);
+    #endif
     return SUCCESS;
 }
 
