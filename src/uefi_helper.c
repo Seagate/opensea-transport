@@ -697,6 +697,251 @@ int close_Device(tDevice *device)
     return NOT_SUPPORTED;
 }
 
+uint32_t get_ATA_Device_Count()
+{
+    uint16_t port = UINT16_MAX;//start here since this will make the api find the first available ata port
+    uint32_t deviceCount = 0;
+    EFI_STATUS uefiStatus = EFI_SUCCESS;
+    EFI_ATA_PASS_THRU_PROTOCOL *pPassthru;
+    while (uefiStatus == EFI_SUCCESS)
+    {
+        uefiStatus = pPassthru->GetNextPort(pPassthru, &port);
+        if(uefiStatus == EFI_SUCCESS && port != UINT16_MAX)
+        {
+            //need to call get next device now
+            uint16_t pmport = UINT16_MAX;//start here so we can find the first port multiplier port
+            EFI_STATUS getNextDevice = EFI_SUCCESS;
+            while(getNextDevice == EFI_SUCCESS)
+            {
+                getNextDevice = pPassthru->GetNextDevice(pPassthru, port, &pmport);
+                if(getNextDevice == EFI_SUCCESS)
+                {
+                    //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
+                    EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
+                    EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, port, pmport, &devicePath);
+                    if(buildPath == EFI_SUCCESS)
+                    {
+                        //found a device!!!
+                        ++deviceCount;
+                    }
+                    //EFI_NOT_FOUND means no device at this place.
+                    //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
+                    //EFI_OUT_OF_RESOURCES means cannot allocate memory.
+                    safe_Free(devicePath);
+                }
+            }
+        }
+    }
+    return deviceCount;
+}
+
+int get_ATA_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, uint32_t *index)
+{
+    int ret = NOT_SUPPORTED;
+    uint16_t port = UINT16_MAX;//start here since this will make the api find the first available ata port
+    uint32_t deviceCount = 0;
+    EFI_STATUS uefiStatus = EFI_SUCCESS;
+    EFI_ATA_PASS_THRU_PROTOCOL *pPassthru;
+    while (uefiStatus == EFI_SUCCESS)
+    {
+        uefiStatus = pPassthru->GetNextPort(pPassthru, &port);
+        if(uefiStatus == EFI_SUCCESS && port != UINT16_MAX)
+        {
+            //need to call get next device now
+            uint16_t pmport = UINT16_MAX;//start here so we can find the first port multiplier port
+            EFI_STATUS getNextDevice = EFI_SUCCESS;
+            while(getNextDevice == EFI_SUCCESS)
+            {
+                getNextDevice = pPassthru->GetNextDevice(pPassthru, port, &pmport);
+                if(getNextDevice == EFI_SUCCESS)
+                {
+                    //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
+                    EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
+                    EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, port, pmport, &devicePath);
+                    if(buildPath == EFI_SUCCESS)
+                    {
+                        //found a device!!!
+                        char ataHandle[32] = { 0 };
+                        sprintf(ataHandle, "ata:%" PRIx16 ":" PRIx16, port, pmport);
+                        int result = get_Device(ataHandle, &ptrToDeviceList[*index]);
+                        if(result != SUCCESS)
+                        {
+                            ret = WARN_NOT_ALL_DEVICES_ENUMERATED;
+                        }
+                        ++(*index);
+                        ++deviceCount;
+                    }
+                    //EFI_NOT_FOUND means no device at this place.
+                    //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
+                    //EFI_OUT_OF_RESOURCES means cannot allocate memory.
+                    safe_Free(devicePath);
+                }
+            }
+        }
+    }
+    if(uefiStatus == EFI_NOT_FOUND)
+    {
+        //loop finished and we found a port/device
+        if(deviceCount > 0)
+        {
+            //assuming that since we enumerated something, that everything worked and we are able to talk to something
+            ret = SUCCESS;
+        }
+    }
+    return ret;
+}
+
+uint32_t get_SCSI_Device_Count()
+{
+    uint32_t target = UINT32_MAX;//start here since this will make the api find the first available scsi target
+    uint64_t lun = 0;//doesn't specify what we should start with for this.
+    uint32_t deviceCount = 0;
+    EFI_STATUS uefiStatus = EFI_SUCCESS;
+    EFI_SCSI_PASS_THRU_PROTOCOL *pPassthru;
+    while (uefiStatus == EFI_SUCCESS)
+    {
+        uefiStatus = pPassthru->GetNextDevice(pPassthru, &target, & lun);
+        if(uefiStatus == EFI_SUCCESS && target != UINT16_MAX)
+        {
+            //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
+            EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
+            EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, target, lun, &devicePath);
+            if(buildPath == EFI_SUCCESS)
+            {
+                ++deviceCount;
+            }
+            //EFI_NOT_FOUND means no device at this place.
+            //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
+            //EFI_OUT_OF_RESOURCES means cannot allocate memory.
+            safe_Free(devicePath);
+        }
+    }
+    return deviceCount;
+}
+
+int get_SCSI_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, uint32_t *index)
+{
+    int ret = NOT_SUPPORTED;
+    uint32_t target = UINT32_MAX;//start here since this will make the api find the first available scsi target
+    uint64_t lun = 0;//doesn't specify what we should start with for this.
+    uint32_t deviceCount = 0;
+    EFI_STATUS uefiStatus = EFI_SUCCESS;
+    EFI_SCSI_PASS_THRU_PROTOCOL *pPassthru;
+    while (uefiStatus == EFI_SUCCESS)
+    {
+        uefiStatus = pPassthru->GetNextDevice(pPassthru, &target, & lun);
+        if(uefiStatus == EFI_SUCCESS && target != UINT16_MAX)
+        {
+            //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
+            EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
+            EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, target, lun, &devicePath);
+            if(buildPath == EFI_SUCCESS)
+            {
+                //found a device!!!
+                char scsiHandle[64] = { 0 };
+                sprintf(scsiHandle, "scsi:%" PRIx32 ":" PRIx64, target, lun);
+                int result = get_Device(scsiHandle, &ptrToDeviceList[*index]);
+                if(result != SUCCESS)
+                {
+                    ret = WARN_NOT_ALL_DEVICES_ENUMERATED;
+                }
+                ++(*index);
+                ++deviceCount;
+            }
+            //EFI_NOT_FOUND means no device at this place.
+            //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
+            //EFI_OUT_OF_RESOURCES means cannot allocate memory.
+            safe_Free(devicePath);
+        }
+    }
+    if(uefiStatus == EFI_NOT_FOUND)
+    {
+        //loop finished and we found a port/device
+        if(deviceCount > 0)
+        {
+            //assuming that since we enumerated something, that everything worked and we are able to talk to something
+            ret = SUCCESS;
+        }
+    }
+    return ret;
+}
+
+uint32_t get_SCSIEx_Device_Count()
+{
+    uint8_t target[16] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+    uint64_t lun = 0;//doesn't specify what we should start with for this.
+    uint32_t deviceCount = 0;
+    EFI_STATUS uefiStatus = EFI_SUCCESS;
+    EFI_EXT_SCSI_PASS_THRU_PROTOCOL *pPassthru;
+    while (uefiStatus == EFI_SUCCESS)
+    {
+        uefiStatus = pPassthru->GetNextTargetLun(pPassthru, &target, & lun);
+        if(uefiStatus == EFI_SUCCESS)
+        {
+            //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
+            EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
+            EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, target, lun, &devicePath);
+            if(buildPath == EFI_SUCCESS)
+            {
+                //found a device!!!
+                ++deviceCount;
+            }
+            //EFI_NOT_FOUND means no device at this place.
+            //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
+            //EFI_OUT_OF_RESOURCES means cannot allocate memory.
+            safe_Free(devicePath);
+        }
+    }
+    return deviceCount;
+}
+
+int get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, uint32_t *index)
+{
+    int ret = NOT_SUPPORTED;
+    uint8_t target[16] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+    uint64_t lun = 0;//doesn't specify what we should start with for this.
+    uint32_t deviceCount = 0;
+    EFI_STATUS uefiStatus = EFI_SUCCESS;
+    EFI_EXT_SCSI_PASS_THRU_PROTOCOL *pPassthru;
+    while (uefiStatus == EFI_SUCCESS)
+    {
+        uefiStatus = pPassthru->GetNextTargetLun(pPassthru, &target, & lun);
+        if(uefiStatus == EFI_SUCCESS)
+        {
+            //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
+            EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
+            EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, target, lun, &devicePath);
+            if(buildPath == EFI_SUCCESS)
+            {
+                //found a device!!!
+                char scsiExHandle[64] = { 0 };
+                sprintf(scsiExHandle, "scsiEx:%" PRIx8 PRIx8 PRIx8 PRIx8 PRIx8 PRIx8 PRIx8 PRIx8 PRIx8 PRIx8 PRIx8 PRIx8 PRIx8 PRIx8 PRIx8 PRIx8 ":" PRIx64, target[0], target[1], target[2], target[3], target[4], target[5], target[6], target[7], target[8], target[9], target[10], target[11], target[12], target[13], target[14], target[15], lun);
+                int result = get_Device(scsiExHandle, &ptrToDeviceList[*index]);
+                if(result != SUCCESS)
+                {
+                    ret = WARN_NOT_ALL_DEVICES_ENUMERATED;
+                }
+                ++(*index);
+                ++deviceCount;
+            }
+            //EFI_NOT_FOUND means no device at this place.
+            //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
+            //EFI_OUT_OF_RESOURCES means cannot allocate memory.
+            safe_Free(devicePath);
+        }
+    }
+    if(uefiStatus == EFI_NOT_FOUND)
+    {
+        //loop finished and we found a port/device
+        if(deviceCount > 0)
+        {
+            //assuming that since we enumerated something, that everything worked and we are able to talk to something
+            ret = SUCCESS;
+        }
+    }
+    return ret;
+}
+
 //-----------------------------------------------------------------------------
 //
 //  get_Device_Count()
@@ -716,8 +961,9 @@ int close_Device(tDevice *device)
 //-----------------------------------------------------------------------------
 int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
-    //see how get device list works, but count number of available devices instead.
-    return NOT_SUPPORTED;
+    //TODO: handle flags
+    *numberOfDevices = get_ATA_Device_Count() + get_SCSI_Device_Count() + get_SCSIEx_Device_Count();
+    return SUCCESS;
 }
 
 //-----------------------------------------------------------------------------
@@ -746,14 +992,12 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //-----------------------------------------------------------------------------
 int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
 {
-    //TODO:
-    //ATA:
-    //use getnextport, then getnextdevice calls to figure out which ports and port multiplier ports have devices on them, then open them (get device)
-    //SCSI
-    //use get next device call
-    //SCSI(ex):
-    //use EFI_EXT_SCSI_PASS_THRU_GET_NEXT_TARGET_LUN
-    return NOT_SUPPORTED;
+    uint32_t index = 0;
+    //TODO: handle flags and validate size of device list and version block
+    get_ATA_Devices(ptrToDeviceList, sizeInBytes, &index);
+    get_SCSI_Devices(ptrToDeviceList, sizeInBytes, &index);
+    get_SCSIEx_Devices(ptrToDeviceList, sizeInBytes, &index);
+    return SUCCESS;
 }
 
 int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
