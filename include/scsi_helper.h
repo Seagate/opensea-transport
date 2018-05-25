@@ -81,7 +81,9 @@ extern "C"
         SENSE_DESCRIPTOR_USER_DATA_SEGMENT_REFERRAL         = 0x0B,
         SENSE_DESCRIPTOR_FORWAREDED_SENSE_DATA              = 0x0C,
         SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE         = 0x0D,
-        //0x0E - 0x7F are reserved
+		SENSE_DESCRIPTOR_DEVICE_DESIGNATION					= 0x0E,
+		SENSE_DESCRIPTOR_MICROCODE_ACTIVATION				= 0x0F,
+        //0x10 - 0x7F are reserved
         //0x80 - 0xFF are vendor specific
     }eSenseDescriptorType;
 

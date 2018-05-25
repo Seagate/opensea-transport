@@ -5124,19 +5124,26 @@ void get_Sense_Key_ASC_ASCQ_FRU(uint8_t *pbuf, uint32_t pbufSize, uint8_t *sense
         //for descriptor format we have to loop through the buffer until we find the FRU descriptor (if available)
         while (iter < pbufSize && iter < (additionalSenseLength + 8))
         {
+			bool gotFRU = false;
             uint8_t descriptorType = pbuf[iter];
             uint8_t additionalLength = pbuf[iter + 1];//descriptor length
             switch (descriptorType)
             {
             case SENSE_DESCRIPTOR_FIELD_REPLACEABLE_UNIT:
                 *fru = pbuf[iter + 3];
+				gotFRU = true;
                 break;
             case SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE:
                 *fru = pbuf[iter + 7];
+				gotFRU = true;
                 break;
             default:
                 break;
             }
+			if (gotFRU)
+			{
+				break;
+			}
             iter += additionalLength + 2;//the 2 is the number of bytes for the descriptor header
         }
         break;
@@ -5153,6 +5160,161 @@ void get_Sense_Key_ASC_ASCQ_FRU(uint8_t *pbuf, uint32_t pbufSize, uint8_t *sense
         }
         break;
     }
+}
+
+void get_Information_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *valid, uint64_t *information)
+{
+	if (ptrSenseData && valid && senseDataLength > 0 && information)
+	{
+		*valid = false;
+		*information = 0;
+		uint8_t format = ptrSenseData[0] & 0x7F; //Stripping the last bit so we just get the format
+		uint8_t descriptorLength = 0;//for descriptor format sense data
+		uint16_t returnedLength = 8;//assume length returned is at least 8 bytes
+		switch (format)
+		{
+		case SCSI_SENSE_NO_SENSE_DATA:
+			break;
+		case SCSI_SENSE_CUR_INFO_FIXED:
+		case SCSI_SENSE_DEFER_ERR_FIXED:
+			*valid = ptrSenseData[0] & BIT7;
+			*information = M_BytesTo4ByteValue(ptrSenseData[3], ptrSenseData[4], ptrSenseData[5], ptrSenseData[6]);
+			break;
+		case SCSI_SENSE_CUR_INFO_DESC:
+		case SCSI_SENSE_DEFER_ERR_DESC:
+			returnedLength += ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
+			//loop through the descriptors to see if a sense key specific descriptor was provided
+			for (uint8_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
+			{
+				bool gotInformation = false;
+				uint8_t descriptorType = ptrSenseData[offset];
+				descriptorLength = ptrSenseData[offset + 1];
+				switch (descriptorType)
+				{
+				case SENSE_DESCRIPTOR_INFORMATION:
+					*valid = ptrSenseData[offset + 2] & BIT7;
+					*information = M_BytesTo8ByteValue(ptrSenseData[offset + 4], ptrSenseData[offset + 5], ptrSenseData[offset + 6], ptrSenseData[offset + 7], ptrSenseData[offset + 8], ptrSenseData[offset + 9], ptrSenseData[offset + 10], ptrSenseData[offset + 11]);
+					gotInformation = true;
+					break;
+				case SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE:
+					*valid = ptrSenseData[offset + 2] & BIT7;
+					*information = M_BytesTo8ByteValue(ptrSenseData[offset + 8], ptrSenseData[offset + 9], ptrSenseData[offset + 10], ptrSenseData[offset + 11], ptrSenseData[offset + 12], ptrSenseData[offset + 13], ptrSenseData[offset + 14], ptrSenseData[offset + 15]);
+					gotInformation = true;
+					break;
+				default: //not a descriptor we care about, so skip it
+					break;
+				}
+				if (gotInformation || descriptorLength == 0)
+				{
+					break;
+				}
+			}
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+void get_Illegal_Length_Indicator_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *illegalLengthIndicator)
+{
+	if (ptrSenseData && senseDataLength > 0 && illegalLengthIndicator)
+	{
+		*illegalLengthIndicator = false;
+		uint8_t format = ptrSenseData[0] & 0x7F; //Stripping the last bit so we just get the format
+		uint8_t descriptorLength = 0;//for descriptor format sense data
+		uint16_t returnedLength = 8 + ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
+		switch (format)
+		{
+		case SCSI_SENSE_NO_SENSE_DATA:
+			break;
+		case SCSI_SENSE_CUR_INFO_FIXED:
+		case SCSI_SENSE_DEFER_ERR_FIXED:
+			*illegalLengthIndicator = ptrSenseData[2] & BIT5;
+			break;
+		case SCSI_SENSE_CUR_INFO_DESC:
+		case SCSI_SENSE_DEFER_ERR_DESC:
+			//loop through the descriptors to see if a sense key specific descriptor was provided
+			for (uint8_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
+			{
+				bool gotILI = false;
+				uint8_t descriptorType = ptrSenseData[offset];
+				descriptorLength = ptrSenseData[offset + 1];
+				switch (descriptorType)
+				{
+				case SENSE_DESCRIPTOR_BLOCK_COMMANDS:
+					*illegalLengthIndicator = ptrSenseData[offset + 3] & BIT5;
+					gotILI = true;
+					break;
+				case SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE:
+					*illegalLengthIndicator = ptrSenseData[offset + 2] & BIT5;
+					gotILI = true;
+					break;
+				default: //not a descriptor we care about, so skip it
+					break;
+				}
+				if (gotILI || descriptorLength == 0)
+				{
+					break;
+				}
+			}
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+void get_Command_Specific_Information_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, uint64_t *commandSpecificInformation)
+{
+	if (ptrSenseData && senseDataLength > 0 && commandSpecificInformation)
+	{
+		*commandSpecificInformation = 0;
+		uint8_t format = ptrSenseData[0] & 0x7F; //Stripping the last bit so we just get the format
+		uint8_t descriptorLength = 0;//for descriptor format sense data
+		uint16_t returnedLength = 8 + ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
+		switch (format)
+		{
+		case SCSI_SENSE_NO_SENSE_DATA:
+			break;
+		case SCSI_SENSE_CUR_INFO_FIXED:
+		case SCSI_SENSE_DEFER_ERR_FIXED:
+			if (returnedLength >= 12)
+			{
+				*commandSpecificInformation = M_BytesTo4ByteValue(ptrSenseData[8], ptrSenseData[9], ptrSenseData[10], ptrSenseData[11]);
+			}
+			break;
+		case SCSI_SENSE_CUR_INFO_DESC:
+		case SCSI_SENSE_DEFER_ERR_DESC:
+			//loop through the descriptors to see if a sense key specific descriptor was provided
+			for (uint8_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
+			{
+				bool gotCommandInformation = false;
+				uint8_t descriptorType = ptrSenseData[offset];
+				descriptorLength = ptrSenseData[offset + 1];
+				switch (descriptorType)
+				{
+				case SENSE_DESCRIPTOR_COMMAND_SPECIFIC_INFORMATION:
+					*commandSpecificInformation = M_BytesTo8ByteValue(ptrSenseData[offset + 4], ptrSenseData[offset + 5], ptrSenseData[offset + 6], ptrSenseData[offset + 7], ptrSenseData[offset + 8], ptrSenseData[offset + 9], ptrSenseData[offset + 10], ptrSenseData[offset + 11]);
+					gotCommandInformation = true;
+					break;
+				case SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE:
+					*commandSpecificInformation = M_BytesTo8ByteValue(ptrSenseData[offset + 16], ptrSenseData[offset + 17], ptrSenseData[offset + 18], ptrSenseData[offset + 19], ptrSenseData[offset + 20], ptrSenseData[offset + 21], ptrSenseData[offset + 22], ptrSenseData[offset + 23]);
+					gotCommandInformation = true;
+					break;
+				default: //not a descriptor we care about, so skip it
+					break;
+				}
+				if (gotCommandInformation || descriptorLength == 0)
+				{
+					break;
+				}
+			}
+			break;
+		default:
+			break;
+		}
+	}
 }
 
 void get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp)
@@ -5183,19 +5345,23 @@ void get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDat
 			//loop through the descriptors to see if a sense key specific descriptor was provided
 			for (uint8_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
 			{
-				bool senseKeySpecificDescriptorFound = false;
+				bool senseKeySpecificFound = false;
 				uint8_t descriptorType = ptrSenseData[offset];
 				descriptorLength = ptrSenseData[offset + 1];
 				switch (descriptorType)
 				{
 				case SENSE_DESCRIPTOR_SENSE_KEY_SPECIFIC:
-					senseKeySpecificOffset = offset;
-					senseKeySpecificDescriptorFound = true;
+					senseKeySpecificOffset = offset + 4;
+					senseKeySpecificFound = true;
+					break;
+				case SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE:
+					senseKeySpecificOffset = offset + 4;
+					senseKeySpecificFound = true;
 					break;
 				default: //not a descriptor we care about, so skip it
 					break;
 				}
-				if (senseKeySpecificDescriptorFound || descriptorLength == 0)
+				if (senseKeySpecificFound || descriptorLength == 0)
 				{
 					break;
 				}

@@ -130,6 +130,11 @@ extern "C"
 	//-----------------------------------------------------------------------------
 	OPENSEA_TRANSPORT_API void get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp);
 
+	OPENSEA_TRANSPORT_API void get_Information_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *valid, uint64_t *information);
+
+	OPENSEA_TRANSPORT_API void get_Illegal_Length_Indicator_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *illegalLengthIndicator);
+
+	OPENSEA_TRANSPORT_API void get_Command_Specific_Information_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, uint64_t *commandSpecificInformation);
     //-----------------------------------------------------------------------------
     //
     //  uint16_t get_Returned_Sense_Data_Length(uint8_t *pbuf)
