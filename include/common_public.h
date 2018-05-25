@@ -905,7 +905,7 @@ extern "C"
         eOSType             osType;//useful for lower layers to do OS specific things
         #if defined (UEFI)
         EFI_HANDLE          fd;
-        //TODO: do we need to store a device path? Not sure if we need this or not...-TJE
+        uint8_t devicePath[100];//not using a UEFI device path type because it has a header, then subtype data. This should be big enough to hold everything we want to store.
         eUEFIPassthroughType passthroughType;
         union _uefiAddress {
             struct _scsiAddress{

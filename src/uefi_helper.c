@@ -50,6 +50,18 @@ int get_Device(const char *filename, tDevice *device)
             device->drive_info.interface_type = IDE_INTERFACE;
             device->drive_info.drive_type = ATA_DRIVE;
             device->os_info.passthroughType = UEFI_PASSTHROUGH_ATA;
+            EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
+            EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, device->os_info.address.ata.port, device->os_info.address.ata.portMultiplierPort, &devicePath);
+            if(buildPath == EFI_SUCCESS)
+            {
+                memcpy(&device->os_info.devicePath[0], devicePath, devicePath->Length[0]);
+            }
+            else
+            {
+                //device doesn't exist, so we cannot talk to it
+                return FAILURE;
+            }
+            safe_Free(devicePath);
         }
         else
         {
@@ -64,6 +76,18 @@ int get_Device(const char *filename, tDevice *device)
             device->drive_info.interface_type = SCSI_INTERFACE;
             device->drive_info.drive_type = SCSI_DRIVE;
             device->os_info.passthroughType = UEFI_PASSTHROUGH_SCSI;
+            EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
+            EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, device->os_info.address.scsi.target, device->os_info.address.scsi.lun, &devicePath);
+            if(buildPath == EFI_SUCCESS)
+            {
+                memcpy(&device->os_info.devicePath[0], devicePath, devicePath->Length[0]);
+            }
+            else
+            {
+                //device doesn't exist, so we cannot talk to it
+                return FAILURE;
+            }
+            safe_Free(devicePath);
         }
         else
         {
@@ -87,6 +111,18 @@ int get_Device(const char *filename, tDevice *device)
                 sprintf(smallString, "%c%c", targetAsString[iter], taretAsString[iter + 1]);
                 device->os_info.address.scsiEx.target[targetIDIter] = strtol(smallString, NULL, 16);
             }
+            EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
+            EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, &device->os_info.address.scsiEx.target, device->os_info.address.scsiEx.lun, &devicePath);
+            if(buildPath == EFI_SUCCESS)
+            {
+                memcpy(&device->os_info.devicePath[0], devicePath, devicePath->Length[0]);
+            }
+            else
+            {
+                //device doesn't exist, so we cannot talk to it
+                return FAILURE;
+            }
+            safe_Free(devicePath);
         }
     }
     #if !defined (DISABLE_NVME_PASSTHROUGH)
@@ -98,6 +134,17 @@ int get_Device(const char *filename, tDevice *device)
             device->drive_info.interface_type = NVME_INTERFACE;
             device->drive_info.drive_type = NVME_DRIVE;
             device->os_info.passthroughType = UEFI_PASSTHROUGH_NVME;
+            EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
+            EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, device->os_info.address.nvme.deviceID, &devicePath);
+            if(buildPath == EFI_SUCCESS)
+            {
+                memcpy(&device->os_info.devicePath[0], devicePath, devicePath->Length[0]);
+            }
+            else
+            {
+                //device doesn't exist, so we cannot talk to it
+                return FAILURE;
+            }
         }
         else
         {
