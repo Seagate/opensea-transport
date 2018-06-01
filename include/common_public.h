@@ -833,6 +833,8 @@ extern "C"
 #if !defined(DISABLE_NVME_PASSTHROUGH)
             nvmeIdentifyData nvme;
 #endif
+			//reserved field below is set to 8192 because nvmeIdentifyData structure holds both controller and namespace data which are 4k each
+			uint8_t reserved[8192];//putting this here to allow some compatibility when NVMe passthrough is NOT enabled.
         }IdentifyData;
         tVpdData         scsiVpdData; // Intentionally not part of the above IdentifyData union 
         ataReturnTFRs lastCommandRTFRs;//This holds the RTFRs for the last command to be sent to the device. This is not necessarily the last function called as functions may send multiple commands to the device.
