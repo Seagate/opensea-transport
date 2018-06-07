@@ -113,6 +113,9 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void get_Sense_Key_ASC_ASCQ_FRU(uint8_t *pbuf, uint32_t pbufSize, uint8_t *senseKey, uint8_t *asc, uint8_t *ascq, uint8_t *fru);
 
+
+	OPENSEA_TRANSPORT_API void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseDataFields senseFields);
+
 	//-----------------------------------------------------------------------------
 	//
 	//  get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp)
@@ -133,6 +136,8 @@ extern "C"
 	OPENSEA_TRANSPORT_API void get_Information_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *valid, uint64_t *information);
 
 	OPENSEA_TRANSPORT_API void get_Illegal_Length_Indicator_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *illegalLengthIndicator);
+
+	OPENSEA_TRANSPORT_API void get_Stream_Command_Bits_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *filemark, bool *endOfMedia, bool *illegalLengthIndicator);
 
 	OPENSEA_TRANSPORT_API void get_Command_Specific_Information_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, uint64_t *commandSpecificInformation);
     //-----------------------------------------------------------------------------

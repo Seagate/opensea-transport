@@ -98,8 +98,15 @@ int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata,
         print_Data_Buffer(scsiIoCtx.psense, get_Returned_Sense_Data_Length(scsiIoCtx.psense), false);
         printf("\n");
     }
-    get_Sense_Key_ASC_ASCQ_FRU(scsiIoCtx.psense, senseDataLen, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.acq, &scsiIoCtx.returnStatus.ascq, &scsiIoCtx.returnStatus.fru);
-    ret = check_Sense_Key_ASC_ASCQ_And_FRU(device, scsiIoCtx.returnStatus.senseKey, scsiIoCtx.returnStatus.acq, scsiIoCtx.returnStatus.ascq, scsiIoCtx.returnStatus.fru);
+    get_Sense_Key_ASC_ASCQ_FRU(scsiIoCtx.psense, senseDataLen, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.asc, &scsiIoCtx.returnStatus.ascq, &scsiIoCtx.returnStatus.fru);
+    ret = check_Sense_Key_ASC_ASCQ_And_FRU(device, scsiIoCtx.returnStatus.senseKey, scsiIoCtx.returnStatus.asc, scsiIoCtx.returnStatus.ascq, scsiIoCtx.returnStatus.fru);
+	//if verbose mode and sense data is non-NULL, we should try to print out all the relavent information we can
+	if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity && scsiIoCtx.psense != NULL)
+	{
+		senseDataFields senseFields;
+		memset(&senseFields, 0, sizeof(senseDataFields));
+		get_Sense_Data_Fields(scsiIoCtx.psense, scsiIoCtx.senseDataSize, &senseFields);
+	}
     //print command timing information
     print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
     #if defined (_DEBUG)
@@ -1454,7 +1461,7 @@ int scsi_Test_Unit_Ready(tDevice *device, scsiStatus * pReturnStatus)
     ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (pReturnStatus)
     {
-        get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &pReturnStatus->senseKey, &pReturnStatus->acq, &pReturnStatus->ascq, &pReturnStatus->fru);
+        get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &pReturnStatus->senseKey, &pReturnStatus->asc, &pReturnStatus->ascq, &pReturnStatus->fru);
     }
     //leave this here or else the verbose output gets confusing to look at when debugging- this only prints the ret for the function, not the acs/acsq stuff
     print_Return_Enum("Test Unit Ready", ret);
@@ -3482,8 +3489,8 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    //while this command is all typed up the lower level windows or linux passthrough code needs some work before this command is actually ready to be used
 //    return NOT_SUPPORTED;
 //    ret = send_IO(&scsiIoCtx);
-//    get_Sense_Key_ACQ_ACSQ(device->drive_info.lastCommandSenseData, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.acq, &scsiIoCtx.returnStatus.ascq);
-//    ret = check_Sense_Key_ACQ_And_ACSQ(scsiIoCtx.returnStatus.senseKey, scsiIoCtx.returnStatus.acq, scsiIoCtx.returnStatus.ascq);
+//    get_Sense_Key_ACQ_ACSQ(device->drive_info.lastCommandSenseData, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.asc, &scsiIoCtx.returnStatus.ascq);
+//    ret = check_Sense_Key_ACQ_And_ACSQ(scsiIoCtx.returnStatus.senseKey, scsiIoCtx.returnStatus.asc, scsiIoCtx.returnStatus.ascq);
 //    print_Return_Enum("XD Write Read 10", ret);
 //
 //    return ret;
@@ -3596,8 +3603,8 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    //while this command is all typed up the lower level windows or linux passthrough code needs some work before this command is actually ready to be used
 //    return NOT_SUPPORTED;
 //    ret = send_IO(&scsiIoCtx);
-//    get_Sense_Key_ACQ_ACSQ(device->drive_info.lastCommandSenseData, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.acq, &scsiIoCtx.returnStatus.ascq);
-//    ret = check_Sense_Key_ACQ_And_ACSQ(scsiIoCtx.returnStatus.senseKey, scsiIoCtx.returnStatus.acq, scsiIoCtx.returnStatus.ascq);
+//    get_Sense_Key_ACQ_ACSQ(device->drive_info.lastCommandSenseData, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.asc, &scsiIoCtx.returnStatus.ascq);
+//    ret = check_Sense_Key_ACQ_And_ACSQ(scsiIoCtx.returnStatus.senseKey, scsiIoCtx.returnStatus.asc, scsiIoCtx.returnStatus.ascq);
 //    print_Return_Enum("XD Write Read 32", ret);
 //
 //    return ret;

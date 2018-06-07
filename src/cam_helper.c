@@ -421,7 +421,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                             scsiIoCtx->returnStatus.format = 0x72;
                             scsiIoCtx->returnStatus.senseKey = 0x01;//Not setting check condition since the IO was in fact successful
                             //setting ASC/ASCQ to ATA Passthrough Information Available
-                            scsiIoCtx->returnStatus.acq = 0x00;
+                            scsiIoCtx->returnStatus.asc = 0x00;
                             scsiIoCtx->returnStatus.ascq = 0x1D;
                             //now fill in the sens buffer
                             scsiIoCtx->psense[0] = 0x72;

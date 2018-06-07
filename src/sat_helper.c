@@ -832,8 +832,8 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
             print_Data_Buffer(scsiIoCtx.psense, get_Returned_Sense_Data_Length(scsiIoCtx.psense), false);
             printf("\n");
         }
-        get_Sense_Key_ASC_ASCQ_FRU(ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.acq, &scsiIoCtx.returnStatus.ascq, &scsiIoCtx.returnStatus.fru);
-        senseRet = check_Sense_Key_ASC_ASCQ_And_FRU(device, scsiIoCtx.returnStatus.senseKey, scsiIoCtx.returnStatus.acq, scsiIoCtx.returnStatus.ascq, scsiIoCtx.returnStatus.fru);
+        get_Sense_Key_ASC_ASCQ_FRU(ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.asc, &scsiIoCtx.returnStatus.ascq, &scsiIoCtx.returnStatus.fru);
+        senseRet = check_Sense_Key_ASC_ASCQ_And_FRU(device, scsiIoCtx.returnStatus.senseKey, scsiIoCtx.returnStatus.asc, scsiIoCtx.returnStatus.ascq, scsiIoCtx.returnStatus.fru);
         if (senseData != NULL && ataCommandOptions->senseDataSize > 0 && senseData != device->drive_info.lastCommandSenseData)
         {
             memcpy(device->drive_info.lastCommandSenseData, ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize);

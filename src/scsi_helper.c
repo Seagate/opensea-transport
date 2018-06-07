@@ -5242,18 +5242,71 @@ void get_Illegal_Length_Indicator_From_Sense_Data(uint8_t *ptrSenseData, uint32_
 				descriptorLength = ptrSenseData[offset + 1];
 				switch (descriptorType)
 				{
-				case SENSE_DESCRIPTOR_BLOCK_COMMANDS:
+				case SENSE_DESCRIPTOR_BLOCK_COMMANDS://SBC
 					*illegalLengthIndicator = ptrSenseData[offset + 3] & BIT5;
 					gotILI = true;
 					break;
-				case SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE:
+				case SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE://SBC
 					*illegalLengthIndicator = ptrSenseData[offset + 2] & BIT5;
+					gotILI = true;
+					break;
+				case SENSE_DESCRIPTOR_STREAM_COMMANDS://SSC
+					*illegalLengthIndicator = ptrSenseData[offset + 3] & BIT5;
 					gotILI = true;
 					break;
 				default: //not a descriptor we care about, so skip it
 					break;
 				}
 				if (gotILI || descriptorLength == 0)
+				{
+					break;
+				}
+			}
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+void get_Stream_Command_Bits_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *filemark, bool *endOfMedia, bool *illegalLengthIndicator)
+{
+	if (ptrSenseData && senseDataLength > 0 && illegalLengthIndicator && filemark && endOfMedia)
+	{
+		*illegalLengthIndicator = false;
+		uint8_t format = ptrSenseData[0] & 0x7F; //Stripping the last bit so we just get the format
+		uint8_t descriptorLength = 0;//for descriptor format sense data
+		uint16_t returnedLength = 8 + ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
+		switch (format)
+		{
+		case SCSI_SENSE_NO_SENSE_DATA:
+			break;
+		case SCSI_SENSE_CUR_INFO_FIXED:
+		case SCSI_SENSE_DEFER_ERR_FIXED:
+			*illegalLengthIndicator = ptrSenseData[2] & BIT5;
+			*endOfMedia = ptrSenseData[2] & BIT6;
+			*filemark = ptrSenseData[2] & BIT7;
+			break;
+		case SCSI_SENSE_CUR_INFO_DESC:
+		case SCSI_SENSE_DEFER_ERR_DESC:
+			//loop through the descriptors to see if a sense key specific descriptor was provided
+			for (uint8_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
+			{
+				bool gotbits = false;
+				uint8_t descriptorType = ptrSenseData[offset];
+				descriptorLength = ptrSenseData[offset + 1];
+				switch (descriptorType)
+				{
+				case SENSE_DESCRIPTOR_STREAM_COMMANDS://SSC
+					*illegalLengthIndicator = ptrSenseData[offset + 3] & BIT5;
+					*endOfMedia = ptrSenseData[offset + 3] & BIT6;
+					*filemark = ptrSenseData[offset + 3] & BIT7;
+					gotbits = true;
+					break;
+				default: //not a descriptor we care about, so skip it
+					break;
+				}
+				if (gotbits || descriptorLength == 0)
 				{
 					break;
 				}
@@ -5411,6 +5464,269 @@ void get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDat
 				memcpy(&sksp->unknownDataType, &ptrSenseData[senseKeySpecificOffset], 3);
 				break;
 			}
+		}
+	}
+}
+
+void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseDataFields senseFields)
+{
+	if (ptrSenseData && senseDataLength > 0 && senseFields)
+	{
+		uint8_t format = ptrSenseData[0] & 0x7F; //Stripping the last bit so we just get the format
+		uint16_t returnedLength = ptrSenseData[7] + 8;//offset 7 has additional length. +8 is number of bytes to get to a total length
+		uint8_t descriptorLength = 0;//for descriptor format sense data
+		uint8_t numOfProgressIndications = 0;
+		uint8_t numOfForwardedSenseData = 0;
+		memset(senseFields, 0, sizeof(senseDataFields));
+		switch (format)
+		{
+		case SCSI_SENSE_NO_SENSE_DATA:
+			senseFields->validStructure = true;
+			break;
+		case SCSI_SENSE_DEFER_ERR_FIXED:
+			senseFields->deferredError = true;
+		case SCSI_SENSE_CUR_INFO_FIXED:
+			senseFields->fixedFormat = true;
+			senseFields->validStructure = true;
+			senseFields->valid = ptrSenseData[0] & BIT7;
+			senseFields->filemark = ptrSenseData[2] & BIT7;
+			senseFields->endOfMedia = ptrSenseData[2] & BIT6;
+			senseFields->illegalLengthIndication = ptrSenseData[2] & BIT5;
+			senseFields->senseDataOverflow = ptrSenseData[2] & BIT4;
+			senseFields->scsiStatusCodes.format = format;
+			senseFields->scsiStatusCodes.senseKey = M_Nibble0(ptrSenseData[2]);
+			if (senseFields->valid)
+			{
+				senseFields->fixedInformation = M_BytesTo4ByteValue(ptrSenseData[3], ptrSenseData[4], ptrSenseData[5], ptrSenseData[6]);
+			}
+			if (returnedLength > 8)
+			{
+				//todo: better handling of if returned length for each field in here...
+				if (returnedLength >= 11)
+				{
+					senseFields->fixedCommandSpecificInformation = M_BytesTo4ByteValue(ptrSenseData[8], ptrSenseData[9], ptrSenseData[10], ptrSenseData[11]);
+				}
+				senseFields->scsiStatusCodes.asc = ptrSenseData[12];
+				senseFields->scsiStatusCodes.ascq = ptrSenseData[13];
+				senseFields->scsiStatusCodes.fru = ptrSenseData[14];
+				if (returnedLength >= 18)
+				{
+					//sense key specific information
+					senseFields->senseKeySpecificInformation.senseKeySpecificValid = ptrSenseData[15] & BIT7;
+					if (senseFields->senseKeySpecificInformation.senseKeySpecificValid)
+					{
+						switch (senseFields->scsiStatusCodes.senseKey)
+						{
+						case SENSE_KEY_NO_ERROR:
+						case SENSE_KEY_NOT_READY:
+							senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_PROGRESS_INDICATION;
+							senseFields->senseKeySpecificInformation.progress.progressIndication = M_BytesTo2ByteValue(ptrSenseData[16], ptrSenseData[17]);
+							break;
+						case SENSE_KEY_ILLEGAL_REQUEST:
+							senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_FIELD_POINTER;
+							senseFields->senseKeySpecificInformation.field.cdbOrData = ptrSenseData[15] & BIT6;
+							senseFields->senseKeySpecificInformation.field.bitPointerValid = ptrSenseData[15] & BIT3;
+							senseFields->senseKeySpecificInformation.field.bitPointer = M_GETBITRANGE(ptrSenseData[15], 2, 0);
+							senseFields->senseKeySpecificInformation.field.fieldPointer = M_BytesTo2ByteValue(ptrSenseData[16], ptrSenseData[17]);
+							break;
+						case SENSE_KEY_HARDWARE_ERROR:
+						case SENSE_KEY_RECOVERED_ERROR:
+						case SENSE_KEY_MEDIUM_ERROR:
+							senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT;
+							senseFields->senseKeySpecificInformation.retryCount.actualRetryCount = M_BytesTo2ByteValue(ptrSenseData[16], ptrSenseData[17]);
+							break;
+						case SENSE_KEY_COPY_ABORTED:
+							senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_SEGMENT_POINTER;
+							senseFields->senseKeySpecificInformation.segment.segmentDescriptor = ptrSenseData[15] & BIT5;
+							senseFields->senseKeySpecificInformation.segment.bitPointerValid = ptrSenseData[15] & BIT3;
+							senseFields->senseKeySpecificInformation.segment.bitPointer = M_GETBITRANGE(ptrSenseData[15], 2, 0);
+							senseFields->senseKeySpecificInformation.segment.fieldPointer = M_BytesTo2ByteValue(ptrSenseData[16], ptrSenseData[17]);
+							break;
+						case SENSE_KEY_UNIT_ATTENTION:
+							senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW;
+							senseFields->senseKeySpecificInformation.unitAttention.overflow = ptrSenseData[15] & BIT0;
+							break;
+						default:
+							senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_UNKNOWN;
+							memcpy(&senseFields->senseKeySpecificInformation.unknownDataType, &ptrSenseData[15], 3);
+							break;
+						}
+					}
+				}
+				if (returnedLength > 18)
+				{
+					senseFields->additionalDataAvailable = true;
+				}
+			}
+			break;
+		case SCSI_SENSE_DEFER_ERR_DESC:
+			senseFields->deferredError = true;
+		case SCSI_SENSE_CUR_INFO_DESC:
+			senseFields->fixedFormat = false;
+			senseFields->validStructure = true;
+			senseFields->scsiStatusCodes.format = format;
+			senseFields->scsiStatusCodes.senseKey = M_Nibble0(ptrSenseData[1]);
+			senseFields->scsiStatusCodes.asc = ptrSenseData[2];
+			senseFields->scsiStatusCodes.ascq = ptrSenseData[3];
+			senseFields->senseDataOverflow = ptrSenseData[4] & BIT7;
+			//now we need to loop through the returned descriptors
+			for (uint8_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
+			{
+				uint8_t descriptorType = ptrSenseData[offset];
+				descriptorLength = ptrSenseData[offset + 1];
+				switch (descriptorType)
+				{
+				case SENSE_DESCRIPTOR_INFORMATION:
+					senseFields->valid = ptrSenseData[offset + 2] & BIT7;
+					senseFields->descriptorInformation = M_BytesTo8ByteValue(ptrSenseData[offset + 4], ptrSenseData[offset + 5], ptrSenseData[offset + 6], ptrSenseData[offset + 7], ptrSenseData[offset + 8], ptrSenseData[offset + 9], ptrSenseData[offset + 10], ptrSenseData[offset + 11]);
+					break;
+				case SENSE_DESCRIPTOR_COMMAND_SPECIFIC_INFORMATION:
+					senseFields->descriptorCommandSpecificInformation = M_BytesTo8ByteValue(ptrSenseData[offset + 4], ptrSenseData[offset + 5], ptrSenseData[offset + 6], ptrSenseData[offset + 7], ptrSenseData[offset + 8], ptrSenseData[offset + 9], ptrSenseData[offset + 10], ptrSenseData[offset + 11]);
+					break;
+				case SENSE_DESCRIPTOR_SENSE_KEY_SPECIFIC:
+					senseFields->senseKeySpecificInformation.senseKeySpecificValid = ptrSenseData[offset + 4] & BIT7;
+					//Need at least 17 bytes to read this field
+					switch (senseFields->scsiStatusCodes.senseKey)
+					{
+					case SENSE_KEY_NO_ERROR:
+					case SENSE_KEY_NOT_READY:
+						senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_PROGRESS_INDICATION;
+						senseFields->senseKeySpecificInformation.progress.progressIndication = M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
+						break;
+					case SENSE_KEY_ILLEGAL_REQUEST:
+						senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_FIELD_POINTER;
+						senseFields->senseKeySpecificInformation.field.cdbOrData = ptrSenseData[offset + 4] & BIT6;
+						senseFields->senseKeySpecificInformation.field.bitPointerValid = ptrSenseData[offset + 4] & BIT3;
+						senseFields->senseKeySpecificInformation.field.bitPointer = M_GETBITRANGE(ptrSenseData[offset + 4], 2, 0);
+						senseFields->senseKeySpecificInformation.field.fieldPointer = M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
+						break;
+					case SENSE_KEY_HARDWARE_ERROR:
+					case SENSE_KEY_RECOVERED_ERROR:
+					case SENSE_KEY_MEDIUM_ERROR:
+						senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT;
+						senseFields->senseKeySpecificInformation.retryCount.actualRetryCount = M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
+						break;
+					case SENSE_KEY_COPY_ABORTED:
+						senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_SEGMENT_POINTER;
+						senseFields->senseKeySpecificInformation.segment.segmentDescriptor = ptrSenseData[offset + 4] & BIT5;
+						senseFields->senseKeySpecificInformation.segment.bitPointerValid = ptrSenseData[offset + 4] & BIT3;
+						senseFields->senseKeySpecificInformation.segment.bitPointer = M_GETBITRANGE(ptrSenseData[offset + 4], 2, 0);
+						senseFields->senseKeySpecificInformation.segment.fieldPointer = M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
+						break;
+					case SENSE_KEY_UNIT_ATTENTION:
+						senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW;
+						senseFields->senseKeySpecificInformation.unitAttention.overflow = ptrSenseData[offset + 4] & BIT0;
+						break;
+					default:
+						senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_UNKNOWN;
+						memcpy(&senseFields->senseKeySpecificInformation.unknownDataType, &ptrSenseData[offset + 4], 3);
+						break;
+					}
+					break;
+				case SENSE_DESCRIPTOR_FIELD_REPLACEABLE_UNIT:
+					senseFields->scsiStatusCodes.fru = ptrSenseData[offset + 3];
+					break;
+				case SENSE_DESCRIPTOR_STREAM_COMMANDS:
+					senseFields->filemark = ptrSenseData[offset + 3] & BIT7;
+					senseFields->endOfMedia = ptrSenseData[offset + 3] & BIT6;
+					senseFields->illegalLengthIndication = ptrSenseData[offset + 3] & BIT5;
+					break;
+				case SENSE_DESCRIPTOR_BLOCK_COMMANDS:
+					senseFields->illegalLengthIndication = ptrSenseData[offset + 3] & BIT5;
+					break;
+				case SENSE_DESCRIPTOR_OSD_OBJECT_IDENTIFICATION:
+					senseFields->osdObjectIdentificationDescriptorOffset = offset;
+					break;
+				case SENSE_DESCRIPTOR_OSD_RESPONSE_INTEGRITY_CHECK_VALUE:
+					senseFields->osdResponseIntegrityCheckValueDescriptorOffset = offset;
+					break;
+				case SENSE_DESCRIPTOR_OSD_ATTRIBUTE_IDENTIFICATION:
+					senseFields->osdAttributeIdentificationDescriptorOffset = offset;
+					break;
+				case SENSE_DESCRIPTOR_ATA_STATUS_RETURN:
+					senseFields->ataStatusReturnDescriptorByteOffset = offset;
+					break;
+				case SENSE_DESCRIPTOR_ANOTHER_PROGRESS_INDICATION:
+					if (numOfProgressIndications < MAX_PROGRESS_INDICATION_DESCRIPTORS)
+					{
+						senseFields->anotherProgressIndicationDescriptorOffset[numOfProgressIndications] = offset;
+						++numOfProgressIndications;
+					}
+					break;
+				case SENSE_DESCRIPTOR_USER_DATA_SEGMENT_REFERRAL:
+					senseFields->userDataSegmentReferralDescriptorOffset = offset;
+					break;
+				case SENSE_DESCRIPTOR_FORWAREDED_SENSE_DATA:
+					if (numOfForwardedSenseData < MAX_FORWARDED_SENSE_DATA_DESCRIPTORS)
+					{
+						senseFields->forwardedSenseDataDescriptorOffset[numOfForwardedSenseData] = offset;
+						++numOfForwardedSenseData;
+					}
+					break;
+				case SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE:
+					senseFields->valid = ptrSenseData[offset + 2] & BIT7;
+					senseFields->illegalLengthIndication = ptrSenseData[offset + 2] & BIT5;
+					senseFields->senseKeySpecificInformation.senseKeySpecificValid = ptrSenseData[offset + 4] & BIT7;
+					//Need at least 17 bytes to read this field
+					switch (senseFields->scsiStatusCodes.senseKey)
+					{
+					case SENSE_KEY_NO_ERROR:
+					case SENSE_KEY_NOT_READY:
+						senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_PROGRESS_INDICATION;
+						senseFields->senseKeySpecificInformation.progress.progressIndication = M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
+						break;
+					case SENSE_KEY_ILLEGAL_REQUEST:
+						senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_FIELD_POINTER;
+						senseFields->senseKeySpecificInformation.field.cdbOrData = ptrSenseData[offset + 4] & BIT6;
+						senseFields->senseKeySpecificInformation.field.bitPointerValid = ptrSenseData[offset + 4] & BIT3;
+						senseFields->senseKeySpecificInformation.field.bitPointer = M_GETBITRANGE(ptrSenseData[offset + 4], 2, 0);
+						senseFields->senseKeySpecificInformation.field.fieldPointer = M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
+						break;
+					case SENSE_KEY_HARDWARE_ERROR:
+					case SENSE_KEY_RECOVERED_ERROR:
+					case SENSE_KEY_MEDIUM_ERROR:
+						senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT;
+						senseFields->senseKeySpecificInformation.retryCount.actualRetryCount = M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
+						break;
+					case SENSE_KEY_COPY_ABORTED:
+						senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_SEGMENT_POINTER;
+						senseFields->senseKeySpecificInformation.segment.segmentDescriptor = ptrSenseData[offset + 4] & BIT5;
+						senseFields->senseKeySpecificInformation.segment.bitPointerValid = ptrSenseData[offset + 4] & BIT3;
+						senseFields->senseKeySpecificInformation.segment.bitPointer = M_GETBITRANGE(ptrSenseData[offset + 4], 2, 0);
+						senseFields->senseKeySpecificInformation.segment.fieldPointer = M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
+						break;
+					case SENSE_KEY_UNIT_ATTENTION:
+						senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW;
+						senseFields->senseKeySpecificInformation.unitAttention.overflow = ptrSenseData[offset + 4] & BIT0;
+						break;
+					default:
+						senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_UNKNOWN;
+						memcpy(&senseFields->senseKeySpecificInformation.unknownDataType, &ptrSenseData[offset + 4], 3);
+						break;
+					}
+					senseFields->scsiStatusCodes.fru = ptrSenseData[offset + 7];
+					senseFields->descriptorInformation = M_BytesTo8ByteValue(ptrSenseData[offset + 8], ptrSenseData[offset + 9], ptrSenseData[offset + 10], ptrSenseData[offset + 11], ptrSenseData[offset + 12], ptrSenseData[offset + 13], ptrSenseData[offset + 14], ptrSenseData[offset + 15]);
+					senseFields->descriptorCommandSpecificInformation = M_BytesTo8ByteValue(ptrSenseData[offset + 16], ptrSenseData[offset + 17], ptrSenseData[offset + 18], ptrSenseData[offset + 19], ptrSenseData[offset + 20], ptrSenseData[offset + 21], ptrSenseData[offset + 22], ptrSenseData[offset + 23]);
+					break;
+				case SENSE_DESCRIPTOR_DEVICE_DESIGNATION:
+					senseFields->deviceDesignationDescriptorOffset = offset;
+					break;
+				case SENSE_DESCRIPTOR_MICROCODE_ACTIVATION:
+					senseFields->microcodeActivationDescriptorOffset = offset;
+					break;
+				default: //not a known descriptor
+					senseFields->additionalDataAvailable = true;
+					break;
+				}
+				if (descriptorLength == 0)
+				{
+					break;
+				}
+			}
+			break;
+		default:
+			//unknown sense data format! Can't do anything
+			break;
 		}
 	}
 }

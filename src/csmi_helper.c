@@ -1097,7 +1097,7 @@ int send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
                 scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
                 scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
                 //setting ASC/ASCQ to ATA Passthrough Information Available
-                scsiIoCtx->returnStatus.acq = 0x00;
+                scsiIoCtx->returnStatus.asc = 0x00;
                 scsiIoCtx->returnStatus.ascq = 0x1D;
                 //now fill in the sens buffer
                 scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;

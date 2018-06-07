@@ -163,10 +163,52 @@ extern "C"
     {
         uint8_t         format;
         uint8_t         senseKey;
-        uint8_t         acq;
+        uint8_t         asc;
         uint8_t         ascq;
         uint8_t         fru;
     } scsiStatus;
+
+	#define MAX_PROGRESS_INDICATION_DESCRIPTORS UINT8_C(32)
+	#define MAX_FORWARDED_SENSE_DATA_DESCRIPTORS UINT8_C(2)
+
+	typedef struct _senseDataFields
+	{
+		bool validStructure;//Set to true if the rest of this structure was able to be parsed/filled in. This will only be false if we do not get 70h - 73h response codes
+		bool fixedFormat;//This will tell you if some fields, like information and command-specific information, are limited to 32bits or not
+		bool deferredError;//Set to true for response codes 71h & 73h
+		scsiStatus scsiStatusCodes;//sense key, asc, ascq, fru
+		bool senseDataOverflow;//gets set if the sense buffer is not big enough to return all necessary fields of the sense data. Request sense command is needed to get all the data.
+		bool valid;//valid bit. Used to know when the information field contains valid information
+		bool filemark;//filemark bit is set (stream commands)
+		bool endOfMedia;//end of media bit is set (stream commands)
+		bool illegalLengthIndication;//illegal length indicator bit is set (stream commands or read/write long SBC commands)
+		union {
+			uint32_t fixedInformation;
+			uint64_t descriptorInformation;
+		};
+		union {
+			uint32_t fixedCommandSpecificInformation;
+			uint64_t descriptorCommandSpecificInformation;
+		};
+		senseKeySpecific senseKeySpecificInformation;
+		//bools below can be used to know if other fields that are only available in some cases/commands are found. 
+		//If so, the caller can interpret these themselves. 
+		//We'll supply the offset in the sense data for them.
+		//The offset myst be > 7 to be valid.
+		uint8_t osdObjectIdentificationDescriptorOffset;
+		uint8_t osdResponseIntegrityCheckValueDescriptorOffset;
+		uint8_t osdAttributeIdentificationDescriptorOffset;
+		uint8_t ataStatusReturnDescriptorByteOffset;
+		uint8_t anotherProgressIndicationDescriptorOffset[MAX_PROGRESS_INDICATION_DESCRIPTORS];
+		uint8_t userDataSegmentReferralDescriptorOffset;
+		uint8_t forwardedSenseDataDescriptorOffset[MAX_FORWARDED_SENSE_DATA_DESCRIPTORS];
+		uint8_t deviceDesignationDescriptorOffset;
+		uint8_t microcodeActivationDescriptorOffset;
+		//This will be set to true for any descriptors that could not be parsed (vendor unique or not part of the above output) or if the additional sense bytes field of fixed format is non-zero
+		//If this happens, the caller should check the sense data buffer themselves for the additional data that they could find useful
+		bool additionalDataAvailable;
+	}senseDataFields, *ptrSenseDataFields;
+
 
     typedef struct _biDirectionalCommandBuffers
     {
