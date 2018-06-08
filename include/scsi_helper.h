@@ -207,6 +207,7 @@ extern "C"
 		//This will be set to true for any descriptors that could not be parsed (vendor unique or not part of the above output) or if the additional sense bytes field of fixed format is non-zero
 		//If this happens, the caller should check the sense data buffer themselves for the additional data that they could find useful
 		bool additionalDataAvailable;
+		uint8_t additionalDataOffset;//if bool above is set, then this will be set to the offset of the additional data that couldn't be parsed
 	}senseDataFields, *ptrSenseDataFields;
 
 

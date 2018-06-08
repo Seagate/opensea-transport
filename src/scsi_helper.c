@@ -5556,6 +5556,7 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
 				if (returnedLength > 18)
 				{
 					senseFields->additionalDataAvailable = true;
+					senseFields->additionalDataOffset = UINT8_C(18);
 				}
 			}
 			break;
@@ -5715,6 +5716,10 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
 					senseFields->microcodeActivationDescriptorOffset = offset;
 					break;
 				default: //not a known descriptor
+					if (!senseFields->additionalDataAvailable)
+					{
+						senseFields->additionalDataOffset = offset;
+					}
 					senseFields->additionalDataAvailable = true;
 					break;
 				}
