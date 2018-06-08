@@ -5713,7 +5713,8 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
 					senseFields->deviceDesignationDescriptorOffset = offset;
 					break;
 				case SENSE_DESCRIPTOR_MICROCODE_ACTIVATION:
-					senseFields->microcodeActivationDescriptorOffset = offset;
+					senseFields->microCodeActivation.valid = true;
+					senseFields->microCodeActivation.microcodeActivationTimeSeconds = M_BytesTo2ByteValue(ptrSenseData[offset + 6], ptrSenseData[offset + 7]);
 					break;
 				default: //not a known descriptor
 					if (!senseFields->additionalDataAvailable)
