@@ -5645,7 +5645,19 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
 					senseFields->osdAttributeIdentificationDescriptorOffset = offset;
 					break;
 				case SENSE_DESCRIPTOR_ATA_STATUS_RETURN:
-					senseFields->ataStatusReturnDescriptorByteOffset = offset;
+					senseFields->ataStatusReturnDescriptor.valid = true;
+					senseFields->ataStatusReturnDescriptor.extend = ptrSenseData[offset + 2] & BIT0;
+					senseFields->ataStatusReturnDescriptor.error = ptrSenseData[offset + 3];
+					senseFields->ataStatusReturnDescriptor.sectorCountExt = ptrSenseData[offset + 4];
+					senseFields->ataStatusReturnDescriptor.sectorCount = ptrSenseData[offset + 5];
+					senseFields->ataStatusReturnDescriptor.lbaLowExt = ptrSenseData[offset + 6];
+					senseFields->ataStatusReturnDescriptor.lbaLow = ptrSenseData[offset + 7];
+					senseFields->ataStatusReturnDescriptor.lbaMidExt = ptrSenseData[offset + 8];
+					senseFields->ataStatusReturnDescriptor.lbaMid = ptrSenseData[offset + 9];
+					senseFields->ataStatusReturnDescriptor.lbaHiExt = ptrSenseData[offset + 10];
+					senseFields->ataStatusReturnDescriptor.lbaHi = ptrSenseData[offset + 11];
+					senseFields->ataStatusReturnDescriptor.device = ptrSenseData[offset + 12];
+					senseFields->ataStatusReturnDescriptor.status = ptrSenseData[offset + 13];
 					break;
 				case SENSE_DESCRIPTOR_ANOTHER_PROGRESS_INDICATION:
 					if (numOfProgressIndications < MAX_PROGRESS_INDICATION_DESCRIPTORS)
@@ -5733,6 +5745,178 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
 		default:
 			//unknown sense data format! Can't do anything
 			break;
+		}
+	}
+}
+
+void print_Sense_Fields(ptrSenseDataFields senseFields)
+{
+	if (senseFields && g_verbosity > VERBOSITY_DEFAULT && senseFields->validStructure)
+	{
+		//This function assumes that the "check_Sense_Key_ASC_ASCQ_FRU" function was called before hand to print out its fields
+		if (senseFields->deferredError)
+		{
+			printf("Deferred error found.\n");
+		}
+		if (senseFields->senseDataOverflow)
+		{
+			printf("Sense Data Overflow detected! Request sense command is recommended to retrieve full sense data!\n");
+		}
+		if (senseFields->filemark)
+		{
+			printf("Filemark detected\n");
+		}
+		if (senseFields->endOfMedia)
+		{
+			printf("End of media detected\n");
+		}
+		if (senseFields->illegalLengthIndication)
+		{
+			printf("Illegal Length detected\n");
+		}
+		printf("Information");
+		if (senseFields->valid)
+		{
+			printf(" (Valid): ");
+		}
+		else
+		{
+			printf(": ");
+		}
+		if (senseFields->fixedFormat)
+		{
+			printf("%" PRIX32 "\n", senseFields->fixedInformation);
+		}
+		else
+		{
+			printf("%" PRIX64 "\n", senseFields->descriptorInformation);
+		}
+		printf("Command Specific Information: ");
+		if (senseFields->fixedFormat)
+		{
+			printf("%" PRIX32 "\n", senseFields->fixedCommandSpecificInformation);
+		}
+		else
+		{
+			printf("%" PRIX64 "\n", senseFields->descriptorCommandSpecificInformation);
+		}
+		if (senseFields->senseKeySpecificInformation.senseKeySpecificValid)
+		{
+			printf("Sense Key Specific Information:\n\t");
+			switch (senseFields->senseKeySpecificInformation.type)
+			{
+			case SENSE_KEY_SPECIFIC_FIELD_POINTER:
+				if (senseFields->senseKeySpecificInformation.field.cdbOrData)
+				{
+					if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
+					{
+						printf("Invalid field in CDB byte %" PRIu16 " bit %" PRIu8"\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
+					}
+					else
+					{
+						printf("Invalid field in CDB byte %" PRIu16 "\n", senseFields->senseKeySpecificInformation.field.fieldPointer);
+					}
+				}
+				else
+				{
+					if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
+					{
+						printf("Invalid field in Parameter byte %" PRIu16 " bit %" PRIu8"\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
+					}
+					else
+					{
+						printf("Invalid field in Parameter byte %" PRIu16 "\n", senseFields->senseKeySpecificInformation.field.fieldPointer);
+					}
+				}
+				break;
+			case SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT:
+				printf("Actual Retry Count: %" PRIu16 "\n", senseFields->senseKeySpecificInformation.retryCount.actualRetryCount);
+				break;
+			case SENSE_KEY_SPECIFIC_PROGRESS_INDICATION:
+				printf("Progress: %0.02f%%\n", (double)senseFields->senseKeySpecificInformation.progress.progressIndication / 65536.0);
+				break;
+			case SENSE_KEY_SPECIFIC_SEGMENT_POINTER:
+				if (senseFields->senseKeySpecificInformation.segment.segmentDescriptor)
+				{
+					if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
+					{
+						printf("Invalid field in Segment Descriptor byte %" PRIu16 " bit %" PRIu8"\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
+					}
+					else
+					{
+						printf("Invalid field in Segment Descriptor byte %" PRIu16 "\n", senseFields->senseKeySpecificInformation.field.fieldPointer);
+					}
+				}
+				else
+				{
+					if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
+					{
+						printf("Invalid field in Parameter byte %" PRIu16 " bit %" PRIu8"\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
+					}
+					else
+					{
+						printf("Invalid field in Parameter byte %" PRIu16 "\n", senseFields->senseKeySpecificInformation.field.fieldPointer);
+					}
+				}
+				break;
+			case SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW:
+				if (senseFields->senseKeySpecificInformation.unitAttention.overflow)
+				{
+					printf("Unit attention condition is due to Queue Overflow\n");
+				}
+				else
+				{
+					printf("Unit attention condition is not due to a queue overflow\n");
+				}
+			case SENSE_KEY_SPECIFIC_UNKNOWN:
+			default:
+				printf("Unknown sense key specific data: %" PRIX8 "h %" PRIX8 "h %" PRIX8 "h\n", senseFields->senseKeySpecificInformation.unknownDataType[0], senseFields->senseKeySpecificInformation.unknownDataType[1], senseFields->senseKeySpecificInformation.unknownDataType[2]);
+				break;
+			}
+		}
+		if (!senseFields->fixedFormat)
+		{
+			//look for other descriptor format data that we saved and can easily parse here
+			if (senseFields->ataStatusReturnDescriptor.valid)
+			{
+				printf("ATA Return Status:\n");
+				printf("\tExtend: ");
+				if (senseFields->ataStatusReturnDescriptor.extend)
+				{
+					printf("true\n");
+				}
+				else
+				{
+					printf("false\n");
+				}
+				printf("\tError:            %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.error);
+				printf("\tSector Count Ext: %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.sectorCountExt);
+				printf("\tSector Count:     %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.sectorCount);
+				printf("\tLBA Low Ext:      %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaLowExt);
+				printf("\tLBA Low:          %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaLow);
+				printf("\tLBA Mid Ext:      %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaMidExt);
+				printf("\tLBA Mid:          %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaMid);
+				printf("\tLBA Hi Ext:       %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaHiExt);
+				printf("\tLBA Hi:           %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaHi);
+				printf("\tDevice:           %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.device);
+				printf("\tStatus:           %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.status);
+			}
+			//TODO: go through the other progress indications?
+			if (senseFields->microCodeActivation.valid)
+			{
+				printf("Microcode Activation Time:");
+				if (senseFields->microCodeActivation.microcodeActivationTimeSeconds > 0)
+				{
+					uint8_t hours = 0, minutes = 0, seconds = 0;
+					convert_Seconds_To_Displayable_Time(senseFields->microCodeActivation.microcodeActivationTimeSeconds, NULL, NULL, &hours, &minutes, &seconds);
+					print_Time_To_Screen(NULL, NULL, &hours, &minutes, &seconds);
+					printf("\n");
+				}
+				else
+				{
+					printf(" Unknown\n");
+				}
+			}
 		}
 	}
 }

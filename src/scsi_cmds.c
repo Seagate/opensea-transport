@@ -20,6 +20,8 @@ int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata,
 {
     int ret = UNKNOWN;
     ScsiIoCtx scsiIoCtx;
+	senseDataFields senseFields;
+	memset(&senseFields, 0, sizeof(senseDataFields));
     memset(&scsiIoCtx, 0, sizeof(ScsiIoCtx));
     uint8_t *senseBuffer = senseData;
     //if we were not given a sense buffer, assume we want to use the last command sense data that is part of the device struct
@@ -98,14 +100,13 @@ int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata,
         print_Data_Buffer(scsiIoCtx.psense, get_Returned_Sense_Data_Length(scsiIoCtx.psense), false);
         printf("\n");
     }
-    get_Sense_Key_ASC_ASCQ_FRU(scsiIoCtx.psense, senseDataLen, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.asc, &scsiIoCtx.returnStatus.ascq, &scsiIoCtx.returnStatus.fru);
-    ret = check_Sense_Key_ASC_ASCQ_And_FRU(device, scsiIoCtx.returnStatus.senseKey, scsiIoCtx.returnStatus.asc, scsiIoCtx.returnStatus.ascq, scsiIoCtx.returnStatus.fru);
+    //get_Sense_Key_ASC_ASCQ_FRU(scsiIoCtx.psense, senseDataLen, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.asc, &scsiIoCtx.returnStatus.ascq, &scsiIoCtx.returnStatus.fru);
+	get_Sense_Data_Fields(scsiIoCtx.psense, scsiIoCtx.senseDataSize, &senseFields);
+    ret = check_Sense_Key_ASC_ASCQ_And_FRU(device, senseFields.scsiStatusCodes.senseKey, senseFields.scsiStatusCodes.asc, senseFields.scsiStatusCodes.ascq, senseFields.scsiStatusCodes.fru);
 	//if verbose mode and sense data is non-NULL, we should try to print out all the relavent information we can
 	if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity && scsiIoCtx.psense != NULL)
 	{
-		senseDataFields senseFields;
-		memset(&senseFields, 0, sizeof(senseDataFields));
-		get_Sense_Data_Fields(scsiIoCtx.psense, scsiIoCtx.senseDataSize, &senseFields);
+		print_Sense_Fields(&senseFields);
 	}
     //print command timing information
     print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);

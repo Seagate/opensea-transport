@@ -198,7 +198,22 @@ extern "C"
 		uint8_t osdObjectIdentificationDescriptorOffset;
 		uint8_t osdResponseIntegrityCheckValueDescriptorOffset;
 		uint8_t osdAttributeIdentificationDescriptorOffset;
-		uint8_t ataStatusReturnDescriptorByteOffset;
+		struct _ataStatusReturnDescriptor
+		{
+			bool valid;//must be set for this data to be valid. Means we found this in the sense data.
+			bool extend;
+			uint8_t error;
+			uint8_t sectorCountExt;
+			uint8_t sectorCount;
+			uint8_t lbaLowExt;
+			uint8_t lbaLow;
+			uint8_t lbaMidExt;
+			uint8_t lbaMid;
+			uint8_t lbaHiExt;
+			uint8_t lbaHi;
+			uint8_t device;
+			uint8_t status;
+		}ataStatusReturnDescriptor;
 		uint8_t anotherProgressIndicationDescriptorOffset[MAX_PROGRESS_INDICATION_DESCRIPTORS];
 		uint8_t userDataSegmentReferralDescriptorOffset;
 		uint8_t forwardedSenseDataDescriptorOffset[MAX_FORWARDED_SENSE_DATA_DESCRIPTORS];

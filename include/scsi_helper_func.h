@@ -116,6 +116,8 @@ extern "C"
 
 	OPENSEA_TRANSPORT_API void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseDataFields senseFields);
 
+	OPENSEA_TRANSPORT_API void print_Sense_Fields(ptrSenseDataFields senseFields);
+
 	//-----------------------------------------------------------------------------
 	//
 	//  get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp)
