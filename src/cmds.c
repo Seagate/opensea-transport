@@ -740,6 +740,85 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
         {
             ret = scsi_Write_Long_10(device, false, true, multipleLogicalPerPhysical, (uint32_t)corruptLBA, 0, NULL);
         }
+		if (ret != SUCCESS)
+		{
+			senseDataFields senseFields;
+			memset(&senseFields, 0, sizeof(senseDataFields));
+			get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseFields);
+			if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && senseFields.scsiStatusCodes.asc == 0x24 && senseFields.scsiStatusCodes.ascq == 0x00)
+			{
+				//invalid field in CDB. Use old read/write long method instead
+				uint16_t dataLength = device->drive_info.deviceBlockSize * logicalPerPhysicalBlocks;//start with this size for now...
+				uint8_t *dataBuffer = (uint8_t*)calloc(dataLength, sizeof(uint8_t));
+				if (device->drive_info.deviceMaxLba > UINT32_MAX)
+				{
+					ret = scsi_Read_Long_16(device, multipleLogicalPerPhysical, true, corruptLBA, dataLength, dataBuffer);
+				}
+				else
+				{
+					ret = scsi_Read_Long_10(device, multipleLogicalPerPhysical, true, (uint32_t)corruptLBA, dataLength, dataBuffer);
+				}
+				//ret should not be success and we should have an illegal length indicator set so we can reallocate and read the ecc bytes
+				memset(&senseFields, 0, sizeof(senseDataFields));
+				get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseFields);
+				if (senseFields.illegalLengthIndication && senseFields.valid)//spec says these bit should both be zero since we didn't do this request with enough bytes to read the ECC bytes
+				{
+					if (senseFields.fixedFormat)
+					{
+						dataLength += M_2sCOMPLEMENT(senseFields.fixedInformation);//length different is a twos compliment value since we requested less than is available.
+					}
+					else
+					{
+						dataLength += M_2sCOMPLEMENT(senseFields.descriptorInformation);//length different is a twos compliment value since we requested less than is available.
+					}
+					uint8_t *temp = (uint8_t*)realloc(dataBuffer, dataLength);
+					if (temp)
+					{
+						dataBuffer = temp;
+						memset(dataBuffer, 0, dataLength);
+						if (device->drive_info.deviceMaxLba > UINT32_MAX)
+						{
+							ret = scsi_Read_Long_16(device, multipleLogicalPerPhysical, true, corruptLBA, dataLength, dataBuffer);
+						}
+						else
+						{
+							ret = scsi_Read_Long_10(device, multipleLogicalPerPhysical, true, (uint32_t)corruptLBA, dataLength, dataBuffer);
+						}
+						if (ret != SUCCESS)
+						{
+							ret = FAILURE;
+						}
+						else
+						{
+							seed_64(time(NULL));
+							//modify the user data to cause a uncorrectable error
+							for (uint32_t iter = 0; iter < (device->drive_info.deviceBlockSize * logicalPerPhysicalBlocks - 1); ++iter)
+							{
+								dataBuffer[iter] = (uint8_t)random_Range_64(0, UINT8_MAX);
+							}
+							//write it back to the drive
+							if (device->drive_info.deviceMaxLba > UINT32_MAX)
+							{
+								ret = scsi_Write_Long_16(device, false, false, multipleLogicalPerPhysical, corruptLBA, dataLength, dataBuffer);
+							}
+							else
+							{
+								ret = scsi_Write_Long_10(device, false, false, multipleLogicalPerPhysical, (uint32_t)corruptLBA, dataLength, dataBuffer);
+							}
+						}
+					}
+					else
+					{
+						ret = MEMORY_FAILURE;
+					}
+				}
+				else
+				{
+					ret = NOT_SUPPORTED;
+				}
+				safe_Free(dataBuffer);
+			}
+		}
     }
     else
     {
