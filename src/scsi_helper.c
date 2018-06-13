@@ -5785,20 +5785,20 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
 		}
 		if (senseFields->fixedFormat)
 		{
-			printf("%" PRIX32 "\n", senseFields->fixedInformation);
+			printf("%08" PRIX32 "h\n", senseFields->fixedInformation);
 		}
 		else
 		{
-			printf("%" PRIX64 "\n", senseFields->descriptorInformation);
+			printf("%016" PRIX64 "h\n", senseFields->descriptorInformation);
 		}
 		printf("Command Specific Information: ");
 		if (senseFields->fixedFormat)
 		{
-			printf("%" PRIX32 "\n", senseFields->fixedCommandSpecificInformation);
+			printf("%08" PRIX32 "h\n", senseFields->fixedCommandSpecificInformation);
 		}
 		else
 		{
-			printf("%" PRIX64 "\n", senseFields->descriptorCommandSpecificInformation);
+			printf("%016" PRIX64 "h\n", senseFields->descriptorCommandSpecificInformation);
 		}
 		if (senseFields->senseKeySpecificInformation.senseKeySpecificValid)
 		{
