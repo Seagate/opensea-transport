@@ -6703,6 +6703,7 @@ int fill_In_Device_Info(tDevice *device)
         {
             check_SAT_Compliance_And_Set_Drive_Type(device);
         }
+        device->drive_info.dataTransferSize = LEGACY_DRIVE_SEC_SIZE;
     }
     else
     {

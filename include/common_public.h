@@ -819,7 +819,8 @@ extern "C"
         eInterfaceType interface_type;
         eZonedDeviceType zonedType;//most drives will report ZONED_TYPE_NOT_ZONED
         uint32_t       deviceBlockSize; //This is the logical block size reported by the drive
-		uint32_t	   devicePhyBlockSize; // This is the physical block size reported by the drive. 
+		uint32_t	   devicePhyBlockSize; // This is the physical block size reported by the drive.
+        uint32_t       dataTransferSize;//this the block size that will be transfered
         uint16_t       sectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
         uint64_t       deviceMaxLba;
         uint32_t       lunOrNSID; //shared between SCSI / NVMe 

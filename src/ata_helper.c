@@ -557,6 +557,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             }
         }
     }
+    device->drive_info.dataTransferSize = LEGACY_DRIVE_SEC_SIZE;
 #ifdef _DEBUG
 	printf("Drive type: %d\n",device->drive_info.drive_type);
 	printf("Interface type: %d\n",device->drive_info.interface_type);
