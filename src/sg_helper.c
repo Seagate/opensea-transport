@@ -596,6 +596,11 @@ int get_Device(const char *filename, tDevice *device)
     //Adding support for different device discovery options. 
     if (device->dFlags == OPEN_HANDLE_ONLY)
     {
+        //set scsi interface and scsi drive until we know otherwise
+        device->drive_info.drive_type = SCSI_DRIVE;
+        device->drive_info.interface_type = SCSI_INTERFACE;
+        device->drive_info.media_type = MEDIA_HDD;
+        set_Device_Fields_From_Handle(deviceHandle, device);
         safe_Free(deviceHandle);
         return ret;
     }

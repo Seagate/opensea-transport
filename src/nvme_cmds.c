@@ -55,6 +55,54 @@ int nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
     int ret = UNKNOWN;
 #ifdef _DEBUG
     printf("-->%s\n",__FUNCTION__);
+
+    /*
+    printf("%s: p=%p, sz=%d, cdw10=0x%X, nsid=0x%x, opcode=%d\n",\
+           __FUNCTION__,cmdCtx->cmd.adminCmd.addr,
+           cmdCtx->cmd.adminCmd.dataLen,cmdCtx->cmd.adminCmd.cdw10,
+            cmdCtx->cmd.adminCmd.nsid, cmdCtx->cmd.adminCmd.opcode
+            );
+    */
+    printf("%s: sz=%d, cdw10=0x%X, nsid=0x%x, opcode=%d\n",\
+           __FUNCTION__,
+           cmdCtx->cmd.adminCmd.dataLen,cmdCtx->cmd.adminCmd.cdw10,
+            cmdCtx->cmd.adminCmd.nsid, cmdCtx->cmd.adminCmd.opcode
+            );
+
+    /*
+    printf("nvmeCmdCtx size=%d, Address of cmdCtx = %p\n", sizeof(nvmeCmdCtx), cmdCtx);
+
+    printf("Printing cmdCtx\n");
+    for(int i = 0; i < sizeof(nvmeCmdCtx); i++) 
+    {
+        if(i%8 == 0) 
+        {
+            printf("%d : ", i);
+        }
+        printf(" %x", (unsigned char)(*((unsigned char *)cmdCtx + i)));
+        if(i%8 == 7) 
+        {
+            printf("\n");
+        }
+    }
+    printf("\n");
+
+    printf("Printing cmdCtx->cmd\n");
+    for(int i = 0; i < sizeof(nvmeCommands); i++) 
+    {
+        if(i%8 == 0) 
+        {
+            printf("%d : ", i);
+        }
+        printf(" %x", (unsigned char)(*((unsigned char *)&(cmdCtx->cmd) + i)));
+        if(i%8 == 7) 
+        {
+            printf("\n");
+        }
+    }
+    printf("\n"); 
+    */ 
+
 #endif
 
     cmdCtx->device = device;
@@ -577,11 +625,55 @@ int nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts
 
     getLogPage.timeout = 15;
 #ifdef _DEBUG
-    printf("%s: p=%p, sz=%d, cdw10=0x%X, nsid=0x%x\n",\
-           __FUNCTION__,&getLogPage.cmd.adminCmd.addr,\
+
+    /*
+    printf("%s: p=%p, sz=%d, cdw10=0x%X, nsid=0x%x, opcode=%d\n",\
+           __FUNCTION__,getLogPage.cmd.adminCmd.addr,
            getLogPage.cmd.adminCmd.dataLen,getLogPage.cmd.adminCmd.cdw10,
-            getLogPage.cmd.adminCmd.nsid\
+            getLogPage.cmd.adminCmd.nsid, getLogPage.cmd.adminCmd.opcode
             );
+    */
+    printf("%s: sz=%d, cdw10=0x%X, nsid=0x%x, opcode=%d\n",\
+           __FUNCTION__,
+           getLogPage.cmd.adminCmd.dataLen,getLogPage.cmd.adminCmd.cdw10,
+            getLogPage.cmd.adminCmd.nsid, getLogPage.cmd.adminCmd.opcode
+            );
+    /*
+    printf("getLogPageCmdOpts sz=%d getLogPageCmdOpts lid=%d getLogPageCmdOpts nsid=%X\n", getLogPageCmdOpts->dataLen, getLogPageCmdOpts->lid, getLogPageCmdOpts->nsid);
+
+    printf("nvmeCmdCtx size=%d Address of getLogPage = %p, sizeof eNvmeCmdType = %d\n", sizeof(nvmeCmdCtx), &getLogPage, sizeof(eNvmeCmdType));
+
+    printf("Printing getLogPage\n");
+    for(int i = 0; i < sizeof(nvmeCmdCtx); i++) 
+    {
+        if(i%8 == 0) 
+        {
+            printf("%d : ", i);
+        }
+        printf(" %x", (unsigned char)(*((unsigned char *)&getLogPage + i)));
+        if(i%8 == 7) 
+        {
+            printf("\n");
+        }
+    }
+    printf("\n");
+
+    printf("Printing getLogPage.cmd\n");
+    for(int i = 0; i < sizeof(nvmeCommands); i++) 
+    {
+        if(i%8 == 0) 
+        {
+            printf("%d : ", i);
+        }
+        printf(" %x", (unsigned char)(*((unsigned char *)&(getLogPage.cmd) + i)));
+        if(i%8 == 7) 
+        {
+            printf("\n");
+        }
+    }
+    printf("\n");
+    */
+
 #endif
     ret = nvme_Cmd(device, &getLogPage);
 #ifdef _DEBUG

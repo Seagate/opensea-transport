@@ -1029,6 +1029,9 @@ int send_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -1236,6 +1239,9 @@ int send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -1481,6 +1487,9 @@ int send_SCSI_Pass_Through(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -1611,6 +1620,9 @@ int send_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -1888,6 +1900,9 @@ int send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             case ERROR_INVALID_PARAMETER://Or command not supported?
             default:
@@ -2203,6 +2218,9 @@ int send_ATA_Passthrough_Ex(ScsiIoCtx *scsiIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
+			case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+				ret = OS_COMMAND_BLOCKED;
+				break;
             case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -2699,6 +2717,11 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
         {
             downloadActivate.Slot = scsiIoCtx->cdb[2];//Set the slot number to the buffer ID number...This is the closest this translates.
         }
+		if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)
+		{
+			//if we are on NVMe, but the command comes to here, then someone forced SCSI mode, so let's set this flag correctly
+			downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;
+		}
         DWORD returned_data = 0;
         SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
         seatimer_t commandTimer;
@@ -2857,6 +2880,11 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
 			downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_LAST_SEGMENT;
 		}
 #endif
+		if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)
+		{
+			//if we are on NVMe, but the command comes to here, then someone forced SCSI mode, so let's set this flag correctly
+			downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;
+		}
 		if (scsiIoCtx && !scsiIoCtx->pAtaCmdOpts)
 		{
 			downloadIO->Slot = scsiIoCtx->cdb[2];//Set the slot number to the buffer ID number...This is the closest this translates.
@@ -4291,7 +4319,7 @@ int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
 	protocolData->ProtocolType = ProtocolTypeNvme;
 	protocolData->DataType = NVMeDataTypeLogPage;
 	protocolData->ProtocolDataRequestValue = nvmeIoCtx->cmd.adminCmd.cdw10 & 0x000000FF;
-	protocolData->ProtocolDataRequestSubValue = 0;
+	protocolData->ProtocolDataRequestSubValue = M_Nibble2(nvmeIoCtx->cmd.adminCmd.cdw10);//bits 11:08 log page specific
 	protocolData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA);
 	protocolData->ProtocolDataLength = nvmeIoCtx->cmd.adminCmd.dataLen;
 	
@@ -4462,9 +4490,11 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
     downloadActivate.Version = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
     downloadActivate.Size = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
     uint8_t activateAction = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3);
-    if (activateAction == 0x2 || activateAction == 0x01 || activateAction == 0x03)//check the activate action
+	downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;//this command must go to the controller, not the namespace
+    if (activateAction == 0x2 || activateAction == 0x03)//check the activate action
     {
-        //Activate actions 1, 2, & 3 sound like the closest match to this flag. Each of these requests switching to the new firmware.
+        //Activate actions 2, & 3 sound like the closest match to this flag. Each of these requests switching to the a firmware already on the drive.
+		//Activate action 0 & 1 say to replace a firmware image in a specified slot (and to or not to activate).
         downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
     }
     //TODO: FIgure out when to set this flag: STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER

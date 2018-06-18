@@ -1215,6 +1215,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     struct usr_io uio;
 
 #ifdef _DEBUG
+    printf("-->%s\n",__FILE__);
     printf("-->%s\n",__FUNCTION__);
 #endif
 
@@ -1232,6 +1233,22 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     {
     case NVM_ADMIN_CMD:
         memcpy(&(uio.cmd), &(nvmeIoCtx->cmd.adminCmd), sizeof(nvmeCommands));
+        
+        /*        
+        uio.cmd.header.opCode = nvmeIoCtx->cmd.adminCmd.opcode;
+        uio.cmd.header.fusedOp = nvmeIoCtx->cmd.adminCmd.flags;
+        uio.cmd.header.namespaceID = nvmeIoCtx->cmd.adminCmd.nsid;
+        uio.cmd.header.metadataPtr = nvmeIoCtx->cmd.adminCmd.metadata;
+        uio.cmd.header.prp[0].addr = nvmeIoCtx->cmd.adminCmd.addr;
+        uio.cmd.header.prp[1].lower = nvmeIoCtx->cmd.adminCmd.metadataLen;
+        uio.cmd.header.prp[1].upper = nvmeIoCtx->cmd.adminCmd.dataLen;
+        uio.cmd.cmd.vendorSpecific.buffNumDW = nvmeIoCtx->cmd.adminCmd.cdw10;
+        uio.cmd.cmd.vendorSpecific.metaNumDW = nvmeIoCtx->cmd.adminCmd.cdw11;
+        uio.cmd.cmd.vendorSpecific.vndrCDW12 = nvmeIoCtx->cmd.adminCmd.cdw12;
+        uio.cmd.cmd.vendorSpecific.vndrCDW13 = nvmeIoCtx->cmd.adminCmd.cdw13;
+        uio.cmd.cmd.vendorSpecific.vndrCDW14 = nvmeIoCtx->cmd.adminCmd.cdw14;
+        uio.cmd.cmd.vendorSpecific.vndrCDW15 = nvmeIoCtx->cmd.adminCmd.cdw15;
+        */
 
         if((nvmeIoCtx->commandDirection == XFER_NO_DATA) ||
            (nvmeIoCtx->commandDirection == XFER_DATA_IN))
@@ -1248,7 +1265,71 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         uio.namespaceID = nvmeIoCtx->cmd.adminCmd.nsid;
         uio.timeoutUs = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
 
+#ifdef _DEBUG
+/*
+        printf("Before Nvme_AdminPassthru %s: uio.addr=%p, uio.length=%d, cdw10=0x%X, nsid=0x%x\n",\
+               __FUNCTION__, uio.addr,\
+               uio.length, uio.cmd.cmd.vendorSpecific.buffNumDW,\
+               uio.cmd.header.namespaceID\
+                );
+*/
+        printf("Before Nvme_AdminPassthru %s: uio.length=%d, cdw10=0x%X, nsid=0x%x\n",\
+               __FUNCTION__,\
+               uio.length, uio.cmd.cmd.vendorSpecific.buffNumDW,\
+               uio.cmd.header.namespaceID\
+                );
+
+        /*
+        printf("Printing uio.cmd\n");
+        for(int i = 0; i < sizeof(uio.cmd); i++) 
+        {
+            if(i%8 == 0) 
+            {
+                printf("%d : ", i);
+            }
+            printf(" %x", (unsigned char)(*((unsigned char *)&(uio.cmd) + i)));
+            if(i%8 == 7) 
+            {
+                printf("\n");
+            }
+        }
+        printf("\n"); 
+        */ 
+
+#endif
+
         ret = Nvme_AdminPassthru(nvmeIoCtx->device->os_info.fd, &uio);
+
+#ifdef _DEBUG
+/*
+        printf("After Nvme_AdminPassthru %s: uio.addr=%p, uio.length=%d, cdw10=0x%X, nsid=0x%x\n",\
+               __FUNCTION__, uio.addr,\
+               uio.length, uio.cmd.cmd.vendorSpecific.buffNumDW,\
+               uio.cmd.header.namespaceID\
+                );
+
+        printf("After Nvme_AdminPassthru %s: uio.length=%d, cdw10=0x%X, nsid=0x%x\n",\
+               __FUNCTION__,\
+               uio.length, uio.cmd.cmd.vendorSpecific.buffNumDW,\
+               uio.cmd.header.namespaceID\
+                );
+
+        printf("Printing buffer\n");
+        for(int i = 0; i < uio.length; i++) 
+        {
+            if(i%8 == 0) 
+            {
+                printf("%d : ", i);
+            }
+            printf(" %x", (unsigned char)(*((unsigned char *)uio.addr + i)));
+            if(i%8 == 7) 
+            {
+                printf("\n");
+            }
+        }
+        printf("\n");
+*/
+#endif
 
         #if 0
         memset(&adminCmd, 0,sizeof(struct nvme_admin_cmd));

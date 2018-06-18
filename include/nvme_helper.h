@@ -601,6 +601,8 @@ extern "C"
                                                 //This is primarily used for the vendor unique pass-through, 
                                                 //but may be checked otherwise since Win10 API only talks to the current NSID, 
                                                 //unless you are pulling a log or identify data from the controller. - TJE
+        //uint8_t                 reserved1[3];
+        //tDevice                 *device;
     } nvmeCmdCtx;
 
 
