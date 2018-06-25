@@ -1380,7 +1380,7 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
 {
     eSeagateFamily isSeagateFamily = NON_SEAGATE;
     uint8_t iter = 0;
-    uint8_t numChecks = 9;//maxtor, seagate, samsung, lacie, seagate-Vendor, albany. As the family of seagate drives expands, we will need to increase this and add new checks
+    uint8_t numChecks = 9;//maxtor, seagate, samsung, lacie, seagate-Vendor. As the family of seagate drives expands, we will need to increase this and add new checks
     for (iter = 0; iter < numChecks && isSeagateFamily == NON_SEAGATE; iter++)
     {
         switch (iter)
@@ -1473,7 +1473,7 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
                 isSeagateFamily = SEAGATE_MINISCRIBE;
             }
             break;
-		case 8://is_albany
+		case 8://is_VENDOR_F
 			if (is_Seagate_Model_Number_Vendor_F(device, false))
 			{
 				isSeagateFamily = SEAGATE_VENDOR_F;
