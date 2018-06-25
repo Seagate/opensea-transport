@@ -1101,6 +1101,7 @@ extern "C"
         SEAGATE_PRARIETEK = BIT15, //PrarieTek. Vendor ID PRAIRIE (SCSI).
         SEAGATE_PLUS_DEVELOPMENT = BIT16, //Plus Development. Unknown detection
         SEAGATE_CODATA = BIT17, //CoData. Unknown detection
+		SEAGATE_VENDOR_F = BIT18, //Albany
     }eSeagateFamily;
 
     //The scan flags should each be a bit in a 32bit unsigned integer.

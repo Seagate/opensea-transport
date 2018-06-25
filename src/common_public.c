@@ -1338,11 +1338,53 @@ bool is_Seagate_Model_Number_Vendor_E(tDevice *device, bool USBchildDrive)
     return isSeagateVendor;
 }
 
+bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
+{
+	bool isSeagateVendor = false;
+
+	//we need to check the model number for the ones used on the Vendor products
+	if (USBchildDrive)
+	{
+		if (strncmp(device->drive_info.bridge_info.childDriveMN, "Seagate Nytro Client 141", strlen("Seagate Nytro Client 141")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "Seagate Nytro 141", strlen("Seagate Nytro 141")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "Seagate FireStorm YA", strlen("Seagate FireStorm YA")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "Seagate BarraCuda", strlen("Seagate BarraCuda")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "STGS250401", strlen("STGS250401")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "STGS500401", strlen("STGS500401")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "STGS1000401", strlen("STGS1000401")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "STGS2000401", strlen("STGS2000401")) == 0
+			)
+		{
+			isSeagateVendor = true;
+		}
+	}
+	else
+	{
+		if (strncmp(device->drive_info.product_identification, "Seagate Nytro Client 141", strlen("Seagate Nytro Client 141")) == 0 ||
+			strncmp(device->drive_info.product_identification, "Seagate Nytro 141", strlen("Seagate Nytro 141")) == 0 ||
+			strncmp(device->drive_info.product_identification, "Seagate FireStorm YA", strlen("Seagate FireStorm YA")) == 0 ||
+			strncmp(device->drive_info.product_identification, "Seagate BarraCuda", strlen("Seagate BarraCuda")) == 0 ||
+			strncmp(device->drive_info.product_identification, "STGS250401", strlen("STGS250401")) == 0 ||
+			strncmp(device->drive_info.product_identification, "STGS500401", strlen("STGS500401")) == 0 ||
+			strncmp(device->drive_info.product_identification, "STGS1000401", strlen("STGS1000401")) == 0 ||
+			strncmp(device->drive_info.product_identification, "STGS2000401", strlen("STGS2000401")) == 0
+			)
+		{
+			isSeagateVendor = true;
+		}
+		if (!isSeagateVendor)
+		{
+			return (is_Seagate_Model_Number_Vendor_F(device, true));
+		}
+	}
+	return isSeagateVendor;
+}
+
 eSeagateFamily is_Seagate_Family(tDevice *device)
 {
     eSeagateFamily isSeagateFamily = NON_SEAGATE;
     uint8_t iter = 0;
-    uint8_t numChecks = 8;//maxtor, seagate, samsung, lacie, seagate-Vendor. As the family of seagate drives expands, we will need to increase this and add new checks
+    uint8_t numChecks = 9;//maxtor, seagate, samsung, lacie, seagate-Vendor, albany. As the family of seagate drives expands, we will need to increase this and add new checks
     for (iter = 0; iter < numChecks && isSeagateFamily == NON_SEAGATE; iter++)
     {
         switch (iter)
@@ -1435,6 +1477,12 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
                 isSeagateFamily = SEAGATE_MINISCRIBE;
             }
             break;
+		case 8://is_albany
+			if (is_Seagate_Model_Number_Vendor_F(device, false))
+			{
+				isSeagateFamily = SEAGATE_VENDOR_F;
+			}
+			break;
             //TODO: Add in CDC, DEC, & PrarieTek detection. Currently not in since these drives are even more rare than the Conner and Miniscribe drives...
         default:
             break;
