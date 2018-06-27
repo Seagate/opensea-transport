@@ -1724,7 +1724,7 @@ int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *scsiIoCtx
     }
     else 
 #endif
-        if (SUCCESS != ata_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
+    if (SUCCESS != ata_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
     {
         //that failed, so try an identify packet device
         if (SUCCESS != ata_Identify_Packet_Device(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
@@ -2207,9 +2207,9 @@ int translate_Power_Condition_VPD_Page_8Ah(tDevice *device, ScsiIoCtx *scsiIoCtx
     }
     else
     {
-        //something went wrong so set invalid field in CDB
+        //something went wrong so set failure from RTFRs
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
     }
     return ret;
 }
@@ -2498,7 +2498,7 @@ int translate_Zoned_Block_Device_Characteristics_VPD_Page_B6h(tDevice *device, S
     {
         //This data only exists in this log, so if we can't read it, time to return a failure.
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
     }
     return ret;
 }
@@ -2644,12 +2644,25 @@ int translate_Supported_VPD_Pages_00h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
-    //Check to make sure obsolete and reserved bits aren't set
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    //Check to make sure cmdDT and reserved bits aren't set
     if (scsiIoCtx->cdb[1] & 0xFE)
     {
+        fieldPointer = 1;
         //One of the bits we don't support is set, so return invalid field in CDB
+        uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+        uint8_t counter = 0;
+        while (reservedByteVal > 0 && counter < 8)
+        {
+            reservedByteVal >>= 1;
+            ++counter;
+        }
+        bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
     }
     else
     {
@@ -2689,7 +2702,10 @@ int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 else
                 {
                     ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    fieldPointer = 2;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 }
                 break;
             case BLOCK_LIMITS:
@@ -2711,7 +2727,10 @@ int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 else
                 {
                     ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    fieldPointer = 2;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 }
                 break;
 #endif
@@ -2724,13 +2743,19 @@ int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 else
                 {
                     ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    fieldPointer = 2;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 }
                 break;
 #endif
             default:
                 ret = NOT_SUPPORTED;
-                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                fieldPointer = 2;
+                bitPointer = 7;
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 break;
             }
         }
@@ -2740,6 +2765,14 @@ int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             //standard inquiry data
             //read identify data
             uint8_t peripheralDevice = 0;
+            if (scsiIoCtx->cdb[2] != 0)//if page code is non-zero, we need to return an error
+            {
+                fieldPointer = 2;
+                bitPointer = 7;
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                return NOT_SUPPORTED;
+            }
             if (SUCCESS != ata_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
             {
                 //that failed, so try an identify packet device
@@ -3123,6 +3156,9 @@ int translate_SCSI_Read_Capacity_Command(tDevice *device, bool readCapacity16, S
 int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = UNKNOWN;
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     ataPassthroughCommand ataCommand;
     memset(&ataCommand, 0, sizeof(ataPassthroughCommand));
     uint8_t *protocolByte = &scsiIoCtx->cdb[1];
@@ -3140,7 +3176,10 @@ int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
         }
         else
         {
-            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            fieldPointer = 8;
+            bitPointer = 7;
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
             return BAD_PARAMETER;
         }
     }
@@ -3208,7 +3247,17 @@ int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
     case 0://hardware reset
     case 1://software reset
     default://catch protocols that we don't support here
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        if (thirtyTwoByteCommand)
+        {
+            fieldPointer = 10;
+        }
+        else
+        {
+            fieldPointer = 1;
+        }
+        bitPointer = 4;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return NOT_SUPPORTED;
         break;
     }
@@ -3245,6 +3294,21 @@ int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
         ataCommand.tfr.LbaHi = scsiIoCtx->cdb[7];
         ataCommand.tfr.DeviceHead = scsiIoCtx->cdb[8];
         ataCommand.tfr.CommandStatus = scsiIoCtx->cdb[9];
+        if (scsiIoCtx->cdb[10])
+        {
+            uint8_t reservedByteVal = scsiIoCtx->cdb[10];
+            uint8_t counter = 0;
+            while (reservedByteVal > 0 && counter < 8)
+            {
+                reservedByteVal >>= 1;
+                ++counter;
+            }
+            fieldPointer = 10;
+            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            return NOT_SUPPORTED;
+        }
     }
     else if (scsiIoCtx->cdb[OPERATION_CODE] == ATA_PASS_THROUGH_16)
     {
@@ -3293,9 +3357,30 @@ int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
             ataCommand.tfr.aux1 = scsiIoCtx->cdb[31];
         }
         //If any of the ICC or AUX registers are set, we need to return an error since we cannot issue that command since OS passthrough doesn't support it
-        if (ataCommand.tfr.icc || ataCommand.tfr.aux4 || ataCommand.tfr.aux3 || ataCommand.tfr.aux2 || ataCommand.tfr.aux1)
+        if ((fieldPointer = 27 && ataCommand.tfr.icc)
+            || (fieldPointer = 28 && ataCommand.tfr.aux4)
+            || (fieldPointer = 29 && ataCommand.tfr.aux3)
+            || (fieldPointer = 30 && ataCommand.tfr.aux2)
+            || (fieldPointer = 31 && ataCommand.tfr.aux1)
+            || (fieldPointer = 26 && scsiIoCtx->cdb[26])
+            || (fieldPointer = 12 && scsiIoCtx->cdb[12])
+            || (fieldPointer = 13 && scsiIoCtx->cdb[13])
+            )
         {
-            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            bitPointer = 7;
+            if (fieldPointer == 26 || fieldPointer == 12 || fieldPointer == 13)
+            {
+                uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+                uint8_t counter = 0;
+                while (reservedByteVal > 0 && counter < 8)
+                {
+                    reservedByteVal >>= 1;
+                    ++counter;
+                }
+                bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+            }
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
             return NOT_SUPPORTED;
         }
     }
