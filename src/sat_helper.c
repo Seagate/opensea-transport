@@ -4548,12 +4548,31 @@ int translate_SCSI_Test_Unit_Ready_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
 {
     int ret = SUCCESS;
     uint8_t powerMode = 0;
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     //filter out invalid fields
-    if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0 || scsiIoCtx->cdb[4] != 0)
+    if (((fieldPointer = 1) != 0 && scsiIoCtx->cdb[1] != 0)
+        || ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[2] != 0)
+        || ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[3] != 0)
+        || ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[4] != 0)
+       )
     {
+        if (bitPointer == 0)
+        {
+            uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+            uint8_t counter = 0;
+            while (reservedByteVal > 0 && counter < 8)
+            {
+                reservedByteVal >>= 1;
+                ++counter;
+            }
+            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        }
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         //invalid field in CDB
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
     //TODO: SAT Spec mentions that if a sanitize or DST or format are in progress, to return sense data related to those....we need multithreading before that is possible, but we should add that capability sometime.
@@ -6087,12 +6106,32 @@ int translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t reportLunsData[16] = { 0 };
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     uint32_t allocationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-    if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[3] != 0 || scsiIoCtx->cdb[4] != 0 || scsiIoCtx->cdb[5] != 0 || scsiIoCtx->cdb[10] != 0)
+    if (((fieldPointer = 1) != 0 && scsiIoCtx->cdb[1] != 0)
+        || ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[3] != 0)
+        || ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[4] != 0)
+        || ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[5] != 0)
+        || ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[10] != 0)
+       )
     {
+        if (bitPointer == 0)
+        {
+            uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+            uint8_t counter = 0;
+            while (reservedByteVal > 0 && counter < 8)
+            {
+                reservedByteVal >>= 1;
+                ++counter;
+            }
+            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        }
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         //invalid field in CDB
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
     switch (scsiIoCtx->cdb[2])
