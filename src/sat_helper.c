@@ -4132,21 +4132,35 @@ int translate_SCSI_Write_And_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCt
 int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
-    uint8_t formatProtectionInformation = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 6);
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
     bool longList = scsiIoCtx->cdb[1] & BIT5;
     bool formatData = scsiIoCtx->cdb[1] & BIT4;
-    bool compareList = scsiIoCtx->cdb[1] & BIT3;
     uint8_t defectListFormat = M_GETBITRANGE(scsiIoCtx->cdb[1], 2, 0);
-    uint8_t vendorSpecificByte = scsiIoCtx->cdb[2];
-    //Other bytes are newer than SBC3 or really old and obsolete
-    if (formatProtectionInformation != 0 ||
-        compareList ||
-        vendorSpecificByte != 0
+    //Other bytes are newer than SBC3 or really old and obsolete (error checking is done top to bottom, left bit to right bit)
+    if (((fieldPointer = 1) != 0 && M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 6))
+        || ((bitPointer = 3) != 0  && (fieldPointer = 1) != 0 && scsiIoCtx->cdb[1] & BIT3)
+        || ((fieldPointer = 2) != 0 && (bitPointer = 0 /*reset this value since we changed it in the previous comparison*/) == 0 && scsiIoCtx->cdb[2])
+        || ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[3])
+        || ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[4])
         )
     {
+        if (bitPointer == 0)
+        {
+            uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+            uint8_t counter = 0;
+            while (reservedByteVal > 0 && counter < 8)
+            {
+                reservedByteVal >>= 1;
+                ++counter;
+            }
+            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        }
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         //invalid field in CDB
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
     }
     else
     {
@@ -4160,6 +4174,7 @@ int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             bool stopFormat = scsiIoCtx->pdata[1] & BIT4;
             bool initializationPattern = scsiIoCtx->pdata[1] & BIT3;
             uint8_t initializationPatternOffset = 0;
+            bool disableSaveParameters = scsiIoCtx->pdata[1] & BIT2;//long obsolete
             bool immediate = scsiIoCtx->pdata[1] & BIT1;
             bool vendorSpecific = scsiIoCtx->pdata[1] & BIT0;
             uint8_t p_i_information = 0;
@@ -4185,19 +4200,78 @@ int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             }
             //check parameter data
             if (/*check all combinations that we don't support*/
-                ((defectListFormat == 0 || defectListFormat == 6) && defectListLength != 0) //See SAT spec CDB field definitions
-                || (defectListFormat != 0 && defectListFormat != 6) //See SAT spec CDB field definitions
-                || immediate //we cannot support the immediate bit in this implementation right now. We would need multi-threading to do this...
-                || protectionFieldUsage != 0 //we don't support protection information
-                || stopFormat //Doesn't make sense to support since we cannot accept a defect list. We could also ignore this, but this should be fine
-                || p_i_information != 0
-                || protectionIntervalExponent != 0
-                || vendorSpecific //We don't have a vendor specific functionality in here
+                ((fieldPointer = 0) == 0 && (bitPointer = 0) == 0 && scsiIoCtx->pdata[0] != 0) //we don't support protection information and reserved bytes should also be zeroed out
+                || (formatOptionsValid && (fieldPointer = 1) != 0 && (bitPointer = 4) != 0 && stopFormat) //Doesn't make sense to support since we cannot accept a defect list. We could also ignore this, but this should be fine
+                || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && disableSaveParameters)//check that this obsolete bit isn't set
+                || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && immediate) //we cannot support the immediate bit in this implementation right now. We would need multi-threading to do this...
+                || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && vendorSpecific) //We don't have a vendor specific functionality in here
+                || (longList && (fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->pdata[2] != 0)//checking if reserved byte in long header is set
+                || (longList && (fieldPointer = 3) != 0 && (bitPointer = 7) != 0 && p_i_information != 0)
+                || (longList && (fieldPointer = 3) != 0 && (bitPointer = 7) != 0 && protectionIntervalExponent != 0)
+                || ((fieldPointer = UINT16_MAX) != 0 && (bitPointer = UINT8_MAX) != 0 && (defectListFormat == 0 || defectListFormat == 6) && defectListLength != 0) //See SAT spec CDB field definitions
+                || ((fieldPointer = UINT16_MAX) != 0 && (bitPointer = 24) != 0 && defectListFormat != 0 && defectListFormat != 6) //See SAT spec CDB field definitions
                 )
             {
+                if (fieldPointer == UINT16_MAX)
+                {
+                    //defect list issue detected. Need to set which field is actually in error
+                    if (bitPointer == UINT8_MAX)
+                    {
+                        //defect list length error
+                        if (longList)
+                        {
+                            fieldPointer = 4;
+                        }
+                        else
+                        {
+                            fieldPointer = 2;
+                        }
+                        bitPointer = 7;
+                    }
+                    else
+                    {
+                        //error in defect list data. Need to figure out the offset of the defect list (if any)
+                        if (initializationPattern)
+                        {
+                            uint16_t initializationPatternLength = M_BytesTo2ByteValue(scsiIoCtx->pdata[initializationPatternOffset + 2], scsiIoCtx->pdata[initializationPatternOffset + 3]);
+                            if (longList)
+                            {
+                                fieldPointer = 8 + 4 + initializationPatternLength;
+                            }
+                            else
+                            {
+                                fieldPointer = 4 + 4 + initializationPatternLength;
+                            }
+                        }
+                        else
+                        {
+                            if (longList)
+                            {
+                                fieldPointer = 8;
+                            }
+                            else
+                            {
+                                fieldPointer = 4;
+                            }
+                            bitPointer = 7;
+                        }
+                    }
+                }
+                if (bitPointer == 0)
+                {
+                    uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+                    uint8_t counter = 0;
+                    while (reservedByteVal > 0 && counter < 8)
+                    {
+                        reservedByteVal >>= 1;
+                        ++counter;
+                    }
+                    bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+                }
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                 //invalid field in parameter list
                 ret = NOT_SUPPORTED;
-                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
             }
             else
             {
@@ -4250,15 +4324,30 @@ int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                         performWriteOperation = true;
                     }
                     //Before we begin writing or certification, we need to check some flags to make sure nothing invalid is set.
-                    if (securityInitialize /*not supporting this since we cannot write to the reallocated sectors on the drive like this asks*/
-                        || (initializationPatternType != 0x00 && initializationPatternType != 0x01)
-                        || initializationPatternByte0ReservedBits != 0
-                        || initializationPatternModifier
+                    if (initializationPattern && //this must be set for us to care about any of these other fields...
+                        (
+                            ((fieldPointer = initializationPatternOffset) != 0 && (bitPointer = 7) != 0 && initializationPatternModifier) //check if obsolete bits are set
+                            || ((fieldPointer = initializationPatternOffset) != 0 && (bitPointer = 5) != 0 && securityInitialize) /*not supporting this since we cannot write to the reallocated sectors on the drive like this asks*/
+                            || ((fieldPointer = initializationPatternOffset) != 0 && (bitPointer = 0) != 0 && initializationPatternByte0ReservedBits != 0)
+                            || ((fieldPointer = initializationPatternOffset + 1) != 0 && (bitPointer = 7) != 0 && (initializationPatternType != 0x00 && initializationPatternType != 0x01))
                         )
+                       )
                     {
+                        if (bitPointer == 0)
+                        {
+                            uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+                            uint8_t counter = 0;
+                            while (reservedByteVal > 0 && counter < 8)
+                            {
+                                reservedByteVal >>= 1;
+                                ++counter;
+                            }
+                            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+                        }
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                         //invalid field in parameter list
                         ret = NOT_SUPPORTED;
-                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
                     else
                     {
@@ -4279,9 +4368,12 @@ int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                                 //make sure the initialization pattern is less than or equal to the logical block length
                                 if (initializationPatternLength > device->drive_info.deviceBlockSize)
                                 {
+                                    fieldPointer = initializationPatternOffset + 2;
+                                    bitPointer = 7;
+                                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                                     //invalid field in parameter list
                                     ret = NOT_SUPPORTED;
-                                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                                 }
                                 else
                                 {
@@ -4323,9 +4415,12 @@ int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                             //make sure the initialization pattern is less than or equal to the logical block length
                             if (initializationPatternLength > device->drive_info.deviceBlockSize)
                             {
+                                fieldPointer = initializationPatternOffset + 2;
+                                bitPointer = 7;
+                                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                                 //invalid field in parameter list
                                 ret = NOT_SUPPORTED;
-                                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                             }
                             else
                             {
@@ -4415,7 +4510,7 @@ int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                                 {
                                     //medium error, record not found
                                     ret = NOT_SUPPORTED;
-                                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x14, 0x01, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
                                 }
                             }
                         }
@@ -4429,11 +4524,13 @@ int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                         //return good status and do nothing else
                         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
                     }
-                    else if (disableCertification || initializationPattern)
+                    else if (((fieldPointer = 1) != 0 && (bitPointer = 5) != 0 && disableCertification )
+                        || ((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && initializationPattern))
                     {
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                         //invalid field in parameter list
                         ret = NOT_SUPPORTED;
-                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x14, 0x01, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
                 }
             }
