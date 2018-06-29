@@ -4099,6 +4099,9 @@ int translate_SCSI_Write_And_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCt
     bool dmaSupported = false;
     uint64_t lba = 0;
     uint32_t verificationLength = 0;
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     if (device->drive_info.IdentifyData.ata.Capability & BIT8)
     {
         if (device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2))
@@ -4118,7 +4121,10 @@ int translate_SCSI_Write_And_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCt
         byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
         lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
         verificationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
-        if (scsiIoCtx->cdb[1] & BIT3 || scsiIoCtx->cdb[1] & BIT0 || M_GETBITRANGE(scsiIoCtx->cdb[6], 7, 6) != 0)
+        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[1] & BIT3)
+            || ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)
+            || ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[6], 7, 6) != 0)
+            )
         {
             invalidField = true;
         }
@@ -4127,7 +4133,10 @@ int translate_SCSI_Write_And_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCt
         byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
         lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
         verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        if (scsiIoCtx->cdb[1] & BIT3 || scsiIoCtx->cdb[1] & BIT0 || M_GETBITRANGE(scsiIoCtx->cdb[10], 7, 6) != 0)
+        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[1] & BIT3)
+            || ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)
+            || ((fieldPointer = 10) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[10], 7, 6) != 0)
+            )
         {
             invalidField = true;
         }
@@ -4136,26 +4145,60 @@ int translate_SCSI_Write_And_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCt
         byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
         lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5], scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
         verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
-        if (scsiIoCtx->cdb[1] & BIT3 || scsiIoCtx->cdb[1] & BIT0 || M_GETBITRANGE(scsiIoCtx->cdb[14], 7, 6) != 0)
+        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[1] & BIT3)
+            || ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)
+            || ((fieldPointer = 14) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[14], 7, 6) != 0)
+            )
         {
             invalidField = true;
         }
         break;
     default:
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        fieldPointer = 0;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return BAD_PARAMETER;
     }
     if (invalidField)
     {
-        //invalid field in CDB
-        ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        if (bitPointer == 0)
+        {
+            uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+            uint8_t counter = 0;
+            while (reservedByteVal > 0 && counter < 8)
+            {
+                reservedByteVal >>= 1;
+                ++counter;
+            }
+            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        }
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
-    if (verificationLength > 65536)
+    if (verificationLength == 0)//this is allowed and it means to validate inputs and return success
+    {
+        return SUCCESS;
+    }
+    else if (verificationLength > 65536)
     {
         //return an error
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        switch (scsiIoCtx->cdb[OPERATION_CODE])
+        {
+        case 0x2E://write & verify 10
+            fieldPointer = 7;
+            break;
+        case 0xAE://write & verify 12
+            fieldPointer = 6;
+            break;
+        case 0x8E://write & verify 16
+            fieldPointer = 10;
+            break;
+        }
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return SUCCESS;
     }
     //check if 48bit
@@ -4186,8 +4229,10 @@ int translate_SCSI_Write_And_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCt
             //uint32_t compareLength = 0;
             if (byteCheck == 0x02)
             {
-                //return an error
-                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                fieldPointer = 1;
+                bitPointer = 2;
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 return SUCCESS;
             }
             compareBuf = (uint8_t*)calloc(scsiIoCtx->dataLength, sizeof(uint8_t));
@@ -4275,8 +4320,10 @@ int translate_SCSI_Write_And_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCt
             //uint32_t compareLength = 0;
             if (byteCheck == 0x02)
             {
-                //return an error
-                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                fieldPointer = 1;
+                bitPointer = 2;
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 return SUCCESS;
             }
             compareBuf = (uint8_t*)calloc(scsiIoCtx->dataLength, sizeof(uint8_t));
@@ -14792,7 +14839,7 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 #endif
         case WRITE_SAME_10_CMD://Sequential write commands
         case WRITE_SAME_16_CMD://Sequential write commands
-            ret = translate_SCSI_Write_Command(device, scsiIoCtx);
+            ret = translate_SCSI_Write__Same_Command(device, scsiIoCtx);
             break;
 #if SAT_SPEC_SUPPORTED > 3
         case ZONE_MANAGEMENT_IN://0x95
