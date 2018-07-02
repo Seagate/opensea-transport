@@ -5845,13 +5845,22 @@ int translate_SCSI_Sanitize_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     if (
                         ((fieldPointer = 0) == 0 && (bitPointer = 6) != 0 && scsiIoCtx->pdata[0] & BIT6)
                         || ((fieldPointer = 0) == 0 && (bitPointer = 5) != 0 && scsiIoCtx->pdata[0] & BIT5)
-                        || ((fieldPointer = 0) != 0 && (bitPointer = 4) != 0 && numberOfPasses == 0)
-                        || ((fieldPointer = 0) != 0 && (bitPointer = 4) != 0 && numberOfPasses > 0x10)
+                        || ((fieldPointer = 1) != 0 && (bitPointer = 0) != 0 && scsiIoCtx->pdata[1] != 0)
+                        || ((fieldPointer = 0) != 0 && (bitPointer = 4) != 0 && (numberOfPasses == 0 || numberOfPasses > 0x10))
                         || ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && 0x0004 != M_BytesTo2ByteValue(scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]))
                        )
                     {
-                        fieldPointer = 7;
-                        bitPointer = 7;
+                        if (bitPointer == 0)
+                        {
+                            uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+                            uint8_t counter = 0;
+                            while (reservedByteVal > 0 && counter < 8)
+                            {
+                                reservedByteVal >>= 1;
+                                ++counter;
+                            }
+                            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+                        }
                         set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                         return NOT_SUPPORTED;
