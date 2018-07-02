@@ -10866,84 +10866,130 @@ int translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 int translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx, bool parametersSaveble, uint8_t *ptrToBeginningOfModePage, uint16_t pageLength)
 {
     int ret = SUCCESS;
-    bool invalidFieldInParameterList = false;
+    uint32_t dataOffset = ptrToBeginningOfModePage - scsiIoCtx->pdata;//to be used when setting which field is invalid in parameter list
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     //start checking everything to make sure it looks right before we issue commands
     if (pageLength != 0x12)
     {
-        invalidFieldInParameterList = true;
+        fieldPointer = dataOffset + 1;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
     }
     if (ptrToBeginningOfModePage[2] & 0xFB)//all but WCE bit
     {
-        invalidFieldInParameterList = true;
+        fieldPointer = dataOffset + 2;
+        uint8_t reservedByteVal = ptrToBeginningOfModePage[2] & 0xFB;
+        uint8_t counter = 0;
+        while (reservedByteVal > 0 && counter < 8)
+        {
+            reservedByteVal >>= 1;
+            ++counter;
+        }
+        bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
+    }
+    if (((fieldPointer = 3) != 0 && ptrToBeginningOfModePage[3] != 0) ||
+        ((fieldPointer = 4) != 0 && ptrToBeginningOfModePage[4] != 0) ||
+        ((fieldPointer = 5) != 0 && ptrToBeginningOfModePage[5] != 0) ||
+        ((fieldPointer = 6) != 0 && ptrToBeginningOfModePage[6] != 0) ||
+        ((fieldPointer = 7) != 0 && ptrToBeginningOfModePage[7] != 0) ||
+        ((fieldPointer = 8) != 0 && ptrToBeginningOfModePage[8] != 0) ||
+        ((fieldPointer = 9) != 0 && ptrToBeginningOfModePage[9] != 0) ||
+        ((fieldPointer = 10) != 0 && ptrToBeginningOfModePage[10] != 0) ||
+        ((fieldPointer = 11) != 0 && ptrToBeginningOfModePage[11] != 0)
+        )
+    {
+        uint8_t reservedByteVal = ptrToBeginningOfModePage[fieldPointer];
+        uint8_t counter = 0;
+        while (reservedByteVal > 0 && counter < 8)
+        {
+            reservedByteVal >>= 1;
+            ++counter;
+        }
+        bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        fieldPointer += dataOffset;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
     }
     if (ptrToBeginningOfModePage[12] & 0xDF)//all but DRA bit
     {
-        invalidFieldInParameterList = true;
+        fieldPointer = dataOffset + 12;
+        uint8_t reservedByteVal = ptrToBeginningOfModePage[12] & 0xDF;
+        uint8_t counter = 0;
+        while (reservedByteVal > 0 && counter < 8)
+        {
+            reservedByteVal >>= 1;
+            ++counter;
+        }
+        bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
     }
-    if (ptrToBeginningOfModePage[3] != 0 ||
-        ptrToBeginningOfModePage[4] != 0 ||
-        ptrToBeginningOfModePage[5] != 0 ||
-        ptrToBeginningOfModePage[6] != 0 ||
-        ptrToBeginningOfModePage[7] != 0 ||
-        ptrToBeginningOfModePage[8] != 0 ||
-        ptrToBeginningOfModePage[9] != 0 ||
-        ptrToBeginningOfModePage[10] != 0 ||
-        ptrToBeginningOfModePage[11] != 0 ||
-        ptrToBeginningOfModePage[13] != 0 ||
-        ptrToBeginningOfModePage[14] != 0 ||
-        ptrToBeginningOfModePage[15] != 0 ||
-        ptrToBeginningOfModePage[16] != 0 ||
-        ptrToBeginningOfModePage[17] != 0 ||
-        ptrToBeginningOfModePage[18] != 0 ||
-        ptrToBeginningOfModePage[19] != 0
+    if(((fieldPointer = 13) != 0 && ptrToBeginningOfModePage[13] != 0) ||
+        ((fieldPointer = 14) != 0 && ptrToBeginningOfModePage[14] != 0) ||
+        ((fieldPointer = 15) != 0 && ptrToBeginningOfModePage[15] != 0) ||
+        ((fieldPointer = 16) != 0 && ptrToBeginningOfModePage[16] != 0) ||
+        ((fieldPointer = 17) != 0 && ptrToBeginningOfModePage[17] != 0) ||
+        ((fieldPointer = 18) != 0 && ptrToBeginningOfModePage[18] != 0) ||
+        ((fieldPointer = 19) != 0 && ptrToBeginningOfModePage[19] != 0)
         )
     {
-        //all of these bytes should be zero!
-        invalidFieldInParameterList = true;
+        uint8_t reservedByteVal = ptrToBeginningOfModePage[fieldPointer];
+        uint8_t counter = 0;
+        while (reservedByteVal > 0 && counter < 8)
+        {
+            reservedByteVal >>= 1;
+            ++counter;
+        }
+        bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        fieldPointer += dataOffset;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
     }
-    if (invalidFieldInParameterList)
+    int wceRet = SUCCESS;
+    int draRet = SUCCESS;
+    //WCE
+    if (ptrToBeginningOfModePage[2] & BIT2)
     {
-        ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        //enable write cache
+        wceRet = ata_Set_Features(device, SF_ENABLE_VOLITILE_WRITE_CACHE, 0, 0, 0, 0);
     }
     else
     {
-        int wceRet = SUCCESS;
-        int draRet = SUCCESS;
-        //WCE
-        if (ptrToBeginningOfModePage[2] & BIT2)
-        {
-            //enable write cache
-            wceRet = ata_Set_Features(device, SF_ENABLE_VOLITILE_WRITE_CACHE, 0, 0, 0, 0);
-        }
-        else
-        {
-            //disable write cache
-            wceRet = ata_Set_Features(device, SF_DISABLE_VOLITILE_WRITE_CACHE, 0, 0, 0, 0);
-        }
-        //DRA
-        if (ptrToBeginningOfModePage[12] & BIT5)
-        {
-            //disable read-look-ahead
-            draRet = ata_Set_Features(device, SF_DISABLE_READ_LOOK_AHEAD_FEATURE, 0, 0, 0, 0);
-        }
-        else
-        {
-            //enable read-look-ahead
-            draRet = ata_Set_Features(device, SF_ENABLE_READ_LOOK_AHEAD_FEATURE, 0, 0, 0, 0);
-        }
-        if (draRet || wceRet)
-        {
-            ret = FAILURE;
-            //set sense data to aborted command: ATA device failed set features
-            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ABORTED_COMMAND, 0x44, 0x71, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-        }
-        else
-        {
-            ret = SUCCESS;
-            //set good status
-            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-        }
+        //disable write cache
+        wceRet = ata_Set_Features(device, SF_DISABLE_VOLITILE_WRITE_CACHE, 0, 0, 0, 0);
+    }
+    //DRA
+    if (ptrToBeginningOfModePage[12] & BIT5)
+    {
+        //disable read-look-ahead
+        draRet = ata_Set_Features(device, SF_DISABLE_READ_LOOK_AHEAD_FEATURE, 0, 0, 0, 0);
+    }
+    else
+    {
+        //enable read-look-ahead
+        draRet = ata_Set_Features(device, SF_ENABLE_READ_LOOK_AHEAD_FEATURE, 0, 0, 0, 0);
+    }
+    if (draRet || wceRet)
+    {
+        ret = FAILURE;
+        //set sense data to aborted command: ATA device failed set features
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ABORTED_COMMAND, 0x44, 0x71, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+    }
+    else
+    {
+        ret = SUCCESS;
+        //set good status
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
     }
     return ret;
 }
@@ -10951,58 +10997,107 @@ int translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx, boo
 int translate_Mode_Select_Control_0Ah(tDevice *device, ScsiIoCtx *scsiIoCtx, bool parametersSaveble, uint8_t *ptrToBeginningOfModePage, uint16_t pageLength)
 {
     int ret = SUCCESS;
-    bool invalidFieldInParameterList = false;
+    uint32_t dataOffset = ptrToBeginningOfModePage - scsiIoCtx->pdata;//to be used when setting which field is invalid in parameter list
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     if (pageLength != 0x0A)
     {
-        invalidFieldInParameterList = true;
-    }
-    if (parametersSaveble)//don't support this since we can't actually save the change!
-    {
-        invalidFieldInParameterList = true;
+        fieldPointer = 1;
+        uint8_t reservedByteVal = ptrToBeginningOfModePage[1];
+        bitPointer = 7;
+        fieldPointer += dataOffset;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
     }
     if (ptrToBeginningOfModePage[2] & 0xFB)//all but d_sense bit
     {
-        invalidFieldInParameterList = true;
+        fieldPointer = 2;
+        uint8_t reservedByteVal = ptrToBeginningOfModePage[2] & 0xFB;
+        uint8_t counter = 0;
+        while (reservedByteVal > 0 && counter < 8)
+        {
+            reservedByteVal >>= 1;
+            ++counter;
+        }
+        bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        fieldPointer += dataOffset;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
     }
     if (M_Nibble1(ptrToBeginningOfModePage[2]) != 0x01)//queue alg modifier
     {
-        invalidFieldInParameterList = true;
+        fieldPointer = 3 + dataOffset;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
+    }
+    //nuar
+    if (ptrToBeginningOfModePage[2] & BIT3)
+    {
+        fieldPointer = 3 + dataOffset;
+        bitPointer = 3;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
     }
     //check qerr = 01
     if ((ptrToBeginningOfModePage[2] & 0x06) >> 1 != 0x01)
     {
-        invalidFieldInParameterList = true;
+        fieldPointer = 3 + dataOffset;
+        bitPointer = 2;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
     }
-    if (ptrToBeginningOfModePage[2] & (BIT3 | BIT0))
+    if (ptrToBeginningOfModePage[2] & BIT0)
     {
-        invalidFieldInParameterList = true;
+        fieldPointer = 3 + dataOffset;
+        bitPointer = 0;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
     }
-    if (ptrToBeginningOfModePage[4] != 0 ||
-        ptrToBeginningOfModePage[5] != 0 ||
-        ptrToBeginningOfModePage[6] != 0 ||
-        ptrToBeginningOfModePage[7] != 0 ||
-        ptrToBeginningOfModePage[8] != 0xFF ||
-        ptrToBeginningOfModePage[9] != 0xFF
-        )
+    if (((fieldPointer = 4) != 0 && ptrToBeginningOfModePage[4] != 0) ||
+        ((fieldPointer = 5) != 0 && ptrToBeginningOfModePage[5] != 0) ||
+        ((fieldPointer = 6) != 0 && ptrToBeginningOfModePage[6] != 0) ||
+        ((fieldPointer = 7) != 0 && ptrToBeginningOfModePage[7] != 0) ||
+        ((fieldPointer = 8) != 0 && ptrToBeginningOfModePage[8] != 0xFF) ||
+        ((fieldPointer = 9) != 0 && ptrToBeginningOfModePage[9] != 0xFF)
+       )
     {
-        invalidFieldInParameterList = true;
+        uint8_t reservedByteVal = ptrToBeginningOfModePage[fieldPointer];
+        uint8_t counter = 0;
+        while (reservedByteVal > 0 && counter < 8)
+        {
+            reservedByteVal >>= 1;
+            ++counter;
+        }
+        bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        if (fieldPointer == 9)
+        {
+            --fieldPointer;//this is the same field in this mode page, just adjusting what we're setting so that we return the correct information.
+        }
+        if (fieldPointer == 8)
+        {
+            bitPointer = 7;
+        }
+        fieldPointer += dataOffset;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
     }
     //TODO: make sure they aren't trying to change the extended self test timeout! Ignoring it for now...-TJE
-    if (invalidFieldInParameterList)
+    if (ptrToBeginningOfModePage[2] & BIT2)
     {
-        ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        device->drive_info.softSATFlags.senseDataDescriptorFormat = true;
     }
     else
     {
-        if (ptrToBeginningOfModePage[2] & BIT2)
-        {
-            device->drive_info.softSATFlags.senseDataDescriptorFormat = true;
-        }
-        else
-        {
-            device->drive_info.softSATFlags.senseDataDescriptorFormat = false;
-        }
+        device->drive_info.softSATFlags.senseDataDescriptorFormat = false;
     }
     return ret;
 }
@@ -11495,50 +11590,63 @@ int translate_Mode_Select_Power_Conditions_1A(tDevice *device, ScsiIoCtx *scsiIo
 int translate_Mode_Select_ATA_Power_Condition_1A_F1(tDevice *device, ScsiIoCtx *scsiIoCtx, bool parametersSaveble, uint8_t *ptrToBeginningOfModePage, uint16_t pageLength)
 {
     int ret = SUCCESS;
-    bool invalidFieldInParameterList = false;
+    uint32_t dataOffset = ptrToBeginningOfModePage - scsiIoCtx->pdata;
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     if (pageLength != 0x000C)
     {
-        invalidFieldInParameterList = true;
+        fieldPointer = 2 + dataOffset;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
     }
-    if (ptrToBeginningOfModePage[4] != 0 ||
-        ptrToBeginningOfModePage[5] & 0xFE ||
-        ptrToBeginningOfModePage[7] != 0 ||
-        ptrToBeginningOfModePage[8] != 0 ||
-        ptrToBeginningOfModePage[9] != 0 ||
-        ptrToBeginningOfModePage[10] != 0 ||
-        ptrToBeginningOfModePage[11] != 0 ||
-        ptrToBeginningOfModePage[12] != 0 ||
-        ptrToBeginningOfModePage[13] != 0 ||
-        ptrToBeginningOfModePage[14] != 0 ||
-        ptrToBeginningOfModePage[15] != 0
-        )
+    if (((fieldPointer = 4) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[4] != 0) ||
+        ((fieldPointer = 5) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[5] & 0xFE) ||
+        ((fieldPointer = 7) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[7] != 0) ||
+        ((fieldPointer = 8) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[8] != 0) ||
+        ((fieldPointer = 9) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[9] != 0) ||
+        ((fieldPointer = 10) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[10] != 0) ||
+        ((fieldPointer = 11) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[11] != 0) ||
+        ((fieldPointer = 12) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[12] != 0) ||
+        ((fieldPointer = 13) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[13] != 0) ||
+        ((fieldPointer = 14) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[14] != 0) ||
+        ((fieldPointer = 15) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[15] != 0)
+       )
     {
-        invalidFieldInParameterList = true;
-    }
-    if (invalidFieldInParameterList)
-    {
-        ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-    }
-    else
-    {
-        //check if the APMP bit is set. Only make changes if it is set
-        if (ptrToBeginningOfModePage[5] & BIT0)
+        if (bitPointer == 0)
         {
-            //make a change to the APM value
-            if (ptrToBeginningOfModePage[6] == 0)
+            uint8_t reservedByteVal = ptrToBeginningOfModePage[fieldPointer];
+            uint8_t counter = 0;
+            while (reservedByteVal > 0 && counter < 8)
             {
-                ret = ata_Set_Features(device, SF_DISABLE_APM_FEATURE, 0, 0, 0, 0);
+                reservedByteVal >>= 1;
+                ++counter;
             }
-            else
-            {
-                ret = ata_Set_Features(device, SF_ENABLE_APM_FEATURE, ptrToBeginningOfModePage[6], 0, 0, 0);
-            }
-            if (ret != SUCCESS)
-            {
-                ret = FAILURE;
-                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ABORTED_COMMAND, 0x44, 0x71, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-            }
+            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        }
+        fieldPointer += dataOffset;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
+    }
+    //check if the APMP bit is set. Only make changes if it is set
+    if (ptrToBeginningOfModePage[5] & BIT0)
+    {
+        //make a change to the APM value
+        if (ptrToBeginningOfModePage[6] == 0)
+        {
+            ret = ata_Set_Features(device, SF_DISABLE_APM_FEATURE, 0, 0, 0, 0);
+        }
+        else
+        {
+            ret = ata_Set_Features(device, SF_ENABLE_APM_FEATURE, ptrToBeginningOfModePage[6], 0, 0, 0);
+        }
+        if (ret != SUCCESS)
+        {
+            ret = FAILURE;
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ABORTED_COMMAND, 0x44, 0x71, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
         }
     }
     return ret;
