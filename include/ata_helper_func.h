@@ -81,12 +81,13 @@ extern "C"
     //  Entry:
     //!   \param[in] device = file descriptor
     //!   \param[in] failureModeBit = when set to true, set the Failure Mode bit
+    //!   \param[in] znr = zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Sanitize_Crypto_Scramble(tDevice *device, bool failureModeBit);
+    OPENSEA_TRANSPORT_API int ata_Sanitize_Crypto_Scramble(tDevice *device, bool failureModeBit, bool znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -97,12 +98,13 @@ extern "C"
     //  Entry:
     //!   \param[in] device = file descriptor
     //!   \param[in] failureModeBit = when set to true, set the Failure Mode bit
+    //!   \param[in] znr = zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Sanitize_Block_Erase(tDevice *device, bool failureModeBit);
+    OPENSEA_TRANSPORT_API int ata_Sanitize_Block_Erase(tDevice *device, bool failureModeBit, bool znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -116,12 +118,14 @@ extern "C"
     //!   \param[in] invertBetweenPasses = set to true to set the bit specifying to invert the pattern between passes
     //!   \param[in] numberOfPasses = this will contain the number of passes to perform. A value of 0 means 16 passes.
     //!   \param[in] overwritePattern = this specifies the pattern to use during overwrite
+    //!   \param[in] znr = zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
+    //!   \param[in] definitiveEndingPattern = if the drive supports this bit, it will make sure that the specified pattern is the pattern upon completion between each pass and the invert between passes bit.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Sanitize_Overwrite_Erase(tDevice *device, bool failureModeBit, bool invertBetweenPasses, uint8_t numberOfPasses, uint32_t overwritePattern);
+    OPENSEA_TRANSPORT_API int ata_Sanitize_Overwrite_Erase(tDevice *device, bool failureModeBit, bool invertBetweenPasses, uint8_t numberOfPasses, uint32_t overwritePattern, bool znr, bool definitiveEndingPattern);
 
     //-----------------------------------------------------------------------------
     //

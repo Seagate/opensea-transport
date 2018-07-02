@@ -5021,17 +5021,17 @@ int translate_SCSI_Sanitize_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     {
         uint8_t serviceAction = 0x1F & scsiIoCtx->cdb[1];
         bool immediate = false;//this is ignored for now since there is no way to handle this without multi-threading
-        //bool znr = false;//new, not used yet - TJE
+        bool znr = false;
         bool ause = false;
         uint16_t parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
         if (scsiIoCtx->cdb[1] & BIT7)
         {
             immediate = true;
         }
-        //if (scsiIoCtx->cdb[1] & BIT6)
-        //{
-        //    znr = true;
-        //}
+        if (scsiIoCtx->cdb[1] & BIT6)
+        {
+            znr = true;
+        }
         if (scsiIoCtx->cdb[1] & BIT5)
         {
             ause = true;
@@ -5072,7 +5072,7 @@ int translate_SCSI_Sanitize_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     {
                         numberOfPasses = 0;//this needs to be set to zero to specify 16 passes as this is how ATA does it.
                     }
-                    if (SUCCESS != ata_Sanitize_Overwrite_Erase(device, ause, invert, numberOfPasses, pattern) && !immediate)
+                    if (SUCCESS != ata_Sanitize_Overwrite_Erase(device, ause, invert, numberOfPasses, pattern, znr, false) && !immediate)
                     {
                         ret = FAILURE;
                         set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
@@ -5109,7 +5109,7 @@ int translate_SCSI_Sanitize_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             {
                 if (device->drive_info.IdentifyData.ata.MultiSectNum & BIT13)
                 {
-                    if (SUCCESS != ata_Sanitize_Block_Erase(device, ause) && !immediate)
+                    if (SUCCESS != ata_Sanitize_Block_Erase(device, ause, znr) && !immediate)
                     {
                         ret = FAILURE;
                         set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
@@ -5146,7 +5146,7 @@ int translate_SCSI_Sanitize_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             {
                 if (device->drive_info.IdentifyData.ata.MultiSectNum & BIT13)
                 {
-                    if (SUCCESS != ata_Sanitize_Crypto_Scramble(device, ause) && !immediate)
+                    if (SUCCESS != ata_Sanitize_Crypto_Scramble(device, ause, znr) && !immediate)
                     {
                         ret = FAILURE;
                         set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);

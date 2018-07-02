@@ -269,6 +269,7 @@ extern "C"
     //!   \param[in] device - pointer to the device structure
     //!   \param[in] sanitizeFeature - enum value specifying the sanitize service action to perform
     //!   \param[in] immediate - set to true to set the immediate bit
+    //!   \param[in] znr - zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!   \param[in] ause - set to true to set the allow unrestricted sanitize exit bit
     //!   \param[in] parameterListLength - this should be 0 for all features that are not an overwrite
     //!   \param[in] ptrData - should be NULL for all features that are not an overwrite
@@ -277,7 +278,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Sanitize_Cmd(tDevice *device, eScsiSanitizeFeature sanitizeFeature, bool immediate, bool ause, uint16_t parameterListLength, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API int scsi_Sanitize_Cmd(tDevice *device, eScsiSanitizeFeature sanitizeFeature, bool immediate, bool znr, bool ause, uint16_t parameterListLength, uint8_t *ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -288,6 +289,7 @@ extern "C"
     //  Entry:
     //!   \param[in] device - pointer to the device structure
     //!   \param[in] allowUnrestrictedSanitizeExit = set to true to set the allow unrestricted sanitize exit bit
+    //!   \param[in] znr - zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!   \param[in] immediate = set to true to set the immediate bit
     //!   \param[in] invertBetweenPasses = set to true to set the invert between passes in the transferred buffer
     //!   \param[in] test = enum value specifying the test bits. Should be SANITIZE_OVERWRITE_NO_CHANGES unless you know what a vendor is expecting
@@ -299,7 +301,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate, bool invertBetweenPasses, eScsiSanitizeOverwriteTest test, uint8_t overwritePasses, uint8_t *pattern, uint16_t patternLengthBytes);
+    OPENSEA_TRANSPORT_API int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit, bool znr, bool immediate, bool invertBetweenPasses, eScsiSanitizeOverwriteTest test, uint8_t overwritePasses, uint8_t *pattern, uint16_t patternLengthBytes);
     
     //-----------------------------------------------------------------------------
     //
@@ -326,12 +328,13 @@ extern "C"
     //!   \param[in] device - pointer to the device structure
     //!   \param[in] allowUnrestrictedSanitizeExit = set to true to set the allow unrestricted sanitize exit bit
     //!   \param[in] immediate = set to true to set the immediate bit
+    //!   \param[in] znr - zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Sanitize_Cryptographic_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate);
+    OPENSEA_TRANSPORT_API int scsi_Sanitize_Cryptographic_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate, bool znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -343,12 +346,13 @@ extern "C"
     //!   \param[in] device - pointer to the device structure
     //!   \param[in] allowUnrestrictedSanitizeExit = set to true to set the allow unrestricted sanitize exit bit
     //!   \param[in] immediate = set to true to set the immediate bit
+    //!   \param[in] znr - zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Sanitize_Block_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate);
+    OPENSEA_TRANSPORT_API int scsi_Sanitize_Block_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate, bool znr);
 
     //-----------------------------------------------------------------------------
     //

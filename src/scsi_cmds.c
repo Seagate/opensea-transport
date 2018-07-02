@@ -219,7 +219,7 @@ int scsi_Report_Supported_Operation_Codes(tDevice *device, bool rctd, uint8_t re
     return ret;
 }
 
-int scsi_Sanitize_Cmd(tDevice *device, eScsiSanitizeFeature sanitizeFeature, bool immediate, bool ause, uint16_t parameterListLength, uint8_t *ptrData)
+int scsi_Sanitize_Cmd(tDevice *device, eScsiSanitizeFeature sanitizeFeature, bool immediate, bool znr, bool ause, uint16_t parameterListLength, uint8_t *ptrData)
 {
     int       ret       = FAILURE;
     uint8_t   cdb[CDB_LEN_10]       = { 0 };
@@ -237,6 +237,10 @@ int scsi_Sanitize_Cmd(tDevice *device, eScsiSanitizeFeature sanitizeFeature, boo
     if (immediate)
     {
         cdb[1] |= BIT7;
+    }
+    if (znr)
+    {
+        cdb[1] |= BIT6;
     }
     if (ause)
     {
@@ -267,22 +271,22 @@ int scsi_Sanitize_Cmd(tDevice *device, eScsiSanitizeFeature sanitizeFeature, boo
     return ret;
 }
 
-int scsi_Sanitize_Block_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate)
+int scsi_Sanitize_Block_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate, bool znr)
 {
-    return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_BLOCK_ERASE, immediate, allowUnrestrictedSanitizeExit, 0, NULL);
+    return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_BLOCK_ERASE, immediate, znr, allowUnrestrictedSanitizeExit, 0, NULL);
 }
 
-int scsi_Sanitize_Cryptographic_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate)
+int scsi_Sanitize_Cryptographic_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate, bool znr)
 {
-    return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE, immediate, allowUnrestrictedSanitizeExit, 0, NULL);
+    return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE, immediate, znr, allowUnrestrictedSanitizeExit, 0, NULL);
 }
 
 int scsi_Sanitize_Exit_Failure_Mode(tDevice *device)
 {
-    return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_EXIT_FAILURE_MODE, false, false, 0, NULL);
+    return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_EXIT_FAILURE_MODE, false, false, false, 0, NULL);
 }
 
-int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate, bool invertBetweenPasses, eScsiSanitizeOverwriteTest test, uint8_t overwritePasses, uint8_t *pattern, uint16_t patternLengthBytes)
+int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit, bool znr, bool immediate, bool invertBetweenPasses, eScsiSanitizeOverwriteTest test, uint8_t overwritePasses, uint8_t *pattern, uint16_t patternLengthBytes)
 {
     int ret = UNKNOWN;
     if ((patternLengthBytes != 0 && pattern == NULL) || (patternLengthBytes > device->drive_info.deviceBlockSize))
@@ -307,7 +311,7 @@ int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit,
     {
         memcpy(&overwriteBuffer[4], pattern, patternLengthBytes);
     }
-    ret = scsi_Sanitize_Cmd(device, SCSI_SANITIZE_OVERWRITE, immediate, allowUnrestrictedSanitizeExit, patternLengthBytes + 4, overwriteBuffer);
+    ret = scsi_Sanitize_Cmd(device, SCSI_SANITIZE_OVERWRITE, immediate, znr, allowUnrestrictedSanitizeExit, patternLengthBytes + 4, overwriteBuffer);
     safe_Free(overwriteBuffer);
     return ret;
 }

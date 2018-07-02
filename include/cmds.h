@@ -32,12 +32,13 @@ extern "C"
     //  Entry:
     //!   \param[in] device = file descriptor
     //!   \param[in] exitFailureMode = set the failure mode bit to 1. See ACS3 or SBC4 for details on what this does
+    //!   \param[in] znr - zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, FAILURE = fail
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode);
+    OPENSEA_TRANSPORT_API int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode, bool znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -48,12 +49,13 @@ extern "C"
     //  Entry:
     //!   \param[in] device = file descriptor
     //!   \param[in] exitFailureMode = set the failure mode bit to 1. See ACS3 or SBC4 for details on what this does
+    //!   \param[in] znr - zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, FAILURE = fail
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_Sanitize_Crypto_Erase(tDevice *device, bool exitFailureMode);
+    OPENSEA_TRANSPORT_API int send_Sanitize_Crypto_Erase(tDevice *device, bool exitFailureMode, bool znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -68,12 +70,13 @@ extern "C"
     //!   \param[in] overwritePasses = this is the number of passes to run. a value of 0 means 16 passes (which is the max for sanitize). (For SCSI, we adjust this to set 16 since a value of 0 is reserved)
     //!   \param[in] pattern = pointer to a buffer containing a pattern. (Set to NULL to use zeros)
     //!   \param[in] patternLength = the length of the patter. Max length on SCSI is 1 logical sector. On ATA, the length MUST BE 4! Only required if pattern is non-NULL.
+    //!   \param[in] znr - zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, FAILURE = fail
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool invertBetweenPasses, uint8_t overwritePasses, uint8_t *pattern, uint32_t patternLength);
+    OPENSEA_TRANSPORT_API int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool invertBetweenPasses, uint8_t overwritePasses, uint8_t *pattern, uint32_t patternLength, bool znr);
 
     //-----------------------------------------------------------------------------
     //

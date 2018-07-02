@@ -21,13 +21,13 @@
 #include "platform_helper.h"
 #include "usb_hacks.h"
 
-int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode)
+int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode, bool znr)
 {
     int ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
-        ret = ata_Sanitize_Block_Erase(device, exitFailureMode);
+        ret = ata_Sanitize_Block_Erase(device, exitFailureMode, znr);
         break;
     case NVME_DRIVE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
@@ -37,7 +37,7 @@ int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode)
         //rely on SCSI translation
 #endif
     case SCSI_DRIVE:
-        ret = scsi_Sanitize_Block_Erase(device, exitFailureMode, true);
+        ret = scsi_Sanitize_Block_Erase(device, exitFailureMode, true, znr);
         break;
     default:
         if (VERBOSITY_QUIET < g_verbosity)
@@ -49,13 +49,13 @@ int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode)
     return ret;
 }
 
-int send_Sanitize_Crypto_Erase(tDevice *device,bool exitFailureMode)
+int send_Sanitize_Crypto_Erase(tDevice *device, bool exitFailureMode, bool znr)
 {
     int ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
-        ret = ata_Sanitize_Crypto_Scramble(device, exitFailureMode);
+        ret = ata_Sanitize_Crypto_Scramble(device, exitFailureMode, znr);
         break;
     case NVME_DRIVE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
@@ -65,7 +65,7 @@ int send_Sanitize_Crypto_Erase(tDevice *device,bool exitFailureMode)
         //rely on SCSI translation
 #endif
     case SCSI_DRIVE:
-        ret = scsi_Sanitize_Cryptographic_Erase(device, exitFailureMode, true);
+        ret = scsi_Sanitize_Cryptographic_Erase(device, exitFailureMode, true, znr);
         break;
     default:
         if (VERBOSITY_QUIET < g_verbosity)
@@ -77,7 +77,7 @@ int send_Sanitize_Crypto_Erase(tDevice *device,bool exitFailureMode)
     return ret;
 }
 
-int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool invertBetweenPasses, uint8_t overwritePasses, uint8_t *pattern, uint32_t patternLength)
+int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool invertBetweenPasses, uint8_t overwritePasses, uint8_t *pattern, uint32_t patternLength, bool znr)
 {
     int ret = UNKNOWN;
     bool localPattern = false;
@@ -90,7 +90,7 @@ int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool in
         {
             ataPattern = M_BytesTo4ByteValue(pattern[3], pattern[2], pattern[1], pattern[0]);
         }
-        ret = ata_Sanitize_Overwrite_Erase(device, exitFailureMode, invertBetweenPasses, overwritePasses & 0x0F, ataPattern);
+        ret = ata_Sanitize_Overwrite_Erase(device, exitFailureMode, invertBetweenPasses, overwritePasses & 0x0F, ataPattern, znr, false);
     }
         break;
     case NVME_DRIVE:
@@ -124,7 +124,7 @@ int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool in
                 return MEMORY_FAILURE;
             }
         }
-        ret = scsi_Sanitize_Overwrite(device, exitFailureMode, true, invertBetweenPasses, SANITIZE_OVERWRITE_NO_CHANGES, overwritePasses & 0x1F, pattern, patternLength);
+        ret = scsi_Sanitize_Overwrite(device, exitFailureMode, znr, true, invertBetweenPasses, SANITIZE_OVERWRITE_NO_CHANGES, overwritePasses & 0x1F, pattern, patternLength);
         if (localPattern)
         {
             safe_Free(pattern);
