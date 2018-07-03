@@ -3755,52 +3755,74 @@ int translate_SCSI_Write_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 int translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
-    uint8_t wrprotect = 0;
-    bool anchor = false;
-    bool unmap = false;
-    bool logicalBlockData = false;//Obsolete
-    bool physicalBlockData = false;//Obsolete
+    uint8_t wrprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);;
+    bool anchor = scsiIoCtx->cdb[1] & BIT4;
+    bool unmap = scsiIoCtx->cdb[1] & BIT3;
+    bool logicalBlockData = scsiIoCtx->cdb[1] & BIT1;//Obsolete (SAT2 supports this)
+    bool physicalBlockData = scsiIoCtx->cdb[1] & BIT2;//Obsolete (SAT2 supports this)
     bool relativeAddress = false;//Long obsolete.
     bool ndob = false;
     uint64_t logicalBlockAddress = 0;
     uint64_t numberOflogicalBlocks = 0;
     uint8_t groupNumber = 0;
     bool invalidFieldInCDB = false;
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
+    if (((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && wrprotect != 0)
+        || ((fieldPointer = 1) != 0 && (bitPointer = 4) != 0 && (!unmap && anchor))
+        || ((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && (unmap && !(device->drive_info.IdentifyData.ata.Word169 & BIT0)))//drive doesn't support trim, so we cannot do this...
+        || ((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && (logicalBlockData && unmap))
+        || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && physicalBlockData)//not supporting physical or logical block data bits at this time. Can be implemented according to SAT2 though!
+        || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && logicalBlockData)
+        )
+    {
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
+    }
+
     if (scsiIoCtx->cdb[OPERATION_CODE] == 0x41)//write same 10
     {
-        wrprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
-        anchor = scsiIoCtx->cdb[1] & BIT4;
-        unmap = scsiIoCtx->cdb[1] & BIT3;
-        physicalBlockData = scsiIoCtx->cdb[1] & BIT2;
-        logicalBlockData = scsiIoCtx->cdb[1] & BIT1;
         relativeAddress = scsiIoCtx->cdb[1] & BIT0;
         logicalBlockAddress = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
         numberOflogicalBlocks = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
         groupNumber = M_GETBITRANGE(scsiIoCtx->cdb[6], 5, 0);
-        if (scsiIoCtx->cdb[6] & BIT6 || scsiIoCtx->cdb[6] & BIT7)
+        if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && relativeAddress)
+            || ((fieldPointer = 6) != 0 && (bitPointer = 7) != 0 && scsiIoCtx->cdb[6] & BIT7)
+            || ((fieldPointer = 6) != 0 && (bitPointer = 6) != 0 && scsiIoCtx->cdb[6] & BIT6)
+            || ((fieldPointer = 6) != 0 && (bitPointer = 5) != 0 && groupNumber != 0)
+           )
         {
-            invalidFieldInCDB = true;
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            return NOT_SUPPORTED;
         }
     }
     else if (scsiIoCtx->cdb[OPERATION_CODE] == 0x93)//write same 16
     {
-        wrprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
-        anchor = scsiIoCtx->cdb[1] & BIT4;
-        unmap = scsiIoCtx->cdb[1] & BIT3;
-        physicalBlockData = scsiIoCtx->cdb[1] & BIT2;
-        logicalBlockData = scsiIoCtx->cdb[1] & BIT1;
         ndob = scsiIoCtx->cdb[1] & BIT0;
         logicalBlockAddress = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5], scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
         numberOflogicalBlocks = M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
         groupNumber = M_GETBITRANGE(scsiIoCtx->cdb[14], 5, 0);
-        if (scsiIoCtx->cdb[14] & BIT6 || scsiIoCtx->cdb[14] & BIT7)
+        if (((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && (logicalBlockData && ndob))
+            || ((fieldPointer = 14) != 0 && (bitPointer = 7) != 0 && scsiIoCtx->cdb[6] & BIT7)
+            || ((fieldPointer = 14) != 0 && (bitPointer = 6) != 0 && scsiIoCtx->cdb[6] & BIT6)
+            || ((fieldPointer = 14) != 0 && (bitPointer = 5) != 0 && groupNumber != 0)
+            )
         {
-            invalidFieldInCDB = true;
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            return NOT_SUPPORTED;
         }
     }
     else
     {
         //invalid operation code...this should be caught below in the function that calls this
+        fieldPointer = 0;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return BAD_PARAMETER;
     }
     if (numberOflogicalBlocks == 0)
@@ -3808,117 +3830,103 @@ int translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         //Support a value of zero to overwrite the whole drive.
         numberOflogicalBlocks = device->drive_info.deviceMaxLba;
     }
-    if (relativeAddress
-        || physicalBlockData
-        || logicalBlockData //SAT2 allows this bit to be set. For backwards compatibility with SAT2, this can be allowed. Just changes the algorithm a bit
-        || (!unmap && anchor)
-        || (unmap && !(device->drive_info.IdentifyData.ata.Word169 & BIT0))//drive doesn't support trim, so we cannot do this...
-        || groupNumber != 0
-        || wrprotect != 0
-        || (logicalBlockData && unmap)
-        || (logicalBlockData && ndob)
-        )
+    //perform the write same operation...
+#if SAT_SPEC_SUPPORTED > 2
+    if (unmap)
     {
-        invalidFieldInCDB = true;
-    }
-    if (invalidFieldInCDB)
-    {
-        //invalid field in CDB
-        ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        //NDOP bit is not specified in this mode in SAT4...doesn't exist in SAT3
+        //NOTE: We still need to add unmap bit support!
+        fieldPointer = 1;
+        bitPointer = 3;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
     }
     else
     {
-        //perform the write same operation...
-#if SAT_SPEC_SUPPORTED > 2
-        if (unmap)
-        {
-            //NDOP bit is not specified in this mode in SAT4...doesn't exist in SAT3
-        }
-        else
-        {
 #endif
-            bool useATAWriteCommands = false;
-            bool ataWritePatternZeros = false;
+        bool useATAWriteCommands = false;
+        bool ataWritePatternZeros = false;
 #if SAT_SPEC_SUPPORTED > 3
-            if (ndob)
-            {
-                //writing zeros
-                //If the zeros ext command is supported, it can be used (if number of logical blocks is not zero)
+        if (ndob)
+        {
+            //writing zeros
+            //If the zeros ext command is supported, it can be used (if number of logical blocks is not zero)
 #if 0
-                //This still needs to be added in
-                if (zerosExtCommandSupported)
-                {
-                    ret = ata_Zeros_Ext(device, numberOflogicalBlocks, logicalBlockAddress, false);
-                }
-                else
-#endif
-                    //else if SCT write same, function 01 or 101 (foreground or background...SATL decides)
-                    if (device->drive_info.IdentifyData.ata.Word206 & BIT0 && device->drive_info.IdentifyData.ata.Word206 & BIT2)
-                    {
-                        uint8_t pattern[4] = { 0 };//32bits set to zero
-                        uint32_t currentTimeout = device->drive_info.defaultTimeoutSeconds;
-                        device->drive_info.defaultTimeoutSeconds = UINT32_MAX;
-                        ret = ata_SCT_Write_Same(device, device->drive_info.ata_Options.generalPurposeLoggingSupported, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0x0101, logicalBlockAddress, numberOflogicalBlocks, &pattern[0], 4);
-                        device->drive_info.defaultTimeoutSeconds = currentTimeout;
-                    }
-                    else
-                    {
-                        //else ATA Write commands
-                        useATAWriteCommands = true;
-                        ataWritePatternZeros = true;
-                    }
+            //This still needs to be added in
+            if (zerosExtCommandSupported)
+            {
+                ret = ata_Zeros_Ext(device, numberOflogicalBlocks, logicalBlockAddress, false);
             }
             else
 #endif
             {
-                //write the data block
-#if 0 //remove this #if when this is supported
-                if (logicalBlockData)
+                //else if SCT write same, function 01 or 101 (foreground or background...SATL decides)
+                if (device->drive_info.IdentifyData.ata.Word206 & BIT0 && device->drive_info.IdentifyData.ata.Word206 & BIT2)
                 {
-                    //Replace first 4 bytes with the least significant LBA bytes...uses ATA Write commands.
+                    uint8_t pattern[4] = { 0 };//32bits set to zero
+                    uint32_t currentTimeout = device->drive_info.defaultTimeoutSeconds;
+                    device->drive_info.defaultTimeoutSeconds = UINT32_MAX;
+                    ret = ata_SCT_Write_Same(device, device->drive_info.ata_Options.generalPurposeLoggingSupported, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0x0101, logicalBlockAddress, numberOflogicalBlocks, &pattern[0], 4);
+                    device->drive_info.defaultTimeoutSeconds = currentTimeout;
                 }
                 else
-#endif
                 {
-                    if (device->drive_info.IdentifyData.ata.Word206 & BIT0 && device->drive_info.IdentifyData.ata.Word206 & BIT2)
-                    {
-#if SAT_SPEC_SUPPORTED > 2
-                        //If SCT - function 102 (foreground). 1 or more SCT commands
-                        ret = ata_SCT_Write_Same(device, device->drive_info.ata_Options.generalPurposeLoggingSupported, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0x0102, logicalBlockAddress, numberOflogicalBlocks, scsiIoCtx->pdata, scsiIoCtx->dataLength);
-#else
-                        //If SCT - function 02 or 04 (background) 1 or more SCT commands
-                        ret = ata_SCT_Write_Same(device, device->drive_info.ata_Options.generalPurposeLoggingSupported, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0x0002, logicalBlockAddress, numberOflogicalBlocks, scsiIoCtx->pdata, scsiIoCtx->dataLength);
-#endif
-                    }
-                    else
-                    {
-                        //Else - ATA Write commands to the medium
-                        useATAWriteCommands = true;
-                    }
+                    //else ATA Write commands
+                    useATAWriteCommands = true;
+                    ataWritePatternZeros = true;
                 }
             }
-            if (useATAWriteCommands)
+        }
+        else
+#endif
+        {
+            //write the data block
+#if 0 //remove this #if when this is supported
+            if (logicalBlockData)
             {
-                uint32_t patternLength = scsiIoCtx->dataLength;
-                if (ataWritePatternZeros)
+                //Replace first 4 bytes with the least significant LBA bytes...uses ATA Write commands.
+            }
+            else
+#endif
+            {
+                if (device->drive_info.IdentifyData.ata.Word206 & BIT0 && device->drive_info.IdentifyData.ata.Word206 & BIT2)
                 {
-                    patternLength = 65535;//64k
-                }
-                uint8_t *writePattern = (uint8_t*)calloc(patternLength, sizeof(uint8_t));
-                if (writePattern)
-                {
-                    if (!ataWritePatternZeros)
-                    {
-                        memcpy(writePattern, scsiIoCtx->pdata, patternLength);
-                    }
-                    ret = satl_Sequential_Write_Commands(scsiIoCtx, logicalBlockAddress, numberOflogicalBlocks, writePattern, patternLength);
-                    safe_Free(writePattern);
+#if SAT_SPEC_SUPPORTED > 2
+                    //If SCT - function 102 (foreground). 1 or more SCT commands
+                    ret = ata_SCT_Write_Same(device, device->drive_info.ata_Options.generalPurposeLoggingSupported, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0x0102, logicalBlockAddress, numberOflogicalBlocks, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+#else
+                    //If SCT - function 02 or 04 (background) 1 or more SCT commands
+                    ret = ata_SCT_Write_Same(device, device->drive_info.ata_Options.generalPurposeLoggingSupported, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0x0002, logicalBlockAddress, numberOflogicalBlocks, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+#endif
                 }
                 else
                 {
-                    //TODO: set an error? Logical unit failure?
+                    //Else - ATA Write commands to the medium
+                    useATAWriteCommands = true;
                 }
+            }
+        }
+        if (useATAWriteCommands)
+        {
+            uint32_t patternLength = scsiIoCtx->dataLength;
+            if (ataWritePatternZeros)
+            {
+                patternLength = 65535;//64k
+            }
+            uint8_t *writePattern = (uint8_t*)calloc(patternLength, sizeof(uint8_t));
+            if (writePattern)
+            {
+                if (!ataWritePatternZeros)
+                {
+                    memcpy(writePattern, scsiIoCtx->pdata, patternLength);
+                }
+                ret = satl_Sequential_Write_Commands(scsiIoCtx, logicalBlockAddress, numberOflogicalBlocks, writePattern, patternLength);
+                safe_Free(writePattern);
+            }
+            else
+            {
+                //the satl_sequential_write_commands function will handle setting the return sense data if it fails for any reason
             }
         }
     }
