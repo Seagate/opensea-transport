@@ -12186,9 +12186,32 @@ int translate_SCSI_Zone_Management_In_Command(tDevice *device, ScsiIoCtx *scsiIo
     uint8_t *dataBuf = NULL;
     uint32_t dataBufLength = 0;
     uint32_t allocationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     if (scsiIoCtx->cdb[14] & BIT7)
     {
         partialBit = true;
+    }
+    if ((fieldPointer = 1) != 0 && M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0)
+    {
+        if (bitPointer == 0)
+        {
+            uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+            uint8_t counter = 0;
+            while (reservedByteVal > 0 && counter < 8)
+            {
+                reservedByteVal >>= 1;
+                ++counter;
+            }
+            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        }
+        //invalid field in cdb (reserved field)
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        //invalid field in CDB
+        ret = NOT_SUPPORTED;
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return ret;
     }
     //allocate memory if it's not to a round 512 byte block size
     if ((allocationLength % 512) != 0)
@@ -12215,34 +12238,52 @@ int translate_SCSI_Zone_Management_In_Command(tDevice *device, ScsiIoCtx *scsiIo
     switch (serviceAction)
     {
     case ZM_ACTION_REPORT_ZONES:
-        if (SUCCESS != ata_Report_Zones_Ext(device, reportingOptions, partialBit, dataBufLength / 512, zoneStartLBA, dataBuf, dataBufLength))
+        if ((fieldPointer = 14) != 0 && (bitPointer = 6) != 0 && scsiIoCtx->cdb[14] & BIT6 != 0)
         {
-            set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+            //reserved bit is set
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            //invalid field in CDB
+            ret = NOT_SUPPORTED;
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            return ret;
         }
-		else
-		{
-			//need to byte swap fields to SCSI endianness.
-			//zone list length
-			byte_Swap_32((uint32_t*)&dataBuf[0]);
-			//max lba
-			byte_Swap_64((uint64_t*)&dataBuf[8]);
-			//now loop through the zone descriptors...
-			for (uint32_t iter = 64; iter < dataBufLength; iter += 64)
-			{
-				//first two bytes are bit fields that translate exactly the same...leave them alone
-				//zone length
-				byte_Swap_64((uint64_t*)&dataBuf[iter + 8]);
-				//zone start LBA
-				byte_Swap_64((uint64_t*)&dataBuf[iter + 16]);
-				//write pointer LBA
-				byte_Swap_64((uint64_t*)&dataBuf[iter + 24]);
-			}
-		}
+        else
+        {
+            if (SUCCESS != ata_Report_Zones_Ext(device, reportingOptions, partialBit, dataBufLength / 512, zoneStartLBA, dataBuf, dataBufLength))
+            {
+                set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                return FAILURE;
+            }
+            else
+            {
+                //need to byte swap fields to SCSI endianness.
+                //zone list length
+                byte_Swap_32((uint32_t*)&dataBuf[0]);
+                //max lba
+                byte_Swap_64((uint64_t*)&dataBuf[8]);
+                //now loop through the zone descriptors...
+                for (uint32_t iter = 64; iter < dataBufLength; iter += 64)
+                {
+                    //first two bytes are bit fields that translate exactly the same...leave them alone
+                    //zone length
+                    byte_Swap_64((uint64_t*)&dataBuf[iter + 8]);
+                    //zone start LBA
+                    byte_Swap_64((uint64_t*)&dataBuf[iter + 16]);
+                    //write pointer LBA
+                    byte_Swap_64((uint64_t*)&dataBuf[iter + 24]);
+                }
+            }
+        }
         break;
     default:
+        fieldPointer = 1;
+        bitPointer = 4;
+        //invalid field in cdb (reserved field)
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         //invalid field in CDB
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return NOT_SUPPORTED;
         break;
     }
     if (localMemory && ret == SUCCESS && allocationLength > 0 && dataBuf)
@@ -12288,6 +12329,35 @@ int translate_SCSI_Zone_Management_Out_Command(tDevice *device, ScsiIoCtx *scsiI
     //    dataBufLength = allocationLength;
     //    dataBuf = scsiIoCtx->pdata;
     //}
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
+    if ((fieldPointer = 1) != 0 && M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0
+        || ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[10] != 0)
+        || ((fieldPointer = 11) != 0 && scsiIoCtx->cdb[11] != 0)
+        || ((fieldPointer = 12) != 0 && scsiIoCtx->cdb[12] != 0)
+        || ((fieldPointer = 13) != 0 && scsiIoCtx->cdb[13] != 0)
+        || ((fieldPointer = 14) != 0 && M_GETBITRANGE(scsiIoCtx->cdb[14], 7, 1) != 0)
+        )
+    {
+        if (bitPointer == 0)
+        {
+            uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+            uint8_t counter = 0;
+            while (reservedByteVal > 0 && counter < 8)
+            {
+                reservedByteVal >>= 1;
+                ++counter;
+            }
+            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        }
+        //invalid field in cdb (reserved field)
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        //invalid field in CDB
+        ret = NOT_SUPPORTED;
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return ret;
+    }
     switch (serviceAction)
     {
     case ZM_ACTION_CLOSE_ZONE:
@@ -12316,8 +12386,13 @@ int translate_SCSI_Zone_Management_Out_Command(tDevice *device, ScsiIoCtx *scsiI
         break;
     default:
         //invalid field in CDB
+        fieldPointer = 1;
+        bitPointer = 4;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        //invalid field in CDB
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return ret;
         break;
     }
     //if (localMemory && ret == SUCCESS && allocationLength > 0 && dataBuf)
