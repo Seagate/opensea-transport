@@ -6813,6 +6813,9 @@ int translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     uint16_t offset = bufferOffset >> 9;//need bits 23:9
     bool downloadCommandSupported = false;
     bool downloadMode3Supported = false;
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     if (device->drive_info.IdentifyData.ata.Word083 & BIT0 || device->drive_info.IdentifyData.ata.Word086 & BIT0)
     {
         downloadCommandSupported = true;
@@ -6821,10 +6824,15 @@ int translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     {
         downloadMode3Supported = true;
     }
+    //TODO: Min/max download transfer size support. Don't adjust for that today...right now we just say invalid field in CDB.-TJE
     switch (mode)
     {
     case 0x02://Write buffer command
-        if (bufferID == 0 && bufferOffset == 0 && parameterListLength == LEGACY_DRIVE_SEC_SIZE)
+        if (((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && modeSpecific == 0)//mode specific field is reserved in this command, so make sure it's zero!
+            && ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && bufferID == 0)
+            && ((fieldPointer = 3) != 0 && (bitPointer = 7) != 0 && bufferOffset == 0)
+            && ((fieldPointer = 6) != 0 && (bitPointer = 7) != 0 && parameterListLength == LEGACY_DRIVE_SEC_SIZE)
+           )
         {
             if (SUCCESS != ata_Write_Buffer(device, scsiIoCtx->pdata, device->drive_info.ata_Options.writeBufferDMASupported))
             {
@@ -6833,136 +6841,221 @@ int translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         }
         else
         {
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
             ret = NOT_SUPPORTED;
-            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         }
         break;
     case 0x05://ATA Download Microcode
         if (downloadCommandSupported || device->drive_info.ata_Options.downloadMicrocodeDMASupported)
         {
-            if (SUCCESS != ata_Download_Microcode(device, ATA_DL_MICROCODE_SAVE_IMMEDIATE, blockCount, 0, device->drive_info.ata_Options.downloadMicrocodeDMASupported, scsiIoCtx->pdata, scsiIoCtx->dataLength))
+            if (((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && modeSpecific == 0)
+                && ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && bufferID == 0)
+                && ((fieldPointer = 3) != 0 && (bitPointer = 7) != 0 && bufferOffset == 0)
+                && ((fieldPointer = 6) != 0 && (bitPointer = 7) != 0 && parameterListLength == 0)
+                )
             {
-                set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                if (SUCCESS != ata_Download_Microcode(device, ATA_DL_MICROCODE_SAVE_IMMEDIATE, blockCount, 0, device->drive_info.ata_Options.downloadMicrocodeDMASupported, scsiIoCtx->pdata, scsiIoCtx->dataLength))
+                {
+                    set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                }
+                else
+                {
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_UNIT_ATTENTION, 0x3F, 0x01, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                }
             }
-            else
+            else //these fields are reserved or vendor specific so make sure they are zerod out
             {
-                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_UNIT_ATTENTION, 0x3F, 0x01, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                ret = NOT_SUPPORTED;
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
             }
         }
-        else
+        else //download not supported, so mode not supported
         {
+            fieldPointer = 1;
+            bitPointer = 4;
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
             ret = NOT_SUPPORTED;
-            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         }
         break;
     case 0x07://ATA Download Microcode Segmented
         if ((downloadCommandSupported || device->drive_info.ata_Options.downloadMicrocodeDMASupported) && downloadMode3Supported)
         {
-            if ((bufferOffset & 0x1FF) == 0 && (parameterListLength & 0x1FF) == 0)
+            if (((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && modeSpecific == 0)//mode specific is reserved in this mode
+                && ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && bufferID == 0)//buffer ID should be zero since we don't support other buffer IDs
+                )
             {
-                if (device->drive_info.IdentifyData.ata.Word234 > blockCount && device->drive_info.IdentifyData.ata.Word234 != 0xFFFF)//check minimum transfer size
+                if ((bufferOffset & 0x1FF) == 0 && (parameterListLength & 0x1FF) == 0)
                 {
-                    ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-                }
-                else if (device->drive_info.IdentifyData.ata.Word235 < blockCount && device->drive_info.IdentifyData.ata.Word234 != 0)//check maximum transfer size
-                {
-                    ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-                }
-                else
-                {
-                    if (SUCCESS != ata_Download_Microcode(device, ATA_DL_MICROCODE_OFFSETS_SAVE_IMMEDIATE, blockCount, offset, device->drive_info.ata_Options.downloadMicrocodeDMASupported, scsiIoCtx->pdata, scsiIoCtx->dataLength))
+                    if (device->drive_info.IdentifyData.ata.Word234 > blockCount && device->drive_info.IdentifyData.ata.Word234 != 0xFFFF)//check minimum transfer size
                     {
-                        set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                        fieldPointer = 6;
+                        bitPointer = 7;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                        ret = NOT_SUPPORTED;
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
-                    else if (device->drive_info.lastCommandRTFRs.secCnt == 0x02)
+                    else if (device->drive_info.IdentifyData.ata.Word235 < blockCount && device->drive_info.IdentifyData.ata.Word234 != 0)//check maximum transfer size
                     {
-                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_UNIT_ATTENTION, 0x3F, 0x01, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        fieldPointer = 6;
+                        bitPointer = 7;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                        ret = NOT_SUPPORTED;
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
+                    else
+                    {
+                        if (SUCCESS != ata_Download_Microcode(device, ATA_DL_MICROCODE_OFFSETS_SAVE_IMMEDIATE, blockCount, offset, device->drive_info.ata_Options.downloadMicrocodeDMASupported, scsiIoCtx->pdata, scsiIoCtx->dataLength))
+                        {
+                            set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                        }
+                        else if (device->drive_info.lastCommandRTFRs.secCnt == 0x02)
+                        {
+                            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_UNIT_ATTENTION, 0x3F, 0x01, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        }
+                    }
+                }
+                else //invalid parameter list length! must be in 200h sizes only!
+                {
+                    fieldPointer = 6;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    ret = NOT_SUPPORTED;
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 }
             }
-            else
+            else //these fields must be zeroed out
             {
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                 ret = NOT_SUPPORTED;
-                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
             }
         }
-        else
+        else //mode not supported by drive, so we cannot support this command translation
         {
+            fieldPointer = 1;
+            bitPointer = 4;
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
             ret = NOT_SUPPORTED;
-            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         }
         break;
     case 0x0D://ATA Deferred Download
         //check mode specific for PO-ACT and HR-ACT bits
         if ((modeSpecific & BIT2) == 0 || modeSpecific & BIT1)
         {
+            fieldPointer = 1;
+            bitPointer = 7;
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
             ret = NOT_SUPPORTED;
-            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
             break;
         }
         //fall through to finish processing the command
     case 0x0E://ATA Deferred Download
         if ((downloadCommandSupported || device->drive_info.ata_Options.downloadMicrocodeDMASupported) && device->drive_info.softSATFlags.deferredDownloadSupported)
         {
-            if ((bufferOffset & 0x1FF) == 0 && (parameterListLength & 0x1FF) == 0)
+            if (((mode == 0x0E && ((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && modeSpecific == 0)) || mode == 0x0D) //mode specific is reserved in this mode (0x0E)
+                && ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && bufferID == 0)//buffer ID should be zero since we don't support other buffer IDs
+                )
             {
-                if (device->drive_info.IdentifyData.ata.Word234 > blockCount && device->drive_info.IdentifyData.ata.Word234 != 0xFFFF)//check minimum transfer size
+                if ((bufferOffset & 0x1FF) == 0 && (parameterListLength & 0x1FF) == 0)
                 {
-                    ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-                }
-                else if (device->drive_info.IdentifyData.ata.Word235 < blockCount && device->drive_info.IdentifyData.ata.Word234 != 0)//check maximum transfer size
-                {
-                    ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-                }
-                else
-                {
-                    if (SUCCESS != ata_Download_Microcode(device, ATA_DL_MICROCODE_OFFSETS_SAVE_FUTURE, blockCount, offset, device->drive_info.ata_Options.downloadMicrocodeDMASupported, scsiIoCtx->pdata, scsiIoCtx->dataLength))
+                    if (device->drive_info.IdentifyData.ata.Word234 > blockCount && device->drive_info.IdentifyData.ata.Word234 != 0xFFFF)//check minimum transfer size
                     {
-                        set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                        fieldPointer = 6;
+                        bitPointer = 7;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                        ret = NOT_SUPPORTED;
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
-                    else if (device->drive_info.lastCommandRTFRs.secCnt == 0x03)
+                    else if (device->drive_info.IdentifyData.ata.Word235 < blockCount && device->drive_info.IdentifyData.ata.Word234 != 0)//check maximum transfer size
                     {
-                        //need to save that microcode is ready to be activated which can be reported somewhere else.
+                        fieldPointer = 6;
+                        bitPointer = 7;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                        ret = NOT_SUPPORTED;
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
+                    else
+                    {
+                        if (SUCCESS != ata_Download_Microcode(device, ATA_DL_MICROCODE_OFFSETS_SAVE_FUTURE, blockCount, offset, device->drive_info.ata_Options.downloadMicrocodeDMASupported, scsiIoCtx->pdata, scsiIoCtx->dataLength))
+                        {
+                            set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                        }
+                        else if (device->drive_info.lastCommandRTFRs.secCnt == 0x03)
+                        {
+                            //need to save that microcode is ready to be activated which can be reported somewhere else. This is also needed within Sanitize to create an error condition that the code needs to be activated first.
+                        }
+                    }
+                }
+                else //invalid parameter list length! must be in 200h sizes only!
+                {
+                    fieldPointer = 6;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    ret = NOT_SUPPORTED;
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                }
+            }
+            else //these fields must be zeroed out
+            {
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                ret = NOT_SUPPORTED;
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            }
+        }
+        else //mode not supported by drive
+        {
+            fieldPointer = 1;
+            bitPointer = 4;
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            ret = NOT_SUPPORTED;
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        }
+        break;
+    case 0x0F://ATA Activate Deferred Microcode
+        if ((downloadCommandSupported || device->drive_info.ata_Options.downloadMicrocodeDMASupported) && device->drive_info.softSATFlags.deferredDownloadSupported)
+        {
+            if (((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && modeSpecific == 0 )
+                && ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && bufferID == 0)
+                && ((fieldPointer = 3) != 0 && (bitPointer = 7) != 0 && bufferOffset == 0)
+                && ((fieldPointer = 6) != 0 && (bitPointer = 7) != 0 && parameterListLength == 0)
+               )
+            {
+                if (SUCCESS != ata_Download_Microcode(device, ATA_DL_MICROCODE_ACTIVATE, blockCount, offset, device->drive_info.ata_Options.downloadMicrocodeDMASupported, scsiIoCtx->pdata, scsiIoCtx->dataLength))
+                {
+                    set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                }
+                else if (device->drive_info.lastCommandRTFRs.secCnt == 0x02)
+                {
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_UNIT_ATTENTION, 0x3F, 0x01, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
                 }
             }
             else
             {
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                 ret = NOT_SUPPORTED;
-                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
             }
         }
-        else
+        else //mode not supported by drive
         {
+            fieldPointer = 1;
+            bitPointer = 4;
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
             ret = NOT_SUPPORTED;
-            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         }
         break;
-    case 0x0F://ATA Activate Deferred Microcode
-        if (modeSpecific == 0 && bufferOffset == 0 && bufferID == 0 && parameterListLength == 0 && device->drive_info.softSATFlags.deferredDownloadSupported)
-        {
-            if (SUCCESS != ata_Download_Microcode(device, ATA_DL_MICROCODE_ACTIVATE, blockCount, offset, device->drive_info.ata_Options.downloadMicrocodeDMASupported, scsiIoCtx->pdata, scsiIoCtx->dataLength))
-            {
-                set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
-            }
-            else if (device->drive_info.lastCommandRTFRs.secCnt == 0x02)
-            {
-                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_UNIT_ATTENTION, 0x3F, 0x01, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-            }
-        }
-        else
-        {
-            ret = NOT_SUPPORTED;
-            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-        }
-        break;
-    default://unknown or unsupported
+    default://unknown or unsupported mode
+        fieldPointer = 1;
+        bitPointer = 4;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         break;
     }
     return ret;
@@ -10866,7 +10959,7 @@ int translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 int translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx, bool parametersSaveble, uint8_t *ptrToBeginningOfModePage, uint16_t pageLength)
 {
     int ret = SUCCESS;
-    uint32_t dataOffset = ptrToBeginningOfModePage - scsiIoCtx->pdata;//to be used when setting which field is invalid in parameter list
+    uint32_t dataOffset = (uint32_t)(ptrToBeginningOfModePage - scsiIoCtx->pdata);//to be used when setting which field is invalid in parameter list
     uint8_t senseKeySpecificDescriptor[8] = { 0 };
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
@@ -10997,7 +11090,7 @@ int translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx, boo
 int translate_Mode_Select_Control_0Ah(tDevice *device, ScsiIoCtx *scsiIoCtx, bool parametersSaveble, uint8_t *ptrToBeginningOfModePage, uint16_t pageLength)
 {
     int ret = SUCCESS;
-    uint32_t dataOffset = ptrToBeginningOfModePage - scsiIoCtx->pdata;//to be used when setting which field is invalid in parameter list
+    uint32_t dataOffset = (uint32_t)(ptrToBeginningOfModePage - scsiIoCtx->pdata);//to be used when setting which field is invalid in parameter list
     uint8_t senseKeySpecificDescriptor[8] = { 0 };
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
@@ -11590,7 +11683,7 @@ int translate_Mode_Select_Power_Conditions_1A(tDevice *device, ScsiIoCtx *scsiIo
 int translate_Mode_Select_ATA_Power_Condition_1A_F1(tDevice *device, ScsiIoCtx *scsiIoCtx, bool parametersSaveble, uint8_t *ptrToBeginningOfModePage, uint16_t pageLength)
 {
     int ret = SUCCESS;
-    uint32_t dataOffset = ptrToBeginningOfModePage - scsiIoCtx->pdata;
+    uint32_t dataOffset = (uint32_t)(ptrToBeginningOfModePage - scsiIoCtx->pdata);//to be used when setting which field is invalid in parameter list
     uint8_t senseKeySpecificDescriptor[8] = { 0 };
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
