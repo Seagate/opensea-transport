@@ -21,6 +21,18 @@ extern bool validate_Device_Struct(versionBlock);
 
 static struct cam_device *cam_dev = NULL;
 
+int get_Exclusive_Access(tDevice *device)
+{
+    //TODO: figure out how to switch the permissions...this may require closing and reopening the handle!
+    return NOT_SUPPORTED;
+}
+
+int restore_Default_Access(tDevice *device)
+{
+    //TODO: figure out how to switch the permissions...this may require closing and reopening the handle!
+    return NOT_SUPPORTED;
+}
+
 int get_Device( const char *filename, tDevice *device )
 {
     struct ccb_getdev cgd;
@@ -44,6 +56,7 @@ int get_Device( const char *filename, tDevice *device )
         cam_dev = cam_open_spec_device(devName, devUnit, O_RDWR, NULL);
         if (cam_dev != NULL)
         {
+            device->os_info.handleFlags = O_RDWR;
             //Set name and friendly name
             //name
             strcpy(device->os_info.name, filename);

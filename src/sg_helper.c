@@ -532,6 +532,29 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
     }
     return UNKNOWN;
 }
+
+int get_Exclusive_Access(tDevice *device)
+{
+    int ret = fcntl(device->os_info.fd, F_SETFL, O_RDWR);//O_RDWR is ignored, but this should be removing the O_NONBLOCK flag
+    if (ret != 0)
+    {
+        ret = FAILURE;
+        perror("Could not get exclusive handle access\n");
+    }
+    return ret;
+}
+
+int restore_Default_Access(tDevice *device)
+{
+    int ret = fcntl(device->os_info.fd, F_SETFL, device->os_info.handleFlags);//reset with what we opened the handle with
+    if (ret != 0)
+    {
+        ret = FAILURE;
+        perror("Could not restore default handle access\n");
+    }
+    return ret;
+}
+
 #define LIN_MAX_HANDLE_LENGTH 16
 int get_Device(const char *filename, tDevice *device)
 {
@@ -592,7 +615,7 @@ int get_Device(const char *filename, tDevice *device)
             return FAILURE;
         }
     }
-
+    device->os_info.handleFlags = O_RDWR | O_NONBLOCK;
     //Adding support for different device discovery options. 
     if (device->dFlags == OPEN_HANDLE_ONLY)
     {

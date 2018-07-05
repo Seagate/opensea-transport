@@ -181,6 +181,36 @@ int close_Device(tDevice *dev)
 	}
 }
 
+int get_Exclusive_Access(tDevice *device)
+{
+    //TODO: figure out how to switch the permissions...this may require closing and reopening the handle!
+    if (DeviceIoControl(device->os_info.fd, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, NULL, NULL /*overlapped param*/))
+    {
+        return SUCCESS;
+    }
+    else
+    {
+        print_Windows_Error_To_Screen(GetLastError());
+        return FAILURE;
+    }
+    return NOT_SUPPORTED;
+}
+
+int restore_Default_Access(tDevice *device)
+{
+    //TODO: figure out how to switch the permissions...this may require closing and reopening the handle!
+    if (DeviceIoControl(device->os_info.fd, FSCTL_UNLOCK_VOLUME, NULL, 0, NULL, 0, NULL, NULL /*overlapped param*/))
+    {
+        return SUCCESS;
+    }
+    else
+    {
+        print_Windows_Error_To_Screen(GetLastError());
+        return FAILURE;
+    }
+    return NOT_SUPPORTED;
+}
+
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
 int get_Device(const char *filename, tDevice *device )
 {
@@ -235,6 +265,7 @@ int get_Device(const char *filename, tDevice *device )
                                     NULL);
 
 	device->os_info.last_error = GetLastError();
+    device->os_info.handleFlags = FILE_SHARE_READ | FILE_SHARE_WRITE;
 
     // Check if we get a invalid handle back.
     if (device->os_info.fd == INVALID_HANDLE_VALUE)

@@ -893,6 +893,7 @@ extern "C"
     {
         char                name[30];//handle name (string)
         char                friendlyName[20];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
+        int                 handleFlags;//can store things like O_RDWR, O_NONBLOCK, etc from when it was opened.
         eOSType             osType;//useful for lower layers to do OS specific things
         #if defined (__linux__)
         int                 fd;//primary handle
@@ -1195,6 +1196,38 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int get_Device(const char *filename, tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Exclusive_Access(tDevice *device)
+    //
+    //! \brief   Description:  Using an already opened device, change the permissions to have exlusive, non-shared access to it (may help with some commands).
+    //!                        NOTE: This may not work on all operating systems or handle types (ex: raid vs system vs other driver interface)
+    //
+    //  Entry:
+    //!   \param[in] device = device struct to hold the handle among other information
+    //!
+    //  Exit:
+    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int get_Exclusive_Access(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  restore_Default_Access(tDevice *device)
+    //
+    //! \brief   Description:  Using an already opened device, change the permissions to have the default open permissions from get_Device
+    //!                        NOTE: This may not work on all operating systems or handle types (ex: raid vs system vs other driver interface)
+    //
+    //  Entry:
+    //!   \param[in] device = device struct to hold the handle among other information
+    //!
+    //  Exit:
+    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int restore_Default_Access(tDevice *device);
 
 	//-----------------------------------------------------------------------------
 	//

@@ -43,6 +43,28 @@ static void set_Device_Name(const char* filename, char * name, int sizeOfName)
     strncpy(name, s, M_Min(strlen(s), sizeOfName));
 }
 
+int get_Exclusive_Access(tDevice *device)
+{
+    int ret = fcntl(device->os_info.fd, F_SETFL, O_RDWR);//O_RDWR is ignored, but this should be removing the O_NONBLOCK flag
+    if (ret != 0)
+    {
+        ret = FAILURE;
+        perror("Could not get exclusive handle access\n");
+    }
+    return ret;
+}
+
+int restore_Default_Access(tDevice *device)
+{
+    int ret = fcntl(device->os_info.fd, F_SETFL, device->os_info.handleFlags);//reset with what we opened the handle with
+    if (ret != 0)
+    {
+        ret = FAILURE;
+        perror("Could not restore default handle access\n");
+    }
+    return ret;
+}
+
 int get_Device(const char *filename, tDevice *device)
 {
     int ret = SUCCESS;
