@@ -257,6 +257,8 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int write_Same(tDevice *device, bool useGPL, bool useDMA, uint64_t startingLba, uint64_t numberOfLogicalBlocks, uint8_t *pattern);
 
+
+    OPENSEA_TRANSPORT_API bool is_Write_Psuedo_Uncorrectable_Supported(tDevice *device);
     //-----------------------------------------------------------------------------
     //
     //  write_Psuedo_Uncorrectable_Error()
@@ -272,6 +274,7 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA);
 
+    OPENSEA_TRANSPORT_API bool is_Write_Flagged_Uncorrectable_Supported(tDevice *device);
     //-----------------------------------------------------------------------------
     //
     //  write_Flagged_Uncorrectable_Error()
