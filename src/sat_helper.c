@@ -42,6 +42,13 @@
 
 //TODO: SPC and SBC optional feature flag translations. A good SATL should enable everything to make the drive look more and act more like a SCSI device
 
+//TODO: Sense Key specific translations that are missing:
+//-Log Select
+//-Log Sense
+//-Start-Stop Unit
+//-Unmap
+//-Power Conditions Mode Page
+
 int get_Return_TFRs_From_Passthrough_Results_Log(tDevice *device, ataReturnTFRs *ataRTFRs, uint16_t parameterCode)
 {
     int ret = NOT_SUPPORTED;//Many devices don't support this log page.
