@@ -12656,7 +12656,7 @@ int translate_SCSI_Zone_Management_Out_Command(tDevice *device, ScsiIoCtx *scsiI
     uint8_t senseKeySpecificDescriptor[8] = { 0 };
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
-    if ((fieldPointer = 1) != 0 && M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0
+    if (((fieldPointer = 1) != 0 && M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0)
         || ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[10] != 0)
         || ((fieldPointer = 11) != 0 && scsiIoCtx->cdb[11] != 0)
         || ((fieldPointer = 12) != 0 && scsiIoCtx->cdb[12] != 0)
