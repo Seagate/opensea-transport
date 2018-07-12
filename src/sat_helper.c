@@ -43,7 +43,6 @@
 //TODO: SPC and SBC optional feature flag translations. A good SATL should enable everything to make the drive look more and act more like a SCSI device
 
 //TODO: Sense Key specific translations that are missing:
-//-Log Select
 //-Start-Stop Unit
 //-Unmap
 //-Power Conditions Mode Page
@@ -9211,59 +9210,116 @@ int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 int translate_Application_Client_Log_Select_0x0F(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t *ptrData, bool parameterCodeReset, bool saveParameters, uint16_t totalParameterListLength)
 {
     int ret = SUCCESS;
-    //look at the parameter data. Determine the first parameter that is to be written.
-    //SATL is required to preserve any data the host isn't requesting to modify
-    //Also verify the page code is correct (length can vary depending on how many parameters we were sent)
-    bool disableSave = ptrData[0] & BIT7;
-    bool subpageFormat = ptrData[0] & BIT6;
-    uint8_t pageCode = ptrData[0] & 0x3F;
-    uint8_t subpageCode = 0;
-    if (subpageFormat)
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
+    if (!saveParameters)//this must be set since we will be writing to the drive
     {
-        subpageCode = ptrData[1];
-    }
-    uint16_t parameterListLength = M_BytesTo2ByteValue(ptrData[2], ptrData[3]);//from the data buffer sent to the SATL
-    if ((pageCode != 0x0F && subpageCode != 0) || disableSave || !saveParameters)
-    {
-        //Error, invalid field in parameter list
+        bitPointer = 0;
+        fieldPointer = 1;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return ret;
     }
-    else if (parameterListLength > 4 && totalParameterListLength > 4 && !parameterCodeReset)
+    if (parameterCodeReset)
     {
-        bool someParameterIsInvalid = false;
-        uint16_t parameterDataOffset = 4;//past the 4 byte header
-        uint8_t parameterLength = 0xFC;//ideally, this won't ever change if the command was formatted correctly.
-        //TODO: Loop through the parameters and check lengths, parameter codes, and parameter control bytes to make sure they are valid
-        for (parameterDataOffset = 4; parameterDataOffset < parameterListLength && parameterDataOffset < totalParameterListLength; parameterDataOffset += parameterLength + 4)
+        //Support the "parameterCodeReset" option which will write zeros to all application client parameters.
+        //We need to preserve the log parameters in the data (just the parameter header...4 bytes. A simple memset to zero would probably work, but this way would be better for when the data is supposed to be read back
+        uint8_t ataLogPageToWrite = 0x90;//SAT only uses pages 90h - 9Fh. 80h - 8Fh are left alone
+        for (uint16_t parameterCode = 0; ataLogPageToWrite <= 0x9F && parameterCode <= 0x01FF; ++ataLogPageToWrite, ++parameterCode)
         {
-            uint16_t parameterCode = M_BytesTo2ByteValue(ptrData[parameterDataOffset + 0], ptrData[parameterDataOffset + 1]);
-            bool disableUpdate = ptrData[parameterDataOffset + 2] & BIT7;
-            bool parameterDisableSave = ptrData[parameterDataOffset + 2] & BIT6;//obsolete. Likely why this is now in byte zero for the whole page
-            bool targetSaveDisable = ptrData[parameterDataOffset + 2] & BIT5;
-            bool enableThresholdComparison = ptrData[parameterDataOffset + 2] & BIT4;
-            //uint8_t thresholdCriteriaMet = M_GETBITRANGE(ptrData[parameterDataOffset + 2], 3, 2);//SATL ignores this field since ETC must be zero
-            uint8_t formatAndLinking = M_GETBITRANGE(ptrData[parameterDataOffset + 2], 1, 0);
-            parameterLength = ptrData[parameterDataOffset + 3];
-            if (!disableUpdate ||
-                parameterDisableSave ||
-                targetSaveDisable ||
-                formatAndLinking != 0x03 ||
-                parameterLength != 0xFC ||
-                enableThresholdComparison ||
-                parameterCode > 0x01FF)
+            uint8_t hostLogData[16 * LEGACY_DRIVE_SEC_SIZE] = { 0 };//this memory should be all zeros, but doing a memset to be certain
+            memset(hostLogData, 0, 16 * LEGACY_DRIVE_SEC_SIZE);
+            //loop through and set the parameter bytes up correctly.
+            for (uint16_t perATAPageCounter = 0, offset = 0; perATAPageCounter < 32; ++perATAPageCounter, offset += 256)
             {
-                someParameterIsInvalid = true;
+                //Parameter code and control and length are not saved in the log so we need to set them up when returning data to the host
+                hostLogData[offset + 0] = M_Byte1(parameterCode);
+                hostLogData[offset + 1] = M_Byte0(parameterCode);
+                //set up parameter control byte
+                hostLogData[offset + 2] = 0x83;
+                hostLogData[offset + 3] = 0xFC;
+                //all other bytes will be left as zeros
+            }
+            //now write it to the drive
+            if (device->drive_info.IdentifyData.ata.Word085 & BIT5 || device->drive_info.IdentifyData.ata.Word087 & BIT5)//GPL
+            {
+                if (SUCCESS != ata_Write_Log_Ext(device, ataLogPageToWrite, 0, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, false))
+                {
+                    //break and set an error code
+                    set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    break;
+                }
+            }
+            else if (device->drive_info.IdentifyData.ata.Word085 & BIT0)//SMART read log
+            {
+                if (SUCCESS != ata_SMART_Write_Log(device, ataLogPageToWrite, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE, false))
+                {
+                    //break and set an error code
+                    set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    break;
+                }
+            }
+            else
+            {
+                //error...we shouldn't be here! This condition will be caught in the translate_scsi_Log_Select function
                 break;
             }
         }
-        if (someParameterIsInvalid)
+    }
+    else if(totalParameterListLength > 0)//this must be non-zero to enter here and do anything, otherwise it is not an error and nothing happens
+    {
+        //look at the parameter data. Determine the first parameter that is to be written.
+        //SATL is required to preserve any data the host isn't requesting to modify
+        //Also verify the page code is correct (length can vary depending on how many parameters we were sent)
+        bool disableSave = ptrData[0] & BIT7;
+        bool subpageFormat = ptrData[0] & BIT6;
+        uint8_t pageCode = ptrData[0] & 0x3F;
+        uint8_t subpageCode = ptrData[1];
+        uint16_t parameterListLength = M_BytesTo2ByteValue(ptrData[2], ptrData[3]);//from the data buffer sent to the SATL
+        if (((fieldPointer = 0) == 0 && (bitPointer = 7) != 0 && disableSave)
+            || ((fieldPointer = 0) == 0 && (bitPointer = 6) != 0 && subpageFormat)
+            || ((fieldPointer = 0) == 0 && (bitPointer = 5) != 0 && pageCode != 0x0F)
+            || ((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && subpageCode != 0)
+            )
         {
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+            //Error, invalid field in parameter list
             ret = NOT_SUPPORTED;
-            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         }
-        else
+        else if (parameterListLength > 4 && totalParameterListLength > 4)
         {
+            uint16_t parameterDataOffset = 4;//past the 4 byte header
+            uint8_t parameterLength = 0xFC;//ideally, this won't ever change if the command was formatted correctly.
+            //Loop through the parameters and check lengths, parameter codes, and parameter control bytes to make sure they are valid
+            for (parameterDataOffset = 4; parameterDataOffset < parameterListLength && parameterDataOffset < totalParameterListLength; parameterDataOffset += parameterLength + 4)
+            {
+                uint16_t parameterCode = M_BytesTo2ByteValue(ptrData[parameterDataOffset + 0], ptrData[parameterDataOffset + 1]);
+                bool disableUpdate = ptrData[parameterDataOffset + 2] & BIT7;
+                bool parameterDisableSave = ptrData[parameterDataOffset + 2] & BIT6;//obsolete. Likely why this is now in byte zero for the whole page
+                bool targetSaveDisable = ptrData[parameterDataOffset + 2] & BIT5;
+                bool enableThresholdComparison = ptrData[parameterDataOffset + 2] & BIT4;
+                //uint8_t thresholdCriteriaMet = M_GETBITRANGE(ptrData[parameterDataOffset + 2], 3, 2);//SATL ignores this field since ETC must be zero
+                uint8_t formatAndLinking = M_GETBITRANGE(ptrData[parameterDataOffset + 2], 1, 0);
+                parameterLength = ptrData[parameterDataOffset + 3];
+
+                if (((fieldPointer = parameterDataOffset) != 0 && (bitPointer = 7) != 0 && parameterCode > 0x01FF)
+                    || ((fieldPointer = parameterDataOffset + 2) != 0 && (bitPointer = 7) != 0 && !disableUpdate)
+                    || ((fieldPointer = parameterDataOffset + 2) != 0 && (bitPointer = 6) != 0 && parameterDisableSave)
+                    || ((fieldPointer = parameterDataOffset + 2) != 0 && (bitPointer = 5) != 0 && targetSaveDisable)
+                    || ((fieldPointer = parameterDataOffset + 2) != 0 && (bitPointer = 4) != 0 && enableThresholdComparison)
+                    || ((fieldPointer = parameterDataOffset + 2) != 0 && (bitPointer = 1) != 0 && formatAndLinking != 0x03)
+                    || ((fieldPointer = parameterDataOffset + 3) != 0 && (bitPointer = 7) != 0 && parameterLength != 0xFC)
+                   )
+                {
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+                    ret = NOT_SUPPORTED;
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                    return ret;
+                }
+            }
             //we know the data we were sent is good, so time to start writing it to the correct log page.
             //NOTE: For simplicity, we'll read an ATA Host Log page, modify data in it as necessary, then write it back to keep this fairly simple
             parameterDataOffset = 4;
@@ -9442,52 +9498,6 @@ int translate_Application_Client_Log_Select_0x0F(tDevice *device, ScsiIoCtx *scs
             }
         }
     }
-    else if (parameterCodeReset)
-    {
-        //Support the "parameterCodeReset" option which will write zeros to all application client parameters.
-        //We need to preserve the log parameters in the data (just the parameter header...4 bytes. A simple memset to zero would probably work, but this way would be better for when the data is supposed to be read back
-        uint8_t ataLogPageToWrite = 0x90;//SAT only uses pages 90h - 9Fh. 80h - 8Fh are left alone
-        for (uint16_t parameterCode = 0; ataLogPageToWrite <= 0x9F && parameterCode <= 0x01FF; ++ataLogPageToWrite, ++parameterCode)
-        {
-            uint8_t hostLogData[16 * LEGACY_DRIVE_SEC_SIZE] = { 0 };//this memory should be all zeros, but doing a memset to be certain
-            memset(hostLogData, 0, 16 * LEGACY_DRIVE_SEC_SIZE);
-            //loop through and set the parameter bytes up correctly.
-            for (uint16_t perATAPageCounter = 0, offset = 0; perATAPageCounter < 32; ++perATAPageCounter, offset += 256)
-            {
-                //Parameter code and control and length are not saved in the log so we need to set them up when returning data to the host
-                hostLogData[offset + 0] = M_Byte1(parameterCode);
-                hostLogData[offset + 1] = M_Byte0(parameterCode);
-                //set up parameter control byte
-                hostLogData[offset + 2] = 0x83;
-                hostLogData[offset + 3] = 0xFC;
-                //all other bytes will be left as zeros
-            }
-            //now write it to the drive
-            if (device->drive_info.IdentifyData.ata.Word085 & BIT5 || device->drive_info.IdentifyData.ata.Word087 & BIT5)//GPL
-            {
-                if (SUCCESS != ata_Write_Log_Ext(device, ataLogPageToWrite, 0, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, false))
-                {
-                    //break and set an error code
-                    set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
-                    break;
-                }
-            }
-            else if (device->drive_info.IdentifyData.ata.Word085 & BIT0)//SMART read log
-            {
-                if (SUCCESS != ata_SMART_Write_Log(device, ataLogPageToWrite, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE, false))
-                {
-                    //break and set an error code
-                    set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
-                    break;
-                }
-            }
-            else
-            {
-                //error...we shouldn't be here!
-                break;
-            }
-        }
-    }
     return ret;
 }
 
@@ -9501,6 +9511,10 @@ int translate_SCSI_Log_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     uint8_t subpageCode = 0;
     uint16_t parameterListLength = 0;
 
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
+
     parameterCodeReset = scsiIoCtx->cdb[1] & BIT1;
     saveParameters = scsiIoCtx->cdb[1] & BIT0;
     pageControl = (scsiIoCtx->cdb[2] & 0xC0) >> 6;
@@ -9508,13 +9522,27 @@ int translate_SCSI_Log_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     subpageCode = scsiIoCtx->cdb[3];
     parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
 
-    if (scsiIoCtx->cdb[4] != 0 ||
-        scsiIoCtx->cdb[5] != 0 ||
-        scsiIoCtx->cdb[6] != 0)
+    if (((fieldPointer = 1) != 0 && M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 2) != 0)
+        || ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[4] != 0)
+        || ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[5] != 0)
+        || ((fieldPointer = 6) != 0 && scsiIoCtx->cdb[6] != 0)
+       )
     {
+        if (bitPointer == 0)
+        {
+            uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+            uint8_t counter = 0;
+            while (reservedByteVal > 0 && counter < 8)
+            {
+                reservedByteVal >>= 1;
+                ++counter;
+            }
+            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        }
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         //invalid field in CDB
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
     }
     else
     {
@@ -9533,37 +9561,43 @@ int translate_SCSI_Log_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     if ((device->drive_info.IdentifyData.ata.Word085 & BIT5 || device->drive_info.IdentifyData.ata.Word087 & BIT5 || device->drive_info.IdentifyData.ata.Word085 & BIT0)
                         && device->drive_info.softSATFlags.hostLogsSupported)
                     {
-                        if (parameterListLength > 0)
-                        {
-                            ret = translate_Application_Client_Log_Select_0x0F(device, scsiIoCtx, scsiIoCtx->pdata, parameterCodeReset, saveParameters, parameterListLength);
-                        }
-                        //else //not an error according to SPC
+                        ret = translate_Application_Client_Log_Select_0x0F(device, scsiIoCtx, scsiIoCtx->pdata, parameterCodeReset, saveParameters, parameterListLength);
                     }
-                    else
+                    else //invalid page code because application client log is not supported
                     {
+                        fieldPointer = 2;
+                        bitPointer = 5;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                         ret = NOT_SUPPORTED;
-                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
                     break;
-                default:
+                default://invalid subpage code
+                    fieldPointer = 3;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                     ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     break;
                 }
                 break;
 #endif
             default: //not a supported page code
-                //invalid field in CDB
+                fieldPointer = 2;
+                bitPointer = 5;
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                 ret = NOT_SUPPORTED;
-                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 break;
             }
         }
-        else
+        else //page control is not a supported value
         {
-            //invalid field in CDB
+            fieldPointer = 2;
+            bitPointer = 7;
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
             ret = NOT_SUPPORTED;
-            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         }
     }
     return ret;
@@ -12385,7 +12419,7 @@ int translate_SCSI_Zone_Management_In_Command(tDevice *device, ScsiIoCtx *scsiIo
     switch (serviceAction)
     {
     case ZM_ACTION_REPORT_ZONES:
-        if ((fieldPointer = 14) != 0 && (bitPointer = 6) != 0 && scsiIoCtx->cdb[14] & BIT6 != 0)
+        if ((fieldPointer = 14) != 0 && (bitPointer = 6) != 0 && (scsiIoCtx->cdb[14] & BIT6) != 0)
         {
             //reserved bit is set
             set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
