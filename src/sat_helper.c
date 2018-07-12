@@ -44,7 +44,6 @@
 
 //TODO: Sense Key specific translations that are missing:
 //-Start-Stop Unit
-//-Unmap
 //-Power Conditions Mode Page
 
 int get_Return_TFRs_From_Passthrough_Results_Log(tDevice *device, ataReturnTFRs *ataRTFRs, uint16_t parameterCode)
@@ -9607,21 +9606,49 @@ int translate_SCSI_Log_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
-    //ignore the anchor bit since it is unspecified in the spec
-    //ignore group number since it is unspecified in the spec
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
+    //not supporting the ancor bit
+    //group number should be zero
     uint16_t parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
     //filter out invalid fields
-    if (M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 1) != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0 || scsiIoCtx->cdb[4] != 0 || scsiIoCtx->cdb[5] != 0 || M_GETBITRANGE(scsiIoCtx->cdb[6], 7, 6) != 0)
+    if (((fieldPointer = 1) && scsiIoCtx->cdb[1] != 0 )
+        || ((fieldPointer = 2) && scsiIoCtx->cdb[2] != 0)
+        || ((fieldPointer = 3) && scsiIoCtx->cdb[3] != 0)
+        || ((fieldPointer = 4) && scsiIoCtx->cdb[4] != 0)
+        || ((fieldPointer = 5) && scsiIoCtx->cdb[5] != 0)
+        || ((fieldPointer = 6) && scsiIoCtx->cdb[6] != 0)
+       )
     {
+        if (bitPointer == 0)
+        {
+            uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+            uint8_t counter = 0;
+            while (reservedByteVal > 0 && counter < 8)
+            {
+                reservedByteVal >>= 1;
+                ++counter;
+            }
+            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+            if (fieldPointer == 6 && bitPointer < 5)
+            {
+                bitPointer = 5;//setting group number as invalid field
+            }
+        }
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         //invalid field in CDB
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
     if (parameterListLength > 0 && parameterListLength < 8)
     {
+        fieldPointer = 7;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         //parameter list length error
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x1A, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x1A, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
     }
     else if (parameterListLength != 0 && scsiIoCtx->pdata)
     {
@@ -9640,7 +9667,10 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             if (!trimBuffer)
             {
                 //lets just set this error for now...-TJE
-                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x1A, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                fieldPointer = 7;
+                bitPointer = 7;
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x1A, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 return MEMORY_FAILURE;
             }
             //start building the buffer to transfer with data set management
@@ -9657,16 +9687,30 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 //increment this so we can check if we were given more to do than we support (to be checked after the loop)
                 numberOfLBAsToTRIM += unmapNumberOfLogicalBlocks;
                 //check we aren't trying to go over the end of the drive
-                if (unmapLogicalBlockAddress + unmapNumberOfLogicalBlocks > device->drive_info.deviceMaxLba)
+                if (unmapLogicalBlockAddress > device->drive_info.deviceMaxLba)
                 {
+                    fieldPointer = unmapBlockDescriptorIter + 0;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                     ret = FAILURE;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x21, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x21, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                    exitLoop = true;
+                    break;
+                }
+                else if (unmapLogicalBlockAddress + unmapNumberOfLogicalBlocks > device->drive_info.deviceMaxLba)
+                {
+                    fieldPointer = unmapBlockDescriptorIter + 8;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+                    ret = FAILURE;
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x21, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     exitLoop = true;
                     break;
                 }
                 //check that we haven't had too many block descriptors yet
                 if (numberOfBlockDescriptors > (64 * device->drive_info.IdentifyData.ata.Word105))
                 {
+                    //not setting sense key specific information because it's not clear in this condition what error we should point to
                     ret = FAILURE;
                     set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
                     exitLoop = true;
@@ -9675,6 +9719,7 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 //check that we haven't been asked to TRIM more LBAs than we care to support in this code
                 if (numberOfLBAsToTRIM > (64 * device->drive_info.IdentifyData.ata.Word105 * 0xFFFF))
                 {
+                    //not setting sense key specific information because it's not clear in this condition what error we should point to
                     ret = FAILURE;
                     set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
                     exitLoop = true;
