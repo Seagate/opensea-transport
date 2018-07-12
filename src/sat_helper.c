@@ -12271,21 +12271,21 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             {
                 if (longLBA)
                 {
-                    uint64_t numberOfLogicalBlocks = M_BytesTo8ByteValue(scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 0], scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 1], scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 2], scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 3], scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 4], scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 5], scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 6], scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 7]);
-                    uint32_t logicalBlockLength = M_BytesTo4ByteValue(scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 12], scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 13], scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 14], scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 15]);
+                    uint64_t numberOfLogicalBlocks = M_BytesTo8ByteValue(scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 0], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 1], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 2], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 3], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 4], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 5], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 6], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 7]);
+                    uint32_t logicalBlockLength = M_BytesTo4ByteValue(scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 12], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 13], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 14], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 15]);
                     if (numberOfLogicalBlocks != device->drive_info.deviceMaxLba)
                     {
                         //TODO: handle when this is all F's? Should we allow this to change the max LBA of the drive?
                         bitPointer = 7;
-                        fieldPointer = MODE_HEADER_LENGTH10 + 0;
+                        fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 0;
                         set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                         return NOT_SUPPORTED;
                     }
-                    if (((fieldPointer = MODE_HEADER_LENGTH10 + 8) != 0 && scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 8] != 0)
-                        || ((fieldPointer = MODE_HEADER_LENGTH10 + 9) != 0 && scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 9] != 0)
-                        || ((fieldPointer = MODE_HEADER_LENGTH10 + 10) != 0 && scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 10] != 0)
-                        || ((fieldPointer = MODE_HEADER_LENGTH10 + 11) != 0 && scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 11] != 0)
+                    if (((fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 8) != 0 && scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 8] != 0)
+                        || ((fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 9) != 0 && scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 9] != 0)
+                        || ((fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 10) != 0 && scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 10] != 0)
+                        || ((fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 11) != 0 && scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 11] != 0)
                        )
                     {
                         uint8_t reservedByteVal = scsiIoCtx->pdata[fieldPointer];
@@ -12302,7 +12302,7 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     }
                     if (logicalBlockLength != device->drive_info.deviceBlockSize)
                     {
-                        fieldPointer = MODE_HEADER_LENGTH10 + 12;
+                        fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 12;
                         bitPointer = 7;
                         set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
@@ -12318,14 +12318,14 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     {
                         //TODO: handle when this is all F's? Should we allow this to change the max LBA of the drive?
                         bitPointer = 7;
-                        fieldPointer = MODE_HEADER_LENGTH10 + 0;
+                        fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 0;
                         set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                         return NOT_SUPPORTED;
                     }
-                    if (scsiIoCtx->pdata[MODE_HEADER_LENGTH10 + 4] != 0)//short header + 4 bytes
+                    if (scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 4] != 0)//short header + 4 bytes
                     {
-                        fieldPointer = MODE_HEADER_LENGTH10 + 4;
+                        fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 4;
                         uint8_t reservedByteVal = scsiIoCtx->pdata[fieldPointer];
                         uint8_t counter = 0;
                         while (reservedByteVal > 0 && counter < 8)
@@ -12340,7 +12340,7 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     }
                     if (logicalBlockLength != device->drive_info.deviceBlockSize)
                     {
-                        fieldPointer = MODE_HEADER_LENGTH10 + 5;
+                        fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 5;
                         bitPointer = 7;
                         set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
@@ -12351,20 +12351,20 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             else
             {
                 //short block descriptor(s)...should only have 1!
-                uint32_t numberOfLogicalBlocks = M_BytesTo4ByteValue(scsiIoCtx->pdata[MODE_HEADER_LENGTH + 0], scsiIoCtx->pdata[MODE_HEADER_LENGTH + 1], scsiIoCtx->pdata[MODE_HEADER_LENGTH + 2], scsiIoCtx->pdata[MODE_HEADER_LENGTH + 3]);
-                uint32_t logicalBlockLength = M_BytesTo4ByteValue(0, scsiIoCtx->pdata[MODE_HEADER_LENGTH + 5], scsiIoCtx->pdata[MODE_HEADER_LENGTH + 6], scsiIoCtx->pdata[MODE_HEADER_LENGTH + 7]);
+                uint32_t numberOfLogicalBlocks = M_BytesTo4ByteValue(scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 0], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 1], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 2], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 3]);
+                uint32_t logicalBlockLength = M_BytesTo4ByteValue(0, scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 5], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 6], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 7]);
                 if (numberOfLogicalBlocks != device->drive_info.deviceMaxLba)
                 {
                     //TODO: handle when this is all F's? Should we allow this to change the max LBA of the drive?
                     bitPointer = 7;
-                    fieldPointer = MODE_HEADER_LENGTH + 0;
+                    fieldPointer = MODE_PARAMETER_HEADER_6_LEN + 0;
                     set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                     set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     return NOT_SUPPORTED;
                 }
-                if (scsiIoCtx->pdata[MODE_HEADER_LENGTH + 4] != 0)//short header + 4 bytes
+                if (scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 4] != 0)//short header + 4 bytes
                 {
-                    fieldPointer = MODE_HEADER_LENGTH + 4;
+                    fieldPointer = MODE_PARAMETER_HEADER_6_LEN + 4;
                     uint8_t reservedByteVal = scsiIoCtx->pdata[fieldPointer];
                     uint8_t counter = 0;
                     while (reservedByteVal > 0 && counter < 8)
@@ -12379,7 +12379,7 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 }
                 if (logicalBlockLength != device->drive_info.deviceBlockSize)
                 {
-                    fieldPointer = MODE_HEADER_LENGTH + 5;
+                    fieldPointer = MODE_PARAMETER_HEADER_6_LEN + 5;
                     bitPointer = 7;
                     set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                     set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
@@ -12387,10 +12387,10 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 }
             }
         }
-        uint8_t headerLength = MODE_HEADER_LENGTH;
+        uint8_t headerLength = MODE_PARAMETER_HEADER_6_LEN;
         if (tenByteCommand)
         {
-            headerLength = MODE_HEADER_LENGTH10;
+            headerLength = MODE_PARAMETER_HEADER_10_LEN;
         }
         //time to call the function that handles the changes for the mode page requested...save all this info and pass it in for convenience in that function
         uint8_t modePage = scsiIoCtx->pdata[headerLength + blockDescriptorLength] & 0x3F;
