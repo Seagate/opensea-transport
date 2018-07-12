@@ -44,7 +44,6 @@
 
 //TODO: Sense Key specific translations that are missing:
 //-Log Select
-//-Log Sense
 //-Start-Stop Unit
 //-Unmap
 //-Power Conditions Mode Page
@@ -7812,10 +7811,16 @@ int translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx *scsiIoCtx)
     int ret = SUCCESS;
     uint8_t selfTestResults[404] = { 0 };
     uint16_t parameterCode = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     if (parameterCode > 0x0014)
     {
+        fieldPointer = 5;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
     if (parameterCode == 0)
@@ -8223,6 +8228,9 @@ int translate_Read_Error_Counters_Log_0x03(tDevice *device, ScsiIoCtx *scsiIoCtx
     bool reportedUncorrectablesValid = false;
     readErrorCountersLog[0] = 0x03;
     readErrorCountersLog[1] = 0x00;
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     if (parameterPointer <= 0x0004 && device->drive_info.softSATFlags.deviceStatsPages.rotatingMediaStatisticsPageSupported)
     {
         if (SUCCESS != ata_Read_Log_Ext(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_ROTATING_MEDIA, logPage, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
@@ -8271,8 +8279,11 @@ int translate_Read_Error_Counters_Log_0x03(tDevice *device, ScsiIoCtx *scsiIoCtx
     }
     if (parameterPointer > 0x0006 || (parameterPointer > 0x0004 && !reportedUncorrectablesValid))
     {
+        fieldPointer = 5;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
     }
     if (reportedUncorrectablesValid || correctiveAlgValid)
     {
@@ -8284,11 +8295,13 @@ int translate_Read_Error_Counters_Log_0x03(tDevice *device, ScsiIoCtx *scsiIoCtx
             memcpy(scsiIoCtx->pdata, readErrorCountersLog, M_Min(M_Min(20U, offset), scsiIoCtx->dataLength));
         }
     }
-    else
+    else //translatable fields aren't valid...
     {
-        //set an error since we didn't read anything
+        fieldPointer = 2;
+        bitPointer = 5;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
     }
     return ret;
 }
@@ -8303,10 +8316,16 @@ int translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiIoCtx)
     uint64_t *qwordPtr = (uint64_t*)&logPage[0];
     bool currentValid = false;
     bool referenceValid = false;
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     if (parameterPointer > 1)
     {
+        fieldPointer = 5;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
     if (SUCCESS != ata_Read_Log_Ext(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_TEMP, logPage, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
@@ -8370,10 +8389,13 @@ int translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiIoCtx)
             memcpy(scsiIoCtx->pdata, temperatureLog, M_Min(M_Min(14U, offset), scsiIoCtx->dataLength));
         }
     }
-    else
+    else //translatable fields aren't valid...so we need to set bad page code
     {
+        fieldPointer = 5;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
     }
     return ret;
 }
@@ -8387,10 +8409,16 @@ int translate_Solid_State_Media_Log_0x11(tDevice *device, ScsiIoCtx *scsiIoCtx)
     uint8_t logPage[LEGACY_DRIVE_SEC_SIZE] = { 0 };
     uint64_t *qwordPtr = (uint64_t*)&logPage[0];
     bool endurancevalid = false;
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     if (parameterPointer > 1)
     {
+        fieldPointer = 5;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
     if (SUCCESS != ata_Read_Log_Ext(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_SSD, logPage, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
@@ -8427,10 +8455,13 @@ int translate_Solid_State_Media_Log_0x11(tDevice *device, ScsiIoCtx *scsiIoCtx)
             memcpy(scsiIoCtx->pdata, solidStateMediaLog, M_Min(M_Min(12U, offset), scsiIoCtx->dataLength));
         }
     }
-    else
+    else //the translatable field is not valid, so return unsupported page code
     {
+        fieldPointer = 2;
+        bitPointer = 5;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
     }
     return ret;
 }
@@ -8444,10 +8475,16 @@ int translate_Background_Scan_Results_Log_0x15(tDevice *device, ScsiIoCtx *scsiI
     uint8_t logPage[LEGACY_DRIVE_SEC_SIZE] = { 0 };
     uint64_t *qwordPtr = (uint64_t*)&logPage[0];
     bool pohvalid = false;
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     if (parameterPointer > 0)
     {
+        fieldPointer = 5;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
     if (SUCCESS != ata_Read_Log_Ext(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_GENERAL, logPage, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
@@ -8493,10 +8530,13 @@ int translate_Background_Scan_Results_Log_0x15(tDevice *device, ScsiIoCtx *scsiI
             memcpy(scsiIoCtx->pdata, backgroundResults, M_Min(M_Min(20U, offset), scsiIoCtx->dataLength));
         }
     }
-    else
+    else //cannot translate the one translatable field, so set invalid page code
     {
+        fieldPointer = 2;
+        bitPointer = 5;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
     }
     return ret;
 }
@@ -8513,11 +8553,17 @@ int translate_General_Statistics_And_Performance_Log_0x19(tDevice *device, ScsiI
     bool numWritesValid = false;
     bool logicalSectorsWrittenValid = false;
     bool logicalSectorsReadValid = false;
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     //validity bools...used to make sure we set up SOME data
     if (parameterPointer > 1)
     {
+        fieldPointer = 5;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
     if (SUCCESS != ata_Read_Log_Ext(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_GENERAL, logPage, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
@@ -8602,10 +8648,13 @@ int translate_General_Statistics_And_Performance_Log_0x19(tDevice *device, ScsiI
             memcpy(scsiIoCtx->pdata, generalStatisticsAndPerformance, M_Min(M_Min(72U, offset), scsiIoCtx->dataLength));
         }
     }
-    else
+    else //none of the translatable fields are valid, so say this page is not supported
     {
+        fieldPointer = 2;
+        bitPointer = 5;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
     }
     return ret;
 }
@@ -8671,11 +8720,17 @@ int translate_Application_Client_Log_Sense_0x0F(tDevice *device, ScsiIoCtx *scsi
     int ret = SUCCESS;
     uint16_t parameterCode = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
     uint16_t allocationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     //support parameters 0 - 1FFh
     if (parameterCode > 0x01FF)
     {
+        fieldPointer = 5;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
     //calculate how many parameters we'll be returning.
@@ -8843,11 +8898,28 @@ int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     uint8_t pageCode = scsiIoCtx->cdb[2] & 0x3F;
     uint8_t subpageCode = scsiIoCtx->cdb[3];
     uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     //filter out unsupported bits
-    if (M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 1) != 0 || scsiIoCtx->cdb[4] != 0)
+    if (((fieldPointer = 1) != 0 && M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 1) != 0)
+        || ((fieldPointer = 4) != 0 &&scsiIoCtx->cdb[4] != 0)
+       )
     {
+        if (bitPointer == 0)
+        {
+            uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+            uint8_t counter = 0;
+            while (reservedByteVal > 0 && counter < 8)
+            {
+                reservedByteVal >>= 1;
+                ++counter;
+            }
+            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        }
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         ret = NOT_SUPPORTED;
-        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
     }
     else
     {
@@ -8867,8 +8939,11 @@ int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     ret = translate_Supported_Log_Pages(device, scsiIoCtx);//Update this page as additional pages of support are added!
                     break;
                 default:
+                    fieldPointer = 3;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                     ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     break;
                 }
                 break;
@@ -8883,13 +8958,19 @@ int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     }
                     else
                     {
+                        fieldPointer = 2;
+                        bitPointer = 5;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                         ret = NOT_SUPPORTED;
-                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
                     break;
                 default:
+                    fieldPointer = 3;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                     ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     break;
                 }
                 break;
@@ -8903,13 +8984,19 @@ int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     }
                     else
                     {
+                        fieldPointer = 2;
+                        bitPointer = 5;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                         ret = NOT_SUPPORTED;
-                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
                     break;
                 default:
+                    fieldPointer = 3;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                     ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     break;
                 }
                 break;
@@ -8927,13 +9014,19 @@ int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     }
                     else
                     {
+                        fieldPointer = 2;
+                        bitPointer = 5;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                         ret = NOT_SUPPORTED;
-                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
                     break;
                 default:
+                    fieldPointer = 3;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                     ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1); 
                     break;
                 }
                 break;
@@ -8948,13 +9041,19 @@ int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     }
                     else
                     {
+                        fieldPointer = 2;
+                        bitPointer = 5;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                         ret = NOT_SUPPORTED;
-                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
                     break;
                 default:
+                    fieldPointer = 3;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                     ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     break;
                 }
                 break;
@@ -8969,13 +9068,19 @@ int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     }
                     else
                     {
+                        fieldPointer = 2;
+                        bitPointer = 5;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                         ret = NOT_SUPPORTED;
-                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
                     break;
                 default:
+                    fieldPointer = 3;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                     ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     break;
                 }
                 break;
@@ -8989,13 +9094,19 @@ int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     }
                     else
                     {
+                        fieldPointer = 2;
+                        bitPointer = 5;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                         ret = NOT_SUPPORTED;
-                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
                     break;
                 default:
+                    fieldPointer = 3;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                     ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     break;
                 }
                 break;
@@ -9009,13 +9120,19 @@ int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     }
                     else
                     {
+                        fieldPointer = 2;
+                        bitPointer = 5;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                         ret = NOT_SUPPORTED;
-                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
                     break;
                 default:
+                    fieldPointer = 3;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                     ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     break;
                 }
                 break;
@@ -9033,8 +9150,11 @@ int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                             }
                             else
                             {
+                                fieldPointer = 5;
+                                bitPointer = 7;
+                                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                                 ret = NOT_SUPPORTED;
-                                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                             }
                         }
                         else
@@ -9045,14 +9165,20 @@ int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     }
                     else
                     {
+                        fieldPointer = 2;
+                        bitPointer = 5;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                         ret = NOT_SUPPORTED;
-                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
                 }
                 else
                 {
+                    fieldPointer = 3;
+                    bitPointer = 7;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                     ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 }
                 break;
 #if SAT_SPEC_SUPPORTED > 1
@@ -9062,15 +9188,21 @@ int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 break;
 #endif
             default:
+                fieldPointer = 2;
+                bitPointer = 5;
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                 ret = NOT_SUPPORTED;
-                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 break;
             }
         }
-        else
+        else //page control
         {
+            fieldPointer = 2;
+            bitPointer = 7;
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
             ret = NOT_SUPPORTED;
-            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         }
     }
     return ret;
