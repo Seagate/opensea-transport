@@ -30,7 +30,7 @@
 #define SAT_SPEC_SUPPORTED 4
 
 #if !defined SAT_SPEC_SUPPORTED || SAT_SPEC_SUPPORTED > 4 || SAT_SPEC_SUPPORTED < 1
-#error Invalid SAT_SPEC_SUPPORTED defined in sat_helper.c. Values 1 - 4 are valid
+#error Invalid SAT_SPEC_SUPPORTED defined in sat_helper.c. Values 1 - 4 are valid. At least 1 SAT spec version should be specified!
 #endif
 
 //TODO: (1 = on, 0 = off)
@@ -44,7 +44,6 @@
 
 //TODO: Sense Key specific translations that are missing:
 //-Start-Stop Unit
-//-Power Conditions Mode Page
 
 int get_Return_TFRs_From_Passthrough_Results_Log(tDevice *device, ataReturnTFRs *ataRTFRs, uint16_t parameterCode)
 {
@@ -11424,45 +11423,60 @@ int translate_Mode_Select_Control_0Ah(tDevice *device, ScsiIoCtx *scsiIoCtx, boo
 int translate_Mode_Select_Power_Conditions_1A(tDevice *device, ScsiIoCtx *scsiIoCtx, bool parametersSaveble, uint8_t *ptrToBeginningOfModePage, uint16_t pageLength)
 {
     int ret = SUCCESS;
-    bool invalidFieldInParameterList = false;
     bool saveParameters = false;
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
     if (scsiIoCtx->cdb[1] & BIT0)
     {
         saveParameters = true;
     }
     if (device->drive_info.IdentifyData.ata.Word119 & BIT7)//EPC supported
     {
-        if (pageLength != 0x0026)
+        if (((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && pageLength != 0x0026)
+            || ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && M_GETBITRANGE(ptrToBeginningOfModePage[2], 7, 6) != 0) //PM_BG_PRECEDENCE
+            || ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(ptrToBeginningOfModePage[2], 5, 1) != 0) //reserved
+            || ((fieldPointer = 3) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(ptrToBeginningOfModePage[3], 7, 4) != 0) //reserved
+            || ((fieldPointer = 24) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[24] == 0) //reserved
+            || ((fieldPointer = 25) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[25] == 0) //reserved
+            || ((fieldPointer = 26) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[26] == 0) //reserved
+            || ((fieldPointer = 27) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[27] == 0) //reserved
+            || ((fieldPointer = 28) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[28] == 0) //reserved
+            || ((fieldPointer = 29) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[29] == 0) //reserved
+            || ((fieldPointer = 30) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[30] == 0) //reserved
+            || ((fieldPointer = 31) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[31] == 0) //reserved
+            || ((fieldPointer = 32) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[32] == 0) //reserved
+            || ((fieldPointer = 33) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[33] == 0) //reserved
+            || ((fieldPointer = 34) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[34] == 0) //reserved
+            || ((fieldPointer = 35) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[35] == 0) //reserved
+            || ((fieldPointer = 36) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[36] == 0) //reserved
+            || ((fieldPointer = 37) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[37] == 0) //reserved
+            || ((fieldPointer = 38) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[38] == 0) //reserved
+            || ((fieldPointer = 39) != 0 && (bitPointer = 7) != 0 && M_GETBITRANGE(ptrToBeginningOfModePage[39], 7, 6) != 1) //CCF IDLE 
+            || ((fieldPointer = 39) != 0 && (bitPointer = 5) != 0 && M_GETBITRANGE(ptrToBeginningOfModePage[39], 5, 4) != 1) //CCF STANDBY
+            || ((fieldPointer = 39) != 0 && (bitPointer = 3) != 0 && M_GETBITRANGE(ptrToBeginningOfModePage[39], 3, 2) != 1) //CCF STOPPED
+            || ((fieldPointer = 39) != 0 && (bitPointer = 1) != 0 && (ptrToBeginningOfModePage[39] & BIT1) != 0)
+            || ((fieldPointer = 39) != 0 && (bitPointer = 0) == 0 && (ptrToBeginningOfModePage[39] & BIT0) != 0)
+           )
         {
-            invalidFieldInParameterList = true;
-        }
-        if (M_GETBITRANGE(ptrToBeginningOfModePage[2], 7, 6) != 0 //PM_BG_PRECEDENCE
-            || M_GETBITRANGE(ptrToBeginningOfModePage[2], 5, 1) != 0 //reserved
-            || M_GETBITRANGE(ptrToBeginningOfModePage[3], 7, 4) != 0 //reserved
-            || ptrToBeginningOfModePage[39] == 0x54 //CCF IDLE, CCF STANDBY, CCF STOPPED, Reserved - these fields should all be 01b!
-            || ptrToBeginningOfModePage[24] == 0 //reserved
-            || ptrToBeginningOfModePage[25] == 0 //reserved
-            || ptrToBeginningOfModePage[26] == 0 //reserved
-            || ptrToBeginningOfModePage[27] == 0 //reserved
-            || ptrToBeginningOfModePage[28] == 0 //reserved
-            || ptrToBeginningOfModePage[29] == 0 //reserved
-            || ptrToBeginningOfModePage[30] == 0 //reserved
-            || ptrToBeginningOfModePage[31] == 0 //reserved
-            || ptrToBeginningOfModePage[32] == 0 //reserved
-            || ptrToBeginningOfModePage[33] == 0 //reserved
-            || ptrToBeginningOfModePage[34] == 0 //reserved
-            || ptrToBeginningOfModePage[35] == 0 //reserved
-            || ptrToBeginningOfModePage[36] == 0 //reserved
-            || ptrToBeginningOfModePage[37] == 0 //reserved
-            || ptrToBeginningOfModePage[38] == 0 //reserved
-            )
-        {
-            invalidFieldInParameterList = true;
-        }
-        if (invalidFieldInParameterList)
-        {
+            if (bitPointer == 0)
+            {
+                uint8_t reservedByteVal = ptrToBeginningOfModePage[fieldPointer];
+                uint8_t counter = 0;
+                if (fieldPointer == 2)
+                {
+                    reservedByteVal = ptrToBeginningOfModePage[fieldPointer] & 0x3E;
+                }
+                while (reservedByteVal > 0 && counter < 8)
+                {
+                    reservedByteVal >>= 1;
+                    ++counter;
+                }
+                bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+            }
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
             ret = NOT_SUPPORTED;
-            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         }
         else
         {
@@ -11502,7 +11516,12 @@ int translate_Mode_Select_Power_Conditions_1A(tDevice *device, ScsiIoCtx *scsiIo
                     if (!(epcLog[timerOffset + 1] & BIT5))
                     {
                         //not changable...error
-                        invalidFieldInParameterList = true;
+                        bitPointer = 7;
+                        fieldPointer = 4;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+                        ret = NOT_SUPPORTED;
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                        return ret;
                     }
                 }
                 timerOffset = 64;
@@ -11515,7 +11534,12 @@ int translate_Mode_Select_Power_Conditions_1A(tDevice *device, ScsiIoCtx *scsiIo
                     if (!(epcLog[timerOffset + 1] & BIT5))
                     {
                         //not changable...error
-                        invalidFieldInParameterList = true;
+                        bitPointer = 7;
+                        fieldPointer = 12;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+                        ret = NOT_SUPPORTED;
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                        return ret;
                     }
                 }
                 timerOffset = 128;
@@ -11528,7 +11552,12 @@ int translate_Mode_Select_Power_Conditions_1A(tDevice *device, ScsiIoCtx *scsiIo
                     if (!(epcLog[timerOffset + 1] & BIT5))
                     {
                         //not changable...error
-                        invalidFieldInParameterList = true;
+                        bitPointer = 7;
+                        fieldPointer = 16;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+                        ret = NOT_SUPPORTED;
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                        return ret;
                     }
                 }
                 timerOffset = LEGACY_DRIVE_SEC_SIZE + 384;
@@ -11541,7 +11570,12 @@ int translate_Mode_Select_Power_Conditions_1A(tDevice *device, ScsiIoCtx *scsiIo
                     if (!(epcLog[timerOffset + 1] & BIT5))
                     {
                         //not changable...error
-                        invalidFieldInParameterList = true;
+                        bitPointer = 7;
+                        fieldPointer = 20;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+                        ret = NOT_SUPPORTED;
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                        return ret;
                     }
                 }
                 timerOffset = LEGACY_DRIVE_SEC_SIZE + 448;
@@ -11554,260 +11588,256 @@ int translate_Mode_Select_Power_Conditions_1A(tDevice *device, ScsiIoCtx *scsiIo
                     if (!(epcLog[timerOffset + 1] & BIT5))
                     {
                         //not changable...error
-                        invalidFieldInParameterList = true;
+                        bitPointer = 7;
+                        fieldPointer = 8;
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+                        ret = NOT_SUPPORTED;
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                        return ret;
                     }
                 }
-                //see if we had any errors yet
-                if (invalidFieldInParameterList)
+                if (change_idle_a)
                 {
-                    ret = NOT_SUPPORTED;
-                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    //first check if we need to round to a min or max for the drive...
+                    uint32_t ata_Idle_a_min = M_BytesTo4ByteValue(epcLog[timerOffset + 23], epcLog[timerOffset + 22], epcLog[timerOffset + 21], epcLog[timerOffset + 20]);
+                    uint32_t ata_Idle_a_max = M_BytesTo4ByteValue(epcLog[timerOffset + 24], epcLog[timerOffset + 25], epcLog[timerOffset + 26], epcLog[timerOffset + 27]);
+                    if (idle_a_timer < ata_Idle_a_min)
+                    {
+                        parameterRounded = true;
+                        idle_a_timer = ata_Idle_a_min;
+                    }
+                    else if (idle_a_timer > ata_Idle_a_max)
+                    {
+                        parameterRounded = true;
+                        idle_a_timer = ata_Idle_a_max;
+                    }
+                    //convert 32bit timer to 16bit ATA timer.
+                    uint16_t ata_idle_a = 0;
+                    bool timerUnits = false;
+                    if (idle_a_timer == 0)
+                    {
+                        ata_idle_a = 1;
+                    }
+                    else if (idle_a_timer >= 1 && idle_a_timer <= 65535)
+                    {
+                        ata_idle_a = idle_a_timer;
+                    }
+                    else if (idle_a_timer >= 65536 && idle_a_timer <= 39321000)
+                    {
+                        timerUnits = true;
+                        ata_idle_a = (idle_a_timer / 600);
+                        if (idle_a_timer % 600)
+                        {
+                            parameterRounded = true;
+                        }
+                    }
+                    else
+                    {
+                        timerUnits = true;
+                        ata_idle_a = 0xFFFF;
+                    }
+                    ret = ata_EPC_Set_Power_Condition_Timer(device, 0x81, ata_idle_a, timerUnits, idle_a, saveParameters);
+                    if (ret != SUCCESS)
+                    {
+                        commandSequenceError = true;
+                    }
                 }
-                else
+                if (change_idle_b)
                 {
-                    if (change_idle_a)
+                    timerOffset = 64;
+                    //first check if we need to round to a min or max for the drive...
+                    uint32_t ata_Idle_b_min = M_BytesTo4ByteValue(epcLog[timerOffset + 23], epcLog[timerOffset + 22], epcLog[timerOffset + 21], epcLog[timerOffset + 20]);
+                    uint32_t ata_Idle_b_max = M_BytesTo4ByteValue(epcLog[timerOffset + 24], epcLog[timerOffset + 25], epcLog[timerOffset + 26], epcLog[timerOffset + 27]);
+                    if (idle_b_timer < ata_Idle_b_min)
                     {
-                        //first check if we need to round to a min or max for the drive...
-                        uint32_t ata_Idle_a_min = M_BytesTo4ByteValue(epcLog[timerOffset + 23], epcLog[timerOffset + 22], epcLog[timerOffset + 21], epcLog[timerOffset + 20]);
-                        uint32_t ata_Idle_a_max = M_BytesTo4ByteValue(epcLog[timerOffset + 24], epcLog[timerOffset + 25], epcLog[timerOffset + 26], epcLog[timerOffset + 27]);
-                        if (idle_a_timer < ata_Idle_a_min)
+                        parameterRounded = true;
+                        idle_b_timer = ata_Idle_b_min;
+                    }
+                    else if (idle_b_timer > ata_Idle_b_max)
+                    {
+                        parameterRounded = true;
+                        idle_b_timer = ata_Idle_b_max;
+                    }
+                    //convert 32bit timer to 16bit ATA timer.
+                    uint16_t ata_idle_b = 0;
+                    bool timerUnits = false;
+                    if (idle_b_timer == 0)
+                    {
+                        ata_idle_b = 1;
+                    }
+                    else if (idle_b_timer >= 1 && idle_b_timer <= 65535)
+                    {
+                        ata_idle_b = idle_b_timer;
+                    }
+                    else if (idle_b_timer >= 65536 && idle_b_timer <= 39321000)
+                    {
+                        timerUnits = true;
+                        ata_idle_b = (idle_b_timer / 600);
+                        if (idle_b_timer % 600)
                         {
                             parameterRounded = true;
-                            idle_a_timer = ata_Idle_a_min;
-                        }
-                        else if (idle_a_timer > ata_Idle_a_max)
-                        {
-                            parameterRounded = true;
-                            idle_a_timer = ata_Idle_a_max;
-                        }
-                        //convert 32bit timer to 16bit ATA timer.
-                        uint16_t ata_idle_a = 0;
-                        bool timerUnits = false;
-                        if (idle_a_timer == 0)
-                        {
-                            ata_idle_a = 1;
-                        }
-                        else if (idle_a_timer >= 1 && idle_a_timer <= 65535)
-                        {
-                            ata_idle_a = idle_a_timer;
-                        }
-                        else if (idle_a_timer >= 65536 && idle_a_timer <= 39321000)
-                        {
-                            timerUnits = true;
-                            ata_idle_a = (idle_a_timer / 600);
-                            if (idle_a_timer % 600)
-                            {
-                                parameterRounded = true;
-                            }
-                        }
-                        else
-                        {
-                            timerUnits = true;
-                            ata_idle_a = 0xFFFF;
-                        }
-                        ret = ata_EPC_Set_Power_Condition_Timer(device, 0x81, ata_idle_a, timerUnits, idle_a, saveParameters);
-                        if (ret != SUCCESS)
-                        {
-                            commandSequenceError = true;
                         }
                     }
-                    if (change_idle_b)
+                    else
                     {
-                        timerOffset = 64;
-                        //first check if we need to round to a min or max for the drive...
-                        uint32_t ata_Idle_b_min = M_BytesTo4ByteValue(epcLog[timerOffset + 23], epcLog[timerOffset + 22], epcLog[timerOffset + 21], epcLog[timerOffset + 20]);
-                        uint32_t ata_Idle_b_max = M_BytesTo4ByteValue(epcLog[timerOffset + 24], epcLog[timerOffset + 25], epcLog[timerOffset + 26], epcLog[timerOffset + 27]);
-                        if (idle_b_timer < ata_Idle_b_min)
+                        timerUnits = true;
+                        ata_idle_b = 0xFFFF;
+                    }
+                    ret = ata_EPC_Set_Power_Condition_Timer(device, 0x82, ata_idle_b, timerUnits, idle_b, saveParameters);
+                    if (ret != SUCCESS)
+                    {
+                        commandSequenceError = true;
+                    }
+                }
+                if (change_idle_c)
+                {
+                    timerOffset = 128;
+                    //first check if we need to round to a min or max for the drive...
+                    uint32_t ata_Idle_c_min = M_BytesTo4ByteValue(epcLog[timerOffset + 23], epcLog[timerOffset + 22], epcLog[timerOffset + 21], epcLog[timerOffset + 20]);
+                    uint32_t ata_Idle_c_max = M_BytesTo4ByteValue(epcLog[timerOffset + 24], epcLog[timerOffset + 25], epcLog[timerOffset + 26], epcLog[timerOffset + 27]);
+                    if (idle_c_timer < ata_Idle_c_min)
+                    {
+                        parameterRounded = true;
+                        idle_c_timer = ata_Idle_c_min;
+                    }
+                    else if (idle_c_timer > ata_Idle_c_max)
+                    {
+                        parameterRounded = true;
+                        idle_c_timer = ata_Idle_c_max;
+                    }
+                    //convert 32bit timer to 16bit ATA timer.
+                    uint16_t ata_idle_c = 0;
+                    bool timerUnits = false;
+                    if (idle_c_timer == 0)
+                    {
+                        ata_idle_c = 1;
+                    }
+                    else if (idle_c_timer >= 1 && idle_c_timer <= 65535)
+                    {
+                        ata_idle_c = idle_c_timer;
+                    }
+                    else if (idle_c_timer >= 65536 && idle_c_timer <= 39321000)
+                    {
+                        timerUnits = true;
+                        ata_idle_c = (idle_c_timer / 600);
+                        if (idle_c_timer % 600)
                         {
                             parameterRounded = true;
-                            idle_b_timer = ata_Idle_b_min;
-                        }
-                        else if (idle_b_timer > ata_Idle_b_max)
-                        {
-                            parameterRounded = true;
-                            idle_b_timer = ata_Idle_b_max;
-                        }
-                        //convert 32bit timer to 16bit ATA timer.
-                        uint16_t ata_idle_b = 0;
-                        bool timerUnits = false;
-                        if (idle_b_timer == 0)
-                        {
-                            ata_idle_b = 1;
-                        }
-                        else if (idle_b_timer >= 1 && idle_b_timer <= 65535)
-                        {
-                            ata_idle_b = idle_b_timer;
-                        }
-                        else if (idle_b_timer >= 65536 && idle_b_timer <= 39321000)
-                        {
-                            timerUnits = true;
-                            ata_idle_b = (idle_b_timer / 600);
-                            if (idle_b_timer % 600)
-                            {
-                                parameterRounded = true;
-                            }
-                        }
-                        else
-                        {
-                            timerUnits = true;
-                            ata_idle_b = 0xFFFF;
-                        }
-                        ret = ata_EPC_Set_Power_Condition_Timer(device, 0x82, ata_idle_b, timerUnits, idle_b, saveParameters);
-                        if (ret != SUCCESS)
-                        {
-                            commandSequenceError = true;
                         }
                     }
-                    if (change_idle_c)
+                    else
                     {
-                        timerOffset = 128;
-                        //first check if we need to round to a min or max for the drive...
-                        uint32_t ata_Idle_c_min = M_BytesTo4ByteValue(epcLog[timerOffset + 23], epcLog[timerOffset + 22], epcLog[timerOffset + 21], epcLog[timerOffset + 20]);
-                        uint32_t ata_Idle_c_max = M_BytesTo4ByteValue(epcLog[timerOffset + 24], epcLog[timerOffset + 25], epcLog[timerOffset + 26], epcLog[timerOffset + 27]);
-                        if (idle_c_timer < ata_Idle_c_min)
+                        timerUnits = true;
+                        ata_idle_c = 0xFFFF;
+                    }
+                    ret = ata_EPC_Set_Power_Condition_Timer(device, 0x83, ata_idle_c, timerUnits, idle_c, saveParameters);
+                    if (ret != SUCCESS)
+                    {
+                        commandSequenceError = true;
+                    }
+                }
+                if (change_standby_y)
+                {
+                    timerOffset = 384 + LEGACY_DRIVE_SEC_SIZE;
+                    //first check if we need to round to a min or max for the drive...
+                    uint32_t ata_Standby_y_min = M_BytesTo4ByteValue(epcLog[timerOffset + 23], epcLog[timerOffset + 22], epcLog[timerOffset + 21], epcLog[timerOffset + 20]);
+                    uint32_t ata_Standby_y_max = M_BytesTo4ByteValue(epcLog[timerOffset + 24], epcLog[timerOffset + 25], epcLog[timerOffset + 26], epcLog[timerOffset + 27]);
+                    if (standby_y_timer < ata_Standby_y_min)
+                    {
+                        parameterRounded = true;
+                        standby_y_timer = ata_Standby_y_min;
+                    }
+                    else if (standby_y_timer > ata_Standby_y_max)
+                    {
+                        parameterRounded = true;
+                        standby_y_timer = ata_Standby_y_max;
+                    }
+                    //convert 32bit timer to 16bit ATA timer.
+                    uint16_t ata_standby_y = 0;
+                    bool timerUnits = false;
+                    if (standby_y_timer == 0)
+                    {
+                        ata_standby_y = 1;
+                    }
+                    else if (standby_y_timer >= 1 && standby_y_timer <= 65535)
+                    {
+                        ata_standby_y = standby_y_timer;
+                    }
+                    else if (standby_y_timer >= 65536 && standby_y_timer <= 39321000)
+                    {
+                        timerUnits = true;
+                        ata_standby_y = (standby_y_timer / 600);
+                        if (standby_y_timer % 600)
                         {
                             parameterRounded = true;
-                            idle_c_timer = ata_Idle_c_min;
-                        }
-                        else if (idle_c_timer > ata_Idle_c_max)
-                        {
-                            parameterRounded = true;
-                            idle_c_timer = ata_Idle_c_max;
-                        }
-                        //convert 32bit timer to 16bit ATA timer.
-                        uint16_t ata_idle_c = 0;
-                        bool timerUnits = false;
-                        if (idle_c_timer == 0)
-                        {
-                            ata_idle_c = 1;
-                        }
-                        else if (idle_c_timer >= 1 && idle_c_timer <= 65535)
-                        {
-                            ata_idle_c = idle_c_timer;
-                        }
-                        else if (idle_c_timer >= 65536 && idle_c_timer <= 39321000)
-                        {
-                            timerUnits = true;
-                            ata_idle_c = (idle_c_timer / 600);
-                            if (idle_c_timer % 600)
-                            {
-                                parameterRounded = true;
-                            }
-                        }
-                        else
-                        {
-                            timerUnits = true;
-                            ata_idle_c = 0xFFFF;
-                        }
-                        ret = ata_EPC_Set_Power_Condition_Timer(device, 0x83, ata_idle_c, timerUnits, idle_c, saveParameters);
-                        if (ret != SUCCESS)
-                        {
-                            commandSequenceError = true;
                         }
                     }
-                    if (change_standby_y)
+                    else
                     {
-                        timerOffset = 384 + LEGACY_DRIVE_SEC_SIZE;
-                        //first check if we need to round to a min or max for the drive...
-                        uint32_t ata_Standby_y_min = M_BytesTo4ByteValue(epcLog[timerOffset + 23], epcLog[timerOffset + 22], epcLog[timerOffset + 21], epcLog[timerOffset + 20]);
-                        uint32_t ata_Standby_y_max = M_BytesTo4ByteValue(epcLog[timerOffset + 24], epcLog[timerOffset + 25], epcLog[timerOffset + 26], epcLog[timerOffset + 27]);
-                        if (standby_y_timer < ata_Standby_y_min)
+                        timerUnits = true;
+                        ata_standby_y = 0xFFFF;
+                    }
+                    ret = ata_EPC_Set_Power_Condition_Timer(device, 0x01, ata_standby_y, timerUnits, standby_y, saveParameters);
+                    if (ret != SUCCESS)
+                    {
+                        commandSequenceError = true;
+                    }
+                }
+                if (change_standby_z)
+                {
+                    timerOffset = 448 + LEGACY_DRIVE_SEC_SIZE;
+                    //first check if we need to round to a min or max for the drive...
+                    uint32_t ata_Standby_z_min = M_BytesTo4ByteValue(epcLog[timerOffset + 23], epcLog[timerOffset + 22], epcLog[timerOffset + 21], epcLog[timerOffset + 20]);
+                    uint32_t ata_Standby_z_max = M_BytesTo4ByteValue(epcLog[timerOffset + 24], epcLog[timerOffset + 25], epcLog[timerOffset + 26], epcLog[timerOffset + 27]);
+                    if (standby_z_timer < ata_Standby_z_min)
+                    {
+                        parameterRounded = true;
+                        standby_z_timer = ata_Standby_z_min;
+                    }
+                    else if (standby_z_timer > ata_Standby_z_max)
+                    {
+                        parameterRounded = true;
+                        standby_z_timer = ata_Standby_z_max;
+                    }
+                    //convert 32bit timer to 16bit ATA timer.
+                    uint16_t ata_standby_z = 0;
+                    bool timerUnits = false;
+                    if (standby_z_timer == 0)
+                    {
+                        ata_standby_z = 1;
+                    }
+                    else if (standby_z_timer >= 1 && standby_z_timer <= 65535)
+                    {
+                        ata_standby_z = standby_z_timer;
+                    }
+                    else if (standby_z_timer >= 65536 && standby_z_timer <= 39321000)
+                    {
+                        timerUnits = true;
+                        ata_standby_z = (standby_z_timer / 600);
+                        if (standby_z_timer % 600)
                         {
                             parameterRounded = true;
-                            standby_y_timer = ata_Standby_y_min;
-                        }
-                        else if (standby_y_timer > ata_Standby_y_max)
-                        {
-                            parameterRounded = true;
-                            standby_y_timer = ata_Standby_y_max;
-                        }
-                        //convert 32bit timer to 16bit ATA timer.
-                        uint16_t ata_standby_y = 0;
-                        bool timerUnits = false;
-                        if (standby_y_timer == 0)
-                        {
-                            ata_standby_y = 1;
-                        }
-                        else if (standby_y_timer >= 1 && standby_y_timer <= 65535)
-                        {
-                            ata_standby_y = standby_y_timer;
-                        }
-                        else if (standby_y_timer >= 65536 && standby_y_timer <= 39321000)
-                        {
-                            timerUnits = true;
-                            ata_standby_y = (standby_y_timer / 600);
-                            if (standby_y_timer % 600)
-                            {
-                                parameterRounded = true;
-                            }
-                        }
-                        else
-                        {
-                            timerUnits = true;
-                            ata_standby_y = 0xFFFF;
-                        }
-                        ret = ata_EPC_Set_Power_Condition_Timer(device, 0x01, ata_standby_y, timerUnits, standby_y, saveParameters);
-                        if (ret != SUCCESS)
-                        {
-                            commandSequenceError = true;
                         }
                     }
-                    if (change_standby_z)
+                    else
                     {
-                        timerOffset = 448 + LEGACY_DRIVE_SEC_SIZE;
-                        //first check if we need to round to a min or max for the drive...
-                        uint32_t ata_Standby_z_min = M_BytesTo4ByteValue(epcLog[timerOffset + 23], epcLog[timerOffset + 22], epcLog[timerOffset + 21], epcLog[timerOffset + 20]);
-                        uint32_t ata_Standby_z_max = M_BytesTo4ByteValue(epcLog[timerOffset + 24], epcLog[timerOffset + 25], epcLog[timerOffset + 26], epcLog[timerOffset + 27]);
-                        if (standby_z_timer < ata_Standby_z_min)
-                        {
-                            parameterRounded = true;
-                            standby_z_timer = ata_Standby_z_min;
-                        }
-                        else if (standby_z_timer > ata_Standby_z_max)
-                        {
-                            parameterRounded = true;
-                            standby_z_timer = ata_Standby_z_max;
-                        }
-                        //convert 32bit timer to 16bit ATA timer.
-                        uint16_t ata_standby_z = 0;
-                        bool timerUnits = false;
-                        if (standby_z_timer == 0)
-                        {
-                            ata_standby_z = 1;
-                        }
-                        else if (standby_z_timer >= 1 && standby_z_timer <= 65535)
-                        {
-                            ata_standby_z = standby_z_timer;
-                        }
-                        else if (standby_z_timer >= 65536 && standby_z_timer <= 39321000)
-                        {
-                            timerUnits = true;
-                            ata_standby_z = (standby_z_timer / 600);
-                            if (standby_z_timer % 600)
-                            {
-                                parameterRounded = true;
-                            }
-                        }
-                        else
-                        {
-                            timerUnits = true;
-                            ata_standby_z = 0xFFFF;
-                        }
-                        ret = ata_EPC_Set_Power_Condition_Timer(device, 0x00, ata_standby_z, timerUnits, standby_z, saveParameters);
-                        if (ret != SUCCESS)
-                        {
-                            commandSequenceError = true;
-                        }
+                        timerUnits = true;
+                        ata_standby_z = 0xFFFF;
                     }
-                    //set errors if we had any
-                    if (commandSequenceError)
+                    ret = ata_EPC_Set_Power_Condition_Timer(device, 0x00, ata_standby_z, timerUnits, standby_z, saveParameters);
+                    if (ret != SUCCESS)
                     {
-                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ABORTED_COMMAND, 0x2C, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        commandSequenceError = true;
                     }
-                    else if (parameterRounded)
-                    {
-                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_RECOVERED_ERROR, 0x37, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-                    }
+                }
+                //set errors if we had any
+                if (commandSequenceError)
+                {
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ABORTED_COMMAND, 0x2C, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                }
+                else if (parameterRounded)
+                {
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_RECOVERED_ERROR, 0x37, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
                 }
             }
             else
@@ -11820,41 +11850,54 @@ int translate_Mode_Select_Power_Conditions_1A(tDevice *device, ScsiIoCtx *scsiIo
     else
     {
         //device doesn't support EPC
-        if (pageLength != 0x0026)
+        if (((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && pageLength != 0x0026)
+            || ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && M_GETBITRANGE(ptrToBeginningOfModePage[2], 7, 6) != 0) //PM_BG_PRECEDENCE
+            || ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(ptrToBeginningOfModePage[2], 5, 1) != 0) //reserved
+            || ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[2] & BIT0) //standby y is set
+            || ((fieldPointer = 3) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(ptrToBeginningOfModePage[3], 7, 4) != 0) //reserved
+            || ((fieldPointer = 3) != 0 && (bitPointer = 3) != 0 && ptrToBeginningOfModePage[3] & BIT3) //idle c is set
+            || ((fieldPointer = 3) != 0 && (bitPointer = 2) != 0 && ptrToBeginningOfModePage[3] & BIT2) //idle b is set
+            || ((fieldPointer = 3) != 0 && (bitPointer = 1) != 0 && ptrToBeginningOfModePage[3] & BIT1) //idle a is set
+            || ((fieldPointer = 24) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[24] == 0) //reserved
+            || ((fieldPointer = 25) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[25] == 0) //reserved
+            || ((fieldPointer = 26) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[26] == 0) //reserved
+            || ((fieldPointer = 27) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[27] == 0) //reserved
+            || ((fieldPointer = 28) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[28] == 0) //reserved
+            || ((fieldPointer = 29) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[29] == 0) //reserved
+            || ((fieldPointer = 30) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[30] == 0) //reserved
+            || ((fieldPointer = 31) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[31] == 0) //reserved
+            || ((fieldPointer = 32) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[32] == 0) //reserved
+            || ((fieldPointer = 33) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[33] == 0) //reserved
+            || ((fieldPointer = 34) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[34] == 0) //reserved
+            || ((fieldPointer = 35) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[35] == 0) //reserved
+            || ((fieldPointer = 36) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[36] == 0) //reserved
+            || ((fieldPointer = 37) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[37] == 0) //reserved
+            || ((fieldPointer = 38) != 0 && (bitPointer = 0) == 0 && ptrToBeginningOfModePage[38] == 0) //reserved
+            || ((fieldPointer = 39) != 0 && (bitPointer = 7) != 0 && M_GETBITRANGE(ptrToBeginningOfModePage[39], 7, 6) != 1) //CCF IDLE 
+            || ((fieldPointer = 39) != 0 && (bitPointer = 5) != 0 && M_GETBITRANGE(ptrToBeginningOfModePage[39], 5, 4) != 1) //CCF STANDBY
+            || ((fieldPointer = 39) != 0 && (bitPointer = 3) != 0 && M_GETBITRANGE(ptrToBeginningOfModePage[39], 3, 2) != 1) //CCF STOPPED
+            || ((fieldPointer = 39) != 0 && (bitPointer = 1) != 0 && (ptrToBeginningOfModePage[39] & BIT1) != 0)
+            || ((fieldPointer = 39) != 0 && (bitPointer = 0) == 0 && (ptrToBeginningOfModePage[39] & BIT0) != 0)
+           )
         {
-            invalidFieldInParameterList = true;
-        }
-        if (M_GETBITRANGE(ptrToBeginningOfModePage[2], 7, 6) != 0 //PM_BG_PRECEDENCE
-            || M_GETBITRANGE(ptrToBeginningOfModePage[2], 5, 1) != 0 //reserved
-            || M_GETBITRANGE(ptrToBeginningOfModePage[3], 7, 4) != 0 //reserved
-            || ptrToBeginningOfModePage[39] == 0x54 //CCF IDLE, CCF STANDBY, CCF STOPPED, Reserved - these fields should all be 01b!
-            || ptrToBeginningOfModePage[24] == 0 //reserved
-            || ptrToBeginningOfModePage[25] == 0 //reserved
-            || ptrToBeginningOfModePage[26] == 0 //reserved
-            || ptrToBeginningOfModePage[27] == 0 //reserved
-            || ptrToBeginningOfModePage[28] == 0 //reserved
-            || ptrToBeginningOfModePage[29] == 0 //reserved
-            || ptrToBeginningOfModePage[30] == 0 //reserved
-            || ptrToBeginningOfModePage[31] == 0 //reserved
-            || ptrToBeginningOfModePage[32] == 0 //reserved
-            || ptrToBeginningOfModePage[33] == 0 //reserved
-            || ptrToBeginningOfModePage[34] == 0 //reserved
-            || ptrToBeginningOfModePage[35] == 0 //reserved
-            || ptrToBeginningOfModePage[36] == 0 //reserved
-            || ptrToBeginningOfModePage[37] == 0 //reserved
-            || ptrToBeginningOfModePage[38] == 0 //reserved
-            || ptrToBeginningOfModePage[2] & BIT0 //standby y is set
-            || ptrToBeginningOfModePage[3] & BIT1 //idle a is set
-            || ptrToBeginningOfModePage[3] & BIT2 //idle b is set
-            || ptrToBeginningOfModePage[3] & BIT3 //idle c is set
-            )
-        {
-            invalidFieldInParameterList = true;
-        }
-        if (invalidFieldInParameterList)
-        {
+            if (bitPointer == 0)
+            {
+                uint8_t reservedByteVal = ptrToBeginningOfModePage[fieldPointer];
+                uint8_t counter = 0;
+                if (fieldPointer == 2)
+                {
+                    reservedByteVal = ptrToBeginningOfModePage[fieldPointer] & 0x3E;
+                }
+                while (reservedByteVal > 0 && counter < 8)
+                {
+                    reservedByteVal >>= 1;
+                    ++counter;
+                }
+                bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+            }
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
             ret = NOT_SUPPORTED;
-            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         }
         else
         {
@@ -11898,8 +11941,11 @@ int translate_Mode_Select_Power_Conditions_1A(tDevice *device, ScsiIoCtx *scsiIo
             }
             else
             {
+                fieldPointer = 3;
+                bitPointer = 0;
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 ret = NOT_SUPPORTED;
-                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
             }
         }
     }
