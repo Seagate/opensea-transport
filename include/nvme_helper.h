@@ -602,6 +602,35 @@ extern "C"
                                                 //unless you are pulling a log or identify data from the controller. - TJE
     } nvmeCmdCtx;
 
+    /**
+     * Seagate specific Log Pages.
+     */
+
+    /**
+     * Seagate NVMe specific structures to identify all supported 
+     * log pages. 
+     */
+    #define MAX_LOG_PAGE_LEN    4096
+
+    /**
+     * Log Page 0xC5 - Supported Log Pages
+     */
+    typedef struct _logPageMapEntry
+    {
+        uint32_t logPageID;
+        uint32_t logPageSignature;
+        uint32_t logPageVersion;
+    } logPageMapEntry;
+    
+    #define MAX_SUPPORTED_LOG_PAGE_ENTRIES ((MAX_LOG_PAGE_LEN - sizeof(uint32_t)) / sizeof(logPageMapEntry))
+    
+    typedef struct _logPageMap
+    {
+       uint32_t numLogPages;
+       logPageMapEntry logPageEntry[MAX_SUPPORTED_LOG_PAGE_ENTRIES];
+    } logPageMap;
+    /* EOF Supported Log-Pages from FW */
+
 
 #if defined (__cplusplus)
 }
