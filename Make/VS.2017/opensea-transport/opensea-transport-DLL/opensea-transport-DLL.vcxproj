@@ -452,7 +452,7 @@
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;ENABLE_CSMI;WIN_API_TARGET_VERSION=100150630L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -471,7 +471,7 @@
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;ENABLE_CSMI;WIN_API_TARGET_VERSION=100162990L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -490,7 +490,7 @@
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;ENABLE_CSMI;WIN_API_TARGET_VERSION=100162990L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -510,7 +510,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -530,7 +530,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -550,7 +550,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -569,7 +569,7 @@
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;ENABLE_CSMI;WIN_API_TARGET_VERSION=100150630L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -589,7 +589,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>

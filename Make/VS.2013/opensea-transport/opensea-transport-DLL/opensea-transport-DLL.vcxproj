@@ -233,7 +233,7 @@
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -253,7 +253,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -272,7 +272,7 @@
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -292,7 +292,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
