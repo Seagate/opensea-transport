@@ -177,6 +177,91 @@ extern "C"
     	NVME_LBART_ATTRIB_HIDE_	= 1 << 1,
     } eNvmeLBARanges;
 
+
+    /**
+     * Seagate Specific Log pages
+     */
+
+    /**
+     * Seagate NVMe specific structures to identify all supported 
+     * log pages. 
+     */
+    #define MAX_LOG_PAGE_LEN    4096
+
+    /**
+     * Log Page 0xC5 - Supported Log Pages
+     */
+    typedef struct _logPageMapEntry
+    {
+        uint32_t logPageID;
+        uint32_t logPageSignature;
+        uint32_t logPageVersion;
+    } logPageMapEntry;
+    
+    #define MAX_SUPPORTED_LOG_PAGE_ENTRIES ((MAX_LOG_PAGE_LEN - sizeof(uint32_t)) / sizeof(logPageMapEntry))
+    
+    typedef struct _logPageMap
+    {
+       uint32_t numLogPages;
+       logPageMapEntry logPageEntry[MAX_SUPPORTED_LOG_PAGE_ENTRIES];
+    } logPageMap;
+
+    /**
+     * Get Log Page - Supercap DRAM SMART Log Entry (Log Identifier 
+     * CFh) 
+     */
+
+    typedef struct _U128
+    {
+        uint16_t LS__u64;
+        uint16_t MS__u64;
+    } u128;
+
+    #if !defined (__GNUC__) 
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _nvmeSuperCapDramSmartAttr {
+       uint16_t     superCapCurrentTemperature;        // 00-01
+       uint16_t     superCapMaximumTemperature;        // 02-03
+       uint8_t      superCapStatus;                    // 04
+       uint8_t      reserved5to7[3];                   // 05-07
+       u128         dataUnitsReadToDramNamespace;      // 08-23
+       u128         dataUnitsWrittenToDramNamespace;   // 24-39
+       uint64_t     dramCorrectableErrorCount;         // 40-47
+       uint64_t     dramUncorrectableErrorCount;       // 48-55
+    #if !defined (__GNUC__)
+    } nvmeSuperCapDramSmartAttr;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) nvmeSuperCapDramSmartAttr;
+    #endif
+
+    typedef struct _nvmeSuperCapDramSmart {
+       nvmeSuperCapDramSmartAttr    attrScSmart;
+       uint8_t                      vendorSpecificReserved[456];        // 56-511
+    } nvmeSuperCapDramSmart;
+
+    #if !defined (__GNUC__) 
+    #pragma pack(push, 1)
+    #endif
+    struct _nvmeTemetryLogHdr {
+        uint8_t     logId;
+        uint8_t     rsvd1[4];
+        uint8_t     ieeeId[3];
+        uint16_t    teleDataArea1;
+        uint16_t    teleDataArea2;
+        uint16_t    teleDataArea3;
+        uint8_t     rsvd14[368];
+        uint8_t     teleDataAval;
+        uint8_t     teleDataGenNum;
+        uint8_t     reasonIdentifier[128];
+    #if !defined (__GNUC__)
+    } nvmeTemetryLogHdr;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) nvmeTemetryLogHdr;
+    #endif
+
     /* I/O commands */
 
     typedef enum _eNvmeOPCodes {
@@ -601,36 +686,6 @@ extern "C"
                                                 //but may be checked otherwise since Win10 API only talks to the current NSID, 
                                                 //unless you are pulling a log or identify data from the controller. - TJE
     } nvmeCmdCtx;
-
-    /**
-     * Seagate specific Log Pages.
-     */
-
-    /**
-     * Seagate NVMe specific structures to identify all supported 
-     * log pages. 
-     */
-    #define MAX_LOG_PAGE_LEN    4096
-
-    /**
-     * Log Page 0xC5 - Supported Log Pages
-     */
-    typedef struct _logPageMapEntry
-    {
-        uint32_t logPageID;
-        uint32_t logPageSignature;
-        uint32_t logPageVersion;
-    } logPageMapEntry;
-    
-    #define MAX_SUPPORTED_LOG_PAGE_ENTRIES ((MAX_LOG_PAGE_LEN - sizeof(uint32_t)) / sizeof(logPageMapEntry))
-    
-    typedef struct _logPageMap
-    {
-       uint32_t numLogPages;
-       logPageMapEntry logPageEntry[MAX_SUPPORTED_LOG_PAGE_ENTRIES];
-    } logPageMap;
-    /* EOF Supported Log-Pages from FW */
-
 
 #if defined (__cplusplus)
 }
