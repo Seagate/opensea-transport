@@ -634,6 +634,8 @@ extern "C"
        HPA_SET_MAX_LOCK         = 0x02,
        HPA_SET_MAX_UNLOCK       = 0x03,
        HPA_SET_MAX_FREEZE_LOCK  = 0x04,
+       HPA_SET_MAX_PASSWORD_DMA = 0x05,
+       HPA_SET_MAX_UNLOCK_DMA   = 0x06,
        HPA_SET_MAX_RESERVED
    }eHPAFeature;   
 
