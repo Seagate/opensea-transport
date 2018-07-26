@@ -38,7 +38,13 @@ extern "C"
     #include <scsi/sg.h>
     #include <scsi/scsi.h>
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-    #if __GNUC__ > 5 //GCC5 and higher have a #if __has_include check that we can use to make this easier :)
+#ifdef NVME_IOCTL_EXIST
+#include <linux/nvme_ioctl.h>
+#define SEA_NVME_IOCTL_H
+#else
+#include <linux/nvme.h>
+#endif
+/*    #if __GNUC__ > 5 //GCC5 and higher have a #if __has_include check that we can use to make this easier :)
         #if __has_include (<linux/nvme_ioctl.h>)
             #include <linux/nvme_ioctl.h>
             #define SEA_NVME_IOCTL_H
@@ -76,7 +82,7 @@ extern "C"
                 #endif
             #endif
         #endif
-    #endif
+    #endif */
     #include "nvme_helper.h"
 #endif
 

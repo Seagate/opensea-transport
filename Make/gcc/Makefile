@@ -22,9 +22,17 @@ MINOR=17
 PATCH=5
 VERSION=$(MAJOR).$(MINOR).$(PATCH)
 SRC_DIR=../../src/
-INC_DIR=-I../../include -I../../../opensea-common/include
+INC_DIR=-I../../include -I../../../opensea-common/include  
 CC=gcc
 AR=ar
+FILE1 = /usr/include/linux/nvme_ioctl.h 
+
+ifeq ($(shell test -f $(FILE1) && echo -n yes),yes)
+	PROJECT_DEFINES += -DNVME_IOCTL_EXIST
+else
+	RESULT1=$(FILE1) does not exist.
+endif
+#export NVME_IOCTL_EXIST
 #override CFLAGS = -Wall -c -fPIC -I. -std=gnu99
 CFLAGS ?= -Wall 
 CFLAGS += -c -fPIC -I. -std=gnu99
