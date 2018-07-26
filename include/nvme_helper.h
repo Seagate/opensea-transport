@@ -179,7 +179,7 @@ extern "C"
 
 
     /**
-     * Seagate Specific Log pages
+     * Seagate Specific Log pages - Start
      */
 
     /**
@@ -261,6 +261,46 @@ extern "C"
     #else
     }__attribute__((packed,aligned(1))) nvmeTemetryLogHdr;
     #endif
+
+/**************************
+* PCIE ERROR INFORMATION
+**************************/
+    #if !defined (__GNUC__) 
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _nvmePcieErrorLogPage {
+       uint32_t   version;
+       uint32_t   badDllpErrCnt;
+       uint32_t   badTlpErrCnt;
+       uint32_t   rcvrErrCnt;
+       uint32_t   replayTOErrCnt;
+       uint32_t   replayNumRolloverErrCnt;
+       uint32_t   fcProtocolErrCnt;
+       uint32_t   dllpProtocolErrCnt;
+       uint32_t   cmpltnTOErrCnt;
+       uint32_t   rcvrQOverflowErrCnt;
+       uint32_t   unexpectedCplTlpErrCnt;
+       uint32_t   cplTlpURErrCnt;
+       uint32_t   cplTlpCAErrCnt;
+       uint32_t   reqCAErrCnt;
+       uint32_t   reqURErrCnt;
+       uint32_t   ecrcErrCnt;
+       uint32_t   malformedTlpErrCnt;
+       uint32_t   cplTlpPoisonedErrCnt;
+       uint32_t   memRdTlpPoisonedErrCnt;
+    #if !defined (__GNUC__)
+    } nvmePcieErrorLogPage;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) nvmePcieErrorLogPage;
+    #endif
+//EOF PCIE ERROR INFORMATION
+
+
+    /**
+     * Seagate Specific Log pages - End
+     */
+
 
     /* I/O commands */
 
