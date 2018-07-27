@@ -211,10 +211,10 @@ extern "C"
      * CFh) 
      */
 
-    typedef struct _U128
+    typedef struct _u128
     {
-        uint16_t LS__u64;
-        uint16_t MS__u64;
+        uint64_t LS__u64;
+        uint64_t MS__u64;
     } u128;
 
     #if !defined (__GNUC__) 
