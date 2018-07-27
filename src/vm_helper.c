@@ -721,7 +721,7 @@ int sg_reset(int fd, int resetType)
             /*
             scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_FIXED;
             scsiIoCtx->returnStatus.senseKey = 0x05;
-            scsiIoCtx->returnStatus.acq = 0x20;
+            scsiIoCtx->returnStatus.asc = 0x20;
             scsiIoCtx->returnStatus.ascq = 0x00;
             //dummy up sense data
             if (scsiIoCtx->psense != NULL)
@@ -730,7 +730,7 @@ int sg_reset(int fd, int resetType)
                 //fill in not supported
                 scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
                 scsiIoCtx->psense[2] = 0x05;
-                //acq
+                //asc
                 scsiIoCtx->psense[12] = 0x20;//invalid operation code
                 //acsq
                 scsiIoCtx->psense[13] = 0x00;
@@ -743,7 +743,7 @@ int sg_reset(int fd, int resetType)
             /*
             scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_FIXED;
             scsiIoCtx->returnStatus.senseKey = 0x05;
-            scsiIoCtx->returnStatus.acq = 0x24;
+            scsiIoCtx->returnStatus.asc = 0x24;
             scsiIoCtx->returnStatus.ascq = 0x00;
             //dummy up sense data
             if (scsiIoCtx->psense != NULL)
@@ -752,7 +752,7 @@ int sg_reset(int fd, int resetType)
                 //fill in not supported
                 scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
                 scsiIoCtx->psense[2] = 0x05;
-                //acq
+                //asc
                 scsiIoCtx->psense[12] = 0x24;//invalid field in CDB
                 //acsq
                 scsiIoCtx->psense[13] = 0x00;
@@ -920,7 +920,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     // \revisit: should this be FF or something invalid than 0?
     scsiIoCtx->returnStatus.format = 0xFF;
     scsiIoCtx->returnStatus.senseKey = 0;
-    scsiIoCtx->returnStatus.acq = 0;
+    scsiIoCtx->returnStatus.asc = 0;
     scsiIoCtx->returnStatus.ascq = 0;
     //print_io_hdr(&io_hdr);
     //printf("scsiIoCtx->device->os_info.fd = %d\n", scsiIoCtx->device->os_info.fd);
@@ -946,7 +946,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     if (io_hdr.sb_len_wr)
     {
         scsiIoCtx->returnStatus.format  = io_hdr.sbp[0];
-        get_Sense_Key_ASC_ASCQ_FRU(io_hdr.sbp, io_hdr.mx_sb_len, &scsiIoCtx->returnStatus.senseKey, &scsiIoCtx->returnStatus.acq, &scsiIoCtx->returnStatus.ascq, &scsiIoCtx->returnStatus.fru);
+        get_Sense_Key_ASC_ASCQ_FRU(io_hdr.sbp, io_hdr.mx_sb_len, &scsiIoCtx->returnStatus.senseKey, &scsiIoCtx->returnStatus.asc, &scsiIoCtx->returnStatus.ascq, &scsiIoCtx->returnStatus.fru);
     }
 
     // \todo shouldn't this be done at a higher level?
