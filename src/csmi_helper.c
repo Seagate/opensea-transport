@@ -1097,7 +1097,7 @@ int send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
                 scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
                 scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
                 //setting ASC/ASCQ to ATA Passthrough Information Available
-                scsiIoCtx->returnStatus.acq = 0x00;
+                scsiIoCtx->returnStatus.asc = 0x00;
                 scsiIoCtx->returnStatus.ascq = 0x1D;
                 //now fill in the sens buffer
                 scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
@@ -1288,8 +1288,12 @@ int get_CSMI_Device(const char *filename, tDevice *device)
 #endif
     {
         device->raid_device = (ptrCSMIDevice)calloc(1 * sizeof(csmiDevice), sizeof(csmiDevice));
-        device->issue_io = *send_CSMI_IO;
+        device->issue_io = (issue_io_func)send_CSMI_IO;
         ptrCSMIDevice csmiDevice = (ptrCSMIDevice)device->raid_device;
+		if (!csmiDevice)
+		{
+			return MEMORY_FAILURE;
+		}
         if (device->dFlags & CSMI_FLAG_VERBOSE)
         {
             csmiDevice->csmiVerbose = true;
@@ -1305,6 +1309,11 @@ int get_CSMI_Device(const char *filename, tDevice *device)
         //Using the data we've already gotten, we need to save phyidentifier, port identifier, port protocol, and SAS address.
         //TODO: Check if we should be using the Identify or Attached structure information to populate the support fields.
         //Identify appears to contain initiator data, and attached seems to include target data...
+		if (portNumber > 31)
+		{
+			//return this or some other error?
+			return FAILURE;
+		}
         if (!handleHasAddressInsteadOfPort)
         {
             csmiDevice->portIdentifier = phyInfo.Information.Phy[portNumber].bPortIdentifier;

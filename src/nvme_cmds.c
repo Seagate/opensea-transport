@@ -13,7 +13,6 @@
 //                     The intention of the file is to be generic & not OS specific
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-
 #include "platform_helper.h"
 
 #include "nvme_helper.h"
@@ -356,7 +355,7 @@ int nvme_Firmware_Image_Dl(tDevice *device,\
 	ImageDl.cmd.adminCmd.opcode = NVME_ADMIN_CMD_DOWNLOAD_FW;
     ImageDl.commandType = NVM_ADMIN_CMD;
     ImageDl.commandDirection = XFER_DATA_OUT;
-	ImageDl.cmd.adminCmd.addr = (unsigned long)ptrData;
+	ImageDl.cmd.adminCmd.addr = (uint64_t)ptrData;
 	ImageDl.cmd.adminCmd.dataLen = numberOfBytes;
 	ImageDl.cmd.adminCmd.cdw10 = (numberOfBytes >> 2) - 1; //Since this is, 0 based, number of DWords not Bytes. 
     ImageDl.cmd.adminCmd.cdw11 = bufferOffset >> 2;
@@ -682,6 +681,7 @@ int nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts
     return ret;
 }
 
+
 int nvme_Format(tDevice *device, nvmeFormatCmdOpts * formatCmdOpts)
 {
     int ret = UNKNOWN; 
@@ -761,4 +761,64 @@ int nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegisters * ctrlRegs)
     return ret;
 }
 
+
+int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *ExtdSMARTInfo)
+{
+#ifdef _DEBUG
+    printf("-->%s\n",__FUNCTION__);
+#endif
+   // EXTENDED_SMART_INFO_T ExtdSMARTInfo;
+    fb_log_page_CF          logPageCF;
+    int index;
+    uint32_t   nsid = 1;
+    uint8_t  log_id = 0xC4;
+    uint32_t data_len = sizeof(EXTENDED_SMART_INFO_T);
+    void* ptr = ExtdSMARTInfo;
+	 
+    nvmeCmdCtx extSmatLog;
+    memset(&extSmatLog, 0, sizeof(extSmatLog));
+    int ret = SUCCESS;
+    uint32_t  numd = (data_len >> 2) - 1;
+    uint16_t  numdu = numd >> 16, numdl = numd & 0xffff;
+    
+    extSmatLog.cmd.adminCmd.opcode = NVME_ADMIN_CMD_GET_LOG_PAGE;
+    extSmatLog.commandType = NVM_ADMIN_CMD;
+    extSmatLog.commandDirection = XFER_DATA_IN;
+    extSmatLog.cmd.adminCmd.nsid = nsid;
+    extSmatLog.cmd.adminCmd.addr = (unsigned long)ptr;
+    extSmatLog.cmd.adminCmd.dataLen = data_len;
+    extSmatLog.cmd.adminCmd.cdw10 = log_id | (numdl << 16);
+    extSmatLog.cmd.adminCmd.cdw11 = numdu;
+    extSmatLog.timeout = 15;
+	//Added the following for Windows. 
+    extSmatLog.ptrData = ptr;
+    extSmatLog.dataSize = NVME_IDENTIFY_DATA_LEN;
+
+   ret = nvme_Cmd(device, &extSmatLog);
+   return ret;
+}
+
+int pci_Correctble_Err(tDevice *device,uint8_t  opcode, uint32_t  nsid, uint32_t  cdw10, uint32_t cdw11, uint32_t data_len, void *data)
+{
+    #ifdef _DEBUG
+    printf("-->%s\n",__FUNCTION__);
+    #endif
+    int ret = 0;
+    nvmeCmdCtx pciEr;
+    memset (&pciEr, 0x00, sizeof(nvmeCmdCtx));
+    pciEr.cmd.adminCmd.opcode = opcode;
+    pciEr.commandType = NVM_ADMIN_CMD;
+    //pciEr.commandDirection = XFER_DATA_IN;
+    pciEr.cmd.adminCmd.nsid = nsid;
+    pciEr.cmd.adminCmd.addr = (unsigned long)data;
+    pciEr.cmd.adminCmd.dataLen = data_len;
+    pciEr.cmd.adminCmd.cdw10 = cdw10;
+    pciEr.cmd.adminCmd.cdw11 = cdw11;
+    pciEr.timeout = 15;
+        //Added the following for Windows.
+    pciEr.ptrData = data;
+    pciEr.dataSize = NVME_IDENTIFY_DATA_LEN;
+    ret = nvme_Cmd(device, &pciEr);
+    return ret;
+}
 #endif

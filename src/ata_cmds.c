@@ -261,27 +261,35 @@ int ata_Sanitize_Status(tDevice *device, bool clearFailureMode)
     return ata_Sanitize_Command(device, ATA_SANITIZE_STATUS, 0, statusCount);
 }
 
-int ata_Sanitize_Crypto_Scramble(tDevice *device, bool failureModeBit)
+int ata_Sanitize_Crypto_Scramble(tDevice *device, bool failureModeBit, bool znr)
 {
     uint16_t cryptoCount = 0;
     if (failureModeBit)
     {
         cryptoCount |= BIT4;
     }
+    if (znr)
+    {
+        cryptoCount |= BIT15;
+    }
     return ata_Sanitize_Command(device, ATA_SANITIZE_CRYPTO_SCRAMBLE, ATA_SANITIZE_CRYPTO_LBA, cryptoCount);
 }
 
-int ata_Sanitize_Block_Erase(tDevice *device, bool failureModeBit)
+int ata_Sanitize_Block_Erase(tDevice *device, bool failureModeBit, bool znr)
 {
     uint16_t blockEraseCount = 0;
     if (failureModeBit)
     {
         blockEraseCount |= BIT4;
     }
+    if (znr)
+    {
+        blockEraseCount |= BIT15;
+    }
     return ata_Sanitize_Command(device, ATA_SANITIZE_BLOCK_ERASE, ATA_SANITIZE_BLOCK_ERASE_LBA, blockEraseCount);
 }
 
-int ata_Sanitize_Overwrite_Erase(tDevice *device, bool failureModeBit, bool invertBetweenPasses, uint8_t numberOfPasses, uint32_t overwritePattern)
+int ata_Sanitize_Overwrite_Erase(tDevice *device, bool failureModeBit, bool invertBetweenPasses, uint8_t numberOfPasses, uint32_t overwritePattern, bool znr, bool definitiveEndingPattern)
 {
     uint16_t overwriteCount = 0;
     uint64_t overwriteLBA = overwritePattern;
@@ -293,6 +301,14 @@ int ata_Sanitize_Overwrite_Erase(tDevice *device, bool failureModeBit, bool inve
     if (invertBetweenPasses)
     {
         overwriteCount |= BIT7;
+    }
+    if (znr)
+    {
+        overwriteCount |= BIT15;
+    }
+    if (definitiveEndingPattern)
+    {
+        overwriteCount |= BIT6;
     }
     overwriteCount |= M_Nibble0(numberOfPasses);
     return ata_Sanitize_Command(device, ATA_SANITIZE_OVERWRITE_ERASE, overwriteLBA, overwriteCount);

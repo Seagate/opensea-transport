@@ -1059,13 +1059,13 @@ int send_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx)
             case SCSI_SENSE_CUR_INFO_FIXED:
             case SCSI_SENSE_DEFER_ERR_FIXED:
                 scsiIoCtx->returnStatus.senseKey = scsiIoCtx->psense[2] & 0x0F;
-                scsiIoCtx->returnStatus.acq = scsiIoCtx->psense[12];
+                scsiIoCtx->returnStatus.asc = scsiIoCtx->psense[12];
                 scsiIoCtx->returnStatus.ascq = scsiIoCtx->psense[13];
                 break;
             case SCSI_SENSE_CUR_INFO_DESC:
             case SCSI_SENSE_DEFER_ERR_DESC:
                 scsiIoCtx->returnStatus.senseKey = scsiIoCtx->psense[1] & 0x0F;
-                scsiIoCtx->returnStatus.acq = scsiIoCtx->psense[2];
+                scsiIoCtx->returnStatus.asc = scsiIoCtx->psense[2];
                 scsiIoCtx->returnStatus.ascq = scsiIoCtx->psense[3];
                 break;
             }
@@ -1269,13 +1269,13 @@ int send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
             case SCSI_SENSE_CUR_INFO_FIXED:
             case SCSI_SENSE_DEFER_ERR_FIXED:
                 scsiIoCtx->returnStatus.senseKey = scsiIoCtx->psense[2] & 0x0F;
-                scsiIoCtx->returnStatus.acq = scsiIoCtx->psense[12];
+                scsiIoCtx->returnStatus.asc = scsiIoCtx->psense[12];
                 scsiIoCtx->returnStatus.ascq = scsiIoCtx->psense[13];
                 break;
             case SCSI_SENSE_CUR_INFO_DESC:
             case SCSI_SENSE_DEFER_ERR_DESC:
                 scsiIoCtx->returnStatus.senseKey = scsiIoCtx->psense[1] & 0x0F;
-                scsiIoCtx->returnStatus.acq = scsiIoCtx->psense[2];
+                scsiIoCtx->returnStatus.asc = scsiIoCtx->psense[2];
                 scsiIoCtx->returnStatus.ascq = scsiIoCtx->psense[3];
                 break;
             }
@@ -1518,13 +1518,13 @@ int send_SCSI_Pass_Through(ScsiIoCtx *scsiIoCtx)
             case SCSI_SENSE_CUR_INFO_FIXED:
             case SCSI_SENSE_DEFER_ERR_FIXED:
                 scsiIoCtx->returnStatus.senseKey = scsiIoCtx->psense[2] & 0x0F;
-                scsiIoCtx->returnStatus.acq = scsiIoCtx->psense[12];
+                scsiIoCtx->returnStatus.asc = scsiIoCtx->psense[12];
                 scsiIoCtx->returnStatus.ascq = scsiIoCtx->psense[13];
                 break;
             case SCSI_SENSE_CUR_INFO_DESC:
             case SCSI_SENSE_DEFER_ERR_DESC:
                 scsiIoCtx->returnStatus.senseKey = scsiIoCtx->psense[1] & 0x0F;
-                scsiIoCtx->returnStatus.acq = scsiIoCtx->psense[2];
+                scsiIoCtx->returnStatus.asc = scsiIoCtx->psense[2];
                 scsiIoCtx->returnStatus.ascq = scsiIoCtx->psense[3];
                 break;
             }
@@ -1650,13 +1650,13 @@ int send_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx)
             case SCSI_SENSE_CUR_INFO_FIXED:
             case SCSI_SENSE_DEFER_ERR_FIXED:
                 scsiIoCtx->returnStatus.senseKey = scsiIoCtx->psense[2] & 0x0F;
-                scsiIoCtx->returnStatus.acq = scsiIoCtx->psense[12];
+                scsiIoCtx->returnStatus.asc = scsiIoCtx->psense[12];
                 scsiIoCtx->returnStatus.ascq = scsiIoCtx->psense[13];
                 break;
             case SCSI_SENSE_CUR_INFO_DESC:
             case SCSI_SENSE_DEFER_ERR_DESC:
                 scsiIoCtx->returnStatus.senseKey = scsiIoCtx->psense[1] & 0x0F;
-                scsiIoCtx->returnStatus.acq = scsiIoCtx->psense[2];
+                scsiIoCtx->returnStatus.asc = scsiIoCtx->psense[2];
                 scsiIoCtx->returnStatus.ascq = scsiIoCtx->psense[3];
                 break;
             }
@@ -1943,7 +1943,7 @@ int send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
             }
             scsiIoCtx->returnStatus.senseKey = 0x01;
         }
-        scsiIoCtx->returnStatus.acq = 0x00;//might need to change this later
+        scsiIoCtx->returnStatus.asc = 0x00;//might need to change this later
         scsiIoCtx->returnStatus.ascq = 0x1D;//might need to change this later
         //get the rtfrs and put them into a "sense buffer". In other words, fill in the sense buffer with the rtfrs in descriptor format
         //current = 28bit, previous = 48bit
@@ -1954,7 +1954,7 @@ int send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
                 scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
                 scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
                 //setting ASC/ASCQ to ATA Passthrough Information Available
-                scsiIoCtx->returnStatus.acq = 0x00;
+                scsiIoCtx->returnStatus.asc = 0x00;
                 scsiIoCtx->returnStatus.ascq = 0x1D;
                 //now fill in the sens buffer
                 scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
@@ -1993,7 +1993,7 @@ int send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
     {
         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_FIXED;
         scsiIoCtx->returnStatus.senseKey = 0x05;
-        scsiIoCtx->returnStatus.acq = 0x20;
+        scsiIoCtx->returnStatus.asc = 0x20;
         scsiIoCtx->returnStatus.ascq = 0x00;
         //dummy up sense data
         if (scsiIoCtx->psense != NULL)
@@ -2233,7 +2233,7 @@ int send_ATA_Passthrough_Ex(ScsiIoCtx *scsiIoCtx)
             }
             scsiIoCtx->returnStatus.senseKey = 0x01;
         }
-        scsiIoCtx->returnStatus.acq = 0x00;//might need to change this later
+        scsiIoCtx->returnStatus.asc = 0x00;//might need to change this later
         scsiIoCtx->returnStatus.ascq = 0x1D;//might need to change this later
         //get the rtfrs and put them into a "sense buffer". In other words, fill in the sense buffer with the rtfrs in descriptor format
         //current = 28bit, previous = 48bit
@@ -2244,7 +2244,7 @@ int send_ATA_Passthrough_Ex(ScsiIoCtx *scsiIoCtx)
                 scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
                 scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
                 //setting ASC/ASCQ to ATA Passthrough Information Available
-                scsiIoCtx->returnStatus.acq = 0x00;
+                scsiIoCtx->returnStatus.asc = 0x00;
                 scsiIoCtx->returnStatus.ascq = 0x1D;
                 //now fill in the sens buffer
                 scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
@@ -2283,7 +2283,7 @@ int send_ATA_Passthrough_Ex(ScsiIoCtx *scsiIoCtx)
     {
         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_FIXED;
         scsiIoCtx->returnStatus.senseKey = 0x05;
-        scsiIoCtx->returnStatus.acq = 0x20;
+        scsiIoCtx->returnStatus.asc = 0x20;
         scsiIoCtx->returnStatus.ascq = 0x00;
         //dummy up sense data
         if (scsiIoCtx->psense != NULL)
@@ -2500,7 +2500,7 @@ int send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
             }
             scsiIoCtx->returnStatus.senseKey = 0x01;
         }
-        scsiIoCtx->returnStatus.acq = 0x00;//might need to change this later
+        scsiIoCtx->returnStatus.asc = 0x00;//might need to change this later
         scsiIoCtx->returnStatus.ascq = 0x1D;//might need to change this later
         //get the rtfrs and put them into a "sense buffer". In other words, fill in the sense buffer with the rtfrs in descriptor format
         //current = 28bit, previous = 48bit
@@ -2511,7 +2511,7 @@ int send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
                 scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
                 scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
                 //setting ASC/ASCQ to ATA Passthrough Information Available
-                scsiIoCtx->returnStatus.acq = 0x00;
+                scsiIoCtx->returnStatus.asc = 0x00;
                 scsiIoCtx->returnStatus.ascq = 0x1D;
                 //now fill in the sens buffer
                 scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
@@ -2541,7 +2541,7 @@ int send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
     {
         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_FIXED;
         scsiIoCtx->returnStatus.senseKey = 0x05;
-        scsiIoCtx->returnStatus.acq = 0x20;
+        scsiIoCtx->returnStatus.asc = 0x20;
         scsiIoCtx->returnStatus.ascq = 0x00;
         //dummy up sense data
         if (scsiIoCtx->psense != NULL)
@@ -2769,7 +2769,7 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
                     scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
                     scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
                                                             //setting ASC/ASCQ to ATA Passthrough Information Available
-                    scsiIoCtx->returnStatus.acq = 0x00;
+                    scsiIoCtx->returnStatus.asc = 0x00;
                     scsiIoCtx->returnStatus.ascq = 0x1D;
                     //now fill in the sens buffer
                     scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
@@ -2812,7 +2812,7 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
                         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
                         scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
                                                                 //setting ASC/ASCQ to ATA Passthrough Information Available
-                        scsiIoCtx->returnStatus.acq = 0x00;
+                        scsiIoCtx->returnStatus.asc = 0x00;
                         scsiIoCtx->returnStatus.ascq = 0x1D;
                         //now fill in the sens buffer
                         scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
@@ -2964,7 +2964,7 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
                     scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
                     scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
                                                             //setting ASC/ASCQ to ATA Passthrough Information Available
-                    scsiIoCtx->returnStatus.acq = 0x00;
+                    scsiIoCtx->returnStatus.asc = 0x00;
                     scsiIoCtx->returnStatus.ascq = 0x1D;
                     //now fill in the sens buffer
                     scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
@@ -3007,7 +3007,7 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
                         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
                         scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
                                                                 //setting ASC/ASCQ to ATA Passthrough Information Available
-                        scsiIoCtx->returnStatus.acq = 0x00;
+                        scsiIoCtx->returnStatus.asc = 0x00;
                         scsiIoCtx->returnStatus.ascq = 0x1D;
                         //now fill in the sens buffer
                         scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
@@ -3383,7 +3383,7 @@ int send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
             }
             scsiIoCtx->returnStatus.senseKey = 0x01;
         }
-        scsiIoCtx->returnStatus.acq = 0x00;//might need to change this later
+        scsiIoCtx->returnStatus.asc = 0x00;//might need to change this later
         scsiIoCtx->returnStatus.ascq = 0x1D;//might need to change this later
         //get the rtfrs and put them into a "sense buffer". In other words, fill in the sense buffer with the rtfrs in descriptor format
         //current = 28bit, previous = 48bit
@@ -3396,7 +3396,7 @@ int send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
                 scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
                 scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
                 //setting ASC/ASCQ to ATA Passthrough Information Available
-                scsiIoCtx->returnStatus.acq = 0x00;
+                scsiIoCtx->returnStatus.asc = 0x00;
                 scsiIoCtx->returnStatus.ascq = 0x1D;
                 //now fill in the sens buffer
                 scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
@@ -3459,7 +3459,7 @@ int send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
     {
         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_FIXED;
         scsiIoCtx->returnStatus.senseKey = 0x05;
-        scsiIoCtx->returnStatus.acq = 0x20;
+        scsiIoCtx->returnStatus.asc = 0x20;
         scsiIoCtx->returnStatus.ascq = 0x00;
         //dummy up sense data
         if (scsiIoCtx->psense != NULL)
@@ -3516,7 +3516,7 @@ int device_Reset(ScsiIoCtx *scsiIoCtx)
             ret = NOT_SUPPORTED;
             scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_FIXED;
             scsiIoCtx->returnStatus.senseKey = 0x05;
-            scsiIoCtx->returnStatus.acq = 0x20;
+            scsiIoCtx->returnStatus.asc = 0x20;
             scsiIoCtx->returnStatus.ascq = 0x00;
             //dummy up sense data
             if (scsiIoCtx->psense != NULL)
@@ -3566,7 +3566,7 @@ int bus_Reset(ScsiIoCtx *scsiIoCtx)
         ret = NOT_SUPPORTED;
         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_FIXED;
         scsiIoCtx->returnStatus.senseKey = 0x05;
-        scsiIoCtx->returnStatus.acq = 0x20;
+        scsiIoCtx->returnStatus.asc = 0x20;
         scsiIoCtx->returnStatus.ascq = 0x00;
         //dummy up sense data
         if (scsiIoCtx->psense != NULL)

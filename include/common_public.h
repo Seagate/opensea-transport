@@ -822,7 +822,8 @@ extern "C"
         eInterfaceType interface_type;
         eZonedDeviceType zonedType;//most drives will report ZONED_TYPE_NOT_ZONED
         uint32_t       deviceBlockSize; //This is the logical block size reported by the drive
-		uint32_t	   devicePhyBlockSize; // This is the physical block size reported by the drive. 
+		uint32_t	   devicePhyBlockSize; // This is the physical block size reported by the drive.
+        uint32_t       dataTransferSize;//this the block size that will be transfered
         uint16_t       sectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
         uint64_t       deviceMaxLba;
         uint32_t       lunOrNSID; //shared between SCSI / NVMe 
@@ -836,6 +837,8 @@ extern "C"
 #if !defined(DISABLE_NVME_PASSTHROUGH)
             nvmeIdentifyData nvme;
 #endif
+			//reserved field below is set to 8192 because nvmeIdentifyData structure holds both controller and namespace data which are 4k each
+			uint8_t reserved[8192];//putting this here to allow some compatibility when NVMe passthrough is NOT enabled.
         }IdentifyData;
         tVpdData         scsiVpdData; // Intentionally not part of the above IdentifyData union 
         ataReturnTFRs lastCommandRTFRs;//This holds the RTFRs for the last command to be sent to the device. This is not necessarily the last function called as functions may send multiple commands to the device.

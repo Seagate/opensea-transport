@@ -21,13 +21,13 @@
 #include "platform_helper.h"
 #include "usb_hacks.h"
 
-int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode)
+int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode, bool znr)
 {
     int ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
-        ret = ata_Sanitize_Block_Erase(device, exitFailureMode);
+        ret = ata_Sanitize_Block_Erase(device, exitFailureMode, znr);
         break;
     case NVME_DRIVE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
@@ -37,7 +37,7 @@ int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode)
         //rely on SCSI translation
 #endif
     case SCSI_DRIVE:
-        ret = scsi_Sanitize_Block_Erase(device, exitFailureMode, true);
+        ret = scsi_Sanitize_Block_Erase(device, exitFailureMode, true, znr);
         break;
     default:
         if (VERBOSITY_QUIET < g_verbosity)
@@ -49,13 +49,13 @@ int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode)
     return ret;
 }
 
-int send_Sanitize_Crypto_Erase(tDevice *device,bool exitFailureMode)
+int send_Sanitize_Crypto_Erase(tDevice *device, bool exitFailureMode, bool znr)
 {
     int ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
-        ret = ata_Sanitize_Crypto_Scramble(device, exitFailureMode);
+        ret = ata_Sanitize_Crypto_Scramble(device, exitFailureMode, znr);
         break;
     case NVME_DRIVE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
@@ -65,7 +65,7 @@ int send_Sanitize_Crypto_Erase(tDevice *device,bool exitFailureMode)
         //rely on SCSI translation
 #endif
     case SCSI_DRIVE:
-        ret = scsi_Sanitize_Cryptographic_Erase(device, exitFailureMode, true);
+        ret = scsi_Sanitize_Cryptographic_Erase(device, exitFailureMode, true, znr);
         break;
     default:
         if (VERBOSITY_QUIET < g_verbosity)
@@ -77,7 +77,7 @@ int send_Sanitize_Crypto_Erase(tDevice *device,bool exitFailureMode)
     return ret;
 }
 
-int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool invertBetweenPasses, uint8_t overwritePasses, uint8_t *pattern, uint32_t patternLength)
+int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool invertBetweenPasses, uint8_t overwritePasses, uint8_t *pattern, uint32_t patternLength, bool znr)
 {
     int ret = UNKNOWN;
     bool localPattern = false;
@@ -90,7 +90,7 @@ int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool in
         {
             ataPattern = M_BytesTo4ByteValue(pattern[3], pattern[2], pattern[1], pattern[0]);
         }
-        ret = ata_Sanitize_Overwrite_Erase(device, exitFailureMode, invertBetweenPasses, overwritePasses & 0x0F, ataPattern);
+        ret = ata_Sanitize_Overwrite_Erase(device, exitFailureMode, invertBetweenPasses, overwritePasses & 0x0F, ataPattern, znr, false);
     }
         break;
     case NVME_DRIVE:
@@ -124,7 +124,7 @@ int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool in
                 return MEMORY_FAILURE;
             }
         }
-        ret = scsi_Sanitize_Overwrite(device, exitFailureMode, true, invertBetweenPasses, SANITIZE_OVERWRITE_NO_CHANGES, overwritePasses & 0x1F, pattern, patternLength);
+        ret = scsi_Sanitize_Overwrite(device, exitFailureMode, znr, true, invertBetweenPasses, SANITIZE_OVERWRITE_NO_CHANGES, overwritePasses & 0x1F, pattern, patternLength);
         if (localPattern)
         {
             safe_Free(pattern);
@@ -260,16 +260,16 @@ int fill_Drive_Info_Data(tDevice *device)
                 }
             }
             break;
-        case NVME_INTERFACE:
-			#if !defined(DISABLE_NVME_PASSTHROUGH)
-			status = fill_In_NVMe_Device_Info(device);
-			break;
-			#endif
         case IEEE_1394_INTERFACE:
 		case USB_INTERFACE:
             //On USB and firewire, call this instead since this includes various hacks/workarounds for some USB devices.
             status = fill_Drive_Info_USB(device);
             break;
+		case NVME_INTERFACE:
+#if !defined(DISABLE_NVME_PASSTHROUGH)
+			status = fill_In_NVMe_Device_Info(device);
+			break;
+#endif
         case SCSI_INTERFACE:
         default:
             //call this instead. It will handle issuing scsi commands and at the end will attempt an ATA Identify if needed
@@ -605,6 +605,31 @@ int write_Same(tDevice *device, bool useGPL, bool useDMA, uint64_t startingLba, 
     return ret;
 }
 
+bool is_Write_Psuedo_Uncorrectable_Supported(tDevice *device)
+{
+    bool supported = false;
+    if (device->drive_info.drive_type == ATA_DRIVE)
+    {
+        if (device->drive_info.ata_Options.writeUncorrectableExtSupported)
+        {
+            supported = true;
+        }
+    }
+    else if (device->drive_info.drive_type == SCSI_DRIVE)
+    {
+        //check for wu_supp in extended inquiry vpd page (SPC4+) since this matches when it was added to SBC3
+        uint8_t extendedInquiryData[VPD_EXTENDED_INQUIRY_LEN] = { 0 };
+        if (SUCCESS == scsi_Inquiry(device, extendedInquiryData, VPD_EXTENDED_INQUIRY_LEN, EXTENDED_INQUIRY_DATA, true, false))
+        {
+            if (extendedInquiryData[6] & BIT3)
+            {
+                supported = true;
+            }
+        }
+    }
+    return supported;
+}
+
 int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
 {
     int ret = UNKNOWN;
@@ -627,105 +652,7 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
         {
             ret = ata_Write_Uncorrectable(device, 0x55, logicalPerPhysicalBlocks, corruptLBA);
         }
-        else if (device->drive_info.IdentifyData.ata.Word206 & BIT1)
-        {
-            //use SCT read & write long commands
-            uint16_t numberOfECCCRCBytes = 0;
-            uint16_t numberOfBlocksRequested = 0;
-            uint32_t dataSize = device->drive_info.deviceBlockSize + LEGACY_DRIVE_SEC_SIZE;
-            uint8_t *data = (uint8_t*)calloc(dataSize, sizeof(uint8_t));
-            if (!data)
-            {
-                return MEMORY_FAILURE;
-            }
-            ret = ata_SCT_Read_Write_Long(device, device->drive_info.ata_Options.generalPurposeLoggingSupported, device->drive_info.ata_Options.readLogWriteLogDMASupported, SCT_RWL_READ_LONG, corruptLBA, data, dataSize, &numberOfECCCRCBytes, &numberOfBlocksRequested);
-            if (ret == SUCCESS)
-            {
-                seed_64(time(NULL));
-                //modify the user data to cause a uncorrectable error
-                for (uint32_t iter = 0; iter < device->drive_info.deviceBlockSize - 1; ++iter)
-                {
-                    data[iter] = (uint8_t)random_Range_64(0, UINT8_MAX);
-                }
-                if (numberOfBlocksRequested)
-                {
-                    //The drive responded through SAT enough to tell us exactly how many blocks are expected...so we can set the data transfer length as is expected...since this wasn't clear on non 512B logical sector drives.
-                    dataSize = LEGACY_DRIVE_SEC_SIZE * numberOfBlocksRequested;
-                }
-                //now write back the data with a write long command
-                ret = ata_SCT_Read_Write_Long(device, device->drive_info.ata_Options.generalPurposeLoggingSupported, device->drive_info.ata_Options.readLogWriteLogDMASupported, SCT_RWL_WRITE_LONG, corruptLBA, data, dataSize, NULL, NULL);
-            }
-            safe_Free(data);
-        }
-        else if (device->drive_info.IdentifyData.ata.Word022 > 0 && device->drive_info.IdentifyData.ata.Word022 < UINT16_MAX && corruptLBA < MAX_28_BIT_LBA)/*a value of zero may be valid on really old drives which otherwise accept this command, but this should be ok for now*/
-        {
-            bool setFeaturesToChangeECCBytes = false;
-            if (device->drive_info.IdentifyData.ata.Word022 != 4)
-            {
-                //need to issue a set features command to specify the number of ECC bytes before doing a read or write long (according to old Seagate ATA reference manual from the web)
-                if (SUCCESS == ata_Set_Features(device, SF_LEGACY_SET_VENDOR_SPECIFIC_ECC_BYTES_FOR_READ_WRITE_LONG, M_Byte0(device->drive_info.IdentifyData.ata.Word022), 0, 0, 0))
-                {
-                    setFeaturesToChangeECCBytes = true;
-                }
-            }
-            uint32_t dataSize = device->drive_info.deviceBlockSize + device->drive_info.IdentifyData.ata.Word022;
-            uint8_t *data = (uint8_t*)calloc(dataSize, sizeof(uint8_t));
-            if (!data)
-            {
-                return MEMORY_FAILURE;
-            }
-            //This drive supports the legacy 28bit read/write long commands from ATA...
-            //These commands are really old and transfer weird byte based values.
-            //While these transfer lengths shouldbe supported by SAT, there are some SATLs that won't handle this odd case. It may or may not go through...-TJE
-            if (device->drive_info.ata_Options.chsModeOnly)
-            {
-                uint16_t cylinder = 0;
-                uint8_t head = 0;
-                uint8_t sector = 0;
-                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)corruptLBA, &cylinder, &head, &sector))
-                {
-                    ret = ata_Legacy_Read_Long_CHS(device, true, cylinder, head, sector, data, dataSize);
-                    if (ret == SUCCESS)
-                    {
-                        seed_64(time(NULL));
-                        //modify the user data to cause a uncorrectable error
-                        for (uint32_t iter = 0; iter < device->drive_info.deviceBlockSize - 1; ++iter)
-                        {
-                            data[iter] = (uint8_t)random_Range_64(0, UINT8_MAX);
-                        }
-                        ret = ata_Legacy_Write_Long_CHS(device, true, cylinder, head, sector, data, dataSize);
-                    }
-                }
-                else //Couldn't convert or the LBA is greater than the current CHS mode
-                {
-                    ret = NOT_SUPPORTED;
-                }
-            }
-            else
-            {
-                ret = ata_Legacy_Read_Long(device, true, (uint32_t)corruptLBA, data, dataSize);
-                if (ret == SUCCESS)
-                {
-                    seed_64(time(NULL));
-                    //modify the user data to cause a uncorrectable error
-                    for (uint32_t iter = 0; iter < device->drive_info.deviceBlockSize - 1; ++iter)
-                    {
-                        data[iter] = (uint8_t)random_Range_64(0, UINT8_MAX);
-                    }
-                    ret = ata_Legacy_Write_Long(device, true, (uint32_t)corruptLBA, data, dataSize);
-                }
-            }
-            if (setFeaturesToChangeECCBytes)
-            {
-                //reverting back to drive defaults again so that we don't mess anyone else up.
-                if (SUCCESS == ata_Set_Features(device, SF_LEGACY_SET_4_BYTES_ECC_FOR_READ_WRITE_LONG, 0, 0, 0, 0))
-                {
-                    setFeaturesToChangeECCBytes = false;
-                }
-            }
-            safe_Free(data);
-        }
-        else //no other standardized way to write a error to this location.
+        else //write psuedo uncorrectable command is not supported by this drive. Return NOT_SUPPORTED
         {
             ret = NOT_SUPPORTED;
         }
@@ -746,6 +673,40 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
         ret = NOT_SUPPORTED;
     }
     return ret;
+}
+
+bool is_Write_Flagged_Uncorrectable_Supported(tDevice *device)
+{
+    bool supported = false;
+    if (device->drive_info.drive_type == ATA_DRIVE)
+    {
+        if (device->drive_info.ata_Options.writeUncorrectableExtSupported)
+        {
+            supported = true;
+        }
+    }
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+    else if (device->drive_info.drive_type == NVME_DRIVE)
+    {
+        if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT1)
+        {
+            supported = true;
+        }
+    }
+#endif
+    else if (device->drive_info.drive_type == SCSI_DRIVE)
+    {
+        //check for wu_supp in extended inquiry vpd page (SPC4+) since this matches when it was added to SBC3
+        uint8_t extendedInquiryData[VPD_EXTENDED_INQUIRY_LEN] = { 0 };
+        if (SUCCESS == scsi_Inquiry(device, extendedInquiryData, VPD_EXTENDED_INQUIRY_LEN, EXTENDED_INQUIRY_DATA, true, false))
+        {
+            if (extendedInquiryData[6] & BIT2)
+            {
+                supported = true;
+            }
+        }
+    }
+    return supported;
 }
 
 int write_Flagged_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)

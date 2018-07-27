@@ -201,7 +201,7 @@ int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
     // \revisit: should this be FF or something invalid than 0?
     scsiIoCtx->returnStatus.format = 0xFF;
     scsiIoCtx->returnStatus.senseKey = 0;
-    scsiIoCtx->returnStatus.acq = 0;
+    scsiIoCtx->returnStatus.asc = 0;
     scsiIoCtx->returnStatus.ascq = 0;
 
     seatimer_t commandTimer;
