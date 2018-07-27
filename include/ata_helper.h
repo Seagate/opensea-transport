@@ -577,31 +577,63 @@ extern "C"
    //if the subcommand you are looking for is not in this enum, please add it
    typedef enum _eATASetFeaturesSubcommands
    {
-       SF_ENABLE_VOLITILE_WRITE_CACHE                               = 0x02,
-       SF_SET_TRANSFER_MODE                                         = 0x03,
-       SF_ENABLE_APM_FEATURE                                        = 0x05,
-       SF_ENABLE_PUIS_FEATURE                                       = 0x06,
-       SF_PUIS_DEVICE_SPIN_UP                                       = 0x07,
-       SF_ENABLE_WRITE_READ_VERIFY_FEATURE                          = 0x0B,
-       SF_ENABLE_SATA_FEATURE                                       = 0x10,
-       SF_ENABLE_FREE_FALL_CONTROL_FEATURE                          = 0x41,
-       SF_MAXIMUM_HOST_INTERFACE_SECTOR_TIMES                       = 0x43,
-       SF_LEGACY_SET_VENDOR_SPECIFIC_ECC_BYTES_FOR_READ_WRITE_LONG  = 0x44,
-       SF_EXTENDED_POWER_CONDITIONS                                 = 0x4A,
-       SF_DISABLE_READ_LOOK_AHEAD_FEATURE                           = 0x55,
-       SF_LONG_PHYSICAL_SECTOR_ALIGNMENT_ERROR_REPORTING            = 0x62,
-       SF_ENABLE_DISABLE_DSN_FEATURE                                = 0x63,
-       SF_DISABLE_REVERTING_TO_POWERON_DEFAULTS                     = 0x66,
-       SF_DISABLE_VOLITILE_WRITE_CACHE                              = 0x82,
-       SF_DISABLE_APM_FEATURE                                       = 0x85,
-       SF_DISABLE_PUIS_FEATURE                                      = 0x86,
-       SF_DISABLE_WRITE_READ_VERIFY_FEATURE                         = 0x8B,
-       SF_DISABLE_SATA_FEATURE                                      = 0x90,
-       SF_ENABLE_READ_LOOK_AHEAD_FEATURE                            = 0xAA,
-       SF_LEGACY_SET_4_BYTES_ECC_FOR_READ_WRITE_LONG                = 0xBB,
-       SF_DISABLE_FREE_FALL_CONTROL_FEATURE                         = 0xC1,
-       SF_ENABLE_DISABLE_SENSE_DATA_REPORTING_FEATURE               = 0xC3,
-       SF_ENABLE_REVERTING_TO_POWER_ON_DEFAULTS                     = 0xCC,
+       SF_RESERVED                                                      = 0x00,
+       SF_ENABLE_8_BIT_DATA_TRANSFERS                                   = 0x01,//retired in ATA4. Obsolete in ATA3
+       SF_ENABLE_VOLITILE_WRITE_CACHE                                   = 0x02,
+       SF_SET_TRANSFER_MODE                                             = 0x03,
+       SF_ENABLE_ALL_AUTOMATIC_DEFECT_REASSIGNMENT                      = 0x04,//Defined in ATA3, obsolete since ATA4
+       SF_ENABLE_APM_FEATURE                                            = 0x05,
+       SF_ENABLE_PUIS_FEATURE                                           = 0x06,
+       SF_PUIS_DEVICE_SPIN_UP                                           = 0x07,
+       SF_ADDRESS_OFFSET_RESERVED_BOOT_AREA_METHOD_TECH_REPORT          = 0x09,//Defined in ATA5, obsolete in ACS3
+       SF_ENABLE_CFA_POWER_MODE1                                        = 0x0A,
+       SF_ENABLE_WRITE_READ_VERIFY_FEATURE                              = 0x0B,
+       SF_ENABLE_SATA_FEATURE                                           = 0x10,
+       SF_TLC_SET_CCTL                                                  = 0x20,//set command completion time limit for devices supporting the old time limited commands feature set
+       SF_TCL_SET_ERROR_HANDLING                                        = 0x21,//Sets error handling for devices supporting TLC and read/write continuous mode
+       SF_DISABLE_MEDIA_STATUS_NOTIFICATION                             = 0x31,//Defined in ATA4, obsolete in ATA8/ACS
+       SF_DISABLE_RETRY                                                 = 0x33,//Defined in ATA3, obsolete in ATA5
+       SF_ENABLE_FREE_FALL_CONTROL_FEATURE                              = 0x41,
+       SF_ENABLE_AUTOMATIC_ACOUSTIC_MANAGEMENT_FEATURE                  = 0x42,
+       SF_MAXIMUM_HOST_INTERFACE_SECTOR_TIMES                           = 0x43,
+       SF_LEGACY_SET_VENDOR_SPECIFIC_ECC_BYTES_FOR_READ_WRITE_LONG      = 0x44,//defined in ATA, obsolete in ATA4
+       SF_EXTENDED_POWER_CONDITIONS                                     = 0x4A,
+       SF_SET_CACHE_SEGMENTS                                            = 0x54,//defined in ATA3, obsolete in ATA4
+       SF_DISABLE_READ_LOOK_AHEAD_FEATURE                               = 0x55,
+       //56h - 5Ch are vendor unique
+       SF_ENABLE_RELEASE_INTERRUPT                                      = 0x5D,//TCQ related
+       SF_ENABLE_SERVICE_INTERRUPT                                      = 0x5E,//TCQ related
+       SF_LONG_PHYSICAL_SECTOR_ALIGNMENT_ERROR_REPORTING                = 0x62,
+       SF_ENABLE_DISABLE_DSN_FEATURE                                    = 0x63,
+       SF_DISABLE_REVERTING_TO_POWERON_DEFAULTS                         = 0x66,
+       SF_RESERVED_FOR_CFA                                              = 0x69,
+       SF_DISABLE_ECC                                                   = 0x77,//defined in ATA3, obsolete in ATA4
+       SF_DISABLE_8_BIT_DATA_TRANSFERS                                  = 0x81,//defined in ATA, obsolete in ATA3
+       SF_DISABLE_VOLITILE_WRITE_CACHE                                  = 0x82,
+       SF_DISABLE_ALL_AUTOMATIC_DEFECT_REASSIGNMENT                     = 0x84,//defined in ATA3, obsolete in ATA4
+       SF_DISABLE_APM_FEATURE                                           = 0x85,
+       SF_DISABLE_PUIS_FEATURE                                          = 0x86,
+       SF_ENABLE_ECC                                                    = 0x88,//defined in ATA3, obsolete in ATA6
+       SF_ADDRESS_OFFSET_RESERVED_BOOT_AREA_METHOD_TECH_REPORT_2        = 0x89,//Defined in ATA5, obsolete in ACS3
+       SF_DISABLE_CFA_POWER_MODE_1                                      = 0x8A,
+       SF_DISABLE_WRITE_READ_VERIFY_FEATURE                             = 0x8B,
+       SF_DISABLE_SATA_FEATURE                                          = 0x90,
+       SF_ENABLE_MEDIA_STATUS_NOTIFICATION                              = 0x95,
+       SF_ENABLE_RETIRES                                                = 0x99,
+       SF_SET_DEVICE_MAXIMUM_AVERAGE_CURRENT                            = 0x9A,//Defined in ATA3, obsolete in ATA4
+       SF_ENABLE_READ_LOOK_AHEAD_FEATURE                                = 0xAA,
+       SF_SET_MAXIMUM_PREFETCH                                          = 0xAB,//defined in ATA3, obsolete in ATA4
+       SF_LEGACY_SET_4_BYTES_ECC_FOR_READ_WRITE_LONG                    = 0xBB,
+       SF_DISABLE_FREE_FALL_CONTROL_FEATURE                             = 0xC1,
+       SF_DISABLE_AUTOMATIC_ACOUSTIC_MANAGEMENT                         = 0xC2,
+       SF_ENABLE_DISABLE_SENSE_DATA_REPORTING_FEATURE                   = 0xC3,
+       SF_ENABLE_DISABLE_SENSE_DATA_RETURN_FOR_SUCCESSFUL_NCQ_COMMANDS  = 0xC4,
+       SF_ENABLE_REVERTING_TO_POWER_ON_DEFAULTS                         = 0xCC,
+       //D6-DC are vendor unique
+       SF_DISABLE_RELEASE_INTERRUPT                                     = 0xDD,
+       SF_DISABLE_SERVICE_INTERRUPT                                     = 0xDE,
+       //E0 is vendor unique
+       //F0 - FF are reserved for CFA
        SF_UNKNOWN_FEATURE
    } eATASetFeaturesSubcommands;
 
@@ -669,6 +701,8 @@ extern "C"
        ATA_LOG_SAVED_DEVICE_INTERNAL_STATUS_DATA_LOG    = 0x25,
        ATA_LOG_SECTOR_CONFIGURATION_LOG                 = 0x2F, //ACS4
        ATA_LOG_IDENTIFY_DEVICE_DATA                     = 0x30,
+       //80h - 9F are host specific logs
+       //A0-DF are vendor specific logs
        ATA_SCT_COMMAND_STATUS                           = 0xE0,
        ATA_SCT_DATA_TRANSFER                            = 0xE1,
    }eATALog;
