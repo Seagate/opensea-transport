@@ -9,7 +9,7 @@
 #
 # ******************************************************************************************
 
-# Hand Written Makefile (Edit with caution) -Muhammad
+# Hand Written Makefile (Edit with caution) -Debabrata
 # 
 
 NAME=opensea-transport
@@ -51,8 +51,6 @@ endif
 VMKAPIDDK_ROOT = $(shell rpm -q --qf '%{INSTPREFIXES}\n' $(DDK))
 BUILD_NUMBER=$(shell echo $(VMKAPIDDK_ROOT) | cut -d '-' -f3)
 DESC_ESX_VERSION=$(shell echo $(VMKAPIDDK_ROOT) | cut -d '-' -f2)
-
-# include $(VMKAPIDDK_ROOT)/src/partners/samples/common-mgmt-infrastructure/Makefile.user
 
 # Makefile
 #
@@ -182,26 +180,6 @@ endif
 
 VMKAPI_LOCATION = $(dir $(shell find $(VMKAPIDDK_ROOT)/src/bora -name vmkapi.h))
 
-# Only need to evaluate once (aka use ":=").
-CURRENT_DIR := $(shell pwd)
-BUILD_DIR := build
-SCRATCH_DIR := $(BUILD_DIR)/scratch
-VIB_DIR := $(BUILD_DIR)/vib
-BUNDLE_DIR := $(BUILD_DIR)/bundle
-STAGE_DIR := $(BUILD_DIR)/stage
-TARGET_XML_DIR := /usr/lib/vmware/esxcli/ext
-
-VIB_DESCRIPTOR_XML := $(SCRATCH_DIR)/descriptor.xml
-VIB_BULLETIN_XML := $(SCRATCH_DIR)/bulletin.xml
-
-# Need to evaluate at every reference, as DEV_OBJDIR, etc, can change
-# during a build (aka use "=").  Also, some things get set/reset in
-# common included files, we reference them, and we haven't included the files
-# yet.
-BINARIES_DIR = $(BUILD_DIR)/$(DEV_OBJDIR)
-INSTALL_DIR = /opt/vmware/nvme
-STAGE_XML_DIR = $(STAGE_DIR)$(TARGET_XML_DIR)
-
 #
 # Check paths
 #
@@ -219,11 +197,6 @@ endif
 # of the devkit installed and usable simultaneously.
 
 include $(HEXDK_BASE)/samples/common/userworld-tool.inc
-
-#VMW_EXTRA_DEFS += -I$(VMKAPI_LOCATION) -I$(VMKAPI_LOCATION)/** -I$(DEV_COMMON_DIR) \
-	-DVMK_DEVKIT_HAS_API_VMKAPI_BASE \
-	-DVMK_DEVKIT_USES_PUBLIC_APIS \
-	-DVMK_DEVKIT_USES_BINARY_COMPATIBLE_APIS
 
 VMW_VERSION := 6.5.0
 VMW_BUILD   := 4598673
@@ -311,20 +284,14 @@ VMW_DRIVER_DEVKIT_BASE := $(call VMW_IMPORT_DEVKIT,$(_VMW_RPM_PREFIX)-nativeddk-
 
 VMW_uw32_beta_CCBIN = $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/bin/x86_64-vmk-linux-gnu-gcc
 VMW_uw32_beta_OBJCOPYBIN = $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/bin/x86_64-vmk-linux-gnu-objcopy
-#VMW_uw32_beta_COMPILEFLAGS = -pthread -fwrapv -pipe -fno-working-directory -fno-strict-aliasing -funwind-tables -fasynchronous-unwind-tables -Wall -Werror -O2 -march=i686 -g -fPIC -fstack-protector -fstack-protector-all -fno-strict-aliasing -Wno-unused-but-set-variable -Wdeclaration-after-statement -Wno-unused-value -Wno-pointer-sign -Wno-strict-prototypes -Wno-enum-compare -Wno-switch --sysroot=$(CAYMAN_ESX_GLIBC_DIR)/sysroot -m32 -isystem $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/lib/gcc/x86_64-vmk-linux-gnu/4.8.4/include -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -DVMX86_DEBUG -D_FORTIFY_SOURCE=1 -D_FILE_OFFSET_BITS=64 -D_BSD_SOURCE -Dlinux -DVMX86_BETA
-#VMW_uw32_beta_COMPILEFLAGS = -pthread -fwrapv -pipe -fno-working-directory -fno-strict-aliasing -funwind-tables -fasynchronous-unwind-tables -Wall -Werror -O2 -march=i686 -g -fPIC -fstack-protector -fstack-protector-all -fno-strict-aliasing -Wno-unused-but-set-variable -Wno-unused-value -Wno-enum-compare -Wno-switch --sysroot=$(CAYMAN_ESX_GLIBC_DIR)/sysroot -m32 -isystem $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/lib/gcc/x86_64-vmk-linux-gnu/4.8.4/include -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -DVMX86_DEBUG -D_FORTIFY_SOURCE=1 -D_FILE_OFFSET_BITS=64 -D_BSD_SOURCE -Dlinux -DVMX86_BETA
 #The above compilation flags is the correct one but it is causing issue dur to -Werror so removing it
 VMW_uw32_beta_COMPILEFLAGS = -pthread -fwrapv -pipe -fno-working-directory -fno-strict-aliasing -funwind-tables -fasynchronous-unwind-tables -Wall -O2 -march=i686 -g -fPIC -fstack-protector -fstack-protector-all -fno-strict-aliasing -Wno-unused-but-set-variable -Wno-unused-value -Wno-enum-compare -Wno-switch --sysroot=$(CAYMAN_ESX_GLIBC_DIR)/sysroot -m32 -isystem $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/lib/gcc/x86_64-vmk-linux-gnu/4.8.4/include -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -DVMX86_DEBUG -D_FORTIFY_SOURCE=1 -D_FILE_OFFSET_BITS=64 -D_BSD_SOURCE -Dlinux -DVMX86_BETA
-#VMW_uw32_beta_COMPILEFLAGS = -pthread -fwrapv -pipe -fno-working-directory -fno-strict-aliasing -funwind-tables -fasynchronous-unwind-tables -Wall -O2 -march=i686 -g -fPIC -fstack-protector -fstack-protector-all -fno-strict-aliasing -Wno-unused-but-set-variable -Wno-unused-value -Wno-enum-compare -Wno-switch --sysroot=$(CAYMAN_ESX_GLIBC_DIR)/sysroot -m32 -isystem $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/lib/gcc/x86_64-vmk-linux-gnu/4.8.4/include -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -DVMX86_DEBUG -D_FORTIFY_SOURCE=1 -D_FILE_OFFSET_BITS=64 -D_BSD_SOURCE -Dlinux -DVMX86_BETA
 VMW_uw32_beta_LINKFLAGS =  -pthread -Wl,-z,relro -Wl,-z,noexecstack -Wl,-z,now -Wl,-z,defs -Wl,--hash-style=gnu --sysroot=$(CAYMAN_ESX_GLIBC_DIR)/sysroot
 
 VMW_uw32_release_CCBIN = $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/bin/x86_64-vmk-linux-gnu-gcc
 VMW_uw32_release_OBJCOPYBIN = $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/bin/x86_64-vmk-linux-gnu-objcopy
-#VMW_uw32_release_COMPILEFLAGS = -pthread -fwrapv -pipe -fno-working-directory -fno-strict-aliasing -funwind-tables -fasynchronous-unwind-tables -Wall -Werror -DNDEBUG -O2 -march=i686 -g -fPIC -fstack-protector -fno-strict-aliasing -Wno-unused-but-set-variable -Wdeclaration-after-statement -Wno-unused-value -Wno-pointer-sign -Wno-strict-prototypes -Wno-enum-compare -Wno-switch --sysroot=$(CAYMAN_ESX_GLIBC_DIR)/sysroot -m32 -isystem $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/lib/gcc/x86_64-vmk-linux-gnu/4.8.4/include -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -DVMX86_RELEASE -D_FORTIFY_SOURCE=1 -D_FILE_OFFSET_BITS=64 -D_BSD_SOURCE -Dlinux
-#VMW_uw32_release_COMPILEFLAGS = -pthread -fwrapv -pipe -fno-working-directory -fno-strict-aliasing -funwind-tables -fasynchronous-unwind-tables -Wall -Werror -DNDEBUG -O2 -march=i686 -g -fPIC -fstack-protector -fno-strict-aliasing -Wno-unused-but-set-variable -Wno-unused-value -Wno-enum-compare -Wno-switch --sysroot=$(CAYMAN_ESX_GLIBC_DIR)/sysroot -m32 -isystem $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/lib/gcc/x86_64-vmk-linux-gnu/4.8.4/include -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -DVMX86_RELEASE -D_FORTIFY_SOURCE=1 -D_FILE_OFFSET_BITS=64 -D_BSD_SOURCE -Dlinux
 #The above compilation flags is the correct one but it is causing issue dur to -Werror so removing it
 VMW_uw32_release_COMPILEFLAGS = -pthread -fwrapv -pipe -fno-working-directory -fno-strict-aliasing -funwind-tables -fasynchronous-unwind-tables -Wall -DNDEBUG -O2 -march=i686 -g -fPIC -fstack-protector -fno-strict-aliasing -Wno-unused-but-set-variable -Wno-unused-value -Wno-enum-compare -Wno-switch --sysroot=$(CAYMAN_ESX_GLIBC_DIR)/sysroot -m32 -isystem $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/lib/gcc/x86_64-vmk-linux-gnu/4.8.4/include -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -DVMX86_RELEASE -D_FORTIFY_SOURCE=1 -D_FILE_OFFSET_BITS=64 -D_BSD_SOURCE -Dlinux
-#VMW_uw32_release_COMPILEFLAGS = -pthread -fwrapv -pipe -fno-working-directory -fno-strict-aliasing -funwind-tables -fasynchronous-unwind-tables -Wall -DNDEBUG -O2 -march=i686 -g -fPIC -fstack-protector -fno-strict-aliasing -Wno-unused-but-set-variable -Wno-unused-value -Wno-enum-compare -Wno-switch --sysroot=$(CAYMAN_ESX_GLIBC_DIR)/sysroot -m32 -isystem $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/lib/gcc/x86_64-vmk-linux-gnu/4.8.4/include -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -DVMX86_RELEASE -D_FORTIFY_SOURCE=1 -D_FILE_OFFSET_BITS=64 -D_BSD_SOURCE -Dlinux
 VMW_uw32_release_LINKFLAGS =  -pthread -Wl,-z,relro -Wl,-z,noexecstack -Wl,-z,now -Wl,-z,defs -Wl,--hash-style=gnu --sysroot=$(CAYMAN_ESX_GLIBC_DIR)/sysroot
 
 # In theory, the compiler already knows what version of the basic libraries
@@ -417,9 +384,6 @@ VMW_EXTRA_DEFS += -I$(VMKAPI_LOCATION) -I$(VMKAPI_LOCATION)lib \
 	-DVMK_DEVKIT_HAS_API_VMKAPI_BASE \
 	-DVMK_DEVKIT_USES_PUBLIC_APIS \
 	-DVMK_DEVKIT_USES_BINARY_COMPATIBLE_APIS
-#VMW_EXTRA_DEFS += -I$(VMKAPI_LOCATION) -I$(VMKAPI_LOCATION)lib \
-	-DVMK_DEVKIT_USES_PUBLIC_APIS \
-	-DVMK_DEVKIT_USES_BINARY_COMPATIBLE_APIS
 
 .PHONY: clean
 
@@ -434,9 +398,6 @@ VMW_EXTRA_DEFS += -I$(VMKAPI_LOCATION) -I$(VMKAPI_LOCATION)lib \
 #	echo $(CURRENT_DIR)
 #	echo $(PWD)
 
-#CC_CMD = /build/toolchain/lin32/gcc-4.4.3-1/bin/x86_64-linux5.0-gcc
-#CC_CMD = $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/bin/x86_64-vmk-linux-gnu-gcc
-#CXX = $(TCROOT)/lin32/gcc-3.3.3/bin/i686-linux-g++
 STRIP = strip
 
 SRC_DIR=../../src/
@@ -448,7 +409,6 @@ CFLAGS ?= -Wall
 CFLAGS += -c -fPIC -I. $(VMW_$(VMW_TARGET)_COMPILEFLAGS) -std=gnu99
 CFLAGS += -DVMK_CROSS_COMP
 LFLAGS = -Wall ../../../opensea-common/Make/vmware/$(FILE_OUTPUT_DIR)/libopensea-common.a $(VMW_LINK_FLAGS)
-#LFLAGS += -L /opt/vmware/toolchain/cayman_esx_glibc-7fc626201c38c3a7e2472179c969a565b101f7ba/sysroot/usr/lib
 LIB_SRC_FILES = \
 	$(SRC_DIR)ata_cmds.c\
 	$(SRC_DIR)ata_legacy_cmds.c\
@@ -469,7 +429,6 @@ LIB_SRC_FILES = \
 
 UNAME := $(shell uname)
 ifeq ($(UNAME),Linux)
-	#LIB_SRC_FILES += $(SRC_DIR)sg_helper.c
 	LIB_SRC_FILES += $(SRC_DIR)vm_helper.c $(SRC_DIR)vm_nvme_lib.c $(SRC_DIR)vm_nvme_mgmt_common.c
 endif
 ifeq ($(UNAME),SunOS)
