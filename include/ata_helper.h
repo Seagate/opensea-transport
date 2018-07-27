@@ -772,6 +772,13 @@ extern "C"
        SCT_EXT_STATUS_SCT_COMMAND_PROCESSING_IN_BACKGROUND                                                                  = 0xFFFF
    }eSCTExtendedStatus;
 
+   typedef enum _eAMACCommand //accessible max address configuration
+   {
+       AMAC_GET_NATIVE_MAX_ADDRESS          = 0x0000,
+       AMAC_SET_ACCESSIBLE_MAX_ADDRESS      = 0x0001,
+       AMAC_FREEZE_ACCESSIBLE_MAX_ADDRESS   = 0x0002,
+   }eAMACCommand;
+
     #if defined(__cplusplus)
 } //extern "C"
     #endif
