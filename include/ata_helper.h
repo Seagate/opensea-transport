@@ -634,6 +634,8 @@ extern "C"
        HPA_SET_MAX_LOCK         = 0x02,
        HPA_SET_MAX_UNLOCK       = 0x03,
        HPA_SET_MAX_FREEZE_LOCK  = 0x04,
+       HPA_SET_MAX_PASSWORD_DMA = 0x05,
+       HPA_SET_MAX_UNLOCK_DMA   = 0x06,
        HPA_SET_MAX_RESERVED
    }eHPAFeature;   
 
@@ -651,12 +653,15 @@ extern "C"
        ATA_LOG_DEVICE_STATISTICS_NOTIFICATION           = 0x0A,
        ATA_LOG_PENDING_DEFECTS_LOG                      = 0x0C,
        ATA_LOG_LPS_MISALIGNMENT_LOG                     = 0x0D,
+       ATA_LOG_SENSE_DATA_FOR_SUCCESSFUL_NCQ_COMMANDS   = 0x0F,
        ATA_LOG_NCQ_COMMAND_ERROR_LOG                    = 0x10,
        ATA_LOG_SATA_PHY_EVENT_COUNTERS_LOG              = 0x11,
        ATA_LOG_SATA_NCQ_QUEUE_MANAGEMENT_LOG            = 0x12,
        ATA_LOG_SATA_NCQ_SEND_AND_RECEIVE_LOG            = 0x13,
        ATA_LOG_HYBRID_INFORMATION                       = 0x14,
+       ATA_LOG_REBUILD_ASSIST                           = 0x15,
        ATA_LOG_LBA_STATUS                               = 0x19,
+       ATA_LOG_STREAMING_PERFORMANCE                    = 0x20,
        ATA_LOG_WRITE_STREAM_ERROR_LOG                   = 0x21,
        ATA_LOG_READ_STREAM_ERROR_LOG                    = 0x22,
        ATA_LOG_DELAYED_LBA_LOG                          = 0x23,
