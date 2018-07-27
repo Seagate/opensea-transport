@@ -14,7 +14,7 @@
 //        This file acts as a OS agnostic glue layer for different OSes. 
 
 #pragma once
-
+typedef unsigned int* __uintptr_t;
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "common_public.h"
 #if defined (__cplusplus)
@@ -726,6 +726,132 @@ extern "C"
                                                 //but may be checked otherwise since Win10 API only talks to the current NSID, 
                                                 //unless you are pulling a log or identify data from the controller. - TJE
     } nvmeCmdCtx;
+
+    //Linga
+    #define nvme_admin_get_ext_log_page  0x02
+
+    //Smart attribute IDs
+
+    typedef enum
+    {
+        VS_ATTR_ID_SOFT_READ_ERROR_RATE = 1,
+        VS_ATTR_ID_REALLOCATED_SECTOR_COUNT  = 5,
+        VS_ATTR_ID_POWER_ON_HOURS = 9,
+        VS_ATTR_ID_POWER_FAIL_EVENT_COUNT = 11,
+        VS_ATTR_ID_DEVICE_POWER_CYCLE_COUNT = 12,
+        VS_ATTR_ID_RAW_READ_ERROR_RATE = 13,
+        VS_ATTR_ID_GROWN_BAD_BLOCK_COUNT = 40,
+        VS_ATTR_ID_END_2_END_CORRECTION_COUNT = 41,
+        VS_ATTR_ID_MIN_MAX_WEAR_RANGE_COUNT = 42,
+        VS_ATTR_ID_REFRESH_COUNT = 43,
+        VS_ATTR_ID_BAD_BLOCK_COUNT_USER = 44,
+        VS_ATTR_ID_BAD_BLOCK_COUNT_SYSTEM = 45,
+        VS_ATTR_ID_THERMAL_THROTTLING_STATUS = 46,
+        VS_ATTR_ID_ALL_PCIE_CORRECTABLE_ERROR_COUNT = 47,
+        VS_ATTR_ID_ALL_PCIE_UNCORRECTABLE_ERROR_COUNT = 48,
+        VS_ATTR_ID_INCOMPLETE_SHUTDOWN_COUNT = 49,
+        VS_ATTR_ID_GB_ERASED_LSB = 100,
+        VS_ATTR_ID_GB_ERASED_MSB = 101,
+        VS_ATTR_ID_LIFETIME_ENTERING_PS4_COUNT = 102,
+        VS_ATTR_ID_LIFETIME_ENTERING_PS3_COUNT = 103,
+        VS_ATTR_ID_LIFETIME_DEVSLEEP_EXIT_COUNT = 104,
+        VS_ATTR_ID_RETIRED_BLOCK_COUNT = 170,
+        VS_ATTR_ID_PROGRAM_FAILURE_COUNT = 171,
+        VS_ATTR_ID_ERASE_FAIL_COUNT = 172,
+        VS_ATTR_ID_AVG_ERASE_COUNT = 173,
+        VS_ATTR_ID_UNEXPECTED_POWER_LOSS_COUNT = 174,
+        VS_ATTR_ID_WEAR_RANGE_DELTA = 177,
+        VS_ATTR_ID_SATA_INTERFACE_DOWNSHIFT_COUNT = 183,
+        VS_ATTR_ID_END_TO_END_CRC_ERROR_COUNT = 184,
+        VS_ATTR_ID_UNCORRECTABLE_ECC_ERRORS = 188,
+        VS_ATTR_ID_MAX_LIFE_TEMPERATURE = 194,
+        VS_ATTR_ID_RAISE_ECC_CORRECTABLE_ERROR_COUNT = 195,
+        VS_ATTR_ID_UNCORRECTABLE_RAISE_ERRORS = 198,
+        VS_ATTR_ID_DRIVE_LIFE_PROTECTION_STATUS = 230,
+        VS_ATTR_ID_REMAINING_SSD_LIFE  = 231,
+        VS_ATTR_ID_LIFETIME_WRITES_TO_FLASH_LSB = 233,
+        VS_ATTR_ID_LIFETIME_WRITES_TO_FLASH_MSB = 234,
+        VS_ATTR_ID_LIFETIME_WRITES_FROM_HOST_LSB = 241,
+        VS_ATTR_ID_LIFETIME_WRITES_FROM_HOST_MSB = 242,
+        VS_ATTR_ID_LIFETIME_READS_TO_HOST_LSB = 243,
+        VS_ATTR_ID_LIFETIME_READS_TO_HOST_MSB = 244,
+        VS_ATTR_ID_FREE_SPACE = 245,
+        VS_ATTR_ID_TRIM_COUNT_LSB = 250,
+        VS_ATTR_ID_TRIM_COUNT_MSB = 251,
+        VS_ATTR_ID_OP_PERCENTAGE = 252,
+        VS_ATTR_ID_MAX_SOC_LIFE_TEMPERATURE = 253,
+    } smart_attributes_ids;
+    
+
+
+/***************************
+* Extended-SMART Information
+***************************/
+#pragma pack(1)
+#define NUMBER_EXTENDED_SMART_ATTRIBUTES      42
+
+typedef enum _EXTENDED_SMART_VERSION_
+{
+    EXTENDED_SMART_VERSION_NONE,    // 0
+    EXTENDED_SMART_VERSION_GEN,     // 1
+    EXTENDED_SMART_VERSION_FB,      // 2
+} EXTENDED_SMART_VERSION;
+
+typedef struct _SmartVendorSpecific
+{
+   uint8_t   AttributeNumber;
+   uint16_t  SmartStatus;
+   uint8_t   NominalValue;
+   uint8_t   LifetimeWorstValue;
+   uint32_t  Raw0_3;
+   uint8_t   RawHigh[3];
+} SmartVendorSpecific;
+
+
+typedef struct _EXTENDED_SMART_INFO_T
+{
+   uint16_t Version;
+   SmartVendorSpecific vendorData[NUMBER_EXTENDED_SMART_ATTRIBUTES];
+   uint8_t   vendor_specific_reserved[6];
+}  EXTENDED_SMART_INFO_T;
+
+typedef struct fb_smart_attribute_data
+{
+   uint8_t   AttributeNumber;         // 00
+   uint8_t   Rsvd[3];                 // 01 -03
+   uint32_t  LSDword;                 // 04-07
+   uint32_t   MSDword;                 // 08 - 11
+} fb_smart_attribute_data;
+
+
+typedef struct _U128
+{
+    uint64_t  LSU64;
+    uint64_t  MSU64;
+} U128;
+
+typedef struct _fb_log_page_CF_Attr
+{
+   uint16_t       SuperCapCurrentTemperature;        // 00-01
+   uint16_t       SuperCapMaximumTemperature;        // 02-03
+   uint8_t        SuperCapStatus;                    // 04
+   uint8_t        Reserved5to7[3];                   // 05-07
+   U128           DataUnitsReadToDramNamespace;      // 08-23
+   U128           DataUnitsWrittenToDramNamespace;   // 24-39
+   uint64_t       DramCorrectableErrorCount;         // 40-47
+   uint64_t       DramUncorrectableErrorCount;       // 48-55
+}fb_log_page_CF_Attr;
+
+typedef struct _fb_log_page_CF
+{
+   fb_log_page_CF_Attr      AttrCF;
+   uint8_t                  Vendor_Specific_Reserved[ 456 ];     // 56-511
+}fb_log_page_CF;
+
+
+
+#pragma pack()
+/* EOF Extended-SMART Information*/
 
 #if defined (__cplusplus)
 }
