@@ -38,13 +38,13 @@ else
 		PROJECT_DEFINES += -DSEA_NVME_H
 	else
 		ifeq ($(shell test -f $(UAPI_NVME_H) && echo -n yes),yes)
-			PROJECT_DEFINES += -SEA_UAPI_NVME_H
+			PROJECT_DEFINES += -DSEA_UAPI_NVME_H
 		endif
 	endif
 endif
 #override CFLAGS = -Wall -c -fPIC -I. -std=gnu99
 CFLAGS ?= -Wall 
-#setting std=c99 instead of std-gnu99 because we want __has_include to work. This means we must add -D_GNU_SOURCE to the project defines to keep the same functionality in Linux
+#setting std=c99 instead of std-gnu99 because we want __has_include to work. This means we must add -D_GNU_SOURCE to the project defines to keep the same functionality in Linux. NOTE: This seems to work in newGCC, but if you are unfortunate enough to HAVE to use old GCC within somehting like CentOS6, you must change back to gnu99.
 CFLAGS += -c -fPIC -I. -std=c99
 LFLAGS = -Wall ../../../opensea-common/Make/gcc/lib/$(FILE_OUTPUT_DIR)/libopensea-common.a
 LIB_SRC_FILES = \
