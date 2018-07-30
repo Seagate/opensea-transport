@@ -255,6 +255,34 @@ extern "C"
         ATA_SEEK_EXT                        = 0xFC
     } eATA_CMDS;
 
+    typedef enum _eNCQNonDataSubCommands
+    {
+        NCQ_NON_DATA_ABORT_NCQ_QUEUE            = 0x00,
+        NCQ_NON_DATA_DEADLINE_HANDLING          = 0x01,
+        NCQ_NON_DATA_HYBRID_DEMOTE_BY_SIZE      = 0x02,
+        NCQ_NON_DATA_HYBRID_CHANGE_BY_LBA_RANGE = 0x03,
+        NCQ_NON_DATA_HYBRID_CONTROL             = 0x04,
+        NCQ_NON_DATA_SET_FEATURES               = 0x05,
+        NCQ_NON_DATA_ZERO_EXT                   = 0x06,
+        NCQ_NON_DATA_ZAC_MANAGEMENT_OUT         = 0x07,
+    }eNCQNonDataSubCommands;
+
+    typedef enum _eReceiveFPDMASubCommands
+    {
+        RECEIVE_FPDMA_RESERVED          = 0x00,
+        RECEIVE_FPDMA_READ_LOG_DMA_EXT  = 0x01,
+        RECEIVE_FPDMA_ZAC_MANAGEMENT_IN = 0x02,
+    }eReceiveFPDMASubCommands;
+
+    typedef enum _eSendFPDMASubCommands
+    {
+        SEND_FPDMA_DATA_SET_MANAGEMENT      = 0x00,
+        SEND_FPDMA_HYBRID_EVICT             = 0x01,
+        SEND_FPDMA_WRITE_LOG_DMA_EXT        = 0x02,
+        SEND_FPDMA_ZAC_MANAGEMENT_OUT       = 0x03,
+        SEND_FPDMA_DATA_SET_MANAGEMENT_XL   = 0x04,
+    }eSendFPDMASubCommands;
+
     typedef enum _eAtaSCTActionCodes {
         SCT_RESERVED,
         SCT_READ_WRITE_LONG,//obsolete in newer standards
@@ -588,6 +616,7 @@ extern "C"
        SF_ADDRESS_OFFSET_RESERVED_BOOT_AREA_METHOD_TECH_REPORT          = 0x09,//Defined in ATA5, obsolete in ACS3
        SF_ENABLE_CFA_POWER_MODE1                                        = 0x0A,
        SF_ENABLE_WRITE_READ_VERIFY_FEATURE                              = 0x0B,
+       SF_ENABLE_DEVICE_LIFE_CONTROL                                    = 0x0C,
        SF_ENABLE_SATA_FEATURE                                           = 0x10,
        SF_TLC_SET_CCTL                                                  = 0x20,//set command completion time limit for devices supporting the old time limited commands feature set
        SF_TCL_SET_ERROR_HANDLING                                        = 0x21,//Sets error handling for devices supporting TLC and read/write continuous mode
@@ -617,6 +646,7 @@ extern "C"
        SF_ADDRESS_OFFSET_RESERVED_BOOT_AREA_METHOD_TECH_REPORT_2        = 0x89,//Defined in ATA5, obsolete in ACS3
        SF_DISABLE_CFA_POWER_MODE_1                                      = 0x8A,
        SF_DISABLE_WRITE_READ_VERIFY_FEATURE                             = 0x8B,
+       SF_DISABLE_DEVICE_LIFE_CONTROL                                   = 0x8C,
        SF_DISABLE_SATA_FEATURE                                          = 0x90,
        SF_ENABLE_MEDIA_STATUS_NOTIFICATION                              = 0x95,
        SF_ENABLE_RETIRES                                                = 0x99,
@@ -636,6 +666,35 @@ extern "C"
        //F0 - FF are reserved for CFA
        SF_UNKNOWN_FEATURE
    } eATASetFeaturesSubcommands;
+
+   //this is the 7:3 bits of the count register for the SF_SET_TRANSFER_MODE option
+   //Bits 2:0 can be used to specify the mode.
+   typedef enum _eSetTransferModeTransferModes
+   {
+       SF_TRANSFER_MODE_PIO_DEFAULT                 = 0,
+       SF_TRANSFER_MODE_PIO_DEFAULT_DISABLE_IORDY   = 0,
+       SF_TRANSFER_MODE_FLOW_CONTROL                = 1,
+       SF_TRANSFER_MODE_SINGLE_WORD_DMA             = 2,
+       SF_TRANSFER_MODE_MULTI_WORD_DMA              = 3,
+       SF_TRANSFER_MODE_ULTRA_DMA                   = 4,
+       SF_TRANSFER_MODE_RESERVED                    = 5
+   }eSetTransferModeTransferModes;
+
+   typedef enum _eSATAFeatures
+   {
+       SATA_FEATURE_RESERVED                                            = 0x00,
+       SATA_FEATURE_NONZERO_BUFFER_OFFSETS                              = 0x01,
+       SATA_FEATURE_DMA_SETUP_FIS_AUTO_ACTIVATE                         = 0x02,
+       SATA_FEATURE_DEVICE_INITIATED_INTERFACE_POWER_STATE_TRANSITIONS  = 0x03,
+       SATA_FEATURE_GUARANTEED_IN_ORDER_DATA_DELIVERY                   = 0x04,
+       SATA_FEATURE_ASYNCHRONOUS_NOTIFICATION                           = 0x05,
+       SATA_FEATURE_SOFTWARE_SETTINGS_PRESERVATION                      = 0x06,
+       SATA_FEATURE_DEVICE_AUTOMATIC_PARTIAL_TO_SLUMBER_TRANSITIONS     = 0x07,
+       SATA_FEATURE_ENABLE_HARDWARE_FEATURE_CONTROL                     = 0x08,
+       SATA_FEATURE_ENABLE_DISABLE_DEVICE_SLEEP                         = 0x09,
+       SATA_FEATURE_ENABLE_DISABLE_HYBRID_INFORMATION                   = 0x0A,
+       SATA_FEATURE_ENABLE_DISABLE_POWER_DISABLE                        = 0x0B,
+   }eSATAFeatures;
 
    typedef enum _eEPCSubcommands
    {
