@@ -626,6 +626,7 @@ extern "C"
        SF_ENABLE_AUTOMATIC_ACOUSTIC_MANAGEMENT_FEATURE                  = 0x42,
        SF_MAXIMUM_HOST_INTERFACE_SECTOR_TIMES                           = 0x43,
        SF_LEGACY_SET_VENDOR_SPECIFIC_ECC_BYTES_FOR_READ_WRITE_LONG      = 0x44,//defined in ATA, obsolete in ATA4
+       SF_SET_RATE_BASIS                                                = 0x45,
        SF_EXTENDED_POWER_CONDITIONS                                     = 0x4A,
        SF_SET_CACHE_SEGMENTS                                            = 0x54,//defined in ATA3, obsolete in ATA4
        SF_DISABLE_READ_LOOK_AHEAD_FEATURE                               = 0x55,
@@ -699,14 +700,24 @@ extern "C"
    typedef enum _eEPCSubcommands
    {
        EPC_RESTORE_POWER_CONDITION_SETTINGS = 0x0,
-       EPC_GO_TO_POWER_CONDITION = 0x1,
-       EPC_SET_POWER_CONDITION_TIMER = 0x2,
-       EPC_SET_POWER_CONDITION_STATE = 0x3,
-       EPC_ENABLE_EPC_FEATURE_SET = 0x4,
-       EPC_DISABLE_EPC_FEATUER_SET = 0x5,
-       EPC_SET_EPC_POWER_SOURCE = 0x6,
+       EPC_GO_TO_POWER_CONDITION            = 0x1,
+       EPC_SET_POWER_CONDITION_TIMER        = 0x2,
+       EPC_SET_POWER_CONDITION_STATE        = 0x3,
+       EPC_ENABLE_EPC_FEATURE_SET           = 0x4,
+       EPC_DISABLE_EPC_FEATURE_SET          = 0x5,
+       EPC_SET_EPC_POWER_SOURCE             = 0x6,
        EPC_RESERVED_FEATURE
    } eEPCSubcommands;
+
+   typedef enum _eEPCPowerCondition
+   {
+       EPC_POWER_CONDITION_STANDBY_Z            = 0x00,
+       EPC_POWER_CONDITION_STANDBY_Y            = 0x01,
+       EPC_POWER_CONDITION_IDLE_A               = 0x81,
+       EPC_POWER_CONDITION_IDLE_B               = 0x82,
+       EPC_POWER_CONDITION_IDLE_C               = 0x83,
+       EPC_POWER_CONDITION_ALL_POWER_CONDITIONS = 0xFF
+   }eEPCPowerCondition;
 
    typedef enum _eSCTWriteSameFunctions
    {
