@@ -867,6 +867,10 @@ extern "C"
        AMAC_FREEZE_ACCESSIBLE_MAX_ADDRESS   = 0x0002,
    }eAMACCommand;
 
+   //Device control register bit definitions
+    #define DEVICE_CONTROL_SOFT_RESET BIT2
+    #define DEVICE_CONTROL_nIEN BIT3
+
     #if defined(__cplusplus)
 } //extern "C"
     #endif
