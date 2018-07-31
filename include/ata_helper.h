@@ -633,10 +633,11 @@ extern "C"
        //56h - 5Ch are vendor unique
        SF_ENABLE_RELEASE_INTERRUPT                                      = 0x5D,//TCQ related
        SF_ENABLE_SERVICE_INTERRUPT                                      = 0x5E,//TCQ related
+       SF_ENABLE_DISABLE_DATA_TRANSFER_AFTER_ERROR_DETECTION            = 0x5F,//DDT feature...for some very specific old hosts
        SF_LONG_PHYSICAL_SECTOR_ALIGNMENT_ERROR_REPORTING                = 0x62,
        SF_ENABLE_DISABLE_DSN_FEATURE                                    = 0x63,
        SF_DISABLE_REVERTING_TO_POWERON_DEFAULTS                         = 0x66,
-       SF_RESERVED_FOR_CFA                                              = 0x69,
+       SF_CFA_NOP_ACCEPTED_FOR_BACKWARDS_COMPATIBILITY                  = 0x69,
        SF_DISABLE_ECC                                                   = 0x77,//defined in ATA3, obsolete in ATA4
        SF_DISABLE_8_BIT_DATA_TRANSFERS                                  = 0x81,//defined in ATA, obsolete in ATA3
        SF_DISABLE_VOLITILE_WRITE_CACHE                                  = 0x82,
@@ -650,6 +651,8 @@ extern "C"
        SF_DISABLE_DEVICE_LIFE_CONTROL                                   = 0x8C,
        SF_DISABLE_SATA_FEATURE                                          = 0x90,
        SF_ENABLE_MEDIA_STATUS_NOTIFICATION                              = 0x95,
+       SF_CFA_NOP_ACCEPTED_FOR_BACKWARDS_COMPATIBILITY_1                = 0x96,
+       SF_CFA_ACCEPTED_FOR_BACKWARDS_COMPATIBILITY                      = 0x97,
        SF_ENABLE_RETIRES                                                = 0x99,
        SF_SET_DEVICE_MAXIMUM_AVERAGE_CURRENT                            = 0x9A,//Defined in ATA3, obsolete in ATA4
        SF_ENABLE_READ_LOOK_AHEAD_FEATURE                                = 0xAA,
@@ -663,6 +666,7 @@ extern "C"
        //D6-DC are vendor unique
        SF_DISABLE_RELEASE_INTERRUPT                                     = 0xDD,
        SF_DISABLE_SERVICE_INTERRUPT                                     = 0xDE,
+       SF_DISABLE_DISABLE_DATA_TRANSFER_AFTER_ERROR_DETECTION           = 0xDF,
        //E0 is vendor unique
        //F0 - FF are reserved for CFA
        SF_UNKNOWN_FEATURE
@@ -680,6 +684,20 @@ extern "C"
        SF_TRANSFER_MODE_ULTRA_DMA                   = 4,
        SF_TRANSFER_MODE_RESERVED                    = 5
    }eSetTransferModeTransferModes;
+
+   typedef enum _eLPSErrorReportingControl
+   {
+       SF_LPS_DISABLED                                      = 0x00,
+       SF_LPS_REPORT_ALIGNMENT_ERROR                        = 0x01,
+       SF_LPS_REPORT_ALIGNMENT_ERROR_DATA_CONDITION_UNKNOWN = 0x02,
+   }eLPSErrorReportingControl;
+
+   typedef enum _eDSNFeature
+   {
+       SF_DSN_RESERVED  = 0x00,
+       SF_DSN_ENABLE    = 0x01,
+       SF_DSN_DISABLE   = 0x02,
+   }eDSNFeature;
 
    typedef enum _eSATAFeatures
    {
