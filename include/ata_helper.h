@@ -37,12 +37,14 @@ extern "C"
     #define ATA_ERROR_BIT_BAD_BLOCK BIT7 //old/obsolete
     #define ATA_ERROR_BIT_INTERFACE_CRC BIT7
     #define ATA_ERROR_BIT_UNCORRECTABLE_DATA BIT6
+    #define ATA_ERROR_BIT_WRITE_PROTECTED BIT6 //old/obsolete - removable medium
     #define ATA_ERROR_BIT_MEDIA_CHANGE BIT5
     #define ATA_ERROR_BIT_ID_NOT_FOUND BIT4
     #define ATA_ERROR_BIT_MEDIA_CHANGE_REQUEST BIT3
     #define ATA_ERROR_BIT_ABORT BIT2
     #define ATA_ERROR_BIT_TRACK_ZERO_NOT_FOUND BIT1 //old/obsolete
     #define ATA_ERROR_BIT_END_OF_MEDIA BIT1
+    #define ATA_ERROR_BIT_NO_MEDIA BIT1 //old/obsolete - removable medium
     #define ATA_ERROR_BIT_ADDRESS_MARK_NOT_FOUND BIT0 //old/obsolete
     #define ATA_ERROR_BIT_COMMAND_COMPLETION_TIME_OUT BIT0 //streaming feature
 
@@ -131,6 +133,7 @@ extern "C"
 
     typedef enum _eATA_CMDS {
         ATA_NOP_CMD                         = 0x00,
+        ATA_CFA_REQUEST_SENSE               = 0x03,
         ATASET                              = 0x04,
 		ATA_DATA_SET_MANAGEMENT_CMD         = 0x06,
         ATA_DATA_SET_MANAGEMENT_XL_CMD      = 0x07,
@@ -159,6 +162,7 @@ extern "C"
         ATA_WRITE_DMA_EXT                   = 0x35,
         ATA_WRITE_DMA_QUE_EXT               = 0x36,
         ATA_SET_MAX_EXT                     = 0x37,
+        ATA_CFA_WRITE_SECTORS_WITHOUT_ERASE = 0x38,
         ATA_WRITE_MULTIPLE_EXT              = 0x39,
         ATA_WRITE_STREAM_DMA_EXT            = 0x3A,
         ATA_WRITE_STREAM_EXT                = 0x3B,
@@ -190,6 +194,7 @@ extern "C"
         ATA_SET_DATE_AND_TIME_EXT           = 0x77,
         ATA_ACCESSABLE_MAX_ADDR             = 0x78,
         ATA_REMOVE_AND_TRUNCATE             = 0x7C,
+        ATA_CFA_TRANSLATE_SECTOR            = 0x87,
         ATA_EXEC_DRV_DIAG                   = 0x90,
         ATA_INIT_DRV_PARAM                  = 0x91,
         ATA_DLND_CODE                       = 0x92,
@@ -209,6 +214,10 @@ extern "C"
         ATA_SET_SECTOR_CONFIG_EXT           = 0xB2,
         ATA_SANITIZE                        = 0xB4,
         ATA_NV_CACHE                        = 0xB6,
+        ATA_CFA_EXTENDED_IDENTIFY           = 0xB7,//Feature 0x0001
+        ATA_CFA_KEY_MANAGEMENT              = 0xB9,
+        ATA_CFA_STREAMING_PERFORMANCE       = 0xBB,
+        ATA_CFA_ERASE_SECTORS               = 0xC0,
         ATA_READ_MULTIPLE                   = 0xC4,
         ATA_WRITE_MULTIPLE                  = 0xC5,
         ATA_SET_MULTIPLE                    = 0xC6,
@@ -219,6 +228,7 @@ extern "C"
         ATA_WRITE_DMA_NORETRY               = 0xCB,
         ATA_WRITE_DMA_QUEUED_CMD            = 0xCC,
         ATA_WRITE_MULTIPLE_FUA_EXT          = 0xCE,
+        ATA_CFA_WRITE_MULTIPLE_WITHOUT_ERASE    = 0xCD,
         ATA_GET_MEDIA_STATUS                = 0xDA,
         ATA_ACK_MEDIA_CHANGE                = 0xDB,
         ATA_POST_BOOT                       = 0xDC,
@@ -247,6 +257,7 @@ extern "C"
         ATA_SECURITY_ERASE_PREP             = 0xF3,
         ATA_SECURITY_ERASE_UNIT_CMD         = 0xF4,
         ATA_SECURITY_FREEZE_LOCK_CMD        = 0xF5,
+        ATA_CFA_WEAR_LEVEL                  = 0xF5,
         ATA_SECURITY_DISABLE_PASS           = 0xF6,
         ATA_LEGACY_TRUSTED_RECEIVE          = 0xF7,
         ATA_READ_MAX_ADDRESS                = 0xF8,
@@ -870,6 +881,77 @@ extern "C"
    //Device control register bit definitions
     #define DEVICE_CONTROL_SOFT_RESET BIT2
     #define DEVICE_CONTROL_nIEN BIT3
+
+   //This enum is up to date with ACS4-revision 20
+   //Blank lines indicate where undefined/reserved values are located so it could be easy to put those definitions in place as new specs are released
+   typedef enum _eATAMinorVersionNumber
+   {
+       ATA_MINOR_VERSION_NOT_REPORTED           = 0x0000,
+       ATA_MINOR_VERSION_ATA_1_PRIOR_TO_REV_4   = 0x0001, //ATA (ATA-1) X3T9.2 781D prior to revision 4
+       ATA_MINOR_VERSION_ATA_1_PUBLISHED        = 0x0002, //ATA-1 published, ANSI X3.221-1994
+       ATA_MINOR_VERSION_ATA_1_REV_4            = 0x0003, //ATA (ATA-1) X3T9.2 781D revision 4
+       ATA_MINOR_VERSION_ATA_2_PUBLISHED        = 0x0004, //ATA-2 published, ANSI X3.279-1996
+       ATA_MINOR_VERSION_ATA_2_PRIOR_TO_REV_2K  = 0x0005, //ATA-2 X3T10 948D prior to revision 2k
+       ATA_MINOR_VERSION_ATA_3_REV_1            = 0x0006, //ATA-3 X3T10 2008D revision 1
+       ATA_MINOR_VERSION_ATA_2_REV_2K           = 0x0007, //ATA-2 X3T10 948D revision 2k
+       ATA_MINOR_VERSION_ATA_3_REV_0            = 0x0008, //ATA-3 X3T10 2008D revision 0
+       ATA_MINOR_VERSION_ATA_2_REV_3            = 0x0009, //ATA-2 X3T10 948D revision 3
+       ATA_MINOR_VERSION_ATA_3_PUBLISHED        = 0x000A, //ATA-3 published, ANSI X3.298-1997
+       ATA_MINOR_VERSION_ATA_3_REV_6            = 0x000B, //ATA-3 X3T10 2008D revision 6
+       ATA_MINOR_VERSION_ATA_3_REV_7_AND_7A     = 0x000C, //ATA-3 X3T13 2008D revision 7 & 7a
+       ATA_MINOR_VERSION_ATA_ATAPI_4_REV_6      = 0x000D, //ATA/ATAPI-4 X3T13 1153D revision 6
+       ATA_MINOR_VERSION_ATA_ATAPI_4_REV_13     = 0x000E, //ATA/ATAPI-4 T13 1153D revision 13
+       ATA_MINOR_VERSION_ATA_ATAPI_4_REV7       = 0x000F, //ATA/ATAPI-4 X3T13 1153D revision 7
+       ATA_MINOR_VERSION_ATA_ATAPI_4_REV_18     = 0x0010, //ATA/ATAPI-4 T13 1153D revision 18
+       ATA_MINOR_VERSION_ATA_ATAPI_4_REV_15     = 0x0011, //ATA/ATAPI-4 T13 1153D revision 15
+       ATA_MINOR_VERSION_ATA_ATAPI_4_PUBLISHED  = 0x0012, //ATA/ATAPI-4 published, ANSI NCITS 317-1998
+       ATA_MINOR_VERSION_ATA_ATAPI_5_REV_3      = 0x0013, //ATA/ATAPI-5 T13 1321D revision 3
+       ATA_MINOR_VERSION_ATA_ATAPI_4_REV_14     = 0x0014, //ATA/ATAPI-4 T13 1153D revision 14
+       ATA_MINOR_VERSION_ATA_ATAPI_5_REV_1      = 0x0015, //ATA/ATAPI-5 T13 1321D revision 1
+       ATA_MINOR_VERSION_ATA_ATAPI_5_PUBLISHED  = 0x0016, //ATA/ATAPI-5 published, ANSI INCITS 340-2000
+       ATA_MINOR_VERSION_ATA_ATAPI_4_REV_17     = 0x0017, //ATA/ATAPI-4 T13 1153D revision 17
+       ATA_MINOR_VERSION_ATA_ATAPI_6_REV_0      = 0x0018, //ATA/ATAPI-6 T13 1410D revision 0
+       ATA_MINOR_VERSION_ATA_ATAPI_6_REV_3A     = 0x0019, //ATA/ATAPI-6 T13 1410D revision 3a
+       ATA_MINOR_VERSION_ATA_ATAPI_7_REV_1      = 0x001A, //ATA/ATAPI-7 T13 1532D revision 1
+       ATA_MINOR_VERSION_ATA_ATAPI_6_REV_2      = 0x001B, //ATA/ATAPI-6 T13 1410D revision 2
+       ATA_MINOR_VERSION_ATA_ATAPI_6_REV_1      = 0x001C, //ATA/ATAPI-6 T13 1410D revision 1
+       ATA_MINOR_VERSION_ATA_ATAPI_7_RUBLISHED  = 0x001D, //ATA/ATAPI-7 published ANSI INCITS 397-2005
+       ATA_MINOR_VERSION_ATA_ATAPI_7_REV_0      = 0x001E, //ATA/ATAPI-7 T13 1532D revision 0
+       ATA_MINOR_VERSION_ACS3_REV_3B            = 0x001F, //ACS-3 Revision 3b
+       
+       ATA_MINOR_VERSION_ATA_ATAPI_7_REV_4A     = 0x0021, //ATA/ATAPI-7 T13 1532D revision 4a
+       ATA_MINOR_VERSION_ATA_ATAPI_6_PUBLISHED  = 0x0022, //ATA/ATAPI-6 published, ANSI INCITS 361-2002
+
+       ATA_MINOR_VERSION_ATA8_ACS_REV_3C        = 0x0027, //ATA8-ACS version 3c
+       ATA_MINOR_VERSION_ATA8_ACS_REV_6         = 0x0028, //ATA8-ACS version 6
+       ATA_MINOR_VERSION_ATA8_ACS_REV_4         = 0x0029, //ATA8-ACS version 4
+
+       ATA_MINOR_VERSION_ACS2_REV_2             = 0x0031, //ASC-2 Revision 2
+
+       ATA_MINOR_VERSION_ATA8_ACS_REV_3E        = 0x0033, //ATA8-ACS version 3e
+
+       ATA_MINOR_VERSION_ATA8_ACS_REV_4C        = 0x0039, //ATA8-ACS version 4c
+
+       ATA_MINOR_VERSION_ATA8_ACS_REV_3F        = 0x0042, //ATA8-ACS version 3f
+
+       ATA_MINOR_VERSION_ATA8_ACS_REV_3B        = 0x0052, //ATA8-ACS version 3b
+
+       ATA_MINOR_VERSION_ACS4_REV_5             = 0x005E, //ACS-4 Revision 5
+
+       ATA_MINOR_VERSION_ACS3_REV_5             = 0x006D, //ACS-3 Revision 5
+
+       ATA_MINOR_VERSION_ACS_2_PUBLISHED        = 0x0082, //ACS-2 published, ANSI INCITS 482-2012
+
+       ATA_MINOR_VERSION_ATA8_ACS_REV_2D        = 0x0107, //ATA8-ACS version 2d
+
+       ATA_MINOR_VERSION_ACS3_PUBLISHED         = 0x010A, //ACS-3 published, ANSI INCITS 522-2014
+
+       ATA_MINOR_VERSION_ACS2_REV_3             = 0x0110, //ACS-2 Revision 3
+
+       ATA_MINOR_VERSION_ACS3_REV_4             = 0x011B, //ACS-3 Revision 4
+
+       ATA_MINOR_VERSION_NOT_REPORTED_2         = 0xFFFF
+   }eATAMinorVersionNumber;
 
     #if defined(__cplusplus)
 } //extern "C"
