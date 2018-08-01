@@ -691,8 +691,8 @@ extern "C"
        SF_TRANSFER_MODE_PIO_DEFAULT_DISABLE_IORDY   = 0,
        SF_TRANSFER_MODE_FLOW_CONTROL                = 1,
        SF_TRANSFER_MODE_SINGLE_WORD_DMA             = 2,
-       SF_TRANSFER_MODE_MULTI_WORD_DMA              = 3,
-       SF_TRANSFER_MODE_ULTRA_DMA                   = 4,
+       SF_TRANSFER_MODE_MULTI_WORD_DMA              = 4,
+       SF_TRANSFER_MODE_ULTRA_DMA                   = 8,
        SF_TRANSFER_MODE_RESERVED                    = 5
    }eSetTransferModeTransferModes;
 
