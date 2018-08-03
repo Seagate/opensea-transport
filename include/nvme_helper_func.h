@@ -181,6 +181,74 @@ OPENSEA_TRANSPORT_API int nvme_Print_FWSLOTS_Log_Page(tDevice *device);
 
 //-----------------------------------------------------------------------------
 //
+//  nvme_Get_CmdSptEfft_Log_Page
+//
+//! \brief   Description:  Function to send Get Commands Supported and Effects Log Page NVMe command to a device
+//
+//  Entry:
+//!   \param[in] device = pointer to tDevice structure
+//!   \param[out] pData = Data buffer 
+//!   \param[in] dataLen = Data buffer Length 
+//!
+//  Exit:
+//!   \return SUCCESS = pass, !SUCCESS = something when wrong
+//
+//-----------------------------------------------------------------------------
+OPENSEA_TRANSPORT_API int nvme_Get_CmdSptEfft_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen);
+
+//-----------------------------------------------------------------------------
+//
+//  nvme_Print_CmdSptEfft_Log_Page
+//
+//! \brief   Description:  Function to print Commands Supported and Effects Log Page NVMe command to a device
+//
+//  Entry:
+//!   \param[in] device = pointer to tDevice structure
+//!
+//  Exit:
+//!   \return SUCCESS = pass, !SUCCESS = something when wrong
+//
+//-----------------------------------------------------------------------------
+OPENSEA_TRANSPORT_API int nvme_Print_CmdSptEfft_Log_Page(tDevice *device);
+
+void show_effects_log_human(uint32_t effect);
+
+char *nvme_cmd_to_string(int admin, uint8_t opcode);
+
+//-----------------------------------------------------------------------------
+//
+//  nvme_Get_DevSelfTest_Log_Page
+//
+//! \brief   Description:  Function to send Get Device Self-test Log Page NVMe command to a device
+//
+//  Entry:
+//!   \param[in] device = pointer to tDevice structure
+//!   \param[out] pData = Data buffer 
+//!   \param[in] dataLen = Data buffer Length 
+//!
+//  Exit:
+//!   \return SUCCESS = pass, !SUCCESS = something when wrong
+//
+//-----------------------------------------------------------------------------
+OPENSEA_TRANSPORT_API int nvme_Get_DevSelfTest_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen);
+
+//-----------------------------------------------------------------------------
+//
+//  nvme_Print_DevSelfTest_Log_Page
+//
+//! \brief   Description:  Function to print Device Self-test Log Page NVMe command to a device
+//
+//  Entry:
+//!   \param[in] device = pointer to tDevice structure
+//!
+//  Exit:
+//!   \return SUCCESS = pass, !SUCCESS = something when wrong
+//
+//-----------------------------------------------------------------------------
+OPENSEA_TRANSPORT_API int nvme_Print_DevSelfTest_Log_Page(tDevice *device);
+
+//-----------------------------------------------------------------------------
+//
 //  nvme_Get_Log_Size
 //
 //! \brief   Description:  Function to get the size for GetLog Page command by a utility. 

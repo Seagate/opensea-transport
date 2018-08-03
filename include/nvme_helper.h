@@ -148,6 +148,71 @@ extern "C"
     }__attribute__((packed,aligned(1))) nvmeFirmwareSlotInfo;
     #endif
 
+    enum {
+    	/* Self-test log Validation bits */
+    	NVME_SELF_TEST_VALID_NSID	= 1 << 0,
+    	NVME_SELF_TEST_VALID_FLBA	= 1 << 1,
+    	NVME_SELF_TEST_VALID_SCT	= 1 << 2,
+    	NVME_SELF_TEST_VALID_SC		= 1 << 3,
+    	NVME_SELF_TEST_REPORTS		= 20,
+    };
+
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _nvmeSelfTestRes {
+    	uint8_t 		deviceSelfTestStatus;
+    	uint8_t			segmentNum;
+    	uint8_t			validDiagnosticInfo;
+    	uint8_t			rsvd;
+    	uint64_t		powerOnHours;
+    	uint32_t		nsid;
+    	uint64_t		failingLba;
+    	uint8_t			statusCodeType;
+    	uint8_t			statusCode;
+    	uint8_t			vendorSpecific[2];
+    #if !defined (__GNUC__)
+    } nvmeSelfTestRes;
+    #else
+    }__attribute__((packed,aligned(1))) nvmeSelfTestRes;
+    #endif
+    
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _nvmeSelfTestLog {
+    	uint8_t                 crntDevSelftestOprn;
+    	uint8_t                 crntDevSelftestCompln;
+    	uint8_t                 rsvd[2];
+    	nvmeSelfTestRes         result[20];
+    #if !defined (__GNUC__)
+    } nvmeSelfTestLog;
+    #else
+    }__attribute__((packed,aligned(1))) nvmeSelfTestLog;
+    #endif
+
+    enum {
+    	NVME_CMD_EFFECTS_CSUPP		= 1 << 0,
+    	NVME_CMD_EFFECTS_LBCC		= 1 << 1,
+    	NVME_CMD_EFFECTS_NCC		= 1 << 2,
+    	NVME_CMD_EFFECTS_NIC		= 1 << 3,
+    	NVME_CMD_EFFECTS_CCC		= 1 << 4,
+    	NVME_CMD_EFFECTS_CSE_MASK	= 3 << 16,
+    };
+
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _nvmeEffectsLog {
+    	uint32_t acs[256];
+    	uint32_t iocs[256];
+    	uint8_t  resv[2048];
+    #if !defined (__GNUC__)
+    } nvmeEffectsLog;
+    #else
+    }__attribute__((packed,aligned(1))) nvmeEffectsLog;
+    #endif
+
 
     typedef enum _eNvmeSmartAttr{
     	NVME_SMART_CRIT_SPARE_		= 1 << 0,
@@ -244,7 +309,7 @@ extern "C"
     #if !defined (__GNUC__) 
     #pragma pack(push, 1)
     #endif
-    struct _nvmeTemetryLogHdr {
+    typedef struct _nvmeTemetryLogHdr {
         uint8_t     logId;
         uint8_t     rsvd1[4];
         uint8_t     ieeeId[3];
@@ -474,6 +539,8 @@ extern "C"
     	NVME_LOG_ERROR_ID   	= 0x01,
     	NVME_LOG_SMART_ID		= 0x02,
     	NVME_LOG_FW_SLOT_ID	    = 0x03,
+        NVME_LOG_CMD_SPT_EFET_ID    = 0x05,
+        NVME_LOG_DEV_SELF_TEST	    = 0x06,
     	NVME_LOG_RESERVATION_ID	= 0x80,
     	NVME_FWACT_REPL_		= (0 << 3),
     	NVME_FWACT_REPL_ACTV_	= (1 << 3),
