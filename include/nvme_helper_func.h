@@ -502,7 +502,7 @@ int fill_In_NVMe_Device_Info(tDevice *device);
 //linga start here
 /* Generic passthrough */
 void print_smart_log(uint16_t  verNo, SmartVendorSpecific attr, int lastAttr);
-uint64_t  smart_attribute_vs( uint16_t  verNo, SmartVendorSpecific attr);
+OPENSEA_TRANSPORT_API uint64_t  smart_attribute_vs( uint16_t  verNo, SmartVendorSpecific attr);
 char* print_ext_smart_id(uint8_t  attrId);
 int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *ExtdSMARTInfo);
 
