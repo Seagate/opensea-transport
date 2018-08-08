@@ -1345,14 +1345,15 @@ bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
 	//we need to check the model number for the ones used on the Vendor products
 	if (USBchildDrive)
 	{
-		if (strncmp(device->drive_info.bridge_info.childDriveMN, "Seagate Nytro Client 141", strlen("Seagate Nytro Client 141")) == 0 ||
-			strncmp(device->drive_info.bridge_info.childDriveMN, "Seagate Nytro 141", strlen("Seagate Nytro 141")) == 0 ||
-			strncmp(device->drive_info.bridge_info.childDriveMN, "Seagate FireStorm YA", strlen("Seagate FireStorm YA")) == 0 ||
-			strncmp(device->drive_info.bridge_info.childDriveMN, "Seagate BarraCuda", strlen("Seagate BarraCuda")) == 0 ||
+		if (
 			strncmp(device->drive_info.bridge_info.childDriveMN, "STGS250401", strlen("STGS250401")) == 0 ||
 			strncmp(device->drive_info.bridge_info.childDriveMN, "STGS500401", strlen("STGS500401")) == 0 ||
 			strncmp(device->drive_info.bridge_info.childDriveMN, "STGS1000401", strlen("STGS1000401")) == 0 ||
-			strncmp(device->drive_info.bridge_info.childDriveMN, "STGS2000401", strlen("STGS2000401")) == 0
+			strncmp(device->drive_info.bridge_info.childDriveMN, "STGS2000401", strlen("STGS2000401")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "ZA250CM10002", strlen("ZA250CM10002")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "ZA500CM10002", strlen("ZA500CM10002")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "ZA1000CM10002", strlen("ZA1000CM10002")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "ZA2000CM10002", strlen("ZA2000CM10002")) == 0
 			)
 		{
 			isSeagateVendor = true;
@@ -1360,14 +1361,87 @@ bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
 	}
 	else
 	{
-		if (strncmp(device->drive_info.product_identification, "Seagate Nytro Client 141", strlen("Seagate Nytro Client 141")) == 0 ||
-			strncmp(device->drive_info.product_identification, "Seagate Nytro 141", strlen("Seagate Nytro 141")) == 0 ||
-			strncmp(device->drive_info.product_identification, "Seagate FireStorm YA", strlen("Seagate FireStorm YA")) == 0 ||
-			strncmp(device->drive_info.product_identification, "Seagate BarraCuda", strlen("Seagate BarraCuda")) == 0 ||
+		if (
 			strncmp(device->drive_info.product_identification, "STGS250401", strlen("STGS250401")) == 0 ||
 			strncmp(device->drive_info.product_identification, "STGS500401", strlen("STGS500401")) == 0 ||
 			strncmp(device->drive_info.product_identification, "STGS1000401", strlen("STGS1000401")) == 0 ||
-			strncmp(device->drive_info.product_identification, "STGS2000401", strlen("STGS2000401")) == 0
+			strncmp(device->drive_info.product_identification, "STGS2000401", strlen("STGS2000401")) == 0 ||
+			strncmp(device->drive_info.product_identification, "ZA250CM10002", strlen("ZA250CM10002")) == 0 ||
+			strncmp(device->drive_info.product_identification, "ZA500CM10002", strlen("ZA500CM10002")) == 0 ||
+			strncmp(device->drive_info.product_identification, "ZA1000CM10002", strlen("ZA1000CM10002")) == 0 ||
+			strncmp(device->drive_info.product_identification, "ZA2000CM10002", strlen("ZA2000CM10002")) == 0
+			)
+		{
+			isSeagateVendor = true;
+		}
+		if (!isSeagateVendor)
+		{
+			return (is_Seagate_Model_Number_Vendor_F(device, true));
+		}
+	}
+	return isSeagateVendor;
+}
+
+bool is_Seagate_Model_Number_Vendor_G(tDevice *device, bool USBchildDrive)
+{
+	bool isSeagateVendor = false;
+
+	//we need to check the model number for the ones used on the Vendor products
+	if (USBchildDrive)
+	{
+		if (
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA240LE10003", strlen("XA240LE10003")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA480LE10063", strlen("XA480LE10063")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA960LE10063", strlen("XA960LE10063")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA1920LE10063", strlen("XA1920LE10063")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA3840LE10063", strlen("XA3840LE10063")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA480LE10083", strlen("XA480LE10083")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA960LE10083", strlen("XA960LE10083")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA1920LE10083", strlen("XA1920LE10083")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA480LE10103", strlen("XA480LE10103")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA960LE10103", strlen("XA960LE10103")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA1920LE10103", strlen("XA1920LE10103")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA240ME10003", strlen("XA240ME10003")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA480ME10063", strlen("XA480ME10063")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA960ME10063", strlen("XA960ME10063")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA1920ME10063", strlen("XA1920ME10063")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA3840ME10063", strlen("XA3840ME10063")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA480ME10083", strlen("XA480ME10083")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA960ME10083", strlen("XA960ME10083")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA1920ME10083", strlen("XA1920ME10083")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA480LE10103", strlen("XA480LE10103")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA960LE10103", strlen("XA960LE10103")) == 0 ||
+			strncmp(device->drive_info.bridge_info.childDriveMN, "XA1920LE10103", strlen("XA1920LE10103")) == 0
+			)
+		{
+			isSeagateVendor = true;
+		}
+	}
+	else
+	{
+		if (
+			strncmp(device->drive_info.product_identification, "XA240LE10003", strlen("XA240LE10003")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA480LE10063", strlen("XA480LE10063")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA960LE10063", strlen("XA960LE10063")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA1920LE10063", strlen("XA1920LE10063")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA3840LE10063", strlen("XA3840LE10063")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA480LE10083", strlen("XA480LE10083")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA960LE10083", strlen("XA960LE10083")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA1920LE10083", strlen("XA1920LE10083")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA480LE10103", strlen("XA480LE10103")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA960LE10103", strlen("XA960LE10103")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA1920LE10103", strlen("XA1920LE10103")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA240ME10003", strlen("XA240ME10003")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA480ME10063", strlen("XA480ME10063")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA960ME10063", strlen("XA960ME10063")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA1920ME10063", strlen("XA1920ME10063")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA3840ME10063", strlen("XA3840ME10063")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA480ME10083", strlen("XA480ME10083")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA960ME10083", strlen("XA960ME10083")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA1920ME10083", strlen("XA1920ME10083")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA480LE10103", strlen("XA480LE10103")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA960LE10103", strlen("XA960LE10103")) == 0 ||
+			strncmp(device->drive_info.product_identification, "XA1920LE10103", strlen("XA1920LE10103")) == 0 
 			)
 		{
 			isSeagateVendor = true;
@@ -1384,7 +1458,7 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
 {
     eSeagateFamily isSeagateFamily = NON_SEAGATE;
     uint8_t iter = 0;
-    uint8_t numChecks = 9;//maxtor, seagate, samsung, lacie, seagate-Vendor. As the family of seagate drives expands, we will need to increase this and add new checks
+    uint8_t numChecks = 10;//maxtor, seagate, samsung, lacie, seagate-Vendor. As the family of seagate drives expands, we will need to increase this and add new checks
     for (iter = 0; iter < numChecks && isSeagateFamily == NON_SEAGATE; iter++)
     {
         switch (iter)
@@ -1481,6 +1555,12 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
 			if (is_Seagate_Model_Number_Vendor_F(device, false))
 			{
 				isSeagateFamily = SEAGATE_VENDOR_F;
+			}
+			break;
+		case 9:
+			if (is_Seagate_Model_Number_Vendor_G(device, false))
+			{
+				isSeagateFamily = SEAGATE_VENDOR_G;
 			}
 			break;
             //TODO: Add in CDC, DEC, & PrarieTek detection. Currently not in since these drives are even more rare than the Conner and Miniscribe drives...
