@@ -598,6 +598,7 @@ int nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts
     int ret = UNKNOWN; 
     nvmeCmdCtx getLogPage;
     uint32_t dWord10 = 0;
+    uint32_t numDwords;
 #ifdef _DEBUG
     printf("-->%s\n",__FUNCTION__);
 #endif
@@ -613,11 +614,18 @@ int nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts
     getLogPage.cmd.adminCmd.dataLen = getLogPageCmdOpts->dataLen;
     getLogPage.cmd.adminCmd.nsid = getLogPageCmdOpts->nsid;
 
-    dWord10 = (getLogPageCmdOpts->dataLen / NVME_DWORD_SIZE) - 1;//zero based DWORD value
-    dWord10 <<= 16;
+    numDwords = (getLogPageCmdOpts->dataLen / NVME_DWORD_SIZE) - 1;//zero based DWORD value
+    
     dWord10 |= getLogPageCmdOpts->lid;
+    dWord10 |= (getLogPageCmdOpts->lsp & 0x0F) << 8;
+    dWord10 |= (getLogPageCmdOpts->rae & 0x01) << 15;
+    dWord10 |= numDwords << 16;
 
     getLogPage.cmd.adminCmd.cdw10 = dWord10;
+    getLogPage.cmd.adminCmd.cdw11 = numDwords >> 16;
+
+    getLogPage.cmd.adminCmd.cdw12 = (uint32_t)(getLogPageCmdOpts->offset && 0xFFFFFFFF);
+    getLogPage.cmd.adminCmd.cdw13 = (uint32_t)(getLogPageCmdOpts->offset >> 32);
 
 	getLogPage.ptrData = (uint8_t*)getLogPageCmdOpts->addr;
 	getLogPage.dataSize = getLogPageCmdOpts->dataLen;
