@@ -1448,7 +1448,7 @@ bool is_Seagate_Model_Number_Vendor_G(tDevice *device, bool USBchildDrive)
 		}
 		if (!isSeagateVendor)
 		{
-			return (is_Seagate_Model_Number_Vendor_F(device, true));
+			return (is_Seagate_Model_Number_Vendor_G(device, true));
 		}
 	}
 	return isSeagateVendor;
