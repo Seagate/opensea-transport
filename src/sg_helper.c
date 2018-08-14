@@ -634,6 +634,13 @@ int get_Device(const char *filename, tDevice *device)
                  return ret;
             }
             device->drive_info.lunOrNSID = (uint32_t) ret;
+            device->os_info.osType = OS_LINUX;
+            device->drive_info.media_type = MEDIA_NVM;
+
+            char *baseLink = basename(deviceHandle);
+            //Now we will set up the device name, etc fields in the os_info structure.
+            sprintf(device->os_info.name, "/dev/%s", baseLink);
+            sprintf(device->os_info.friendlyName, "%s", baseLink);
             ret = fill_In_NVMe_Device_Info(device);
             #if defined (_DEBUG)
             printf("\nsg helper-nvmedev\n");
@@ -1125,7 +1132,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 	int  num_sg_devs = 0, num_sd_devs = 0, num_nvme_devs = 0;
 
     struct dirent **namelist;
+    #if !defined(DISABLE_NVME_PASSTHROUGH)
     struct dirent **nvmenamelist;
+    #endif
     num_sg_devs = scandir("/dev", &namelist, sg_filter, alphasort); 
     if(num_sg_devs == 0)
     {
@@ -1159,7 +1168,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     #endif
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
     safe_Free(namelist);
+    #if !defined(DISABLE_NVME_PASSTHROUGH)
     safe_Free(nvmenamelist);
+    #endif
 
 	//TODO: Check if sizeInBytes is a multiple of 
 	if (!(ptrToDeviceList) || (!sizeInBytes))
