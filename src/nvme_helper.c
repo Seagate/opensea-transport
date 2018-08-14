@@ -952,6 +952,31 @@ int print_Nvme_Ctrl_Regs(tDevice * device)
     return ret;
 }
 
+#if !defined(FORMAT_NVME_NO_SECURE_ERASE)
+#define FORMAT_NVME_NO_SECURE_ERASE (0)
+#endif
+#if !defined(FORMAT_NVME_ERASE_USER_DATA)
+#define FORMAT_NVME_ERASE_USER_DATA (1)
+#endif
+#if !defined(FORMAT_NVME_CRYPTO_ERASE)
+#define FORMAT_NVME_CRYPTO_ERASE    (2)
+#endif
+#if !defined(FORMAT_NVME_PI_FIRST_BYTES)
+#define FORMAT_NVME_PI_FIRST_BYTES  (4)
+#endif
+#if !defined(FORMAT_NVME_PI_TYPE_I)
+#define FORMAT_NVME_PI_TYPE_I       (8)
+#endif
+#if !defined(FORMAT_NVME_PI_TYPE_II)
+#define FORMAT_NVME_PI_TYPE_II      (16)
+#endif
+#if !defined(FORMAT_NVME_PI_TYPE_III)
+#define FORMAT_NVME_PI_TYPE_III     (32)
+#endif
+#if !defined(FORMAT_NVME_XFER_METADATA)
+#define FORMAT_NVME_XFER_METADATA   (64)
+#endif
+
 int run_NVMe_Format(tDevice * device, uint32_t newLBASize, uint64_t flags)
 {
     int ret = SUCCESS; 
