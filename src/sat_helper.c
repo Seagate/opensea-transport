@@ -1810,11 +1810,11 @@ int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *scsiIoCtx
 
     if (strlen(openseaVersionString) < 8)
     {
-        snprintf((char*)(&ataInformation[24]), 8, " %-8s", openseaVersionString);
+        snprintf((char*)(&ataInformation[24]), 8, " %-s", openseaVersionString);
     }
     else
     {
-        snprintf((char*)(&ataInformation[24]), 8, "%-8s", openseaVersionString);
+        snprintf((char*)(&ataInformation[24]), 8, "%-s", openseaVersionString);
     }
     //SAT Product Revision -set to SAT Version supported by library
     ataInformation[32] = 'S';
@@ -3765,7 +3765,6 @@ int translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     uint64_t logicalBlockAddress = 0;
     uint64_t numberOflogicalBlocks = 0;
     uint8_t groupNumber = 0;
-    bool invalidFieldInCDB = false;
     uint8_t senseKeySpecificDescriptor[8] = { 0 };
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
@@ -3994,7 +3993,6 @@ int translate_SCSI_Synchronize_Cache_Command(tDevice *device, ScsiIoCtx *scsiIoC
 
 int translate_SCSI_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
-    int ret = SUCCESS;
     uint8_t byteCheck = 0;
     uint64_t lba = 0;
     uint32_t verificationLength = 0;
@@ -4429,7 +4427,7 @@ int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         if (formatData)
         {
             //Parameter header information
-            uint8_t protectionFieldUsage = M_GETBITRANGE(scsiIoCtx->pdata[0], 2, 0);
+            //uint8_t protectionFieldUsage = M_GETBITRANGE(scsiIoCtx->pdata[0], 2, 0);
             bool formatOptionsValid = scsiIoCtx->pdata[1] & BIT7;
             //bool disablePrimary = scsiIoCtx->pdata[1] & BIT6; //SATL ignores this bit. Commented out so we can use it if we ever need to.
             bool disableCertification = scsiIoCtx->pdata[1] & BIT5;
@@ -11374,7 +11372,6 @@ int translate_Mode_Select_Control_0Ah(tDevice *device, ScsiIoCtx *scsiIoCtx, boo
     if (pageLength != 0x0A)
     {
         fieldPointer = 1;
-        uint8_t reservedByteVal = ptrToBeginningOfModePage[1];
         bitPointer = 7;
         fieldPointer += dataOffset;
         set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
@@ -12175,9 +12172,9 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         }
         bitPointer = 0;
         //uint16_t modeDataLength = scsiIoCtx->pdata[0];
-        uint8_t deviceSpecificParameter = scsiIoCtx->pdata[2];
-        bool writeProtected = false;//Don't allow write protection. This makes no sense for this software implementation. - TJE
-        bool dpoFua = false;//TODO: allow this bit to be zero. AKA don't allow DPO or FUA in read/write
+        //uint8_t deviceSpecificParameter = scsiIoCtx->pdata[2];
+        //bool writeProtected = false;//Don't allow write protection. This makes no sense for this software implementation. - TJE
+        //bool dpoFua = false;//TODO: allow this bit to be zero. AKA don't allow DPO or FUA in read/write
         bool longLBA = false;
         uint16_t blockDescriptorLength = scsiIoCtx->pdata[3];
         if (tenByteCommand)

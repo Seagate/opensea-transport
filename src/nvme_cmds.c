@@ -13,7 +13,6 @@
 //                     The intention of the file is to be generic & not OS specific
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-
 #include "platform_helper.h"
 
 #include "nvme_helper.h"
@@ -55,6 +54,54 @@ int nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
     int ret = UNKNOWN;
 #ifdef _DEBUG
     printf("-->%s\n",__FUNCTION__);
+
+    /*
+    printf("%s: p=%p, sz=%d, cdw10=0x%X, nsid=0x%x, opcode=%d\n",\
+           __FUNCTION__,cmdCtx->cmd.adminCmd.addr,
+           cmdCtx->cmd.adminCmd.dataLen,cmdCtx->cmd.adminCmd.cdw10,
+            cmdCtx->cmd.adminCmd.nsid, cmdCtx->cmd.adminCmd.opcode
+            );
+    */
+    printf("%s: sz=%d, cdw10=0x%X, nsid=0x%x, opcode=%d\n",\
+           __FUNCTION__,
+           cmdCtx->cmd.adminCmd.dataLen,cmdCtx->cmd.adminCmd.cdw10,
+            cmdCtx->cmd.adminCmd.nsid, cmdCtx->cmd.adminCmd.opcode
+            );
+
+    /*
+    printf("nvmeCmdCtx size=%d, Address of cmdCtx = %p\n", sizeof(nvmeCmdCtx), cmdCtx);
+
+    printf("Printing cmdCtx\n");
+    for(int i = 0; i < sizeof(nvmeCmdCtx); i++) 
+    {
+        if(i%8 == 0) 
+        {
+            printf("%d : ", i);
+        }
+        printf(" %x", (unsigned char)(*((unsigned char *)cmdCtx + i)));
+        if(i%8 == 7) 
+        {
+            printf("\n");
+        }
+    }
+    printf("\n");
+
+    printf("Printing cmdCtx->cmd\n");
+    for(int i = 0; i < sizeof(nvmeCommands); i++) 
+    {
+        if(i%8 == 0) 
+        {
+            printf("%d : ", i);
+        }
+        printf(" %x", (unsigned char)(*((unsigned char *)&(cmdCtx->cmd) + i)));
+        if(i%8 == 7) 
+        {
+            printf("\n");
+        }
+    }
+    printf("\n"); 
+    */ 
+
 #endif
 
     cmdCtx->device = device;
@@ -558,7 +605,11 @@ int nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts
     getLogPage.cmd.adminCmd.opcode = NVME_ADMIN_CMD_GET_LOG_PAGE;
     getLogPage.commandType = NVM_ADMIN_CMD;
     getLogPage.commandDirection = XFER_DATA_IN;
-    getLogPage.cmd.adminCmd.addr = getLogPageCmdOpts->addr;
+    #if defined(VMK_CROSS_COMP)
+    getLogPage.cmd.adminCmd.addr = (uint32_t)getLogPageCmdOpts->addr;
+    #else
+    getLogPage.cmd.adminCmd.addr = (uint64_t)getLogPageCmdOpts->addr;
+    #endif
     getLogPage.cmd.adminCmd.dataLen = getLogPageCmdOpts->dataLen;
     getLogPage.cmd.adminCmd.nsid = getLogPageCmdOpts->nsid;
 
@@ -573,11 +624,55 @@ int nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts
 
     getLogPage.timeout = 15;
 #ifdef _DEBUG
-    printf("%s: p=%p, sz=%d, cdw10=0x%X, nsid=0x%x\n",\
-           __FUNCTION__,&getLogPage.cmd.adminCmd.addr,\
+
+    /*
+    printf("%s: p=%p, sz=%d, cdw10=0x%X, nsid=0x%x, opcode=%d\n",\
+           __FUNCTION__,getLogPage.cmd.adminCmd.addr,
            getLogPage.cmd.adminCmd.dataLen,getLogPage.cmd.adminCmd.cdw10,
-            getLogPage.cmd.adminCmd.nsid\
+            getLogPage.cmd.adminCmd.nsid, getLogPage.cmd.adminCmd.opcode
             );
+    */
+    printf("%s: sz=%d, cdw10=0x%X, nsid=0x%x, opcode=%d\n",\
+           __FUNCTION__,
+           getLogPage.cmd.adminCmd.dataLen,getLogPage.cmd.adminCmd.cdw10,
+            getLogPage.cmd.adminCmd.nsid, getLogPage.cmd.adminCmd.opcode
+            );
+    /*
+    printf("getLogPageCmdOpts sz=%d getLogPageCmdOpts lid=%d getLogPageCmdOpts nsid=%X\n", getLogPageCmdOpts->dataLen, getLogPageCmdOpts->lid, getLogPageCmdOpts->nsid);
+
+    printf("nvmeCmdCtx size=%d Address of getLogPage = %p, sizeof eNvmeCmdType = %d\n", sizeof(nvmeCmdCtx), &getLogPage, sizeof(eNvmeCmdType));
+
+    printf("Printing getLogPage\n");
+    for(int i = 0; i < sizeof(nvmeCmdCtx); i++) 
+    {
+        if(i%8 == 0) 
+        {
+            printf("%d : ", i);
+        }
+        printf(" %x", (unsigned char)(*((unsigned char *)&getLogPage + i)));
+        if(i%8 == 7) 
+        {
+            printf("\n");
+        }
+    }
+    printf("\n");
+
+    printf("Printing getLogPage.cmd\n");
+    for(int i = 0; i < sizeof(nvmeCommands); i++) 
+    {
+        if(i%8 == 0) 
+        {
+            printf("%d : ", i);
+        }
+        printf(" %x", (unsigned char)(*((unsigned char *)&(getLogPage.cmd) + i)));
+        if(i%8 == 7) 
+        {
+            printf("\n");
+        }
+    }
+    printf("\n");
+    */
+
 #endif
     ret = nvme_Cmd(device, &getLogPage);
 #ifdef _DEBUG
@@ -585,6 +680,7 @@ int nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts
 #endif
     return ret;
 }
+
 
 int nvme_Format(tDevice *device, nvmeFormatCmdOpts * formatCmdOpts)
 {
@@ -665,4 +761,64 @@ int nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegisters * ctrlRegs)
     return ret;
 }
 
+
+int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *ExtdSMARTInfo)
+{
+#ifdef _DEBUG
+    printf("-->%s\n",__FUNCTION__);
+#endif
+   // EXTENDED_SMART_INFO_T ExtdSMARTInfo;
+    fb_log_page_CF          logPageCF;
+    int index;
+    uint32_t   nsid = 1;
+    uint8_t  log_id = 0xC4;
+    uint32_t data_len = sizeof(EXTENDED_SMART_INFO_T);
+    void* ptr = ExtdSMARTInfo;
+	 
+    nvmeCmdCtx extSmatLog;
+    memset(&extSmatLog, 0, sizeof(extSmatLog));
+    int ret = SUCCESS;
+    uint32_t  numd = (data_len >> 2) - 1;
+    uint16_t  numdu = numd >> 16, numdl = numd & 0xffff;
+    
+    extSmatLog.cmd.adminCmd.opcode = NVME_ADMIN_CMD_GET_LOG_PAGE;
+    extSmatLog.commandType = NVM_ADMIN_CMD;
+    extSmatLog.commandDirection = XFER_DATA_IN;
+    extSmatLog.cmd.adminCmd.nsid = nsid;
+    extSmatLog.cmd.adminCmd.addr = (unsigned long)ptr;
+    extSmatLog.cmd.adminCmd.dataLen = data_len;
+    extSmatLog.cmd.adminCmd.cdw10 = log_id | (numdl << 16);
+    extSmatLog.cmd.adminCmd.cdw11 = numdu;
+    extSmatLog.timeout = 15;
+	//Added the following for Windows. 
+    extSmatLog.ptrData = ptr;
+    extSmatLog.dataSize = NVME_IDENTIFY_DATA_LEN;
+
+   ret = nvme_Cmd(device, &extSmatLog);
+   return ret;
+}
+
+int pci_Correctble_Err(tDevice *device,uint8_t  opcode, uint32_t  nsid, uint32_t  cdw10, uint32_t cdw11, uint32_t data_len, void *data)
+{
+    #ifdef _DEBUG
+    printf("-->%s\n",__FUNCTION__);
+    #endif
+    int ret = 0;
+    nvmeCmdCtx pciEr;
+    memset (&pciEr, 0x00, sizeof(nvmeCmdCtx));
+    pciEr.cmd.adminCmd.opcode = opcode;
+    pciEr.commandType = NVM_ADMIN_CMD;
+    //pciEr.commandDirection = XFER_DATA_IN;
+    pciEr.cmd.adminCmd.nsid = nsid;
+    pciEr.cmd.adminCmd.addr = (unsigned long)data;
+    pciEr.cmd.adminCmd.dataLen = data_len;
+    pciEr.cmd.adminCmd.cdw10 = cdw10;
+    pciEr.cmd.adminCmd.cdw11 = cdw11;
+    pciEr.timeout = 15;
+        //Added the following for Windows.
+    pciEr.ptrData = data;
+    pciEr.dataSize = NVME_IDENTIFY_DATA_LEN;
+    ret = nvme_Cmd(device, &pciEr);
+    return ret;
+}
 #endif

@@ -14,7 +14,7 @@
 //        This file acts as a OS agnostic glue layer for different OSes. 
 
 #pragma once
-
+typedef unsigned int* __uintptr_t;
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "common_public.h"
 #if defined (__cplusplus)
@@ -148,6 +148,71 @@ extern "C"
     }__attribute__((packed,aligned(1))) nvmeFirmwareSlotInfo;
     #endif
 
+    enum {
+    	/* Self-test log Validation bits */
+    	NVME_SELF_TEST_VALID_NSID	= 1 << 0,
+    	NVME_SELF_TEST_VALID_FLBA	= 1 << 1,
+    	NVME_SELF_TEST_VALID_SCT	= 1 << 2,
+    	NVME_SELF_TEST_VALID_SC		= 1 << 3,
+    	NVME_SELF_TEST_REPORTS		= 20,
+    };
+
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _nvmeSelfTestRes {
+    	uint8_t 		deviceSelfTestStatus;
+    	uint8_t			segmentNum;
+    	uint8_t			validDiagnosticInfo;
+    	uint8_t			rsvd;
+    	uint64_t		powerOnHours;
+    	uint32_t		nsid;
+    	uint64_t		failingLba;
+    	uint8_t			statusCodeType;
+    	uint8_t			statusCode;
+    	uint8_t			vendorSpecific[2];
+    #if !defined (__GNUC__)
+    } nvmeSelfTestRes;
+    #else
+    }__attribute__((packed,aligned(1))) nvmeSelfTestRes;
+    #endif
+    
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _nvmeSelfTestLog {
+    	uint8_t                 crntDevSelftestOprn;
+    	uint8_t                 crntDevSelftestCompln;
+    	uint8_t                 rsvd[2];
+    	nvmeSelfTestRes         result[20];
+    #if !defined (__GNUC__)
+    } nvmeSelfTestLog;
+    #else
+    }__attribute__((packed,aligned(1))) nvmeSelfTestLog;
+    #endif
+
+    enum {
+    	NVME_CMD_EFFECTS_CSUPP		= 1 << 0,
+    	NVME_CMD_EFFECTS_LBCC		= 1 << 1,
+    	NVME_CMD_EFFECTS_NCC		= 1 << 2,
+    	NVME_CMD_EFFECTS_NIC		= 1 << 3,
+    	NVME_CMD_EFFECTS_CCC		= 1 << 4,
+    	NVME_CMD_EFFECTS_CSE_MASK	= 3 << 16,
+    };
+
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _nvmeEffectsLog {
+    	uint32_t acs[256];
+    	uint32_t iocs[256];
+    	uint8_t  resv[2048];
+    #if !defined (__GNUC__)
+    } nvmeEffectsLog;
+    #else
+    }__attribute__((packed,aligned(1))) nvmeEffectsLog;
+    #endif
+
 
     typedef enum _eNvmeSmartAttr{
     	NVME_SMART_CRIT_SPARE_		= 1 << 0,
@@ -176,6 +241,131 @@ extern "C"
     	NVME_LBART_ATTRIB_TEMP_	= 1 << 0,
     	NVME_LBART_ATTRIB_HIDE_	= 1 << 1,
     } eNvmeLBARanges;
+
+
+    /**
+     * Seagate Specific Log pages - Start
+     */
+
+    /**
+     * Seagate NVMe specific structures to identify all supported 
+     * log pages. 
+     */
+    #define MAX_LOG_PAGE_LEN    4096
+
+    /**
+     * Log Page 0xC5 - Supported Log Pages
+     */
+    typedef struct _logPageMapEntry
+    {
+        uint32_t logPageID;
+        uint32_t logPageSignature;
+        uint32_t logPageVersion;
+    } logPageMapEntry;
+    
+    #define MAX_SUPPORTED_LOG_PAGE_ENTRIES ((MAX_LOG_PAGE_LEN - sizeof(uint32_t)) / sizeof(logPageMapEntry))
+    
+    typedef struct _logPageMap
+    {
+       uint32_t numLogPages;
+       logPageMapEntry logPageEntry[MAX_SUPPORTED_LOG_PAGE_ENTRIES];
+    } logPageMap;
+
+    /**
+     * Get Log Page - Supercap DRAM SMART Log Entry (Log Identifier 
+     * CFh) 
+     */
+
+    typedef struct _u128
+    {
+        uint64_t LS__u64;
+        uint64_t MS__u64;
+    } u128;
+
+    #if !defined (__GNUC__) 
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _nvmeSuperCapDramSmartAttr {
+       uint16_t     superCapCurrentTemperature;        // 00-01
+       uint16_t     superCapMaximumTemperature;        // 02-03
+       uint8_t      superCapStatus;                    // 04
+       uint8_t      reserved5to7[3];                   // 05-07
+       u128         dataUnitsReadToDramNamespace;      // 08-23
+       u128         dataUnitsWrittenToDramNamespace;   // 24-39
+       uint64_t     dramCorrectableErrorCount;         // 40-47
+       uint64_t     dramUncorrectableErrorCount;       // 48-55
+    #if !defined (__GNUC__)
+    } nvmeSuperCapDramSmartAttr;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) nvmeSuperCapDramSmartAttr;
+    #endif
+
+    typedef struct _nvmeSuperCapDramSmart {
+       nvmeSuperCapDramSmartAttr    attrScSmart;
+       uint8_t                      vendorSpecificReserved[456];        // 56-511
+    } nvmeSuperCapDramSmart;
+
+    #if !defined (__GNUC__) 
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _nvmeTemetryLogHdr {
+        uint8_t     logId;
+        uint8_t     rsvd1[4];
+        uint8_t     ieeeId[3];
+        uint16_t    teleDataArea1;
+        uint16_t    teleDataArea2;
+        uint16_t    teleDataArea3;
+        uint8_t     rsvd14[368];
+        uint8_t     teleDataAval;
+        uint8_t     teleDataGenNum;
+        uint8_t     reasonIdentifier[128];
+    #if !defined (__GNUC__)
+    } nvmeTemetryLogHdr;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) nvmeTemetryLogHdr;
+    #endif
+
+/**************************
+* PCIE ERROR INFORMATION
+**************************/
+    #if !defined (__GNUC__) 
+    #pragma pack(push, 1)
+    #endif
+    typedef struct _nvmePcieErrorLogPage {
+       uint32_t   version;
+       uint32_t   badDllpErrCnt;
+       uint32_t   badTlpErrCnt;
+       uint32_t   rcvrErrCnt;
+       uint32_t   replayTOErrCnt;
+       uint32_t   replayNumRolloverErrCnt;
+       uint32_t   fcProtocolErrCnt;
+       uint32_t   dllpProtocolErrCnt;
+       uint32_t   cmpltnTOErrCnt;
+       uint32_t   rcvrQOverflowErrCnt;
+       uint32_t   unexpectedCplTlpErrCnt;
+       uint32_t   cplTlpURErrCnt;
+       uint32_t   cplTlpCAErrCnt;
+       uint32_t   reqCAErrCnt;
+       uint32_t   reqURErrCnt;
+       uint32_t   ecrcErrCnt;
+       uint32_t   malformedTlpErrCnt;
+       uint32_t   cplTlpPoisonedErrCnt;
+       uint32_t   memRdTlpPoisonedErrCnt;
+    #if !defined (__GNUC__)
+    } nvmePcieErrorLogPage;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) nvmePcieErrorLogPage;
+    #endif
+//EOF PCIE ERROR INFORMATION
+
+
+    /**
+     * Seagate Specific Log pages - End
+     */
+
 
     /* I/O commands */
 
@@ -349,6 +539,8 @@ extern "C"
     	NVME_LOG_ERROR_ID   	= 0x01,
     	NVME_LOG_SMART_ID		= 0x02,
     	NVME_LOG_FW_SLOT_ID	    = 0x03,
+        NVME_LOG_CMD_SPT_EFET_ID    = 0x05,
+        NVME_LOG_DEV_SELF_TEST	    = 0x06,
     	NVME_LOG_RESERVATION_ID	= 0x80,
     	NVME_FWACT_REPL_		= (0 << 3),
     	NVME_FWACT_REPL_ACTV_	= (1 << 3),
@@ -366,7 +558,8 @@ extern "C"
     typedef struct _nvmeGetLogPageCmdOpts {
         uint32_t    nsid;
     	uint64_t	metadata; // MPTR
-    	uint64_t	addr;   //PRP Entry 1
+    	//uint64_t	addr;   //PRP Entry 1
+        uint8_t	    *addr;   //PRP Entry 1
     	uint32_t 	metadataLen;
     	uint32_t 	dataLen;
         uint8_t     lid; //Log Page identifier, part of Command Dword 10(CDW10)
@@ -600,8 +793,135 @@ extern "C"
                                                 //This is primarily used for the vendor unique pass-through, 
                                                 //but may be checked otherwise since Win10 API only talks to the current NSID, 
                                                 //unless you are pulling a log or identify data from the controller. - TJE
+        //uint8_t                 reserved1[3];
+        //tDevice                 *device;
     } nvmeCmdCtx;
 
+    //Linga
+    #define nvme_admin_get_ext_log_page  0x02
+
+    //Smart attribute IDs
+
+    typedef enum
+    {
+        VS_ATTR_ID_SOFT_READ_ERROR_RATE = 1,
+        VS_ATTR_ID_REALLOCATED_SECTOR_COUNT  = 5,
+        VS_ATTR_ID_POWER_ON_HOURS = 9,
+        VS_ATTR_ID_POWER_FAIL_EVENT_COUNT = 11,
+        VS_ATTR_ID_DEVICE_POWER_CYCLE_COUNT = 12,
+        VS_ATTR_ID_RAW_READ_ERROR_RATE = 13,
+        VS_ATTR_ID_GROWN_BAD_BLOCK_COUNT = 40,
+        VS_ATTR_ID_END_2_END_CORRECTION_COUNT = 41,
+        VS_ATTR_ID_MIN_MAX_WEAR_RANGE_COUNT = 42,
+        VS_ATTR_ID_REFRESH_COUNT = 43,
+        VS_ATTR_ID_BAD_BLOCK_COUNT_USER = 44,
+        VS_ATTR_ID_BAD_BLOCK_COUNT_SYSTEM = 45,
+        VS_ATTR_ID_THERMAL_THROTTLING_STATUS = 46,
+        VS_ATTR_ID_ALL_PCIE_CORRECTABLE_ERROR_COUNT = 47,
+        VS_ATTR_ID_ALL_PCIE_UNCORRECTABLE_ERROR_COUNT = 48,
+        VS_ATTR_ID_INCOMPLETE_SHUTDOWN_COUNT = 49,
+        VS_ATTR_ID_GB_ERASED_LSB = 100,
+        VS_ATTR_ID_GB_ERASED_MSB = 101,
+        VS_ATTR_ID_LIFETIME_ENTERING_PS4_COUNT = 102,
+        VS_ATTR_ID_LIFETIME_ENTERING_PS3_COUNT = 103,
+        VS_ATTR_ID_LIFETIME_DEVSLEEP_EXIT_COUNT = 104,
+        VS_ATTR_ID_RETIRED_BLOCK_COUNT = 170,
+        VS_ATTR_ID_PROGRAM_FAILURE_COUNT = 171,
+        VS_ATTR_ID_ERASE_FAIL_COUNT = 172,
+        VS_ATTR_ID_AVG_ERASE_COUNT = 173,
+        VS_ATTR_ID_UNEXPECTED_POWER_LOSS_COUNT = 174,
+        VS_ATTR_ID_WEAR_RANGE_DELTA = 177,
+        VS_ATTR_ID_SATA_INTERFACE_DOWNSHIFT_COUNT = 183,
+        VS_ATTR_ID_END_TO_END_CRC_ERROR_COUNT = 184,
+        VS_ATTR_ID_UNCORRECTABLE_ECC_ERRORS = 188,
+        VS_ATTR_ID_MAX_LIFE_TEMPERATURE = 194,
+        VS_ATTR_ID_RAISE_ECC_CORRECTABLE_ERROR_COUNT = 195,
+        VS_ATTR_ID_UNCORRECTABLE_RAISE_ERRORS = 198,
+        VS_ATTR_ID_DRIVE_LIFE_PROTECTION_STATUS = 230,
+        VS_ATTR_ID_REMAINING_SSD_LIFE  = 231,
+        VS_ATTR_ID_LIFETIME_WRITES_TO_FLASH_LSB = 233,
+        VS_ATTR_ID_LIFETIME_WRITES_TO_FLASH_MSB = 234,
+        VS_ATTR_ID_LIFETIME_WRITES_FROM_HOST_LSB = 241,
+        VS_ATTR_ID_LIFETIME_WRITES_FROM_HOST_MSB = 242,
+        VS_ATTR_ID_LIFETIME_READS_TO_HOST_LSB = 243,
+        VS_ATTR_ID_LIFETIME_READS_TO_HOST_MSB = 244,
+        VS_ATTR_ID_FREE_SPACE = 245,
+        VS_ATTR_ID_TRIM_COUNT_LSB = 250,
+        VS_ATTR_ID_TRIM_COUNT_MSB = 251,
+        VS_ATTR_ID_OP_PERCENTAGE = 252,
+        VS_ATTR_ID_MAX_SOC_LIFE_TEMPERATURE = 253,
+    } smart_attributes_ids;
+    
+
+
+/***************************
+* Extended-SMART Information
+***************************/
+#pragma pack(1)
+#define NUMBER_EXTENDED_SMART_ATTRIBUTES      42
+
+typedef enum _EXTENDED_SMART_VERSION_
+{
+    EXTENDED_SMART_VERSION_NONE,    // 0
+    EXTENDED_SMART_VERSION_GEN,     // 1
+    EXTENDED_SMART_VERSION_FB,      // 2
+} EXTENDED_SMART_VERSION;
+
+typedef struct _SmartVendorSpecific
+{
+   uint8_t   AttributeNumber;
+   uint16_t  SmartStatus;
+   uint8_t   NominalValue;
+   uint8_t   LifetimeWorstValue;
+   uint32_t  Raw0_3;
+   uint8_t   RawHigh[3];
+} SmartVendorSpecific;
+
+
+typedef struct _EXTENDED_SMART_INFO_T
+{
+   uint16_t Version;
+   SmartVendorSpecific vendorData[NUMBER_EXTENDED_SMART_ATTRIBUTES];
+   uint8_t   vendor_specific_reserved[6];
+}  EXTENDED_SMART_INFO_T;
+
+typedef struct fb_smart_attribute_data
+{
+   uint8_t   AttributeNumber;         // 00
+   uint8_t   Rsvd[3];                 // 01 -03
+   uint32_t  LSDword;                 // 04-07
+   uint32_t   MSDword;                 // 08 - 11
+} fb_smart_attribute_data;
+
+
+typedef struct _U128
+{
+    uint64_t  LSU64;
+    uint64_t  MSU64;
+} U128;
+
+typedef struct _fb_log_page_CF_Attr
+{
+   uint16_t       SuperCapCurrentTemperature;        // 00-01
+   uint16_t       SuperCapMaximumTemperature;        // 02-03
+   uint8_t        SuperCapStatus;                    // 04
+   uint8_t        Reserved5to7[3];                   // 05-07
+   U128           DataUnitsReadToDramNamespace;      // 08-23
+   U128           DataUnitsWrittenToDramNamespace;   // 24-39
+   uint64_t       DramCorrectableErrorCount;         // 40-47
+   uint64_t       DramUncorrectableErrorCount;       // 48-55
+}fb_log_page_CF_Attr;
+
+typedef struct _fb_log_page_CF
+{
+   fb_log_page_CF_Attr      AttrCF;
+   uint8_t                  Vendor_Specific_Reserved[ 456 ];     // 56-511
+}fb_log_page_CF;
+
+
+
+#pragma pack()
+/* EOF Extended-SMART Information*/
 
 #if defined (__cplusplus)
 }

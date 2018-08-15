@@ -816,6 +816,19 @@ extern "C"
         STANDARD_CODE_RESERVED = 2047
     }eStandardCode;
 
+    typedef enum _eMRIEModes
+    {
+        SCSI_MRIE_NO_REPORTING                                  = 0,
+        SCSI_MRIE_ASYNCHRONOUS_EVENT_REPORTING                  = 1,//obsolete
+        SCSI_MRIE_GENERATE_UNIT_ATTENTION                       = 2,
+        SCSI_MRIE_CONDITIONALLY_GENERATE_RECOVERED_ERROR        = 3,
+        SCSI_MRIE_UNCONDITIONALLY_GENERATE_RECOVERED_ERROR      = 4,
+        SCSI_MRIE_GENERATE_NO_SENSE                             = 5,
+        SCSI_MRIE_ONLY_REPORT_ON_EXCEPTION_CONDITION_ON_REQUEST = 6,
+        //modes 7h - Bh are reserved
+        //modes Ch - Fh are vendor specific
+    }eMRIEModes;
+
     #if defined (__cplusplus)
 } //extern "C"
     #endif

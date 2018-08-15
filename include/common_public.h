@@ -16,6 +16,9 @@
 
 #include "common.h"
 #include "version.h"
+#if defined (VMK_CROSS_COMP)
+#include "vm_nvme_lib.h"
+#endif
 
 #if defined (__cplusplus)
 #define __STDC_FORMAT_MACROS
@@ -895,7 +898,11 @@ extern "C"
         char                friendlyName[20];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
         eOSType             osType;//useful for lower layers to do OS specific things
         #if defined (__linux__)
+        #if defined(VMK_CROSS_COMP)
+        struct nvme_handle *fd;
+        #else
         int                 fd;//primary handle
+        #endif
         bool                scsiAddressValid;//will be true if the SCSI address is a valid address
         struct {
             uint8_t         host;//AKA SCSI adapter #
@@ -907,7 +914,11 @@ extern "C"
         char                secondName[30];
         char                secondFriendlyName[30];
         bool                secondHandleOpened;
+        #if defined(VMK_CROSS_COMP)
+        struct nvme_handle *fd2;
+        #else
         int                 fd2;//secondary handle. Ex: fd = sg handle opened, fd2 = sd handle opened.
+        #endif
         struct {
             bool            driverVersionValid;
             uint8_t         majorVersion;
