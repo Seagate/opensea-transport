@@ -626,6 +626,7 @@ int get_Device(const char *filename, tDevice *device)
         {
             #if !defined(DISABLE_NVME_PASSTHROUGH)
             //Do NVMe specific setup and enumeration
+            device->drive_info.drive_type = NVME_DRIVE;
             device->drive_info.interface_type = NVME_INTERFACE;
             ret = ioctl(device->os_info.fd, NVME_IOCTL_ID);
             if (ret < 0)
@@ -641,6 +642,21 @@ int get_Device(const char *filename, tDevice *device)
             //Now we will set up the device name, etc fields in the os_info structure.
             sprintf(device->os_info.name, "/dev/%s", baseLink);
             sprintf(device->os_info.friendlyName, "%s", baseLink);
+
+            //Check if SGIO is available for use as a SCSI to NVMe translator.
+            if (!(ioctl(device->os_info.fd, SG_GET_VERSION_NUM, &k) < 0) || (k < 30000))
+            {
+                #if defined (_DEBUG)
+                printf("\nSGIO is available for NVMe. Will use it as the translator\n");
+                #endif
+                //http://www.faqs.org/docs/Linux-HOWTO/SCSI-Generic-HOWTO.html#IDDRIVER
+                device->os_info.sgDriverVersion.driverVersionValid = true;
+                device->os_info.sgDriverVersion.majorVersion = (uint8_t)(k / 10000);
+                device->os_info.sgDriverVersion.minorVersion = (uint8_t)((k - (device->os_info.sgDriverVersion.majorVersion * 10000)) / 100);
+                device->os_info.sgDriverVersion.revision = (uint8_t)(k - (device->os_info.sgDriverVersion.majorVersion * 10000) - (device->os_info.sgDriverVersion.minorVersion * 100));
+                //SGIO translation is available
+                device->os_info.sntlViaSG = true;
+            }
             ret = fill_In_NVMe_Device_Info(device);
             #if defined (_DEBUG)
             printf("\nsg helper-nvmedev\n");
@@ -825,7 +841,11 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     switch (scsiIoCtx->device->drive_info.interface_type)
     {
     case NVME_INTERFACE:
-        return NOT_SUPPORTED;//Returning not supported because SG_IO is no longer supported on NVMe devices in the modern linux kernel. We will need to add a software translator like we did for SAT to handle this case.
+        if (!scsiIoCtx->device->os_info.sntlViaSG)
+        {
+            //Returning not supported because SG_IO is no longer supported on NVMe devices in the modern linux kernel. We will need to add a software translator like we did for SAT to handle this case.
+            return NOT_SUPPORTED; 
+        }
         //USB, ATA, and SCSI interface all use sg, so just issue an SG IO.
     case SCSI_INTERFACE:
     case IDE_INTERFACE:
