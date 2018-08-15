@@ -38,51 +38,47 @@ extern "C"
     #include <scsi/sg.h>
     #include <scsi/scsi.h>
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-#ifdef NVME_IOCTL_EXIST
-#include <linux/nvme_ioctl.h>
-#define SEA_NVME_IOCTL_H
-#else
-#include <linux/nvme.h>
-#endif
-/*    #if __GNUC__ > 5 //GCC5 and higher have a #if __has_include check that we can use to make this easier :)
+    #if defined (__has_include)//GCC5 and higher support this, BUT only if a C standard is specified. The -std=gnuXX does not support this properly for some odd reason.
         #if __has_include (<linux/nvme_ioctl.h>)
+            #pragma message "Using linux/nvme_ioctl.h"
             #include <linux/nvme_ioctl.h>
-            #define SEA_NVME_IOCTL_H
-        #else
-            #if __has_include (<linux/nvme.h>)
+            #if !defined (SEA_NVME_IOCTL_H)
+                #define SEA_NVME_IOCTL_H
+            #endif
+        #elif __has_include (<linux/nvme.h>)
+            #pragma message "Using linux/nvme.h"
+            #include <linux/nvme.h>
+            #if !defined (SEA_NVME_IOCTL_H)
+                #define SEA_NVME_IOCTL_H
+            #endif
+        #elif __has_include (<uapi/nvme.h>)
+            #pragma message "Using uapi/nvme.h"
+            #include <uapi/nvme.h>
+            #if !defined (SEA_UAPI_NVME_H)
+                #define SEA_UAPI_NVME_H
+            #endif
+        #else //__has_include could not locate the header, check if it was specified by the user through a define.
+            #if defined (SEA_NVME_IOCTL_H)
+                #include <linux/nvme_ioctl.h>
+            #elif defined (SEA_NVME_H)
                 #include <linux/nvme.h>
-                #define SEA_NVME_H
+            #elif defined (SEA_UAPI_NVME_H)
+                #include <uapi/nvme.h>
             #else
-                #if __has_include (<uapi/nvme.h>)
-                    #include <uapi/nvme.h>
-                    #define SEA_UAPI_NVME_H
-                #else
-                    //no NVMe includes available so disable support for it.
-                    #define DISABLE_NVME_PASSTHROUGH
-                #endif
+                #pragma GCC error "Please define one of the following to include the correct NVMe header: SEA_NVME_IOCTL_H, SEA_NVME_H, or SEA_UAPI_NVME_H\nThese specify whether the NVMe IOCTL is in /usr/include/linux/nvme_ioctl.h, /usr/include/linux/nvme.h, or /usr/include/uapi/nvme.h"
             #endif
         #endif
     #else
-        #include <linux/version.h> //To be used for checking which include to use (Only partially narrowed down)
-        #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)//in version 4.4.??+, header is in linux/nvme_ioctl.h
+        #if defined (SEA_NVME_IOCTL_H)
             #include <linux/nvme_ioctl.h>
-            #define SEA_NVME_IOCTL_H
+        #elif defined (SEA_NVME_H)
+            #include <linux/nvme.h>
+        #elif defined (SEA_UAPI_NVME_H)
+            #include <uapi/nvme.h>
         #else
-            #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0) //in 3.x - 4.4.??, header is in linux/nvme.h
-                #include <linux/nvme.h>
-                #define SEA_NVME_H
-            #else
-                #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,32) && LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0) //in earlier versions, it is in either uapi/nvme.h or uapi/linux/nvme.h IF it even exists
-                    //this is what I see to include on CentOS6.8 - TJE
-                    #include <uapi/nvme.h>
-                    #define SEA_UAPI_NVME_H
-                #else
-                    //no NVMe includes available so disable support for it.
-                    #define DISABLE_NVME_PASSTHROUGH
-                #endif
-            #endif
+            #pragma GCC error "Please define one of the following to include the correct NVMe header: SEA_NVME_IOCTL_H, SEA_NVME_H, or SEA_UAPI_NVME_H\nThese specify whether the NVMe IOCTL is in /usr/include/linux/nvme_ioctl.h, /usr/include/linux/nvme.h, or /usr/include/uapi/nvme.h"
         #endif
-    #endif */
+    #endif
     #include "nvme_helper.h"
 #endif
 

@@ -25,17 +25,27 @@ SRC_DIR=../../src/
 INC_DIR=-I../../include -I../../../opensea-common/include  
 CC=gcc
 AR=ar
-FILE1 = /usr/include/linux/nvme_ioctl.h 
 
-ifeq ($(shell test -f $(FILE1) && echo -n yes),yes)
-	PROJECT_DEFINES += -DNVME_IOCTL_EXIST
+#determine the proper NVMe include file. SEA_NVME_IOCTL_H, SEA_NVME_H, or SEA_UAPI_NVME_H
+NVME_IOCTL_H = /usr/include/linux/nvme_ioctl.h 
+NVME_H = /usr/include/linux/nvme.h 
+UAPI_NVME_H = /usr/include/uapi/nvme.h 
+
+ifeq ($(shell test -f $(NVME_IOCTL_H) && echo -n yes),yes)
+	PROJECT_DEFINES += -DSEA_NVME_IOCTL_H
 else
-	RESULT1=$(FILE1) does not exist.
+	ifeq ($(shell test -f $(NVME_H) && echo -n yes),yes)
+		PROJECT_DEFINES += -DSEA_NVME_H
+	else
+		ifeq ($(shell test -f $(UAPI_NVME_H) && echo -n yes),yes)
+			PROJECT_DEFINES += -SEA_UAPI_NVME_H
+		endif
+	endif
 endif
-#export NVME_IOCTL_EXIST
 #override CFLAGS = -Wall -c -fPIC -I. -std=gnu99
 CFLAGS ?= -Wall 
-CFLAGS += -c -fPIC -I. -std=gnu99
+#setting std=c99 instead of std-gnu99 because we want __has_include to work. This means we must add -D_GNU_SOURCE to the project defines to keep the same functionality in Linux
+CFLAGS += -c -fPIC -I. -std=c99
 LFLAGS = -Wall ../../../opensea-common/Make/gcc/lib/$(FILE_OUTPUT_DIR)/libopensea-common.a
 LIB_SRC_FILES = \
 	$(SRC_DIR)ata_cmds.c\
@@ -66,7 +76,8 @@ ifeq (($UNAME),FreeBSD)
     LIB_SRC_FILES += $(SRC_DIR)cam_helper.c
 endif
 
-PROJECT_DEFINES += #-DDISABLE_NVME_PASSTHROUGH #-D_DEBUG
+#setting std=c99 instead of std-gnu99 because we want __has_include to work. This means we must add -D_GNU_SOURCE to the project defines to keep the same functionality in Linux
+PROJECT_DEFINES += -D_GNU_SOURCE #-DDISABLE_NVME_PASSTHROUGH #-D_DEBUG
 
 #All of the source files have associated object files
 LIB_OBJ_FILES = $(LIB_SRC_FILES:.c=.o)
