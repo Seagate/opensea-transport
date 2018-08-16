@@ -657,7 +657,7 @@ int get_Device(const char *filename, tDevice *device)
                 //SGIO translation is available
                 device->os_info.sntlViaSG = true;
             }
-            ret = fill_In_NVMe_Device_Info(device);
+            ret = fill_Drive_Info_Data(device);
             #if defined (_DEBUG)
             printf("\nsg helper-nvmedev\n");
             printf("Drive type: %d\n",device->drive_info.drive_type);
