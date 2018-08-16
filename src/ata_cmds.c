@@ -1289,6 +1289,7 @@ int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subComman
     memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
+    ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
     if (useDMA)
     {
         ataCommandOptions.tfr.CommandStatus = ATA_DOWNLOAD_MICROCODE_DMA;
@@ -1338,6 +1339,8 @@ int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subComman
         ataCommandOptions.ptrData = NULL;
         ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
         ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
+        ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
+        ataCommandOptions.commandDirection = XFER_NO_DATA;
         ataCommandOptions.tfr.SectorCount = 0;
         ataCommandOptions.tfr.LbaLow = 0;
         ataCommandOptions.tfr.LbaMid = 0;
