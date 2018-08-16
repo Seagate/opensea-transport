@@ -42,6 +42,10 @@ printf("fill NVMe info ret = %d\n", ret);
 
     if (ret == SUCCESS)
     {
+        //set the t10 vendor id to NVMe
+        sprintf(device->drive_info.T10_vendor_ident, "NVMe");
+
+        //Set the other device fields we need.
         memcpy(device->drive_info.serialNumber,ctrlData->sn,SERIAL_NUM_LEN);
         device->drive_info.serialNumber[20] = '\0';
         remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
