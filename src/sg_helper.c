@@ -159,6 +159,20 @@ bool is_Block_SCSI_Generic_Handle(char *handle)
     return isBlockGenericDevice;
 }
 
+bool is_NVMe_Handle(char *handle)
+{
+    bool isNvmeDevice = false;
+    if (handle && strlen(handle))
+    {
+        if(strstr(handle,"nvme"))
+        {
+            isNvmeDevice = true;
+        }
+    }
+    return isNvmeDevice;
+}
+
+
 //while similar to the function below, this is used only by get_Device to set up some fields in the device structure for the above layers
 static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 {
@@ -608,65 +622,102 @@ int get_Device(const char *filename, tDevice *device)
 
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
-        #if defined (_DEBUG)
-        printf("Getting SG driver version\n");
-        #endif
-        // Check we have a valid device by trying an ioctl
-        // From http://tldp.org/HOWTO/SCSI-Generic-HOWTO/pexample.html
-        if ((ioctl(device->os_info.fd, SG_GET_VERSION_NUM, &k) < 0) || (k < 30000))
+        if (is_NVMe_Handle(deviceHandle))
         {
-            printf("%s: SG_GET_VERSION_NUM on %s failed version=%d\n", __FUNCTION__, filename,k);
-            perror("SG_GET_VERSION_NUM");
-            close(device->os_info.fd);
+            #if !defined(DISABLE_NVME_PASSTHROUGH)
+            //Do NVMe specific setup and enumeration
+            device->drive_info.drive_type = NVME_DRIVE;
+            device->drive_info.interface_type = NVME_INTERFACE;
+            ret = ioctl(device->os_info.fd, NVME_IOCTL_ID);
+            if (ret < 0)
+            {
+                 perror("nvme_ioctl_id");
+                 return ret;
+            }
+            device->drive_info.lunOrNSID = (uint32_t) ret;
+            device->os_info.osType = OS_LINUX;
+            device->drive_info.media_type = MEDIA_NVM;
+
+            char *baseLink = basename(deviceHandle);
+            //Now we will set up the device name, etc fields in the os_info structure.
+            sprintf(device->os_info.name, "/dev/%s", baseLink);
+            sprintf(device->os_info.friendlyName, "%s", baseLink);
+
+            //Check if SGIO is available for use as a SCSI to NVMe translator.
+            if (!(ioctl(device->os_info.fd, SG_GET_VERSION_NUM, &k) < 0) || (k < 30000))
+            {
+                #if defined (_DEBUG)
+                printf("\nSGIO is available for NVMe. Will use it as the translator\n");
+                #endif
+                //http://www.faqs.org/docs/Linux-HOWTO/SCSI-Generic-HOWTO.html#IDDRIVER
+                device->os_info.sgDriverVersion.driverVersionValid = true;
+                device->os_info.sgDriverVersion.majorVersion = (uint8_t)(k / 10000);
+                device->os_info.sgDriverVersion.minorVersion = (uint8_t)((k - (device->os_info.sgDriverVersion.majorVersion * 10000)) / 100);
+                device->os_info.sgDriverVersion.revision = (uint8_t)(k - (device->os_info.sgDriverVersion.majorVersion * 10000) - (device->os_info.sgDriverVersion.minorVersion * 100));
+                //SGIO translation is available
+                device->os_info.sntlViaSG = true;
+            }
+            ret = fill_Drive_Info_Data(device);
+            #if defined (_DEBUG)
+            printf("\nsg helper-nvmedev\n");
+            printf("Drive type: %d\n",device->drive_info.drive_type);
+            printf("Interface type: %d\n",device->drive_info.interface_type);
+            printf("Media type: %d\n",device->drive_info.media_type);
+            #endif //DEBUG
+            #else
+            #if defined (_DEBUG)
+            printf("\nsg helper-nvmedev --  NVME Passthrough disabled, device not supported\n");
+            #endif //DEBUG
+            return NOT_SUPPORTED;//return not supported since NVMe-passthrough is disabled
+            #endif //DISABLE_NVME_PASSTHROUGH
         }
         else
         {
-            //http://www.faqs.org/docs/Linux-HOWTO/SCSI-Generic-HOWTO.html#IDDRIVER
-            device->os_info.sgDriverVersion.driverVersionValid = true;
-            device->os_info.sgDriverVersion.majorVersion = (uint8_t)(k / 10000);
-            device->os_info.sgDriverVersion.minorVersion = (uint8_t)((k - (device->os_info.sgDriverVersion.majorVersion * 10000)) / 100);
-            device->os_info.sgDriverVersion.revision = (uint8_t)(k - (device->os_info.sgDriverVersion.majorVersion * 10000) - (device->os_info.sgDriverVersion.minorVersion * 100));
-            
-            //set the OS Type
-            device->os_info.osType = OS_LINUX;
-
-            //set scsi interface and scsi drive until we know otherwise
-            device->drive_info.drive_type = SCSI_DRIVE;
-            device->drive_info.interface_type = SCSI_INTERFACE;
-			device->drive_info.media_type = MEDIA_HDD;
-            //now have the device information fields set
-            #if defined (_DEBUG)
-            printf("Setting interface, drive type, secondary handles\n");
-            #endif
-            set_Device_Fields_From_Handle(deviceHandle, device);
 
             #if defined (_DEBUG)
-            printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n",
-                   device->os_info.name,
-                   device->os_info.friendlyName,
-                   device->os_info.secondName,
-                   device->os_info.secondFriendlyName
-                   );
-            printf("h:c:t:l = %u:%u:%u:%u\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel, device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
-
-            printf("SG driver version = %u.%u.%u\n", device->os_info.sgDriverVersion.majorVersion, device->os_info.sgDriverVersion.minorVersion, device->os_info.sgDriverVersion.revision);
+            printf("Getting SG driver version\n");
             #endif
-            
-			#if !defined(DISABLE_NVME_PASSTHROUGH)
-            if (device->drive_info.interface_type == NVME_INTERFACE) 
+            // Check we have a valid device by trying an ioctl
+            // From http://tldp.org/HOWTO/SCSI-Generic-HOWTO/pexample.html
+            if ((ioctl(device->os_info.fd, SG_GET_VERSION_NUM, &k) < 0) || (k < 30000))
             {
-                ret = ioctl(device->os_info.fd, NVME_IOCTL_ID);
-                if (ret < 0)
-                {
-                     perror("nvme_ioctl_id");
-                     return ret;
-                }
-                device->drive_info.lunOrNSID = (uint32_t) ret;
-                ret = fill_In_NVMe_Device_Info(device);
+                printf("%s: SG_GET_VERSION_NUM on %s failed version=%d\n", __FUNCTION__, filename,k);
+                perror("SG_GET_VERSION_NUM");
+                close(device->os_info.fd);
             }
             else
-			#endif
             {
+                //http://www.faqs.org/docs/Linux-HOWTO/SCSI-Generic-HOWTO.html#IDDRIVER
+                device->os_info.sgDriverVersion.driverVersionValid = true;
+                device->os_info.sgDriverVersion.majorVersion = (uint8_t)(k / 10000);
+                device->os_info.sgDriverVersion.minorVersion = (uint8_t)((k - (device->os_info.sgDriverVersion.majorVersion * 10000)) / 100);
+                device->os_info.sgDriverVersion.revision = (uint8_t)(k - (device->os_info.sgDriverVersion.majorVersion * 10000) - (device->os_info.sgDriverVersion.minorVersion * 100));
+                
+                //set the OS Type
+                device->os_info.osType = OS_LINUX;
+
+                //set scsi interface and scsi drive until we know otherwise
+                device->drive_info.drive_type = SCSI_DRIVE;
+                device->drive_info.interface_type = SCSI_INTERFACE;
+                device->drive_info.media_type = MEDIA_HDD;
+                //now have the device information fields set
+                #if defined (_DEBUG)
+                printf("Setting interface, drive type, secondary handles\n");
+                #endif
+                set_Device_Fields_From_Handle(deviceHandle, device);
+
+                #if defined (_DEBUG)
+                printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n",
+                       device->os_info.name,
+                       device->os_info.friendlyName,
+                       device->os_info.secondName,
+                       device->os_info.secondFriendlyName
+                       );
+                printf("h:c:t:l = %u:%u:%u:%u\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel, device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
+
+                printf("SG driver version = %u.%u.%u\n", device->os_info.sgDriverVersion.majorVersion, device->os_info.sgDriverVersion.minorVersion, device->os_info.sgDriverVersion.revision);
+                #endif
+                
                 // Fill in all the device info.
                 //this code to set up passthrough commands for USB and IEEE1394 has been removed for now to match Windows functionality. Need better intelligence than this.
                 //Some of these old pass-through types issue vendor specific op codes that could be misinterpretted on some devices.
@@ -677,13 +728,14 @@ int get_Device(const char *filename, tDevice *device)
 //              }
 
                 ret = fill_Drive_Info_Data(device);
+
+                #if defined (_DEBUG)
+                printf("\nsg helper\n");
+                printf("Drive type: %d\n",device->drive_info.drive_type);
+                printf("Interface type: %d\n",device->drive_info.interface_type);
+                printf("Media type: %d\n",device->drive_info.media_type);
+                #endif
             }
-            #if defined (_DEBUG)
-			printf("\nsg helper\n");
-			printf("Drive type: %d\n",device->drive_info.drive_type);
-			printf("Interface type: %d\n",device->drive_info.interface_type);
-			printf("Media type: %d\n",device->drive_info.media_type);
-			#endif
         }
     }
     safe_Free(deviceHandle);
@@ -788,7 +840,12 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
 #endif
     switch (scsiIoCtx->device->drive_info.interface_type)
     {
-    case NVME_INTERFACE://send_IO only sends ATA and SCSI IOs, so if we are here, we must be sending a SCSI command, so just send an sg_io
+    case NVME_INTERFACE:
+        if (!scsiIoCtx->device->os_info.sntlViaSG)
+        {
+            //Returning not supported because SG_IO is no longer supported on NVMe devices in the modern linux kernel. We will need to add a software translator like we did for SAT to handle this case.
+            return NOT_SUPPORTED; 
+        }
         //USB, ATA, and SCSI interface all use sg, so just issue an SG IO.
     case SCSI_INTERFACE:
     case IDE_INTERFACE:
@@ -1022,7 +1079,9 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
         num_devs = scandir("/dev", &namelist, sd_filter, alphasort); 
     }
     //add nvme devices to the list
+    #if !defined(DISABLE_NVME_PASSTHROUGH)
     num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter,alphasort);
+    #endif
 
     *numberOfDevices = num_devs + num_nvme_devs;
     /*
@@ -1093,15 +1152,19 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 	int  num_sg_devs = 0, num_sd_devs = 0, num_nvme_devs = 0;
 
     struct dirent **namelist;
+    #if !defined(DISABLE_NVME_PASSTHROUGH)
     struct dirent **nvmenamelist;
+    #endif
     num_sg_devs = scandir("/dev", &namelist, sg_filter, alphasort); 
     if(num_sg_devs == 0)
     {
         //check for SD devices
         num_sd_devs = scandir("/dev", &namelist, sd_filter, alphasort); 
     }
+    #if !defined(DISABLE_NVME_PASSTHROUGH)
     //add nvme devices to the list
     num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter,alphasort);
+    #endif
     
     char **devs = (char **)calloc(MAX_DEVICES_TO_SCAN, sizeof(char *));
     int i = 0, j = 0;
@@ -1113,6 +1176,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         strcat(devs[i], namelist[i]->d_name);
         free(namelist[i]);
     }
+    #if !defined(DISABLE_NVME_PASSTHROUGH)
     //add nvme devices to the list
     for (j = 0; i < (num_sg_devs + num_sd_devs + num_nvme_devs) && i < MAX_DEVICES_PER_CONTROLLER;i++, j++)
     {
@@ -1121,9 +1185,12 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         strcat(devs[i], nvmenamelist[j]->d_name);
         free(nvmenamelist[j]);
     }
+    #endif
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
     safe_Free(namelist);
+    #if !defined(DISABLE_NVME_PASSTHROUGH)
     safe_Free(nvmenamelist);
+    #endif
 
 	//TODO: Check if sizeInBytes is a multiple of 
 	if (!(ptrToDeviceList) || (!sizeInBytes))
