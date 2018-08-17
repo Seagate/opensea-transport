@@ -2570,36 +2570,68 @@ int send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
 #if WINVER >= SEA_WIN32_WINNT_WIN10
 bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)//TODO: add nvme support
 {
+#if defined (_DEBUG)
+    printf("Checking if FWDL Command is compatible with Win 10 API\n");
+#endif
 	if (!scsiIoCtx->device->os_info.fwdlIOsupport.fwdlIOSupported)
 	{
 		//OS doesn't support this IO on this device, so just say no!
+#if defined (_DEBUG)
+        printf("\tFalse (not Supported)\n");
+#endif
 		return false;
 	}
     //If we are trying to send an ATA command, then only use the API if it's IDE. 
     //SCSI and RAID interfaces depend on the SATL to translate it correctly, but that is not checked by windows and is not possible since nothing responds to the report supported operation codes command
     //A future TODO will be to have either a lookup table or additional check somewhere to send the report supported operation codes command, but this is good enough for now, since it's unlikely a SATL will implement that...
+#if defined (_DEBUG)
+    printf("scsiIoCtx = %p\t->pAtaCmdOpts = %p\tinterface type: %d\n", scsiIoCtx, scsiIoCtx->pAtaCmdOpts, scsiIoCtx->device->drive_info.interface_type);
+#endif
 	if (scsiIoCtx && scsiIoCtx->pAtaCmdOpts && scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
 	{
+#if defined (_DEBUG)
+        printf("Checking ATA command info for FWDL support\n");
+#endif
 		//We're sending an ATA passthrough command, and the OS says the io is supported, so it SHOULD work. - TJE
 		if (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA)
 		{
+#if defined (_DEBUG)
+            printf("Is Download Microcode command (%" PRIX8 "h)\n", scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus);
+#endif
             if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0E)
             {
+#if defined (_DEBUG)
+                printf("Is deferred download mode Eh\n");
+#endif
                 //We know it's a download command, now we need to make sure it's a multiple of the Windows alignment requirement and that it isn't larger than the maximum allowed
                 uint16_t transferSizeSectors = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaLow, scsiIoCtx->pAtaCmdOpts->tfr.SectorCount);
+#if defined (_DEBUG)
+                printf("Transfersize sectors: %" PRIu16 "\n", transferSizeSectors);
+                printf("Transfersize bytes: %" PRIu32 "\tMaxXferSize: %" PRIu32 "\n", (uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE), scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize);
+                printf("Transfersize sectors %% alignment: %" PRIu32 "\n", ((uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment));
+#endif
                 if ((uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && ((uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
                 {
+#if defined (_DEBUG)
+                    printf("\tTrue (0x0E)\n");
+#endif
                     return true;
                 }
             }
             else if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0F)
             {
+#if defined (_DEBUG)
+                printf("\tTrue (0x0F)\n");
+#endif
                 return true;
             }
 		}
 	}
 	else if(scsiIoCtx)//sending a SCSI command
 	{
+#if defined (_DEBUG)
+        printf("Checking SCSI command info for FWDL Support\n");
+#endif
         //TODO? Should we check that this is a SCSI Drive? Right now we'll just attempt the download and let the drive/SATL handle translation
 		//check that it's a write buffer command for a firmware download & it's a deferred download command since that is all that is supported
 		if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
@@ -2611,10 +2643,16 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
 			case SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER:
 				if (transferLength < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (transferLength % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
 				{
+#if defined (_DEBUG)
+                    printf("\tTrue (SCSI Mode 0x0E)\n");
+#endif
 					return true;
 				}
 				break;
 			case SCSI_WB_ACTIVATE_DEFERRED_MICROCODE:
+#if defined (_DEBUG)
+                printf("\tTrue (SCSI Mode 0x0F)\n");
+#endif
 				return true;
 				break;
 			default:
@@ -2623,6 +2661,9 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
 		}
 	}
 	//TODO: add checking NVMe CTX for firmware download command
+#if defined (_DEBUG)
+    printf("\tFalse\n");
+#endif
 	return false;
 }
 
@@ -2660,6 +2701,14 @@ int get_Windows_FWDL_IO_Support(tDevice *device)
 		device->os_info.fwdlIOsupport.payloadAlignment = fwdlSupportedInfo->ImagePayloadAlignment;
 		device->os_info.fwdlIOsupport.maxXferSize = fwdlSupportedInfo->ImagePayloadMaxSize;
 		//TODO: store more FWDL information as we need it
+#if defined (_DEBUG)
+        printf("Got Win10 FWDL Info\n");
+        printf("\tSupported: %d\n", fwdlSupportedInfo->SupportUpgrade);
+        printf("\tPayload Alignment: %d\n", fwdlSupportedInfo->ImagePayloadAlignment);
+        printf("\tmaxXferSize: %d\n", fwdlSupportedInfo->ImagePayloadMaxSize);
+        printf("\tPendingActivate: %d\n", fwdlSupportedInfo->PendingActivateSlot);
+        printf("\tActiveSlot: %d\n", fwdlSupportedInfo->ActiveSlot);
+#endif
 		ret = SUCCESS;
 	}
 	else
@@ -2705,6 +2754,7 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     {
         return BAD_PARAMETER;
     }
+    printf("Using Win10 FWDL API\n");
 	if (is_Activate_Command(scsiIoCtx))
 	{
 		//send the activate IOCTL
@@ -2848,6 +2898,11 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
                 break;
+            }
+            if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+            {
+                printf("Windows Error: ");
+                print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
             }
         }
 	}
@@ -3043,6 +3098,11 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
                 break;
+            }
+            if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+            {
+                printf("Windows Error: ");
+                print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
             }
         }
 	}
