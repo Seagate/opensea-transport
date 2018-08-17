@@ -2754,7 +2754,9 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     {
         return BAD_PARAMETER;
     }
+#if defined (_DEBUG)
     printf("Using Win10 FWDL API\n");
+#endif
 	if (is_Activate_Command(scsiIoCtx))
 	{
 		//send the activate IOCTL
