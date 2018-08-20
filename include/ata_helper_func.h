@@ -846,6 +846,8 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_SCT_Data_Transfer(tDevice *device, bool useGPL, bool useDMA, eDataTransferDirection direction, uint8_t *dataBuf, uint32_t dataSize);
 
+	OPENSEA_TRANSPORT_API int ata_SCT_Check_Status(tDevice *device, uint32_t retries, uint16_t actionCode, uint16_t functionCode);
+
     //-----------------------------------------------------------------------------
     //
     //  ata_SCT_Read_Write_Long(tDevice *device, bool useGPL, bool useDMA, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested)
