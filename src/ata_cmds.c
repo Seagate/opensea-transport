@@ -346,7 +346,7 @@ int ata_Read_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, u
     //zap it
     memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
 
-    if (ptrData == NULL)
+    if (!ptrData)
     {
         return FAILURE;
     }
@@ -467,7 +467,7 @@ int ata_Write_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, 
     //zap it
     memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
 
-    if (ptrData == NULL)
+    if (!ptrData)
     {
         return FAILURE;
     }
@@ -608,7 +608,7 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
     case ATA_SMART_EXEC_OFFLINE_IMM:
         if (VERBOSITY_COMMAND_NAMES <= g_verbosity && feature == ATA_SMART_EXEC_OFFLINE_IMM)
         {
-            printf("Offline Immediate - test %02"PRIX8"h\n", lbaLo);
+            printf("Offline Immediate - test %02" PRIX8 "h\n", lbaLo);
         }
     case ATA_SMART_RTSMART:
         if (VERBOSITY_COMMAND_NAMES <= g_verbosity && feature == ATA_SMART_RTSMART)
@@ -631,13 +631,13 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
     // just sanity sake
     if (ataCommandOptions.commandDirection != XFER_NO_DATA)
     {
-        if (ptrData == NULL)
+        if (!ptrData)
         {
-            return FAILURE;
+            return BAD_PARAMETER;
         }
         else if (dataSize < LEGACY_DRIVE_SEC_SIZE)
         {
-            return FAILURE;
+            return BAD_PARAMETER;
         }
     }
 
@@ -775,7 +775,7 @@ int ata_SMART_Read_Data(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
 
 int ata_SMART_Return_Status(tDevice *device)
 {
-    return ata_SMART_Command(device,ATA_SMART_RTSMART,0,NULL,0, 15, true, 0);
+    return ata_SMART_Command(device,ATA_SMART_RTSMART, 0, NULL, 0, 15, true, 0);
 }
 
 int ata_SMART_Enable_Operations(tDevice *device)
@@ -812,7 +812,7 @@ int ata_SMART_Attribute_Autosave(tDevice *device, bool enable)
 {
     if(enable)
     {
-        return ata_SMART_Command(device, ATA_SMART_SW_AUTOSAVE, 0, NULL, 0, 15, false, 0xF1);
+        return ata_SMART_Command(device, ATA_SMART_SW_AUTOSAVE, 0, NULL, 0, 15, false, ATA_SMART_ATTRIBUTE_AUTOSAVE_ENABLE_SIG);
     }
     else
     {
@@ -824,7 +824,7 @@ int ata_SMART_Auto_Offline(tDevice *device, bool enable)
 {
     if (enable)
     {
-        return ata_SMART_Command(device, ATA_SMART_AUTO_OFFLINE, 0, NULL, 0, 15, false, 0xF8);
+        return ata_SMART_Command(device, ATA_SMART_AUTO_OFFLINE, 0, NULL, 0, 15, false, ATA_SMART_AUTO_OFFLINE_ENABLE_SIG);
     }
     else
     {
@@ -1083,8 +1083,8 @@ int ata_Get_Native_Max_Address_Ext(tDevice *device, uint64_t *nativeMaxLBA)
     int             ret   = UNKNOWN;
     ataReturnTFRs rtfrs;
     memset(&rtfrs, 0, sizeof(rtfrs));
-    ret = ata_Accessible_Max_Address_Feature(device, 0x0000, 0, &rtfrs);
-    if (ret == SUCCESS && nativeMaxLBA != NULL)
+    ret = ata_Accessible_Max_Address_Feature(device, AMAC_GET_NATIVE_MAX_ADDRESS, 0, &rtfrs);
+    if (ret == SUCCESS && nativeMaxLBA)
     {
         *nativeMaxLBA = M_BytesTo8ByteValue(0, 0, rtfrs.lbaHiExt, rtfrs.lbaMidExt, rtfrs.lbaLowExt, rtfrs.lbaHi, rtfrs.lbaMid, rtfrs.lbaLow);
     }
@@ -1094,20 +1094,20 @@ int ata_Get_Native_Max_Address_Ext(tDevice *device, uint64_t *nativeMaxLBA)
 int ata_Set_Accessible_Max_Address_Ext(tDevice *device, uint64_t newMaxLBA)
 {
     int ret = UNKNOWN;
-    ret = ata_Accessible_Max_Address_Feature(device, 0x0001, newMaxLBA, NULL);
+    ret = ata_Accessible_Max_Address_Feature(device, AMAC_SET_ACCESSIBLE_MAX_ADDRESS, newMaxLBA, NULL);
     return ret;
 }
 
 int ata_Freeze_Accessible_Max_Address_Ext(tDevice *device)
 {
     int ret = UNKNOWN;
-	ret = ata_Accessible_Max_Address_Feature(device, 0x0002, 0, NULL);
+	ret = ata_Accessible_Max_Address_Feature(device, AMAC_FREEZE_ACCESSIBLE_MAX_ADDRESS, 0, NULL);
     return ret;
 }
 
 int ata_Read_Native_Max_Address(tDevice *device, uint64_t *nativeMaxLBA, bool ext)
 {
-    int             ret          = UNKNOWN;
+    int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
@@ -1146,7 +1146,7 @@ int ata_Read_Native_Max_Address(tDevice *device, uint64_t *nativeMaxLBA, bool ex
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (ret == SUCCESS && nativeMaxLBA != NULL)
+    if (ret == SUCCESS && nativeMaxLBA)
     {
         if (ext)
         {
@@ -1154,7 +1154,7 @@ int ata_Read_Native_Max_Address(tDevice *device, uint64_t *nativeMaxLBA, bool ex
         }
         else
         {
-            *nativeMaxLBA = M_BytesTo4ByteValue((ataCommandOptions.rtfr.device & 0x0F), ataCommandOptions.rtfr.lbaHi, ataCommandOptions.rtfr.lbaMid, ataCommandOptions.rtfr.lbaLow);
+            *nativeMaxLBA = M_BytesTo4ByteValue(M_Nibble0(ataCommandOptions.rtfr.device), ataCommandOptions.rtfr.lbaHi, ataCommandOptions.rtfr.lbaMid, ataCommandOptions.rtfr.lbaLow);
         }
     }
 
@@ -1173,7 +1173,7 @@ int ata_Read_Native_Max_Address(tDevice *device, uint64_t *nativeMaxLBA, bool ex
 }
 int ata_Set_Max(tDevice *device, eHPAFeature setMaxFeature, uint32_t newMaxLBA, bool volitileValue, uint8_t *ptrData, uint32_t dataSize)
 {
-    int             ret = UNKNOWN;
+    int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
@@ -1375,11 +1375,11 @@ int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subComman
     {
         if (useDMA)
         {
-            printf("Sending ATA Download Microcode DMA, subcommand 0x%"PRIX8"\n",(uint8_t)subCommand);
+            printf("Sending ATA Download Microcode DMA, subcommand 0x%" PRIX8 "\n", (uint8_t)subCommand);
         }
         else
         {
-            printf("Sending ATA Download Microcode, subcommand 0x%"PRIX8"\n", (uint8_t)subCommand);
+            printf("Sending ATA Download Microcode, subcommand 0x%" PRIX8 "\n", (uint8_t)subCommand);
         }
     }
 
@@ -1542,7 +1542,7 @@ int ata_SCT_Write_Same(tDevice *device, bool useGPL, bool useDMA, eSCTWriteSameF
 {
     int ret = UNKNOWN;
     uint8_t *writeSameBuffer = (uint8_t*)calloc(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t));
-    if (writeSameBuffer == NULL)
+    if (!writeSameBuffer)
     {
         perror("Calloc failure!\n");
         return MEMORY_FAILURE;
@@ -1620,14 +1620,14 @@ int ata_SCT_Write_Same(tDevice *device, bool useGPL, bool useDMA, eSCTWriteSameF
 int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit)
 {
     int ret = UNKNOWN;
-    uint8_t *errorRecoveryBuffer = (uint8_t*)calloc(LEGACY_DRIVE_SEC_SIZE,sizeof(uint8_t));
-    if (errorRecoveryBuffer == NULL)
+    uint8_t *errorRecoveryBuffer = (uint8_t*)calloc(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t));
+    if (!errorRecoveryBuffer)
     {
         perror("Calloc failure!\n");
         return MEMORY_FAILURE;
     }
     //if we are retrieving the current values, then we better have a good pointer...no point in sending the command if we don't
-    if (functionCode == 0x0002 && currentValue == NULL)
+    if (functionCode == 0x0002 && !currentValue)
     {
         safe_Free(errorRecoveryBuffer);
         return BAD_PARAMETER;
@@ -1648,7 +1648,7 @@ int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, ui
 
     ret = ata_SCT_Command(device, useGPL, useDMA, errorRecoveryBuffer, LEGACY_DRIVE_SEC_SIZE, true);
 
-        if (functionCode == 0x0002 && currentValue != NULL)
+    if (functionCode == 0x0002 && currentValue != NULL)
     {
         *currentValue = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
     }
@@ -1659,14 +1659,14 @@ int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, ui
 int ata_SCT_Feature_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags)
 {
     int ret = UNKNOWN;
-    uint8_t *featureControlBuffer = (uint8_t*)calloc(LEGACY_DRIVE_SEC_SIZE,sizeof(uint8_t));
-    if (featureControlBuffer == NULL)
+    uint8_t *featureControlBuffer = (uint8_t*)calloc(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t));
+    if (!featureControlBuffer)
     {
         perror("Calloc Failure!\n");
         return MEMORY_FAILURE;
     }
     //make sure we have valid pointers for state and optionFlags
-    if (state == NULL || optionFlags == NULL)
+    if (!state || !optionFlags)
     {
         safe_Free(featureControlBuffer);
         return BAD_PARAMETER;
@@ -1716,7 +1716,7 @@ int ata_SCT_Data_Table(tDevice *device, bool useGPL, bool useDMA, uint16_t funct
 {
     int ret = UNKNOWN;
 
-    if (dataBuf == NULL)
+    if (!dataBuf)
     {
         return BAD_PARAMETER;
     }
@@ -1730,7 +1730,7 @@ int ata_SCT_Data_Table(tDevice *device, bool useGPL, bool useDMA, uint16_t funct
     dataBuf[4] = M_Byte0(tableID);
     dataBuf[5] = M_Byte1(tableID);
 
-    ret = ata_SCT(device, useGPL, useDMA, XFER_DATA_OUT, 0xE0, dataBuf, LEGACY_DRIVE_SEC_SIZE, false);
+    ret = ata_SCT(device, useGPL, useDMA, XFER_DATA_OUT, ATA_SCT_COMMAND_STATUS, dataBuf, LEGACY_DRIVE_SEC_SIZE, false);
 
     if (ret == SUCCESS)
     {
@@ -1738,7 +1738,7 @@ int ata_SCT_Data_Table(tDevice *device, bool useGPL, bool useDMA, uint16_t funct
         {
             //now read the log that tells us the table we requested
             memset(dataBuf,0,dataSize);//clear the buffer before we read in data since we are done with what we had to send to the drive
-            ret = ata_SCT_Data_Transfer(device,useGPL,useDMA,XFER_DATA_IN,dataBuf,dataSize);
+            ret = ata_SCT_Data_Transfer(device, useGPL, useDMA, XFER_DATA_IN, dataBuf, dataSize);
         }
         //else we need to add functionality since something new was added to the spec
     }
@@ -1764,7 +1764,7 @@ int ata_Check_Power_Mode(tDevice *device, uint8_t *powerMode)
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
 
-	if (powerMode == NULL)
+	if (!powerMode)
 	{
 		return BAD_PARAMETER;
 	}
@@ -2176,7 +2176,7 @@ int ata_Read_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t secto
     }
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
 
-    if (ptrData == NULL)
+    if (!ptrData)
     {
         return BAD_PARAMETER;
     }
@@ -2326,7 +2326,7 @@ int ata_Read_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t s
     }
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
 
-    if (ptrData == NULL)
+    if (!ptrData)
     {
         return BAD_PARAMETER;
     }
@@ -2422,7 +2422,7 @@ int ata_Read_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID, bool not
 
     ataCommandOptions.tfr.Feature48 = commandCCTL;
     
-    if (ptrData == NULL)
+    if (!ptrData)
     {
         return BAD_PARAMETER;
     }
@@ -2540,7 +2540,7 @@ int ata_Request_Sense_Data(tDevice *device, uint8_t *senseKey, uint8_t *addition
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (senseKey == NULL || additionalSenseCode == NULL || additionalSenseCodeQualifier == NULL)
+    if (!senseKey || !additionalSenseCode || !additionalSenseCodeQualifier)
     {
         return BAD_PARAMETER;
     }
@@ -3602,7 +3602,7 @@ int ata_NV_Cache_Add_LBAs_To_Cache(tDevice *device, bool populateImmediately, ui
 {
     int ret = UNKNOWN;
     uint64_t lba = 0;
-    if (populateImmediately == true)
+    if (populateImmediately)
     {
         lba |= BIT0;
     }
@@ -3651,7 +3651,7 @@ int ata_NV_Remove_LBAs_From_Cache(tDevice *device, bool unpinAll, uint8_t *ptrDa
 
     uint64_t lba = 0;
 
-    if (unpinAll == true)
+    if (unpinAll)
     {
         lba |= BIT0;
         ret = ata_NV_Cache_Feature(device, NV_REMOVE_LBAS_FROM_NV_CACHE_PINNED_SET, 0, lba, NULL, 0);
