@@ -2568,6 +2568,35 @@ int send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 #if WINVER >= SEA_WIN32_WINNT_WIN10
+/*
+This API only supported deferred download and activate commands as defined in ACS3+ and SPC4+
+
+This table defines when this API is supported based on the drive and interface of the drive.
+      IDE | SCSI
+ATA    Y  |   N
+SCSI   N  |   Y
+
+This table defines when this API is supported based on the Interface and the Command being sent
+       ATA DL | ATA DL DMA | SCSI WB
+IDE       Y   |      Y     |    N
+SCSI      N   |      N     |    Y
+
+The reason the API is used only in the instances shown above is because the library is trying to 
+honor issuing the expected command on a specific interface.
+
+If the drive is an ATA drive, behind a SAS controller, then a Write buffer command is issued to the
+controller to be translated according to the SAT spec. Sometimes, this may not be what a caller is wanting to do
+so we assume that we will only issue the command the caller is expecting to issue.
+
+There is an option to allow using this API call with any supported FWDL command regardless of drive type and interface that can be set.
+Device->os_info.fwdlIOsupport.allowFlexibleUseOfAPI set to true will check for a supported SCSI or ATA command and all other payload 
+requirements and allow it to be issued for any case. This is good if your only goal is to get firmware to a drive and don't care about testing a specific command sequence.
+NOTE: Some SAS HBAs will issue a readlogext command before each download command when performing deferred download, which may not be expected if taking a bus trace of the sequence.
+
+*/
+
+
+
 bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)//TODO: add nvme support
 {
 #if defined (_DEBUG)
