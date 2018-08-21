@@ -2660,7 +2660,66 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
 			}
 		}
 	}
-	//TODO: add checking NVMe CTX for firmware download command
+    else if (scsiIoCtx->device->os_info.fwdlIOsupport.allowFlexibleUseOfAPI)
+    {
+        uint32_t transferLengthBytes = 0;
+        bool supportedCMD = false;
+        bool isActivate = false;
+#if defined (_DEBUG)
+        printf("Flexible Win10 FWDL API allowed. Checking for supported commands\n");
+#endif
+        if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
+        {
+            uint8_t wbMode = M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0);
+            if (wbMode == SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER)
+            {
+                supportedCMD = true;
+                transferLengthBytes = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            }
+            else if (wbMode == SCSI_WB_ACTIVATE_DEFERRED_MICROCODE)
+            {
+                supportedCMD = true;
+                isActivate = true;
+            }
+        }
+        else if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
+        {
+            
+            if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0E)
+            {
+                supportedCMD = true;
+                transferLengthBytes = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaLow, scsiIoCtx->pAtaCmdOpts->tfr.SectorCount) * LEGACY_DRIVE_SEC_SIZE;
+            }
+            else if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0F)
+            {
+                supportedCMD = true;
+                isActivate = true;
+            }
+        }
+        if (supportedCMD)
+        {
+#if defined (_DEBUG)
+            printf("\tDetected supported command\n");
+#endif
+            if (isActivate)
+            {
+#if defined (_DEBUG)
+                printf("\tTrue - is an activate command\n");
+#endif
+                return true;
+            }
+            else
+            {
+                if (transferLengthBytes < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (transferLengthBytes % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
+                {
+#if defined (_DEBUG)
+                    printf("\tTrue - payload fits FWDL requirements from OS/Driver\n");
+#endif
+                    return true;
+                }
+            }
+        }
+    }
 #if defined (_DEBUG)
     printf("\tFalse\n");
 #endif
