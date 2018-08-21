@@ -3025,6 +3025,12 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
 			downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_LAST_SEGMENT;
 		}
 #endif
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+        if (scsiIoCtx->device->os_info.fwdlIOsupport.isFirstSegmentOfDownload)
+        {
+            downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT;
+        }
+#endif
 		if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)
 		{
 			//if we are on NVMe, but the command comes to here, then someone forced SCSI mode, so let's set this flag correctly
@@ -4719,6 +4725,12 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
         //This IS documented on MSDN but VS2015 can't seem to find it...
         //One website says that this flag is new in Win10 1704 - creators update (10.0.15021)
         downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_LAST_SEGMENT;
+    }
+#endif
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+    if (nvmeIoCtx->device->os_info.fwdlIOsupport.isFirstSegmentOfDownload)
+    {
+        downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT;
     }
 #endif
     //TODO: add firmware slot number?

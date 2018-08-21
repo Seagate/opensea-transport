@@ -948,6 +948,7 @@ extern "C"
 			uint32_t payloadAlignment; //From MSDN: The alignment of the image payload, in number of bytes. The maximum is PAGE_SIZE. The transfer size is a mutliple of this size. Some protocols require at least sector size. When this value is set to 0, this means that this value is invalid.
 			uint32_t maxXferSize; //From MSDN: The image payload maximum size, this is used for a single command
 			bool isLastSegmentOfDownload;//This should be set only when we are issuing a download command...We should find a better place for this.
+            bool isFirstSegmentOfDownload;//This should be set only when we are issuing a download command...We should find a better place for this.
 			//TODO: expand this struct if we need other data when we check for firmware download support on a device.
 		}fwdlIOsupport;
 #endif
