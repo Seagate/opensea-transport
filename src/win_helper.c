@@ -674,10 +674,10 @@ int get_Device(const char *filename, tDevice *device )
 int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
 	HANDLE fd = NULL;
-#if defined (__MINGW32__)
-	char deviceName[40];
+#if defined (UNICODE)
+    wchar_t deviceName[40] = { 0 };
 #else
-    wchar_t deviceName[40];
+    char deviceName[40] = { 0 };
 #endif
 
 	//Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
@@ -696,13 +696,13 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 	int  driveNumber = 0, found = 0;
     for (driveNumber = 0; driveNumber < MAX_DEVICES_TO_SCAN; driveNumber++)
 	{
-#if defined (__MINGW32__)
-    snprintf(deviceName, sizeof(deviceName), "\\\\.\\PhysicalDrive%d", driveNumber);
-#else
+#if defined (UNICODE)
     wsprintf(deviceName, L"\\\\.\\PHYSICALDRIVE%d", driveNumber);
+#else
+     snprintf(deviceName, sizeof(deviceName), "\\\\.\\PhysicalDrive%d", driveNumber);
 #endif
 		//lets try to open the device.
-		fd = CreateFile((LPCTSTR)deviceName,
+		fd = CreateFile(deviceName,
 						GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
 						FILE_SHARE_READ | FILE_SHARE_WRITE,
 						NULL,
@@ -767,10 +767,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 	int returnValue = SUCCESS;
 	int numberOfDevices = 0;
     int driveNumber = 0, found = 0, failedGetDeviceCount = 0;
-#if defined (__MINGW32__)
-    char deviceName[40] = { 0 };
-#else
+#if defined (UNICODE)
     wchar_t deviceName[40] = { 0 };
+#else
+    char deviceName[40] = { 0 };
 #endif
     char	name[80] = { 0 }; //Because get device needs char
     HANDLE fd = INVALID_HANDLE_VALUE;
@@ -806,10 +806,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 		d = ptrToDeviceList;
 		for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN) && (found < numberOfDevices)); driveNumber++)
 		{
-#if defined (__MINGW32__)
-      snprintf(deviceName, sizeof(deviceName), "\\\\.\\PhysicalDrive%d", driveNumber);
+#if defined (UNICODE)
+            wsprintf(deviceName, L"\\\\.\\PHYSICALDRIVE%d", driveNumber);
 #else
-      wsprintf(deviceName, L"\\\\.\\PHYSICALDRIVE%d", driveNumber);
+            snprintf(deviceName, sizeof(deviceName), "\\\\.\\PhysicalDrive%d", driveNumber);
 #endif
       //lets try to open the device.
 			fd = CreateFile((LPCTSTR)deviceName,
