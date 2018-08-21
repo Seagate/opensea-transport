@@ -241,12 +241,7 @@ int get_Device(const char *filename, tDevice *device )
     {        
         if (VERBOSITY_QUIET < g_verbosity)
         {
-#if !defined (__MINGW32__)
-            printf("Error: opening dev %s. Error: %"PRId32"\n",
-#else
-            printf("Error: opening dev %s. Error: %ld\n",
-#endif
-				filename, device->os_info.last_error);
+            printf("Error: opening dev %s. Error: %"PRId32"\n", filename, device->os_info.last_error);
         }
         ret = FAILURE;
     }
@@ -426,7 +421,7 @@ int get_Device(const char *filename, tDevice *device )
                     printf(" \n");
                     #endif
                     //saving the SRB type so that we know when an adapter supports the new SCSI Passthrough EX IOCTLS - TJE
-#if !defined (__MINGW32__)
+#if WINVER >= SEA_WIN32_WINNT_WIN8 //If this check is wrong, make sure minGW is properly defining WINVER in the makefile.
                     if (is_Windows_8_Or_Higher())//from opensea-common now to remove versionhelpes.h include
                     {
                         device->os_info.srbtype = adapter_desc->SrbType;
