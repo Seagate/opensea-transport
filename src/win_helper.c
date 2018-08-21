@@ -1737,20 +1737,23 @@ int convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx *p_scsiIoCtx, PATA_PASS_THROUGH_
         ptrATAPassThroughDirect->AtaFlags |= ATA_FLAGS_DATA_IN;
         ptrATAPassThroughDirect->DataTransferLength = p_scsiIoCtx->dataLength;
         ptrATAPassThroughDirect->DataBuffer = alignedDataPointer;
+#if WINVER >= SEA_WIN32_WINNT_VISTA
         if (p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount <= 1 && p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount48 == 0)
         {
             ptrATAPassThroughDirect->AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
         }
+#endif
         break;
     case XFER_DATA_OUT:
         ptrATAPassThroughDirect->AtaFlags |= ATA_FLAGS_DATA_OUT;
         ptrATAPassThroughDirect->DataTransferLength = p_scsiIoCtx->dataLength;
         ptrATAPassThroughDirect->DataBuffer = alignedDataPointer;
-        //commenting this flag out since it's really only used one PIO in commands that may not have sector count set to 1 to help the driver understand what to do...doesn't matter on PIO out commands
-        /*if (p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount <= 1)
+#if WINVER >= SEA_WIN32_WINNT_VISTA
+        if (p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount <= 1)
         {
             p_t_ata_pt->AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
-        }*/
+        }
+#endif
         break;
     case XFER_NO_DATA:
         ptrATAPassThroughDirect->DataTransferLength = 0;
