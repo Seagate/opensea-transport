@@ -834,12 +834,12 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             if (readIDDataLog)
             {
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
                 {
                     device->drive_info.softSATFlags.identifyDeviceDataLogSupported = true;
                 }
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
                 {
                     uint64_t *qwordptr = (uint64_t*)&logBuffer[0];
                     if (qwordptr[0] & BIT63 && M_Byte2(qwordptr[0]) == ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES)
@@ -851,7 +851,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                     }
                 }
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
                 {
                     //according to what I can find in the spec, a HOST Managed drive reports a different signature, but doens't set any identify bytes like a host aware drive.
                     //because of this and not being able to get the real signature, this check is the only way to determine we are talking to an ATA host managed drive. - TJE
@@ -864,7 +864,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             if (readDeviceStatisticsLog)
             {
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_LIST, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_LIST, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
                 {
                     uint16_t iter = 9;
                     uint8_t numberOfEntries = logBuffer[8];
@@ -901,7 +901,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                     {
                         //need to read this page and check if the data and time timestamp statistic is supported
                         memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                        if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_GENERAL, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                        if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_GENERAL, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
                         {
                             uint64_t *qwordptr = (uint64_t*)&logBuffer[0];
                             if (qwordptr[8] & BIT63)
