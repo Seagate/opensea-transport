@@ -41,6 +41,7 @@
 #include "csmi_helper_func.h" 
 #endif
 
+//TODO: There are ifdefs now wrapping where these definitions could be used, so these defines for MinGW may not be necessary now.
 #if defined (__MINGW32__)
   #if !defined (ATA_FLAGS_NO_MULTIPLE)
     #define ATA_FLAGS_NO_MULTIPLE (1 << 5)
@@ -64,68 +65,93 @@ void set_Namespace_ID_For_Device(tDevice *device);//For Win 10 NVMe
 #endif
 #endif
 #if defined (_DEBUG)
-  // \fn print_bus_type (BYTE type)
-  // \nbrief Funtion to print in human readable format the BusType of a device
-  // \param BYTE which is STORAGE_BUS_TYPE windows enum
-  static void print_bus_type( BYTE type );
+// \fn print_bus_type (BYTE type)
+// \nbrief Funtion to print in human readable format the BusType of a device
+// \param BYTE which is STORAGE_BUS_TYPE windows enum
+static void print_bus_type( BYTE type );
 
-  void print_bus_type( BYTE type )
-  {
-      switch (type)
-      {
-      case BusTypeScsi:
+void print_bus_type( BYTE type )
+{
+    switch (type)
+    {
+    case BusTypeScsi:
         printf("SCSI");
         break;
-      case BusTypeAtapi:
+    case BusTypeAtapi:
         printf("ATAPI");
         break;
-      case BusTypeAta:
+    case BusTypeAta:
         printf("ATA");
         break;
-      case BusType1394:
+    case BusType1394:
         printf("1394");
         break;
-      case BusTypeSsa:
+    case BusTypeSsa:
         printf("SSA");
         break;
-      case BusTypeFibre:
+    case BusTypeFibre:
         printf("FIBRE");
         break;
-      case BusTypeUsb:
+    case BusTypeUsb:
         printf("USB");
         break;
-      case BusTypeRAID:
+    case BusTypeRAID:
         printf("RAID");
         break;
-      case BusTypeiScsi:
+    case BusTypeiScsi:
         printf("iSCSI");
         break;
-      case BusTypeSas:
+    case BusTypeSas:
         printf("SAS");
         break;
-      case BusTypeSata:
+    case BusTypeSata:
         printf("SATA");
         break;
-      case BusTypeSd:
+    case BusTypeSd:
         printf("SD");
         break;
-      case BusTypeMmc:
+    case BusTypeMmc:
         printf("MMC");
         break;
-      case BusTypeVirtual:
+    case BusTypeVirtual:
         printf("VIRTUAL");
         break;
-      case BusTypeFileBackedVirtual:
+    case BusTypeFileBackedVirtual:
         printf("FILEBACKEDVIRTUAL");
         break;
-  	case BusTypeNvme:
-  		printf("NVMe");
-  		break;
-      default:
+#if WINVER >= SEA_WIN32_WINNT_WIN8
+    case BusTypeSpaces:
+        printf("Spaces");
+        break;
+#if WINVER >= SEA_WIN32_WINNT_WINBLUE //8.1 introduced NVMe
+    case BusTypeNvme:
+        printf("NVMe");
+        break;
+#if WINVER >= SEA_WIN32_WINNT_WIN10 //Win10 API kits may have more or less of these bus types so need to also check which version of the Win10 API is being targetted
+#if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_10586
+    case BusTypeSCM:
+        printf("SCM");
+        break;
+#if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
+    case BusTypeUfs:
+        printf("UFS");
+        break;
+#endif //WIN_API_TARGET_VERSION >= Win 10 API 10.0.15063.0
+#endif //WIN_API_TARGET_VERSION >= Win 10 API 10.0.10586.0
+#endif //WINVER >= WIN10
+#endif //WINVER >= WIN8.1
+#endif //WINVER >= WIN8.0
+    case BusTypeMax:
+        printf("MAX");
+        break;
+    case BusTypeMaxReserved:
+        printf("MAXRESERVED");
+        break;
+    default:
         printf("UNKNOWN");
         break;
-      }
-  }
+    }
+}
 #endif
 
 int get_os_drive_number( char *filename )
@@ -516,6 +542,7 @@ int get_Device(const char *filename, tDevice *device )
                                     device->drive_info.interface_type = IEEE_1394_INTERFACE;
                                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                                 }								
+#if WINVER >= SEA_WIN32_WINNT_WINBLUE//win 8.1 added NVME
                                 else if (device_desc->BusType == BusTypeNvme)
                                 {
 #if WINVER >= SEA_WIN32_WINNT_WIN10 && !defined(DISABLE_NVME_PASSTHROUGH)
@@ -529,7 +556,8 @@ int get_Device(const char *filename, tDevice *device )
 									//Because out of box driver fails if STORAGE_BLOCK flag is used. 
 									device->os_info.srbtype = SRB_TYPE_SCSI_REQUEST_BLOCK;
 #endif									
-                                }								
+                                }						
+#endif //WINVER >= Win8.1 for bustype NVMe
                                 // This else essentially eliminates the RAID support from this layer.
                                 // Please check the history of the file for more info.
                                 else
@@ -1751,7 +1779,7 @@ int convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx *p_scsiIoCtx, PATA_PASS_THROUGH_
 #if WINVER >= SEA_WIN32_WINNT_VISTA
         if (p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount <= 1)
         {
-            p_t_ata_pt->AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
+            ptrATAPassThroughDirect->AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
         }
 #endif
         break;
