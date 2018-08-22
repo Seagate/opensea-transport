@@ -30,6 +30,363 @@ bool is_Buffer_Non_Zero(uint8_t* ptrData, uint32_t dataLen)
     return isNonZero;
 }
 
+//This will send a read log ext command, and if it's DMA and sense data tells us that we had an invalid field in CDB, then we retry with PIO mode
+int send_ATA_Read_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint16_t featureRegister)
+{
+    int ret = NOT_SUPPORTED;
+    if (device->drive_info.ata_Options.generalPurposeLoggingSupported)
+    {
+        bool dmaRetry = false;
+        if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.readLogWriteLogDMASupported)
+        {
+            //try a read log ext DMA command
+            ret = ata_Read_Log_Ext(device, logAddress, pageNumber, ptrData, dataSize, true, featureRegister);
+            if (ret == SUCCESS)
+            {
+                return ret;
+            }
+            else
+            {
+                uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+                get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+                //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+                if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+                {
+                    //turn off DMA mode
+                    dmaRetry = true;
+                    device->drive_info.ata_Options.readLogWriteLogDMASupported = false;
+                }
+                else
+                {
+                    //we likely had a failure not related to DMA mode command, so return the error
+                    return ret;
+                }
+            }
+        }
+        //Send PIO Command
+        ret = ata_Read_Log_Ext(device, logAddress, pageNumber, ptrData, dataSize, false, featureRegister);
+        if (dmaRetry && ret != SUCCESS)
+        {
+            //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+            device->drive_info.ata_Options.readLogWriteLogDMASupported = true;
+        }
+    }
+    return ret;
+}
+
+int send_ATA_Write_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, bool forceRTFRs)
+{
+    int ret = NOT_SUPPORTED;
+    if (device->drive_info.ata_Options.generalPurposeLoggingSupported)
+    {
+        bool dmaRetry = false;
+        if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.readLogWriteLogDMASupported)
+        {
+            //try a write log ext DMA command
+            ret = ata_Write_Log_Ext(device, logAddress, pageNumber, ptrData, dataSize, true, forceRTFRs);
+            if (ret == SUCCESS)
+            {
+                return ret;
+            }
+            else
+            {
+                uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+                get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+                //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+                if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+                {
+                    //turn off DMA mode
+                    dmaRetry = true;
+                    device->drive_info.ata_Options.readLogWriteLogDMASupported = false;
+                }
+                else
+                {
+                    //we likely had a failure not related to DMA mode command, so return the error
+                    return ret;
+                }
+            }
+        }
+        //Send PIO command
+        ret = ata_Write_Log_Ext(device, logAddress, pageNumber, ptrData, dataSize, false, forceRTFRs);
+        if (dmaRetry && ret != SUCCESS)
+        {
+            //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+            device->drive_info.ata_Options.readLogWriteLogDMASupported = true;
+        }
+    }
+    return ret;
+}
+
+int send_ATA_Download_Microcode_Cmd(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, uint8_t *pData, uint32_t dataLen)
+{
+    int ret = NOT_SUPPORTED;
+    bool dmaRetry = false;
+    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.downloadMicrocodeDMASupported)
+    {
+        ret = ata_Download_Microcode(device, subCommand, blockCount, bufferOffset, true, pData, dataLen);
+        if (ret == SUCCESS)
+        {
+            return ret;
+        }
+        else
+        {
+            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+            {
+                //turn off DMA mode
+                dmaRetry = true;
+                device->drive_info.ata_Options.downloadMicrocodeDMASupported = false;
+            }
+            else
+            {
+                //we likely had a failure not related to DMA mode command, so return the error
+                return ret;
+            }
+        }
+    }
+    ret = ata_Download_Microcode(device, subCommand, blockCount, bufferOffset, false, pData, dataLen);
+    if (dmaRetry && ret != SUCCESS)
+    {
+        //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+        device->drive_info.ata_Options.downloadMicrocodeDMASupported = true;
+    }
+    return ret;
+}
+
+int send_ATA_Trusted_Send_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
+{
+    int ret = NOT_SUPPORTED;
+    bool dmaRetry = false;
+    static bool dmaTrustedCmd = true;
+    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && dmaTrustedCmd && device->drive_info.ata_Options.dmaSupported)
+    {
+        ret = ata_Trusted_Send(device, true, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
+        if (ret == SUCCESS)
+        {
+            return ret;
+        }
+        else
+        {
+            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+            {
+                //turn off DMA mode
+                dmaRetry = true;
+                dmaTrustedCmd = false;
+            }
+            else
+            {
+                //we likely had a failure not related to DMA mode command, so return the error
+                return ret;
+            }
+        }
+    }
+    ret = ata_Trusted_Send(device, false, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
+    if (dmaRetry && ret != SUCCESS)
+    {
+        //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+        dmaTrustedCmd = true;
+    }
+    return ret;
+}
+
+int send_ATA_Trusted_Receive_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
+{
+    int ret = NOT_SUPPORTED;
+    bool dmaRetry = false;
+    static bool dmaTrustedCmd = true;
+    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && dmaTrustedCmd && device->drive_info.ata_Options.dmaSupported)
+    {
+        ret = ata_Trusted_Receive(device, true, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
+        if (ret == SUCCESS)
+        {
+            return ret;
+        }
+        else
+        {
+            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+            {
+                //turn off DMA mode
+                dmaRetry = true;
+                dmaTrustedCmd = false;
+            }
+            else
+            {
+                //we likely had a failure not related to DMA mode command, so return the error
+                return ret;
+            }
+        }
+    }
+    ret = ata_Trusted_Receive(device, false, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
+    if (dmaRetry && ret != SUCCESS)
+    {
+        //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+        dmaTrustedCmd = true;
+    }
+    return ret;
+}
+
+int send_ATA_Read_Buffer_Cmd(tDevice *device, uint8_t *ptrData)
+{
+    int ret = NOT_SUPPORTED;
+    bool dmaRetry = false;
+    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.readBufferDMASupported)
+    {
+        ret = ata_Read_Buffer(device, ptrData, true);
+        if (ret == SUCCESS)
+        {
+            return ret;
+        }
+        else
+        {
+            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+            {
+                //turn off DMA mode
+                dmaRetry = true;
+                device->drive_info.ata_Options.readBufferDMASupported = false;
+            }
+            else
+            {
+                //we likely had a failure not related to DMA mode command, so return the error
+                return ret;
+            }
+        }
+    }
+    ret = ata_Read_Buffer(device, ptrData, false);
+    if (dmaRetry && ret != SUCCESS)
+    {
+        //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+        device->drive_info.ata_Options.readBufferDMASupported = true;
+    }
+    return ret;
+}
+
+int send_ATA_Write_Buffer_Cmd(tDevice *device, uint8_t *ptrData)
+{
+    int ret = NOT_SUPPORTED;
+    bool dmaRetry = false;
+    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.writeBufferDMASupported)
+    {
+        ret = ata_Write_Buffer(device, ptrData, true);
+        if (ret == SUCCESS)
+        {
+            return ret;
+        }
+        else
+        {
+            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+            {
+                //turn off DMA mode
+                dmaRetry = true;
+                device->drive_info.ata_Options.writeBufferDMASupported = false;
+            }
+            else
+            {
+                //we likely had a failure not related to DMA mode command, so return the error
+                return ret;
+            }
+        }
+    }
+    ret = ata_Write_Buffer(device, ptrData, false);
+    if (dmaRetry && ret != SUCCESS)
+    {
+        //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+        device->drive_info.ata_Options.writeBufferDMASupported = true;
+    }
+    return ret;
+}
+
+int send_ATA_Read_Stream_Cmd(tDevice *device, uint8_t streamID, bool notSequential, bool readContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize)
+{
+    int ret = NOT_SUPPORTED;
+    bool dmaRetry = false;
+    static bool streamDMA = true;
+    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && streamDMA && device->drive_info.ata_Options.dmaSupported)
+    {
+        ret = ata_Read_Stream_Ext(device, true, streamID, notSequential, readContinuous, commandCCTL, LBA, ptrData, dataSize);
+        if (ret == SUCCESS)
+        {
+            return ret;
+        }
+        else
+        {
+            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+            {
+                //turn off DMA mode
+                dmaRetry = true;
+                streamDMA = false;
+            }
+            else
+            {
+                //we likely had a failure not related to DMA mode command, so return the error
+                return ret;
+            }
+        }
+    }
+    ret = ata_Read_Stream_Ext(device, false, streamID, notSequential, readContinuous, commandCCTL, LBA, ptrData, dataSize);
+    if (dmaRetry && ret != SUCCESS)
+    {
+        //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+        streamDMA = true;
+    }
+    return ret;
+}
+
+int send_ATA_Write_Stream_Cmd(tDevice *device, uint8_t streamID, bool flush, bool writeContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize)
+{
+    int ret = NOT_SUPPORTED;
+    bool dmaRetry = false;
+    static bool streamDMA = true;
+    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && streamDMA && device->drive_info.ata_Options.dmaSupported)
+    {
+        ret = ata_Write_Stream_Ext(device, true, streamID, flush, writeContinuous, commandCCTL, LBA, ptrData, dataSize);
+        if (ret == SUCCESS)
+        {
+            return ret;
+        }
+        else
+        {
+            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+            {
+                //turn off DMA mode
+                dmaRetry = true;
+                streamDMA = false;
+            }
+            else
+            {
+                //we likely had a failure not related to DMA mode command, so return the error
+                return ret;
+            }
+        }
+    }
+    ret = ata_Write_Stream_Ext(device, false, streamID, flush, writeContinuous, commandCCTL, LBA, ptrData, dataSize);
+    if (dmaRetry && ret != SUCCESS)
+    {
+        //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+        streamDMA = true;
+    }
+    return ret;
+}
+
 int fill_In_ATA_Drive_Info(tDevice *device)
 {
     int ret = UNKNOWN;
@@ -446,7 +803,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     if (retrievedIdentifyData && device->drive_info.ata_Options.generalPurposeLoggingSupported)
     {
         uint8_t logBuffer[LEGACY_DRIVE_SEC_SIZE] = { 0 };
-        if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_DIRECTORY, 0, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+        if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_DIRECTORY, 0, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
         {
             bool readIDDataLog = false;
             bool readDeviceStatisticsLog = false;

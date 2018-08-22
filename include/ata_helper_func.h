@@ -2174,6 +2174,19 @@ extern "C"
     //last seen in ATA-3
     OPENSEA_TRANSPORT_API int ata_Legacy_Identify_Device_DMA(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
 
+
+    //These functions below are commands that can be sent in PIO or DMA Mode.
+    //They will automatically try DMA if it is supported, then retry with PIO mode if the Translator or Driver doesn't support issuing DMA mode commands.
+    OPENSEA_TRANSPORT_API int send_ATA_Read_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint16_t featureRegister);
+    OPENSEA_TRANSPORT_API int send_ATA_Write_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, bool forceRTFRs);
+    OPENSEA_TRANSPORT_API int send_ATA_Download_Microcode_Cmd(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, uint8_t *pData, uint32_t dataLen);
+    OPENSEA_TRANSPORT_API int send_ATA_Trusted_Send_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int send_ATA_Trusted_Receive_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int send_ATA_Read_Buffer_Cmd(tDevice *device, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API int send_ATA_Write_Buffer_Cmd(tDevice *device, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API int send_ATA_Read_Stream_Cmd(tDevice *device, uint8_t streamID, bool notSequential, bool readContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int send_ATA_Write_Stream_Cmd(tDevice *device, uint8_t streamID, bool flush, bool writeContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
+
     #if defined (__cplusplus)
 }
     #endif

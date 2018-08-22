@@ -325,7 +325,10 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, bool useDMA
         default:
             return BAD_PARAMETER;
         }
-        ret = ata_Download_Microcode(device, ataDLMode, xferLen / LEGACY_DRIVE_SEC_SIZE, offset / LEGACY_DRIVE_SEC_SIZE, useDMA, ptrData, xferLen);
+        //ret = ata_Download_Microcode(device, ataDLMode, xferLen / LEGACY_DRIVE_SEC_SIZE, offset / LEGACY_DRIVE_SEC_SIZE, useDMA, ptrData, xferLen);
+        //Switching to this new function since it will automatically try DMA mode if supported by the drive.
+        //If the controller or driver don't like issuing DMA mode, this will detect it and retry the command with PIO mode.
+        ret = send_ATA_Download_Microcode_Cmd(device, ataDLMode, xferLen / LEGACY_DRIVE_SEC_SIZE, offset / LEGACY_DRIVE_SEC_SIZE, ptrData, xferLen);
     }
         break;
     case NVME_DRIVE:
@@ -418,7 +421,10 @@ int security_Send(tDevice *device, bool useDMA, uint8_t securityProtocol, uint16
                 }
                 useLocalMemory = true;
             }
-            ret = ata_Trusted_Send(device, useDMA, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
+            //ret = ata_Trusted_Send(device, useDMA, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
+            //Switching to this new function since it will automatically try DMA mode if supported by the drive.
+            //If the controller or driver don't like issuing DMA mode, this will detect it and retry the command with PIO mode.
+            ret = send_ATA_Trusted_Send_Cmd(device, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
             if (useLocalMemory)
             {
                 safe_Free(tcgBufPtr);
@@ -478,7 +484,10 @@ int security_Receive(tDevice *device, bool useDMA, uint8_t securityProtocol, uin
                 }
                 useLocalMemory = true;
             }
-            ret = ata_Trusted_Receive(device, useDMA, securityProtocol, securityProtocolSpecific, tcgBufPtr, tcgDataSize);
+            //ret = ata_Trusted_Receive(device, useDMA, securityProtocol, securityProtocolSpecific, tcgBufPtr, tcgDataSize);
+            //Switching to this new function since it will automatically try DMA mode if supported by the drive.
+            //If the controller or driver don't like issuing DMA mode, this will detect it and retry the command with PIO mode.
+            ret = send_ATA_Trusted_Receive_Cmd(device, securityProtocol, securityProtocolSpecific, tcgBufPtr, tcgDataSize);
             if (useLocalMemory)
             {
                 memcpy(ptrData, tcgBufPtr, M_Min(dataSize, tcgDataSize));
