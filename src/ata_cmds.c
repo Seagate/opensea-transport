@@ -2249,7 +2249,7 @@ int ata_Read_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t 
 
     //now set the multiple count setting for the SAT builder so that this command can actually work...and we need to set this as a power of 2, whereas the device info is a number of logical sectors
     uint16_t multipleLogicalSectors = device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock;
-    while (ataCommandOptions.multipleCount <= 7 && multipleLogicalSectors > 0)
+    while (ataCommandOptions.multipleCount <= 7 && multipleLogicalSectors > 1)//multipleLogicalSectors should be greater than 1 so that we get the proper 2^X power value for the SAT command.
     {
         multipleLogicalSectors = multipleLogicalSectors >> 1;//divide by 2
         ataCommandOptions.multipleCount++;
@@ -3147,7 +3147,7 @@ int ata_Write_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t
 
     //now set the multiple count setting for the SAT builder so that this command can actually work...and we need to set this as a power of 2, whereas the device info is a number of logical sectors
     uint16_t multipleLogicalSectors = device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock;
-    while (ataCommandOptions.multipleCount <= 7 && multipleLogicalSectors > 0)
+    while (ataCommandOptions.multipleCount <= 7 && multipleLogicalSectors > 1)//multipleLogicalSectors should be greater than 1 so that we get the proper 2^X power value for the SAT command.
     {
         multipleLogicalSectors = multipleLogicalSectors >> 1;//divide by 2
         ataCommandOptions.multipleCount++;

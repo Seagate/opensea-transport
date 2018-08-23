@@ -797,23 +797,50 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                     if (device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA)
                     {
                         //use PIO commands
-                        if (device->drive_info.ata_Options.chsModeOnly)
+                        //check if read multiple is supported (current # logical sectors per DRQ data block)
+                        //Also, only bother with read multiple if it's a PATA drive. There isn't really an advantage to this on SATA other than backwards compatibility.
+                        if (device->drive_info.ata_Options.readWriteMultipleSupported && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock > 0 && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock <= ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS && device->drive_info.ata_Options.isParallelTransport)
                         {
-                            uint16_t cylinder = 0;
-                            uint8_t head = 0;
-                            uint8_t sector = 0;
-                            if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                            //read multiple supported and drive is currently configured in a mode that will work.
+                            if (device->drive_info.ata_Options.chsModeOnly)
                             {
-                                ret = ata_Legacy_Read_Sectors_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, true);
+                                uint16_t cylinder = 0;
+                                uint8_t head = 0;
+                                uint8_t sector = 0;
+                                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                                {
+                                    ret = ata_Legacy_Read_Multiple_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, true);
+                                }
+                                else //Couldn't convert or the LBA is greater than the current CHS mode
+                                {
+                                    ret = NOT_SUPPORTED;
+                                }
                             }
-                            else //Couldn't convert or the LBA is greater than the current CHS mode
+                            else
                             {
-                                ret = NOT_SUPPORTED;
+                                ret = ata_Read_Multiple(device, lba, ptrData, sectors, dataSize, true);
                             }
                         }
                         else
                         {
-                            ret = ata_Read_Sectors(device, lba, ptrData, sectors, dataSize, true);
+                            if (device->drive_info.ata_Options.chsModeOnly)
+                            {
+                                uint16_t cylinder = 0;
+                                uint8_t head = 0;
+                                uint8_t sector = 0;
+                                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                                {
+                                    ret = ata_Legacy_Read_Sectors_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, true);
+                                }
+                                else //Couldn't convert or the LBA is greater than the current CHS mode
+                                {
+                                    ret = NOT_SUPPORTED;
+                                }
+                            }
+                            else
+                            {
+                                ret = ata_Read_Sectors(device, lba, ptrData, sectors, dataSize, true);
+                            }
                         }
                     }
                     else
@@ -864,23 +891,50 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                     if (device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA)
                     {
                         //use PIO commands
-                        if (device->drive_info.ata_Options.chsModeOnly)
+                        //check if read multiple is supported (current # logical sectors per DRQ data block)
+                        //Also, only bother with read multiple if it's a PATA drive. There isn't really an advantage to this on SATA other than backwards compatibility.
+                        if (device->drive_info.ata_Options.readWriteMultipleSupported && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock > 0 && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock <= ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS && device->drive_info.ata_Options.isParallelTransport)
                         {
-                            uint16_t cylinder = 0;
-                            uint8_t head = 0;
-                            uint8_t sector = 0;
-                            if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                            //read multiple supported and drive is currently configured in a mode that will work.
+                            if (device->drive_info.ata_Options.chsModeOnly)
                             {
-                                ret = ata_Legacy_Read_Sectors_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, false);
+                                uint16_t cylinder = 0;
+                                uint8_t head = 0;
+                                uint8_t sector = 0;
+                                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                                {
+                                    ret = ata_Legacy_Read_Multiple_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, false);
+                                }
+                                else //Couldn't convert or the LBA is greater than the current CHS mode
+                                {
+                                    ret = NOT_SUPPORTED;
+                                }
                             }
-                            else //Couldn't convert or the LBA is greater than the current CHS mode
+                            else
                             {
-                                ret = NOT_SUPPORTED;
+                                ret = ata_Read_Multiple(device, lba, ptrData, sectors, dataSize, false);
                             }
                         }
                         else
                         {
-                            ret = ata_Read_Sectors(device, lba, ptrData, sectors, dataSize, false);
+                            if (device->drive_info.ata_Options.chsModeOnly)
+                            {
+                                uint16_t cylinder = 0;
+                                uint8_t head = 0;
+                                uint8_t sector = 0;
+                                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                                {
+                                    ret = ata_Legacy_Read_Sectors_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, false);
+                                }
+                                else //Couldn't convert or the LBA is greater than the current CHS mode
+                                {
+                                    ret = NOT_SUPPORTED;
+                                }
+                            }
+                            else
+                            {
+                                ret = ata_Read_Sectors(device, lba, ptrData, sectors, dataSize, false);
+                            }
                         }
                     }
                     else
@@ -952,23 +1006,50 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                     if (device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA)
                     {
                         //use PIO commands
-                        if (device->drive_info.ata_Options.chsModeOnly)
+                        //check if read multiple is supported (current # logical sectors per DRQ data block)
+                        //Also, only bother with write multiple if it's a PATA drive. There isn't really an advantage to this on SATA other than backwards compatibility.
+                        if (device->drive_info.ata_Options.readWriteMultipleSupported && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock > 0 && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock <= ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS && device->drive_info.ata_Options.isParallelTransport)
                         {
-                            uint16_t cylinder = 0;
-                            uint8_t head = 0;
-                            uint8_t sector = 0;
-                            if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                            //read multiple supported and drive is currently configured in a mode that will work.
+                            if (device->drive_info.ata_Options.chsModeOnly)
                             {
-                                ret = ata_Legacy_Write_Sectors_CHS(device, cylinder, head, sector, ptrData, dataSize, true);
+                                uint16_t cylinder = 0;
+                                uint8_t head = 0;
+                                uint8_t sector = 0;
+                                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                                {
+                                    ret = ata_Legacy_Write_Multiple_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, true);
+                                }
+                                else //Couldn't convert or the LBA is greater than the current CHS mode
+                                {
+                                    ret = NOT_SUPPORTED;
+                                }
                             }
-                            else //Couldn't convert or the LBA is greater than the current CHS mode
+                            else
                             {
-                                ret = NOT_SUPPORTED;
+                                ret = ata_Write_Multiple(device, lba, ptrData, sectors, dataSize, true);
                             }
                         }
                         else
                         {
-                            ret = ata_Write_Sectors(device, lba, ptrData, dataSize, true);
+                            if (device->drive_info.ata_Options.chsModeOnly)
+                            {
+                                uint16_t cylinder = 0;
+                                uint8_t head = 0;
+                                uint8_t sector = 0;
+                                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                                {
+                                    ret = ata_Legacy_Write_Sectors_CHS(device, cylinder, head, sector, ptrData, dataSize, true);
+                                }
+                                else //Couldn't convert or the LBA is greater than the current CHS mode
+                                {
+                                    ret = NOT_SUPPORTED;
+                                }
+                            }
+                            else
+                            {
+                                ret = ata_Write_Sectors(device, lba, ptrData, dataSize, true);
+                            }
                         }
                     }
                     else
@@ -1019,23 +1100,50 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                     if (device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA)
                     {
                         //use PIO commands
-                        if (device->drive_info.ata_Options.chsModeOnly)
+                        //check if read multiple is supported (current # logical sectors per DRQ data block)
+                        //Also, only bother with write multiple if it's a PATA drive. There isn't really an advantage to this on SATA other than backwards compatibility.
+                        if (device->drive_info.ata_Options.readWriteMultipleSupported && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock > 0 && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock <= ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS && device->drive_info.ata_Options.isParallelTransport)
                         {
-                            uint16_t cylinder = 0;
-                            uint8_t head = 0;
-                            uint8_t sector = 0;
-                            if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                            //read multiple supported and drive is currently configured in a mode that will work.
+                            if (device->drive_info.ata_Options.chsModeOnly)
                             {
-                                ret = ata_Legacy_Write_Sectors_CHS(device, cylinder, head, sector, ptrData, dataSize, false);
+                                uint16_t cylinder = 0;
+                                uint8_t head = 0;
+                                uint8_t sector = 0;
+                                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                                {
+                                    ret = ata_Legacy_Write_Multiple_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, false);
+                                }
+                                else //Couldn't convert or the LBA is greater than the current CHS mode
+                                {
+                                    ret = NOT_SUPPORTED;
+                                }
                             }
-                            else //Couldn't convert or the LBA is greater than the current CHS mode
+                            else
                             {
-                                ret = NOT_SUPPORTED;
+                                ret = ata_Write_Multiple(device, lba, ptrData, sectors, dataSize, false);
                             }
                         }
                         else
                         {
-                            ret = ata_Write_Sectors(device, lba, ptrData, dataSize, false);
+                            if (device->drive_info.ata_Options.chsModeOnly)
+                            {
+                                uint16_t cylinder = 0;
+                                uint8_t head = 0;
+                                uint8_t sector = 0;
+                                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                                {
+                                    ret = ata_Legacy_Write_Sectors_CHS(device, cylinder, head, sector, ptrData, dataSize, false);
+                                }
+                                else //Couldn't convert or the LBA is greater than the current CHS mode
+                                {
+                                    ret = NOT_SUPPORTED;
+                                }
+                            }
+                            else
+                            {
+                                ret = ata_Write_Sectors(device, lba, ptrData, dataSize, false);
+                            }
                         }
                     }
                     else

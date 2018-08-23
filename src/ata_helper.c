@@ -684,8 +684,15 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         {
             device->drive_info.ata_Options.readLogWriteLogDMASupported = true;
         }
-        //set the number of logical sectors per DRQ data block (current setting)
-        device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock = M_Byte0(ident_word[59]);
+        if (ident_word[47] != UINT16_MAX && ident_word[47] != 0)
+        {
+            if (M_Byte0(ident_word[47]) != 0)
+            {
+                device->drive_info.ata_Options.readWriteMultipleSupported = true;
+                //set the number of logical sectors per DRQ data block (current setting)
+                device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock = M_Byte0(ident_word[59]);
+            }
+        }
         //check for tagged command queuing support
         if (ident_word[83] & BIT1 || ident_word[86] & BIT1)
         {
