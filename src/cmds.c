@@ -864,6 +864,27 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                             //use DMA commands
                             ret = ata_Read_DMA(device, lba, ptrData, sectors, dataSize, true);
                         }
+                        if (ret != SUCCESS)
+                        {
+                            //check the sense data. Make sure we didn't get told we have an invalid field in the CDB.
+                            //If we do, try turning off DMA mode and retrying with PIO mode commands.
+                            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+                            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+                            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+                            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+                            {
+                                //turn off DMA mode
+                                eATASynchronousDMAMode currentDMAMode = device->drive_info.ata_Options.dmaMode;
+                                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_NO_DMA;//turning off DMA to try PIO mode
+                                //recursively call this function to retry in PIO mode.
+                                ret = ata_Read(device, lba, async, ptrData, dataSize);
+                                if (ret != SUCCESS)
+                                {
+                                    //this means that the error is not related to DMA mode command, so we can turn that back on and pass up the return status.
+                                    device->drive_info.ata_Options.dmaMode = currentDMAMode;
+                                }
+                            }
+                        }
                     }                    
                 }
             }
@@ -957,6 +978,27 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                         {
                             //use DMA commands
                             ret = ata_Read_DMA(device, lba, ptrData, sectors, dataSize, false);
+                        }
+                        if (ret != SUCCESS)
+                        {
+                            //check the sense data. Make sure we didn't get told we have an invalid field in the CDB.
+                            //If we do, try turning off DMA mode and retrying with PIO mode commands.
+                            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+                            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+                            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+                            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+                            {
+                                //turn off DMA mode
+                                eATASynchronousDMAMode currentDMAMode = device->drive_info.ata_Options.dmaMode;
+                                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_NO_DMA;//turning off DMA to try PIO mode
+                                //recursively call this function to retry in PIO mode.
+                                ret = ata_Read(device, lba, async, ptrData, dataSize);
+                                if (ret != SUCCESS)
+                                {
+                                    //this means that the error is not related to DMA mode command, so we can turn that back on and pass up the return status.
+                                    device->drive_info.ata_Options.dmaMode = currentDMAMode;
+                                }
+                            }
                         }
                     }
                 }
@@ -1073,6 +1115,27 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                         {
                             ret = ata_Write_DMA(device, lba, ptrData, dataSize, true, false);
                         }
+                        if (ret != SUCCESS)
+                        {
+                            //check the sense data. Make sure we didn't get told we have an invalid field in the CDB.
+                            //If we do, try turning off DMA mode and retrying with PIO mode commands.
+                            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+                            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+                            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+                            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+                            {
+                                //turn off DMA mode
+                                eATASynchronousDMAMode currentDMAMode = device->drive_info.ata_Options.dmaMode;
+                                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_NO_DMA;//turning off DMA to try PIO mode
+                                //recursively call this function to retry in PIO mode.
+                                ret = ata_Write(device, lba, async, ptrData, dataSize);
+                                if (ret != SUCCESS)
+                                {
+                                    //this means that the error is not related to DMA mode command, so we can turn that back on and pass up the return status.
+                                    device->drive_info.ata_Options.dmaMode = currentDMAMode;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1166,6 +1229,27 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                         else
                         {
                             ret = ata_Write_DMA(device, lba, ptrData, dataSize, false, false);
+                        }
+                        if (ret != SUCCESS)
+                        {
+                            //check the sense data. Make sure we didn't get told we have an invalid field in the CDB.
+                            //If we do, try turning off DMA mode and retrying with PIO mode commands.
+                            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+                            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+                            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+                            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+                            {
+                                //turn off DMA mode
+                                eATASynchronousDMAMode currentDMAMode = device->drive_info.ata_Options.dmaMode;
+                                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_NO_DMA;//turning off DMA to try PIO mode
+                                //recursively call this function to retry in PIO mode.
+                                ret = ata_Write(device, lba, async, ptrData, dataSize);
+                                if (ret != SUCCESS)
+                                {
+                                    //this means that the error is not related to DMA mode command, so we can turn that back on and pass up the return status.
+                                    device->drive_info.ata_Options.dmaMode = currentDMAMode;
+                                }
+                            }
                         }
                     }
                 }
