@@ -41,6 +41,7 @@
 #include "csmi_helper_func.h" 
 #endif
 
+//TODO: There are ifdefs now wrapping where these definitions could be used, so these defines for MinGW may not be necessary now.
 #if defined (__MINGW32__)
   #if !defined (ATA_FLAGS_NO_MULTIPLE)
     #define ATA_FLAGS_NO_MULTIPLE (1 << 5)
@@ -64,68 +65,93 @@ void set_Namespace_ID_For_Device(tDevice *device);//For Win 10 NVMe
 #endif
 #endif
 #if defined (_DEBUG)
-  // \fn print_bus_type (BYTE type)
-  // \nbrief Funtion to print in human readable format the BusType of a device
-  // \param BYTE which is STORAGE_BUS_TYPE windows enum
-  static void print_bus_type( BYTE type );
+// \fn print_bus_type (BYTE type)
+// \nbrief Funtion to print in human readable format the BusType of a device
+// \param BYTE which is STORAGE_BUS_TYPE windows enum
+static void print_bus_type( BYTE type );
 
-  void print_bus_type( BYTE type )
-  {
-      switch (type)
-      {
-      case BusTypeScsi:
+void print_bus_type( BYTE type )
+{
+    switch (type)
+    {
+    case BusTypeScsi:
         printf("SCSI");
         break;
-      case BusTypeAtapi:
+    case BusTypeAtapi:
         printf("ATAPI");
         break;
-      case BusTypeAta:
+    case BusTypeAta:
         printf("ATA");
         break;
-      case BusType1394:
+    case BusType1394:
         printf("1394");
         break;
-      case BusTypeSsa:
+    case BusTypeSsa:
         printf("SSA");
         break;
-      case BusTypeFibre:
+    case BusTypeFibre:
         printf("FIBRE");
         break;
-      case BusTypeUsb:
+    case BusTypeUsb:
         printf("USB");
         break;
-      case BusTypeRAID:
+    case BusTypeRAID:
         printf("RAID");
         break;
-      case BusTypeiScsi:
+    case BusTypeiScsi:
         printf("iSCSI");
         break;
-      case BusTypeSas:
+    case BusTypeSas:
         printf("SAS");
         break;
-      case BusTypeSata:
+    case BusTypeSata:
         printf("SATA");
         break;
-      case BusTypeSd:
+    case BusTypeSd:
         printf("SD");
         break;
-      case BusTypeMmc:
+    case BusTypeMmc:
         printf("MMC");
         break;
-      case BusTypeVirtual:
+    case BusTypeVirtual:
         printf("VIRTUAL");
         break;
-      case BusTypeFileBackedVirtual:
+    case BusTypeFileBackedVirtual:
         printf("FILEBACKEDVIRTUAL");
         break;
-  	case BusTypeNvme:
-  		printf("NVMe");
-  		break;
-      default:
+#if WINVER >= SEA_WIN32_WINNT_WIN8
+    case BusTypeSpaces:
+        printf("Spaces");
+        break;
+#if WINVER >= SEA_WIN32_WINNT_WINBLUE //8.1 introduced NVMe
+    case BusTypeNvme:
+        printf("NVMe");
+        break;
+#if WINVER >= SEA_WIN32_WINNT_WIN10 //Win10 API kits may have more or less of these bus types so need to also check which version of the Win10 API is being targetted
+#if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_10586
+    case BusTypeSCM:
+        printf("SCM");
+        break;
+#if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
+    case BusTypeUfs:
+        printf("UFS");
+        break;
+#endif //WIN_API_TARGET_VERSION >= Win 10 API 10.0.15063.0
+#endif //WIN_API_TARGET_VERSION >= Win 10 API 10.0.10586.0
+#endif //WINVER >= WIN10
+#endif //WINVER >= WIN8.1
+#endif //WINVER >= WIN8.0
+    case BusTypeMax:
+        printf("MAX");
+        break;
+    case BusTypeMaxReserved:
+        printf("MAXRESERVED");
+        break;
+    default:
         printf("UNKNOWN");
         break;
-      }
-  }
+    }
+}
 #endif
 
 int get_os_drive_number( char *filename )
@@ -241,12 +267,7 @@ int get_Device(const char *filename, tDevice *device )
     {        
         if (VERBOSITY_QUIET < g_verbosity)
         {
-#if !defined (__MINGW32__)
-            printf("Error: opening dev %s. Error: %"PRId32"\n",
-#else
-            printf("Error: opening dev %s. Error: %ld\n",
-#endif
-				filename, device->os_info.last_error);
+            printf("Error: opening dev %s. Error: %"PRId32"\n", filename, device->os_info.last_error);
         }
         ret = FAILURE;
     }
@@ -426,7 +447,7 @@ int get_Device(const char *filename, tDevice *device )
                     printf(" \n");
                     #endif
                     //saving the SRB type so that we know when an adapter supports the new SCSI Passthrough EX IOCTLS - TJE
-#if !defined (__MINGW32__)
+#if WINVER >= SEA_WIN32_WINNT_WIN8 //If this check is wrong, make sure minGW is properly defining WINVER in the makefile.
                     if (is_Windows_8_Or_Higher())//from opensea-common now to remove versionhelpes.h include
                     {
                         device->os_info.srbtype = adapter_desc->SrbType;
@@ -521,6 +542,7 @@ int get_Device(const char *filename, tDevice *device )
                                     device->drive_info.interface_type = IEEE_1394_INTERFACE;
                                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                                 }								
+#if WINVER >= SEA_WIN32_WINNT_WINBLUE//win 8.1 added NVME
                                 else if (device_desc->BusType == BusTypeNvme)
                                 {
 #if WINVER >= SEA_WIN32_WINNT_WIN10 && !defined(DISABLE_NVME_PASSTHROUGH)
@@ -534,7 +556,8 @@ int get_Device(const char *filename, tDevice *device )
 									//Because out of box driver fails if STORAGE_BLOCK flag is used. 
 									device->os_info.srbtype = SRB_TYPE_SCSI_REQUEST_BLOCK;
 #endif									
-                                }								
+                                }						
+#endif //WINVER >= Win8.1 for bustype NVMe
                                 // This else essentially eliminates the RAID support from this layer.
                                 // Please check the history of the file for more info.
                                 else
@@ -674,10 +697,10 @@ int get_Device(const char *filename, tDevice *device )
 int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
 	HANDLE fd = NULL;
-#if defined (__MINGW32__)
-	char deviceName[40];
+#if defined (UNICODE)
+    wchar_t deviceName[40] = { 0 };
 #else
-    wchar_t deviceName[40];
+    char deviceName[40] = { 0 };
 #endif
 
 	//Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
@@ -696,13 +719,13 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 	int  driveNumber = 0, found = 0;
     for (driveNumber = 0; driveNumber < MAX_DEVICES_TO_SCAN; driveNumber++)
 	{
-#if defined (__MINGW32__)
-    snprintf(deviceName, sizeof(deviceName), "\\\\.\\PhysicalDrive%d", driveNumber);
-#else
+#if defined (UNICODE)
     wsprintf(deviceName, L"\\\\.\\PHYSICALDRIVE%d", driveNumber);
+#else
+     snprintf(deviceName, sizeof(deviceName), "\\\\.\\PhysicalDrive%d", driveNumber);
 #endif
 		//lets try to open the device.
-		fd = CreateFile((LPCTSTR)deviceName,
+		fd = CreateFile(deviceName,
 						GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
 						FILE_SHARE_READ | FILE_SHARE_WRITE,
 						NULL,
@@ -767,10 +790,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 	int returnValue = SUCCESS;
 	int numberOfDevices = 0;
     int driveNumber = 0, found = 0, failedGetDeviceCount = 0;
-#if defined (__MINGW32__)
-    char deviceName[40] = { 0 };
-#else
+#if defined (UNICODE)
     wchar_t deviceName[40] = { 0 };
+#else
+    char deviceName[40] = { 0 };
 #endif
     char	name[80] = { 0 }; //Because get device needs char
     HANDLE fd = INVALID_HANDLE_VALUE;
@@ -806,10 +829,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 		d = ptrToDeviceList;
 		for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN) && (found < numberOfDevices)); driveNumber++)
 		{
-#if defined (__MINGW32__)
-      snprintf(deviceName, sizeof(deviceName), "\\\\.\\PhysicalDrive%d", driveNumber);
+#if defined (UNICODE)
+            wsprintf(deviceName, L"\\\\.\\PHYSICALDRIVE%d", driveNumber);
 #else
-      wsprintf(deviceName, L"\\\\.\\PHYSICALDRIVE%d", driveNumber);
+            snprintf(deviceName, sizeof(deviceName), "\\\\.\\PhysicalDrive%d", driveNumber);
 #endif
       //lets try to open the device.
 			fd = CreateFile((LPCTSTR)deviceName,
@@ -1742,20 +1765,23 @@ int convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx *p_scsiIoCtx, PATA_PASS_THROUGH_
         ptrATAPassThroughDirect->AtaFlags |= ATA_FLAGS_DATA_IN;
         ptrATAPassThroughDirect->DataTransferLength = p_scsiIoCtx->dataLength;
         ptrATAPassThroughDirect->DataBuffer = alignedDataPointer;
+#if WINVER >= SEA_WIN32_WINNT_VISTA
         if (p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount <= 1 && p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount48 == 0)
         {
             ptrATAPassThroughDirect->AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
         }
+#endif
         break;
     case XFER_DATA_OUT:
         ptrATAPassThroughDirect->AtaFlags |= ATA_FLAGS_DATA_OUT;
         ptrATAPassThroughDirect->DataTransferLength = p_scsiIoCtx->dataLength;
         ptrATAPassThroughDirect->DataBuffer = alignedDataPointer;
-        //commenting this flag out since it's really only used one PIO in commands that may not have sector count set to 1 to help the driver understand what to do...doesn't matter on PIO out commands
-        /*if (p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount <= 1)
+#if WINVER >= SEA_WIN32_WINNT_VISTA
+        if (p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount <= 1)
         {
-            p_t_ata_pt->AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
-        }*/
+            ptrATAPassThroughDirect->AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
+        }
+#endif
         break;
     case XFER_NO_DATA:
         ptrATAPassThroughDirect->DataTransferLength = 0;
@@ -2568,38 +2594,99 @@ int send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 #if WINVER >= SEA_WIN32_WINNT_WIN10
+/*
+This API only supported deferred download and activate commands as defined in ACS3+ and SPC4+
+
+This table defines when this API is supported based on the drive and interface of the drive.
+      IDE | SCSI
+ATA    Y  |   N
+SCSI   N  |   Y
+
+This table defines when this API is supported based on the Interface and the Command being sent
+       ATA DL | ATA DL DMA | SCSI WB
+IDE       Y   |      Y     |    N
+SCSI      N   |      N     |    Y
+
+The reason the API is used only in the instances shown above is because the library is trying to 
+honor issuing the expected command on a specific interface.
+
+If the drive is an ATA drive, behind a SAS controller, then a Write buffer command is issued to the
+controller to be translated according to the SAT spec. Sometimes, this may not be what a caller is wanting to do
+so we assume that we will only issue the command the caller is expecting to issue.
+
+There is an option to allow using this API call with any supported FWDL command regardless of drive type and interface that can be set.
+Device->os_info.fwdlIOsupport.allowFlexibleUseOfAPI set to true will check for a supported SCSI or ATA command and all other payload 
+requirements and allow it to be issued for any case. This is good if your only goal is to get firmware to a drive and don't care about testing a specific command sequence.
+NOTE: Some SAS HBAs will issue a readlogext command before each download command when performing deferred download, which may not be expected if taking a bus trace of the sequence.
+
+*/
+
+
+
 bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)//TODO: add nvme support
 {
+#if defined (_DEBUG)
+    printf("Checking if FWDL Command is compatible with Win 10 API\n");
+#endif
 	if (!scsiIoCtx->device->os_info.fwdlIOsupport.fwdlIOSupported)
 	{
 		//OS doesn't support this IO on this device, so just say no!
+#if defined (_DEBUG)
+        printf("\tFalse (not Supported)\n");
+#endif
 		return false;
 	}
     //If we are trying to send an ATA command, then only use the API if it's IDE. 
     //SCSI and RAID interfaces depend on the SATL to translate it correctly, but that is not checked by windows and is not possible since nothing responds to the report supported operation codes command
     //A future TODO will be to have either a lookup table or additional check somewhere to send the report supported operation codes command, but this is good enough for now, since it's unlikely a SATL will implement that...
+#if defined (_DEBUG)
+    printf("scsiIoCtx = %p\t->pAtaCmdOpts = %p\tinterface type: %d\n", scsiIoCtx, scsiIoCtx->pAtaCmdOpts, scsiIoCtx->device->drive_info.interface_type);
+#endif
 	if (scsiIoCtx && scsiIoCtx->pAtaCmdOpts && scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
 	{
+#if defined (_DEBUG)
+        printf("Checking ATA command info for FWDL support\n");
+#endif
 		//We're sending an ATA passthrough command, and the OS says the io is supported, so it SHOULD work. - TJE
 		if (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA)
 		{
+#if defined (_DEBUG)
+            printf("Is Download Microcode command (%" PRIX8 "h)\n", scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus);
+#endif
             if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0E)
             {
+#if defined (_DEBUG)
+                printf("Is deferred download mode Eh\n");
+#endif
                 //We know it's a download command, now we need to make sure it's a multiple of the Windows alignment requirement and that it isn't larger than the maximum allowed
                 uint16_t transferSizeSectors = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaLow, scsiIoCtx->pAtaCmdOpts->tfr.SectorCount);
+#if defined (_DEBUG)
+                printf("Transfersize sectors: %" PRIu16 "\n", transferSizeSectors);
+                printf("Transfersize bytes: %" PRIu32 "\tMaxXferSize: %" PRIu32 "\n", (uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE), scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize);
+                printf("Transfersize sectors %% alignment: %" PRIu32 "\n", ((uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment));
+#endif
                 if ((uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && ((uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
                 {
+#if defined (_DEBUG)
+                    printf("\tTrue (0x0E)\n");
+#endif
                     return true;
                 }
             }
             else if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0F)
             {
+#if defined (_DEBUG)
+                printf("\tTrue (0x0F)\n");
+#endif
                 return true;
             }
 		}
 	}
 	else if(scsiIoCtx)//sending a SCSI command
 	{
+#if defined (_DEBUG)
+        printf("Checking SCSI command info for FWDL Support\n");
+#endif
         //TODO? Should we check that this is a SCSI Drive? Right now we'll just attempt the download and let the drive/SATL handle translation
 		//check that it's a write buffer command for a firmware download & it's a deferred download command since that is all that is supported
 		if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
@@ -2611,10 +2698,16 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
 			case SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER:
 				if (transferLength < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (transferLength % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
 				{
+#if defined (_DEBUG)
+                    printf("\tTrue (SCSI Mode 0x0E)\n");
+#endif
 					return true;
 				}
 				break;
 			case SCSI_WB_ACTIVATE_DEFERRED_MICROCODE:
+#if defined (_DEBUG)
+                printf("\tTrue (SCSI Mode 0x0F)\n");
+#endif
 				return true;
 				break;
 			default:
@@ -2622,7 +2715,69 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
 			}
 		}
 	}
-	//TODO: add checking NVMe CTX for firmware download command
+    else if (scsiIoCtx->device->os_info.fwdlIOsupport.allowFlexibleUseOfAPI)
+    {
+        uint32_t transferLengthBytes = 0;
+        bool supportedCMD = false;
+        bool isActivate = false;
+#if defined (_DEBUG)
+        printf("Flexible Win10 FWDL API allowed. Checking for supported commands\n");
+#endif
+        if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
+        {
+            uint8_t wbMode = M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0);
+            if (wbMode == SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER)
+            {
+                supportedCMD = true;
+                transferLengthBytes = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            }
+            else if (wbMode == SCSI_WB_ACTIVATE_DEFERRED_MICROCODE)
+            {
+                supportedCMD = true;
+                isActivate = true;
+            }
+        }
+        else if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
+        {
+            
+            if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0E)
+            {
+                supportedCMD = true;
+                transferLengthBytes = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaLow, scsiIoCtx->pAtaCmdOpts->tfr.SectorCount) * LEGACY_DRIVE_SEC_SIZE;
+            }
+            else if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0F)
+            {
+                supportedCMD = true;
+                isActivate = true;
+            }
+        }
+        if (supportedCMD)
+        {
+#if defined (_DEBUG)
+            printf("\tDetected supported command\n");
+#endif
+            if (isActivate)
+            {
+#if defined (_DEBUG)
+                printf("\tTrue - is an activate command\n");
+#endif
+                return true;
+            }
+            else
+            {
+                if (transferLengthBytes < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (transferLengthBytes % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
+                {
+#if defined (_DEBUG)
+                    printf("\tTrue - payload fits FWDL requirements from OS/Driver\n");
+#endif
+                    return true;
+                }
+            }
+        }
+    }
+#if defined (_DEBUG)
+    printf("\tFalse\n");
+#endif
 	return false;
 }
 
@@ -2660,6 +2815,14 @@ int get_Windows_FWDL_IO_Support(tDevice *device)
 		device->os_info.fwdlIOsupport.payloadAlignment = fwdlSupportedInfo->ImagePayloadAlignment;
 		device->os_info.fwdlIOsupport.maxXferSize = fwdlSupportedInfo->ImagePayloadMaxSize;
 		//TODO: store more FWDL information as we need it
+#if defined (_DEBUG)
+        printf("Got Win10 FWDL Info\n");
+        printf("\tSupported: %d\n", fwdlSupportedInfo->SupportUpgrade);
+        printf("\tPayload Alignment: %d\n", fwdlSupportedInfo->ImagePayloadAlignment);
+        printf("\tmaxXferSize: %d\n", fwdlSupportedInfo->ImagePayloadMaxSize);
+        printf("\tPendingActivate: %d\n", fwdlSupportedInfo->PendingActivateSlot);
+        printf("\tActiveSlot: %d\n", fwdlSupportedInfo->ActiveSlot);
+#endif
 		ret = SUCCESS;
 	}
 	else
@@ -2705,6 +2868,9 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     {
         return BAD_PARAMETER;
     }
+#if defined (_DEBUG)
+    printf("Using Win10 FWDL API\n");
+#endif
 	if (is_Activate_Command(scsiIoCtx))
 	{
 		//send the activate IOCTL
@@ -2849,6 +3015,11 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
                 break;
             }
+            if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+            {
+                printf("Windows Error: ");
+                print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
+            }
         }
 	}
 	else
@@ -2879,6 +3050,12 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
 			//One website says that this flag is new in Win10 1704 - creators update (10.0.15021)
 			downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_LAST_SEGMENT;
 		}
+#endif
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+        if (scsiIoCtx->device->os_info.fwdlIOsupport.isFirstSegmentOfDownload)
+        {
+            downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT;
+        }
 #endif
 		if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)
 		{
@@ -3043,6 +3220,11 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
                 break;
+            }
+            if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+            {
+                printf("Windows Error: ");
+                print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
             }
         }
 	}
@@ -4569,6 +4751,12 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
         //This IS documented on MSDN but VS2015 can't seem to find it...
         //One website says that this flag is new in Win10 1704 - creators update (10.0.15021)
         downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_LAST_SEGMENT;
+    }
+#endif
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+    if (nvmeIoCtx->device->os_info.fwdlIOsupport.isFirstSegmentOfDownload)
+    {
+        downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT;
     }
 #endif
     //TODO: add firmware slot number?

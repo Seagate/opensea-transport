@@ -925,6 +925,7 @@ extern "C"
             uint8_t         minorVersion;
             uint8_t         revision;
         }sgDriverVersion;
+        bool                sntlViaSG;//When set to true, we can use SGIO to issue scsi commands and they'll be translated to NVMe for us. If false, this is not available. TODO: if false, use software translation.
         #elif defined (_WIN32)
         HANDLE              fd;
         SCSI_ADDRESS        scsi_addr;
@@ -943,9 +944,11 @@ extern "C"
 #if WINVER >= SEA_WIN32_WINNT_WIN10
 		struct {
 			bool fwdlIOSupported;
+            bool allowFlexibleUseOfAPI;//Set this to true to allow using the Win10 API for FWDL for any compatible download commands. If this is false, the Win10 API will only be used on IDE_INTERFACE for an ATA download command and SCSI interface for a supported Write buffer command. If true, it will be used regardless of which command the caller is using. This is useful for pure FW updates versus testing a specific condition.
 			uint32_t payloadAlignment; //From MSDN: The alignment of the image payload, in number of bytes. The maximum is PAGE_SIZE. The transfer size is a mutliple of this size. Some protocols require at least sector size. When this value is set to 0, this means that this value is invalid.
 			uint32_t maxXferSize; //From MSDN: The image payload maximum size, this is used for a single command
 			bool isLastSegmentOfDownload;//This should be set only when we are issuing a download command...We should find a better place for this.
+            bool isFirstSegmentOfDownload;//This should be set only when we are issuing a download command...We should find a better place for this.
 			//TODO: expand this struct if we need other data when we check for firmware download support on a device.
 		}fwdlIOsupport;
 #endif
