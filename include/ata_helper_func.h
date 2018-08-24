@@ -2187,6 +2187,18 @@ extern "C"
     OPENSEA_TRANSPORT_API int send_ATA_Read_Stream_Cmd(tDevice *device, uint8_t streamID, bool notSequential, bool readContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
     OPENSEA_TRANSPORT_API int send_ATA_Write_Stream_Cmd(tDevice *device, uint8_t streamID, bool flush, bool writeContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
 
+    //Similar to above, but for SCT stuff. This will automatically retry from DMA to PIO mode. Also removes GPL flag. Now depends on if device supports GPL or not internally (can be flipped in device->drive_info.ata_Options.generalPurposeLoggingSupported if you want to force a SMART command)
+    OPENSEA_TRANSPORT_API int send_ATA_SCT(tDevice *device, eDataTransferDirection direction, uint8_t logAddress, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs);
+    OPENSEA_TRANSPORT_API int send_ATA_SCT_Status(tDevice *device, uint8_t *dataBuf, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int send_ATA_SCT_Command(tDevice *device, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs);
+    OPENSEA_TRANSPORT_API int send_ATA_SCT_Data_Transfer(tDevice *device, eDataTransferDirection direction, uint8_t *dataBuf, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int send_ATA_SCT_Read_Write_Long(tDevice *device, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested);
+    OPENSEA_TRANSPORT_API int send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode, uint64_t startLBA, uint64_t fillCount, uint8_t *pattern, uint64_t patternLength);
+    OPENSEA_TRANSPORT_API int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit);
+    OPENSEA_TRANSPORT_API int send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags);
+    OPENSEA_TRANSPORT_API int send_ATA_SCT_Data_Table(tDevice *device, uint16_t functionCode, uint16_t tableID, uint8_t *dataBuf, uint32_t dataSize);
+
+
     #if defined (__cplusplus)
 }
     #endif

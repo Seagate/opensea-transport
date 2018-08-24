@@ -1730,7 +1730,7 @@ int ata_SCT_Data_Table(tDevice *device, bool useGPL, bool useDMA, uint16_t funct
     dataBuf[4] = M_Byte0(tableID);
     dataBuf[5] = M_Byte1(tableID);
 
-    ret = ata_SCT(device, useGPL, useDMA, XFER_DATA_OUT, ATA_SCT_COMMAND_STATUS, dataBuf, LEGACY_DRIVE_SEC_SIZE, false);
+    ret = ata_SCT_Command(device, useGPL, useDMA, dataBuf, LEGACY_DRIVE_SEC_SIZE, false);
 
     if (ret == SUCCESS)
     {

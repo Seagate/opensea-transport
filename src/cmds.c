@@ -524,6 +524,7 @@ int security_Receive(tDevice *device, bool useDMA, uint8_t securityProtocol, uin
     return ret;
 }
 
+//todo remove gpl and dma bits if we continue using send_ATA_SCT_Write_Same helper functions.
 int write_Same(tDevice *device, bool useGPL, bool useDMA, uint64_t startingLba, uint64_t numberOfLogicalBlocks, uint8_t *pattern)
 {
     int ret = UNKNOWN;
@@ -539,11 +540,13 @@ int write_Same(tDevice *device, bool useGPL, bool useDMA, uint64_t startingLba, 
             if (noDataTransfer)
             {
                 uint8_t zeroPattern[4] = { 0 };
-                ret = ata_SCT_Write_Same(device, useGPL, useDMA, WRITE_SAME_BACKGROUND_USE_PATTERN_FIELD, startingLba, numberOfLogicalBlocks, zeroPattern, sizeof(zeroPattern) / sizeof(*zeroPattern));
+                //ret = ata_SCT_Write_Same(device, useGPL, useDMA, WRITE_SAME_BACKGROUND_USE_PATTERN_FIELD, startingLba, numberOfLogicalBlocks, zeroPattern, sizeof(zeroPattern) / sizeof(*zeroPattern));
+                ret = send_ATA_SCT_Write_Same(device, WRITE_SAME_BACKGROUND_USE_PATTERN_FIELD, startingLba, numberOfLogicalBlocks, zeroPattern, sizeof(zeroPattern) / sizeof(*zeroPattern));
             }
             else
             {
-                ret = ata_SCT_Write_Same(device, useGPL, useDMA, WRITE_SAME_BACKGROUND_USE_SINGLE_LOGICAL_SECTOR, startingLba, numberOfLogicalBlocks, pattern, 1);
+                //ret = ata_SCT_Write_Same(device, useGPL, useDMA, WRITE_SAME_BACKGROUND_USE_SINGLE_LOGICAL_SECTOR, startingLba, numberOfLogicalBlocks, pattern, 1);
+                ret = send_ATA_SCT_Write_Same(device, WRITE_SAME_BACKGROUND_USE_SINGLE_LOGICAL_SECTOR, startingLba, numberOfLogicalBlocks, pattern, 1);
             }
         }
         else if (((device->drive_info.IdentifyData.ata.Word080 == 0 || device->drive_info.IdentifyData.ata.Word080 == UINT16_MAX) || /*check for device not setting spec support bits*/
@@ -606,6 +609,7 @@ int write_Same(tDevice *device, bool useGPL, bool useDMA, uint64_t startingLba, 
     else if (device->drive_info.drive_type == SCSI_DRIVE)
     {
         ret = scsi_Write_Same_16(device, 0, false, false, noDataTransfer, startingLba, 0, (uint32_t)numberOfLogicalBlocks, pattern, device->drive_info.deviceBlockSize);
+        //TODO: try write same 10 in place if lba < 32bit max?
     }
     else
     {
