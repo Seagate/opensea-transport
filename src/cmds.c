@@ -1060,7 +1060,7 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                                 uint8_t sector = 0;
                                 if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
                                 {
-                                    ret = ata_Legacy_Write_Multiple_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, true);
+                                    ret = ata_Legacy_Write_Multiple_CHS(device, cylinder, head, sector, ptrData, dataSize, true, false);
                                 }
                                 else //Couldn't convert or the LBA is greater than the current CHS mode
                                 {
@@ -1069,7 +1069,7 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                             }
                             else
                             {
-                                ret = ata_Write_Multiple(device, lba, ptrData, sectors, dataSize, true);
+                                ret = ata_Write_Multiple(device, lba, ptrData, dataSize, true, false);
                             }
                         }
                         else
@@ -1175,7 +1175,7 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                                 uint8_t sector = 0;
                                 if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
                                 {
-                                    ret = ata_Legacy_Write_Multiple_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, false);
+                                    ret = ata_Legacy_Write_Multiple_CHS(device, cylinder, head, sector, ptrData, dataSize, false, false);
                                 }
                                 else //Couldn't convert or the LBA is greater than the current CHS mode
                                 {
@@ -1184,7 +1184,7 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                             }
                             else
                             {
-                                ret = ata_Write_Multiple(device, lba, ptrData, sectors, dataSize, false);
+                                ret = ata_Write_Multiple(device, lba, ptrData, dataSize, false, false);
                             }
                         }
                         else

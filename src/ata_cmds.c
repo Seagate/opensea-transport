@@ -3136,12 +3136,21 @@ int ata_Write_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t
         ataCommandOptions.tfr.LbaMid48 = M_Byte4(LBA);
         ataCommandOptions.tfr.LbaHi48 = M_Byte5(LBA);
         ataCommandOptions.tfr.SectorCount48 = M_Byte1(dataSize / device->drive_info.deviceBlockSize);
+        if ((dataSize / device->drive_info.deviceBlockSize) > 0xFFFF)
+        {
+            ataCommandOptions.tfr.SectorCount = 0;
+            ataCommandOptions.tfr.SectorCount48 = 0;
+        }
     }
     else
     {
         ataCommandOptions.tfr.DeviceHead |= M_Nibble6(LBA);//set the high 4 bits for the LBA (24:28)
         ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
         ataCommandOptions.tfr.CommandStatus = ATA_WRITE_MULTIPLE;
+        if ((dataSize / device->drive_info.deviceBlockSize) > 0xFF)
+        {
+            ataCommandOptions.tfr.SectorCount = 0;
+        }
     }
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
 
