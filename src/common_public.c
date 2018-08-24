@@ -1346,9 +1346,14 @@ bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
 	if (USBchildDrive)
 	{
 		if (
-			((strstr(device->drive_info.bridge_info.childDriveMN, "ST") != NULL) && (strstr(device->drive_info.bridge_info.childDriveMN, "401") != NULL)) ||		//newer models
-			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL) && (strstr(device->drive_info.bridge_info.childDriveMN, "CM10002") != NULL)) ||
-			((strstr(device->drive_info.bridge_info.childDriveMN, "YA") != NULL) && (strstr(device->drive_info.bridge_info.childDriveMN, "CM10001") != NULL))		//older models
+			((strstr(device->drive_info.bridge_info.childDriveMN, "ST") != NULL)
+				&& (strstr(device->drive_info.bridge_info.childDriveMN, "401") != NULL))																					//newer models
+			||
+			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
+				&& ((strstr(device->drive_info.bridge_info.childDriveMN, "CM") != NULL) && (strlen(strstr(device->drive_info.product_identification, "CM")) == 7)))
+			||
+			((strstr(device->drive_info.bridge_info.childDriveMN, "YA") != NULL)
+				&& (((strstr(device->drive_info.bridge_info.childDriveMN, "CM") != NULL) && (strlen(strstr(device->drive_info.product_identification, "CM")) == 7))))		//older models
 			)
 		{
 			isSeagateVendor = true;
@@ -1357,9 +1362,14 @@ bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
 	else
 	{
 		if (
-			((strstr(device->drive_info.product_identification, "ST") != NULL) && (strstr(device->drive_info.product_identification, "401") != NULL)) ||		//newer models
-			((strstr(device->drive_info.product_identification, "ZA") != NULL) && (strstr(device->drive_info.product_identification, "CM10002") != NULL)) ||
-			((strstr(device->drive_info.product_identification, "YA") != NULL) && (strstr(device->drive_info.product_identification, "CM10001") != NULL))		//older models
+			((strstr(device->drive_info.product_identification, "ST") != NULL) 
+				&& (strstr(device->drive_info.product_identification, "401") != NULL))																					//newer models
+			||
+			((strstr(device->drive_info.product_identification, "ZA") != NULL) 
+				&& ((strstr(device->drive_info.product_identification, "CM") != NULL) && (strlen(strstr(device->drive_info.product_identification, "CM")) == 7)))
+			||
+			((strstr(device->drive_info.product_identification, "YA") != NULL) 
+				&& (((strstr(device->drive_info.product_identification, "CM") != NULL) && (strlen(strstr(device->drive_info.product_identification, "CM")) == 7))))		//older models
 			)
 		{
 			isSeagateVendor = true;
@@ -1380,15 +1390,9 @@ bool is_Seagate_Model_Number_Vendor_G(tDevice *device, bool USBchildDrive)
 	if (USBchildDrive)
 	{
 		if (
-			((strstr(device->drive_info.bridge_info.childDriveMN, "XA") != NULL)
-				&& ((strstr(device->drive_info.bridge_info.childDriveMN, "LE10003") != NULL)
-					|| (strstr(device->drive_info.bridge_info.childDriveMN, "ME10003") != NULL)
-					|| (strstr(device->drive_info.bridge_info.childDriveMN, "LE10063") != NULL)
-					|| (strstr(device->drive_info.bridge_info.childDriveMN, "LE10083") != NULL)
-					|| (strstr(device->drive_info.bridge_info.childDriveMN, "LE10103") != NULL)
-					|| (strstr(device->drive_info.bridge_info.childDriveMN, "ME10063") != NULL)
-					|| (strstr(device->drive_info.bridge_info.childDriveMN, "ME10083") != NULL)
-					|| (strstr(device->drive_info.bridge_info.childDriveMN, "ME10103") != NULL)))
+			(strstr(device->drive_info.bridge_info.childDriveMN, "XA") != NULL)
+			&& (((strstr(device->drive_info.bridge_info.childDriveMN, "LE") != NULL) && (strlen(strstr(device->drive_info.bridge_info.childDriveMN, "LE")) == 7))
+				|| ((strstr(device->drive_info.bridge_info.childDriveMN, "ME") != NULL) && (strlen(strstr(device->drive_info.bridge_info.childDriveMN, "ME")) == 7)))
 			)
 		{
 			isSeagateVendor = true;
@@ -1397,15 +1401,9 @@ bool is_Seagate_Model_Number_Vendor_G(tDevice *device, bool USBchildDrive)
 	else
 	{
 		if (
-			((strstr(device->drive_info.product_identification, "XA") != NULL)
-				&& ((strstr(device->drive_info.product_identification, "LE10003") != NULL)
-					|| (strstr(device->drive_info.product_identification, "ME10003") != NULL)
-					|| (strstr(device->drive_info.product_identification, "LE10063") != NULL)
-					|| (strstr(device->drive_info.product_identification, "LE10083") != NULL)
-					|| (strstr(device->drive_info.product_identification, "LE10103") != NULL)
-					|| (strstr(device->drive_info.product_identification, "ME10063") != NULL)
-					|| (strstr(device->drive_info.product_identification, "ME10083") != NULL)
-					|| (strstr(device->drive_info.product_identification, "ME10103") != NULL)))
+			(strstr(device->drive_info.product_identification, "XA") != NULL)
+				&& (((strstr(device->drive_info.product_identification, "LE") != NULL) && (strlen(strstr(device->drive_info.product_identification, "LE")) == 7))
+					|| ((strstr(device->drive_info.product_identification, "ME") != NULL) && (strlen(strstr(device->drive_info.product_identification, "ME")) == 7)))
 			)
 		{
 			isSeagateVendor = true;
