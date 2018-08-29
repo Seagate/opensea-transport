@@ -484,9 +484,16 @@ extern "C"
         MP_READ_WRITE_ERROR_RECOVERY      = 0x01,
         MP_DISCONNECT_RECONNECT           = 0x02,
         MP_RIGID_DISK_GEOMETRY            = 0x04,//This is long obsolete.
+        MP_FLEXIBLE_DISK_GEOMETRY         = 0x05,//Long obsolete
         MP_VERIFY_ERROR_RECOVERY          = 0x07,
         MP_CACHING                        = 0x08,
+        MP_PERIPHERAL_DEVICE              = 0x09,//Obsolete
         MP_CONTROL                        = 0x0A,
+        MP_MEDIUM_TYPES_SUPPORTED         = 0x0B,//Obsolete
+        MP_NOTCH_AND_PARTITION            = 0x0C,//Obsolete
+        MP_OBS_POWER_CONDITION            = 0x0D,//Obsolete page. Named different than power condition page below.
+        MP_XOR_CONTROL                    = 0x10,//Obsolete
+        MP_ENCLOSURE_SERVICES_MANAGEMENT  = 0x14,
         MP_EXTENDED                       = 0x15,
         MP_EXTENDED_DEVICE_TYPE_SPECIFIC  = 0x16,
         MP_PROTOCOL_SPECIFIC_LOGICAL_UNIT = 0x18,
