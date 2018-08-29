@@ -293,7 +293,7 @@ int fill_Drive_Info_Data(tDevice *device)
 	return status;
 }
 
-int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, bool useDMA, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber)
+int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber)
 {
     int ret = UNKNOWN;
 #ifdef _DEBUG
@@ -393,12 +393,12 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, bool useDMA
     return ret;
 }
 
-int firmware_Download_Activate(tDevice *device, bool useDMA, uint8_t slotNumber)
+int firmware_Download_Activate(tDevice *device, uint8_t slotNumber)
 {
-    return firmware_Download_Command(device, DL_FW_ACTIVATE, useDMA, 0, 0, NULL, slotNumber);
+    return firmware_Download_Command(device, DL_FW_ACTIVATE, 0, 0, NULL, slotNumber);
 }
 
-int security_Send(tDevice *device, bool useDMA, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
+int security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
 {
     int ret = UNKNOWN;
     switch(device->drive_info.drive_type)
@@ -460,7 +460,7 @@ int security_Send(tDevice *device, bool useDMA, uint8_t securityProtocol, uint16
     return ret;
 }
 
-int security_Receive(tDevice *device, bool useDMA, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
+int security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
 {
     int ret = UNKNOWN;
     switch (device->drive_info.drive_type)
@@ -524,12 +524,11 @@ int security_Receive(tDevice *device, bool useDMA, uint8_t securityProtocol, uin
     return ret;
 }
 
-//todo remove gpl and dma bits if we continue using send_ATA_SCT_Write_Same helper functions.
-int write_Same(tDevice *device, bool useGPL, bool useDMA, uint64_t startingLba, uint64_t numberOfLogicalBlocks, uint8_t *pattern)
+int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBlocks, uint8_t *pattern)
 {
     int ret = UNKNOWN;
     bool noDataTransfer = false;
-    if (pattern == NULL)
+    if (!pattern)
     {
         noDataTransfer = true;
     }
@@ -608,8 +607,16 @@ int write_Same(tDevice *device, bool useGPL, bool useDMA, uint64_t startingLba, 
     }
     else if (device->drive_info.drive_type == SCSI_DRIVE)
     {
-        ret = scsi_Write_Same_16(device, 0, false, false, noDataTransfer, startingLba, 0, (uint32_t)numberOfLogicalBlocks, pattern, device->drive_info.deviceBlockSize);
-        //TODO: try write same 10 in place if lba < 32bit max?
+        //todo: if there is no data transfer and the drive doesn't support that feature, we need to allocate local zeroed memory to send as the pattern
+        if (device->drive_info.scsiVersion > 3 && device->drive_info.deviceMaxLba > SCSI_MAX_32_LBA)
+        {
+            //write same 16 was made in SBC2 so need to report conformance to version greater than SPC (3) to do this.
+            ret = scsi_Write_Same_16(device, 0, false, false, noDataTransfer, startingLba, 0, (uint32_t)numberOfLogicalBlocks, pattern, device->drive_info.deviceBlockSize);
+        }
+        else
+        {
+            ret = scsi_Write_Same_10(device, 0, false, false, (uint32_t)startingLba, 0, (uint16_t)numberOfLogicalBlocks, pattern, device->drive_info.deviceBlockSize);
+        }
     }
     else
     {
