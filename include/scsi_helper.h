@@ -423,6 +423,9 @@ extern "C"
     {
         SUPPORTED_VPD_PAGES                             = 0x00,
         STANDARD_INQUIRY                                = 0x00,
+        //01h - 7Fh - ASCII Information
+        IMPLEMENTED_OPERATING_DEFINITIONS               = 0x81,//Obsolete. Used to tell what can be sent with the change definition command (scsi 2 vs scsi 3, etc)
+        ASCII_IMPLEMENTED_OPERATING_DEFINITION          = 0x82,//Obsolete
         UNIT_SERIAL_NUMBER                              = 0x80,
         DEVICE_IDENTIFICATION                           = 0x83,
         SOFTWARE_INTERFACE_IDENTIFICATION               = 0x84,
@@ -445,6 +448,8 @@ extern "C"
         SUPPORTED_BLOCK_LENGTHS_AND_PROTECTION_TYPES    = 0xB4,
         BLOCK_DEVICE_CHARACTERISTISCS_EXT               = 0xB5,
         ZONED_BLOCK_DEVICE_CHARACTERISTICS              = 0xB6,
+        BLOCK_LIMITS_EXTENSION                          = 0xB7,
+        //C0h - FFh are Vendor specific
     }eScsiVpdPages;
 
     //these enums are only for VPD pages with fixed lengths..add onto this as we need more things in here
@@ -717,6 +722,7 @@ extern "C"
         STANDARD_CODE_ZBC = 49,
         STANDARD_CODE_ADC4 = 50,
         STANDARD_CODE_ZBC2 = 51,
+        STANDARD_CODE_SES4 = 52,
         //65 - 84 Physical Mapping protocol
         STANDARD_CODE_SSA_TL2 = 65,
         STANDARD_CODE_SSA_TL1 = 66,
@@ -736,7 +742,7 @@ extern "C"
         STANDARD_CODE_FCP3 = 80,
         STANDARD_CODE_ADT2 = 81,
         STANDARD_CODE_FCP4 = 82,
-        STANDARD_CODE_ADT3 = 83,//SPC5 says 82, but I think this is wrong - TJE
+        STANDARD_CODE_ADT3 = 83,
         //85 - 94 Parallel SCSI Physical
         STANDARD_CODE_SPI = 85,
         STANDARD_CODE_FAST20 = 86,
