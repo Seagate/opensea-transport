@@ -899,7 +899,14 @@ extern "C"
         eOSType             osType;//useful for lower layers to do OS specific things
         #if defined (__linux__)
         #if defined(VMK_CROSS_COMP)
-        struct nvme_handle *fd;
+        /**
+         * In VMWare we discover or send IOCTL to NVMe throught NDDK. 
+         * So we will need 2 different handle for NVMe_IO and SG_IO 
+         * 
+         * @author 521852 (8/27/2018)
+         */
+        int                 fd;
+        struct nvme_handle *nvmeFd;
         #else
         int                 fd;//primary handle
         #endif
@@ -915,7 +922,14 @@ extern "C"
         char                secondFriendlyName[30];
         bool                secondHandleOpened;
         #if defined(VMK_CROSS_COMP)
-        struct nvme_handle *fd2;
+        /**
+         * In VMWare we discover or send IOCTL to NVMe throught NDDK. 
+         * So we will need 2 different handle for NVMe_IO and SG_IO 
+         * 
+         * @author 521852 (8/27/2018)
+         */
+        int                 fd2;
+        struct nvme_handle *nvmeFd2;
         #else
         int                 fd2;//secondary handle. Ex: fd = sg handle opened, fd2 = sd handle opened.
         #endif
