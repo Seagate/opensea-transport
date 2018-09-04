@@ -476,13 +476,54 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             //now read the couple pages of logs we care about to set some more flags for software SAT
             if (readIDDataLog)
             {
+                bool copyOfIDData = false;
+                bool supportedCapabilities = false;
+                bool zonedDeviceInfo = false;
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_SUPPORTED_PAGES, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                {
+                    uint8_t pageNumber = logBuffer[2];
+                    uint16_t revision = M_BytesTo2ByteValue(logBuffer[1], logBuffer[0]);
+                    if (pageNumber == (uint8_t)ATA_ID_DATA_LOG_SUPPORTED_PAGES && revision == 0x0001)
+                    {
+                        //data is valid, so figure out supported pages
+                        uint8_t listLen = logBuffer[8];
+                        for (uint8_t iter = 9; iter < (listLen + 9) && iter < 512; ++iter)
+                        {
+                            switch (logBuffer[iter])
+                            {
+                            case ATA_ID_DATA_LOG_SUPPORTED_PAGES:
+                                break;
+                            case ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA:
+                                copyOfIDData = true;
+                                break;
+                            case ATA_ID_DATA_LOG_CAPACITY:
+                                break;
+                            case ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES:
+                                supportedCapabilities = true;
+                                break;
+                            case ATA_ID_DATA_LOG_CURRENT_SETTINGS:
+                            case ATA_ID_DATA_LOG_ATA_STRINGS:
+                            case ATA_ID_DATA_LOG_SECURITY:
+                            case ATA_ID_DATA_LOG_PARALLEL_ATA:
+                            case ATA_ID_DATA_LOG_SERIAL_ATA:
+                                break;
+                            case ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION:
+                                zonedDeviceInfo = true;
+                                break;
+                            default:
+                                break;
+                            }
+                        }
+                    }
+                }
+                memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
+                if (copyOfIDData && SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
                 {
                     device->drive_info.softSATFlags.identifyDeviceDataLogSupported = true;
                 }
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                if (supportedCapabilities && SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
                 {
                     uint64_t *qwordptr = (uint64_t*)&logBuffer[0];
                     if (qwordptr[0] & BIT63 && M_Byte2(qwordptr[0]) == ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES)
@@ -494,7 +535,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                     }
                 }
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                if (zonedDeviceInfo && SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
                 {
                     //according to what I can find in the spec, a HOST Managed drive reports a different signature, but doens't set any identify bytes like a host aware drive.
                     //because of this and not being able to get the real signature, this check is the only way to determine we are talking to an ATA host managed drive. - TJE
