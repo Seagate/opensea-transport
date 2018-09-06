@@ -484,7 +484,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 {
                     uint8_t pageNumber = logBuffer[2];
                     uint16_t revision = M_BytesTo2ByteValue(logBuffer[1], logBuffer[0]);
-                    if (pageNumber == (uint8_t)ATA_ID_DATA_LOG_SUPPORTED_PAGES && revision == 0x0001)
+                    if (pageNumber == (uint8_t)ATA_ID_DATA_LOG_SUPPORTED_PAGES && revision >= 0x0001)
                     {
                         //data is valid, so figure out supported pages
                         uint8_t listLen = logBuffer[8];
