@@ -1186,31 +1186,77 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             //now read the couple pages of logs we care about to set some more flags for software SAT
             if (readIDDataLog)
             {
+                bool copyOfIDData = false;
+                bool supportedCapabilities = false;
+                bool zonedDeviceInfo = false;
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
+                if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_SUPPORTED_PAGES, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
+                {
+                    uint8_t pageNumber = logBuffer[2];
+                    uint16_t revision = M_BytesTo2ByteValue(logBuffer[1], logBuffer[0]);
+                    if (pageNumber == (uint8_t)ATA_ID_DATA_LOG_SUPPORTED_PAGES && revision >= 0x0001)
+                    {
+                        //data is valid, so figure out supported pages
+                        uint8_t listLen = logBuffer[8];
+                        for (uint8_t iter = 9; iter < (listLen + 8) && iter < 512; ++iter)
+                        {
+                            switch (logBuffer[iter])
+                            {
+                            case ATA_ID_DATA_LOG_SUPPORTED_PAGES:
+                                break;
+                            case ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA:
+                                copyOfIDData = true;
+                                break;
+                            case ATA_ID_DATA_LOG_CAPACITY:
+                                break;
+                            case ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES:
+                                supportedCapabilities = true;
+                                break;
+                            case ATA_ID_DATA_LOG_CURRENT_SETTINGS:
+                            case ATA_ID_DATA_LOG_ATA_STRINGS:
+                            case ATA_ID_DATA_LOG_SECURITY:
+                            case ATA_ID_DATA_LOG_PARALLEL_ATA:
+                            case ATA_ID_DATA_LOG_SERIAL_ATA:
+                                break;
+                            case ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION:
+                                zonedDeviceInfo = true;
+                                break;
+                            default:
+                                break;
+                            }
+                        }
+                    }
+                }
+                memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
+                if (copyOfIDData && SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
                 {
                     device->drive_info.softSATFlags.identifyDeviceDataLogSupported = true;
                 }
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
+                if (supportedCapabilities && SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
                 {
-                    uint64_t *qwordptr = (uint64_t*)&logBuffer[0];
-                    if (qwordptr[0] & BIT63 && M_Byte2(qwordptr[0]) == ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES)
+                    uint64_t qword0 = M_BytesTo8ByteValue(logBuffer[7], logBuffer[6], logBuffer[5], logBuffer[4], logBuffer[3], logBuffer[2], logBuffer[1], logBuffer[0]);
+                    if (qword0 & BIT63 && M_Byte2(qword0) == ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES && M_Word0(qword0) >= 0x0001)
                     {
-                        if (qwordptr[2] & BIT63 && qwordptr[2] & BIT34)
+                        uint64_t downloadCapabilities = M_BytesTo8ByteValue(logBuffer[23], logBuffer[22], logBuffer[21], logBuffer[20], logBuffer[19], logBuffer[18], logBuffer[17], logBuffer[16]);
+                        if (downloadCapabilities & BIT63 && downloadCapabilities & BIT34)
                         {
                             device->drive_info.softSATFlags.deferredDownloadSupported = true;
                         }
                     }
                 }
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
+                if (zonedDeviceInfo && SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
                 {
-                    //according to what I can find in the spec, a HOST Managed drive reports a different signature, but doens't set any identify bytes like a host aware drive.
-                    //because of this and not being able to get the real signature, this check is the only way to determine we are talking to an ATA host managed drive. - TJE
-                    if (device->drive_info.zonedType == ZONED_TYPE_NOT_ZONED)
+                    uint64_t qword0 = M_BytesTo8ByteValue(logBuffer[7], logBuffer[6], logBuffer[5], logBuffer[4], logBuffer[3], logBuffer[2], logBuffer[1], logBuffer[0]);
+                    if (qword0 & BIT63 && M_Byte2(qword0) == ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION && M_Word0(qword0) >= 0x0001)//validating we got the right page
                     {
-                        device->drive_info.zonedType = ZONED_TYPE_HOST_MANAGED;
+                        //according to what I can find in the spec, a HOST Managed drive reports a different signature, but doens't set any identify bytes like a host aware drive.
+                        //because of this and not being able to get the real signature, this check is the only way to determine we are talking to an ATA host managed drive. - TJE
+                        if (device->drive_info.zonedType == ZONED_TYPE_NOT_ZONED)
+                        {
+                            device->drive_info.zonedType = ZONED_TYPE_HOST_MANAGED;
+                        }
                     }
                 }
             }
@@ -1221,7 +1267,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 {
                     uint16_t iter = 9;
                     uint8_t numberOfEntries = logBuffer[8];
-                    for (iter = 9; iter < (numberOfEntries + 9); iter++)
+                    for (iter = 9; iter < (numberOfEntries + 9) && iter < 512; ++iter)
                     {
                         switch (logBuffer[iter])
                         {
@@ -1256,10 +1302,14 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                         memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
                         if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_GENERAL, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
                         {
-                            uint64_t *qwordptr = (uint64_t*)&logBuffer[0];
-                            if (qwordptr[8] & BIT63)
+                            uint64_t qword0 = M_BytesTo8ByteValue(logBuffer[7], logBuffer[6], logBuffer[5], logBuffer[4], logBuffer[3], logBuffer[2], logBuffer[1], logBuffer[0]);
+                            if (M_Byte2(qword0) == ATA_DEVICE_STATS_LOG_GENERAL && M_Word0(qword0) >= 0x0001)//validating we got the right page
                             {
-                                device->drive_info.softSATFlags.deviceStatsPages.dateAndTimeTimestampSupported = true;
+                                uint64_t dateAndTime = M_BytesTo8ByteValue(logBuffer[63], logBuffer[62], logBuffer[61], logBuffer[60], logBuffer[59], logBuffer[58], logBuffer[57], logBuffer[56]);
+                                if (dateAndTime & BIT63)
+                                {
+                                    device->drive_info.softSATFlags.deviceStatsPages.dateAndTimeTimestampSupported = true;
+                                }
                             }
                         }
                     }
