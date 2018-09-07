@@ -30,6 +30,709 @@ bool is_Buffer_Non_Zero(uint8_t* ptrData, uint32_t dataLen)
     return isNonZero;
 }
 
+//This will send a read log ext command, and if it's DMA and sense data tells us that we had an invalid field in CDB, then we retry with PIO mode
+int send_ATA_Read_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint16_t featureRegister)
+{
+    int ret = NOT_SUPPORTED;
+    if (device->drive_info.ata_Options.generalPurposeLoggingSupported)
+    {
+        bool dmaRetry = false;
+        if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.readLogWriteLogDMASupported)
+        {
+            //try a read log ext DMA command
+            ret = ata_Read_Log_Ext(device, logAddress, pageNumber, ptrData, dataSize, true, featureRegister);
+            if (ret == SUCCESS)
+            {
+                return ret;
+            }
+            else
+            {
+                uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+                get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+                //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+                if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+                {
+                    //turn off DMA mode
+                    dmaRetry = true;
+                    device->drive_info.ata_Options.readLogWriteLogDMASupported = false;
+                }
+                else
+                {
+                    //we likely had a failure not related to DMA mode command, so return the error
+                    return ret;
+                }
+            }
+        }
+        //Send PIO Command
+        ret = ata_Read_Log_Ext(device, logAddress, pageNumber, ptrData, dataSize, false, featureRegister);
+        if (dmaRetry && ret != SUCCESS)
+        {
+            //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+            device->drive_info.ata_Options.readLogWriteLogDMASupported = true;
+        }
+    }
+    return ret;
+}
+
+int send_ATA_Write_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, bool forceRTFRs)
+{
+    int ret = NOT_SUPPORTED;
+    if (device->drive_info.ata_Options.generalPurposeLoggingSupported)
+    {
+        bool dmaRetry = false;
+        if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.readLogWriteLogDMASupported)
+        {
+            //try a write log ext DMA command
+            ret = ata_Write_Log_Ext(device, logAddress, pageNumber, ptrData, dataSize, true, forceRTFRs);
+            if (ret == SUCCESS)
+            {
+                return ret;
+            }
+            else
+            {
+                uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+                get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+                //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+                if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+                {
+                    //turn off DMA mode
+                    dmaRetry = true;
+                    device->drive_info.ata_Options.readLogWriteLogDMASupported = false;
+                }
+                else
+                {
+                    //we likely had a failure not related to DMA mode command, so return the error
+                    return ret;
+                }
+            }
+        }
+        //Send PIO command
+        ret = ata_Write_Log_Ext(device, logAddress, pageNumber, ptrData, dataSize, false, forceRTFRs);
+        if (dmaRetry && ret != SUCCESS)
+        {
+            //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+            device->drive_info.ata_Options.readLogWriteLogDMASupported = true;
+        }
+    }
+    return ret;
+}
+
+int send_ATA_SCT(tDevice *device, eDataTransferDirection direction, uint8_t logAddress, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs)
+{
+    int ret = UNKNOWN;
+    if (logAddress != ATA_SCT_COMMAND_STATUS && logAddress != ATA_SCT_DATA_TRANSFER)
+    {
+        return BAD_PARAMETER;
+    }
+    if (device->drive_info.ata_Options.generalPurposeLoggingSupported)
+    {
+        if (direction == XFER_DATA_IN)
+        {
+            ret = send_ATA_Read_Log_Ext_Cmd(device, logAddress, 0, dataBuf, dataSize, 0);
+        }
+        else if (direction == XFER_DATA_OUT)
+        {
+            ret = send_ATA_Write_Log_Ext_Cmd(device, logAddress, 0, dataBuf, dataSize, forceRTFRs);
+        }
+        else
+        {
+            ret = BAD_PARAMETER;
+        }
+    }
+    else
+    {
+        if (direction == XFER_DATA_IN)//data in
+        {
+            ret = ata_SMART_Read_Log(device, logAddress, dataBuf, dataSize);
+        }
+        else if (direction == XFER_DATA_OUT)
+        {
+            ret = ata_SMART_Write_Log(device, logAddress, dataBuf, dataSize, forceRTFRs);
+        }
+        else
+        {
+            ret = BAD_PARAMETER;
+        }
+    }
+    return ret;
+}
+
+int send_ATA_SCT_Status(tDevice *device, uint8_t *dataBuf, uint32_t dataSize)
+{
+    int ret = UNKNOWN;
+    if (dataSize < LEGACY_DRIVE_SEC_SIZE)
+    {
+        return FAILURE;
+    }
+    ret = send_ATA_SCT(device, XFER_DATA_IN, ATA_SCT_COMMAND_STATUS, dataBuf, LEGACY_DRIVE_SEC_SIZE, false);
+
+    return ret;
+}
+
+int send_ATA_SCT_Command(tDevice *device, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs)
+{
+    int ret = UNKNOWN;
+    if (dataSize < LEGACY_DRIVE_SEC_SIZE)
+    {
+        return FAILURE;
+    }
+    ret = send_ATA_SCT(device, XFER_DATA_OUT, ATA_SCT_COMMAND_STATUS, dataBuf, LEGACY_DRIVE_SEC_SIZE, forceRTFRs);
+
+    return ret;
+}
+
+int send_ATA_SCT_Data_Transfer(tDevice *device, eDataTransferDirection direction, uint8_t *dataBuf, uint32_t dataSize)
+{
+    int ret = UNKNOWN;
+
+    ret = send_ATA_SCT(device, direction, ATA_SCT_DATA_TRANSFER, dataBuf, dataSize, false);
+
+    return ret;
+}
+
+int send_ATA_SCT_Read_Write_Long(tDevice *device, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested)
+{
+    int ret = UNKNOWN;
+    uint8_t readWriteLongCommandSector[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+
+    //action code
+    readWriteLongCommandSector[0] = M_Byte0(SCT_READ_WRITE_LONG);
+    readWriteLongCommandSector[1] = M_Byte1(SCT_READ_WRITE_LONG);
+    //function code set in if below
+    //LBA
+    readWriteLongCommandSector[4] = M_Byte0(lba);
+    readWriteLongCommandSector[5] = M_Byte1(lba);
+    readWriteLongCommandSector[6] = M_Byte2(lba);
+    readWriteLongCommandSector[7] = M_Byte3(lba);
+    readWriteLongCommandSector[8] = M_Byte4(lba);
+    readWriteLongCommandSector[9] = M_Byte5(lba);
+    readWriteLongCommandSector[10] = RESERVED;
+    readWriteLongCommandSector[11] = RESERVED;
+
+    if (mode == SCT_RWL_READ_LONG)
+    {
+        readWriteLongCommandSector[2] = M_Byte0(SCT_RWL_READ_LONG);
+        readWriteLongCommandSector[3] = M_Byte1(SCT_RWL_READ_LONG);
+
+        //send a SCT command
+        if (SUCCESS == send_ATA_SCT_Command(device, readWriteLongCommandSector, LEGACY_DRIVE_SEC_SIZE, true))
+        {
+            if (numberOfECCCRCBytes)
+            {
+                *numberOfECCCRCBytes = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
+            }
+            if (numberOfBlocksRequested)
+            {
+                *numberOfBlocksRequested = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaHi, device->drive_info.lastCommandRTFRs.lbaMid);
+            }
+            //Read the SCT data log
+            ret = send_ATA_SCT_Data_Transfer(device, XFER_DATA_IN, dataBuf, dataSize);
+        }
+    }
+    else if (mode == SCT_RWL_WRITE_LONG)
+    {
+        readWriteLongCommandSector[2] = M_Byte0(SCT_RWL_WRITE_LONG);
+        readWriteLongCommandSector[3] = M_Byte1(SCT_RWL_WRITE_LONG);
+
+        //send a SCT command
+        if (SUCCESS == send_ATA_SCT_Command(device, readWriteLongCommandSector, LEGACY_DRIVE_SEC_SIZE, true))
+        {
+            if (numberOfECCCRCBytes)
+            {
+                *numberOfECCCRCBytes = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
+            }
+            if (numberOfBlocksRequested)
+            {
+                *numberOfBlocksRequested = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaHi, device->drive_info.lastCommandRTFRs.lbaMid);
+            }
+            //Write the SCT data log
+            ret = send_ATA_SCT_Data_Transfer(device, XFER_DATA_OUT, dataBuf, dataSize);
+        }
+    }
+    else
+    {
+        ret = NOT_SUPPORTED;
+    }
+    return ret;
+}
+
+int send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode, uint64_t startLBA, uint64_t fillCount, uint8_t *pattern, uint64_t patternLength)
+{
+    int ret = UNKNOWN;
+    uint8_t *writeSameBuffer = (uint8_t*)calloc(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t));
+    if (!writeSameBuffer)
+    {
+        perror("Calloc failure!\n");
+        return MEMORY_FAILURE;
+    }
+    //action code
+    writeSameBuffer[0] = M_Byte0(SCT_WRITE_SAME);
+    writeSameBuffer[1] = M_Byte1(SCT_WRITE_SAME);
+    //function code
+    writeSameBuffer[2] = M_Byte0(functionCode);
+    writeSameBuffer[3] = M_Byte1(functionCode);
+    //start
+    writeSameBuffer[4] = M_Byte0(startLBA);
+    writeSameBuffer[5] = M_Byte1(startLBA);
+    writeSameBuffer[6] = M_Byte2(startLBA);
+    writeSameBuffer[7] = M_Byte3(startLBA);
+    writeSameBuffer[8] = M_Byte4(startLBA);
+    writeSameBuffer[9] = M_Byte5(startLBA);
+    writeSameBuffer[10] = RESERVED;
+    writeSameBuffer[11] = RESERVED;
+    //Fill Count
+    writeSameBuffer[12] = M_Byte0(fillCount);
+    writeSameBuffer[13] = M_Byte1(fillCount);
+    writeSameBuffer[14] = M_Byte2(fillCount);
+    writeSameBuffer[15] = M_Byte3(fillCount);
+    writeSameBuffer[16] = M_Byte4(fillCount);
+    writeSameBuffer[17] = M_Byte5(fillCount);
+    writeSameBuffer[18] = M_Byte6(fillCount);
+    writeSameBuffer[19] = M_Byte7(fillCount);
+    //Pattern field (when it applies)
+    if (functionCode == WRITE_SAME_BACKGROUND_USE_PATTERN_FIELD || functionCode == WRITE_SAME_FOREGROUND_USE_PATTERN_FIELD)
+    {
+        uint32_t thePattern = 0;
+        uint64_t patternIter = 0;
+        //copy at most a 32bit pattern into thePattern
+        for (patternIter = 0; patternIter < patternLength && patternIter < 4; patternIter++)
+        {
+            thePattern |= pattern[patternIter];
+            if ((patternIter + 1) == 4)
+            {
+                break;
+            }
+            thePattern = thePattern << 8;
+        }
+        writeSameBuffer[20] = M_Byte0(thePattern);
+        writeSameBuffer[21] = M_Byte1(thePattern);
+        writeSameBuffer[22] = M_Byte2(thePattern);
+        writeSameBuffer[23] = M_Byte3(thePattern);
+    }
+    //pattern length (when it applies)
+    if (functionCode == WRITE_SAME_BACKGROUND_USE_MULTIPLE_LOGICAL_SECTORS || functionCode == WRITE_SAME_FOREGROUND_USE_MULTIPLE_LOGICAL_SECTORS)
+    {
+        writeSameBuffer[24] = M_Byte0(patternLength);
+        writeSameBuffer[25] = M_Byte1(patternLength);
+        writeSameBuffer[26] = M_Byte2(patternLength);
+        writeSameBuffer[27] = M_Byte3(patternLength);
+        writeSameBuffer[28] = M_Byte4(patternLength);
+        writeSameBuffer[29] = M_Byte5(patternLength);
+        writeSameBuffer[30] = M_Byte6(patternLength);
+        writeSameBuffer[31] = M_Byte7(patternLength);
+    }
+
+    ret = send_ATA_SCT_Command(device, writeSameBuffer, LEGACY_DRIVE_SEC_SIZE, false);
+
+    if (functionCode == WRITE_SAME_BACKGROUND_USE_MULTIPLE_LOGICAL_SECTORS || functionCode == WRITE_SAME_FOREGROUND_USE_MULTIPLE_LOGICAL_SECTORS
+        || functionCode == WRITE_SAME_BACKGROUND_USE_SINGLE_LOGICAL_SECTOR || functionCode == WRITE_SAME_FOREGROUND_USE_SINGLE_LOGICAL_SECTOR)
+    {
+        //send the pattern to the data transfer log
+        ret = send_ATA_SCT_Data_Transfer(device, XFER_DATA_OUT, pattern, (uint32_t)(patternLength * device->drive_info.deviceBlockSize));
+    }
+
+    safe_Free(writeSameBuffer);
+    return ret;
+}
+
+int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit)
+{
+    int ret = UNKNOWN;
+    uint8_t *errorRecoveryBuffer = (uint8_t*)calloc(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t));
+    if (!errorRecoveryBuffer)
+    {
+        perror("Calloc failure!\n");
+        return MEMORY_FAILURE;
+    }
+    //if we are retrieving the current values, then we better have a good pointer...no point in sending the command if we don't
+    if (functionCode == 0x0002 && !currentValue)
+    {
+        safe_Free(errorRecoveryBuffer);
+        return BAD_PARAMETER;
+    }
+
+    //action code
+    errorRecoveryBuffer[0] = M_Byte0(SCT_ERROR_RECOVERY_CONTROL);
+    errorRecoveryBuffer[1] = M_Byte1(SCT_ERROR_RECOVERY_CONTROL);
+    //function code
+    errorRecoveryBuffer[2] = M_Byte0(functionCode);
+    errorRecoveryBuffer[3] = M_Byte1(functionCode);
+    //selection code
+    errorRecoveryBuffer[4] = M_Byte0(selectionCode);
+    errorRecoveryBuffer[5] = M_Byte1(selectionCode);
+    //recovery time limit
+    errorRecoveryBuffer[6] = M_Byte0(recoveryTimeLimit);
+    errorRecoveryBuffer[7] = M_Byte1(recoveryTimeLimit);
+
+    ret = send_ATA_SCT_Command(device, errorRecoveryBuffer, LEGACY_DRIVE_SEC_SIZE, true);
+
+    if (functionCode == 0x0002 && currentValue != NULL)
+    {
+        *currentValue = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
+    }
+    safe_Free(errorRecoveryBuffer);
+    return ret;
+}
+
+int send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags)
+{
+    int ret = UNKNOWN;
+    uint8_t *featureControlBuffer = (uint8_t*)calloc(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t));
+    if (!featureControlBuffer)
+    {
+        perror("Calloc Failure!\n");
+        return MEMORY_FAILURE;
+    }
+    //make sure we have valid pointers for state and optionFlags
+    if (!state || !optionFlags)
+    {
+        safe_Free(featureControlBuffer);
+        return BAD_PARAMETER;
+    }
+    //clear the state and option flags out, unless we are setting something
+    if (functionCode != 0x0001)
+    {
+        *state = 0;
+        *optionFlags = 0;
+    }
+    //fill in the buffer with the correct information
+    //action code
+    featureControlBuffer[0] = M_Byte0(SCT_FEATURE_CONTROL);
+    featureControlBuffer[1] = M_Byte1(SCT_FEATURE_CONTROL);
+    //function code
+    featureControlBuffer[2] = M_Byte0(functionCode);
+    featureControlBuffer[3] = M_Byte1(functionCode);
+    //feature code
+    featureControlBuffer[4] = M_Byte0(featureCode);
+    featureControlBuffer[5] = M_Byte1(featureCode);
+    //state
+    featureControlBuffer[6] = M_Byte0(*state);
+    featureControlBuffer[7] = M_Byte1(*state);
+    //option flags
+    featureControlBuffer[8] = M_Byte0(*optionFlags);
+    featureControlBuffer[9] = M_Byte1(*optionFlags);
+
+    ret = send_ATA_SCT_Command(device, featureControlBuffer, LEGACY_DRIVE_SEC_SIZE, true);
+
+    //add in copying rtfrs into status or option flags here
+    if (ret == SUCCESS)
+    {
+        if (functionCode == 0x0002)
+        {
+            *state = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
+        }
+        else if (functionCode == 0x0003)
+        {
+            *optionFlags = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
+        }
+    }
+    safe_Free(featureControlBuffer);
+    return ret;
+}
+
+int send_ATA_SCT_Data_Table(tDevice *device, uint16_t functionCode, uint16_t tableID, uint8_t *dataBuf, uint32_t dataSize)
+{
+    int ret = UNKNOWN;
+
+    if (!dataBuf)
+    {
+        return BAD_PARAMETER;
+    }
+    //Action code
+    dataBuf[0] = M_Byte0(SCT_DATA_TABLES);
+    dataBuf[1] = M_Byte1(SCT_DATA_TABLES);
+    //Function code
+    dataBuf[2] = M_Byte0(functionCode);
+    dataBuf[3] = M_Byte1(functionCode);
+    //Table ID
+    dataBuf[4] = M_Byte0(tableID);
+    dataBuf[5] = M_Byte1(tableID);
+
+    ret = send_ATA_SCT_Command(device, dataBuf, LEGACY_DRIVE_SEC_SIZE, false);
+
+    if (ret == SUCCESS)
+    {
+        if (functionCode == 0x0001)
+        {
+            //now read the log that tells us the table we requested
+            memset(dataBuf, 0, dataSize);//clear the buffer before we read in data since we are done with what we had to send to the drive
+            ret = send_ATA_SCT_Data_Transfer(device, XFER_DATA_IN, dataBuf, dataSize);
+        }
+        //else we need to add functionality since something new was added to the spec
+    }
+    return ret;
+}
+
+int send_ATA_Download_Microcode_Cmd(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, uint8_t *pData, uint32_t dataLen)
+{
+    int ret = NOT_SUPPORTED;
+    bool dmaRetry = false;
+    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.downloadMicrocodeDMASupported)
+    {
+        ret = ata_Download_Microcode(device, subCommand, blockCount, bufferOffset, true, pData, dataLen);
+        if (ret == SUCCESS)
+        {
+            return ret;
+        }
+        else
+        {
+            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+            {
+                //turn off DMA mode
+                dmaRetry = true;
+                device->drive_info.ata_Options.downloadMicrocodeDMASupported = false;
+            }
+            else
+            {
+                //we likely had a failure not related to DMA mode command, so return the error
+                return ret;
+            }
+        }
+    }
+    ret = ata_Download_Microcode(device, subCommand, blockCount, bufferOffset, false, pData, dataLen);
+    if (dmaRetry && ret != SUCCESS)
+    {
+        //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+        device->drive_info.ata_Options.downloadMicrocodeDMASupported = true;
+    }
+    return ret;
+}
+
+int send_ATA_Trusted_Send_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
+{
+    int ret = NOT_SUPPORTED;
+    bool dmaRetry = false;
+    static bool dmaTrustedCmd = true;
+    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && dmaTrustedCmd && device->drive_info.ata_Options.dmaSupported)
+    {
+        ret = ata_Trusted_Send(device, true, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
+        if (ret == SUCCESS)
+        {
+            return ret;
+        }
+        else
+        {
+            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+            {
+                //turn off DMA mode
+                dmaRetry = true;
+                dmaTrustedCmd = false;
+            }
+            else
+            {
+                //we likely had a failure not related to DMA mode command, so return the error
+                return ret;
+            }
+        }
+    }
+    ret = ata_Trusted_Send(device, false, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
+    if (dmaRetry && ret != SUCCESS)
+    {
+        //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+        dmaTrustedCmd = true;
+    }
+    return ret;
+}
+
+int send_ATA_Trusted_Receive_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
+{
+    int ret = NOT_SUPPORTED;
+    bool dmaRetry = false;
+    static bool dmaTrustedCmd = true;
+    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && dmaTrustedCmd && device->drive_info.ata_Options.dmaSupported)
+    {
+        ret = ata_Trusted_Receive(device, true, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
+        if (ret == SUCCESS)
+        {
+            return ret;
+        }
+        else
+        {
+            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+            {
+                //turn off DMA mode
+                dmaRetry = true;
+                dmaTrustedCmd = false;
+            }
+            else
+            {
+                //we likely had a failure not related to DMA mode command, so return the error
+                return ret;
+            }
+        }
+    }
+    ret = ata_Trusted_Receive(device, false, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
+    if (dmaRetry && ret != SUCCESS)
+    {
+        //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+        dmaTrustedCmd = true;
+    }
+    return ret;
+}
+
+int send_ATA_Read_Buffer_Cmd(tDevice *device, uint8_t *ptrData)
+{
+    int ret = NOT_SUPPORTED;
+    bool dmaRetry = false;
+    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.readBufferDMASupported)
+    {
+        ret = ata_Read_Buffer(device, ptrData, true);
+        if (ret == SUCCESS)
+        {
+            return ret;
+        }
+        else
+        {
+            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+            {
+                //turn off DMA mode
+                dmaRetry = true;
+                device->drive_info.ata_Options.readBufferDMASupported = false;
+            }
+            else
+            {
+                //we likely had a failure not related to DMA mode command, so return the error
+                return ret;
+            }
+        }
+    }
+    ret = ata_Read_Buffer(device, ptrData, false);
+    if (dmaRetry && ret != SUCCESS)
+    {
+        //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+        device->drive_info.ata_Options.readBufferDMASupported = true;
+    }
+    return ret;
+}
+
+int send_ATA_Write_Buffer_Cmd(tDevice *device, uint8_t *ptrData)
+{
+    int ret = NOT_SUPPORTED;
+    bool dmaRetry = false;
+    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.writeBufferDMASupported)
+    {
+        ret = ata_Write_Buffer(device, ptrData, true);
+        if (ret == SUCCESS)
+        {
+            return ret;
+        }
+        else
+        {
+            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+            {
+                //turn off DMA mode
+                dmaRetry = true;
+                device->drive_info.ata_Options.writeBufferDMASupported = false;
+            }
+            else
+            {
+                //we likely had a failure not related to DMA mode command, so return the error
+                return ret;
+            }
+        }
+    }
+    ret = ata_Write_Buffer(device, ptrData, false);
+    if (dmaRetry && ret != SUCCESS)
+    {
+        //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+        device->drive_info.ata_Options.writeBufferDMASupported = true;
+    }
+    return ret;
+}
+
+int send_ATA_Read_Stream_Cmd(tDevice *device, uint8_t streamID, bool notSequential, bool readContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize)
+{
+    int ret = NOT_SUPPORTED;
+    bool dmaRetry = false;
+    static bool streamDMA = true;
+    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && streamDMA && device->drive_info.ata_Options.dmaSupported)
+    {
+        ret = ata_Read_Stream_Ext(device, true, streamID, notSequential, readContinuous, commandCCTL, LBA, ptrData, dataSize);
+        if (ret == SUCCESS)
+        {
+            return ret;
+        }
+        else
+        {
+            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+            {
+                //turn off DMA mode
+                dmaRetry = true;
+                streamDMA = false;
+            }
+            else
+            {
+                //we likely had a failure not related to DMA mode command, so return the error
+                return ret;
+            }
+        }
+    }
+    ret = ata_Read_Stream_Ext(device, false, streamID, notSequential, readContinuous, commandCCTL, LBA, ptrData, dataSize);
+    if (dmaRetry && ret != SUCCESS)
+    {
+        //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+        streamDMA = true;
+    }
+    return ret;
+}
+
+int send_ATA_Write_Stream_Cmd(tDevice *device, uint8_t streamID, bool flush, bool writeContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize)
+{
+    int ret = NOT_SUPPORTED;
+    bool dmaRetry = false;
+    static bool streamDMA = true;
+    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && streamDMA && device->drive_info.ata_Options.dmaSupported)
+    {
+        ret = ata_Write_Stream_Ext(device, true, streamID, flush, writeContinuous, commandCCTL, LBA, ptrData, dataSize);
+        if (ret == SUCCESS)
+        {
+            return ret;
+        }
+        else
+        {
+            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+            //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
+            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+            {
+                //turn off DMA mode
+                dmaRetry = true;
+                streamDMA = false;
+            }
+            else
+            {
+                //we likely had a failure not related to DMA mode command, so return the error
+                return ret;
+            }
+        }
+    }
+    ret = ata_Write_Stream_Ext(device, false, streamID, flush, writeContinuous, commandCCTL, LBA, ptrData, dataSize);
+    if (dmaRetry && ret != SUCCESS)
+    {
+        //this means something else is wrong, and it's not the DMA mode, so we can turn it back on
+        streamDMA = true;
+    }
+    return ret;
+}
+
 int fill_In_ATA_Drive_Info(tDevice *device)
 {
     int ret = UNKNOWN;
@@ -327,8 +1030,15 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         {
             device->drive_info.ata_Options.readLogWriteLogDMASupported = true;
         }
-        //set the number of logical sectors per DRQ data block (current setting)
-        device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock = M_Byte0(ident_word[59]);
+        if (ident_word[47] != UINT16_MAX && ident_word[47] != 0)
+        {
+            if (M_Byte0(ident_word[47]) != 0)
+            {
+                device->drive_info.ata_Options.readWriteMultipleSupported = true;
+                //set the number of logical sectors per DRQ data block (current setting)
+                device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock = M_Byte0(ident_word[59]);
+            }
+        }
         //check for tagged command queuing support
         if (ident_word[83] & BIT1 || ident_word[86] & BIT1)
         {
@@ -446,7 +1156,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     if (retrievedIdentifyData && device->drive_info.ata_Options.generalPurposeLoggingSupported)
     {
         uint8_t logBuffer[LEGACY_DRIVE_SEC_SIZE] = { 0 };
-        if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_DIRECTORY, 0, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+        if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_DIRECTORY, 0, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
         {
             bool readIDDataLog = false;
             bool readDeviceStatisticsLog = false;
@@ -480,7 +1190,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 bool supportedCapabilities = false;
                 bool zonedDeviceInfo = false;
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_SUPPORTED_PAGES, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_SUPPORTED_PAGES, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
                 {
                     uint8_t pageNumber = logBuffer[2];
                     uint16_t revision = M_BytesTo2ByteValue(logBuffer[1], logBuffer[0]);
@@ -518,12 +1228,12 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                     }
                 }
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                if (copyOfIDData && SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                if (copyOfIDData && SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
                 {
                     device->drive_info.softSATFlags.identifyDeviceDataLogSupported = true;
                 }
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                if (supportedCapabilities && SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                if (supportedCapabilities && SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
                 {
                     uint64_t qword0 = M_BytesTo8ByteValue(logBuffer[7], logBuffer[6], logBuffer[5], logBuffer[4], logBuffer[3], logBuffer[2], logBuffer[1], logBuffer[0]);
                     if (qword0 & BIT63 && M_Byte2(qword0) == ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES && M_Word0(qword0) >= 0x0001)
@@ -536,7 +1246,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                     }
                 }
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                if (zonedDeviceInfo && SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                if (zonedDeviceInfo && SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
                 {
                     uint64_t qword0 = M_BytesTo8ByteValue(logBuffer[7], logBuffer[6], logBuffer[5], logBuffer[4], logBuffer[3], logBuffer[2], logBuffer[1], logBuffer[0]);
                     if (qword0 & BIT63 && M_Byte2(qword0) == ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION && M_Word0(qword0) >= 0x0001)//validating we got the right page
@@ -553,7 +1263,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             if (readDeviceStatisticsLog)
             {
                 memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_LIST, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_LIST, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
                 {
                     uint16_t iter = 9;
                     uint8_t numberOfEntries = logBuffer[8];
@@ -590,7 +1300,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                     {
                         //need to read this page and check if the data and time timestamp statistic is supported
                         memset(logBuffer, 0, LEGACY_DRIVE_SEC_SIZE);
-                        if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_GENERAL, logBuffer, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+                        if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_GENERAL, logBuffer, LEGACY_DRIVE_SEC_SIZE, 0))
                         {
                             uint64_t qword0 = M_BytesTo8ByteValue(logBuffer[7], logBuffer[6], logBuffer[5], logBuffer[4], logBuffer[3], logBuffer[2], logBuffer[1], logBuffer[0]);
                             if (M_Byte2(qword0) == ATA_DEVICE_STATS_LOG_GENERAL && M_Word0(qword0) >= 0x0001)//validating we got the right page

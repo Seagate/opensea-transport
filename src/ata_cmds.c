@@ -1730,7 +1730,7 @@ int ata_SCT_Data_Table(tDevice *device, bool useGPL, bool useDMA, uint16_t funct
     dataBuf[4] = M_Byte0(tableID);
     dataBuf[5] = M_Byte1(tableID);
 
-    ret = ata_SCT(device, useGPL, useDMA, XFER_DATA_OUT, ATA_SCT_COMMAND_STATUS, dataBuf, LEGACY_DRIVE_SEC_SIZE, false);
+    ret = ata_SCT_Command(device, useGPL, useDMA, dataBuf, LEGACY_DRIVE_SEC_SIZE, false);
 
     if (ret == SUCCESS)
     {
@@ -2249,7 +2249,7 @@ int ata_Read_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t 
 
     //now set the multiple count setting for the SAT builder so that this command can actually work...and we need to set this as a power of 2, whereas the device info is a number of logical sectors
     uint16_t multipleLogicalSectors = device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock;
-    while (ataCommandOptions.multipleCount <= 7 && multipleLogicalSectors > 0)
+    while (ataCommandOptions.multipleCount <= 7 && multipleLogicalSectors > 1)//multipleLogicalSectors should be greater than 1 so that we get the proper 2^X power value for the SAT command.
     {
         multipleLogicalSectors = multipleLogicalSectors >> 1;//divide by 2
         ataCommandOptions.multipleCount++;
@@ -3136,18 +3136,27 @@ int ata_Write_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t
         ataCommandOptions.tfr.LbaMid48 = M_Byte4(LBA);
         ataCommandOptions.tfr.LbaHi48 = M_Byte5(LBA);
         ataCommandOptions.tfr.SectorCount48 = M_Byte1(dataSize / device->drive_info.deviceBlockSize);
+        if ((dataSize / device->drive_info.deviceBlockSize) > 0xFFFF)
+        {
+            ataCommandOptions.tfr.SectorCount = 0;
+            ataCommandOptions.tfr.SectorCount48 = 0;
+        }
     }
     else
     {
         ataCommandOptions.tfr.DeviceHead |= M_Nibble6(LBA);//set the high 4 bits for the LBA (24:28)
         ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
         ataCommandOptions.tfr.CommandStatus = ATA_WRITE_MULTIPLE;
+        if ((dataSize / device->drive_info.deviceBlockSize) > 0xFF)
+        {
+            ataCommandOptions.tfr.SectorCount = 0;
+        }
     }
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
 
     //now set the multiple count setting for the SAT builder so that this command can actually work...and we need to set this as a power of 2, whereas the device info is a number of logical sectors
     uint16_t multipleLogicalSectors = device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock;
-    while (ataCommandOptions.multipleCount <= 7 && multipleLogicalSectors > 0)
+    while (ataCommandOptions.multipleCount <= 7 && multipleLogicalSectors > 1)//multipleLogicalSectors should be greater than 1 so that we get the proper 2^X power value for the SAT command.
     {
         multipleLogicalSectors = multipleLogicalSectors >> 1;//divide by 2
         ataCommandOptions.multipleCount++;
