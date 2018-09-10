@@ -5974,9 +5974,8 @@ void copy_Serial_Number( uint8_t *pbuf, char *serialNumber )
 
 void copy_Read_Capacity_Info(uint32_t *logicalBlockSize, uint32_t *physicalBlockSize, uint64_t *maxLBA, uint16_t *sectorAlignment, uint8_t *ptrBuf, bool readCap16)
 {
-    if (readCap16 == true)
+    if (readCap16)
     {
-        uint8_t logicalPerPhysical = 1;
         uint8_t sectorSizeExponent = 0;
         //get the max LBA
         memcpy(maxLBA, &ptrBuf[0], 8);
@@ -5986,20 +5985,7 @@ void copy_Read_Capacity_Info(uint32_t *logicalBlockSize, uint32_t *physicalBlock
         byte_Swap_32(logicalBlockSize);
         //get the physical sector size
         sectorSizeExponent = ptrBuf[13] & 0x0F;
-        if (sectorSizeExponent != 0)
-        {
-            uint8_t shiftCounter = 0;
-            while (shiftCounter < sectorSizeExponent)
-            {
-                logicalPerPhysical = logicalPerPhysical << 1; //multiply by 2
-                shiftCounter++;
-            }
-            *physicalBlockSize = *logicalBlockSize * logicalPerPhysical;
-        }
-        else
-        {
-            *physicalBlockSize = *logicalBlockSize;
-        }
+        *physicalBlockSize = *logicalBlockSize * power_Of_Two(sectorSizeExponent);
         //set the sector alignment info
         *sectorAlignment = M_GETBITRANGE(M_BytesTo2ByteValue(ptrBuf[14], ptrBuf[15]), 13, 0);
     }
