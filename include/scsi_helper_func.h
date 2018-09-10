@@ -694,12 +694,13 @@ extern "C"
     //!   \param pageCode - 
     //!   \param allocationLength - length of the data buffer being sent to the device and length being requested from the device
     //!   \param ptrData - pointer to the data buffer to fill upon command completion
+    //!   \param timeoutSeconds - number of seconds to wait for this command (at most) to complete. If not sure, 0 will set the default of 15 seconds
     //!   
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Receive_Diagnostic_Results(tDevice *device, bool pcv, uint8_t pageCode, uint16_t allocationLength, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API int scsi_Receive_Diagnostic_Results(tDevice *device, bool pcv, uint8_t pageCode, uint16_t allocationLength, uint8_t *ptrData, uint32_t timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
