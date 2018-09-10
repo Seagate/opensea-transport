@@ -956,6 +956,8 @@ extern "C"
        ATA_MINOR_VERSION_NOT_REPORTED_2         = 0xFFFF
    }eATAMinorVersionNumber;
 
+    #define ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS UINT8_C(128)
+
     #if defined(__cplusplus)
 } //extern "C"
     #endif

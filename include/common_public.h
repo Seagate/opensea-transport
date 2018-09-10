@@ -755,6 +755,7 @@ extern "C"
         eATASynchronousDMAMode dmaMode;
         bool taggedCommandQueuingSupported;
         bool nativeCommandQueuingSupported;
+        bool readWriteMultipleSupported;
         uint8_t logicalSectorsPerDRQDataBlock;
         bool isParallelTransport;
         bool isDevice1;//Don't rely on this. Only here for some OS's/passthroughs. Most shouldn't need this. SAT or the OS's passthrough will ignore this bit in the commands anyways.
@@ -1104,6 +1105,9 @@ extern "C"
         SEAGATE_PRARIETEK = BIT15, //PrarieTek. Vendor ID PRAIRIE (SCSI).
         SEAGATE_PLUS_DEVELOPMENT = BIT16, //Plus Development. Unknown detection
         SEAGATE_CODATA = BIT17, //CoData. Unknown detection
+		//Recently Added
+		SEAGATE_VENDOR_F = BIT18,
+		SEAGATE_VENDOR_G = BIT19,
     }eSeagateFamily;
 
     //The scan flags should each be a bit in a 32bit unsigned integer.

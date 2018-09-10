@@ -973,7 +973,7 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
         }
     }
     safe_Free(satCDB);
-    if (ret == UNKNOWN && (device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= ataCommandOptions->timeout)
+    if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= ataCommandOptions->timeout)
     {
         ret = COMMAND_TIMEOUT;
     }
@@ -3258,6 +3258,60 @@ int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
             set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
             return BAD_PARAMETER;
+        }
+    }
+    if (thirtyTwoByteCommand)
+    {
+        //make sure reserved bits (which are multiple count in 16&12 byte) aren't set. That command was made obsolete so don't need it here...let's follow the spec.
+        uint8_t reservedBits = M_GETBITRANGE(scsiIoCtx->cdb[10], 7, 5);
+        if (reservedBits > 0)
+        {
+            //invalid field in cdb
+            uint8_t reservedByteVal = scsiIoCtx->cdb[10] & 0xE0;//don't care about lower bits...those are checked elsewhere
+            uint8_t counter = 0;
+            while (reservedByteVal > 0 && counter < 8)
+            {
+                reservedByteVal >>= 1;
+                ++counter;
+            }
+            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            return BAD_PARAMETER;
+        }
+    }
+    else
+    {
+        uint8_t multipleCount = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
+        if (multipleCount > 0)
+        {
+            //This can only be non-zero if it's a read or write multiple command operation code!
+            uint8_t commandOpCodeToCheck = 0;
+            if (scsiIoCtx->cdb[OPERATION_CODE] == ATA_PASS_THROUGH_12)
+            {
+                commandOpCodeToCheck = scsiIoCtx->cdb[9];
+            }
+            else //16byte
+            {
+                commandOpCodeToCheck = scsiIoCtx->cdb[14];
+            }
+            switch (commandOpCodeToCheck)
+            {
+            case ATA_READ_MULTIPLE:
+            case ATA_READ_READ_MULTIPLE_EXT:
+            case ATA_WRITE_MULTIPLE:
+            case ATA_WRITE_MULTIPLE_EXT:
+            case ATA_WRITE_MULTIPLE_FUA_EXT:
+                break;
+            default:
+                //return an error saying the multple count field is wrong
+                fieldPointer = 1;
+                bitPointer = 7;
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                return BAD_PARAMETER;
+                break;
+            }
         }
     }
     scsiIoCtx->pAtaCmdOpts = &ataCommand;
