@@ -6889,6 +6889,9 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
     case STANDARD_CODE_ZBC2:
         sprintf(versionString, "ZBC-2");
         break;
+    case STANDARD_CODE_SES4:
+        sprintf(versionString, "SES-4");
+        break;
             //65 - 84 Physical Mapping protocol
     case STANDARD_CODE_SSA_TL2:
         sprintf(versionString, "SSA-TL2");
