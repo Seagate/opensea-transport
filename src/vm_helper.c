@@ -659,6 +659,8 @@ int get_Device(const char *filename, tDevice *device)
             //set the OS Type
             device->os_info.osType = OS_ESX;
 
+            memcpy(device->os_info.name, deviceHandle, strlen(deviceHandle) + 1);
+
             //set scsi interface and scsi drive until we know otherwise
             device->drive_info.drive_type = SCSI_DRIVE;
             device->drive_info.interface_type = SCSI_INTERFACE;

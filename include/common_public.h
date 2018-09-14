@@ -894,7 +894,7 @@ extern "C"
     // \struct typedef struct _OSDriveInfo
     typedef struct _OSDriveInfo
     {
-        char                name[30];//handle name (string)
+        char                name[256];//handle name (string)
         char                friendlyName[20];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
         eOSType             osType;//useful for lower layers to do OS specific things
         #if defined (__linux__)
