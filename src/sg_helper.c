@@ -1024,6 +1024,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     return ret;
 }
 
+#if !defined(DISABLE_NVME_PASSTHROUGH)
 static int nvme_filter( const struct dirent *entry)
 {
     int nvmeHandle = strncmp("nvme",entry->d_name,4);
@@ -1048,6 +1049,7 @@ static int nvme_filter( const struct dirent *entry)
         return 0;
     }
 }
+#endif
 
 //-----------------------------------------------------------------------------
 //
@@ -1071,7 +1073,9 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     int  num_devs = 0, num_nvme_devs = 0;
 
     struct dirent **namelist;
+    #if !defined(DISABLE_NVME_PASSTHROUGH)
     struct dirent **nvmenamelist;
+    #endif
     num_devs = scandir("/dev", &namelist, sg_filter, alphasort); 
     if(num_devs == 0)
     {
@@ -1167,7 +1171,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     #endif
     
     char **devs = (char **)calloc(MAX_DEVICES_TO_SCAN, sizeof(char *));
-    int i = 0, j = 0;
+    int i = 0;
+    #if !defined(DISABLE_NVME_PASSTHROUGH)
+    int j = 0;
+    #endif
     //add sg/sd devices to the list
     for (; i < (num_sg_devs + num_sd_devs); i++)
     {
