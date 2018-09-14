@@ -895,7 +895,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 uint8_t sectorSizeExponent = 0;
                 //get the number of logical blocks per physical blocks
                 sectorSizeExponent = ident_word[106] & 0x000F;
-                uint16_t *fillPhysicalSectorSize = *fillLogicalSectorSize * power_Of_Two(sectorSizeExponent);
+                *fillPhysicalSectorSize = *fillLogicalSectorSize * power_Of_Two(sectorSizeExponent);
             }
         }
         else
