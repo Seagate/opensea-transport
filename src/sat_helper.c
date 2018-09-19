@@ -986,15 +986,21 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
     }
     if (senseRet == NOT_SUPPORTED && ataCommandOptions->commadProtocol == ATA_PROTOCOL_UDMA)
     {
-        //if the sense data says "NOT_SUPPORTED", it's highly likely that the SATL didn't like something in the command.
-        //Local testing shows that sometimes a SATL likes the mode set to DMA instead of UDMA, so retry the command with
-        //the protocol set to DMA.
-        ataCommandOptions->commadProtocol = ATA_PROTOCOL_DMA;
-        ret = send_SAT_Passthrough_Command(device, ataCommandOptions);
-        if (ret == SUCCESS)
+        uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+        get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);        
+        //Checking for illegal request, invalid field in CDB since this is what we've seen reported when UDMA commands are not supported.
+        if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
         {
-            //if changing back to DMA worked, then we're changing some flags in the ataOptions struct to make sure we have success with future commands.
-            device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
+            //if the sense data says "NOT_SUPPORTED", it's highly likely that the SATL didn't like something in the command.
+            //Local testing shows that sometimes a SATL likes the mode set to DMA instead of UDMA, so retry the command with
+            //the protocol set to DMA.
+            ataCommandOptions->commadProtocol = ATA_PROTOCOL_DMA;
+            ret = send_SAT_Passthrough_Command(device, ataCommandOptions);
+            if (ret == SUCCESS)
+            {
+                //if changing back to DMA worked, then we're changing some flags in the ataOptions struct to make sure we have success with future commands.
+                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
+            }
         }
     }
     return ret;
