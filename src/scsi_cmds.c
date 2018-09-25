@@ -962,7 +962,7 @@ int scsi_Read_Buffer_16(tDevice *device, uint8_t mode, uint8_t modeSpecific, uin
     return ret;
 }
 
-int scsi_Receive_Diagnostic_Results(tDevice *device, bool pcv, uint8_t pageCode, uint16_t allocationLength, uint8_t *ptrData)
+int scsi_Receive_Diagnostic_Results(tDevice *device, bool pcv, uint8_t pageCode, uint16_t allocationLength, uint8_t *ptrData, uint32_t timeoutSeconds)
 {
     int       ret = FAILURE;
     uint8_t   cdb[CDB_LEN_6] = { 0 };
@@ -970,6 +970,10 @@ int scsi_Receive_Diagnostic_Results(tDevice *device, bool pcv, uint8_t pageCode,
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
         printf("Sending SCSI Receive Diagnostic Results, page code = 0x%02" PRIX8 "\n",pageCode);
+    }
+    if (timeoutSeconds == 0)
+    {
+        timeoutSeconds = 15;
     }
 
     // Set up the CDB.
@@ -986,11 +990,11 @@ int scsi_Receive_Diagnostic_Results(tDevice *device, bool pcv, uint8_t pageCode,
     //send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeoutSeconds);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeoutSeconds);
     }
     print_Return_Enum("Receive Diagnostic Results", ret);
     return ret;

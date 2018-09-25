@@ -66,7 +66,7 @@ printf("fill NVMe info ret = %d\n", ret);
         if (ret == SUCCESS) 
         {
 
-            device->drive_info.deviceBlockSize = 2 << (nsData->lbaf[nsData->flbas].lbaDS - 1);//removed math.h pow() function - TJE
+            device->drive_info.deviceBlockSize = power_Of_Two(nsData->lbaf[nsData->flbas].lbaDS); //removed math.h pow() function - TJE
             device->drive_info.devicePhyBlockSize = device->drive_info.deviceBlockSize; //True for NVMe?
 
             device->drive_info.deviceMaxLba = nsData->nsze; //* device->drive_info.deviceBlockSize;
