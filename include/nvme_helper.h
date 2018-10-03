@@ -14,8 +14,8 @@
 //        This file acts as a OS agnostic glue layer for different OSes. 
 
 #pragma once
-typedef unsigned int* __uintptr_t;
 #if !defined(DISABLE_NVME_PASSTHROUGH)
+typedef unsigned int* __uintptr_t;
 #include "common_public.h"
 #if defined (__cplusplus)
 extern "C"
@@ -306,6 +306,8 @@ extern "C"
        uint8_t                      vendorSpecificReserved[456];        // 56-511
     } nvmeSuperCapDramSmart;
 
+    #define BLOCK_SIZE      512
+
     #if !defined (__GNUC__) 
     #pragma pack(push, 1)
     #endif
@@ -541,6 +543,8 @@ extern "C"
     	NVME_LOG_FW_SLOT_ID	    = 0x03,
         NVME_LOG_CMD_SPT_EFET_ID    = 0x05,
         NVME_LOG_DEV_SELF_TEST	    = 0x06,
+    	NVME_LOG_TELEMETRY_HOST = 0x07,
+    	NVME_LOG_TELEMETRY_CTRL = 0x08,
     	NVME_LOG_RESERVATION_ID	= 0x80,
     	NVME_FWACT_REPL_		= (0 << 3),
     	NVME_FWACT_REPL_ACTV_	= (1 << 3),
@@ -563,6 +567,10 @@ extern "C"
     	uint32_t 	metadataLen;
     	uint32_t 	dataLen;
         uint8_t     lid; //Log Page identifier, part of Command Dword 10(CDW10)
+        //Additional attributes to support Log Page 7 and 8
+        uint32_t     lsp;
+        uint32_t     rae;
+        uint64_t    offset;
     } nvmeGetLogPageCmdOpts;
 
     /* This Command options structure is common for both Get/Set
