@@ -72,7 +72,7 @@ endif
 ifeq ($(UNAME),SunOS)
     LIB_SRC_FILES += $(SRC_DIR)uscsi_helper.c
 endif
-ifeq (($UNAME),FreeBSD)
+ifeq ($(UNAME),FreeBSD)
     LIB_SRC_FILES += $(SRC_DIR)cam_helper.c
 endif
 
