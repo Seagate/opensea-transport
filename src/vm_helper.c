@@ -90,7 +90,17 @@ static int drive_filter( const struct dirent *entry )
 
     if(driveHandle != 0) 
     {
-        return !driveHandle;
+        /**
+         * Its not a SATA or NVMe. 
+         * Lets check if it is SAS (starts with "naa.") 
+         */
+
+        driveHandle = strncmp("naa.", entry->d_name, 4);
+
+        if(driveHandle != 0) 
+        {
+            return !driveHandle;
+        }
     }
 
     driveHandle = strncmp("t10.NVMe", entry->d_name, 8);
