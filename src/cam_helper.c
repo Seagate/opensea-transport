@@ -360,11 +360,11 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                 memset(&commandTimer, 0, sizeof(seatimer_t));
                 #if defined (_DEBUG)
                 printf("ATAIO: cmd=0x%02"PRIX8" feat=0x%02"PRIX8" lbalow=0x%02"PRIX8" lbamid=0x%02"PRIX8" lbahi=0x%02"PRIX8" sc=0x%02"PRIX8"\n",\
-                           ataio->cmd.command, ataio->cmd.features, ataio->cmd.lbaLow, ataio->cmd.lbaMid,\
-                           ataio->cmd.lbaHigh, ataio->cmd.sector_count);
+                           ataio->cmd.command, ataio->cmd.features, ataio->cmd.lba_low, ataio->cmd.lba_mid,\
+                           ataio->cmd.lba_high, ataio->cmd.sector_count);
                 printf("\tfeatext=0x%02"PRIX8" lbalowExp=0x%02"PRIX8" lbamidExp=0x%02"PRIX8" lbahiExp=0x%02"PRIX8" scExp=0x%02"PRIX8"\n",\
-                           ataio->cmd.features_exp, ataio->cmd.lbaLow_exp, ataio->cmd.lbaMid_exp,\
-                           ataio->cmd.lbaHigh_exp, ataio->cmd.sector_count_exp);
+                           ataio->cmd.features_exp, ataio->cmd.lba_low_exp, ataio->cmd.lba_mid_exp,\
+                           ataio->cmd.lba_high_exp, ataio->cmd.sector_count_exp);
 
                 printf("\tData Ptr %p, xfer len %d\n", ataio->data_ptr, ataio->dxfer_len);
                 #endif
