@@ -48,7 +48,6 @@ void decipher_maskedStatus( unsigned char maskedStatus )
         printf("QUEUE FULL\n");
 }
 
-#if 0
 // Local helper functions for debugging
 void print_io_hdr( sg_io_hdr_t *pIo )
 {
@@ -83,6 +82,44 @@ void print_io_hdr( sg_io_hdr_t *pIo )
 static int sg_filter( const struct dirent *entry )
 {
     return !strncmp("sg", entry->d_name, 2);
+}
+
+static int drive_filter( const struct dirent *entry )
+{
+    int driveHandle = strncmp("t10", entry->d_name, 3);
+
+    if(driveHandle != 0) 
+    {
+        /**
+         * Its not a SATA or NVMe. 
+         * Lets check if it is SAS (starts with "naa.") 
+         */
+
+        driveHandle = strncmp("naa.", entry->d_name, 4);
+
+        if(driveHandle != 0) 
+        {
+            return !driveHandle;
+        }
+    }
+
+    driveHandle = strncmp("t10.NVMe", entry->d_name, 8);
+
+    if(driveHandle == 0) 
+    {
+        return driveHandle;
+    }
+
+    char* partition = strpbrk(entry->d_name,":");
+    if(partition != NULL)
+    {
+        return !driveHandle;
+    }
+    else
+    {
+        return driveHandle;
+    }
+
 }
 
 //get sd devices, but ignore any partition number information since that isn't something we can actually send commands to
@@ -160,6 +197,7 @@ bool is_Block_SCSI_Generic_Handle(char *handle)
     }
     return isBlockGenericDevice;
 }
+
 
 //while similar to the function below, this is used only by get_Device to set up some fields in the device structure for the above layers
 static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
@@ -534,7 +572,7 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
     }
     return UNKNOWN;
 }
-#endif
+//#endif
 
 #define LIN_MAX_HANDLE_LENGTH 16
 int get_Device(const char *filename, tDevice *device)
@@ -543,6 +581,16 @@ int get_Device(const char *filename, tDevice *device)
     int ret = SUCCESS, k = 0;
     int rc;
     struct nvme_adapter_list nvmeAdptList;
+    bool isScsi = false;
+    char *nvmeDevName;
+
+    /**
+     * In VMWare NVMe device the drivename (for NDDK) 
+     * always starts with "vmhba" (e.g. vmhba1) 
+     */
+
+    nvmeDevName = strstr(filename, "vmhba");
+    isScsi = (nvmeDevName == NULL) ? true : false;
 
     //printf("Getting device for %s\n", filename);
 
@@ -550,102 +598,92 @@ int get_Device(const char *filename, tDevice *device)
      * List down both NVMe and HDD/SSD drives 
      * Get the device after matching the name 
      */
+    deviceHandle = strdup(filename);
 
-    rc = Nvme_GetAdapterList(&nvmeAdptList);
-
-    if (rc != SUCCESS) 
-    {
-        return FAILURE;
-    }
-
-    #if defined (_DEBUG)
-    printf("Attempting to open %s\n", deviceHandle);
-    #endif
-    // Note: We are opening a READ/Write flag
-    /**
-     * Opening up the dev handle for NVMe 
-     * Need to do the same for HDD and/or SSD 
-     */
-
-    device->os_info.fd = Nvme_Open(&nvmeAdptList, filename);
-
-    /**
-     * We should do a HDD/SSD open here
-     */
-
-    if (device->os_info.fd == NULL)
-    {
-        perror("open");
-        device->os_info.fd = errno;
-        printf("open failure\n");
-        printf("Error: ");
-        print_Errno_To_Screen(errno);
-        if (device->os_info.fd == EACCES) 
-        {
-            safe_Free(deviceHandle);
-            return PERMISSION_DENIED;
-        }
-        else
-        {
-            safe_Free(deviceHandle);
-            return FAILURE;
-        }
-    }
-
-    //Adding support for different device discovery options. 
-    if (device->dFlags == OPEN_HANDLE_ONLY)
-    {
-        safe_Free(deviceHandle);
-        return ret;
-    }
-    //\\TODO: Add support for other flags. 
-
-    if ((device->os_info.fd != NULL) && (ret == SUCCESS))
+    if(isScsi) 
     {
         #if defined (_DEBUG)
-        printf("Getting SG driver version\n");
+        printf("This is a SCSI drive\n");
+        printf("Attempting to open %s\n", deviceHandle);
         #endif
-
-        /**
-         * Setting up NVMe drive blindly for now
-         */
-
-        device->drive_info.interface_type = NVME_INTERFACE;
-        device->drive_info.drive_type = NVME_DRIVE;
-        device->drive_info.media_type = MEDIA_NVM;
-        memcmp(device->drive_info.T10_vendor_ident, "NVMe",4);
-        device->os_info.osType = OS_ESX;
-        memcpy(&(device->os_info.name), filename, strlen(filename) + 1);
-
-        #if 0
-        // Check we have a valid device by trying an ioctl
-        // From http://tldp.org/HOWTO/SCSI-Generic-HOWTO/pexample.html
-        if ((ioctl(device->os_info.fd, SG_GET_VERSION_NUM, &k) < 0) || (k < 30000))
+        // Note: We are opening a READ/Write flag
+        if ((device->os_info.fd = open(deviceHandle, O_RDWR | O_NONBLOCK)) < 0)
         {
-            printf("%s: SG_GET_VERSION_NUM on %s failed version=%d\n", __FUNCTION__, filename,k);
-            perror("SG_GET_VERSION_NUM");
-            close(device->os_info.fd);
+            perror("open");
+            device->os_info.fd = errno;
+            printf("open failure\n");
+            printf("Error: ");
+            print_Errno_To_Screen(errno);
+            if (device->os_info.fd == EACCES) 
+            {
+                safe_Free(deviceHandle);
+                return PERMISSION_DENIED;
+            }
+            else
+            {
+                safe_Free(deviceHandle);
+                return FAILURE;
+            }
         }
-        else
+    
+        //Adding support for different device discovery options. 
+        if (device->dFlags == OPEN_HANDLE_ONLY)
         {
+            //set scsi interface and scsi drive until we know otherwise
+            device->drive_info.drive_type = SCSI_DRIVE;
+            device->drive_info.interface_type = SCSI_INTERFACE;
+            device->drive_info.media_type = MEDIA_HDD;
+            set_Device_Fields_From_Handle(deviceHandle, device);
+            safe_Free(deviceHandle);
+            return ret;
+        }
+        //\\TODO: Add support for other flags. 
+    
+        if ((device->os_info.fd >= 0) && (ret == SUCCESS))
+        {
+            #if defined (_DEBUG)
+            printf("Getting SG driver version\n");
+            #endif
+
+            /**
+             * SG_GET_VERSION_NUM is currently not supported for VMWare 
+             * SG_IO. 
+             */
+            #if 0
+            // Check we have a valid device by trying an ioctl
+            // From http://tldp.org/HOWTO/SCSI-Generic-HOWTO/pexample.html
+            if ((ioctl(device->os_info.fd, SG_GET_VERSION_NUM, &k) < 0) || (k < 30000))
+            {
+                printf("%s: SG_GET_VERSION_NUM on %s failed version=%d\n", __FUNCTION__, filename,k);
+                perror("SG_GET_VERSION_NUM");
+                close(device->os_info.fd);
+            }
+
             //http://www.faqs.org/docs/Linux-HOWTO/SCSI-Generic-HOWTO.html#IDDRIVER
             device->os_info.sgDriverVersion.driverVersionValid = true;
             device->os_info.sgDriverVersion.majorVersion = (uint8_t)(k / 10000);
             device->os_info.sgDriverVersion.minorVersion = (uint8_t)((k - (device->os_info.sgDriverVersion.majorVersion * 10000)) / 100);
             device->os_info.sgDriverVersion.revision = (uint8_t)(k - (device->os_info.sgDriverVersion.majorVersion * 10000) - (device->os_info.sgDriverVersion.minorVersion * 100));
-            
+            #endif
+
             //set the OS Type
-            device->os_info.osType = OS_LINUX;
+            device->os_info.osType = OS_ESX;
+
+            memcpy(device->os_info.name, deviceHandle, strlen(deviceHandle) + 1);
 
             //set scsi interface and scsi drive until we know otherwise
             device->drive_info.drive_type = SCSI_DRIVE;
             device->drive_info.interface_type = SCSI_INTERFACE;
-			device->drive_info.media_type = MEDIA_HDD;
+            device->drive_info.media_type = MEDIA_HDD;
             //now have the device information fields set
             #if defined (_DEBUG)
             printf("Setting interface, drive type, secondary handles\n");
             #endif
-            set_Device_Fields_From_Handle(deviceHandle, device);
+
+            //set_Device_Fields_From_Handle(deviceHandle, device);
+            device->drive_info.interface_type = SCSI_INTERFACE;
+            device->drive_info.drive_type = UNKNOWN_DRIVE;
+            device->drive_info.media_type = MEDIA_UNKNOWN;
 
             #if defined (_DEBUG)
             printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n",
@@ -658,26 +696,7 @@ int get_Device(const char *filename, tDevice *device)
 
             printf("SG driver version = %u.%u.%u\n", device->os_info.sgDriverVersion.majorVersion, device->os_info.sgDriverVersion.minorVersion, device->os_info.sgDriverVersion.revision);
             #endif
-        }
-        #endif
             
-        #if !defined(DISABLE_NVME_PASSTHROUGH)
-        if (device->drive_info.interface_type == NVME_INTERFACE) 
-        {
-            #if 0
-            ret = ioctl(device->os_info.fd, NVME_IOCTL_ID);
-            if (ret < 0)
-            {
-                 perror("nvme_ioctl_id");
-                 return ret;
-            }
-            device->drive_info.lunOrNSID = (uint32_t) ret;
-            #endif
-            ret = fill_In_NVMe_Device_Info(device);
-        }
-        else
-        #endif
-        {
             // Fill in all the device info.
             //this code to set up passthrough commands for USB and IEEE1394 has been removed for now to match Windows functionality. Need better intelligence than this.
             //Some of these old pass-through types issue vendor specific op codes that could be misinterpretted on some devices.
@@ -687,18 +706,170 @@ int get_Device(const char *filename, tDevice *device)
 //                  set_ATA_Passthrough_Type_By_PID_and_VID(device);
 //              }
 
-            #if 0
             ret = fill_Drive_Info_Data(device);
+
+            #if defined (_DEBUG)
+            printf("\nvm helper\n");
+            printf("Drive type: %d\n",device->drive_info.drive_type);
+            printf("Interface type: %d\n",device->drive_info.interface_type);
+            printf("Media type: %d\n",device->drive_info.media_type);
             #endif
         }
-        #if defined (_DEBUG)
-        printf("\nsg helper\n");
-        printf("Drive type: %d\n",device->drive_info.drive_type);
-        printf("Interface type: %d\n",device->drive_info.interface_type);
-        printf("Media type: %d\n",device->drive_info.media_type);
-        #endif
+        safe_Free(deviceHandle);
+
     }
-    safe_Free(deviceHandle);
+    else
+    {
+        rc = Nvme_GetAdapterList(&nvmeAdptList);
+    
+        if (rc != SUCCESS) 
+        {
+            return FAILURE;
+        }
+    
+        #if defined (_DEBUG)
+        printf("This is a NVMe drive\n");
+        printf("Attempting to open %s\n", deviceHandle);
+        #endif
+        // Note: We are opening a READ/Write flag
+        /**
+         * Opening up the dev handle for NVMe 
+         */
+    
+        device->os_info.nvmeFd = Nvme_Open(&nvmeAdptList, filename);
+    
+        /**
+         * We should do a HDD/SSD open here
+         */
+    
+        if (device->os_info.nvmeFd == NULL)
+        {
+            perror("open");
+            device->os_info.nvmeFd = errno;
+            printf("open failure\n");
+            printf("Error: ");
+            print_Errno_To_Screen(errno);
+            if (device->os_info.nvmeFd == EACCES) 
+            {
+                safe_Free(deviceHandle);
+                return PERMISSION_DENIED;
+            }
+            else
+            {
+                safe_Free(deviceHandle);
+                return FAILURE;
+            }
+        }
+    
+        //Adding support for different device discovery options. 
+        if (device->dFlags == OPEN_HANDLE_ONLY)
+        {
+            safe_Free(deviceHandle);
+            return ret;
+        }
+        //\\TODO: Add support for other flags. 
+    
+        if ((device->os_info.nvmeFd != NULL) && (ret == SUCCESS))
+        {
+            #if defined (_DEBUG)
+            printf("Getting SG driver version\n");
+            #endif
+    
+            /**
+             * Setting up NVMe drive blindly for now
+             */
+    
+            device->drive_info.interface_type = NVME_INTERFACE;
+            device->drive_info.drive_type = NVME_DRIVE;
+            device->drive_info.media_type = MEDIA_NVM;
+            memcmp(device->drive_info.T10_vendor_ident, "NVMe",4);
+            device->os_info.osType = OS_ESX;
+            memcpy(&(device->os_info.name), filename, strlen(filename) + 1);
+    
+            #if 0
+            // Check we have a valid device by trying an ioctl
+            // From http://tldp.org/HOWTO/SCSI-Generic-HOWTO/pexample.html
+            if ((ioctl(device->os_info.fd, SG_GET_VERSION_NUM, &k) < 0) || (k < 30000))
+            {
+                printf("%s: SG_GET_VERSION_NUM on %s failed version=%d\n", __FUNCTION__, filename,k);
+                perror("SG_GET_VERSION_NUM");
+                close(device->os_info.fd);
+            }
+            else
+            {
+                //http://www.faqs.org/docs/Linux-HOWTO/SCSI-Generic-HOWTO.html#IDDRIVER
+                device->os_info.sgDriverVersion.driverVersionValid = true;
+                device->os_info.sgDriverVersion.majorVersion = (uint8_t)(k / 10000);
+                device->os_info.sgDriverVersion.minorVersion = (uint8_t)((k - (device->os_info.sgDriverVersion.majorVersion * 10000)) / 100);
+                device->os_info.sgDriverVersion.revision = (uint8_t)(k - (device->os_info.sgDriverVersion.majorVersion * 10000) - (device->os_info.sgDriverVersion.minorVersion * 100));
+                
+                //set the OS Type
+                device->os_info.osType = OS_LINUX;
+    
+                //set scsi interface and scsi drive until we know otherwise
+                device->drive_info.drive_type = SCSI_DRIVE;
+                device->drive_info.interface_type = SCSI_INTERFACE;
+                device->drive_info.media_type = MEDIA_HDD;
+                //now have the device information fields set
+                #if defined (_DEBUG)
+                printf("Setting interface, drive type, secondary handles\n");
+                #endif
+                set_Device_Fields_From_Handle(deviceHandle, device);
+    
+                #if defined (_DEBUG)
+                printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n",
+                       device->os_info.name,
+                       device->os_info.friendlyName,
+                       device->os_info.secondName,
+                       device->os_info.secondFriendlyName
+                       );
+                printf("h:c:t:l = %u:%u:%u:%u\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel, device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
+    
+                printf("SG driver version = %u.%u.%u\n", device->os_info.sgDriverVersion.majorVersion, device->os_info.sgDriverVersion.minorVersion, device->os_info.sgDriverVersion.revision);
+                #endif
+            }
+            #endif
+                
+            #if !defined(DISABLE_NVME_PASSTHROUGH)
+            if (device->drive_info.interface_type == NVME_INTERFACE) 
+            {
+                #if 0
+                ret = ioctl(device->os_info.fd, NVME_IOCTL_ID);
+                if (ret < 0)
+                {
+                     perror("nvme_ioctl_id");
+                     return ret;
+                }
+                device->drive_info.lunOrNSID = (uint32_t) ret;
+                #endif
+                ret = fill_In_NVMe_Device_Info(device);
+            }
+            else
+            #endif
+            {
+                // Fill in all the device info.
+                //this code to set up passthrough commands for USB and IEEE1394 has been removed for now to match Windows functionality. Need better intelligence than this.
+                //Some of these old pass-through types issue vendor specific op codes that could be misinterpretted on some devices.
+    //              if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
+    //              {
+    //                  //TODO: Actually get the VID and PID set before calling this...currently it just issues an identify command to test which passthrough to use until it works. - TJE
+    //                  set_ATA_Passthrough_Type_By_PID_and_VID(device);
+    //              }
+    
+                #if 0
+                ret = fill_Drive_Info_Data(device);
+                #endif
+            }
+            #if defined (_DEBUG)
+            printf("\nvm helper\n");
+            printf("Drive type: %d\n",device->drive_info.drive_type);
+            printf("Interface type: %d\n",device->drive_info.interface_type);
+            printf("Media type: %d\n",device->drive_info.media_type);
+            #endif
+        }
+        safe_Free(deviceHandle);
+    }
+
     return ret;
 }
 //http://www.tldp.org/HOWTO/SCSI-Generic-HOWTO/scsi_reset.html
@@ -1027,6 +1198,21 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     int rc;
     struct nvme_adapter_list nvmeAdptList;
 
+    struct dirent **namelist;
+
+    num_devs = scandir("/dev/disks", &namelist, drive_filter, alphasort); 
+    /*
+    if(num_devs == 0)
+    {
+        //check for SD devices
+        num_devs = scandir("/dev", &namelist, sd_filter, alphasort); 
+    } 
+    */ 
+
+#ifdef _DEBUG
+    printf("get_Device_Count : num_devs %d\n", num_devs);
+#endif
+
     //add nvme devices to the list
     rc = Nvme_GetAdapterList(&nvmeAdptList);
 
@@ -1036,6 +1222,10 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     }
 
     num_nvme_devs = nvmeAdptList.count;
+
+#ifdef _DEBUG
+    printf("get_Device_Count : num_nvme_devs %d\n", num_nvme_devs);
+#endif
 
     *numberOfDevices = num_devs + num_nvme_devs;
 	
@@ -1071,7 +1261,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 	int returnValue = SUCCESS;
 	int numberOfDevices = 0;
     int driveNumber = 0, found = 0, failedGetDeviceCount = 0;
-	char name[80] = { 0 }; //Because get device needs char
+	char name[128] = { 0 }; //Because get device needs char
 	int fd;
 	tDevice * d = NULL;
     struct nvme_adapter_list nvmeAdptList;
@@ -1082,8 +1272,16 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     memset(&getDeviceTimer, 0, sizeof(seatimer_t));
     memset(&getDeviceListTimer, 0, sizeof(seatimer_t));
 #endif
-	
+    struct dirent **namelist;
+
 	int  num_sg_devs = 0, num_sd_devs = 0, num_nvme_devs = 0;
+
+    num_sg_devs = scandir("/dev/disks", &namelist, drive_filter, alphasort); 
+    if(num_sg_devs == 0)
+    {
+        //check for SD devices
+        num_sd_devs = scandir("/dev/disks", &namelist, drive_filter, alphasort); 
+    }
 
     rc = Nvme_GetAdapterList(&nvmeAdptList);
 
@@ -1098,10 +1296,13 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     //add sg/sd devices to the list
     for (; i < (num_sg_devs + num_sd_devs); i++)
     {
-        /**
-         * Put proper code for HDD and SSD
-         */
+        devs[i] = (char *)malloc((strlen("/dev/disks/") + strlen(namelist[i]->d_name) + 1) * sizeof(char));
+        strcpy(devs[i], "/dev/disks/");
+        strcat(devs[i], namelist[i]->d_name);
+        free(namelist[i]);
     }
+    safe_Free(namelist);
+
     //add nvme devices to the list
     for (j = 0; i < (num_sg_devs + num_sd_devs + num_nvme_devs) && i < MAX_DEVICES_PER_CONTROLLER;i++, j++)
     {
@@ -1197,7 +1398,7 @@ int close_Device(tDevice *dev)
 	int retValue = 0;
 	if (dev)
 	{
-		Nvme_Close(dev->os_info.fd);
+		Nvme_Close(dev->os_info.nvmeFd);
 		dev->os_info.last_error = errno;
 
         return SUCCESS;
@@ -1298,7 +1499,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 
 #endif
 
-        ret = Nvme_AdminPassthru(nvmeIoCtx->device->os_info.fd, &uio);
+        ret = Nvme_AdminPassthru(nvmeIoCtx->device->os_info.nvmeFd, &uio);
 
 #ifdef _DEBUG
 /*
@@ -1331,32 +1532,6 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 */
 #endif
 
-        #if 0
-        memset(&adminCmd, 0,sizeof(struct nvme_admin_cmd));
-        adminCmd.opcode = nvmeIoCtx->cmd.adminCmd.opcode;
-        adminCmd.flags = nvmeIoCtx->cmd.adminCmd.flags;
-        adminCmd.rsvd1 = nvmeIoCtx->cmd.adminCmd.rsvd1;
-        adminCmd.nsid = nvmeIoCtx->cmd.adminCmd.nsid;
-        adminCmd.cdw2 = nvmeIoCtx->cmd.adminCmd.cdw2;
-        adminCmd.cdw3 = nvmeIoCtx->cmd.adminCmd.cdw3;
-        adminCmd.metadata = nvmeIoCtx->cmd.adminCmd.metadata;
-        adminCmd.addr = nvmeIoCtx->cmd.adminCmd.addr;
-        adminCmd.metadata_len = nvmeIoCtx->cmd.adminCmd.metadataLen;
-        adminCmd.data_len = nvmeIoCtx->cmd.adminCmd.dataLen;
-        adminCmd.cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
-        adminCmd.cdw11 = nvmeIoCtx->cmd.adminCmd.cdw11;
-        adminCmd.cdw12 = nvmeIoCtx->cmd.adminCmd.cdw12;
-        adminCmd.cdw13 = nvmeIoCtx->cmd.adminCmd.cdw13;
-        adminCmd.cdw14 = nvmeIoCtx->cmd.adminCmd.cdw14;
-        adminCmd.cdw15 = nvmeIoCtx->cmd.adminCmd.cdw15;
-        adminCmd.timeout_ms = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
-
-		
-        //printf("sizeof(adminCmd)=%d, fd = %d, opcode=%x, nsid=%u, cdw10=%u, timeout=%d\n", sizeof(adminCmd),nvmeIoCtx->device->os_info.fd, adminCmd.opcode, adminCmd.nsid, adminCmd.cdw10, adminCmd.timeout_ms);
-		
-
-        ret = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_ADMIN_CMD, &adminCmd);
-        #endif
 
         nvmeIoCtx->device->os_info.last_error = ret;
         //Get error? 

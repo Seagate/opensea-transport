@@ -377,7 +377,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo)
 #endif
                     if (scan_Drive_Type_Filter(&deviceList[devIter], flags) && scan_Interface_Type_Filter(&deviceList[devIter], flags))
                     {
-                        char displayHandle[26] = { 0 };
+                        char displayHandle[256] = { 0 };
 #if defined(_WIN32)
                         strcpy(displayHandle, deviceList[devIter].os_info.friendlyName);
 #else
