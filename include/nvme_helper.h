@@ -14,8 +14,8 @@
 //        This file acts as a OS agnostic glue layer for different OSes. 
 
 #pragma once
-typedef unsigned int* __uintptr_t;
 #if !defined(DISABLE_NVME_PASSTHROUGH)
+typedef unsigned int* __uintptr_t;
 #include "common_public.h"
 #if defined (__cplusplus)
 extern "C"

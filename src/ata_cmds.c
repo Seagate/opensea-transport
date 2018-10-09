@@ -1472,6 +1472,63 @@ int ata_SCT_Data_Transfer(tDevice *device, bool useGPL, bool useDMA, eDataTransf
     return ret;
 }
 
+int ata_SCT_Check_Status(tDevice *device, uint32_t retries, uint16_t actionCode, uint16_t functionCode)
+{
+	int ret = UNKNOWN;
+
+	uint32_t numRetries = 0;
+	const uint32_t runningInBackgroundTimeout = 15 * 60; //Nidhi - should it be changed to smaller interval
+	uint32_t runningInBackgroundTimer = 0;
+
+	while (true)
+	{
+		numRetries++;
+
+		uint8_t commandBuffer[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+
+		ret = ata_SCT_Status(device, false, false, commandBuffer, LEGACY_DRIVE_SEC_SIZE);
+
+		if (ret != SUCCESS)
+		{
+			return ret;
+		}
+
+		if ((((functionCode & 0xFF00) >> 8) != commandBuffer[19])
+			|| ((functionCode & 0x00FF) != commandBuffer[18])
+			|| (((actionCode & 0xFF00) >> 8) != commandBuffer[17])
+			|| ((actionCode & 0x00FF) != commandBuffer[16]))
+		{
+			return COMMAND_INTERRUPTED;
+		}
+		else if ((commandBuffer[10] == 0)
+			&& (commandBuffer[0] == 3) && (commandBuffer[1] == 0)
+			&& (commandBuffer[2] == 0) && (commandBuffer[3] == 0)
+			&& (((functionCode & 0xFF00) >> 8) == commandBuffer[19]) && ((functionCode & 0x00FF) == commandBuffer[18])
+			&& (((actionCode & 0xFF00) >> 8) == commandBuffer[17]) && ((actionCode & 0x00FF) == commandBuffer[16]))
+		{
+			ret = ((0x0000FFFF & commandBuffer[15]) << 8) + commandBuffer[14];
+			return ret;
+		}
+		else if (0x0000FFFF == ((0x0000FFFF & commandBuffer[15]) << 8) + commandBuffer[14])
+		{
+			runningInBackgroundTimer++;
+
+			if (runningInBackgroundTimer > runningInBackgroundTimeout)
+			{
+				return COMMAND_TIMEOUT;
+			}
+		}
+		else if (numRetries > retries)
+		{
+			return COMMAND_TIMEOUT;
+		}
+
+		delay_Milliseconds(1000);
+	}
+
+	return ret;
+}
+
 int ata_SCT_Read_Write_Long(tDevice *device, bool useGPL, bool useDMA, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested)
 {
     int ret = UNKNOWN;
