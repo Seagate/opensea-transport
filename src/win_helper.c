@@ -2625,13 +2625,13 @@ NOTE: Some SAS HBAs will issue a readlogext command before each download command
 
 bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)//TODO: add nvme support
 {
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
     printf("Checking if FWDL Command is compatible with Win 10 API\n");
 #endif
 	if (!scsiIoCtx->device->os_info.fwdlIOsupport.fwdlIOSupported)
 	{
 		//OS doesn't support this IO on this device, so just say no!
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
         printf("\tFalse (not Supported)\n");
 #endif
 		return false;
@@ -2639,35 +2639,35 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
     //If we are trying to send an ATA command, then only use the API if it's IDE. 
     //SCSI and RAID interfaces depend on the SATL to translate it correctly, but that is not checked by windows and is not possible since nothing responds to the report supported operation codes command
     //A future TODO will be to have either a lookup table or additional check somewhere to send the report supported operation codes command, but this is good enough for now, since it's unlikely a SATL will implement that...
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
     printf("scsiIoCtx = %p\t->pAtaCmdOpts = %p\tinterface type: %d\n", scsiIoCtx, scsiIoCtx->pAtaCmdOpts, scsiIoCtx->device->drive_info.interface_type);
 #endif
 	if (scsiIoCtx && scsiIoCtx->pAtaCmdOpts && scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
 	{
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
         printf("Checking ATA command info for FWDL support\n");
 #endif
 		//We're sending an ATA passthrough command, and the OS says the io is supported, so it SHOULD work. - TJE
 		if (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA)
 		{
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
             printf("Is Download Microcode command (%" PRIX8 "h)\n", scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus);
 #endif
             if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0E)
             {
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
                 printf("Is deferred download mode Eh\n");
 #endif
                 //We know it's a download command, now we need to make sure it's a multiple of the Windows alignment requirement and that it isn't larger than the maximum allowed
                 uint16_t transferSizeSectors = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaLow, scsiIoCtx->pAtaCmdOpts->tfr.SectorCount);
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
                 printf("Transfersize sectors: %" PRIu16 "\n", transferSizeSectors);
                 printf("Transfersize bytes: %" PRIu32 "\tMaxXferSize: %" PRIu32 "\n", (uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE), scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize);
                 printf("Transfersize sectors %% alignment: %" PRIu32 "\n", ((uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment));
 #endif
                 if ((uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && ((uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
                 {
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
                     printf("\tTrue (0x0E)\n");
 #endif
                     return true;
@@ -2675,7 +2675,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
             }
             else if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0F)
             {
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
                 printf("\tTrue (0x0F)\n");
 #endif
                 return true;
@@ -2684,7 +2684,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
 	}
 	else if(scsiIoCtx)//sending a SCSI command
 	{
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
         printf("Checking SCSI command info for FWDL Support\n");
 #endif
         //TODO? Should we check that this is a SCSI Drive? Right now we'll just attempt the download and let the drive/SATL handle translation
@@ -2698,14 +2698,14 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
 			case SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER:
 				if (transferLength < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (transferLength % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
 				{
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
                     printf("\tTrue (SCSI Mode 0x0E)\n");
 #endif
 					return true;
 				}
 				break;
 			case SCSI_WB_ACTIVATE_DEFERRED_MICROCODE:
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
                 printf("\tTrue (SCSI Mode 0x0F)\n");
 #endif
 				return true;
@@ -2720,7 +2720,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
         uint32_t transferLengthBytes = 0;
         bool supportedCMD = false;
         bool isActivate = false;
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
         printf("Flexible Win10 FWDL API allowed. Checking for supported commands\n");
 #endif
         if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
@@ -2753,12 +2753,12 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
         }
         if (supportedCMD)
         {
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
             printf("\tDetected supported command\n");
 #endif
             if (isActivate)
             {
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
                 printf("\tTrue - is an activate command\n");
 #endif
                 return true;
@@ -2767,7 +2767,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
             {
                 if (transferLengthBytes < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (transferLengthBytes % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
                 {
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
                     printf("\tTrue - payload fits FWDL requirements from OS/Driver\n");
 #endif
                     return true;
@@ -2775,7 +2775,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
             }
         }
     }
-#if defined (_DEBUG)
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
     printf("\tFalse\n");
 #endif
 	return false;
