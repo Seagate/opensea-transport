@@ -598,8 +598,7 @@ int nvme_Sanitize(tDevice *device, bool noDeallocateAfterSanitize, bool invertBe
 
     //set the overwrite pass count first
     nvmCommand.cmd.adminCmd.cdw10 = (uint32_t)(overWritePassCount << 4);
-
-
+    
     if (noDeallocateAfterSanitize)
     {
         nvmCommand.cmd.adminCmd.cdw10 |= BIT9;
@@ -608,6 +607,12 @@ int nvme_Sanitize(tDevice *device, bool noDeallocateAfterSanitize, bool invertBe
     {
         nvmCommand.cmd.adminCmd.cdw10 |= BIT8;
     }
+    if (allowUnrestrictedSanitizeExit)
+    {
+        nvmCommand.cmd.adminCmd.cdw10 |= BIT3;
+    }
+    nvmCommand.cmd.adminCmd.cdw10 |= M_GETBITRANGE(sanitizeAction, 2, 0);
+    nvmCommand.cmd.adminCmd.cdw11 = overwritePattern;
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
