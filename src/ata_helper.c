@@ -1409,31 +1409,31 @@ void print_Verbose_ATA_Command_Information(ataPassthroughCommand *ataCommandOpti
         printf("\tTask File Registers:\n");
         if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
         {
-            printf("\t[FeatureExt] = %02"PRIX8"h\n", ataCommandOptions->tfr.Feature48);
+            printf("\t[FeatureExt] = %02" PRIX8 "h\n", ataCommandOptions->tfr.Feature48);
         }
-        printf("\t[Feature] = %02"PRIX8"h\n", ataCommandOptions->tfr.ErrorFeature);
+        printf("\t[Feature] = %02" PRIX8 "h\n", ataCommandOptions->tfr.ErrorFeature);
         if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
         {
-            printf("\t[CountExt] = %02"PRIX8"h\n", ataCommandOptions->tfr.SectorCount48);
+            printf("\t[CountExt] = %02" PRIX8 "h\n", ataCommandOptions->tfr.SectorCount48);
         }
-        printf("\t[Count] = %02"PRIX8"h\n", ataCommandOptions->tfr.SectorCount);
+        printf("\t[Count] = %02" PRIX8 "h\n", ataCommandOptions->tfr.SectorCount);
         if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
         {
-            printf("\t[LBA Lo Ext] = %02"PRIX8"h\n", ataCommandOptions->tfr.LbaLow48);
+            printf("\t[LBA Lo Ext] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaLow48);
         }
-        printf("\t[LBA Lo] = %02"PRIX8"h\n", ataCommandOptions->tfr.LbaLow);
+        printf("\t[LBA Lo] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaLow);
         if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
         {
-            printf("\t[LBA Mid Ext] = %02"PRIX8"h\n", ataCommandOptions->tfr.LbaMid48);
+            printf("\t[LBA Mid Ext] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaMid48);
         }
-        printf("\t[LBA Mid] = %02"PRIX8"h\n", ataCommandOptions->tfr.LbaMid);
+        printf("\t[LBA Mid] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaMid);
         if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
         {
-            printf("\t[LBA Hi Ext] = %02"PRIX8"h\n", ataCommandOptions->tfr.LbaHi48);
+            printf("\t[LBA Hi Ext] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaHi48);
         }
-        printf("\t[LBA Hi] = %02"PRIX8"h\n", ataCommandOptions->tfr.LbaHi);
-        printf("\t[DeviceHead] = %02"PRIX8"h\n", ataCommandOptions->tfr.DeviceHead);
-        printf("\t[Command] = %02"PRIX8"h\n", ataCommandOptions->tfr.CommandStatus);
+        printf("\t[LBA Hi] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaHi);
+        printf("\t[DeviceHead] = %02" PRIX8 "h\n", ataCommandOptions->tfr.DeviceHead);
+        printf("\t[Command] = %02" PRIX8"h\n", ataCommandOptions->tfr.CommandStatus);
         //printf("\t[Device Control] = %02"PRIX8"h\n", ataCommandOptions->tfr.DeviceControl);
         printf("\n");
     }
@@ -1444,29 +1444,29 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataComm
     if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity)
     {
         printf("\tReturn Task File Registers:\n");
-        printf("\t[Error] = %02"PRIX8"h\n", ataCommandOptions->rtfr.error);
+        printf("\t[Error] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.error);
         if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
         {
-            printf("\t[Count Ext] = %02"PRIX8"h\n", ataCommandOptions->rtfr.secCntExt);
+            printf("\t[Count Ext] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.secCntExt);
         }
-        printf("\t[Count] = %02"PRIX8"h\n", ataCommandOptions->rtfr.secCnt);
+        printf("\t[Count] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.secCnt);
         if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
         {
-            printf("\t[LBA Lo Ext] = %02"PRIX8"h\n", ataCommandOptions->rtfr.lbaLowExt);
+            printf("\t[LBA Lo Ext] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaLowExt);
         }
-        printf("\t[LBA Lo] = %02"PRIX8"h\n", ataCommandOptions->rtfr.lbaLow);
+        printf("\t[LBA Lo] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaLow);
         if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
         {
-            printf("\t[LBA Mid Ext] = %02"PRIX8"h\n", ataCommandOptions->rtfr.lbaMidExt);
+            printf("\t[LBA Mid Ext] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaMidExt);
         }
-        printf("\t[LBA Mid] = %02"PRIX8"h\n", ataCommandOptions->rtfr.lbaMid);
+        printf("\t[LBA Mid] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaMid);
         if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
         {
-            printf("\t[LBA Hi Ext] = %02"PRIX8"h\n", ataCommandOptions->rtfr.lbaHiExt);
+            printf("\t[LBA Hi Ext] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaHiExt);
         }
-        printf("\t[LBA Hi] = %02"PRIX8"h\n", ataCommandOptions->rtfr.lbaHi);
-        printf("\t[Device] = %02"PRIX8"h\n", ataCommandOptions->rtfr.device);
-        printf("\t[Status] = %02"PRIX8"h\n", ataCommandOptions->rtfr.status);
+        printf("\t[LBA Hi] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaHi);
+        printf("\t[Device] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.device);
+        printf("\t[Status] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.status);
         printf("\n");
     }
 }
