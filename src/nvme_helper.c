@@ -191,6 +191,10 @@ void print_NVMe_Cmd_Verbose(const nvmeCmdCtx * cmdCtx)
 void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
 {
     //TODO: Print out the result/error information!
+    if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity)
+    {
+        printf("NVM Command Result: %08" PRIX32 "h\n", cmdCtx->result);
+    }
 }
 
 
