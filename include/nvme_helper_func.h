@@ -21,6 +21,9 @@ extern "C"
 {
 #endif
 
+    void print_NVMe_Cmd_Verbose(const nvmeCmdCtx * cmdCtx);
+    void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx);
+
 //-----------------------------------------------------------------------------
 //
 //  nvme_Cmd()
