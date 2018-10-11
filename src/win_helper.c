@@ -1777,7 +1777,7 @@ int convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx *p_scsiIoCtx, PATA_PASS_THROUGH_
         ptrATAPassThroughDirect->DataTransferLength = p_scsiIoCtx->dataLength;
         ptrATAPassThroughDirect->DataBuffer = alignedDataPointer;
 #if WINVER >= SEA_WIN32_WINNT_VISTA
-        if (p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount <= 1)
+        if (p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount <= 1 && p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount48 == 0)
         {
             ptrATAPassThroughDirect->AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
         }
@@ -2066,20 +2066,23 @@ int convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx *p_scsiIoCtx, ptrATADoubleBufferedIO
         p_t_ata_pt->ataPTCommand.AtaFlags |= ATA_FLAGS_DATA_IN;
         p_t_ata_pt->ataPTCommand.DataTransferLength = p_scsiIoCtx->dataLength;
         p_t_ata_pt->ataPTCommand.DataBufferOffset = offsetof(ATADoubleBufferedIO, dataBuffer);
+#if WINVER >= SEA_WIN32_WINNT_VISTA
         if (p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount <= 1 && p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount48 == 0)
         {
             p_t_ata_pt->ataPTCommand.AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
         }
+#endif
         break;
     case XFER_DATA_OUT:
         p_t_ata_pt->ataPTCommand.AtaFlags |= ATA_FLAGS_DATA_OUT;
         p_t_ata_pt->ataPTCommand.DataTransferLength = p_scsiIoCtx->dataLength;
         p_t_ata_pt->ataPTCommand.DataBufferOffset = offsetof(ATADoubleBufferedIO, dataBuffer);
-        //commenting this flag out since it's really only used one PIO in commands that may not have sector count set to 1 to help the driver understand what to do...doesn't matter on PIO out commands
-        /*if (p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount <= 1)
+#if WINVER >= SEA_WIN32_WINNT_VISTA
+        if (p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount <= 1 && p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount48 == 0)
         {
-        p_t_ata_pt->AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
-        }*/
+            p_t_ata_pt->ataPTCommand.AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
+        }
+#endif
         break;
     case XFER_NO_DATA:
         p_t_ata_pt->ataPTCommand.DataTransferLength = 0;
