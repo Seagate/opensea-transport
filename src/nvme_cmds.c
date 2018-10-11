@@ -486,7 +486,7 @@ int nvme_Identify(tDevice *device, uint8_t *ptrData, uint32_t nvmeNamespace, uin
     identify.commandType = NVM_ADMIN_CMD;
     identify.commandDirection = XFER_DATA_IN;
 	identify.cmd.adminCmd.nsid = nvmeNamespace;
-	identify.cmd.adminCmd.addr = (unsigned long)ptrData;
+	identify.cmd.adminCmd.addr = (uint64_t)ptrData;
 	identify.cmd.adminCmd.dataLen = NVME_IDENTIFY_DATA_LEN;
 	identify.cmd.adminCmd.cdw10 = cns;
     identify.timeout = 15;
@@ -785,7 +785,7 @@ int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *ExtdSMARTInfo)
     extSmatLog.commandType = NVM_ADMIN_CMD;
     extSmatLog.commandDirection = XFER_DATA_IN;
     extSmatLog.cmd.adminCmd.nsid = nsid;
-    extSmatLog.cmd.adminCmd.addr = (unsigned long)ptr;
+    extSmatLog.cmd.adminCmd.addr = (uint64_t)ptr;
     extSmatLog.cmd.adminCmd.dataLen = data_len;
     extSmatLog.cmd.adminCmd.cdw10 = log_id | (numdl << 16);
     extSmatLog.cmd.adminCmd.cdw11 = numdu;
@@ -816,7 +816,7 @@ int pci_Correctble_Err(tDevice *device,uint8_t  opcode, uint32_t  nsid, uint32_t
     pciEr.commandType = NVM_ADMIN_CMD;
     //pciEr.commandDirection = XFER_DATA_IN;
     pciEr.cmd.adminCmd.nsid = nsid;
-    pciEr.cmd.adminCmd.addr = (unsigned long)data;
+    pciEr.cmd.adminCmd.addr = (uint64_t)data;
     pciEr.cmd.adminCmd.dataLen = data_len;
     pciEr.cmd.adminCmd.cdw10 = cdw10;
     pciEr.cmd.adminCmd.cdw11 = cdw11;
