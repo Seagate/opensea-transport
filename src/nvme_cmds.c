@@ -770,8 +770,6 @@ int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *ExtdSMARTInfo)
     printf("-->%s\n",__FUNCTION__);
 #endif
    // EXTENDED_SMART_INFO_T ExtdSMARTInfo;
-    fb_log_page_CF          logPageCF;
-    int index;
     uint32_t   nsid = 1;
     uint8_t  log_id = 0xC4;
     uint32_t data_len = sizeof(EXTENDED_SMART_INFO_T);

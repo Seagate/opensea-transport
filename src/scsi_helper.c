@@ -5985,7 +5985,7 @@ void copy_Read_Capacity_Info(uint32_t *logicalBlockSize, uint32_t *physicalBlock
         byte_Swap_32(logicalBlockSize);
         //get the physical sector size
         sectorSizeExponent = ptrBuf[13] & 0x0F;
-        *physicalBlockSize = *logicalBlockSize * power_Of_Two(sectorSizeExponent);
+        *physicalBlockSize = (uint32_t)(*logicalBlockSize * power_Of_Two(sectorSizeExponent));
         //set the sector alignment info
         *sectorAlignment = M_GETBITRANGE(M_BytesTo2ByteValue(ptrBuf[14], ptrBuf[15]), 13, 0);
     }

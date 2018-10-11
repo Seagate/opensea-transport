@@ -66,7 +66,7 @@ printf("fill NVMe info ret = %d\n", ret);
         if (ret == SUCCESS) 
         {
 
-            device->drive_info.deviceBlockSize = power_Of_Two(nsData->lbaf[nsData->flbas].lbaDS); //removed math.h pow() function - TJE
+            device->drive_info.deviceBlockSize = (uint32_t)power_Of_Two(nsData->lbaf[nsData->flbas].lbaDS); //removed math.h pow() function - TJE
             device->drive_info.devicePhyBlockSize = device->drive_info.deviceBlockSize; //True for NVMe?
 
             device->drive_info.deviceMaxLba = nsData->nsze; //* device->drive_info.deviceBlockSize;
@@ -690,7 +690,7 @@ int nvme_Get_SMART_Log_Page(tDevice *device, uint32_t nsid, uint8_t * pData, uin
 
     cmdOpts.nsid = nsid;
     //cmdOpts.addr = (uint64_t)smartLog;
-    cmdOpts.addr = smartLog;
+    cmdOpts.addr = (uint8_t*)smartLog;
     cmdOpts.dataLen = NVME_SMART_HEALTH_LOG_LEN;
     cmdOpts.lid = NVME_LOG_SMART_ID;
 
@@ -715,7 +715,7 @@ int nvme_Get_ERROR_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen)
     }
    
     memset(&cmdOpts,0,sizeof(nvmeGetLogPageCmdOpts));
-    cmdOpts.addr = (uint64_t)pData;
+    cmdOpts.addr = pData;
     cmdOpts.dataLen = dataLen;
     cmdOpts.lid = NVME_LOG_ERROR_ID;
 
@@ -740,7 +740,7 @@ int nvme_Get_FWSLOTS_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen
     }
    
     memset(&cmdOpts,0,sizeof(nvmeGetLogPageCmdOpts));
-    cmdOpts.addr = (uint64_t)pData;
+    cmdOpts.addr = pData;
     cmdOpts.dataLen = dataLen;
     cmdOpts.lid = NVME_LOG_FW_SLOT_ID;
     
@@ -765,7 +765,7 @@ int nvme_Get_CmdSptEfft_Log_Page(tDevice *device, uint8_t * pData, uint32_t data
     }
    
     memset(&cmdOpts,0,sizeof(nvmeGetLogPageCmdOpts));
-    cmdOpts.addr = (uint64_t)pData;
+    cmdOpts.addr = pData;
     cmdOpts.dataLen = dataLen;
     cmdOpts.lid = NVME_LOG_CMD_SPT_EFET_ID;
     
@@ -790,7 +790,7 @@ int nvme_Get_DevSelfTest_Log_Page(tDevice *device, uint8_t * pData, uint32_t dat
     }
    
     memset(&cmdOpts,0,sizeof(nvmeGetLogPageCmdOpts));
-    cmdOpts.addr = (uint64_t)pData;
+    cmdOpts.addr = pData;
     cmdOpts.dataLen = dataLen;
     cmdOpts.lid = NVME_LOG_DEV_SELF_TEST;
     
@@ -903,7 +903,6 @@ int nvme_Print_DevSelfTest_Log_Page(tDevice *device)
 {
     int ret = UNKNOWN;
     nvmeSelfTestLog selfTestLogInfo;
-    int effect;
 	int i, temp;
 	const char *test_code_res;
 	const char *test_res[10] = {
