@@ -3942,6 +3942,14 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     protocolCommand->ReturnStatus = 0;
     protocolCommand->ErrorCode = 0;
 	protocolCommand->CommandLength = STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
+    if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
+    {
+        protocolCommand->CommandSpecific = STORAGE_PROTOCOL_SPECIFIC_NVME_ADMIN_COMMAND;
+    }
+    else
+    {
+        protocolCommand->CommandSpecific = STORAGE_PROTOCOL_SPECIFIC_NVME_NVM_COMMAND;
+    }
 	protocolCommand->ErrorInfoLength = 0; //TODO: should this be a non-zero value for some kind of error return info?
 
     switch (nvmeIoCtx->commandDirection)
