@@ -549,6 +549,7 @@ int get_Device(const char *filename, tDevice *device )
                                     device->drive_info.drive_type = NVME_DRIVE;
                                     device->drive_info.interface_type = NVME_INTERFACE;
                                     set_Namespace_ID_For_Device(device);
+                                    device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
 #else									
 									device->drive_info.drive_type = SCSI_DRIVE;
 									device->drive_info.interface_type = SCSI_INTERFACE;
@@ -5918,9 +5919,14 @@ int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize)
 int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
 {
     int ret = UNKNOWN;
+    if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity)
+    {
+        printf("Using Windows API to Read LBAs\n");
+    }
     if (async)
     {
         //asynchronous IO is not supported right now
+        print_Return_Enum("Windows API Read", ret);
         return NOT_SUPPORTED;
     }
     //used for setting the timeout
@@ -5948,6 +5954,7 @@ int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_
     BOOL retStatus = SetFilePointerEx(device->os_info.fd, liDistanceToMove, &lpNewFilePointer, FILE_BEGIN);
     if (!retStatus)
     {
+        print_Return_Enum("Windows API Read", ret);
         return OS_PASSTHROUGH_FAILURE;
     }
     DWORD bytesReturned = 0;
@@ -5973,9 +5980,28 @@ int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&commandTimer);
+    device->os_info.last_error = GetLastError();
     CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
     overlappedStruct.hEvent = NULL;
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+
+    if (!retStatus)//not successful
+    {
+        if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            printf("Windows Error: ");
+            print_Windows_Error_To_Screen(device->os_info.last_error);
+        }
+    }
+
+    print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
+
+    if (VERBOSITY_BUFFERS <= g_verbosity && ptrData != NULL)
+    {
+        printf("\t  Data Buffer being returned:\n");
+        print_Data_Buffer(ptrData, dataSize, true);
+        printf("\n");
+    }
 
     if (bytesReturned != (DWORD)dataSize)
     {
@@ -6014,16 +6040,21 @@ int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_
     {
         ret = COMMAND_TIMEOUT;
     }
-
+    print_Return_Enum("Windows API Read", ret);
     return ret;
 }
 
 int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
 {
     int ret = UNKNOWN;
+    if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity)
+    {
+        printf("Using Windows API to Write LBAs\n");
+    }
     if (async)
     {
         //asynchronous IO is not supported right now
+        print_Return_Enum("Windows API Write", ret);
         return NOT_SUPPORTED;
     }
     //used for setting the timeout
@@ -6051,6 +6082,7 @@ int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
     BOOL retStatus = SetFilePointerEx(device->os_info.fd, liDistanceToMove, &lpNewFilePointer, FILE_BEGIN);
     if (!retStatus)
     {
+        print_Return_Enum("Windows API Write", ret);
         return OS_PASSTHROUGH_FAILURE;
     }
     DWORD bytesReturned = 0;
@@ -6064,6 +6096,12 @@ int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
     overlappedStruct.Offset = M_DoubleWord0(lba * device->drive_info.deviceBlockSize);
     overlappedStruct.OffsetHigh = M_DoubleWord1(lba * device->drive_info.deviceBlockSize);
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
+    if (VERBOSITY_BUFFERS <= g_verbosity && ptrData != NULL)
+    {
+        printf("\t  Data Buffer being sent:\n");
+        print_Data_Buffer(ptrData, dataSize, true);
+        printf("\n");
+    }
     start_Timer(&commandTimer);
     retStatus = WriteFile(device->os_info.fd, ptrData, dataSize, &bytesReturned, &overlappedStruct);
     device->os_info.last_error = GetLastError();
@@ -6076,10 +6114,22 @@ int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&commandTimer);
+    device->os_info.last_error = GetLastError();
     CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
     overlappedStruct.hEvent = NULL;
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
+    if (!retStatus)//not successful
+    {
+        if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            printf("Windows Error: ");
+            print_Windows_Error_To_Screen(device->os_info.last_error);
+        }
+    }
+
+    print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
+    
     if (bytesReturned != (DWORD)dataSize)
     {
         //error, didn't get all the data
@@ -6116,6 +6166,7 @@ int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
     {
         ret = COMMAND_TIMEOUT;
     }
+    print_Return_Enum("Windows API Write", ret);
     return ret;
 }
 #if WINVER >= SEA_WIN32_WINNT_WINXP
@@ -6124,6 +6175,10 @@ int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
 int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
 {
     int ret = NOT_SUPPORTED;
+    if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity)
+    {
+        printf("Using Windows API to Verify LBAs\n");
+    }
     VERIFY_INFORMATION verifyCmd;
     memset(&verifyCmd, 0, sizeof(VERIFY_INFORMATION));
     seatimer_t verifyTimer;
@@ -6165,6 +6220,15 @@ int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&verifyTimer);
+    device->os_info.last_error = GetLastError();
+    if (!success)//not successful
+    {
+        if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            printf("Windows Error: ");
+            print_Windows_Error_To_Screen(device->os_info.last_error);
+        }
+    }
     CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
     overlappedStruct.hEvent = NULL;
     //clear the last command sense data and rtfrs. We'll dummy them up in a minute
@@ -6259,11 +6323,13 @@ int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
         }
     }
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(verifyTimer);
+    print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
     //check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= timeoutInSeconds)
     {
         ret = COMMAND_TIMEOUT;
     }
+    print_Return_Enum("Windows API Verify", ret);
     return ret;
 }
 #else
@@ -6276,6 +6342,7 @@ int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
     uint8_t *readData = (uint8_t*)malloc(device->drive_info.deviceBlockSize * range);
     ret = os_Read(device, lba, false, readData, device->drive_info.deviceBlockSize * range);
     safe_Free(readData);
+    return ret;
 }
 #endif
 
@@ -6283,6 +6350,10 @@ int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
 int os_Flush(tDevice *device)
 {
     int ret = UNKNOWN;
+    if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity)
+    {
+        printf("Using Windows API to Flush Cache\n");
+    }
     //used for setting the timeout
     COMMTIMEOUTS comTimeout;
     memset(&comTimeout, 0, sizeof(COMMTIMEOUTS));
@@ -6314,9 +6385,17 @@ int os_Flush(tDevice *device)
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&commandTimer);
+    if (!retStatus)//not successful
+    {
+        if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            printf("Windows Error: ");
+            print_Windows_Error_To_Screen(device->os_info.last_error);
+        }
+    }
     
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-
+    print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
     //clear the last command sense data and rtfrs. We'll dummy them up in a minute
     memset(&device->drive_info.lastCommandRTFRs, 0, sizeof(ataReturnTFRs));
     memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);
@@ -6348,7 +6427,7 @@ int os_Flush(tDevice *device)
     {
         ret = COMMAND_TIMEOUT;
     }
-
+    print_Return_Enum("Windows API Flush", ret);
     return ret;
 }
 
