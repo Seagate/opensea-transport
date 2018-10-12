@@ -5259,8 +5259,8 @@ int win10_Translate_Read(nvmeCmdCtx *nvmeIoCtx)
     //uint8_t accessLatency = M_GETBITRANGE(dsm, 5, 4);
     //uint8_t accessFrequency = M_GETBITRANGE(dsm, 3, 0);
     uint32_t expectedLogicalBlockAccessTag = nvmeIoCtx->cmd.nvmCmd.cdw14;
-    uint16_t expectedLogicalBlockTagMask = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw12);
-    uint16_t expectedLogicalBlockApplicationTag = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12);
+    uint16_t expectedLogicalBlockTagMask = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw15);
+    uint16_t expectedLogicalBlockApplicationTag = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw15);
     //now validate all the fields to see if we can send this command...
     uint8_t rdProtect = 0xFF;
     g_verbosity = VERBOSITY_QUIET;
@@ -5333,8 +5333,8 @@ int win10_Translate_Write(nvmeCmdCtx *nvmeIoCtx)
     //uint8_t accessLatency = M_GETBITRANGE(dsm, 5, 4);
     //uint8_t accessFrequency = M_GETBITRANGE(dsm, 3, 0);
     uint32_t initialLogicalBlockAccessTag = nvmeIoCtx->cmd.nvmCmd.cdw14;
-    uint16_t logicalBlockTagMask = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw12);
-    uint16_t logicalBlockApplicationTag = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12);
+    uint16_t logicalBlockTagMask = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw15);
+    uint16_t logicalBlockApplicationTag = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw15);
     //now validate all the fields to see if we can send this command...
     uint8_t wrProtect = 0xFF;
     g_verbosity = VERBOSITY_QUIET;
