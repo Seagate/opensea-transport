@@ -4038,6 +4038,20 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
     overlappedStruct.hEvent = NULL;
 
+    if (success)
+    {
+        ret = SUCCESS;
+    }
+    else
+    {
+        if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            printf("Windows Error: ");
+            print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
+        }
+        ret = OS_PASSTHROUGH_FAILURE;
+    }
+
     if (ret == SUCCESS)
     {
         if (nvmeIoCtx->commandDirection == XFER_DATA_IN)
@@ -4436,7 +4450,10 @@ int send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
 	#if defined (_DEBUG)
 	printf("%s: Drive Path = %s", __FUNCTION__, nvmeIoCtx->device->os_info.name);
 	#endif
-	
+
+    seatimer_t commandTimer;
+    memset(&commandTimer, 0, sizeof(seatimer_t));
+    start_Timer(&commandTimer);
 	result = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
 		IOCTL_STORAGE_QUERY_PROPERTY,
 		buffer,
@@ -4446,13 +4463,18 @@ int send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
 		&returnedLength,
 		NULL
 	);
+    stop_Timer(&commandTimer);
 	nvmeIoCtx->device->os_info.last_error = GetLastError();
+    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+
 	if (result == 0)
 	{
-		#if defined (_DEBUG)
-		printf("%s: Error Code = %d", __FUNCTION__, nvmeIoCtx->device->os_info.last_error);
-		#endif
-		ret = OS_PASSTHROUGH_FAILURE;
+        if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            printf("Windows Error: ");
+            print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
+        }
+	    ret = OS_PASSTHROUGH_FAILURE;
 	}
 	else
 	{
@@ -4515,7 +4537,9 @@ int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
 #if defined (_DEBUG)
 	printf("%s Drive Path = %s", __FUNCTION__, nvmeIoCtx->device->os_info.name);
 #endif	
-
+    seatimer_t commandTimer;
+    memset(&commandTimer, 0, sizeof(seatimer_t));
+    start_Timer(&commandTimer);
 	result = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
 		IOCTL_STORAGE_QUERY_PROPERTY,
 		buffer,
@@ -4525,12 +4549,16 @@ int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
 		&returnedLength,
 		NULL
 	);	
-	nvmeIoCtx->device->os_info.last_error = GetLastError();
+    stop_Timer(&commandTimer);
+    nvmeIoCtx->device->os_info.last_error = GetLastError();
+    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 	if (!result || (returnedLength == 0))
 	{		
-#if defined (_DEBUG)
-		printf("%s: Error Code = %d\n", __FUNCTION__, nvmeIoCtx->device->os_info.last_error);
-#endif
+        if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            printf("Windows Error: ");
+            print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
+        }
 		returnValue = OS_PASSTHROUGH_FAILURE;
 	}
 	else
@@ -4616,7 +4644,9 @@ int send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
 #if defined (_DEBUG)
     printf("%s Drive Path = %s", __FUNCTION__, nvmeIoCtx->device->os_info.name);
 #endif	
-
+    seatimer_t commandTimer;
+    memset(&commandTimer, 0, sizeof(seatimer_t));
+    start_Timer(&commandTimer);
     result = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
         IOCTL_STORAGE_QUERY_PROPERTY,
         buffer,
@@ -4626,12 +4656,16 @@ int send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
         &returnedLength,
         NULL
     );
+    start_Timer(&commandTimer);
     nvmeIoCtx->device->os_info.last_error = GetLastError();
+    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     if (!result || (returnedLength == 0))
     {
-#if defined (_DEBUG)
-        printf("%s: Error Code = %d\n", __FUNCTION__, nvmeIoCtx->device->os_info.last_error);
-#endif
+        if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            printf("Windows Error: ");
+            print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
+        }
         returnValue = OS_PASSTHROUGH_FAILURE;
     }
     else
@@ -4713,6 +4747,7 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&commandTimer);
+    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
     overlappedStruct.hEvent = NULL;
     //dummy up sense data for end result
@@ -4723,6 +4758,11 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
     }
     else
     {
+        if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            printf("Windows Error: ");
+            print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
+        }
         //TODO: We need to figure out what error codes Windows will return and how to dummy up the return value to match - TJE
         switch (nvmeIoCtx->device->os_info.last_error)
         {
@@ -4801,6 +4841,7 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&commandTimer);
+    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
     overlappedStruct.hEvent = NULL;
     //dummy up sense data for end result
@@ -4811,6 +4852,11 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     }
     else
     {
+        if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            printf("Windows Error: ");
+            print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
+        }
         //TODO: We need to figure out what error codes Windows will return and how to dummy up the return value to match - TJE
         switch (nvmeIoCtx->device->os_info.last_error)
         {
@@ -4964,6 +5010,9 @@ int win10_Translate_Set_Power_Management(nvmeCmdCtx *nvmeIoCtx)
             powerCap.MaxPower = (ULONG)(maxPowerWatts * 1000.0);
             DWORD returnedBytes = 0;
             SetLastError(NO_ERROR);
+            seatimer_t commandTimer;
+            memset(&commandTimer, 0, sizeof(seatimer_t));
+            start_Timer(&commandTimer);
             BOOL success = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
                 IOCTL_STORAGE_DEVICE_POWER_CAP,
                 &powerCap,
@@ -4973,7 +5022,10 @@ int win10_Translate_Set_Power_Management(nvmeCmdCtx *nvmeIoCtx)
                 &returnedBytes,
                 NULL //TODO: add overlapped structure!
             );
+            stop_Timer(&commandTimer);
             nvmeIoCtx->device->os_info.last_error = GetLastError();
+            nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+              
             if (success)
             {
                 //TODO: should we validate the returned data to make sure we got what value we requested? - TJE
@@ -4981,6 +5033,11 @@ int win10_Translate_Set_Power_Management(nvmeCmdCtx *nvmeIoCtx)
             }
             else
             {
+                if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+                {
+                    printf("Windows Error: ");
+                    print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
+                }
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
@@ -5028,6 +5085,9 @@ int send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx *nvmeIoCtx)
 
     //now issue the IO!
     DWORD bytesReturned = 0;
+    seatimer_t commandTimer;
+    memset(&commandTimer, 0, sizeof(seatimer_t));
+    start_Timer(&commandTimer);
     BOOL success = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
         IOCTL_STORAGE_SET_TEMPERATURE_THRESHOLD,
         &tempThresh,
@@ -5037,13 +5097,21 @@ int send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx *nvmeIoCtx)
         &bytesReturned,
         0
     );
+    stop_Timer(&commandTimer);
+    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
     if (success)
     {
+        //TODO: should we validate the returned data to make sure we got what value we requested? - TJE
         ret = SUCCESS;
     }
     else
     {
+        if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            printf("Windows Error: ");
+            print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
+        }
         //Todo....set a better error condition
         nvmeIoCtx->result = 0x0E;
         ret = FAILURE;
