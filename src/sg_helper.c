@@ -1312,6 +1312,8 @@ int close_Device(tDevice *dev)
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 {
     int ret = 0;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
+	seatimer_t commandTimer;
+	memset(&commandTimer, 0, sizeof(commandTimer));
     struct nvme_admin_cmd adminCmd;
     #if defined (SEA_NVME_IOCTL_H)
         struct nvme_user_io nvmCmd;
@@ -1355,30 +1357,35 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 		
         //printf("sizeof(adminCmd)=%d, fd = %d, opcode=%x, nsid=%u, cdw10=%u, timeout=%d\n", sizeof(adminCmd),nvmeIoCtx->device->os_info.fd, adminCmd.opcode, adminCmd.nsid, adminCmd.cdw10, adminCmd.timeout_ms);
 		
-
+		start_Timer(&commandTimer);
         ret = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_ADMIN_CMD, &adminCmd);
+		stop_Timer(&commandTimer);
         nvmeIoCtx->device->os_info.last_error = ret;
-        //Get error? 
-        if (ret < 0) 
-        {
-            if (VERBOSITY_QUIET < g_verbosity)
-            {
-                perror("send_IO");
-            }
-        }
+		if (ret < 0)
+		{
+			ret = OS_PASSTHROUGH_FAILURE;
+		}
         nvmeIoCtx->result = adminCmd.result;
-
         break;
 
     case NVM_CMD:
-        memset(&nvmCmd,0,sizeof(nvmCmd));
+		start_Timer(&commandTimer);
+        memset(&nvmCmd, 0, sizeof(nvmCmd));
+		//TODO: fill in nvmCmd structure
         ret = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_SUBMIT_IO, &nvmCmd);
+		stop_Timer(&commandTimer);
+		nvmeIoCtx->device->os_info.last_error = ret;
+		if (ret < 0)
+		{
+			ret = OS_PASSTHROUGH_FAILURE;
+		}
         break;
 
     default:
         return BAD_PARAMETER;
         break;
     }
+	nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity)
     {
         if (nvmeIoCtx->device->os_info.last_error != 0)
