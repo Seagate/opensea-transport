@@ -1315,20 +1315,11 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 	seatimer_t commandTimer;
 	memset(&commandTimer, 0, sizeof(commandTimer));
     struct nvme_admin_cmd adminCmd;
-    #if defined (SEA_NVME_IOCTL_H)
-        struct nvme_user_io nvmCmd;
-    #else
-        struct nvme_command nvmCmd;
-    #endif
-#ifdef _DEBUG
-    printf("-->%s\n",__FUNCTION__);
-#endif
+    struct nvme_user_io nvmCmd;// it's possible that this is not defined in some funky early nvme kernel, but we don't see that today. This seems to be defined everywhere. -TJE
+    struct nvme_passthru_cmd *passThroughCmd = (struct nvme_passthru_cmd*)&adminCmd;//setting a pointer since these are defined to be the same. No point in allocating yet another structure. - TJE
 
-    if ( nvmeIoCtx == NULL )
+    if (!nvmeIoCtx)
     {
-#ifdef _DEBUG
-    printf("-->%s\n",__FUNCTION__);
-#endif
         return BAD_PARAMETER; 
     }
 
@@ -1353,10 +1344,6 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         adminCmd.cdw14 = nvmeIoCtx->cmd.adminCmd.cdw14;
         adminCmd.cdw15 = nvmeIoCtx->cmd.adminCmd.cdw15;
         adminCmd.timeout_ms = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
-
-		
-        //printf("sizeof(adminCmd)=%d, fd = %d, opcode=%x, nsid=%u, cdw10=%u, timeout=%d\n", sizeof(adminCmd),nvmeIoCtx->device->os_info.fd, adminCmd.opcode, adminCmd.nsid, adminCmd.cdw10, adminCmd.timeout_ms);
-		
 		start_Timer(&commandTimer);
         ret = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_ADMIN_CMD, &adminCmd);
 		stop_Timer(&commandTimer);
@@ -1367,20 +1354,69 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 		}
         nvmeIoCtx->result = adminCmd.result;
         break;
-
     case NVM_CMD:
-		start_Timer(&commandTimer);
-        memset(&nvmCmd, 0, sizeof(nvmCmd));
-		//TODO: fill in nvmCmd structure
-        ret = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_SUBMIT_IO, &nvmCmd);
-		stop_Timer(&commandTimer);
-		nvmeIoCtx->device->os_info.last_error = ret;
-		if (ret < 0)
-		{
-			ret = OS_PASSTHROUGH_FAILURE;
-		}
+        //check opcode to perform the correct IOCTL
+        switch (nvmeIoCtx->cmd.nvmCmd.opcode)
+        {
+        case NVME_CMD_READ:
+        case NVME_CMD_WRITE:
+            //use user IO cmd structure and SUBMIT_IO IOCTL
+            memset(&nvmCmd, 0, sizeof(nvmCmd));
+            nvmCmd.opcode = nvmeIoCtx->cmd.nvmCmd.opcode;
+            nvmCmd.flags = nvmeIoCtx->cmd.nvmCmd.flags;
+            nvmCmd.control = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw12);
+            nvmCmd.nblocks = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12);
+            nvmCmd.rsvd = RESERVED;
+            nvmCmd.metadata = nvmeIoCtx->cmd.nvmCmd.metadata;
+            nvmCmd.addr = nvmeIoCtx->ptrData;
+            nvmCmd.slba = M_DWordsTo8ByteValue(nvmeIoCtx->cmd.nvmCmd.cdw11, nvmeIoCtx->cmd.nvmCmd.cdw10);
+            nvmCmd.dsmgmt = nvmeIoCtx->cmd.nvmCmd.cdw13;
+            nvmCmd.reftag = nvmeIoCtx->cmd.nvmCmd.cdw14;
+            nvmCmd.apptag = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw15);
+            nvmCmd.appmask = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw15);
+            start_Timer(&commandTimer);
+            ret = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_SUBMIT_IO, &nvmCmd);
+    		stop_Timer(&commandTimer);
+            nvmeIoCtx->device->os_info.last_error = ret;
+            if (ret < 0)
+    		{
+    			ret = OS_PASSTHROUGH_FAILURE;
+    		}
+            //TODO: How do we set the result on read/write?
+            //nvmeIoCtx->result = adminCmd.result;
+            break;
+        default:
+            //use the generic passthrough command structure and IO_CMD
+            memset(passThroughCmd, 0,sizeof(struct nvme_passthru_cmd));
+            passThroughCmd->opcode = nvmeIoCtx->cmd.nvmCmd.opcode;
+            passThroughCmd->flags = nvmeIoCtx->cmd.nvmCmd.flags;
+            passThroughCmd->rsvd1 = RESERVED; //TODO: Should we put this in here since it's part of this DWORD? nvmeIoCtx->cmd.nvmCmd.commandId;
+            passThroughCmd->nsid = nvmeIoCtx->cmd.nvmCmd.nsid;
+            passThroughCmd->cdw2 = nvmeIoCtx->cmd.nvmCmd.cdw2;
+            passThroughCmd->cdw3 = nvmeIoCtx->cmd.nvmCmd.cdw3;
+            passThroughCmd->metadata = nvmeIoCtx->cmd.nvmCmd.metadata;
+            passThroughCmd->addr = nvmeIoCtx->ptrData;
+            passThroughCmd->metadata_len = M_DoubleWord0(nvmeIoCtx->cmd.nvmCmd.prp2);//guessing here since I don't really know - TJE
+            passThroughCmd->data_len = nvmeIoCtx->dataSize;//Or do I use the other PRP2 data? Not sure - TJE //M_DWord1(nvmeIoCtx->cmd.nvmCmd.prp2);//guessing here since I don't really know - TJE
+            passThroughCmd->cdw10 = nvmeIoCtx->cmd.nvmCmd.cdw10;
+            passThroughCmd->cdw11 = nvmeIoCtx->cmd.nvmCmd.cdw11;
+            passThroughCmd->cdw12 = nvmeIoCtx->cmd.nvmCmd.cdw12;
+            passThroughCmd->cdw13 = nvmeIoCtx->cmd.nvmCmd.cdw13;
+            passThroughCmd->cdw14 = nvmeIoCtx->cmd.nvmCmd.cdw14;
+            passThroughCmd->cdw15 = nvmeIoCtx->cmd.nvmCmd.cdw15;
+            passThroughCmd->timeout_ms = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;//timeout is in seconds, so converting to milliseconds
+            start_Timer(&commandTimer);
+            ret = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_IO_CMD, passThroughCmd);
+    		stop_Timer(&commandTimer);
+            nvmeIoCtx->device->os_info.last_error = ret;
+            if (ret < 0)
+    		{
+    			ret = OS_PASSTHROUGH_FAILURE;
+    		}
+            nvmeIoCtx->result = passThroughCmd->result;
+            break;
+        }
         break;
-
     default:
         return BAD_PARAMETER;
         break;
@@ -1394,9 +1430,6 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
         }
     }
-#ifdef _DEBUG
-    printf("<--%s (%d)\n",__FUNCTION__, ret);
-#endif
     return ret;
 }
 
