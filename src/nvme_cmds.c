@@ -496,7 +496,7 @@ int nvme_Identify(tDevice *device, uint8_t *ptrData, uint32_t nvmeNamespace, uin
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending NVMe Identify Command");
+        printf("Sending NVMe Identify Command\n");
     }
 	ret = nvme_Cmd(device, &identify);
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
@@ -529,7 +529,7 @@ int nvme_Get_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending NVMe Get Features Command");
+        printf("Sending NVMe Get Features Command\n");
     }
 
     ret = nvme_Cmd(device, &getFeatures);
@@ -575,7 +575,7 @@ int nvme_Set_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending NVMe Set Features Command");
+        printf("Sending NVMe Set Features Command\n");
     }
 
     ret = nvme_Cmd(device, &setFeatures);
@@ -616,7 +616,7 @@ int nvme_Sanitize(tDevice *device, bool noDeallocateAfterSanitize, bool invertBe
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending NVMe Sanitize Command");
+        printf("Sending NVMe Sanitize Command\n");
     }
 
     ret = nvme_Cmd(device, &nvmCommand);
@@ -666,7 +666,7 @@ int nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts
     getLogPage.timeout = 15;
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending NVMe Get Log Page Command");
+        printf("Sending NVMe Get Log Page Command\n");
     }
 
     ret = nvme_Cmd(device, &getLogPage);
@@ -720,7 +720,7 @@ int nvme_Format(tDevice *device, nvmeFormatCmdOpts * formatCmdOpts)
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending NVMe Format Command");
+        printf("Sending NVMe Format Command\n");
     }
 
     ret = nvme_Cmd(device, &formatCmd);
