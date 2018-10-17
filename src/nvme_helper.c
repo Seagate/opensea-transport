@@ -69,7 +69,7 @@ printf("fill NVMe info ret = %d\n", ret);
             device->drive_info.deviceBlockSize = (uint32_t)power_Of_Two(nsData->lbaf[nsData->flbas].lbaDS); //removed math.h pow() function - TJE
             device->drive_info.devicePhyBlockSize = device->drive_info.deviceBlockSize; //True for NVMe?
 
-            device->drive_info.deviceMaxLba = nsData->nsze; //* device->drive_info.deviceBlockSize;
+            device->drive_info.deviceMaxLba = nsData->nsze - 1;//spec says this is from 0 to (n-1)!
             
 
             //TODO: Add support if more than one Namespace. 
