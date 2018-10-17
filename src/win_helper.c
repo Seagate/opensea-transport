@@ -5292,7 +5292,7 @@ int win10_Translate_Write_Uncorrectable(nvmeCmdCtx *nvmeIoCtx)
     uint64_t totalCommandTime = 0;
     g_verbosity = VERBOSITY_QUIET;
     uint64_t lba = M_BytesTo8ByteValue(M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10));
-    for (uint16_t iter = 0; iter < M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12); ++iter)
+    for (uint16_t iter = 0; iter < (M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12) + 1); ++iter)//+1 because nvme uses a zero based range value
     {
         int individualCommandRet = scsi_Write_Long_16(nvmeIoCtx->device, true, false, false, lba + iter, 0, NULL);
         if (individualCommandRet != SUCCESS)
@@ -5331,7 +5331,7 @@ int win10_Translate_Read(nvmeCmdCtx *nvmeIoCtx)
     uint8_t prInfo = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw12, 29, 26);
     bool pract = prInfo & BIT3;
     uint8_t prchk = M_GETBITRANGE(prInfo, 2, 0);
-    uint16_t numberOfLogicalBlocks = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12);
+    uint16_t numberOfLogicalBlocks = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12) + 1;//nvme is zero based!
     uint8_t dsm = M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw13);
     //bool incompresible = dsm & BIT7;
     //bool sequentialRequest = dsm & BIT6;
@@ -5404,7 +5404,7 @@ int win10_Translate_Write(nvmeCmdCtx *nvmeIoCtx)
     bool pract = prInfo & BIT3;
     uint8_t prchk = M_GETBITRANGE(prInfo, 2, 0);
     uint8_t dtype = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw12, 23, 20);
-    uint16_t numberOfLogicalBlocks = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12);
+    uint16_t numberOfLogicalBlocks = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12) + 1;//nvme is zero based!
     uint16_t dspec = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw13);
     uint8_t dsm = M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw13);
     //bool incompresible = dsm & BIT7;
@@ -5477,7 +5477,7 @@ int win10_Translate_Compare(nvmeCmdCtx *nvmeIoCtx)
     uint8_t prInfo = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw12, 29, 26);
     bool pract = prInfo & BIT3;
     uint8_t prchk = M_GETBITRANGE(prInfo, 2, 0);
-    uint16_t numberOfLogicalBlocks = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12);
+    uint16_t numberOfLogicalBlocks = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12) + 1;
     uint32_t expectedLogicalBlockAccessTag = nvmeIoCtx->cmd.nvmCmd.cdw14;
     uint16_t expectedLogicalBlockTagMask = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw12);
     uint16_t expectedLogicalBlockApplicationTag = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12);
@@ -5534,7 +5534,7 @@ int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
     //TODO: We need to validate other fields to make sure we make the right call...may need a SCSI unmap command or
     //FSCTL_FILE_LEVEL_TRIM (and maybe also FSCTL_ALLOW_EXTENDED_DASD_IO)
     //NOTE: Using SCSI Unmap command - TJE
-    uint8_t numberOfRanges = M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10);
+    uint8_t numberOfRanges = M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10) + 1;//this is zero based in NVMe!
     bool deallocate = nvmeIoCtx->cmd.nvmCmd.cdw11 & BIT2;//This MUST be set to 1
     bool integralDatasetForWrite = nvmeIoCtx->cmd.nvmCmd.cdw11 & BIT1;//cannot be supported
     bool integralDatasetForRead = nvmeIoCtx->cmd.nvmCmd.cdw11 & BIT0;//cannot be supported
@@ -5699,7 +5699,7 @@ int win10_Translate_Reservation_Report(nvmeCmdCtx *nvmeIoCtx)
     int inVerbosity = g_verbosity;
     bool issueSCSICommand = false;
     //command bytes
-    uint32_t numberOfDwords = nvmeIoCtx->cmd.nvmCmd.cdw10;
+    uint32_t numberOfDwords = nvmeIoCtx->cmd.nvmCmd.cdw10 + 1;
     bool eds = nvmeIoCtx->cmd.nvmCmd.cdw11 & BIT0;
     //TODO: need it issue possibly multiple scsi persistent reserve in commands to get the data we want...
     if (issueSCSICommand)
