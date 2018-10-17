@@ -1333,8 +1333,8 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         adminCmd.nsid = nvmeIoCtx->cmd.adminCmd.nsid;
         adminCmd.cdw2 = nvmeIoCtx->cmd.adminCmd.cdw2;
         adminCmd.cdw3 = nvmeIoCtx->cmd.adminCmd.cdw3;
-        adminCmd.metadata = nvmeIoCtx->cmd.adminCmd.metadata;
-        adminCmd.addr = nvmeIoCtx->cmd.adminCmd.addr;
+        adminCmd.metadata = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.adminCmd.metadata;
+        adminCmd.addr = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.adminCmd.addr;
         adminCmd.metadata_len = nvmeIoCtx->cmd.adminCmd.metadataLen;
         adminCmd.data_len = nvmeIoCtx->cmd.adminCmd.dataLen;
         adminCmd.cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
@@ -1367,8 +1367,8 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             nvmCmd.control = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw12);
             nvmCmd.nblocks = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12);
             nvmCmd.rsvd = RESERVED;
-            nvmCmd.metadata = nvmeIoCtx->cmd.nvmCmd.metadata;
-            nvmCmd.addr = *nvmeIoCtx->ptrData;
+            nvmCmd.metadata = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.nvmCmd.metadata;
+            nvmCmd.addr = (uint64_t)(uintptr_t)nvmeIoCtx->ptrData;
             nvmCmd.slba = M_DWordsTo8ByteValue(nvmeIoCtx->cmd.nvmCmd.cdw11, nvmeIoCtx->cmd.nvmCmd.cdw10);
             nvmCmd.dsmgmt = nvmeIoCtx->cmd.nvmCmd.cdw13;
             nvmCmd.reftag = nvmeIoCtx->cmd.nvmCmd.cdw14;
@@ -1394,8 +1394,8 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             passThroughCmd->nsid = nvmeIoCtx->cmd.nvmCmd.nsid;
             passThroughCmd->cdw2 = nvmeIoCtx->cmd.nvmCmd.cdw2;
             passThroughCmd->cdw3 = nvmeIoCtx->cmd.nvmCmd.cdw3;
-            passThroughCmd->metadata = nvmeIoCtx->cmd.nvmCmd.metadata;
-            passThroughCmd->addr = *nvmeIoCtx->ptrData;
+            passThroughCmd->metadata = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.nvmCmd.metadata;
+            passThroughCmd->addr = (uint64_t)(uintptr_t)nvmeIoCtx->ptrData;
             passThroughCmd->metadata_len = M_DoubleWord0(nvmeIoCtx->cmd.nvmCmd.prp2);//guessing here since I don't really know - TJE
             passThroughCmd->data_len = nvmeIoCtx->dataSize;//Or do I use the other PRP2 data? Not sure - TJE //M_DWord1(nvmeIoCtx->cmd.nvmCmd.prp2);//guessing here since I don't really know - TJE
             passThroughCmd->cdw10 = nvmeIoCtx->cmd.nvmCmd.cdw10;
