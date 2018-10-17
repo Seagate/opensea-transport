@@ -446,6 +446,8 @@ int get_Device(const char *filename, tDevice *device )
                     print_bus_type(adapter_desc->BusType);
                     printf(" \n");
                     #endif
+					//saving max transfer size (in bytes)
+					device->os_info.adapterMaxTransferSize = adapter_desc->MaximumTransferLength;
                     //saving the SRB type so that we know when an adapter supports the new SCSI Passthrough EX IOCTLS - TJE
 #if WINVER >= SEA_WIN32_WINNT_WIN8 //If this check is wrong, make sure minGW is properly defining WINVER in the makefile.
                     if (is_Windows_8_Or_Higher())//from opensea-common now to remove versionhelpes.h include

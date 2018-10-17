@@ -967,6 +967,7 @@ extern "C"
 			//TODO: expand this struct if we need other data when we check for firmware download support on a device.
 		}fwdlIOsupport;
 #endif
+		uint32_t adapterMaxTransferSize;//Bytes. Returned by querying for adapter properties. Can be used to know when trying to request more than the adapter or driver supports.
         #else
         int                 fd;//some other nix system that only needs a integer file handle
         #endif
