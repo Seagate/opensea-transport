@@ -941,6 +941,7 @@ extern "C"
             uint8_t         revision;
         }sgDriverVersion;
         bool                sntlViaSG;//When set to true, we can use SGIO to issue scsi commands and they'll be translated to NVMe for us. If false, this is not available. TODO: if false, use software translation.
+        long                pageSize;//A.K.A. alignment requirements for Linux.
         #elif defined (_WIN32)
         HANDLE              fd;
         SCSI_ADDRESS        scsi_addr;

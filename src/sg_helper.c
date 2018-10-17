@@ -546,6 +546,20 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
     }
     return UNKNOWN;
 }
+
+//only to be used by get_Device to set up an os_specific structure
+//This could be useful to put into a function for all nix systems to use since it could be useful for them too.
+long get_Device_Page_Size(void)
+{
+#if defined _POSIX_VERSION >= 200112L
+    //use sysconf: http://man7.org/linux/man-pages/man3/sysconf.3.html
+    return sysconf(_SC_PAGESIZE);
+#else
+    //use get page size: http://man7.org/linux/man-pages/man2/getpagesize.2.html
+    return (long)getpagesize();
+#endif
+}
+
 #define LIN_MAX_HANDLE_LENGTH 16
 int get_Device(const char *filename, tDevice *device)
 {
@@ -606,6 +620,9 @@ int get_Device(const char *filename, tDevice *device)
             return FAILURE;
         }
     }
+
+    device->os_info.pageSize = get_Device_Page_Size();
+    //printf("Page size is %ld\n", device->os_info.pageSize);
 
     //Adding support for different device discovery options. 
     if (device->dFlags == OPEN_HANDLE_ONLY)
