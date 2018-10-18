@@ -66,7 +66,7 @@ int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata,
     scsiIoCtx.pdata = pdata;
     scsiIoCtx.dataLength = dataLen;
     scsiIoCtx.verbose = 0;
-    scsiIoCtx.timeout = timeoutSeconds;
+    scsiIoCtx.timeout = M_Max(timeoutSeconds, device->drive_info.defaultTimeoutSeconds);
     if (timeoutSeconds == 0)
     {
         scsiIoCtx.timeout = M_Max(15, device->drive_info.defaultTimeoutSeconds);
