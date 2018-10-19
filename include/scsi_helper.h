@@ -81,7 +81,9 @@ extern "C"
         SENSE_DESCRIPTOR_USER_DATA_SEGMENT_REFERRAL         = 0x0B,
         SENSE_DESCRIPTOR_FORWAREDED_SENSE_DATA              = 0x0C,
         SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE         = 0x0D,
-        //0x0E - 0x7F are reserved
+		SENSE_DESCRIPTOR_DEVICE_DESIGNATION					= 0x0E,
+		SENSE_DESCRIPTOR_MICROCODE_ACTIVATION				= 0x0F,
+        //0x10 - 0x7F are reserved
         //0x80 - 0xFF are vendor specific
     }eSenseDescriptorType;
 
@@ -161,10 +163,72 @@ extern "C"
     {
         uint8_t         format;
         uint8_t         senseKey;
-        uint8_t         acq;
+        uint8_t         asc;
         uint8_t         ascq;
         uint8_t         fru;
     } scsiStatus;
+
+	#define MAX_PROGRESS_INDICATION_DESCRIPTORS UINT8_C(32)
+	#define MAX_FORWARDED_SENSE_DATA_DESCRIPTORS UINT8_C(2)
+
+	typedef struct _senseDataFields
+	{
+		bool validStructure;//Set to true if the rest of this structure was able to be parsed/filled in. This will only be false if we do not get 70h - 73h response codes
+		bool fixedFormat;//This will tell you if some fields, like information and command-specific information, are limited to 32bits or not
+		bool deferredError;//Set to true for response codes 71h & 73h
+		scsiStatus scsiStatusCodes;//sense key, asc, ascq, fru
+		bool senseDataOverflow;//gets set if the sense buffer is not big enough to return all necessary fields of the sense data. Request sense command is needed to get all the data.
+		bool valid;//valid bit. Used to know when the information field contains valid information
+		bool filemark;//filemark bit is set (stream commands)
+		bool endOfMedia;//end of media bit is set (stream commands)
+		bool illegalLengthIndication;//illegal length indicator bit is set (stream commands or read/write long SBC commands)
+		union {
+			uint32_t fixedInformation;
+			uint64_t descriptorInformation;
+		};
+		union {
+			uint32_t fixedCommandSpecificInformation;
+			uint64_t descriptorCommandSpecificInformation;
+		};
+		senseKeySpecific senseKeySpecificInformation;
+		//bools below can be used to know if other fields that are only available in some cases/commands are found. 
+		//If so, the caller can interpret these themselves. 
+		//We'll supply the offset in the sense data for them.
+		//The offset myst be > 7 to be valid.
+		uint8_t osdObjectIdentificationDescriptorOffset;
+		uint8_t osdResponseIntegrityCheckValueDescriptorOffset;
+		uint8_t osdAttributeIdentificationDescriptorOffset;
+		struct _ataStatusReturnDescriptor
+		{
+			bool valid;//must be set for this data to be valid. Means we found this in the sense data.
+			bool extend;
+			uint8_t error;
+			uint8_t sectorCountExt;
+			uint8_t sectorCount;
+			uint8_t lbaLowExt;
+			uint8_t lbaLow;
+			uint8_t lbaMidExt;
+			uint8_t lbaMid;
+			uint8_t lbaHiExt;
+			uint8_t lbaHi;
+			uint8_t device;
+			uint8_t status;
+		}ataStatusReturnDescriptor;
+		uint8_t anotherProgressIndicationDescriptorOffset[MAX_PROGRESS_INDICATION_DESCRIPTORS];
+		uint8_t userDataSegmentReferralDescriptorOffset;
+		uint8_t forwardedSenseDataDescriptorOffset[MAX_FORWARDED_SENSE_DATA_DESCRIPTORS];
+		uint8_t deviceDesignationDescriptorOffset;
+		struct _microCodeActivation
+		{
+			bool valid;
+			uint16_t microcodeActivationTimeSeconds;
+		}microCodeActivation;
+		//This will be set to true for any descriptors that could not be parsed (vendor unique or not part of the above output) or if the additional sense bytes field of fixed format is non-zero
+		//If this happens, the caller should check the sense data buffer themselves for the additional data that they could find useful
+		bool additionalDataAvailable;
+		uint8_t additionalDataOffset;//if bool above is set, then this will be set to the offset of the additional data that couldn't be parsed
+	}senseDataFields, *ptrSenseDataFields;
+
 
     typedef struct _biDirectionalCommandBuffers
     {
@@ -359,6 +423,9 @@ extern "C"
     {
         SUPPORTED_VPD_PAGES                             = 0x00,
         STANDARD_INQUIRY                                = 0x00,
+        //01h - 7Fh - ASCII Information
+        IMPLEMENTED_OPERATING_DEFINITIONS               = 0x81,//Obsolete. Used to tell what can be sent with the change definition command (scsi 2 vs scsi 3, etc)
+        ASCII_IMPLEMENTED_OPERATING_DEFINITION          = 0x82,//Obsolete
         UNIT_SERIAL_NUMBER                              = 0x80,
         DEVICE_IDENTIFICATION                           = 0x83,
         SOFTWARE_INTERFACE_IDENTIFICATION               = 0x84,
@@ -381,6 +448,8 @@ extern "C"
         SUPPORTED_BLOCK_LENGTHS_AND_PROTECTION_TYPES    = 0xB4,
         BLOCK_DEVICE_CHARACTERISTISCS_EXT               = 0xB5,
         ZONED_BLOCK_DEVICE_CHARACTERISTICS              = 0xB6,
+        BLOCK_LIMITS_EXTENSION                          = 0xB7,
+        //C0h - FFh are Vendor specific
     }eScsiVpdPages;
 
     //these enums are only for VPD pages with fixed lengths..add onto this as we need more things in here
@@ -415,9 +484,16 @@ extern "C"
         MP_READ_WRITE_ERROR_RECOVERY      = 0x01,
         MP_DISCONNECT_RECONNECT           = 0x02,
         MP_RIGID_DISK_GEOMETRY            = 0x04,//This is long obsolete.
+        MP_FLEXIBLE_DISK_GEOMETRY         = 0x05,//Long obsolete
         MP_VERIFY_ERROR_RECOVERY          = 0x07,
         MP_CACHING                        = 0x08,
+        MP_PERIPHERAL_DEVICE              = 0x09,//Obsolete
         MP_CONTROL                        = 0x0A,
+        MP_MEDIUM_TYPES_SUPPORTED         = 0x0B,//Obsolete
+        MP_NOTCH_AND_PARTITION            = 0x0C,//Obsolete
+        MP_OBS_POWER_CONDITION            = 0x0D,//Obsolete page. Named different than power condition page below.
+        MP_XOR_CONTROL                    = 0x10,//Obsolete
+        MP_ENCLOSURE_SERVICES_MANAGEMENT  = 0x14,
         MP_EXTENDED                       = 0x15,
         MP_EXTENDED_DEVICE_TYPE_SPECIFIC  = 0x16,
         MP_PROTOCOL_SPECIFIC_LOGICAL_UNIT = 0x18,
@@ -653,6 +729,7 @@ extern "C"
         STANDARD_CODE_ZBC = 49,
         STANDARD_CODE_ADC4 = 50,
         STANDARD_CODE_ZBC2 = 51,
+        STANDARD_CODE_SES4 = 52,
         //65 - 84 Physical Mapping protocol
         STANDARD_CODE_SSA_TL2 = 65,
         STANDARD_CODE_SSA_TL1 = 66,
@@ -672,7 +749,7 @@ extern "C"
         STANDARD_CODE_FCP3 = 80,
         STANDARD_CODE_ADT2 = 81,
         STANDARD_CODE_FCP4 = 82,
-        STANDARD_CODE_ADT3 = 83,//SPC5 says 82, but I think this is wrong - TJE
+        STANDARD_CODE_ADT3 = 83,
         //85 - 94 Parallel SCSI Physical
         STANDARD_CODE_SPI = 85,
         STANDARD_CODE_FAST20 = 86,
@@ -751,6 +828,19 @@ extern "C"
         STANDARD_CODE_IEEE_1667 = 2046,
         STANDARD_CODE_RESERVED = 2047
     }eStandardCode;
+
+    typedef enum _eMRIEModes
+    {
+        SCSI_MRIE_NO_REPORTING                                  = 0,
+        SCSI_MRIE_ASYNCHRONOUS_EVENT_REPORTING                  = 1,//obsolete
+        SCSI_MRIE_GENERATE_UNIT_ATTENTION                       = 2,
+        SCSI_MRIE_CONDITIONALLY_GENERATE_RECOVERED_ERROR        = 3,
+        SCSI_MRIE_UNCONDITIONALLY_GENERATE_RECOVERED_ERROR      = 4,
+        SCSI_MRIE_GENERATE_NO_SENSE                             = 5,
+        SCSI_MRIE_ONLY_REPORT_ON_EXCEPTION_CONDITION_ON_REQUEST = 6,
+        //modes 7h - Bh are reserved
+        //modes Ch - Fh are vendor specific
+    }eMRIEModes;
 
     #if defined (__cplusplus)
 } //extern "C"

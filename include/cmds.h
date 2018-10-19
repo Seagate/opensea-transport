@@ -32,12 +32,13 @@ extern "C"
     //  Entry:
     //!   \param[in] device = file descriptor
     //!   \param[in] exitFailureMode = set the failure mode bit to 1. See ACS3 or SBC4 for details on what this does
+    //!   \param[in] znr - zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, FAILURE = fail
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode);
+    OPENSEA_TRANSPORT_API int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode, bool znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -48,12 +49,13 @@ extern "C"
     //  Entry:
     //!   \param[in] device = file descriptor
     //!   \param[in] exitFailureMode = set the failure mode bit to 1. See ACS3 or SBC4 for details on what this does
+    //!   \param[in] znr - zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, FAILURE = fail
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_Sanitize_Crypto_Erase(tDevice *device, bool exitFailureMode);
+    OPENSEA_TRANSPORT_API int send_Sanitize_Crypto_Erase(tDevice *device, bool exitFailureMode, bool znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -68,12 +70,13 @@ extern "C"
     //!   \param[in] overwritePasses = this is the number of passes to run. a value of 0 means 16 passes (which is the max for sanitize). (For SCSI, we adjust this to set 16 since a value of 0 is reserved)
     //!   \param[in] pattern = pointer to a buffer containing a pattern. (Set to NULL to use zeros)
     //!   \param[in] patternLength = the length of the patter. Max length on SCSI is 1 logical sector. On ATA, the length MUST BE 4! Only required if pattern is non-NULL.
+    //!   \param[in] znr - zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, FAILURE = fail
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool invertBetweenPasses, uint8_t overwritePasses, uint8_t *pattern, uint32_t patternLength);
+    OPENSEA_TRANSPORT_API int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool invertBetweenPasses, uint8_t overwritePasses, uint8_t *pattern, uint32_t patternLength, bool znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -142,7 +145,6 @@ extern "C"
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param dlMode - enum value specifying the download mode to use.
-    //!   \param useDMA - use DMA mode for download. (This is only for ATA drives and will only work if the drive supports download DMA)
     //!   \param offset - offset (used for segmented download, otherwise set to 0)
     //!   \param xferLen - transfer length
     //!   \param ptrData - pointer to the data buffer that will do the transfer
@@ -152,7 +154,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, bool useDMA, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber);
+    OPENSEA_TRANSPORT_API int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber);
 
     //-----------------------------------------------------------------------------
     //
@@ -161,14 +163,13 @@ extern "C"
     //! \brief   Description:  This will send the command to activate a firmware that was downloaded in a deferred update
     //  Entry:
     //!   \param device - pointer to the device structure
-    //!   \param useDMA - use DMA mode for download. (This is only for ATA drives and will only work if the drive supports download DMA)
     //!   \param slotNumber - set to the slot number (NVMe) or buffer ID (SCSI) that you want to set. If unsure, set this to zero. Ignored on ATA drives.
     //!   
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int firmware_Download_Activate(tDevice *device, bool useDMA, uint8_t slotNumber);
+    OPENSEA_TRANSPORT_API int firmware_Download_Activate(tDevice *device, uint8_t slotNumber);
 
     typedef enum _eSecurityProtocols
     {
@@ -202,7 +203,6 @@ extern "C"
     //! \brief   Description:  This function will send a security command to the device transfering data to the device
     //  Entry:
     //!   \param device - pointer to the device structure
-    //!   \param useDMA - use DMA mode(This is only for ATA drives and will only work if the drive supports DMA)
     //!   \param securityProtocol - security protocol being used
     //!   \param securityProtocolSpecific - any specific information to the security protocol being used
     //!   \param ptrData - pointer to the data buffer that will do the transfer
@@ -212,7 +212,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int security_Send(tDevice *device, bool useDMA, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -221,7 +221,6 @@ extern "C"
     //! \brief   Description:  This function will send a security command to the device transferring data to the host
     //  Entry:
     //!   \param device - pointer to the device structure
-    //!   \param useDMA - use DMA mode(This is only for ATA drives and will only work if the drive supports DMA)
     //!   \param securityProtocol - security protocol being used
     //!   \param securityProtocolSpecific - any specific information to the security protocol being used
     //!   \param ptrData - pointer to the data buffer that will do the transfer
@@ -231,7 +230,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int security_Receive(tDevice *device, bool useDMA, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -242,8 +241,6 @@ extern "C"
     //!          If pattern is non-null, the buffer it points to MUST be 1 logical sector in size.
     //  Entry:
     //!   \param device - pointer to the device structure
-    //!   \param useGPL - use the GPL feature instead of SMART feature to write logs. (ATA only.
-    //!   \param useDMA - use DMA mode for download. (This is only for ATA drives and only if the ATA drive supports read/write log DMA)
     //!   \param startingLba - lba to start the write same at
     //!   \param numberOfLogicalBlocks - The number of logical blocks to write to from the startingLba (range). SCSI Has a max range of a UINT32, ATA has max of UINT64
     //!   \param pattern - pointer to a buffer that is 1 logical sector in size and contains a pattern to write. If this is NULL, a zero pattern will be used in place.
@@ -252,8 +249,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int write_Same(tDevice *device, bool useGPL, bool useDMA, uint64_t startingLba, uint64_t numberOfLogicalBlocks, uint8_t *pattern);
+    OPENSEA_TRANSPORT_API int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBlocks, uint8_t *pattern);
 
+
+    OPENSEA_TRANSPORT_API bool is_Write_Psuedo_Uncorrectable_Supported(tDevice *device);
     //-----------------------------------------------------------------------------
     //
     //  write_Psuedo_Uncorrectable_Error()
@@ -269,6 +268,7 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA);
 
+    OPENSEA_TRANSPORT_API bool is_Write_Flagged_Uncorrectable_Supported(tDevice *device);
     //-----------------------------------------------------------------------------
     //
     //  write_Flagged_Uncorrectable_Error()

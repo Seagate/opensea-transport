@@ -16,6 +16,9 @@
 
 #include "common.h"
 #include "version.h"
+#if defined (VMK_CROSS_COMP)
+#include "vm_nvme_lib.h"
+#endif
 
 #if defined (__cplusplus)
 #define __STDC_FORMAT_MACROS
@@ -752,6 +755,7 @@ extern "C"
         eATASynchronousDMAMode dmaMode;
         bool taggedCommandQueuingSupported;
         bool nativeCommandQueuingSupported;
+        bool readWriteMultipleSupported;
         uint8_t logicalSectorsPerDRQDataBlock;
         bool isParallelTransport;
         bool isDevice1;//Don't rely on this. Only here for some OS's/passthroughs. Most shouldn't need this. SAT or the OS's passthrough will ignore this bit in the commands anyways.
@@ -819,7 +823,8 @@ extern "C"
         eInterfaceType interface_type;
         eZonedDeviceType zonedType;//most drives will report ZONED_TYPE_NOT_ZONED
         uint32_t       deviceBlockSize; //This is the logical block size reported by the drive
-		uint32_t	   devicePhyBlockSize; // This is the physical block size reported by the drive. 
+		uint32_t	   devicePhyBlockSize; // This is the physical block size reported by the drive.
+        uint32_t       dataTransferSize;//this the block size that will be transfered
         uint16_t       sectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
         uint64_t       deviceMaxLba;
         uint32_t       lunOrNSID; //shared between SCSI / NVMe 
@@ -833,6 +838,8 @@ extern "C"
 #if !defined(DISABLE_NVME_PASSTHROUGH)
             nvmeIdentifyData nvme;
 #endif
+			//reserved field below is set to 8192 because nvmeIdentifyData structure holds both controller and namespace data which are 4k each
+			uint8_t reserved[8192];//putting this here to allow some compatibility when NVMe passthrough is NOT enabled.
         }IdentifyData;
         tVpdData         scsiVpdData; // Intentionally not part of the above IdentifyData union 
         ataReturnTFRs lastCommandRTFRs;//This holds the RTFRs for the last command to be sent to the device. This is not necessarily the last function called as functions may send multiple commands to the device.
@@ -888,11 +895,22 @@ extern "C"
     // \struct typedef struct _OSDriveInfo
     typedef struct _OSDriveInfo
     {
-        char                name[30];//handle name (string)
+        char                name[256];//handle name (string)
         char                friendlyName[20];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
         eOSType             osType;//useful for lower layers to do OS specific things
         #if defined (__linux__)
+        #if defined(VMK_CROSS_COMP)
+        /**
+         * In VMWare we discover or send IOCTL to NVMe throught NDDK. 
+         * So we will need 2 different handle for NVMe_IO and SG_IO 
+         * 
+         * @author 521852 (8/27/2018)
+         */
+        int                 fd;
+        struct nvme_handle *nvmeFd;
+        #else
         int                 fd;//primary handle
+        #endif
         bool                scsiAddressValid;//will be true if the SCSI address is a valid address
         struct {
             uint8_t         host;//AKA SCSI adapter #
@@ -904,13 +922,26 @@ extern "C"
         char                secondName[30];
         char                secondFriendlyName[30];
         bool                secondHandleOpened;
+        #if defined(VMK_CROSS_COMP)
+        /**
+         * In VMWare we discover or send IOCTL to NVMe throught NDDK. 
+         * So we will need 2 different handle for NVMe_IO and SG_IO 
+         * 
+         * @author 521852 (8/27/2018)
+         */
+        int                 fd2;
+        struct nvme_handle *nvmeFd2;
+        #else
         int                 fd2;//secondary handle. Ex: fd = sg handle opened, fd2 = sd handle opened.
+        #endif
         struct {
             bool            driverVersionValid;
             uint8_t         majorVersion;
             uint8_t         minorVersion;
             uint8_t         revision;
         }sgDriverVersion;
+        bool                sntlViaSG;//When set to true, we can use SGIO to issue scsi commands and they'll be translated to NVMe for us. If false, this is not available. TODO: if false, use software translation.
+        long                pageSize;//A.K.A. alignment requirements for Linux.
         #elif defined (_WIN32)
         HANDLE              fd;
         SCSI_ADDRESS        scsi_addr;
@@ -929,12 +960,15 @@ extern "C"
 #if WINVER >= SEA_WIN32_WINNT_WIN10
 		struct {
 			bool fwdlIOSupported;
+            bool allowFlexibleUseOfAPI;//Set this to true to allow using the Win10 API for FWDL for any compatible download commands. If this is false, the Win10 API will only be used on IDE_INTERFACE for an ATA download command and SCSI interface for a supported Write buffer command. If true, it will be used regardless of which command the caller is using. This is useful for pure FW updates versus testing a specific condition.
 			uint32_t payloadAlignment; //From MSDN: The alignment of the image payload, in number of bytes. The maximum is PAGE_SIZE. The transfer size is a mutliple of this size. Some protocols require at least sector size. When this value is set to 0, this means that this value is invalid.
 			uint32_t maxXferSize; //From MSDN: The image payload maximum size, this is used for a single command
 			bool isLastSegmentOfDownload;//This should be set only when we are issuing a download command...We should find a better place for this.
+            bool isFirstSegmentOfDownload;//This should be set only when we are issuing a download command...We should find a better place for this.
 			//TODO: expand this struct if we need other data when we check for firmware download support on a device.
 		}fwdlIOsupport;
 #endif
+		uint32_t adapterMaxTransferSize;//Bytes. Returned by querying for adapter properties. Can be used to know when trying to request more than the adapter or driver supports.
         #else
         int                 fd;//some other nix system that only needs a integer file handle
         #endif
@@ -1087,6 +1121,9 @@ extern "C"
         SEAGATE_PRARIETEK = BIT15, //PrarieTek. Vendor ID PRAIRIE (SCSI).
         SEAGATE_PLUS_DEVELOPMENT = BIT16, //Plus Development. Unknown detection
         SEAGATE_CODATA = BIT17, //CoData. Unknown detection
+		//Recently Added
+		SEAGATE_VENDOR_F = BIT18,
+		SEAGATE_VENDOR_G = BIT19,
     }eSeagateFamily;
 
     //The scan flags should each be a bit in a 32bit unsigned integer.

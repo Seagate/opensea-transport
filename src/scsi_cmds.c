@@ -20,10 +20,12 @@ int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata,
 {
     int ret = UNKNOWN;
     ScsiIoCtx scsiIoCtx;
+	senseDataFields senseFields;
+	memset(&senseFields, 0, sizeof(senseDataFields));
     memset(&scsiIoCtx, 0, sizeof(ScsiIoCtx));
     uint8_t *senseBuffer = senseData;
     //if we were not given a sense buffer, assume we want to use the last command sense data that is part of the device struct
-    if (senseBuffer == NULL || senseDataLen == 0)
+    if (!senseBuffer || senseDataLen == 0)
     {
         senseBuffer = device->drive_info.lastCommandSenseData;
         senseDataLen = SPC3_SENSE_LEN;
@@ -33,12 +35,12 @@ int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata,
         memset(senseBuffer, 0, senseDataLen);
     }
     //check a couple of the parameters before continuing
-    if (device == NULL)
+    if (!device)
     {
         perror("device struct is NULL!");
         return BAD_PARAMETER;
     }
-    if (cdb == NULL)
+    if (!cdb)
     {
         perror("cdb array is NULL!");
         return BAD_PARAMETER;
@@ -48,7 +50,7 @@ int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata,
         perror("Invalid CDB length specified!");
         return BAD_PARAMETER;
     }
-    if (pdata == NULL && dataLen != 0)
+    if (!pdata && dataLen != 0)
     {
         perror("Datalen must be set to 0 when pdata is NULL");
         return BAD_PARAMETER;
@@ -64,7 +66,7 @@ int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata,
     scsiIoCtx.pdata = pdata;
     scsiIoCtx.dataLength = dataLen;
     scsiIoCtx.verbose = 0;
-    scsiIoCtx.timeout = timeoutSeconds;
+    scsiIoCtx.timeout = M_Max(timeoutSeconds, device->drive_info.defaultTimeoutSeconds);
     if (timeoutSeconds == 0)
     {
         scsiIoCtx.timeout = M_Max(15, device->drive_info.defaultTimeoutSeconds);
@@ -92,14 +94,20 @@ int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata,
     }
     //send the command
     int sendIOret = send_IO(&scsiIoCtx);
-    if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity && scsiIoCtx.psense != NULL)
+    if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity && scsiIoCtx.psense)
     {
         printf("\n  Sense Data Buffer:\n");
         print_Data_Buffer(scsiIoCtx.psense, get_Returned_Sense_Data_Length(scsiIoCtx.psense), false);
         printf("\n");
     }
-    get_Sense_Key_ASC_ASCQ_FRU(scsiIoCtx.psense, senseDataLen, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.acq, &scsiIoCtx.returnStatus.ascq, &scsiIoCtx.returnStatus.fru);
-    ret = check_Sense_Key_ASC_ASCQ_And_FRU(device, scsiIoCtx.returnStatus.senseKey, scsiIoCtx.returnStatus.acq, scsiIoCtx.returnStatus.ascq, scsiIoCtx.returnStatus.fru);
+    //get_Sense_Key_ASC_ASCQ_FRU(scsiIoCtx.psense, senseDataLen, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.asc, &scsiIoCtx.returnStatus.ascq, &scsiIoCtx.returnStatus.fru);
+	get_Sense_Data_Fields(scsiIoCtx.psense, scsiIoCtx.senseDataSize, &senseFields);
+    ret = check_Sense_Key_ASC_ASCQ_And_FRU(device, senseFields.scsiStatusCodes.senseKey, senseFields.scsiStatusCodes.asc, senseFields.scsiStatusCodes.ascq, senseFields.scsiStatusCodes.fru);
+	//if verbose mode and sense data is non-NULL, we should try to print out all the relavent information we can
+	if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity && scsiIoCtx.psense)
+	{
+		print_Sense_Fields(&senseFields);
+	}
     //print command timing information
     print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
     #if defined (_DEBUG)
@@ -115,7 +123,7 @@ int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata,
         print_Data_Buffer(pdata, dataLen, true);
         printf("\n");
     }
-    if (senseData != NULL && senseDataLen > 0 && senseData != device->drive_info.lastCommandSenseData)
+    if (senseData && senseDataLen > 0 && senseData != device->drive_info.lastCommandSenseData)
     {
         memcpy(device->drive_info.lastCommandSenseData, senseBuffer, M_Min(SPC3_SENSE_LEN, senseDataLen));
     }
@@ -123,7 +131,7 @@ int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata,
     {
         ret = sendIOret;
     }
-    if (ret == UNKNOWN && (device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= scsiIoCtx.timeout)
+    if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= scsiIoCtx.timeout)
     {
         ret = COMMAND_TIMEOUT;
     }
@@ -211,7 +219,7 @@ int scsi_Report_Supported_Operation_Codes(tDevice *device, bool rctd, uint8_t re
     return ret;
 }
 
-int scsi_Sanitize_Cmd(tDevice *device, eScsiSanitizeFeature sanitizeFeature, bool immediate, bool ause, uint16_t parameterListLength, uint8_t *ptrData)
+int scsi_Sanitize_Cmd(tDevice *device, eScsiSanitizeFeature sanitizeFeature, bool immediate, bool znr, bool ause, uint16_t parameterListLength, uint8_t *ptrData)
 {
     int       ret       = FAILURE;
     uint8_t   cdb[CDB_LEN_10]       = { 0 };
@@ -229,6 +237,10 @@ int scsi_Sanitize_Cmd(tDevice *device, eScsiSanitizeFeature sanitizeFeature, boo
     if (immediate)
     {
         cdb[1] |= BIT7;
+    }
+    if (znr)
+    {
+        cdb[1] |= BIT6;
     }
     if (ause)
     {
@@ -259,22 +271,22 @@ int scsi_Sanitize_Cmd(tDevice *device, eScsiSanitizeFeature sanitizeFeature, boo
     return ret;
 }
 
-int scsi_Sanitize_Block_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate)
+int scsi_Sanitize_Block_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate, bool znr)
 {
-    return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_BLOCK_ERASE, immediate, allowUnrestrictedSanitizeExit, 0, NULL);
+    return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_BLOCK_ERASE, immediate, znr, allowUnrestrictedSanitizeExit, 0, NULL);
 }
 
-int scsi_Sanitize_Cryptographic_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate)
+int scsi_Sanitize_Cryptographic_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate, bool znr)
 {
-    return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE, immediate, allowUnrestrictedSanitizeExit, 0, NULL);
+    return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE, immediate, znr, allowUnrestrictedSanitizeExit, 0, NULL);
 }
 
 int scsi_Sanitize_Exit_Failure_Mode(tDevice *device)
 {
-    return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_EXIT_FAILURE_MODE, false, false, 0, NULL);
+    return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_EXIT_FAILURE_MODE, false, false, false, 0, NULL);
 }
 
-int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate, bool invertBetweenPasses, eScsiSanitizeOverwriteTest test, uint8_t overwritePasses, uint8_t *pattern, uint16_t patternLengthBytes)
+int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit, bool znr, bool immediate, bool invertBetweenPasses, eScsiSanitizeOverwriteTest test, uint8_t overwritePasses, uint8_t *pattern, uint16_t patternLengthBytes)
 {
     int ret = UNKNOWN;
     if ((patternLengthBytes != 0 && pattern == NULL) || (patternLengthBytes > device->drive_info.deviceBlockSize))
@@ -299,7 +311,7 @@ int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit,
     {
         memcpy(&overwriteBuffer[4], pattern, patternLengthBytes);
     }
-    ret = scsi_Sanitize_Cmd(device, SCSI_SANITIZE_OVERWRITE, immediate, allowUnrestrictedSanitizeExit, patternLengthBytes + 4, overwriteBuffer);
+    ret = scsi_Sanitize_Cmd(device, SCSI_SANITIZE_OVERWRITE, immediate, znr, allowUnrestrictedSanitizeExit, patternLengthBytes + 4, overwriteBuffer);
     safe_Free(overwriteBuffer);
     return ret;
 }
@@ -347,7 +359,7 @@ int scsi_Log_Sense_Cmd(tDevice *device, bool saveParameters, uint8_t pageControl
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending SCSI Log Sense Command, page code: 0x%02"PRIx8"\n", pageCode);
+        printf("Sending SCSI Log Sense Command, page code: 0x%02" PRIx8 "\n", pageCode);
     }
         // Set up the CDB.
     cdb[OPERATION_CODE] = LOG_SENSE_CMD;
@@ -384,7 +396,7 @@ int scsi_Log_Select_Cmd(tDevice *device, bool pcr, bool sp, uint8_t pageControl,
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending SCSI Log Select Command, page code 0x%02"PRIx8"\n",pageCode);
+        printf("Sending SCSI Log Select Command, page code 0x%02" PRIx8 "\n",pageCode);
     }
 
     // Set up the CDB.
@@ -680,7 +692,7 @@ int scsi_Write_Buffer(tDevice *device, eWriteBufferMode mode, uint8_t modeSpecif
     cdb[9] = 0; //control
 
     //send the command
-    if (ptrData != NULL && parameterListLength != 0)
+    if (ptrData && parameterListLength != 0)
     {
         ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, parameterListLength, XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
@@ -700,9 +712,13 @@ int scsi_Inquiry(tDevice *device, uint8_t *pdata, uint32_t dataLength, uint8_t p
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        if (evpd == true)
+        if (evpd)
         {
-            printf("Sending SCSI Inquiry, VPD = %02"PRIX8"h\n", pageCode);
+            printf("Sending SCSI Inquiry, VPD = %02" PRIX8 "h\n", pageCode);
+        }
+        else if (cmdDt)
+        {
+            printf("Sending SCSI Inquiry, CmdDt = %02" PRIX8 "h\n", pageCode);
         }
         else
         {
@@ -946,14 +962,18 @@ int scsi_Read_Buffer_16(tDevice *device, uint8_t mode, uint8_t modeSpecific, uin
     return ret;
 }
 
-int scsi_Receive_Diagnostic_Results(tDevice *device, bool pcv, uint8_t pageCode, uint16_t allocationLength, uint8_t *ptrData)
+int scsi_Receive_Diagnostic_Results(tDevice *device, bool pcv, uint8_t pageCode, uint16_t allocationLength, uint8_t *ptrData, uint32_t timeoutSeconds)
 {
     int       ret = FAILURE;
     uint8_t   cdb[CDB_LEN_6] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
     {
-        printf("Sending SCSI Receive Diagnostic Results, page code = 0x%02"PRIX8"\n",pageCode);
+        printf("Sending SCSI Receive Diagnostic Results, page code = 0x%02" PRIX8 "\n",pageCode);
+    }
+    if (timeoutSeconds == 0)
+    {
+        timeoutSeconds = 15;
     }
 
     // Set up the CDB.
@@ -970,11 +990,11 @@ int scsi_Receive_Diagnostic_Results(tDevice *device, bool pcv, uint8_t pageCode,
     //send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeoutSeconds);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeoutSeconds);
     }
     print_Return_Enum("Receive Diagnostic Results", ret);
     return ret;
@@ -1454,7 +1474,7 @@ int scsi_Test_Unit_Ready(tDevice *device, scsiStatus * pReturnStatus)
     ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (pReturnStatus)
     {
-        get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &pReturnStatus->senseKey, &pReturnStatus->acq, &pReturnStatus->ascq, &pReturnStatus->fru);
+        get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &pReturnStatus->senseKey, &pReturnStatus->asc, &pReturnStatus->ascq, &pReturnStatus->fru);
     }
     //leave this here or else the verbose output gets confusing to look at when debugging- this only prints the ret for the function, not the acs/acsq stuff
     print_Return_Enum("Test Unit Ready", ret);
@@ -1989,15 +2009,15 @@ int scsi_Read_16(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool ra
 
     cdb[OPERATION_CODE] = READ16;
     cdb[1] = (rdProtect & 0x07) << 5;
-    if (dpo == true)
+    if (dpo)
     {
         cdb[1] |= BIT4;
     }
-    if (fua == true)
+    if (fua)
     {
         cdb[1] |= BIT3;
     }
-    if (rarc == true)
+    if (rarc)
     {
         cdb[1] |= BIT2;
     }
@@ -2282,7 +2302,7 @@ int scsi_Reassign_Blocks(tDevice *device, bool longLBA, bool longList, uint32_t 
     int       ret = FAILURE;
     uint8_t   cdb[CDB_LEN_6] = { 0 };
 
-    if (ptrData == NULL)
+    if (!ptrData)
     {
         return BAD_PARAMETER;
     }
@@ -3027,7 +3047,7 @@ int scsi_Write_And_Verify_16(tDevice *device, uint8_t wrprotect, bool dpo, uint8
 
     cdb[OPERATION_CODE] = WRITE_AND_VERIFY_16;
     cdb[1] |= (wrprotect & 0x07) << 5;
-    if (dpo == true)
+    if (dpo)
     {
         cdb[1] |= BIT4;
     }
@@ -3482,8 +3502,8 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    //while this command is all typed up the lower level windows or linux passthrough code needs some work before this command is actually ready to be used
 //    return NOT_SUPPORTED;
 //    ret = send_IO(&scsiIoCtx);
-//    get_Sense_Key_ACQ_ACSQ(device->drive_info.lastCommandSenseData, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.acq, &scsiIoCtx.returnStatus.ascq);
-//    ret = check_Sense_Key_ACQ_And_ACSQ(scsiIoCtx.returnStatus.senseKey, scsiIoCtx.returnStatus.acq, scsiIoCtx.returnStatus.ascq);
+//    get_Sense_Key_ACQ_ACSQ(device->drive_info.lastCommandSenseData, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.asc, &scsiIoCtx.returnStatus.ascq);
+//    ret = check_Sense_Key_ACQ_And_ACSQ(scsiIoCtx.returnStatus.senseKey, scsiIoCtx.returnStatus.asc, scsiIoCtx.returnStatus.ascq);
 //    print_Return_Enum("XD Write Read 10", ret);
 //
 //    return ret;
@@ -3596,8 +3616,8 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    //while this command is all typed up the lower level windows or linux passthrough code needs some work before this command is actually ready to be used
 //    return NOT_SUPPORTED;
 //    ret = send_IO(&scsiIoCtx);
-//    get_Sense_Key_ACQ_ACSQ(device->drive_info.lastCommandSenseData, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.acq, &scsiIoCtx.returnStatus.ascq);
-//    ret = check_Sense_Key_ACQ_And_ACSQ(scsiIoCtx.returnStatus.senseKey, scsiIoCtx.returnStatus.acq, scsiIoCtx.returnStatus.ascq);
+//    get_Sense_Key_ACQ_ACSQ(device->drive_info.lastCommandSenseData, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.asc, &scsiIoCtx.returnStatus.ascq);
+//    ret = check_Sense_Key_ACQ_And_ACSQ(scsiIoCtx.returnStatus.senseKey, scsiIoCtx.returnStatus.asc, scsiIoCtx.returnStatus.ascq);
 //    print_Return_Enum("XD Write Read 32", ret);
 //
 //    return ret;
@@ -3608,7 +3628,7 @@ int scsi_xp_Write_10(tDevice *device, bool dpo, bool fua, bool xoprinfo, uint32_
     int       ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
 
-    if (ptrData == NULL)
+    if (!ptrData)
     {
         return BAD_PARAMETER;
     }
@@ -3619,15 +3639,15 @@ int scsi_xp_Write_10(tDevice *device, bool dpo, bool fua, bool xoprinfo, uint32_
     }
 
     cdb[OPERATION_CODE] = XPWRITE_10;
-    if (dpo == true)
+    if (dpo)
     {
         cdb[1] |= BIT4;
     }
-    if (fua == true)
+    if (fua)
     {
         cdb[1] |= BIT3;
     }
-    if (xoprinfo == true)
+    if (xoprinfo)
     {
         cdb[1] |= BIT0;
     }
@@ -3652,7 +3672,7 @@ int scsi_xp_Write_32(tDevice *device, bool dpo, bool fua, bool xoprinfo, uint64_
     int ret = FAILURE;
     uint8_t cdb[CDB_LEN_32] = { 0 };
 
-    if (ptrData == NULL)
+    if (!ptrData)
     {
         return BAD_PARAMETER;
     }
