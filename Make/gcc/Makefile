@@ -17,9 +17,9 @@ FILE_OUTPUT_DIR=lib
 #Change the Major version when major interface changes are made. E.g. tDevice changes
 MAJOR=1
 #Change the Minor version when new features are added. 
-MINOR=17
+MINOR=18
 #Change the patch version when only bug fixes are made.
-PATCH=5
+PATCH=3
 VERSION=$(MAJOR).$(MINOR).$(PATCH)
 SRC_DIR=../../src/
 INC_DIR=-I../../include -I../../../opensea-common/include  
@@ -45,7 +45,7 @@ endif
 #override CFLAGS = -Wall -c -fPIC -I. -std=gnu99
 CFLAGS ?= -Wall 
 #setting std=c99 instead of std-gnu99 because we want __has_include to work. This means we must add -D_GNU_SOURCE to the project defines to keep the same functionality in Linux. NOTE: This seems to work in newGCC, but if you are unfortunate enough to HAVE to use old GCC within somehting like CentOS6, you must change back to gnu99.
-CFLAGS += -c -fPIC -I. -std=c99
+CFLAGS += -c -fPIC -I. -std=gnu99
 LFLAGS = -Wall ../../../opensea-common/Make/gcc/lib/$(FILE_OUTPUT_DIR)/libopensea-common.a
 LIB_SRC_FILES = \
 	$(SRC_DIR)ata_cmds.c\

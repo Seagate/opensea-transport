@@ -941,6 +941,7 @@ extern "C"
             uint8_t         revision;
         }sgDriverVersion;
         bool                sntlViaSG;//When set to true, we can use SGIO to issue scsi commands and they'll be translated to NVMe for us. If false, this is not available. TODO: if false, use software translation.
+        long                pageSize;//A.K.A. alignment requirements for Linux.
         #elif defined (_WIN32)
         HANDLE              fd;
         SCSI_ADDRESS        scsi_addr;
@@ -967,6 +968,7 @@ extern "C"
 			//TODO: expand this struct if we need other data when we check for firmware download support on a device.
 		}fwdlIOsupport;
 #endif
+		uint32_t adapterMaxTransferSize;//Bytes. Returned by querying for adapter properties. Can be used to know when trying to request more than the adapter or driver supports.
         #else
         int                 fd;//some other nix system that only needs a integer file handle
         #endif

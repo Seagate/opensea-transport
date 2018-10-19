@@ -778,6 +778,7 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
         ataCommandOptions->ptrSenseData = senseData;
         ataCommandOptions->senseDataSize = SPC3_SENSE_LEN;
     }
+	ataCommandOptions->timeout = M_Max(ataCommandOptions->timeout, device->drive_info.defaultTimeoutSeconds);
     if (ataCommandOptions->timeout == 0)
     {
         ataCommandOptions->timeout = M_Max(15, device->drive_info.defaultTimeoutSeconds);

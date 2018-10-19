@@ -46,7 +46,8 @@ extern "C"
 
     typedef enum _eNvmeCmdType {
         NVM_ADMIN_CMD,
-        NVM_CMD
+        NVM_CMD,
+        NVM_UNKNOWN_CMD_SET //NVMe allows for additional command sets to be defined, but only 2 are currently, so make sure we have an "unknown" option
     } eNvmeCmdType; 
 
     typedef enum _eNvmeIdentifyCNS {
@@ -779,10 +780,30 @@ extern "C"
     	uint32_t 	cdw15; //Command Dword 10(CDW10)
     } nvmeAdminCommand;
 
+    typedef struct _nvmCommandDWORDS {
+        uint32_t 			cdw0; //CDW0
+        uint32_t 			cdw1; //CDW1
+        uint32_t 			cdw2; //CDW2
+        uint32_t 			cdw3; //CDW3
+        uint32_t 			cdw4; //CDW4
+        uint32_t 			cdw5; //CDW5
+        uint32_t 			cdw6; //CDW6
+        uint32_t 			cdw7; //CDW7
+        uint32_t 			cdw8; //CDW8
+        uint32_t            cdw9; //CDW9
+        uint32_t 			cdw10;//CDW10
+        uint32_t 			cdw11;//CDW11
+        uint32_t 			cdw12;//CDW12
+        uint32_t 			cdw13;//CDW13
+        uint32_t 			cdw14;//CDW14
+        uint32_t 			cdw15;//CDW15
+    } nvmCommandDWORDS;
+
     typedef struct _nvmeCommands {
         union {
             nvmeAdminCommand adminCmd; //Use for commands part of the Admin command set
             nvmCommand nvmCmd; //Use for commands part of the NVM command set
+            nvmCommandDWORDS dwords; //So that we can see the whole thing as separate DWORDs...mostly used for unknown case to print out. This is the 64 bytes of command structure.
         };
     } nvmeCommands;
 

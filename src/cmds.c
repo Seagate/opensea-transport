@@ -748,7 +748,7 @@ int write_Flagged_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
         break;
     case NVME_DRIVE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-        ret = nvme_Write_Uncorrectable(device, corruptLBA, 1);
+        ret = nvme_Write_Uncorrectable(device, corruptLBA, 0);//0 means 1 LBA since this is a zeros based value
         break;
 #endif
     case SCSI_DRIVE:
@@ -1395,8 +1395,7 @@ int io_Read(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32_
         break;
     case NVME_INTERFACE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-        //TODO: validate that the protection information input value of 0 works!
-        return nvme_Read(device, lba, dataSize / device->drive_info.deviceBlockSize, false, false, 0, ptrData, dataSize);
+        return nvme_Read(device, lba, (dataSize / device->drive_info.deviceBlockSize) - 1, false, false, 0, ptrData, dataSize);
 #else 
         //perform SCSI reads
         return scsi_Read(device, lba, async, ptrData, dataSize);
@@ -1441,8 +1440,7 @@ int io_Write(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32
         break;
     case NVME_INTERFACE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-        //TODO: validate that the protection information input value of 0 works!
-        return nvme_Write(device, lba, dataSize / device->drive_info.deviceBlockSize, false, false, 0, 0, ptrData, dataSize);
+        return nvme_Write(device, lba, (dataSize / device->drive_info.deviceBlockSize) - 1, false, false, 0, 0, ptrData, dataSize);
 #else 
         //perform SCSI writes
         return scsi_Write(device, lba, async, ptrData, dataSize);
@@ -1600,7 +1598,7 @@ int nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
 	uint8_t *data = (uint8_t*)calloc(dataLength, sizeof(uint8_t));
 	if (data)
 	{
-		ret = nvme_Read(device, lba, range, false, true, 0, data, dataLength);
+		ret = nvme_Read(device, lba, range - 1, false, true, 0, data, dataLength);
 	}
 	else
 	{
