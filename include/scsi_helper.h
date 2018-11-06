@@ -558,6 +558,7 @@ extern "C"
         LP_APPLICATION_CLIENT                             = 0x0F,
         LP_SELF_TEST_RESULTS                              = 0x10,
         LP_SOLID_STATE_MEDIA                              = 0x11,
+		LP_ZONED_DEVICE_STATISTICS                        = 0x14,//subpage 01
         LP_BACKGROUND_SCAN_RESULTS                        = 0x15,
         LP_PENDING_DEFECTS                                = 0x15,
         LP_LPS_MISALLIGNMENT                              = 0x15,

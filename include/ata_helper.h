@@ -834,6 +834,7 @@ extern "C"
        ATA_DEVICE_STATS_LOG_TEMP            = 0x05,
        ATA_DEVICE_STATS_LOG_TRANSPORT       = 0x06,
        ATA_DEVICE_STATS_LOG_SSD             = 0x07,
+	   ATA_DEVICE_STATS_LOG_ZONED_DEVICE	= 0x08,
        //Add more
    } eDeviceStatisticsLog;
 
