@@ -996,19 +996,20 @@ extern "C"
 	//
 	//  ata_Data_Set_Management()
 	//
-	//! \brief   Description:  This command sends a ATA Data Set Management command to the device
+	//! \brief   Description:  This command sends a ATA Data Set Management (XL) command to the device
 	//
 	//  Entry:
 	//!   \param device - device handle
 	//!   \param trimBit - set the TRIM bit. (Since this is currently the only available operation with this command, this should be set to true)
 	//!   \param ptrData - pointer to the data buffer that will be sent to the device
 	//!   \param dataSize - the size of the data buffer to send.
+	//!   \param xl - set to true to issue data set management XL command instead of standard command. Support for this is shown in ID Data log - supported features subpage. NOTE: This uses a different data range format, so only set this when the buffer is setup correctly!
 	//
 	//  Exit:
 	//!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
 	//
 	//-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int ata_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uint32_t dataSize, bool xl);
 
 	//-----------------------------------------------------------------------------
 	//

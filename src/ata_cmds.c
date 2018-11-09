@@ -1893,7 +1893,7 @@ int ata_Configure_Stream(tDevice *device, uint8_t streamID, bool addRemoveStream
 	return ret;
 }
 
-int ata_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uint32_t dataSize)
+int ata_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uint32_t dataSize, bool xl)
 {
 	int ret = UNKNOWN;
 	ataPassthroughCommand ataCommandOptions;
@@ -1917,7 +1917,14 @@ int ata_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uin
 	ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
 	ataCommandOptions.dataSize = dataSize;
 	ataCommandOptions.ptrData = ptrData;
-	ataCommandOptions.tfr.CommandStatus = ATA_DATA_SET_MANAGEMENT_CMD;
+	if (xl)
+	{
+		ataCommandOptions.tfr.CommandStatus = ATA_DATA_SET_MANAGEMENT_XL_CMD;
+	}
+	else
+	{
+		ataCommandOptions.tfr.CommandStatus = ATA_DATA_SET_MANAGEMENT_CMD;
+	}
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     if (device->drive_info.ata_Options.isDevice1)
     {
@@ -1939,14 +1946,28 @@ int ata_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uin
 
 	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
 	{
-		printf("Sending ATA Data Set Management\n");
+		if (xl)
+		{
+			printf("Sending ATA Data Set Management XL\n");
+		}
+		else
+		{
+			printf("Sending ATA Data Set Management\n");
+		}
 	}
 
 	ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
 	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
 	{
-		print_Return_Enum("Data Set Management", ret);
+		if (xl)
+		{
+			print_Return_Enum("Data Set Management XL", ret);
+		}
+		else
+		{
+			print_Return_Enum("Data Set Management", ret);
+		}
 	}
 
 	return ret;
