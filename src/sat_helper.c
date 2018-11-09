@@ -9773,9 +9773,17 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         if (unmapBlockDescriptorLength > 0)
         {
             uint8_t *trimBuffer = (uint8_t*)calloc(device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE * sizeof(uint8_t), sizeof(uint8_t));//allocate the max size the device supports...we'll fill in as much as we need to
+	#if SAT_SPEC_SUPPORTED > 3
+			bool useXL = device->drive_info.softSATFlags.dataSetManagementXLSupported;
 			uint8_t maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
 			uint8_t descriptorSize = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 16 : 8;
 			uint64_t maxUnmapRangePerDescriptor = device->drive_info.softSATFlags.dataSetManagementXLSupported ? UINT64_MAX : UINT16_MAX;
+#else
+			bool useXL = false
+			uint8_t maxDescriptorsPerBlock = 64;
+			uint8_t descriptorSize = 8;
+			uint64_t maxUnmapRangePerDescriptor = UINT16_MAX;
+#endif
             //need to check to make sure there weren't any truncated block descriptors before we begin
             uint16_t minBlockDescriptorLength = M_Min(unmapBlockDescriptorLength + 8, parameterListLength);
             uint16_t unmapBlockDescriptorIter = 8;
@@ -9855,7 +9863,7 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     trimBuffer[ataTrimOffset + 4] = M_Byte1(unmapLogicalBlockAddress);
                     trimBuffer[ataTrimOffset + 5] = M_Byte0(unmapLogicalBlockAddress);
                     //range (set for XL vs non-XL commands!)
-					if (device->drive_info.softSATFlags.dataSetManagementXLSupported)
+					if (useXL)
 					{
 						trimBuffer[ataTrimOffset + 6] = RESERVED;
 						trimBuffer[ataTrimOffset + 7] = RESERVED;
@@ -9889,7 +9897,7 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     if ((ataTrimOffset > (device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE)) && ((unmapBlockDescriptorIter + 16) < minBlockDescriptorLength))
                     {
 						//TODO: do we want to make it smart enough to only send as many 512B blocks as necessary without extras?
-                        if (SUCCESS == ata_Data_Set_Management(device, true, trimBuffer, device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE, device->drive_info.softSATFlags.dataSetManagementXLSupported))
+                        if (SUCCESS == ata_Data_Set_Management(device, true, trimBuffer, device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE, useXL))
                         {
                             //clear the buffer for reuse
                             memset(trimBuffer, 0, device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE);
@@ -9914,7 +9922,7 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             {
                 //send the data set management command with whatever is in the trim buffer at this point (all zeros is safe to send if we do get that)
 				//TODO: do we want to make it smart enough to only send as many 512B blocks as necessary without extras?
-                if (SUCCESS != ata_Data_Set_Management(device, true, trimBuffer, device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE, device->drive_info.softSATFlags.dataSetManagementXLSupported))
+                if (SUCCESS != ata_Data_Set_Management(device, true, trimBuffer, device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE, useXL))
                 {
                     ret = FAILURE;
                     set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
