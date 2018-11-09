@@ -1228,6 +1228,18 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                     uint64_t qword0 = M_BytesTo8ByteValue(logBuffer[7], logBuffer[6], logBuffer[5], logBuffer[4], logBuffer[3], logBuffer[2], logBuffer[1], logBuffer[0]);
                     if (qword0 & BIT63 && M_Byte2(qword0) == ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES && M_Word0(qword0) >= 0x0001)
                     {
+						uint64_t supportedCapabilities = M_BytesTo8ByteValue(logBuffer[15], logBuffer[14], logBuffer[13], logBuffer[12], logBuffer[11], logBuffer[10], logBuffer[9], logBuffer[8]);
+						if (supportedCapabilities & BIT63)
+						{
+							if (supportedCapabilities & BIT50)
+							{
+								device->drive_info.softSATFlags.dataSetManagementXLSupported = true;
+							}
+							if (supportedCapabilities & BIT48)
+							{
+								device->drive_info.softSATFlags.zeroExtSupported = true;
+							}
+						}
                         uint64_t downloadCapabilities = M_BytesTo8ByteValue(logBuffer[23], logBuffer[22], logBuffer[21], logBuffer[20], logBuffer[19], logBuffer[18], logBuffer[17], logBuffer[16]);
                         if (downloadCapabilities & BIT63 && downloadCapabilities & BIT34)
                         {

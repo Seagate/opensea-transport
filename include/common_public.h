@@ -805,6 +805,8 @@ extern "C"
         bool deferredDownloadSupported;//Read from the identify device data log
         bool hostLogsSupported;//log addresses 80h - 9Fh
         bool senseDataDescriptorFormat;//DO NOT SET DIRECTLY! This should be changed through a mode select command to the software SAT layer. false = fixed format, true = descriptor format
+		bool dataSetManagementXLSupported;//Needed to help the translator know when this command is supported so it can be used.
+		bool zeroExtSupported;
         uint8_t rtfrIndex;
         ataReturnTFRs ataPassthroughResults[16];
     #if !defined (__GNUC__)

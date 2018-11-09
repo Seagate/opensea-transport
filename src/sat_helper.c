@@ -3912,14 +3912,11 @@ int translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         {
             //writing zeros
             //If the zeros ext command is supported, it can be used (if number of logical blocks is not zero)
-#if 0
-            //This still needs to be added in
-            if (zerosExtCommandSupported)
+            if (device->drive_info.softSATFlags.zeroExtSupported)
             {
                 ret = ata_Zeros_Ext(device, numberOflogicalBlocks, logicalBlockAddress, false);
             }
             else
-#endif
             {
                 //else if SCT write same, function 01 or 101 (foreground or background...SATL decides)
                 if (device->drive_info.IdentifyData.ata.Word206 & BIT0 && device->drive_info.IdentifyData.ata.Word206 & BIT2)
