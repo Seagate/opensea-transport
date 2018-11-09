@@ -4497,7 +4497,7 @@ int ata_Set_Sector_Configuration_Ext(tDevice *device, uint16_t commandCheck, uin
     ataCommandOptions.tfr.Feature48 = M_Byte1(commandCheck);
     ataCommandOptions.tfr.ErrorFeature = M_Byte0(commandCheck);
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
-	ataCommandOptions.timeout = UINT32_MAX;//wait as long as we need to. Some drives, this could take a while longer than the default 30 seconds
+	ataCommandOptions.timeout = 3600;//changing timeout to 1 hour since it should take less than that by a lot...usually only a couple minutes
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
