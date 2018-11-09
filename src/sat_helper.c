@@ -2356,8 +2356,16 @@ int translate_Block_Limits_VPD_Page_B0h(tDevice *device, ScsiIoCtx *scsiIoCtx)
     //unmap stuff
     if (device->drive_info.IdentifyData.ata.Word169 & BIT0 && device->drive_info.IdentifyData.ata.Word069 & BIT14)
     {
-        uint32_t unmapLBACount = 64 * device->drive_info.IdentifyData.ata.Word105 * 0xFFFF;
-        uint32_t unmapMaxBlockDescriptors = 64 * device->drive_info.IdentifyData.ata.Word105;
+#if SAT_SPEC_SUPPORTED > 3
+		uint8_t maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
+		uint64_t maxUnmapRangePerDescriptor = device->drive_info.softSATFlags.dataSetManagementXLSupported ? UINT64_MAX : UINT16_MAX;
+		uint64_t maxLBAsPerUnmap = maxDescriptorsPerBlock * device->drive_info.IdentifyData.ata.Word105 * maxUnmapRangePerDescriptor;
+        uint32_t unmapLBACount = maxLBAsPerUnmap > UINT32_MAX ? UINT32_MAX : (uint32_t)maxLBAsPerUnmap;
+        uint32_t unmapMaxBlockDescriptors = maxDescriptorsPerBlock * device->drive_info.IdentifyData.ata.Word105;
+#else
+		uint32_t unmapLBACount = 64 * device->drive_info.IdentifyData.ata.Word105 * UINT16_MAX;
+		uint32_t unmapMaxBlockDescriptors = 64 * device->drive_info.IdentifyData.ata.Word105;
+#endif
         //maximum unmap LBA count (unspecified....we decide)
         blockLimits[20] = M_Byte3(unmapLBACount);
         blockLimits[21] = M_Byte2(unmapLBACount);
@@ -3912,9 +3920,9 @@ int translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         {
             //writing zeros
             //If the zeros ext command is supported, it can be used (if number of logical blocks is not zero)
-            if (device->drive_info.softSATFlags.zeroExtSupported)
+            if (device->drive_info.softSATFlags.zeroExtSupported && numberOflogicalBlocks < UINT16_MAX)
             {
-                ret = ata_Zeros_Ext(device, numberOflogicalBlocks, logicalBlockAddress, false);
+                ret = ata_Zeros_Ext(device, (uint16_t)numberOflogicalBlocks, logicalBlockAddress, false);
             }
             else
             {
@@ -9765,6 +9773,9 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         if (unmapBlockDescriptorLength > 0)
         {
             uint8_t *trimBuffer = (uint8_t*)calloc(device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE * sizeof(uint8_t), sizeof(uint8_t));//allocate the max size the device supports...we'll fill in as much as we need to
+			uint8_t maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
+			uint8_t descriptorSize = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 16 : 8;
+			uint64_t maxUnmapRangePerDescriptor = device->drive_info.softSATFlags.dataSetManagementXLSupported ? UINT64_MAX : UINT16_MAX;
             //need to check to make sure there weren't any truncated block descriptors before we begin
             uint16_t minBlockDescriptorLength = M_Min(unmapBlockDescriptorLength + 8, parameterListLength);
             uint16_t unmapBlockDescriptorIter = 8;
@@ -9815,7 +9826,7 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     break;
                 }
                 //check that we haven't had too many block descriptors yet
-                if (numberOfBlockDescriptors > (64 * device->drive_info.IdentifyData.ata.Word105))
+                if (numberOfBlockDescriptors > (maxDescriptorsPerBlock * device->drive_info.IdentifyData.ata.Word105))
                 {
                     //not setting sense key specific information because it's not clear in this condition what error we should point to
                     ret = FAILURE;
@@ -9824,7 +9835,7 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     break;
                 }
                 //check that we haven't been asked to TRIM more LBAs than we care to support in this code
-                if (numberOfLBAsToTRIM > (64 * device->drive_info.IdentifyData.ata.Word105 * 0xFFFF))
+                if (numberOfLBAsToTRIM > (maxDescriptorsPerBlock * device->drive_info.IdentifyData.ata.Word105 * maxUnmapRangePerDescriptor))
                 {
                     //not setting sense key specific information because it's not clear in this condition what error we should point to
                     ret = FAILURE;
@@ -9843,25 +9854,42 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     trimBuffer[ataTrimOffset + 3] = M_Byte2(unmapLogicalBlockAddress);
                     trimBuffer[ataTrimOffset + 4] = M_Byte1(unmapLogicalBlockAddress);
                     trimBuffer[ataTrimOffset + 5] = M_Byte0(unmapLogicalBlockAddress);
-                    //range
-                    if (unmapNumberOfLogicalBlocks > 0xFFFF)
-                    {
-                        trimBuffer[ataTrimOffset + 6] = 0xFF;
-                        trimBuffer[ataTrimOffset + 7] = 0xFF;
-                        unmapNumberOfLogicalBlocks -= 0xFFFF;
-                        unmapLogicalBlockAddress += 0xFFFF;
-                    }
-                    else
-                    {
-                        trimBuffer[ataTrimOffset + 6] = M_Byte1(unmapNumberOfLogicalBlocks);
-                        trimBuffer[ataTrimOffset + 7] = M_Byte0(unmapNumberOfLogicalBlocks);
-                    }
+                    //range (set for XL vs non-XL commands!)
+					if (device->drive_info.softSATFlags.dataSetManagementXLSupported)
+					{
+						trimBuffer[ataTrimOffset + 6] = RESERVED;
+						trimBuffer[ataTrimOffset + 7] = RESERVED;
+						trimBuffer[ataTrimOffset + 8] = M_Byte7(unmapNumberOfLogicalBlocks);
+						trimBuffer[ataTrimOffset + 9] = M_Byte6(unmapNumberOfLogicalBlocks);
+						trimBuffer[ataTrimOffset + 10] = M_Byte5(unmapNumberOfLogicalBlocks);
+						trimBuffer[ataTrimOffset + 11] = M_Byte4(unmapNumberOfLogicalBlocks);
+						trimBuffer[ataTrimOffset + 12] = M_Byte3(unmapNumberOfLogicalBlocks);
+						trimBuffer[ataTrimOffset + 13] = M_Byte2(unmapNumberOfLogicalBlocks);
+						trimBuffer[ataTrimOffset + 14] = M_Byte1(unmapNumberOfLogicalBlocks);
+						trimBuffer[ataTrimOffset + 15] = M_Byte0(unmapNumberOfLogicalBlocks);
+					}
+					else
+					{
+						if (unmapNumberOfLogicalBlocks > UINT16_MAX)
+						{
+							trimBuffer[ataTrimOffset + 6] = UINT8_MAX;
+							trimBuffer[ataTrimOffset + 7] = UINT8_MAX;
+							unmapNumberOfLogicalBlocks -= UINT16_MAX;
+							unmapLogicalBlockAddress += UINT16_MAX;
+						}
+						else
+						{
+							trimBuffer[ataTrimOffset + 6] = M_Byte1(unmapNumberOfLogicalBlocks);
+							trimBuffer[ataTrimOffset + 7] = M_Byte0(unmapNumberOfLogicalBlocks);
+						}
+					}
                     //now increment the ataTrimOffset
-                    ataTrimOffset += 8;
+                    ataTrimOffset += descriptorSize;
                     //check if the ATA Trim buffer is full...if it is and there are more or potentially more block descriptors, send the command now
                     if ((ataTrimOffset > (device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE)) && ((unmapBlockDescriptorIter + 16) < minBlockDescriptorLength))
                     {
-                        if (SUCCESS == ata_Data_Set_Management(device, true, trimBuffer, device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE, false))
+						//TODO: do we want to make it smart enough to only send as many 512B blocks as necessary without extras?
+                        if (SUCCESS == ata_Data_Set_Management(device, true, trimBuffer, device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE, device->drive_info.softSATFlags.dataSetManagementXLSupported))
                         {
                             //clear the buffer for reuse
                             memset(trimBuffer, 0, device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE);
@@ -9885,7 +9913,8 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             if (ret == SUCCESS)
             {
                 //send the data set management command with whatever is in the trim buffer at this point (all zeros is safe to send if we do get that)
-                if (SUCCESS != ata_Data_Set_Management(device, true, trimBuffer, device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE, false))
+				//TODO: do we want to make it smart enough to only send as many 512B blocks as necessary without extras?
+                if (SUCCESS != ata_Data_Set_Management(device, true, trimBuffer, device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE, device->drive_info.softSATFlags.dataSetManagementXLSupported))
                 {
                     ret = FAILURE;
                     set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
