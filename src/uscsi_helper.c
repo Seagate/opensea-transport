@@ -139,7 +139,7 @@ int send_IO (ScsiIoCtx *scsiIoCtx)
         }
         else
         {
-            if (VERBOSITY_QUIET < g_verbosity)
+            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("No Raid PassThrough IO Routine present for this device\n");
             }
@@ -150,7 +150,7 @@ int send_IO (ScsiIoCtx *scsiIoCtx)
         ret = send_uscsi_io(scsiIoCtx);
         break;
     default:
-        if(VERBOSITY_QUIET < g_verbosity)
+        if(VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
             printf("Target Device does not have a valid interface %d\n", scsiIoCtx->device->drive_info.interface_type);
         }
@@ -165,7 +165,7 @@ int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
     int ret = SUCCESS;
 
     memset(&uscsi_io, 0, sizeof(uscsi_io));
-    if(VERBOSITY_BUFFERS <= g_verbosity)
+    if(VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
         printf("Sending command with send_IO\n");
     }
@@ -191,7 +191,7 @@ int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
         uscsi_io.uscsi_flags |= USCSI_WRITE;
         break;
     default:
-        if(VERBOSITY_QUIET < g_verbosity)
+        if(VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
             printf("%s Didn't understand direction\n",__FUNCTION__);
         }
@@ -214,7 +214,7 @@ int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
     if( ret < 0)
     {
         ret = FAILURE;
-        if(VERBOSITY_BUFFERS <= g_verbosity)
+        if(VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
         {
             perror("send_IO");
         }

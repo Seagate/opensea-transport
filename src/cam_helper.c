@@ -214,7 +214,7 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
         }
         else
         {
-            if (VERBOSITY_QUIET < g_verbosity)
+            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("No Raid PassThrough IO Routine present for this device\n");
             }
@@ -222,7 +222,7 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     }
     else
     {
-        if (VERBOSITY_QUIET < g_verbosity)
+        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
             printf("Target Device does not have a valid interface %d\n",\
                        scsiIoCtx->device->drive_info.interface_type);
@@ -265,7 +265,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
             direction = CAM_DIR_BOTH;
             break;
         default:
-            if (VERBOSITY_QUIET < g_verbosity)
+            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("%s Didn't understand I/O direction\n", __FUNCTION__);
             }
@@ -383,7 +383,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                         if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_ATA_STATUS_ERROR)
                         {
                             ret = COMMAND_FAILURE;
-                            if (VERBOSITY_QUIET < g_verbosity)
+                            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
                             {
                                 printf("WARN: I/O went through but drive returned status=0x%02"PRIX8" error=0x%02"PRIX8"\n",\
                                            ataio->res.status, ataio->res.error);
@@ -391,14 +391,14 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                         }
                         else if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_CMD_TIMEOUT)
                         {
-                            if (VERBOSITY_QUIET < g_verbosity)
+                            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
                             {
                                 printf("WARN: I/O CAM_CMD_TIMEOUT occured\n");
                             }
                         }
                         else
                         {
-                            if (VERBOSITY_QUIET < g_verbosity)
+                            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
                             {
                                 printf("WARN: I/O error occurred %d\n", (ccb->ccb_h.status & CAM_STATUS_MASK));
                             }
@@ -461,7 +461,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
         }
         else
         {
-            if (VERBOSITY_DEFAULT < g_verbosity)
+            if (VERBOSITY_DEFAULT < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("WARN: Sending non-ATA commnad to ATA Drive [FreeBSD CAM driver does not support SAT Specification]\n");
             }
@@ -547,7 +547,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
             //io_hdr.dxfer_direction = SG_DXFER_UNKNOWN;
             //break;
         default:
-            if (VERBOSITY_QUIET < g_verbosity)
+            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("%s Didn't understand direction\n", __FUNCTION__);
             }
@@ -649,7 +649,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
         {
             ret = COMMAND_FAILURE;
 
-            if (VERBOSITY_DEFAULT < g_verbosity)
+            if (VERBOSITY_DEFAULT < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("%s cam error %d, scsi error %d\n",\
                            __FUNCTION__, (ccb->ccb_h.status & CAM_STATUS_MASK), ccb->csio.scsi_status);

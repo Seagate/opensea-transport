@@ -877,14 +877,14 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
         }
         else
         {
-            if (VERBOSITY_QUIET < g_verbosity)
+            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("No Raid PassThrough IO Routine present for this device\n");
             }
         }
         break;
     default:
-        if (VERBOSITY_QUIET < g_verbosity)
+        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
             printf("Target Device does not have a valid interface %d\n",\
                         scsiIoCtx->device->drive_info.interface_type);
@@ -914,7 +914,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     // Start with zapping the io_hdr
     memset(&io_hdr, 0, sizeof(sg_io_hdr_t));
 
-    if (VERBOSITY_BUFFERS <= g_verbosity)
+    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
         printf("Sending command with send_IO\n");
     }
@@ -955,7 +955,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
         //io_hdr.dxfer_direction = SG_DXFER_UNKNOWN;
         //break;
     default:
-        if (VERBOSITY_QUIET < g_verbosity)
+        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
             printf("%s Didn't understand direction\n", __FUNCTION__);
         }
@@ -993,7 +993,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     if (ret < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
-        if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity)
+        if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
         {
             if (scsiIoCtx->device->os_info.last_error != 0)
             {
@@ -1439,7 +1439,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         break;
     }
 	nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity)
+    if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
     {
         if (nvmeIoCtx->device->os_info.last_error != 0)
         {
@@ -1477,7 +1477,7 @@ int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
     }
     else
     {
-        if (VERBOSITY_QUIET < g_verbosity)
+        if (VERBOSITY_QUIET < device->deviceVerbosity)
         {
             printf("couldn't open device %s\n", device->os_info.name);
         }
