@@ -1042,6 +1042,7 @@ extern "C"
         void                *raid_device;
         issue_io_func       issue_io;
         eDiscoveryOptions   dFlags;
+        eVerbosityLevels    deviceVerbosity;
     #if !defined (__GNUC__)
     }tDevice;
     #pragma pack(pop)

@@ -133,8 +133,11 @@ int send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPassthroughComm
     ret = build_Prolific_Legacy_Passthrough_CDBs(prolificLowCDB, prolificHighCDB, &highCDBValid, ataCommandOptions);
     if (ret == SUCCESS)
     {
-        //print verbose tfr info
-        print_Verbose_ATA_Command_Information(ataCommandOptions);
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            //print verbose tfr info
+            print_Verbose_ATA_Command_Information(ataCommandOptions);
+        }
         //if the highCDB is valid, we need to send it first
         if (highCDBValid)
         {
@@ -144,8 +147,11 @@ int send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPassthroughComm
         ret = scsi_Send_Cdb(device, prolificLowCDB, CDB_LEN_16, ataCommandOptions->ptrData, ataCommandOptions->dataSize, ataCommandOptions->commandDirection, ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, 0);
         //get the RTFRs
         ret = get_RTFRs_From_Prolific_Legacy(device, ataCommandOptions, ret);
-        //print RTFRs
-        print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            //print RTFRs
+            print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+        }
         //set return code
         //Based on the RTFRs or sense data, generate a return value
         if (ataCommandOptions->rtfr.status == (ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE))

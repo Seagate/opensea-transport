@@ -40,7 +40,7 @@ int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode, bool znr)
         ret = scsi_Sanitize_Block_Erase(device, exitFailureMode, true, znr);
         break;
     default:
-        if (VERBOSITY_QUIET < g_verbosity)
+        if (VERBOSITY_QUIET < device->deviceVerbosity)
         {
             printf("Current device type not supported yet\n");
         }
@@ -68,7 +68,7 @@ int send_Sanitize_Crypto_Erase(tDevice *device, bool exitFailureMode, bool znr)
         ret = scsi_Sanitize_Cryptographic_Erase(device, exitFailureMode, true, znr);
         break;
     default:
-        if (VERBOSITY_QUIET < g_verbosity)
+        if (VERBOSITY_QUIET < device->deviceVerbosity)
         {
             printf("Current device type not supported yet\n");
         }
@@ -204,7 +204,7 @@ int spin_down_drive(tDevice *device, bool sleepState)
     }
     else
     {
-        if (VERBOSITY_QUIET < g_verbosity)
+        if (VERBOSITY_QUIET < device->deviceVerbosity)
         {
             printf("Spin down drive is not supported on this drive type at this time\n");
         }
