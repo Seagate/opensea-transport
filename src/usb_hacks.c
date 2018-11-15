@@ -884,7 +884,7 @@ int fill_Drive_Info_USB(tDevice *device)
     }
     else
     {
-        if (VERBOSITY_DEFAULT < g_verbosity)
+        if (VERBOSITY_DEFAULT < device->deviceVerbosity)
         {
             printf("Getting Standard Inquiry Data Failed\n");
         }

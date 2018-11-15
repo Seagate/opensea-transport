@@ -108,7 +108,7 @@ int ata_Identify(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
         identify.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Identify command\n");
     }
@@ -137,7 +137,7 @@ int ata_Identify(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
         }
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Identify", ret);
     }
@@ -172,59 +172,38 @@ int ata_Sanitize_Command(tDevice *device, eATASanitizeFeature sanitizeFeature, u
         ataSanitizeCmd.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Sanitize command - ");
         switch (sanitizeFeature)
         {
         case ATA_SANITIZE_STATUS:
-            if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
-            {
-                printf("Status\n");
-            }
+            printf("Status\n");
             break;
         case ATA_SANITIZE_CRYPTO_SCRAMBLE:
-            if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
-            {
-                printf("Crypto Scramble\n");
-            }
+            printf("Crypto Scramble\n");
             break;
         case ATA_SANITIZE_BLOCK_ERASE:
-            if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
-            {
-                printf("Block Erase\n");
-            }
+            printf("Block Erase\n");
             break;
         case ATA_SANITIZE_OVERWRITE_ERASE:
-            if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
-            {
-                printf("Overwrite Erase\n");
-            }
+            printf("Overwrite Erase\n");
             break;
         case ATA_SANITIZE_FREEZE_LOCK:
-            if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
-            {
-                printf("Freeze Lock\n");
-            }
+            printf("Freeze Lock\n");
             break;
         case ATA_SANITIZE_ANTI_FREEZE_LOCK:
-            if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
-            {
-                printf("Anti Freeze Lock\n");
-            }
+            printf("Anti Freeze Lock\n");
             break;
         default:
-            if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
-            {
-                printf("Unknown\n");
-            }
+            printf("Unknown\n");
             break;
         }
     }
     
     ret = ata_Passthrough_Command(device, &ataSanitizeCmd);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         switch (sanitizeFeature)
         {
@@ -331,7 +310,7 @@ int ata_Read_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, u
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -432,7 +411,7 @@ int ata_Read_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, u
         }
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -452,7 +431,7 @@ int ata_Write_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, 
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -532,7 +511,7 @@ int ata_Write_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, 
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -551,7 +530,7 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA SMART command - ");
     }
@@ -561,17 +540,17 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
     switch (feature)
     {
     case ATA_SMART_READ_LOG:
-        if (VERBOSITY_COMMAND_NAMES <= g_verbosity && feature == ATA_SMART_READ_LOG)
+        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_READ_LOG)
         {
             printf("Read Log - Log %02"PRIX8"h\n", lbaLo);
         }
     case ATA_SMART_RDATTR_THRESH:
-        if (VERBOSITY_COMMAND_NAMES <= g_verbosity && feature == ATA_SMART_RDATTR_THRESH)
+        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_RDATTR_THRESH)
         {
             printf("Read Thresholds\n");
         }
     case ATA_SMART_READ_DATA:
-        if (VERBOSITY_COMMAND_NAMES <= g_verbosity && feature == ATA_SMART_READ_DATA)
+        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_READ_DATA)
         {
             printf("Read Data\n");
         }
@@ -581,7 +560,7 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
         ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
         break;
     case ATA_SMART_WRITE_LOG:
-        if (VERBOSITY_COMMAND_NAMES <= g_verbosity && feature == ATA_SMART_READ_LOG)
+        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_READ_LOG)
         {
             printf("Write Log - Log %02"PRIX8"h\n", lbaLo);
         }
@@ -591,32 +570,32 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
         ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
         break;
     case ATA_SMART_SW_AUTOSAVE:
-        if (VERBOSITY_COMMAND_NAMES <= g_verbosity && feature == ATA_SMART_SW_AUTOSAVE)
+        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_SW_AUTOSAVE)
         {
             printf("Attribute Autosave\n");
         }
     case ATA_SMART_SAVE_ATTRVALUE:
-        if (VERBOSITY_COMMAND_NAMES <= g_verbosity && feature == ATA_SMART_SAVE_ATTRVALUE)
+        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_SAVE_ATTRVALUE)
         {
             printf("Save Attributes\n");
         }
     case ATA_SMART_ENABLE:
-        if (VERBOSITY_COMMAND_NAMES <= g_verbosity && feature == ATA_SMART_ENABLE)
+        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_ENABLE)
         {
             printf("Enable Operations\n");
         }
     case ATA_SMART_EXEC_OFFLINE_IMM:
-        if (VERBOSITY_COMMAND_NAMES <= g_verbosity && feature == ATA_SMART_EXEC_OFFLINE_IMM)
+        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_EXEC_OFFLINE_IMM)
         {
             printf("Offline Immediate - test %02" PRIX8 "h\n", lbaLo);
         }
     case ATA_SMART_RTSMART:
-        if (VERBOSITY_COMMAND_NAMES <= g_verbosity && feature == ATA_SMART_RTSMART)
+        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_RTSMART)
         {
             printf("Return Status\n");
         }
     case ATA_SMART_DISABLE:
-        if (VERBOSITY_COMMAND_NAMES <= g_verbosity && feature == ATA_SMART_DISABLE)
+        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_DISABLE)
         {
             printf("Disable Operations\n");
         }
@@ -680,7 +659,7 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
     {
         ret = FAILURE;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         switch (feature)
         {
@@ -851,13 +830,13 @@ int ata_Security_Disable_Password(tDevice *device, uint8_t *ptrData)
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Security Disable Password Command\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Security Disable Password", ret);
     }
@@ -881,14 +860,14 @@ int ata_Security_Erase_Prepare(tDevice *device)
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Security Erase Prepare Command\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Security Erase Prepare", ret);
     }
@@ -916,14 +895,14 @@ int ata_Security_Erase_Unit(tDevice *device, uint8_t *ptrData, uint32_t timeout)
     }
     ataCommandOptions.timeout = timeout;
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Security Erase Unit Command\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Security Erase Unit", ret);
     }
@@ -950,14 +929,14 @@ int ata_Security_Set_Password(tDevice *device, uint8_t *ptrData)
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Security Set Password Command\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Security Set Password", ret);
     }
@@ -984,14 +963,14 @@ int ata_Security_Unlock(tDevice *device, uint8_t *ptrData)
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Security Unlock Command\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Security Unlock", ret);
     }
@@ -1016,14 +995,14 @@ int ata_Security_Freeze_Lock(tDevice *device)
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Security Freeze Lock Command\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Security Erase Freeze Lock", ret);
     }
@@ -1058,9 +1037,9 @@ int ata_Accessible_Max_Address_Feature(tDevice *device, uint16_t feature, uint64
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Accessible Max Address Command - Feature = 0x%04"PRIX16"\n", feature);
+        printf("Sending ATA Accessible Max Address Command - Feature = 0x%04" PRIX16 "\n", feature);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -1070,7 +1049,7 @@ int ata_Accessible_Max_Address_Feature(tDevice *device, uint16_t feature, uint64
         memcpy(rtfrs, &(ataCommandOptions.rtfr), sizeof(ataReturnTFRs));
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Accessible Max Address Command", ret);
     }
@@ -1134,7 +1113,7 @@ int ata_Read_Native_Max_Address(tDevice *device, uint64_t *nativeMaxLBA, bool ex
         ataCommandOptions.tfr.CommandStatus = ATA_READ_MAX_ADDRESS;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Read Native Max Address");
         if (ext)
@@ -1158,7 +1137,7 @@ int ata_Read_Native_Max_Address(tDevice *device, uint64_t *nativeMaxLBA, bool ex
         }
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (ext)
         {
@@ -1218,14 +1197,14 @@ int ata_Set_Max(tDevice *device, eHPAFeature setMaxFeature, uint32_t newMaxLBA, 
     {
         ataCommandOptions.tfr.SectorCount |= BIT0;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Set Max\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Set Max", ret);
     }
@@ -1286,14 +1265,14 @@ int ata_Set_Max_Address_Ext(tDevice *device, uint64_t newMaxLBA, bool volatileVa
     {
         ataCommandOptions.tfr.SectorCount |= BIT0;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Set Native Max Address Ext\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Set Native Max Address Ext", ret);
     }
@@ -1371,7 +1350,7 @@ int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subComman
         ataCommandOptions.timeout = 15;
 	}
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -1385,7 +1364,7 @@ int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subComman
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -1826,7 +1805,7 @@ int ata_Check_Power_Mode(tDevice *device, uint8_t *powerMode)
 		return BAD_PARAMETER;
 	}
 
-	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
 	{
 		printf("Sending ATA Check Power Mode\n");
 	}
@@ -1838,7 +1817,7 @@ int ata_Check_Power_Mode(tDevice *device, uint8_t *powerMode)
 		*powerMode = ataCommandOptions.rtfr.secCnt;
 	}
 
-	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
 	{
 		print_Return_Enum("Check Power Mode", ret);
 	}
@@ -1879,14 +1858,14 @@ int ata_Configure_Stream(tDevice *device, uint8_t streamID, bool addRemoveStream
 	{
 		ataCommandOptions.tfr.ErrorFeature |= BIT6;
 	}
-	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
 	{
 		printf("Sending ATA Configure Stream\n");
 	}
 
 	ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
 	{
 		print_Return_Enum("Configure Stream", ret);
 	}
@@ -1944,7 +1923,7 @@ int ata_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uin
 		return BAD_PARAMETER;
 	}
 
-	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
 	{
 		if (xl)
 		{
@@ -1958,7 +1937,7 @@ int ata_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uin
 
 	ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
 	{
 		if (xl)
 		{
@@ -1990,7 +1969,7 @@ int ata_Execute_Device_Diagnostic(tDevice *device, uint8_t* diagnosticCode)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
 	{
 		printf("Sending ATA Execute Device Diagnostic\n");
 	}
@@ -2000,7 +1979,7 @@ int ata_Execute_Device_Diagnostic(tDevice *device, uint8_t* diagnosticCode)
 	//according to the spec, this command should always complete without error
 	*diagnosticCode = ataCommandOptions.rtfr.error;
 
-	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
 	{
 		print_Return_Enum("Data Execute Device Diagnostic", ret);
 	}
@@ -2036,7 +2015,7 @@ int ata_Flush_Cache(tDevice *device, bool extendedCommand)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (extendedCommand)
         {
@@ -2050,7 +2029,7 @@ int ata_Flush_Cache(tDevice *device, bool extendedCommand)
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (extendedCommand)
         {
@@ -2081,14 +2060,14 @@ int ata_Idle(tDevice *device, uint8_t standbyTimerPeriod)
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
     ataCommandOptions.tfr.SectorCount = standbyTimerPeriod;
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Idle\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Idle", ret);
     }
@@ -2119,14 +2098,14 @@ int ata_Idle_Immediate(tDevice *device, bool unloadFeature)
         ataCommandOptions.tfr.LbaLow = M_Byte0(IDLE_IMMEDIATE_UNLOAD_LBA);
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Idle Immediate\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Idle Immediate", ret);
     }
@@ -2176,7 +2155,7 @@ int ata_Read_Buffer(tDevice *device, uint8_t *ptrData, bool useDMA)
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -2190,7 +2169,7 @@ int ata_Read_Buffer(tDevice *device, uint8_t *ptrData, bool useDMA)
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -2259,7 +2238,7 @@ int ata_Read_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t secto
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (extendedCmd)
         {
@@ -2273,7 +2252,7 @@ int ata_Read_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t secto
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (extendedCmd)
         {
@@ -2338,7 +2317,7 @@ int ata_Read_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t 
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (extendedCmd)
         {
@@ -2352,7 +2331,7 @@ int ata_Read_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t 
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (extendedCmd)
         {
@@ -2409,7 +2388,7 @@ int ata_Read_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t s
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (extendedCmd)
         {
@@ -2423,7 +2402,7 @@ int ata_Read_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t s
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (extendedCmd)
         {
@@ -2505,7 +2484,7 @@ int ata_Read_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID, bool not
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -2519,7 +2498,7 @@ int ata_Read_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID, bool not
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -2571,7 +2550,7 @@ int ata_Read_Verify_Sectors(tDevice *device, bool extendedCmd, uint16_t numberOf
         ataCommandOptions.tfr.CommandStatus = ATA_READ_VERIFY_RETRY;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (extendedCmd)
         {
@@ -2585,7 +2564,7 @@ int ata_Read_Verify_Sectors(tDevice *device, bool extendedCmd, uint16_t numberOf
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (extendedCmd)
         {
@@ -2623,7 +2602,7 @@ int ata_Request_Sense_Data(tDevice *device, uint8_t *senseKey, uint8_t *addition
         return BAD_PARAMETER;
     }
     
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Request Sense Data\n");
     }
@@ -2637,7 +2616,7 @@ int ata_Request_Sense_Data(tDevice *device, uint8_t *senseKey, uint8_t *addition
         *additionalSenseCodeQualifier = ataCommandOptions.rtfr.lbaLow;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Request Sense Data", ret);
     }
@@ -2669,14 +2648,14 @@ int ata_Set_Date_And_Time(tDevice *device, uint64_t timeStamp)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Set Data & Time Ext\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Set Data & Time Ext", ret);
     }
@@ -2703,14 +2682,14 @@ int ata_Set_Multiple_Mode(tDevice *device, uint8_t drqDataBlockCount)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Set Multiple Mode\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Set Multiple Mode", ret);
     }
@@ -2735,14 +2714,14 @@ int ata_Sleep(tDevice *device)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Sleep\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Sleep", ret);
     }
@@ -2769,14 +2748,14 @@ int ata_Standby(tDevice *device, uint8_t standbyTimerPeriod)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Standby\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Standby", ret);
     }
@@ -2802,14 +2781,14 @@ int ata_Standby_Immediate(tDevice *device)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Standby Immediate\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Standby Immediate", ret);
     }
@@ -2843,14 +2822,14 @@ int ata_Trusted_Non_Data(tDevice *device, uint8_t securityProtocol, bool trusted
         ataCommandOptions.tfr.DeviceHead |= BIT0;//LBA bit 24
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Trusted Non-Data\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Trusted Non-Data", ret);
     }
@@ -2908,7 +2887,7 @@ int ata_Trusted_Receive(tDevice *device, bool useDMA, uint8_t securityProtocol, 
         ataCommandOptions.ataTransferBlocks = ATA_PT_NUMBER_OF_BYTES;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -2922,7 +2901,7 @@ int ata_Trusted_Receive(tDevice *device, bool useDMA, uint8_t securityProtocol, 
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -2986,7 +2965,7 @@ int ata_Trusted_Send(tDevice *device, bool useDMA, uint8_t securityProtocol, uin
         ataCommandOptions.ataTransferBlocks = ATA_PT_NUMBER_OF_BYTES;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -3000,7 +2979,7 @@ int ata_Trusted_Send(tDevice *device, bool useDMA, uint8_t securityProtocol, uin
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -3059,7 +3038,7 @@ int ata_Write_Buffer(tDevice *device, uint8_t *ptrData, bool useDMA)
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -3073,7 +3052,7 @@ int ata_Write_Buffer(tDevice *device, uint8_t *ptrData, bool useDMA)
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -3150,7 +3129,7 @@ int ata_Write_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t data
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (extendedCmd)
         {
@@ -3164,7 +3143,7 @@ int ata_Write_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t data
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (extendedCmd)
         {
@@ -3245,7 +3224,7 @@ int ata_Write_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (extendedCmd)
         {
@@ -3259,7 +3238,7 @@ int ata_Write_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (extendedCmd)
         {
@@ -3316,7 +3295,7 @@ int ata_Write_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t 
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (extendedCmd)
         {
@@ -3330,7 +3309,7 @@ int ata_Write_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t 
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (extendedCmd)
         {
@@ -3412,7 +3391,7 @@ int ata_Write_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID, bool fl
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -3426,7 +3405,7 @@ int ata_Write_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID, bool fl
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         if (useDMA)
         {
@@ -3476,14 +3455,14 @@ int ata_Write_Uncorrectable(tDevice *device, uint8_t unrecoverableOptions, uint1
     ataCommandOptions.tfr.ErrorFeature = unrecoverableOptions;
 
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Write Uncorrectable Ext\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Write Uncorrectable Ext", ret);
     }
@@ -3638,14 +3617,14 @@ int ata_NV_Cache_Feature(tDevice *device, eNVCacheFeatures feature, uint16_t cou
         ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Non-Volatile Cache - %s\n", nvCacheFeature);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         switch (feature)
         {
@@ -3775,14 +3754,14 @@ int ata_Set_Features(tDevice *device, eATASetFeaturesSubcommands subcommand, uin
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.tfr.CommandStatus = ATA_SET_FEATURE;
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Set Features\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Set Features", ret);
     }
@@ -3898,7 +3877,7 @@ int ata_Identify_Packet_Device(tDevice *device, uint8_t *ptrData, uint32_t dataS
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Identify Packet Device\n");
     }
@@ -3928,7 +3907,7 @@ int ata_Identify_Packet_Device(tDevice *device, uint8_t *ptrData, uint32_t dataS
         }
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Identify Packet Device", ret);
     }
@@ -4022,14 +4001,14 @@ int ata_Device_Configuration_Overlay_Feature(tDevice *device, eDCOFeatures dcoFe
         break;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Device Configuration Overlay - %s\n", dcoFeatureString);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         switch (dcoFeature)
         {
@@ -4196,14 +4175,17 @@ int ata_ZAC_Management_In(tDevice *device, eZMAction action, uint8_t actionSpeci
     }
 
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Zone Management In\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    print_Return_Enum("Zone Management In", ret);
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Zone Management In", ret);
+    }
 
     return ret;
 }
@@ -4256,14 +4238,17 @@ int ata_ZAC_Management_Out(tDevice *device, eZMAction action, uint8_t actionSpec
         ataCommandOptions.tfr.SectorCount48 = M_Byte1(pagesToSend_ActionSpecific);
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Zone Management Out\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
-
-    print_Return_Enum("Zone Management Out", ret);
+    
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Zone Management Out", ret);
+    }
 
     return ret;
 }
@@ -4345,14 +4330,14 @@ int ata_Media_Eject(tDevice *device)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Media Eject\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Media Eject", ret);
     }
@@ -4378,14 +4363,14 @@ int ata_Get_Media_Status(tDevice *device)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Get Media Status\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Get Media Status", ret);
     }
@@ -4411,14 +4396,14 @@ int ata_Media_Lock(tDevice *device)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Media Lock\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Media Lock", ret);
     }
@@ -4444,14 +4429,14 @@ int ata_Media_Unlock(tDevice *device)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Media Unlock\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Media Unlock", ret);
     }
@@ -4486,14 +4471,14 @@ int ata_Zeros_Ext(tDevice *device, uint16_t numberOfLogicalSectors, uint64_t lba
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Zeros Ext\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Zeros Ext", ret);
     }
@@ -4523,14 +4508,14 @@ int ata_Set_Sector_Configuration_Ext(tDevice *device, uint16_t commandCheck, uin
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Set Sector Configuration Ext\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Set Sector Configuration Ext", ret);
     }
@@ -4578,14 +4563,14 @@ int ata_Get_Physical_Element_Status(tDevice *device, uint8_t filter, uint8_t rep
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Get Physical Element Status\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Get Physical Element Status", ret);
     }
@@ -4616,14 +4601,14 @@ int ata_Remove_Element_And_Truncate(tDevice *device, uint32_t elementIdentifier,
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Remove And Truncate\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Remove And Truncate", ret);
     }
@@ -4663,14 +4648,14 @@ int ata_NCQ_Non_Data(tDevice *device, uint8_t subCommand /*bits 4:0*/, uint16_t 
     ataCommandOptions.tfr.aux4 = M_Byte3(auxilary);
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA NCQ Non Data, Subcommand %u\n", subCommand);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("NCQ Non Data", ret);
     }
@@ -4740,14 +4725,14 @@ int ata_NCQ_Receive_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*
     ataCommandOptions.tfr.aux4 = M_Byte3(auxilary);
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Receive FPDMA Queued, Subcommand %u\n", subCommand);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Receive FPDMA Queued", ret);
     }
@@ -4793,14 +4778,14 @@ int ata_NCQ_Send_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*/, 
     ataCommandOptions.tfr.aux4 = M_Byte3(auxilary);
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Send FPDMA Queued, Subcommand %u\n", subCommand);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Send FPDMA Queued", ret);
     }
@@ -4858,14 +4843,14 @@ int ata_NCQ_Read_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba, uint8_t *
         ataCommandOptions.tfr.DeviceHead |= BIT7;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Read FPDMA Queued\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Read FPDMA Queued", ret);
     }
@@ -4908,14 +4893,14 @@ int ata_NCQ_Write_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba, uint8_t 
         ataCommandOptions.tfr.DeviceHead |= BIT7;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Write FPDMA Queued\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Write FPDMA Queued", ret);
     }

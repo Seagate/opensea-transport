@@ -791,8 +791,11 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
     ret = build_SAT_CDB(device, &satCDB, &satCDBLength, ataCommandOptions);
     if (ret == SUCCESS)
     {
-        //Print out ATA Command Information in appropriate verbose mode.
-        print_Verbose_ATA_Command_Information(ataCommandOptions);
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            //Print out ATA Command Information in appropriate verbose mode.
+            print_Verbose_ATA_Command_Information(ataCommandOptions);
+        }
         //Now setup the scsiioctx and send the CDB
         ScsiIoCtx scsiIoCtx;
         memset(&scsiIoCtx, 0, sizeof(ScsiIoCtx));
@@ -808,26 +811,26 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
         scsiIoCtx.timeout = ataCommandOptions->timeout;
         //clear the last command sense data every single time before we issue any commands
         memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);
-        if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity)
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         {
             printf("\n  CDB:\n");
             print_Data_Buffer(scsiIoCtx.cdb, scsiIoCtx.cdbLength, false);
         }
-        #if defined (_DEBUG)
+#if defined (_DEBUG)
         //This is different for debug because sometimes we need to see if the data buffer actually changed after issuing a command.
         //This was very important for debugging windows issues, which is why I have this ifdef in place for debug builds. - TJE
-        if (VERBOSITY_BUFFERS <= g_verbosity && ataCommandOptions->ptrData != NULL)
-        #else
+        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ataCommandOptions->ptrData != NULL)
+#else
         //Only print the data buffer being sent when it is a data transfer to the drive (data out command)
-        if (VERBOSITY_BUFFERS <= g_verbosity && ataCommandOptions->ptrData != NULL && ataCommandOptions->commandDirection == XFER_DATA_OUT)
-        #endif
+        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ataCommandOptions->ptrData != NULL && ataCommandOptions->commandDirection == XFER_DATA_OUT)
+#endif
         {
             printf("\t  Data Buffer being sent:\n");
             print_Data_Buffer(ataCommandOptions->ptrData, ataCommandOptions->dataSize, true);
             printf("\n");
         }
         int sendIOret = send_IO(&scsiIoCtx);
-        if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity && scsiIoCtx.psense != NULL)
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity && scsiIoCtx.psense != NULL)
         {
             printf("\n  Sense Data Buffer:\n");
             print_Data_Buffer(scsiIoCtx.psense, get_Returned_Sense_Data_Length(scsiIoCtx.psense), false);
@@ -841,17 +844,23 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
         }
         //Now get the RTFRs from the sense data or request them as necessary.
         bool gotRTFRs = get_Return_TFRs_From_Sense_Data(device, ataCommandOptions, sendIOret, senseRet);
-        //Print out the RTFRs that we got
-        print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
-        //print command timing information
-        print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            //Print out the RTFRs that we got
+            print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+        }
+        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            //print command timing information
+            print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
+        }
 #if defined (_DEBUG)
         //This is different for debug because sometimes we need to see if the data buffer actually changed after issuing a command.
         //This was very important for debugging windows issues, which is why I have this ifdef in place for debug builds. - TJE
-        if (VERBOSITY_BUFFERS <= g_verbosity && ataCommandOptions->ptrData != NULL)
+        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ataCommandOptions->ptrData != NULL)
 #else
         //Only print the data buffer being sent when it is a data transfer to the drive (data out command)
-        if (VERBOSITY_BUFFERS <= g_verbosity && ataCommandOptions->ptrData != NULL && ataCommandOptions->commandDirection == XFER_DATA_IN)
+        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ataCommandOptions->ptrData != NULL && ataCommandOptions->commandDirection == XFER_DATA_IN)
 #endif
         {
             printf("\t  Data Buffer being returned:\n");
@@ -934,7 +943,7 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
                         device->drive_info.ataSenseData.senseKey = ataSenseKey;
                         device->drive_info.ataSenseData.additionalSenseCode = ataAdditionalSenseCode;
                         device->drive_info.ataSenseData.additionalSenseCodeQualifier = ataAdditionalSenseCodeQualifier;
-                        if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity)
+                        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
                         {
                             printf("\t  ATA Sense Data reported:\n");
                         }
@@ -9773,7 +9782,7 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         if (unmapBlockDescriptorLength > 0)
         {
             uint8_t *trimBuffer = (uint8_t*)calloc(device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE * sizeof(uint8_t), sizeof(uint8_t));//allocate the max size the device supports...we'll fill in as much as we need to
-	#if SAT_SPEC_SUPPORTED > 3
+#if SAT_SPEC_SUPPORTED > 3
 			bool useXL = device->drive_info.softSATFlags.dataSetManagementXLSupported;
 			uint8_t maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
 			uint8_t descriptorSize = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 16 : 8;

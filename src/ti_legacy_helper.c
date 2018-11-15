@@ -85,8 +85,11 @@ int send_TI_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *a
     ret = build_TI_Legacy_CDB(tiCDB, ataCommandOptions, false, false, 0);
     if (ret == SUCCESS)
     {
-        //printf out register verbose information
-        print_Verbose_ATA_Command_Information(ataCommandOptions);
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            //printf out register verbose information
+            print_Verbose_ATA_Command_Information(ataCommandOptions);
+        }
         //send the CDB
         ret = scsi_Send_Cdb(device, tiCDB, CDB_LEN_16, ataCommandOptions->ptrData, ataCommandOptions->dataSize, ataCommandOptions->commandDirection, ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, 0);
         //dummy up RTFRs since the TI documentation doesn't have a way to show them.
@@ -112,8 +115,11 @@ int send_TI_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *a
             ataCommandOptions->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
             break;
         }
-        //print out RTFRs
-        print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            //print out RTFRs
+            print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+        }
     }
     memcpy(&device->drive_info.lastCommandSenseData[0], &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
     memcpy(&device->drive_info.lastCommandRTFRs, &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));

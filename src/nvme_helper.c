@@ -91,110 +91,104 @@ printf("fill NVMe info ret = %d\n", ret);
 
 void print_NVMe_Cmd_Verbose(const nvmeCmdCtx * cmdCtx)
 {
-    if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity)
+    printf("Sending NVM Command:\n");
+    printf("\tType: ");
+    switch (cmdCtx->commandType)
     {
-        printf("Sending NVM Command:\n");
-        printf("\tType: ");
-        switch (cmdCtx->commandType)
-        {
-        case NVM_ADMIN_CMD:
-            printf("Admin");
-            break;
-        case NVM_CMD:
-            printf("NVM");
-            break;
-        case NVM_UNKNOWN_CMD_SET:
-        default:
-            printf("Unknown");
-            break;
-        }
-        printf("\n");
-        printf("\tData Direction: ");
-        //Data Direction:
-        switch (cmdCtx->commandDirection)
-        {
-        case XFER_NO_DATA:
-            printf("No Data");
-            break;
-        case XFER_DATA_IN:
-            printf("Data In");
-            break;
-        case XFER_DATA_OUT:
-            printf("Data Out");
-            break;
-        default:
-            printf("Unknown");
-            break;
-        }
-        printf("\n");
-        //printf("Cmd result 0x%02X\n", cmdCtx->result);
-        printf("Command Bytes:\n");
-        switch (cmdCtx->commandType)
-        {
-        case NVM_ADMIN_CMD:
-            printf("\tOpcode (CDW0) = %" PRIu8 "\n", cmdCtx->cmd.adminCmd.opcode);
-            printf("\tFlags (CDW0) = %" PRIu8 "\n", cmdCtx->cmd.adminCmd.flags);
-            printf("\tReserved (CDW0) = %" PRIu16 "\n", cmdCtx->cmd.adminCmd.rsvd1);
-            printf("\tNSID = %" PRIu32 "\n", cmdCtx->cmd.adminCmd.nsid);
-            printf("\tCDW2 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw2);
-            printf("\tCDW3 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw3);
-            printf("\tMetadata = %" PRIu64 "\n", cmdCtx->cmd.adminCmd.metadata);
-            printf("\tMetadata Length = %" PRIu32 "\n", cmdCtx->cmd.adminCmd.metadataLen);
-            printf("\tAddress = %" PRIu64 "\n", cmdCtx->cmd.adminCmd.addr);
-            printf("\tData Length = %" PRIu32 "\n", cmdCtx->cmd.adminCmd.dataLen);
-            printf("\tCDW10 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw10);
-            printf("\tCDW11 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw11);
-            printf("\tCDW12 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw12);
-            printf("\tCDW13 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw13);
-            printf("\tCDW14 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw14);
-            printf("\tCDW15 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw15);
-            break;
-        case NVM_CMD:
-            printf("\tOpcode (CDW0) = %" PRIu8 "\n", cmdCtx->cmd.nvmCmd.opcode);
-            printf("\tFlags (CDW0) = %" PRIu8 "\n", cmdCtx->cmd.nvmCmd.flags);
-            printf("\tCommand ID (CDW0) = %" PRIu16 "\n", cmdCtx->cmd.nvmCmd.commandId);
-            printf("\tNSID = %" PRIu32 "\n", cmdCtx->cmd.nvmCmd.nsid);
-            printf("\tCDW2 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw2);
-            printf("\tCDW3 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw3);
-            printf("\tMetadata (CDW4 & 5) = %" PRIu64 "\n", cmdCtx->cmd.nvmCmd.metadata);
-            printf("\tPRP1 (CDW6 & 7) = %" PRIu64 "\n", cmdCtx->cmd.nvmCmd.prp1);
-            printf("\tPRP2 (CDW8 & 9) = %" PRIu64 "\n", cmdCtx->cmd.nvmCmd.prp2);
-            printf("\tCDW10 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw10);
-            printf("\tCDW11 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw11);
-            printf("\tCDW12 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw12);
-            printf("\tCDW13 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw13);
-            printf("\tCDW14 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw14);
-            printf("\tCDW15 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw15);
-            break;
-        default:
-            printf("\tCDW0  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw0);
-            printf("\tCDW1  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw1);
-            printf("\tCDW2  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw2);
-            printf("\tCDW3  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw3);
-            printf("\tCDW4  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw4);
-            printf("\tCDW5  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw5);
-            printf("\tCDW6  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw6);
-            printf("\tCDW7  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw7);
-            printf("\tCDW8  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw8);
-            printf("\tCDW9  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw9);
-            printf("\tCDW10 = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw10);
-            printf("\tCDW11 = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw11);
-            printf("\tCDW12 = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw12);
-            printf("\tCDW13 = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw13);
-            printf("\tCDW14 = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw14);
-            printf("\tCDW15 = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw15);
-            break;
-        }
+    case NVM_ADMIN_CMD:
+        printf("Admin");
+        break;
+    case NVM_CMD:
+        printf("NVM");
+        break;
+    case NVM_UNKNOWN_CMD_SET:
+    default:
+        printf("Unknown");
+        break;
+    }
+    printf("\n");
+    printf("\tData Direction: ");
+    //Data Direction:
+    switch (cmdCtx->commandDirection)
+    {
+    case XFER_NO_DATA:
+        printf("No Data");
+        break;
+    case XFER_DATA_IN:
+        printf("Data In");
+        break;
+    case XFER_DATA_OUT:
+        printf("Data Out");
+        break;
+    default:
+        printf("Unknown");
+        break;
+    }
+    printf("\n");
+    //printf("Cmd result 0x%02X\n", cmdCtx->result);
+    printf("Command Bytes:\n");
+    switch (cmdCtx->commandType)
+    {
+    case NVM_ADMIN_CMD:
+        printf("\tOpcode (CDW0) = %" PRIu8 "\n", cmdCtx->cmd.adminCmd.opcode);
+        printf("\tFlags (CDW0) = %" PRIu8 "\n", cmdCtx->cmd.adminCmd.flags);
+        printf("\tReserved (CDW0) = %" PRIu16 "\n", cmdCtx->cmd.adminCmd.rsvd1);
+        printf("\tNSID = %" PRIu32 "\n", cmdCtx->cmd.adminCmd.nsid);
+        printf("\tCDW2 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw2);
+        printf("\tCDW3 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw3);
+        printf("\tMetadata = %" PRIu64 "\n", cmdCtx->cmd.adminCmd.metadata);
+        printf("\tMetadata Length = %" PRIu32 "\n", cmdCtx->cmd.adminCmd.metadataLen);
+        printf("\tAddress = %" PRIu64 "\n", cmdCtx->cmd.adminCmd.addr);
+        printf("\tData Length = %" PRIu32 "\n", cmdCtx->cmd.adminCmd.dataLen);
+        printf("\tCDW10 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw10);
+        printf("\tCDW11 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw11);
+        printf("\tCDW12 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw12);
+        printf("\tCDW13 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw13);
+        printf("\tCDW14 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw14);
+        printf("\tCDW15 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw15);
+        break;
+    case NVM_CMD:
+        printf("\tOpcode (CDW0) = %" PRIu8 "\n", cmdCtx->cmd.nvmCmd.opcode);
+        printf("\tFlags (CDW0) = %" PRIu8 "\n", cmdCtx->cmd.nvmCmd.flags);
+        printf("\tCommand ID (CDW0) = %" PRIu16 "\n", cmdCtx->cmd.nvmCmd.commandId);
+        printf("\tNSID = %" PRIu32 "\n", cmdCtx->cmd.nvmCmd.nsid);
+        printf("\tCDW2 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw2);
+        printf("\tCDW3 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw3);
+        printf("\tMetadata (CDW4 & 5) = %" PRIu64 "\n", cmdCtx->cmd.nvmCmd.metadata);
+        printf("\tPRP1 (CDW6 & 7) = %" PRIu64 "\n", cmdCtx->cmd.nvmCmd.prp1);
+        printf("\tPRP2 (CDW8 & 9) = %" PRIu64 "\n", cmdCtx->cmd.nvmCmd.prp2);
+        printf("\tCDW10 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw10);
+        printf("\tCDW11 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw11);
+        printf("\tCDW12 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw12);
+        printf("\tCDW13 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw13);
+        printf("\tCDW14 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw14);
+        printf("\tCDW15 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw15);
+        break;
+    default:
+        printf("\tCDW0  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw0);
+        printf("\tCDW1  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw1);
+        printf("\tCDW2  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw2);
+        printf("\tCDW3  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw3);
+        printf("\tCDW4  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw4);
+        printf("\tCDW5  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw5);
+        printf("\tCDW6  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw6);
+        printf("\tCDW7  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw7);
+        printf("\tCDW8  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw8);
+        printf("\tCDW9  = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw9);
+        printf("\tCDW10 = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw10);
+        printf("\tCDW11 = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw11);
+        printf("\tCDW12 = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw12);
+        printf("\tCDW13 = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw13);
+        printf("\tCDW14 = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw14);
+        printf("\tCDW15 = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw15);
+        break;
     }
 }
 
 void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
 {
     //TODO: Print out the result/error information!
-    if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity)
-    {
-        printf("NVM Command Result: %08" PRIX32 "h\n", cmdCtx->result);
-    }
+    printf("NVM Command Result: %08" PRIX32 "h\n", cmdCtx->result);
 }
 
 
@@ -1113,7 +1107,7 @@ int run_NVMe_Format(tDevice * device, uint32_t newLBASize, uint64_t flags)
     }
     if (!sizeSupported)
     {
-        if (g_verbosity > VERBOSITY_QUIET)
+        if (device->deviceVerbosity > VERBOSITY_QUIET)
         {
             printf("ERROR: UnSupported LBA Size %d\n",newLBASize);
         }
@@ -1122,7 +1116,7 @@ int run_NVMe_Format(tDevice * device, uint32_t newLBASize, uint64_t flags)
     
     if ( (flags & FORMAT_NVME_CRYPTO_ERASE) && (!(ctrlData->fna & BIT2)) )
     {
-        if (g_verbosity > VERBOSITY_QUIET)
+        if (device->deviceVerbosity > VERBOSITY_QUIET)
         {
             printf("ERROR: Crypto Erase not supported %d\n",newLBASize);
         }

@@ -35,11 +35,7 @@ int load_Bin_Buf( char *filename, void *myBuf, size_t bufSize )
 
     if ((fp = fopen(filename, "rb")) == NULL)
     {
-        if (VERBOSITY_QUIET < g_verbosity)
-        {
-            printf("Unable to open file %s", filename);
-        }
-        return COMMAND_FAILURE;
+        return FILE_OPEN_ERROR;
     }
 
     fseek(fp, 0, SEEK_SET); //should open to start but hey
@@ -47,11 +43,6 @@ int load_Bin_Buf( char *filename, void *myBuf, size_t bufSize )
     //Read file contents into buffer
     bytesRead = (uint32_t)fread(myBuf, 1, bufSize, fp);
     fclose(fp);
-
-    if (VERBOSITY_DEFAULT < g_verbosity)
-    {
-        printf("Loadbinbuf read %"PRIu32" bytes into buffer.", bytesRead);
-    }
 
     return bytesRead;
 }
@@ -1653,100 +1644,97 @@ uint32_t get_Sector_Count_For_Read_Write(tDevice *device)
 
 void print_Command_Time(uint64_t timeInNanoSeconds)
 {
-    if (g_verbosity >= VERBOSITY_COMMAND_VERBOSE)
+    double printTime = (double)timeInNanoSeconds;
+    uint8_t unitCounter = 0;
+    bool breakLoop = false;;
+    while (printTime > 1 && unitCounter <= 6)
     {
-        double printTime = (double)timeInNanoSeconds;
-        uint8_t unitCounter = 0;
-        bool breakLoop = false;;
-        while (printTime > 1 && unitCounter <= 6)
-        {
-            switch (unitCounter)
-            {
-            case 6://shouldn't get this far...
-                break;
-            case 5://h to d
-                if ((printTime / 24) < 1)
-                {
-                    breakLoop = true;
-                }
-                break;
-                break;
-            case 4://m to h
-            case 3://s to m
-                if ((printTime / 60) < 1)
-                {
-                    breakLoop = true;
-                }
-                break;
-            case 0://ns to us
-            case 1://us to ms
-            case 2://ms to s
-            default:
-                if ((printTime / 1000) < 1)
-                {
-                    breakLoop = true;
-                }
-                break;
-            }
-            if (breakLoop)
-            {
-                break;
-            }
-            switch (unitCounter)
-            {
-            case 6://shouldn't get this far...
-                break;
-            case 5://h to d
-                printTime /= 24;
-                break;
-            case 4://m to h
-            case 3://s to m
-                printTime /= 60;
-                break;
-            case 0://ns to us
-            case 1://us to ms
-            case 2://ms to s
-            default:
-                printTime /= 1000;
-                break;
-            }
-            if (unitCounter == 6)
-            {
-                break;
-            }
-            ++unitCounter;
-        }
-        printf("Command Time (");
         switch (unitCounter)
         {
-        case 6://we shouldn't get to a days value, but room for future large drives I guess...-TJE
-            printf("d): ");
+        case 6://shouldn't get this far...
             break;
-        case 5:
-            printf("h): ");
+        case 5://h to d
+            if ((printTime / 24) < 1)
+            {
+                breakLoop = true;
+            }
             break;
-        case 4:
-            printf("m): ");
             break;
-        case 3:
-            printf("s): ");
+        case 4://m to h
+        case 3://s to m
+            if ((printTime / 60) < 1)
+            {
+                breakLoop = true;
+            }
             break;
-        case 2:
-            printf("ms): ");
-            break;
-        case 1:
-            printf("us): ");
-            break;
-        case 0:
-            printf("ns): ");
-            break;
-        default://couldn't get a good conversion or something weird happened so show original nanoseconds.
-            printf("ns): ");
-            printTime = (double)timeInNanoSeconds;
+        case 0://ns to us
+        case 1://us to ms
+        case 2://ms to s
+        default:
+            if ((printTime / 1000) < 1)
+            {
+                breakLoop = true;
+            }
             break;
         }
-        printf("%0.02f\n\n", printTime);
+        if (breakLoop)
+        {
+            break;
+        }
+        switch (unitCounter)
+        {
+        case 6://shouldn't get this far...
+            break;
+        case 5://h to d
+            printTime /= 24;
+            break;
+        case 4://m to h
+        case 3://s to m
+            printTime /= 60;
+            break;
+        case 0://ns to us
+        case 1://us to ms
+        case 2://ms to s
+        default:
+            printTime /= 1000;
+            break;
+        }
+        if (unitCounter == 6)
+        {
+            break;
+        }
+        ++unitCounter;
     }
+    printf("Command Time (");
+    switch (unitCounter)
+    {
+    case 6://we shouldn't get to a days value, but room for future large drives I guess...-TJE
+        printf("d): ");
+        break;
+    case 5:
+        printf("h): ");
+        break;
+    case 4:
+        printf("m): ");
+        break;
+    case 3:
+        printf("s): ");
+        break;
+    case 2:
+        printf("ms): ");
+        break;
+    case 1:
+        printf("us): ");
+        break;
+    case 0:
+        printf("ns): ");
+        break;
+    default://couldn't get a good conversion or something weird happened so show original nanoseconds.
+        printf("ns): ");
+        printTime = (double)timeInNanoSeconds;
+        break;
+    }
+    printf("%0.02f\n\n", printTime);
 }
 
 void print_Time(uint64_t timeInNanoSeconds)
