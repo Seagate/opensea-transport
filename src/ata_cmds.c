@@ -2438,6 +2438,56 @@ int ata_Read_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t s
     return ret;
 }
 
+int ata_Read_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t sectorCount, uint8_t feature, bool setLBAMode, uint8_t *ptrData, uint32_t dataSize)
+{
+	int ret = UNKNOWN;
+	ataPassthroughCommand ataCommandOptions;
+	memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+	ataCommandOptions.commandDirection = XFER_DATA_IN;
+	ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
+	ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
+	ataCommandOptions.ptrData = ptrData;
+	ataCommandOptions.dataSize = dataSize;
+	ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
+	ataCommandOptions.tfr.LbaLow = M_Byte0(LBA);
+	ataCommandOptions.tfr.LbaMid = M_Byte1(LBA);
+	ataCommandOptions.tfr.LbaHi = M_Byte2(LBA);
+	ataCommandOptions.tfr.SectorCount = sectorCount;
+	ataCommandOptions.tfr.ErrorFeature = feature;
+	ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+	if (device->drive_info.ata_Options.isDevice1)
+	{
+		ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+	}
+
+	if (setLBAMode)
+	{
+		ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
+	}
+
+	ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
+	ataCommandOptions.tfr.CommandStatus = ATA_READ_SECT_NORETRY;//0x21
+
+	if (!ptrData)
+	{
+		return BAD_PARAMETER;
+	}
+
+	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	{
+		printf("Sending ATA Read Sectors\n");
+	}
+
+	ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	{
+		print_Return_Enum("Read Sectors", ret);
+	}
+
+	return ret;
+}
+
 int ata_Read_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID, bool notSequential, bool readContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize)
 {
     int ret = UNKNOWN;
@@ -3343,6 +3393,54 @@ int ata_Write_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t 
     }
 
     return ret;
+}
+
+int ata_Write_Sectors_No_Retry(tDevice * device, uint64_t LBA, uint8_t sectorCount, uint8_t feature, bool setLBAMode, uint8_t * ptrData, uint32_t dataSize)
+{
+	int ret = UNKNOWN;
+	ataPassthroughCommand ataCommandOptions;
+	memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+	ataCommandOptions.commandDirection = XFER_DATA_OUT;
+	ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
+	ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
+	ataCommandOptions.ptrData = ptrData;
+	ataCommandOptions.dataSize = dataSize;
+	ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
+	ataCommandOptions.tfr.LbaLow = M_Byte0(LBA);
+	ataCommandOptions.tfr.LbaMid = M_Byte1(LBA);
+	ataCommandOptions.tfr.LbaHi = M_Byte2(LBA);
+	ataCommandOptions.tfr.SectorCount = sectorCount;
+	ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+	if (device->drive_info.ata_Options.isDevice1)
+	{
+		ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+	}
+
+	ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
+	ataCommandOptions.tfr.CommandStatus = ATA_WRITE_SECT_NORETRY; //0x31
+	if (setLBAMode)
+	{
+		ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
+	}
+
+	if (!ptrData)
+	{
+		return BAD_PARAMETER;
+	}
+
+	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	{
+		printf("Sending ATA Write Sectors No Retry\n");
+	}
+
+	ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	{
+		print_Return_Enum("Write Sectors No Retry", ret);
+	}
+
+	return ret;
 }
 
 int ata_Write_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID, bool flush, bool writeContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize)

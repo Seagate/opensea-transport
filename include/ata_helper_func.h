@@ -1152,6 +1152,8 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_Read_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
 
+	OPENSEA_TRANSPORT_API int ata_Read_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t sectorCount, uint8_t feature, bool setLBAMode, uint8_t *ptrData, uint32_t dataSize);
+
     //-----------------------------------------------------------------------------
     //
     //  ata_Read_Stream_Ext()
@@ -1422,6 +1424,8 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_Write_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd);
+
+	OPENSEA_TRANSPORT_API int ata_Write_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t sectorCount, uint8_t feature, bool setLBAMode, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
