@@ -1013,7 +1013,7 @@ extern "C"
 
     typedef int (*issue_io_func)( void * );
 
-	#define DEVICE_BLOCK_VERSION	(3)
+	#define DEVICE_BLOCK_VERSION	(4)
 
     #if !defined (__GNUC__)
     #pragma pack(push, 1)
