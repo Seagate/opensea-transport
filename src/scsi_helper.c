@@ -8800,6 +8800,7 @@ int fill_In_Device_Info(tDevice *device)
     //now start getting data from the device itself
     if (SUCCESS == scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, 0, false, false))
     {
+        bool checkForSAT = true;
 		bool readCapacity = true;
         ret = SUCCESS;
         memcpy(device->drive_info.scsiVpdData.inquiryData, inq_buf, 96);//store this in the device structure to make sure it is available elsewhere in the library as well.
@@ -8808,8 +8809,13 @@ int fill_In_Device_Info(tDevice *device)
         uint8_t version = inq_buf[2];
         switch (version) //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
         {
+        case 0:
+            checkForSAT = false;//NOTE: some cheap USB to SATA/PATA adapters will set this version or no version. The only way to work around this, is to make sure the low level for the OS detects it on USB interface and it can be run through the usb_hacks file instead.
+            version = 0;
+            break;
         case 0x81:
             version = 1;//changing to 1 for SCSI
+            checkForSAT = false;//NOTE: some cheap USB to SATA/PATA adapters will set this version or no version. The only way to work around this, is to make sure the low level for the OS detects it on USB interface and it can be run through the usb_hacks file instead.
             break;
         case 0x80:
         case 0x82:
@@ -8849,18 +8855,22 @@ int fill_In_Device_Info(tDevice *device)
             break;
         case PERIPHERAL_SEQUENTIAL_ACCESS_BLOCK_DEVICE:
             device->drive_info.media_type = MEDIA_TAPE;
+            checkForSAT = false;
             break;        
         case PERIPHERAL_WRITE_ONCE_DEVICE:
         case PERIPHERAL_CD_DVD_DEVICE:
         case PERIPHERAL_OPTICAL_MEMORY_DEVICE:
         case PERIPHERAL_OPTICAL_CARD_READER_WRITER_DEVICE:
             device->drive_info.media_type = MEDIA_OPTICAL;
+            checkForSAT = false;
             break;
         case PERIPHERAL_STORAGE_ARRAY_CONTROLLER_DEVICE:
             device->drive_info.media_type = MEDIA_HDD;
+            checkForSAT = false;
             break;
         case PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE://some USB flash drives show up as this according to the USB mass storage specification...but unfortunately all the ones I've tested show up as Direct Access Block Device just like an HDD :(
             device->drive_info.media_type = MEDIA_SSM_FLASH;
+            checkForSAT = false;
             break;
         case PERIPHERAL_ENCLOSURE_SERVICES_DEVICE:
         case PERIPHERAL_BRIDGE_CONTROLLER_COMMANDS:
@@ -8887,28 +8897,82 @@ int fill_In_Device_Info(tDevice *device)
         case PERIPHERAL_UNKNOWN_OR_NO_DEVICE_TYPE:
         default:    
             readCapacity = false;
+            checkForSAT = false;
             device->drive_info.media_type = MEDIA_UNKNOWN;
             break;
         }
-        //removing the code below for now until we need it. Was useful for debugging though.
-        /*
-        bool isRemovable = false;
-        //SAT 3 says this is "unspecified" but that is because bit7 of ATA general information has been obsolete since ACS...so we could use this to filter USB flash which does set this, but it would only be for so long before this no longer works (likely)
-        if (inq_buf[1] & BIT7)
+        //check for additional bits to try and filter out when to check for SAT
+        if (checkForSAT)
         {
-            isRemovable = true;
+            //check that response format is 2 (or higher). SAT spec says the response format should be set to 2
+            if (M_Nibble0(inq_buf[3]) < 2)
+            {
+                checkForSAT = false;
+            }
+            //normaca is specified as not compatible, so if it's set, we can definitely skip the SAT check
+            if (inq_buf[3] & BIT5)
+            {
+                checkForSAT = false;
+            }
+            //sat r09 says mchangr will be set to zero, so we will use this to filter out this device
+            if (inq_buf[6] & BIT3)
+            {
+                checkForSAT = false;
+            }
+            //Checking to see if any old parallel scsi bits are set. Doing this because there are no known SCSI to PATA adapters that would be SAT compliant and it is unlikely these will be set otherwise
+            //if less than version 6 (SPC4) some bits are marked obsolete: addr32, wbus32, ackreqq, trandis
+            if (version < 6)
+            {
+                if (inq_buf[6] & BIT2)//ackreqq
+                {
+                    checkForSAT = false;
+                }
+                if (inq_buf[6] & BIT1)//addr32
+                {
+                    checkForSAT = false;
+                }
+                if (inq_buf[7] & BIT6)//wbus32
+                {
+                    checkForSAT = false;
+                }
+                if (inq_buf[7] & BIT2)//trandis
+                {
+                    checkForSAT = false;
+                }
+            }
+            if (inq_buf[6] & BIT0)//addr16
+            {
+                checkForSAT = false;
+            }
+            if (inq_buf[7] & BIT5)//wbus16
+            {
+                checkForSAT = false;
+            }
+            if (inq_buf[7] & BIT4)//sync
+            {
+                checkForSAT = false;
+            }
+            if (inq_buf[56] & BIT0)//ius
+            {
+                checkForSAT = false;
+            }
+            if (inq_buf[56] & BIT1)//qas
+            {
+                checkForSAT = false;
+            }
+            if (M_GETBITRANGE(inq_buf[56], 3, 2) != 0)//clocking
+            {
+                checkForSAT = false;
+            }
+            //other bits we may or may not want to check for are multip, aerc, trmtsk, any vendor specific bits, sccs, protect, 3pc
+            //each of these are technically not specified in SAT, but are not likely to be suppored anyways.
+            //We can add these in overtime if we find them useful for the filter. Most likely, protect and 3pc will be most useful. Not sure about the others, but I doubt many controllers will set them...certainly no USB device will.
+            if (inq_buf[6] & BIT5 || inq_buf[7] & BIT0)//vendor specific bits.
+            {
+                checkForSAT = false;
+            }
+            //TODO: add in additional bits to skip SAT check as we find them useful
         }
-        bool logicalUnitConglomerate = false;
-        if (inq_buf[1] & BIT6)
-        {
-            logicalUnitConglomerate = true;
-        }
-        bool normACA = false;
-        if (inq_buf[3] & BIT5)
-        {
-            normACA = true;
-        }
-        */
         //do we want to check the version descriptors here too? There are a lot of those...I have a table that parses them to human readable, but not setting anything yet...may need to use that later
 
 		//As per NVM Express SCSI Translation Reference. 
@@ -9054,9 +9118,11 @@ int fill_In_Device_Info(tDevice *device)
                     inq_buf[offset] = DEVICE_IDENTIFICATION;
                     ++offset;
                 }
-                //TODO: Always add ATA Information attempt?
-                inq_buf[offset] = ATA_INFORMATION;
-                ++offset;
+                if (checkForSAT)
+                {
+                    inq_buf[offset] = ATA_INFORMATION;
+                    ++offset;
+                }
                 if (version >= 3)//SPC
                 {
                     if (peripheralDeviceType == PERIPHERAL_DIRECT_ACCESS_BLOCK_DEVICE || peripheralDeviceType == PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE || peripheralDeviceType == PERIPHERAL_HOST_MANAGED_ZONED_BLOCK_DEVICE)
@@ -9137,6 +9203,7 @@ int fill_In_Device_Info(tDevice *device)
                 }
                 case ATA_INFORMATION: //use this to determine if it's SAT compliant
                 {
+                    //do not check the checkForSAT bool here. If we get here, then the device most likely reported support for it so it should be readable.
                     if (SUCCESS == check_SAT_Compliance_And_Set_Drive_Type(device))
                     {
                         satVPDPageRead = true;
@@ -9340,7 +9407,7 @@ int fill_In_Device_Info(tDevice *device)
         }
 
         //if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just issue a SAT identify in here to set things up...might reduce multiple commands later
-        if ((device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE) 
+        if (checkForSAT && (device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE) 
             && satVPDPageRead == false && device->drive_info.media_type != MEDIA_UNKNOWN && satComplianceChecked == false)
         {
             check_SAT_Compliance_And_Set_Drive_Type(device);
