@@ -1216,12 +1216,10 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //add nvme devices to the list
     rc = Nvme_GetAdapterList(&nvmeAdptList);
 
-    if (rc != 0) 
+    if(rc == SUCCESS) 
     {
-        return FAILURE;
+        num_nvme_devs = nvmeAdptList.count;
     }
-
-    num_nvme_devs = nvmeAdptList.count;
 
 #ifdef _DEBUG
     printf("get_Device_Count : num_nvme_devs %d\n", num_nvme_devs);
