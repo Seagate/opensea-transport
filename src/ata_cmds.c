@@ -2834,6 +2834,43 @@ int ata_Standby(tDevice *device, uint8_t standbyTimerPeriod)
     return ret;
 }
 
+int ata_Standby_With_Data(tDevice * device, uint8_t deviceFlag, uint64_t LBA, uint16_t sectorCount)
+{
+	int ret = UNKNOWN;
+	ataPassthroughCommand ataCommandOptions;
+	memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+	ataCommandOptions.commandDirection = XFER_NO_DATA;
+	ataCommandOptions.ptrData = NULL;
+	ataCommandOptions.dataSize = 0;
+	ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
+	ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
+	ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
+	ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
+	ataCommandOptions.tfr.CommandStatus = ATA_STANDBY;	
+	ataCommandOptions.tfr.LbaLow = M_Byte0(LBA);
+	ataCommandOptions.tfr.LbaMid = M_Byte1(LBA);
+	ataCommandOptions.tfr.LbaHi = M_Byte2(LBA);
+	ataCommandOptions.tfr.SectorCount = M_Byte0(sectorCount);
+	ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS | deviceFlag;
+	if (device->drive_info.ata_Options.isDevice1)
+	{
+		ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+	}
+	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	{
+		printf("Sending ATA Standby\n");
+	}
+
+	ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	{
+		print_Return_Enum("Standby", ret);
+	}
+
+	return ret;
+}
+
 int ata_Standby_Immediate(tDevice *device)
 {
     int ret = UNKNOWN;
@@ -3410,6 +3447,7 @@ int ata_Write_Sectors_No_Retry(tDevice * device, uint64_t LBA, uint8_t sectorCou
 	ataCommandOptions.tfr.LbaMid = M_Byte1(LBA);
 	ataCommandOptions.tfr.LbaHi = M_Byte2(LBA);
 	ataCommandOptions.tfr.SectorCount = sectorCount;
+	ataCommandOptions.tfr.ErrorFeature = feature;
 	ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
 	if (device->drive_info.ata_Options.isDevice1)
 	{

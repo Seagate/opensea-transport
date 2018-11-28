@@ -1276,6 +1276,8 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_Standby(tDevice *device, uint8_t standbyTimerPeriod);
 
+	OPENSEA_TRANSPORT_API int ata_Standby_With_Data(tDevice *device, uint8_t deviceFlag, uint64_t LBA, uint16_t sectorCount);
+
     //-----------------------------------------------------------------------------
     //
     //  ata_Standby()
