@@ -2452,14 +2452,14 @@ int ata_Read_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t sectorCount
 		return BAD_PARAMETER;
 	}
 
-	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
 	{
 		printf("Sending ATA Read Sectors\n");
 	}
 
 	ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
 	{
 		print_Return_Enum("Read Sectors", ret);
 	}
@@ -2835,14 +2835,14 @@ int ata_Standby_With_Data(tDevice * device, uint8_t deviceFlag, uint64_t LBA, ui
 	{
 		ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
 	}
-	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
 	{
 		printf("Sending ATA Standby\n");
 	}
 
 	ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
 	{
 		print_Return_Enum("Standby", ret);
 	}
@@ -3445,14 +3445,14 @@ int ata_Write_Sectors_No_Retry(tDevice * device, uint64_t LBA, uint8_t sectorCou
 		return BAD_PARAMETER;
 	}
 
-	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
 	{
 		printf("Sending ATA Write Sectors No Retry\n");
 	}
 
 	ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-	if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
 	{
 		print_Return_Enum("Write Sectors No Retry", ret);
 	}
