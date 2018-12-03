@@ -915,7 +915,7 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
                     {
                         checkError = true;
                     }
-                    if (device->drive_info.ata_Options.senseDataReportingEnabled && ataCommandOptions->rtfr.status & ATA_STATUS_BIT_SENSE_DATA_AVAILABLE && ataCommandOptions->tfr.CommandStatus != ATA_REQUEST_SENSE_DATA)
+                    if (device->drive_info.ata_Options.senseDataReportingEnabled && ataCommandOptions->rtfr.status & ATA_STATUS_BIT_SENSE_DATA_AVAILABLE && ataCommandOptions->tfr.CommandStatus != ATA_REQUEST_SENSE_DATA && device->drive_info.interface_type != SCSI_INTERFACE)
                     {
                         requestATASenseData = true;
                     }
