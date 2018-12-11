@@ -1845,3 +1845,129 @@ uint64_t align_LBA(tDevice *device, uint64_t LBA)
     }
     return LBA;
 }
+
+bool check_Duplicate_Drive(tDevice *deviceList, uint32_t deviceIdx)
+{
+	bool duplicateDrive = false;
+	uint32_t deviceIter;
+
+	for (deviceIter = 0; deviceIter < (deviceIdx - 1); deviceIter++)
+	{
+		duplicateDrive = (strncmp((deviceList + deviceIter)->drive_info.serialNumber,
+			(deviceList + deviceIdx)->drive_info.serialNumber,
+			strlen((deviceList + deviceIter)->drive_info.serialNumber)) == 0);
+
+		if (duplicateDrive == true)
+			return duplicateDrive;
+	}
+
+	return duplicateDrive;
+}
+
+void remove_Duplicate_Drives(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag)
+{
+	volatile uint32_t i, j;
+	bool sameSlNo = false;
+
+	for (i = 0; i < *numberOfDevices; i++)
+	{
+		for (j = 0; j < *numberOfDevices; j++)
+		{
+#ifdef _DEBUG
+			printf("%s --> For drive i : %d and j : %d \n", __FUNCTION__, i, j);
+#endif
+
+			sameSlNo = false;
+			if (i == j)
+			{
+				continue;
+			}
+
+			sameSlNo = (strncmp((deviceList + i)->drive_info.serialNumber,
+				(deviceList + j)->drive_info.serialNumber,
+				strlen((deviceList + i)->drive_info.serialNumber)) == 0);
+
+			if (sameSlNo)
+			{
+#ifdef _DEBUG
+				printf("We have same serial no \n");
+#endif
+#if defined (_WIN32)
+				/* We are supporting csmi only - for now */
+				if (rmvDevFlag.csmi != 0)
+				{
+					if (is_CSMI_Device(deviceList + i))
+					{
+						remove_Drive(deviceList, i, numberOfDevices);
+						*numberOfDevices -= 1;
+						i--;
+						if (j > i)
+						{
+							j--;
+						}
+					}
+
+					if (is_CSMI_Device(deviceList + j))
+					{
+						remove_Drive(deviceList, j, numberOfDevices);
+						*numberOfDevices -= 1;
+						j--;
+						if (i > j)
+						{
+							i--;
+						}
+					}
+				}
+
+#endif
+			}
+		}
+	}
+}
+
+void remove_Drive(tDevice *deviceList, uint32_t driveToRemoveIdx, uint32_t * numberOfDevices)
+{
+	uint32_t i;
+
+#ifdef _DEBUG
+	printf("Removing Drive with index : %d \n", driveToRemoveIdx);
+#endif
+
+	if ((deviceList + driveToRemoveIdx)->raid_device != NULL)
+	{
+		free((deviceList + driveToRemoveIdx)->raid_device);
+	}
+
+	for (i = driveToRemoveIdx; i < *numberOfDevices - 1; i++)
+	{
+		memcpy((deviceList + driveToRemoveIdx), (deviceList + driveToRemoveIdx + 1), sizeof(tDevice));
+	}
+
+	memset((deviceList + i), 0, sizeof(tDevice));
+}
+
+bool is_CSMI_Device(tDevice *device)
+{
+	bool csmiDevice = true;
+
+#ifdef _DEBUG
+	printf("friendly name : %s interface_type : %d raid_device : %x \n",
+		device->os_info.friendlyName, device->drive_info.interface_type, device->raid_device);
+#endif
+
+	csmiDevice = csmiDevice && (strncmp(device->os_info.friendlyName, "SCSI", 4) == 0);
+	csmiDevice = csmiDevice && (device->drive_info.interface_type == RAID_INTERFACE);
+	csmiDevice = csmiDevice && (device->raid_device != NULL);
+
+#ifdef _DEBUG
+	if (csmiDevice)
+	{
+		printf("This is a CSMI drive \n");
+	}
+	else
+	{
+		printf("This is not a CSMI drive \n");
+	}
+#endif
+	return csmiDevice;
+}
