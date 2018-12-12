@@ -1864,7 +1864,7 @@ bool check_Duplicate_Drive(tDevice *deviceList, uint32_t deviceIdx)
 	return duplicateDrive;
 }
 
-void remove_Duplicate_Drives(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag)
+void remove_Duplicate_Drives(tDevice *deviceList, uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag)
 {
 	volatile uint32_t i, j;
 	bool sameSlNo = false;
