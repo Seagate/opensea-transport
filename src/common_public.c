@@ -182,7 +182,7 @@ void write_JSON_To_File(void *customData, char *message)
 }
 
 //this is the "generic" scan. It uses the OS defined "get device count" and "get device list" calls to do the scan.
-void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo)
+void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityLevels scanVerbosity)
 {
     uint32_t deviceCount = 0;
 #if defined (ENABLE_CSMI)
@@ -209,6 +209,13 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo)
             version.size = sizeof(tDevice);
             version.version = DEVICE_BLOCK_VERSION;
             uint64_t getDeviceflags = FAST_SCAN;
+
+            //set the verbosity for all devices before the scan
+            for (uint32_t devi = 0; devi < deviceCount; ++devi)
+            {
+                deviceList[devi].deviceVerbosity = scanVerbosity;
+            }
+
 #if defined (ENABLE_CSMI)
             if (flags & IGNORE_CSMI)
             {
