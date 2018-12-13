@@ -12,6 +12,7 @@
 #include "common.h"
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
+#include <ctype.h>//for checking for printable characters
 
 uint16_t calculate_Logical_Block_Guard(uint8_t *buffer, uint32_t userDataLength, uint32_t totalDataLength)
 {
@@ -8609,10 +8610,11 @@ void copy_Inquiry_Data( uint8_t *pbuf, driveInfo *info )
 {
     // \todo: Create a macro to get various stuff out of the inq buffer
     memcpy(info->T10_vendor_ident, &pbuf[8], INQ_DATA_T10_VENDOR_ID_LEN);
-    //T10_vendor_ident[8] = '\0';
+    info->T10_vendor_ident[INQ_DATA_T10_VENDOR_ID_LEN] = '\0';
     memcpy(info->product_identification, &pbuf[16], INQ_DATA_PRODUCT_ID_LEN);
-    //product_identification[16] = '\0';
+    info->product_identification[INQ_DATA_PRODUCT_ID_LEN] = '\0';
     memcpy(info->product_revision, &pbuf[32], INQ_DATA_PRODUCT_REV_LEN);
+    info->product_revision[INQ_DATA_PRODUCT_REV_LEN] = '\0';
     remove_Leading_And_Trailing_Whitespace(info->product_identification);
     remove_Leading_And_Trailing_Whitespace(info->product_revision);
     remove_Leading_And_Trailing_Whitespace(info->T10_vendor_ident);
@@ -8680,36 +8682,43 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
     }
     if (SUCCESS == scsi_Inquiry(device, ataInformation, VPD_ATA_INFORMATION_LEN, ATA_INFORMATION, true, false))
     {
-        //set some of the bridge info in the device structure
-        memcpy(&device->drive_info.bridge_info.t10SATvendorID[0], &ataInformation[8], 8);
-        memcpy(&device->drive_info.bridge_info.SATproductID[0], &ataInformation[16], 16);
-        memcpy(&device->drive_info.bridge_info.SATfwRev[0], &ataInformation[32], 4);
+        if (ataInformation[1] == ATA_INFORMATION)
+        {
+            //set some of the bridge info in the device structure
+            memcpy(&device->drive_info.bridge_info.t10SATvendorID[0], &ataInformation[8], 8);
+            memcpy(&device->drive_info.bridge_info.SATproductID[0], &ataInformation[16], 16);
+            memcpy(&device->drive_info.bridge_info.SATfwRev[0], &ataInformation[32], 4);
 
-        if (ataInformation[36] == 0) //checking for PATA drive
-        {
-            if (ataInformation[43] & DEVICE_SELECT_BIT)//ATA signature device register is here. Checking for the device select bit being set to know it's device 1 (Not that we really need it)
+            if (ataInformation[36] == 0) //checking for PATA drive
             {
-                device->drive_info.ata_Options.isDevice1 = true;
+                if (ataInformation[43] & DEVICE_SELECT_BIT)//ATA signature device register is here. Checking for the device select bit being set to know it's device 1 (Not that we really need it)
+                {
+                    device->drive_info.ata_Options.isDevice1 = true;
+                }
             }
-        }
-        
-        if (ataInformation[56] == ATA_IDENTIFY || ataInformation[56] == ATA_READ_LOG_EXT || ataInformation[56] == ATA_READ_LOG_EXT_DMA)//Added read log commands here since they are in SAT4. Only HDD/SSD should use these.
-        {
-            issueSATIdentify = true;
-            device->drive_info.media_type = MEDIA_HDD;
-            device->drive_info.drive_type = ATA_DRIVE;
-        }
-        else if (ataInformation[56] == ATAPI_IDENTIFY)
-        {
-            issueSATIdentify = false;//Do not read it since we want to treat ATAPI as SCSI/with SCSI commands (at least for now)-TJE
-            device->drive_info.media_type = MEDIA_OPTICAL;
-            device->drive_info.drive_type = ATAPI_DRIVE;
+            
+            if (ataInformation[56] == ATA_IDENTIFY || ataInformation[56] == ATA_READ_LOG_EXT || ataInformation[56] == ATA_READ_LOG_EXT_DMA)//Added read log commands here since they are in SAT4. Only HDD/SSD should use these.
+            {
+                issueSATIdentify = true;
+                device->drive_info.media_type = MEDIA_HDD;
+                device->drive_info.drive_type = ATA_DRIVE;
+            }
+            else if (ataInformation[56] == ATAPI_IDENTIFY)
+            {
+                issueSATIdentify = false;//Do not read it since we want to treat ATAPI as SCSI/with SCSI commands (at least for now)-TJE
+                device->drive_info.media_type = MEDIA_OPTICAL;
+                device->drive_info.drive_type = ATAPI_DRIVE;
+            }
+            else
+            {
+                issueSATIdentify = true;
+            }
+            ret = SUCCESS;
         }
         else
         {
             issueSATIdentify = true;
         }
-        ret = SUCCESS;
     }
     else if (device->drive_info.interface_type == MMC_INTERFACE || device->drive_info.interface_type == NVME_INTERFACE || device->drive_info.interface_type == SD_INTERFACE)
     {
@@ -8805,7 +8814,35 @@ int fill_In_Device_Info(tDevice *device)
         ret = SUCCESS;
         memcpy(device->drive_info.scsiVpdData.inquiryData, inq_buf, 96);//store this in the device structure to make sure it is available elsewhere in the library as well.
         copy_Inquiry_Data(inq_buf, &device->drive_info);
-        //uint8_t responseFormat = M_GETBITRANGE(inq_buf[3], 3, 0);
+        uint8_t responseFormat = M_GETBITRANGE(inq_buf[3], 3, 0);
+        if (responseFormat < 2)
+        {
+            //Need to check if vendor ID, MN, and FWRev are printable or not
+            //vendor ID
+            for (uint8_t iter = 0; iter < T10_VENDOR_ID_LEN; ++iter)
+            {
+                if (!isprint(device->drive_info.T10_vendor_ident[iter]))
+                {
+                    device->drive_info.T10_vendor_ident[iter] = ' ';
+                }
+            }
+            //product ID
+            for (uint8_t iter = 0; iter < MODEL_NUM_LEN && iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
+            {
+                if (!isprint(device->drive_info.product_identification[iter]))
+                {
+                    device->drive_info.product_identification[iter] = ' ';
+                }
+            }
+            //FWRev
+            for (uint8_t iter = 0; iter < FW_REV_LEN && iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
+            {
+                if (!isprint(device->drive_info.product_revision[iter]))
+                {
+                    device->drive_info.product_revision[iter] = ' ';
+                }
+            }
+        }
         uint8_t version = inq_buf[2];
         switch (version) //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
         {
@@ -8979,7 +9016,8 @@ int fill_In_Device_Info(tDevice *device)
         //NOTE: Setting this type here allows us to skip sending some extra commands. (e.g. SAT compliant)
         if (memcmp(device->drive_info.T10_vendor_ident, "NVMe",4) == 0 )
         {
-            device->drive_info.drive_type  = NVME_DRIVE;
+            //DO NOT set the drive type to NVMe here. We need to treat it as a SCSI device since we can only issue SCSI translatable commands!!!
+            //device->drive_info.drive_type  = NVME_DRIVE;
             device->drive_info.media_type = MEDIA_NVM;
         }
 
@@ -9036,12 +9074,15 @@ int fill_In_Device_Info(tDevice *device)
                 }
                 if (SUCCESS == scsi_Inquiry(device, unitSerialNumber, unitSerialNumberPageLength, UNIT_SERIAL_NUMBER, true, false))
                 {
-                    uint16_t serialNumberLength = M_BytesTo2ByteValue(unitSerialNumber[2], unitSerialNumber[3]);
-                    if (serialNumberLength > 0)
+                    if (unitSerialNumber[1] == UNIT_SERIAL_NUMBER)
                     {
-                        memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
-                        device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
-                        remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
+                        uint16_t serialNumberLength = M_BytesTo2ByteValue(unitSerialNumber[2], unitSerialNumber[3]);
+                        if (serialNumberLength > 0)
+                        {
+                            memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
+                            device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
+                            remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
+                        }
                     }
                 }
                 safe_Free(unitSerialNumber);
@@ -9051,6 +9092,14 @@ int fill_In_Device_Info(tDevice *device)
                 //SN may not be available...just going to read where it may otherwise show up in inquiry data like some vendors like to put it
                 memcpy(&device->drive_info.serialNumber[0], &inq_buf[36], SERIAL_NUM_LEN);
                 device->drive_info.serialNumber[SERIAL_NUM_LEN] = '\0';
+                //make sure the SN is printable if it's coming from here since it's non-standardized
+                for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
+                {
+                    if (!isprint(device->drive_info.serialNumber[iter]))
+                    {
+                        device->drive_info.serialNumber[iter] = ' ';
+                    }
+                }
             }
             if (version >= 3)//device identification added in SPC
             {
@@ -9062,14 +9111,20 @@ int fill_In_Device_Info(tDevice *device)
                 }
                 if (SUCCESS == scsi_Inquiry(device, deviceIdentification, INQ_RETURN_DATA_LENGTH, DEVICE_IDENTIFICATION, true, false))
                 {
-                    //this SHOULD work for getting a WWN 90% of the time, but if it doesn't, then we will need to go through the descriptors from the device and set it from the correct one. See the SATChecker util code for how to do this
-                    memcpy(&device->drive_info.worldWideName, &deviceIdentification[8], 8);
-                    byte_Swap_64(&device->drive_info.worldWideName);
+                    if (deviceIdentification[1] == DEVICE_IDENTIFICATION)
+                    {
+                        //this SHOULD work for getting a WWN 90% of the time, but if it doesn't, then we will need to go through the descriptors from the device and set it from the correct one. See the SATChecker util code for how to do this
+                        memcpy(&device->drive_info.worldWideName, &deviceIdentification[8], 8);
+                        byte_Swap_64(&device->drive_info.worldWideName);
+                    }
                 }
                 safe_Free(deviceIdentification);
             }
             //One last thing...Need to do a SAT scan...
-            check_SAT_Compliance_And_Set_Drive_Type(device);
+            if (checkForSAT)
+            {
+                check_SAT_Compliance_And_Set_Drive_Type(device);
+            }
             return ret;
         }
 
@@ -9089,6 +9144,11 @@ int fill_In_Device_Info(tDevice *device)
                     //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
                     scsi_Test_Unit_Ready(device, NULL);
                 }
+            }
+            else if (inq_buf[1] != 0)
+            {
+                //did not get the list of supported pages! Checking this since occasionally we get back garbage
+                memset(inq_buf, 0, INQ_RETURN_DATA_LENGTH);
             }
             if (dummyUpVPDSupport == false)
             {
@@ -9163,12 +9223,15 @@ int fill_In_Device_Info(tDevice *device)
                     }
                     if (SUCCESS == scsi_Inquiry(device, unitSerialNumber, unitSerialNumberPageLength, supportedVPDPages[vpdIter], true, false))
                     {
-                        uint16_t serialNumberLength = M_BytesTo2ByteValue(unitSerialNumber[2], unitSerialNumber[3]);
-                        if (serialNumberLength > 0)
+                        if (unitSerialNumber[1] == UNIT_SERIAL_NUMBER)
                         {
-                            memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
-                            device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
-                            remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
+                            uint16_t serialNumberLength = M_BytesTo2ByteValue(unitSerialNumber[2], unitSerialNumber[3]);
+                            if (serialNumberLength > 0)
+                            {
+                                memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
+                                device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
+                                remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
+                            }
                         }
                     }
                     else if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
@@ -9189,9 +9252,12 @@ int fill_In_Device_Info(tDevice *device)
                     }
                     if (SUCCESS == scsi_Inquiry(device, deviceIdentification, INQ_RETURN_DATA_LENGTH, DEVICE_IDENTIFICATION, true, false))
                     {
-                        //this SHOULD work for getting a WWN 90% of the time, but if it doesn't, then we will need to go through the descriptors from the device and set it from the correct one. See the SATChecker util code for how to do this
-                        memcpy(&device->drive_info.worldWideName, &deviceIdentification[8], 8);
-                        byte_Swap_64(&device->drive_info.worldWideName);
+                        if (deviceIdentification[1] == DEVICE_IDENTIFICATION)
+                        {
+                            //this SHOULD work for getting a WWN 90% of the time, but if it doesn't, then we will need to go through the descriptors from the device and set it from the correct one. See the SATChecker util code for how to do this
+                            memcpy(&device->drive_info.worldWideName, &deviceIdentification[8], 8);
+                            byte_Swap_64(&device->drive_info.worldWideName);
+                        }
                     }
                     else if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
                     {
@@ -9226,65 +9292,68 @@ int fill_In_Device_Info(tDevice *device)
                     }
                     if (SUCCESS == scsi_Inquiry(device, blockDeviceCharacteristics, VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, BLOCK_DEVICE_CHARACTERISTICS, true, false))
                     {
-                        uint16_t mediumRotationRate = M_BytesTo2ByteValue(blockDeviceCharacteristics[4], blockDeviceCharacteristics[5]);
-                        uint8_t productType = blockDeviceCharacteristics[6];
-                        if (mediumRotationRate == 0x0001)
+                        if (blockDeviceCharacteristics[1] == BLOCK_DEVICE_CHARACTERISTICS)
                         {
-                            if (!satVPDPageRead)
+                            uint16_t mediumRotationRate = M_BytesTo2ByteValue(blockDeviceCharacteristics[4], blockDeviceCharacteristics[5]);
+                            uint8_t productType = blockDeviceCharacteristics[6];
+                            if (mediumRotationRate == 0x0001)
                             {
-                                device->drive_info.media_type = MEDIA_SSD;
+                                if (!satVPDPageRead)
+                                {
+                                    device->drive_info.media_type = MEDIA_SSD;
+                                }
                             }
-                        }
-                        else if (mediumRotationRate >= 0x401 && mediumRotationRate <= 0xFFFE)
-                        {
-                            if (!satVPDPageRead)
+                            else if (mediumRotationRate >= 0x401 && mediumRotationRate <= 0xFFFE)
                             {
-                                device->drive_info.media_type = MEDIA_HDD;
+                                if (!satVPDPageRead)
+                                {
+                                    device->drive_info.media_type = MEDIA_HDD;
+                                }
                             }
-                        }
-                        else
-                        {
-                            if (!satVPDPageRead)
+                            else
                             {
-                                device->drive_info.media_type = MEDIA_UNKNOWN;
+                                if (!satVPDPageRead)
+                                {
+                                    device->drive_info.media_type = MEDIA_UNKNOWN;
+                                }
                             }
-                        }
-                        switch (productType)
-                        {
-                        case 0x01://CFAST
-                        case 0x02://compact flash
-                        case 0x03://Memory Stick
-                        case 0x04://MultiMediaCard
-                        case 0x05://SecureDigitalCard
-                        case 0x06://XQD
-                        case 0x07://Universal Flash Storage
-                            if (!satVPDPageRead)
+                            switch (productType)
                             {
-                                device->drive_info.media_type = MEDIA_SSM_FLASH;
+                            case 0x01://CFAST
+                            case 0x02://compact flash
+                            case 0x03://Memory Stick
+                            case 0x04://MultiMediaCard
+                            case 0x05://SecureDigitalCard
+                            case 0x06://XQD
+                            case 0x07://Universal Flash Storage
+                                if (!satVPDPageRead)
+                                {
+                                    device->drive_info.media_type = MEDIA_SSM_FLASH;
+                                }
+                                break;
+                            default://not indicated or reserved or vendor unique so do nothing
+                                break;
                             }
-                            break;
-                        default://not indicated or reserved or vendor unique so do nothing
-                            break;
-                        }
-                        //get zoned information (as long as it isn't already set from SAT passthrough)
-                        if (device->drive_info.zonedType == ZONED_TYPE_NOT_ZONED)
-                        {
-                            switch ((blockDeviceCharacteristics[8] & 0x30) >> 4)
+                            //get zoned information (as long as it isn't already set from SAT passthrough)
+                            if (device->drive_info.zonedType == ZONED_TYPE_NOT_ZONED)
                             {
-                            case 0:
-                                device->drive_info.zonedType = ZONED_TYPE_NOT_ZONED;
-                                break;
-                            case 1:
-                                device->drive_info.zonedType = ZONED_TYPE_HOST_AWARE;
-                                break;
-                            case 2:
-                                device->drive_info.zonedType = ZONED_TYPE_DEVICE_MANAGED;
-                                break;
-                            case 3:
-                                device->drive_info.zonedType = ZONED_TYPE_RESERVED;
-                                break;
-                            default:
-                                break;
+                                switch ((blockDeviceCharacteristics[8] & 0x30) >> 4)
+                                {
+                                case 0:
+                                    device->drive_info.zonedType = ZONED_TYPE_NOT_ZONED;
+                                    break;
+                                case 1:
+                                    device->drive_info.zonedType = ZONED_TYPE_HOST_AWARE;
+                                    break;
+                                case 2:
+                                    device->drive_info.zonedType = ZONED_TYPE_DEVICE_MANAGED;
+                                    break;
+                                case 3:
+                                    device->drive_info.zonedType = ZONED_TYPE_RESERVED;
+                                    break;
+                                default:
+                                    break;
+                                }
                             }
                         }
                     }
@@ -9308,6 +9377,14 @@ int fill_In_Device_Info(tDevice *device)
             //SN may not be available...just going to read where it may otherwise show up in inquiry data like some vendors like to put it
             memcpy(&device->drive_info.serialNumber[0], &inq_buf[36], SERIAL_NUM_LEN);
             device->drive_info.serialNumber[SERIAL_NUM_LEN] = '\0';
+            //make sure the SN is printable if it's coming from here since it's non-standardized
+            for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
+            {
+                if (!isprint(device->drive_info.serialNumber[iter]))
+                {
+                    device->drive_info.serialNumber[iter] = ' ';
+                }
+            }
         }
 
         if(readCapacity)
