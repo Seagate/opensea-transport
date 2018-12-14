@@ -857,7 +857,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 			{
 				CloseHandle(fd);
 				_snprintf(name, 80, "%s%i", WIN_PHYSICAL_DRIVE, driveNumber);
-				memset(d, 0, sizeof(tDevice));
+				memset(d, 0, sizeof(tDevice)); /*TODO: Fix the verbosity flag setting. */
 				d->sanity.size = ver.size;
 				d->sanity.version = ver.version;
                 d->dFlags = flags;

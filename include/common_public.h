@@ -1632,7 +1632,7 @@ extern "C"
 
 	OPENSEA_TRANSPORT_API bool check_Duplicate_Drive(tDevice *deviceList, uint32_t deviceIdx);
 
-	OPENSEA_TRANSPORT_API void remove_Duplicate_Drives(tDevice *deviceList, uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag);
+	OPENSEA_TRANSPORT_API void remove_Duplicate_Drives(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag);
 
 	OPENSEA_TRANSPORT_API void remove_Drive(tDevice *deviceList, uint32_t driveToRemoveIdx, uint32_t * numberOfDevices);
 

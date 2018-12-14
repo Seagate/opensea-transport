@@ -1852,6 +1852,9 @@ uint64_t align_LBA(tDevice *device, uint64_t LBA)
     }
     return LBA;
 }
+/*
+TODO: Remove/Clean
+*/
 
 bool check_Duplicate_Drive(tDevice *deviceList, uint32_t deviceIdx)
 {
@@ -1871,30 +1874,48 @@ bool check_Duplicate_Drive(tDevice *deviceList, uint32_t deviceIdx)
 	return duplicateDrive;
 }
 
+/*
+Lets return rather than void
+     -1 will be something wrong
+     0 SUCCESS
+	 1 SUCCESS with limitations. 
+	 2...
+*/
 void remove_Duplicate_Drives(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag)
 {
 	volatile uint32_t i, j;
 	bool sameSlNo = false;
 
+	/*
+	Go through all the devices in the list. 
+	*/
 	for (i = 0; i < *numberOfDevices; i++)
 	{
-		for (j = 0; j < *numberOfDevices; j++)
+		/*
+		Go compare it to all the rest of the drives i + 1. 
+		*/
+		for (j = i+1; j < *numberOfDevices; j++)
+
 		{
 #ifdef _DEBUG
 			printf("%s --> For drive i : %d and j : %d \n", __FUNCTION__, i, j);
 #endif
 
 			sameSlNo = false;
+			/*
 			if (i == j)
 			{
 				continue;
 			}
-
+			*/
+			/*
+			check if the serial number of i matches the serial # of j.
+			*/
 			sameSlNo = (strncmp((deviceList + i)->drive_info.serialNumber,
 				(deviceList + j)->drive_info.serialNumber,
 				strlen((deviceList + i)->drive_info.serialNumber)) == 0);
 
-			if (sameSlNo)
+			if (sameSlNo) /* If matched. */
 			{
 #ifdef _DEBUG
 				printf("We have same serial no \n");
@@ -1905,7 +1926,7 @@ void remove_Duplicate_Drives(tDevice *deviceList, volatile uint32_t * numberOfDe
 				{
 					if (is_CSMI_Device(deviceList + i))
 					{
-						remove_Drive(deviceList, i, numberOfDevices);
+						remove_Drive(deviceList, i, numberOfDevices); /* TODO: Fix volatile warning */
 						*numberOfDevices -= 1;
 						i--;
 						if (j > i)
@@ -1916,8 +1937,8 @@ void remove_Duplicate_Drives(tDevice *deviceList, volatile uint32_t * numberOfDe
 
 					if (is_CSMI_Device(deviceList + j))
 					{
-						remove_Drive(deviceList, j, numberOfDevices);
-						*numberOfDevices -= 1;
+						remove_Drive(deviceList, j, numberOfDevices); /* TODO: Fix volatile warning */
+						*numberOfDevices -= 1; /*TODO: move this to remove_Drive*/
 						j--;
 						if (i > j)
 						{
@@ -1925,13 +1946,17 @@ void remove_Duplicate_Drives(tDevice *deviceList, volatile uint32_t * numberOfDe
 						}
 					}
 				}
-
 #endif
 			}
 		}
 	}
 }
 
+/*
+  TODO: 
+  1. change void to a pass/fail. 
+  2. Maybe change the name to remove_Device
+*/
 void remove_Drive(tDevice *deviceList, uint32_t driveToRemoveIdx, uint32_t * numberOfDevices)
 {
 	uint32_t i;
@@ -1942,6 +1967,14 @@ void remove_Drive(tDevice *deviceList, uint32_t driveToRemoveIdx, uint32_t * num
 
 	if ((deviceList + driveToRemoveIdx)->raid_device != NULL)
 	{
+		/*
+		TODO: 
+		1. Add the check if (is_CSMI_Device(deviceList + j))
+		2. Close off any open handles to this device. 		
+		3. Later ALL RAID code needs to allocated devices on heap.
+		
+		*/
+
 		free((deviceList + driveToRemoveIdx)->raid_device);
 	}
 
@@ -1950,7 +1983,14 @@ void remove_Drive(tDevice *deviceList, uint32_t driveToRemoveIdx, uint32_t * num
 		memcpy((deviceList + driveToRemoveIdx), (deviceList + driveToRemoveIdx + 1), sizeof(tDevice));
 	}
 
+	/*
+	TODO: Decrement the numberOfDevices here rather than the calle of this function. 
+	*/
 	memset((deviceList + i), 0, sizeof(tDevice));
+
+	/*
+	return something. 
+	*/
 }
 
 bool is_CSMI_Device(tDevice *device)
