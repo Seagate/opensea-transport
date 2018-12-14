@@ -1951,8 +1951,8 @@ bool is_CSMI_Device(tDevice *device)
 	bool csmiDevice = true;
 
 #ifdef _DEBUG
-	printf("friendly name : %s interface_type : %d raid_device : %x \n",
-		device->os_info.friendlyName, device->drive_info.interface_type, device->raid_device);
+	printf("friendly name : %s interface_type : %d raid_device : %" PRIXPTR "\n",
+		device->os_info.friendlyName, device->drive_info.interface_type, (uintptr_t)device->raid_device);
 #endif
 
 	csmiDevice = csmiDevice && (strncmp(device->os_info.friendlyName, "SCSI", 4) == 0);
