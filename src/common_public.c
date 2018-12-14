@@ -1852,70 +1852,37 @@ uint64_t align_LBA(tDevice *device, uint64_t LBA)
     }
     return LBA;
 }
-/*
-TODO: Remove/Clean
-*/
 
-bool check_Duplicate_Drive(tDevice *deviceList, uint32_t deviceIdx)
-{
-	bool duplicateDrive = false;
-	uint32_t deviceIter;
 
-	for (deviceIter = 0; deviceIter < (deviceIdx - 1); deviceIter++)
-	{
-		duplicateDrive = (strncmp((deviceList + deviceIter)->drive_info.serialNumber,
-			(deviceList + deviceIdx)->drive_info.serialNumber,
-			strlen((deviceList + deviceIter)->drive_info.serialNumber)) == 0);
-
-		if (duplicateDrive == true)
-			return duplicateDrive;
-	}
-
-	return duplicateDrive;
-}
-
-/*
-Lets return rather than void
-     -1 will be something wrong
-     0 SUCCESS
-	 1 SUCCESS with limitations. 
-	 2...
-*/
-void remove_Duplicate_Drives(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag)
+int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag)
 {
 	volatile uint32_t i, j;
 	bool sameSlNo = false;
+	int ret;
+
 
 	/*
 	Go through all the devices in the list. 
 	*/
-	for (i = 0; i < *numberOfDevices; i++)
+	for (i = 0; i < *numberOfDevices - 1; i++)
 	{
 		/*
 		Go compare it to all the rest of the drives i + 1. 
 		*/
-		for (j = i+1; j < *numberOfDevices; j++)
+		for (j = i + 1; j < *numberOfDevices; j++)
 
 		{
 #ifdef _DEBUG
 			printf("%s --> For drive i : %d and j : %d \n", __FUNCTION__, i, j);
 #endif
-
+			ret = SUCCESS;
 			sameSlNo = false;
-			/*
-			if (i == j)
-			{
-				continue;
-			}
-			*/
-			/*
-			check if the serial number of i matches the serial # of j.
-			*/
+
 			sameSlNo = (strncmp((deviceList + i)->drive_info.serialNumber,
 				(deviceList + j)->drive_info.serialNumber,
 				strlen((deviceList + i)->drive_info.serialNumber)) == 0);
 
-			if (sameSlNo) /* If matched. */
+			if (sameSlNo)
 			{
 #ifdef _DEBUG
 				printf("We have same serial no \n");
@@ -1926,55 +1893,44 @@ void remove_Duplicate_Drives(tDevice *deviceList, volatile uint32_t * numberOfDe
 				{
 					if (is_CSMI_Device(deviceList + i))
 					{
-						remove_Drive(deviceList, i, numberOfDevices); /* TODO: Fix volatile warning */
-						*numberOfDevices -= 1;
+						ret |= remove_Device(deviceList, i, numberOfDevices);
 						i--;
-						if (j > i)
-						{
-							j--;
-						}
+						j--;
 					}
 
 					if (is_CSMI_Device(deviceList + j))
 					{
-						remove_Drive(deviceList, j, numberOfDevices); /* TODO: Fix volatile warning */
-						*numberOfDevices -= 1; /*TODO: move this to remove_Drive*/
+						ret |= remove_Device(deviceList, j, numberOfDevices);
 						j--;
-						if (i > j)
-						{
-							i--;
-						}
 					}
 				}
+
 #endif
 			}
 		}
 	}
+	return ret;
 }
 
-/*
-  TODO: 
-  1. change void to a pass/fail. 
-  2. Maybe change the name to remove_Device
-*/
-void remove_Drive(tDevice *deviceList, uint32_t driveToRemoveIdx, uint32_t * numberOfDevices)
+int remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint32_t * numberOfDevices)
 {
 	uint32_t i;
+	int ret = FAILURE;
 
 #ifdef _DEBUG
 	printf("Removing Drive with index : %d \n", driveToRemoveIdx);
 #endif
 
-	if ((deviceList + driveToRemoveIdx)->raid_device != NULL)
+	if (driveToRemoveIdx >= *numberOfDevices)
 	{
-		/*
-		TODO: 
-		1. Add the check if (is_CSMI_Device(deviceList + j))
-		2. Close off any open handles to this device. 		
-		3. Later ALL RAID code needs to allocated devices on heap.
-		
-		*/
+		return ret;
+	}
 
+	/*
+	 *	TODO - Use close_Handle() rather than free().
+	 **/
+	if (is_CSMI_Device(deviceList + driveToRemoveIdx))
+	{
 		free((deviceList + driveToRemoveIdx)->raid_device);
 	}
 
@@ -1983,14 +1939,11 @@ void remove_Drive(tDevice *deviceList, uint32_t driveToRemoveIdx, uint32_t * num
 		memcpy((deviceList + driveToRemoveIdx), (deviceList + driveToRemoveIdx + 1), sizeof(tDevice));
 	}
 
-	/*
-	TODO: Decrement the numberOfDevices here rather than the calle of this function. 
-	*/
 	memset((deviceList + i), 0, sizeof(tDevice));
+	*numberOfDevices -= 1;
+	ret = SUCCESS;
 
-	/*
-	return something. 
-	*/
+	return ret;
 }
 
 bool is_CSMI_Device(tDevice *device)
