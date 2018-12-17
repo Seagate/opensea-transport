@@ -1,0 +1,7 @@
+language: c
+os: linux
+sudo: false
+compiler: gcc
+dist: precise
+before_script: cd Make/gcc
+script: make
