@@ -1152,7 +1152,24 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_Read_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
 
-	OPENSEA_TRANSPORT_API int ata_Read_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t sectorCount, uint8_t feature, bool setLBAMode, uint8_t *ptrData, uint32_t dataSize);
+	//-----------------------------------------------------------------------------
+	//
+	//  ata_Read_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize)
+	//
+	//! \brief   Description:  This command sends a ATA Read Sectors(No Retry) command to the device
+	//
+	//  Entry:
+	//!   \param device - device handle
+	//!   \param LBA - the starting LBA to read
+	//!   \param ptrData - pointer to the data buffer to fill in with the result of this command. 
+	//!   \param sectorCount - number of sectors to read
+	//!   \param dataSize - the Size of your buffer. This will be used to determine the sector count for how many sectors to read
+	//
+	//  Exit:
+	//!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API int ata_Read_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1275,8 +1292,6 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_Standby(tDevice *device, uint8_t standbyTimerPeriod);
-
-	OPENSEA_TRANSPORT_API int ata_Standby_With_Data(tDevice *device, uint8_t deviceFlag, uint64_t LBA, uint16_t sectorCount);
 
     //-----------------------------------------------------------------------------
     //
@@ -1427,7 +1442,22 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_Write_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd);
 
-	OPENSEA_TRANSPORT_API int ata_Write_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t sectorCount, uint8_t feature, bool setLBAMode, uint8_t *ptrData, uint32_t dataSize);
+	//
+	//  ata_Write_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize)
+	//
+	//! \brief   Description:  This command sends a ATA Write Sectors(No Retry) command to the device
+	//
+	//  Entry:
+	//!   \param device - device handle
+	//!   \param LBA - the starting LBA to read
+	//!   \param ptrData - pointer to the data buffer to send to the device
+	//!   \param dataSize - the Size of your buffer. This will be used to determine the sector count for how many sectors to write
+	//
+	//  Exit:
+	//!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API int ata_Write_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
