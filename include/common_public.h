@@ -1623,6 +1623,20 @@ extern "C"
 
     OPENSEA_TRANSPORT_API void write_JSON_To_File(void *customData, char *message); //callback function
 
+	typedef struct _removeDuplicateDriveType
+	{
+		uint8_t csmi;
+		uint8_t raid;
+	}removeDuplicateDriveType;
+
+	OPENSEA_TRANSPORT_API bool check_Duplicate_Drive(tDevice *deviceList, uint32_t deviceIdx);
+
+	OPENSEA_TRANSPORT_API void remove_Duplicate_Drives(tDevice *deviceList, uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag);
+
+	OPENSEA_TRANSPORT_API void remove_Drive(tDevice *deviceList, uint32_t driveToRemoveIdx, uint32_t * numberOfDevices);
+
+	OPENSEA_TRANSPORT_API bool is_CSMI_Device(tDevice *device);
+
 #if defined (__cplusplus)
 } //extern "C"
 #endif
