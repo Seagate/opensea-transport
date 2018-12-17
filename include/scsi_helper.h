@@ -507,6 +507,9 @@ extern "C"
         MP_UNKNOWN_PARAMETER
     }eScsiModeParameters;
 
+    //This is for returning all subpages of a specified mode page
+    #define MP_SP_ALL_SUBPAGES 0xFF
+
     //put defined lengths in here....not all mode pages/parameters have defined lengths so only the ones that do are in here
     //This is TOTAL length, not necessarily the length field in the page
     typedef enum _eScsiModeParameterLengths
