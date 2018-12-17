@@ -3,5 +3,9 @@ os: linux
 sudo: false
 compiler: gcc
 dist: precise
-before_script: cd Make/gcc
+before_script: 
+- git clone https://github.com/Seagate/opensea-common.git
+- mv opensea-common ../
+- cd Make/gcc
+
 script: make
