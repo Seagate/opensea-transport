@@ -23,7 +23,7 @@ matrix:
       before_script:
         - git clone https://github.com/Seagate/opensea-common.git
         - mv opensea-common ../
-        cd "Make\VS.2017\opensea-transport"
+        - cd "Make\VS.2017\opensea-transport"
       script: 
         - export PATH=$MSBUILD_PATH:$PATH 
         - MSBuild.exe //p:Configuration=Static-Release //p:Platform=x64
