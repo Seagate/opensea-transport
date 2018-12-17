@@ -182,7 +182,7 @@ void write_JSON_To_File(void *customData, char *message)
 }
 
 //this is the "generic" scan. It uses the OS defined "get device count" and "get device list" calls to do the scan.
-void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo)
+void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityLevels scanVerbosity)
 {
     uint32_t deviceCount = 0;
 #if defined (ENABLE_CSMI)
@@ -209,6 +209,13 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo)
             version.size = sizeof(tDevice);
             version.version = DEVICE_BLOCK_VERSION;
             uint64_t getDeviceflags = FAST_SCAN;
+
+            //set the verbosity for all devices before the scan
+            for (uint32_t devi = 0; devi < deviceCount; ++devi)
+            {
+                deviceList[devi].deviceVerbosity = scanVerbosity;
+            }
+
 #if defined (ENABLE_CSMI)
             if (flags & IGNORE_CSMI)
             {
@@ -1846,42 +1853,30 @@ uint64_t align_LBA(tDevice *device, uint64_t LBA)
     return LBA;
 }
 
-bool check_Duplicate_Drive(tDevice *deviceList, uint32_t deviceIdx)
-{
-	bool duplicateDrive = false;
-	uint32_t deviceIter;
 
-	for (deviceIter = 0; deviceIter < (deviceIdx - 1); deviceIter++)
-	{
-		duplicateDrive = (strncmp((deviceList + deviceIter)->drive_info.serialNumber,
-			(deviceList + deviceIdx)->drive_info.serialNumber,
-			strlen((deviceList + deviceIter)->drive_info.serialNumber)) == 0);
-
-		if (duplicateDrive == true)
-			return duplicateDrive;
-	}
-
-	return duplicateDrive;
-}
-
-void remove_Duplicate_Drives(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag)
+int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag)
 {
 	volatile uint32_t i, j;
 	bool sameSlNo = false;
+	int ret;
 
-	for (i = 0; i < *numberOfDevices; i++)
+
+	/*
+	Go through all the devices in the list. 
+	*/
+	for (i = 0; i < *numberOfDevices - 1; i++)
 	{
-		for (j = 0; j < *numberOfDevices; j++)
+		/*
+		Go compare it to all the rest of the drives i + 1. 
+		*/
+		for (j = i + 1; j < *numberOfDevices; j++)
+
 		{
 #ifdef _DEBUG
 			printf("%s --> For drive i : %d and j : %d \n", __FUNCTION__, i, j);
 #endif
-
+			ret = SUCCESS;
 			sameSlNo = false;
-			if (i == j)
-			{
-				continue;
-			}
 
 			sameSlNo = (strncmp((deviceList + i)->drive_info.serialNumber,
 				(deviceList + j)->drive_info.serialNumber,
@@ -1898,24 +1893,15 @@ void remove_Duplicate_Drives(tDevice *deviceList, volatile uint32_t * numberOfDe
 				{
 					if (is_CSMI_Device(deviceList + i))
 					{
-						remove_Drive(deviceList, i, numberOfDevices);
-						*numberOfDevices -= 1;
+						ret |= remove_Device(deviceList, i, numberOfDevices);
 						i--;
-						if (j > i)
-						{
-							j--;
-						}
+						j--;
 					}
 
 					if (is_CSMI_Device(deviceList + j))
 					{
-						remove_Drive(deviceList, j, numberOfDevices);
-						*numberOfDevices -= 1;
+						ret |= remove_Device(deviceList, j, numberOfDevices);
 						j--;
-						if (i > j)
-						{
-							i--;
-						}
 					}
 				}
 
@@ -1923,17 +1909,27 @@ void remove_Duplicate_Drives(tDevice *deviceList, volatile uint32_t * numberOfDe
 			}
 		}
 	}
+	return ret;
 }
 
-void remove_Drive(tDevice *deviceList, uint32_t driveToRemoveIdx, uint32_t * numberOfDevices)
+int remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint32_t * numberOfDevices)
 {
 	uint32_t i;
+	int ret = FAILURE;
 
 #ifdef _DEBUG
 	printf("Removing Drive with index : %d \n", driveToRemoveIdx);
 #endif
 
-	if ((deviceList + driveToRemoveIdx)->raid_device != NULL)
+	if (driveToRemoveIdx >= *numberOfDevices)
+	{
+		return ret;
+	}
+
+	/*
+	 *	TODO - Use close_Handle() rather than free().
+	 **/
+	if (is_CSMI_Device(deviceList + driveToRemoveIdx))
 	{
 		free((deviceList + driveToRemoveIdx)->raid_device);
 	}
@@ -1944,6 +1940,10 @@ void remove_Drive(tDevice *deviceList, uint32_t driveToRemoveIdx, uint32_t * num
 	}
 
 	memset((deviceList + i), 0, sizeof(tDevice));
+	*numberOfDevices -= 1;
+	ret = SUCCESS;
+
+	return ret;
 }
 
 bool is_CSMI_Device(tDevice *device)
@@ -1951,8 +1951,8 @@ bool is_CSMI_Device(tDevice *device)
 	bool csmiDevice = true;
 
 #ifdef _DEBUG
-	printf("friendly name : %s interface_type : %d raid_device : %x \n",
-		device->os_info.friendlyName, device->drive_info.interface_type, device->raid_device);
+	printf("friendly name : %s interface_type : %d raid_device : %" PRIXPTR "\n",
+		device->os_info.friendlyName, device->drive_info.interface_type, (uintptr_t)device->raid_device);
 #endif
 
 	csmiDevice = csmiDevice && (strncmp(device->os_info.friendlyName, "SCSI", 4) == 0);

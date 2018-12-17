@@ -17,6 +17,7 @@
 #include "scsi_helper_func.h"
 #include "ata_helper.h"
 #include "ata_helper_func.h"
+#include <ctype.h>//for checking for printable characters
 
 //Some VID/PID info comes from these pages:
 //https://usb-ids.gowdy.us/
@@ -374,11 +375,40 @@ int fill_Drive_Info_USB(tDevice *device)
     //now start getting data from the device itself
     if (SUCCESS == scsi_Inquiry(device, inq_buf, 255, 0, false, false))
     {
+        bool checkForSAT = true;
         bool readCapacity = true;
         ret = SUCCESS;
         memcpy(device->drive_info.scsiVpdData.inquiryData, inq_buf, 96);//store this in the device structure to make sure it is available elsewhere in the library as well.
         copy_Inquiry_Data(inq_buf, &device->drive_info);
-        //uint8_t responseFormat = M_GETBITRANGE(inq_buf[3], 3, 0);
+        uint8_t responseFormat = M_GETBITRANGE(inq_buf[3], 3, 0);
+        if (responseFormat < 2)
+        {
+            //Need to check if vendor ID, MN, and FWRev are printable or not
+            //vendor ID
+            for (uint8_t iter = 0; iter < T10_VENDOR_ID_LEN; ++iter)
+            {
+                if (!isprint(device->drive_info.T10_vendor_ident[iter]))
+                {
+                    device->drive_info.T10_vendor_ident[iter] = ' ';
+                }
+            }
+            //product ID
+            for (uint8_t iter = 0; iter < MODEL_NUM_LEN && iter < 16; ++iter)//16 is max length in standardized SCSI
+            {
+                if (!isprint(device->drive_info.product_identification[iter]))
+                {
+                    device->drive_info.product_identification[iter] = ' ';
+                }
+            }
+            //FWRev
+            for (uint8_t iter = 0; iter < FW_REV_LEN && iter < 4; ++iter)//4 is max FWRev length in standardized SCSI
+            {
+                if (!isprint(device->drive_info.product_revision[iter]))
+                {
+                    device->drive_info.product_revision[iter] = ' ';
+                }
+            }
+        }
         uint8_t version = inq_buf[2];
         switch (version) //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
         {
@@ -423,18 +453,22 @@ int fill_Drive_Info_USB(tDevice *device)
             break;
         case PERIPHERAL_SEQUENTIAL_ACCESS_BLOCK_DEVICE:
             device->drive_info.media_type = MEDIA_TAPE;
+            checkForSAT = false;
             break;
         case PERIPHERAL_WRITE_ONCE_DEVICE:
         case PERIPHERAL_CD_DVD_DEVICE:
         case PERIPHERAL_OPTICAL_MEMORY_DEVICE:
         case PERIPHERAL_OPTICAL_CARD_READER_WRITER_DEVICE:
             device->drive_info.media_type = MEDIA_OPTICAL;
+            checkForSAT = false;
             break;
         case PERIPHERAL_STORAGE_ARRAY_CONTROLLER_DEVICE:
             device->drive_info.media_type = MEDIA_HDD;
+            checkForSAT = false;
             break;
         case PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE://some USB flash drives show up as this according to the USB mass storage specification...but unfortunately all the ones I've tested show up as Direct Access Block Device just like an HDD :(
             device->drive_info.media_type = MEDIA_SSM_FLASH;
+            checkForSAT = false;
             break;
         case PERIPHERAL_ENCLOSURE_SERVICES_DEVICE:
         case PERIPHERAL_BRIDGE_CONTROLLER_COMMANDS:
@@ -461,28 +495,83 @@ int fill_Drive_Info_USB(tDevice *device)
         case PERIPHERAL_UNKNOWN_OR_NO_DEVICE_TYPE:
         default:
             readCapacity = false;
+            checkForSAT = false;
             device->drive_info.media_type = MEDIA_UNKNOWN;
             break;
         }
-        //removing the code below for now until we need it. Was useful for debugging though.
-        /*
-        bool isRemovable = false;
-        //SAT 3 says this is "unspecified" but that is because bit7 of ATA general information has been obsolete since ACS...so we could use this to filter USB flash which does set this, but it would only be for so long before this no longer works (likely)
-        if (inq_buf[1] & BIT7)
+        //check for additional bits to try and filter out when to check for SAT
+        if (checkForSAT)
         {
-        isRemovable = true;
+            //check that response format is 2 (or higher). SAT spec says the response format should be set to 2
+            //Not checking this on USB since some adapters set this purposely to avoid certain commands, BUT DO support SAT
+//          if (M_Nibble0(inq_buf[3]) < 2)
+//          {
+//              checkForSAT = false;
+//          }
+            //normaca is specified as not compatible, so if it's set, we can definitely skip the SAT check
+            if (inq_buf[3] & BIT5)
+            {
+                checkForSAT = false;
+            }
+            //sat r09 says mchangr will be set to zero, so we will use this to filter out this device
+            if (inq_buf[6] & BIT3)
+            {
+                checkForSAT = false;
+            }
+            //Checking to see if any old parallel scsi bits are set. Doing this because there are no known SCSI to PATA adapters that would be SAT compliant and it is unlikely these will be set otherwise
+            //if less than version 6 (SPC4) some bits are marked obsolete: addr32, wbus32, ackreqq, trandis
+            if (version < 6)
+            {
+                if (inq_buf[6] & BIT2)//ackreqq
+                {
+                    checkForSAT = false;
+                }
+                if (inq_buf[6] & BIT1)//addr32
+                {
+                    checkForSAT = false;
+                }
+                if (inq_buf[7] & BIT6)//wbus32
+                {
+                    checkForSAT = false;
+                }
+                if (inq_buf[7] & BIT2)//trandis
+                {
+                    checkForSAT = false;
+                }
+            }
+            if (inq_buf[6] & BIT0)//addr16
+            {
+                checkForSAT = false;
+            }
+            if (inq_buf[7] & BIT5)//wbus16
+            {
+                checkForSAT = false;
+            }
+            if (inq_buf[7] & BIT4)//sync
+            {
+                checkForSAT = false;
+            }
+            if (inq_buf[56] & BIT0)//ius
+            {
+                checkForSAT = false;
+            }
+            if (inq_buf[56] & BIT1)//qas
+            {
+                checkForSAT = false;
+            }
+            if (M_GETBITRANGE(inq_buf[56], 3, 2) != 0)//clocking
+            {
+                checkForSAT = false;
+            }
+            //other bits we may or may not want to check for are multip, aerc, trmtsk, any vendor specific bits, sccs, protect, 3pc
+            //each of these are technically not specified in SAT, but are not likely to be suppored anyways.
+            //We can add these in overtime if we find them useful for the filter. Most likely, protect and 3pc will be most useful. Not sure about the others, but I doubt many controllers will set them...certainly no USB device will.
+            if (inq_buf[6] & BIT5 || inq_buf[7] & BIT0)//vendor specific bits.
+            {
+                checkForSAT = false;
+            }
+            //TODO: add in additional bits to skip SAT check as we find them useful
         }
-        bool logicalUnitConglomerate = false;
-        if (inq_buf[1] & BIT6)
-        {
-        logicalUnitConglomerate = true;
-        }
-        bool normACA = false;
-        if (inq_buf[3] & BIT5)
-        {
-        normACA = true;
-        }
-        */
         //do we want to check the version descriptors here too? There are a lot of those...I have a table that parses them to human readable, but not setting anything yet...may need to use that later
 
         if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE)
@@ -512,12 +601,30 @@ int fill_Drive_Info_USB(tDevice *device)
                 }
                 if (SUCCESS == scsi_Inquiry(device, unitSerialNumber, unitSerialNumberPageLength, UNIT_SERIAL_NUMBER, true, false))
                 {
-                    uint16_t serialNumberLength = M_BytesTo2ByteValue(unitSerialNumber[2], unitSerialNumber[3]);
-                    if (serialNumberLength > 0)
+                    if (unitSerialNumber[1] == UNIT_SERIAL_NUMBER)//make sure we actually got the right page and not bogus data.
                     {
-                        memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
-                        device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
-                        remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
+                        uint16_t serialNumberLength = M_BytesTo2ByteValue(unitSerialNumber[2], unitSerialNumber[3]);
+                        if (serialNumberLength > 0)
+                        {
+                            memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
+                            device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
+                            remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
+                            for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
+                            {
+                                if (!isprint(inq_buf[iter]))
+                                {
+                                    device->drive_info.serialNumber[iter] = ' ';
+                                }
+                            }
+                        }
+                        else
+                        {
+                            memset(device->drive_info.serialNumber, 0, SERIAL_NUM_LEN);
+                        }
+                    }
+                    else
+                    {
+                        memset(device->drive_info.serialNumber, 0, SERIAL_NUM_LEN);
                     }
                 }
                 safe_Free(unitSerialNumber);
@@ -527,6 +634,14 @@ int fill_Drive_Info_USB(tDevice *device)
                 //SN may not be available...just going to read where it may otherwise show up in inquiry data like some vendors like to put it
                 memcpy(&device->drive_info.serialNumber[0], &inq_buf[36], SERIAL_NUM_LEN);
                 device->drive_info.serialNumber[SERIAL_NUM_LEN] = '\0';
+                //make sure the SN is printable if it's coming from here since it's non-standardized
+                for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
+                {
+                    if (!isprint(inq_buf[iter]))
+                    {
+                        device->drive_info.serialNumber[iter] = ' ';
+                    }
+                }
             }
             if (version >= 3)//device identification added in SPC
             {
@@ -538,14 +653,20 @@ int fill_Drive_Info_USB(tDevice *device)
                 }
                 if (SUCCESS == scsi_Inquiry(device, deviceIdentification, INQ_RETURN_DATA_LENGTH, DEVICE_IDENTIFICATION, true, false))
                 {
-                    //this SHOULD work for getting a WWN 90% of the time, but if it doesn't, then we will need to go through the descriptors from the device and set it from the correct one. See the SATChecker util code for how to do this
-                    memcpy(&device->drive_info.worldWideName, &deviceIdentification[8], 8);
-                    byte_Swap_64(&device->drive_info.worldWideName);
+                    if (deviceIdentification[1] == DEVICE_IDENTIFICATION)//check the page number
+                    {
+                        //this SHOULD work for getting a WWN 90% of the time, but if it doesn't, then we will need to go through the descriptors from the device and set it from the correct one. See the SATChecker util code for how to do this
+                        memcpy(&device->drive_info.worldWideName, &deviceIdentification[8], 8);
+                        byte_Swap_64(&device->drive_info.worldWideName);
+                    }
                 }
                 safe_Free(deviceIdentification);
             }
             //One last thing...Need to do a SAT scan...
-            check_SAT_Compliance_And_Set_Drive_Type(device);
+            if (checkForSAT)
+            {
+                check_SAT_Compliance_And_Set_Drive_Type(device);
+            }
             return ret;
         }
 
@@ -556,7 +677,7 @@ int fill_Drive_Info_USB(tDevice *device)
             //from here on we need to check if a VPD page is supported and read it if there is anything in it that we care about to store info in the device struct
             memset(inq_buf, 0, INQ_RETURN_DATA_LENGTH);
             bool dummyUpVPDSupport = false;
-            if (SUCCESS != scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, 0, true, false))
+            if (SUCCESS != scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, SUPPORTED_VPD_PAGES, true, false))
             {
                 //for whatever reason, this device didn't return support for the list of supported pages, so set a flag telling us to dummy up a list so that we can still attempt to issue commands to pages we do need to try and get (this is a workaround for some really stupid USB bridges)
                 dummyUpVPDSupport = true;
@@ -565,6 +686,11 @@ int fill_Drive_Info_USB(tDevice *device)
                     //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
                     scsi_Test_Unit_Ready(device, NULL);
                 }
+            }
+            else if (inq_buf[1] != SUPPORTED_VPD_PAGES)
+            {
+                //did not get the list of supported pages! Checking this since occasionally we get back garbage
+                memset(inq_buf, 0, INQ_RETURN_DATA_LENGTH);
             }
             if (dummyUpVPDSupport == false)
             {
@@ -594,9 +720,11 @@ int fill_Drive_Info_USB(tDevice *device)
                     inq_buf[offset] = DEVICE_IDENTIFICATION;
                     ++offset;
                 }
-                //TODO: Always add ATA Information attempt?
-                inq_buf[offset] = ATA_INFORMATION;
-                ++offset;
+                if (checkForSAT)
+                {
+                    inq_buf[offset] = ATA_INFORMATION;
+                    ++offset;
+                }
                 if (version >= 3)//SPC
                 {
                     if (peripheralDeviceType == PERIPHERAL_DIRECT_ACCESS_BLOCK_DEVICE || peripheralDeviceType == PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE || peripheralDeviceType == PERIPHERAL_HOST_MANAGED_ZONED_BLOCK_DEVICE)
@@ -637,12 +765,26 @@ int fill_Drive_Info_USB(tDevice *device)
                     }
                     if (SUCCESS == scsi_Inquiry(device, unitSerialNumber, unitSerialNumberPageLength, supportedVPDPages[vpdIter], true, false))
                     {
-                        uint16_t serialNumberLength = M_BytesTo2ByteValue(unitSerialNumber[2], unitSerialNumber[3]);
-                        if (serialNumberLength > 0)
+                        if (unitSerialNumber[1] == UNIT_SERIAL_NUMBER)//check the page code to make sure we got the right thing
                         {
-                            memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
-                            device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
-                            remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
+                            uint16_t serialNumberLength = M_BytesTo2ByteValue(unitSerialNumber[2], unitSerialNumber[3]);
+                            if (serialNumberLength > 0)
+                            {
+                                memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
+                                device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
+                                remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
+                                for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
+                                {
+                                    if (!isprint(inq_buf[iter]))
+                                    {
+                                        device->drive_info.serialNumber[iter] = ' ';
+                                    }
+                                }
+                            }
+                            else
+                            {
+
+                            }
                         }
                     }
                     else if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
@@ -663,9 +805,12 @@ int fill_Drive_Info_USB(tDevice *device)
                     }
                     if (SUCCESS == scsi_Inquiry(device, deviceIdentification, INQ_RETURN_DATA_LENGTH, DEVICE_IDENTIFICATION, true, false))
                     {
-                        //this SHOULD work for getting a WWN 90% of the time, but if it doesn't, then we will need to go through the descriptors from the device and set it from the correct one. See the SATChecker util code for how to do this
-                        memcpy(&device->drive_info.worldWideName, &deviceIdentification[8], 8);
-                        byte_Swap_64(&device->drive_info.worldWideName);
+                        if (deviceIdentification[1] == DEVICE_IDENTIFICATION)
+                        {
+                            //this SHOULD work for getting a WWN 90% of the time, but if it doesn't, then we will need to go through the descriptors from the device and set it from the correct one. See the SATChecker util code for how to do this
+                            memcpy(&device->drive_info.worldWideName, &deviceIdentification[8], 8);
+                            byte_Swap_64(&device->drive_info.worldWideName);
+                        }
                     }
                     else if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
                     {
@@ -699,65 +844,68 @@ int fill_Drive_Info_USB(tDevice *device)
                     }
                     if (SUCCESS == scsi_Inquiry(device, blockDeviceCharacteristics, VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, BLOCK_DEVICE_CHARACTERISTICS, true, false))
                     {
-                        uint16_t mediumRotationRate = M_BytesTo2ByteValue(blockDeviceCharacteristics[4], blockDeviceCharacteristics[5]);
-                        uint8_t productType = blockDeviceCharacteristics[6];
-                        if (mediumRotationRate == 0x0001)
+                        if (blockDeviceCharacteristics[1] == BLOCK_DEVICE_CHARACTERISTICS)
                         {
-                            if (!satVPDPageRead)
+                            uint16_t mediumRotationRate = M_BytesTo2ByteValue(blockDeviceCharacteristics[4], blockDeviceCharacteristics[5]);
+                            uint8_t productType = blockDeviceCharacteristics[6];
+                            if (mediumRotationRate == 0x0001)
                             {
-                                device->drive_info.media_type = MEDIA_SSD;
+                                if (!satVPDPageRead)
+                                {
+                                    device->drive_info.media_type = MEDIA_SSD;
+                                }
                             }
-                        }
-                        else if (mediumRotationRate >= 0x401 && mediumRotationRate <= 0xFFFE)
-                        {
-                            if (!satVPDPageRead)
+                            else if (mediumRotationRate >= 0x401 && mediumRotationRate <= 0xFFFE)
                             {
-                                device->drive_info.media_type = MEDIA_HDD;
+                                if (!satVPDPageRead)
+                                {
+                                    device->drive_info.media_type = MEDIA_HDD;
+                                }
                             }
-                        }
-                        else
-                        {
-                            if (!satVPDPageRead)
+                            else
                             {
-                                device->drive_info.media_type = MEDIA_UNKNOWN;
+                                if (!satVPDPageRead)
+                                {
+                                    device->drive_info.media_type = MEDIA_UNKNOWN;
+                                }
                             }
-                        }
-                        switch (productType)
-                        {
-                        case 0x01://CFAST
-                        case 0x02://compact flash
-                        case 0x03://Memory Stick
-                        case 0x04://MultiMediaCard
-                        case 0x05://SecureDigitalCard
-                        case 0x06://XQD
-                        case 0x07://Universal Flash Storage
-                            if (!satVPDPageRead)
+                            switch (productType)
                             {
-                                device->drive_info.media_type = MEDIA_SSM_FLASH;
+                            case 0x01://CFAST
+                            case 0x02://compact flash
+                            case 0x03://Memory Stick
+                            case 0x04://MultiMediaCard
+                            case 0x05://SecureDigitalCard
+                            case 0x06://XQD
+                            case 0x07://Universal Flash Storage
+                                if (!satVPDPageRead)
+                                {
+                                    device->drive_info.media_type = MEDIA_SSM_FLASH;
+                                }
+                                break;
+                            default://not indicated or reserved or vendor unique so do nothing
+                                break;
                             }
-                            break;
-                        default://not indicated or reserved or vendor unique so do nothing
-                            break;
-                        }
-                        //get zoned information (as long as it isn't already set from SAT passthrough)
-                        if (device->drive_info.zonedType == ZONED_TYPE_NOT_ZONED)
-                        {
-                            switch ((blockDeviceCharacteristics[8] & 0x30) >> 4)
+                            //get zoned information (as long as it isn't already set from SAT passthrough)
+                            if (device->drive_info.zonedType == ZONED_TYPE_NOT_ZONED)
                             {
-                            case 0:
-                                device->drive_info.zonedType = ZONED_TYPE_NOT_ZONED;
-                                break;
-                            case 1:
-                                device->drive_info.zonedType = ZONED_TYPE_HOST_AWARE;
-                                break;
-                            case 2:
-                                device->drive_info.zonedType = ZONED_TYPE_DEVICE_MANAGED;
-                                break;
-                            case 3:
-                                device->drive_info.zonedType = ZONED_TYPE_RESERVED;
-                                break;
-                            default:
-                                break;
+                                switch ((blockDeviceCharacteristics[8] & 0x30) >> 4)
+                                {
+                                case 0:
+                                    device->drive_info.zonedType = ZONED_TYPE_NOT_ZONED;
+                                    break;
+                                case 1:
+                                    device->drive_info.zonedType = ZONED_TYPE_HOST_AWARE;
+                                    break;
+                                case 2:
+                                    device->drive_info.zonedType = ZONED_TYPE_DEVICE_MANAGED;
+                                    break;
+                                case 3:
+                                    device->drive_info.zonedType = ZONED_TYPE_RESERVED;
+                                    break;
+                                default:
+                                    break;
+                                }
                             }
                         }
                     }
@@ -781,6 +929,14 @@ int fill_Drive_Info_USB(tDevice *device)
             //SN may not be available...just going to read where it may otherwise show up in inquiry data like some vendors like to put it
             memcpy(&device->drive_info.serialNumber[0], &inq_buf[36], SERIAL_NUM_LEN);
             device->drive_info.serialNumber[SERIAL_NUM_LEN] = '\0';
+            //make sure the SN is printable if it's coming from here since it's non-standardized
+            for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
+            {
+                if (!isprint(inq_buf[iter]))
+                {
+                    device->drive_info.serialNumber[iter] = ' ';
+                }
+            }
         }
 
         if (readCapacity)
@@ -877,7 +1033,7 @@ int fill_Drive_Info_USB(tDevice *device)
         }
 
         //if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just issue a SAT identify in here to set things up...might reduce multiple commands later
-        if (satVPDPageRead == false && satComplianceChecked == false)
+        if (checkForSAT && !satVPDPageRead && !satComplianceChecked)
         {
             check_SAT_Compliance_And_Set_Drive_Type(device);
         }

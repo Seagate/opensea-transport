@@ -1305,12 +1305,13 @@ extern "C"
     //  Entry:
     //!   \param[in] flags = Flags for future use to control the scan
     //!   \param[in] outputInfo = pointer to an outputInfo struct to control how to output the scan information. If this is NULL, standard screen output is assumed
+    //!   \param[in] scanVerbosity = the verbosity to run the scan at
     //!
     //  Exit:
     //!   \return VOID
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo);
+    OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityLevels scanVerbosity);
 
     //-----------------------------------------------------------------------------
     //
@@ -1629,11 +1630,9 @@ extern "C"
 		uint8_t raid;
 	}removeDuplicateDriveType;
 
-	OPENSEA_TRANSPORT_API bool check_Duplicate_Drive(tDevice *deviceList, uint32_t deviceIdx);
+	OPENSEA_TRANSPORT_API int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag);
 
-	OPENSEA_TRANSPORT_API void remove_Duplicate_Drives(tDevice *deviceList, uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag);
-
-	OPENSEA_TRANSPORT_API void remove_Drive(tDevice *deviceList, uint32_t driveToRemoveIdx, uint32_t * numberOfDevices);
+	OPENSEA_TRANSPORT_API int remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint32_t * numberOfDevices);
 
 	OPENSEA_TRANSPORT_API bool is_CSMI_Device(tDevice *device);
 

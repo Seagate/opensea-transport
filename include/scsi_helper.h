@@ -843,6 +843,21 @@ extern "C"
         //modes Ch - Fh are vendor specific
     }eMRIEModes;
 
+    #define SAT_SECURITY_INFO_LEN UINT8_C(16) //security protocol in to receive ATA security information is 16bytes in length from SAT
+    #define SAT_SECURITY_PASS_LEN UINT8_C(36) //all security protocol out commands that send the password must be 36 bytes in length according to SAT
+    //SECURITY_PROTOCOL_ATA_DEVICE_SERVER_PASSWORD = 0xEF (defined in cmds.h for common use)
+    typedef enum _eSATSecurityDevicePassword
+    {
+        SAT_SECURITY_PROTOCOL_SPECIFIC_READ_INFO        = 0x0000, //should only be used to read security protocol information (ATA security info)
+        SAT_SECURITY_PROTOCOL_SPECIFIC_SET_PASSWORD     = 0x0001, //setting password and sending data to device
+        SAT_SECURITY_PROTOCOL_SPECIFIC_UNLOCK           = 0x0002, //unlocking the drive with a provided password
+        SAT_SECURITY_PROTOCOL_SPECIFIC_ERASE_PREPARE    = 0x0003, //erase prepare command. Non-data
+        SAT_SECURITY_PROTOCOL_SPECIFIC_ERASE_UNIT       = 0x0004, //erase unit command with provided password
+        SAT_SECURITY_PROTOCOL_SPECIFIC_FREEZE_LOCK      = 0x0005, //freeze lock command. Non-data
+        SAT_SECURITY_PROTOCOL_SPECIFIC_DISABLE_PASSWORD = 0x0006, //disable password command with provided password
+        //All others are reserved
+    }eSATSecurityDevicePassword;
+
     #if defined (__cplusplus)
 } //extern "C"
     #endif

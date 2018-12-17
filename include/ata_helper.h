@@ -957,7 +957,20 @@ extern "C"
        ATA_MINOR_VERSION_NOT_REPORTED_2         = 0xFFFF
    }eATAMinorVersionNumber;
 
-    #define ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS UINT8_C(128)
+   #define ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS UINT8_C(128)
+
+   #define ATA_SECURITY_MAX_PW_LENGTH UINT8_C(32)
+
+   typedef enum _eATASecurityState
+    {
+        ATA_SEC0 = 0, //powered off, we will never see this
+        ATA_SEC1 = 1, //not enabled, locked, or frozen
+        ATA_SEC2 = 2, //frozen
+        ATA_SEC3 = 3, //powered off, we will never see this
+        ATA_SEC4 = 4, //enabled, locked
+        ATA_SEC5 = 5, //enabled
+        ATA_SEC6 = 6  //enabled, frozen
+    }eATASecurityState;
 
     #if defined(__cplusplus)
 } //extern "C"
