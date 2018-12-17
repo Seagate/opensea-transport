@@ -2,7 +2,7 @@ language: c
 os: linux
 sudo: false
 compiler: gcc
-dist: precise
+dist: xenial
 before_script: 
 - git clone https://github.com/Seagate/opensea-common.git
 - mv opensea-common ../
