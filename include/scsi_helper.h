@@ -586,6 +586,9 @@ extern "C"
     #define MODE_PARAMETER_HEADER_6_LEN 4
     #define MODE_PARAMETER_HEADER_10_LEN 8
 
+    #define SHORT_LBA_BLOCK_DESCRIPTOR_LEN 8 //for mode sense/select 6
+    #define LONG_LBA_BLOCK_DESCRIPTOR_LEN 16 //for mode sense/select 10
+
     #define LOG_PAGE_HEADER_LENGTH 4
 
     #define READ_CAPACITY_10_LEN 8
