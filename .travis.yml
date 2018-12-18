@@ -25,8 +25,8 @@ matrix:
         - mv opensea-common ../
       script: 
         - export PATH=$MSBUILD_PATH:$PATH 
-        - cd "..opensea-common\Make\VS.2017\opensea-common"
+        - cd "..\opensea-common\Make\VS.2017\opensea-common"
         - MSBuild.exe //p:Configuration=Static-Release //p:Platform=x64
-        - cd "..opensea-transport\Make\VS.2017\opensea-transport"
+        - cd "..\opensea-transport\Make\VS.2017\opensea-transport"
         - MSBuild.exe //p:Configuration=Static-Release //p:Platform=x64
 
