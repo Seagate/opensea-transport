@@ -550,8 +550,9 @@ extern "C"
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param parameterListLength - 
-    //!   \param PF - set the PF bit
-    //!   \param SP - set the SP bit
+    //!   \param pageFormat - set to false when reading page 0 if it is not formatted in page zero format.
+    //!   \param savePages - set to true to save the mode page(s) to non-volatile memory. This may or may not be supported on some drives. Some may only support saved pages
+    //!   \param resetToDefaults - set to true when resetting all pages to defaults. No data shall be transferred with this bit set, or an error will occur
     //!   \param ptrData - pointer to the data buffer to send
     //!   \param dataSize - value describing length of the data buffer being passed in
     //!
@@ -559,7 +560,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Mode_Select_10(tDevice *device, uint16_t parameterListLength, bool PF, bool SP, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int scsi_Mode_Select_10(tDevice *device, uint16_t parameterListLength, bool pageFormat, bool savePages, bool resetToDefaults, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -570,8 +571,9 @@ extern "C"
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param parameterListLength - 
-    //!   \param PF - set the PF bit
-    //!   \param SP - set the SP bit
+    //!   \param pageFormat - set to false when reading page 0 if it is not formatted in page zero format.
+    //!   \param savePages - set to true to save the mode page(s) to non-volatile memory. This may or may not be supported on some drives. Some may only support saved pages
+    //!   \param resetToDefaults - set to true when resetting all pages to defaults. No data shall be transferred with this bit set, or an error will occur
     //!   \param ptrData - pointer to the data buffer to send
     //!   \param dataSize - value describing length of the data buffer being passed in
     //!
@@ -579,7 +581,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Mode_Select_6(tDevice *device, uint8_t parameterListLength, bool PF, bool SP, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int scsi_Mode_Select_6(tDevice *device, uint8_t parameterListLength, bool pageFormat, bool savePages, bool resetToDefaults, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //

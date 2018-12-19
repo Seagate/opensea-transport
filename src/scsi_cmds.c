@@ -619,7 +619,7 @@ int scsi_Mode_Sense_10(tDevice *device, uint8_t pageCode, uint32_t allocationLen
     return ret;
 }
 
-int scsi_Mode_Select_6(tDevice *device, uint8_t parameterListLength, bool PF, bool SP, uint8_t *ptrData, uint32_t dataSize)
+int scsi_Mode_Select_6(tDevice *device, uint8_t parameterListLength, bool pageFormat, bool savePages, bool resetToDefaults, uint8_t *ptrData, uint32_t dataSize)
 {
     int ret = UNKNOWN;
     uint8_t cdb[CDB_LEN_6] = { 0 };
@@ -631,13 +631,17 @@ int scsi_Mode_Select_6(tDevice *device, uint8_t parameterListLength, bool PF, bo
 
     // Set up the CDB.
     cdb[OPERATION_CODE] = MODE_SELECT10;
-    if (PF)
+    if (pageFormat)
     {
         cdb[1] |= BIT4;
     }
-    if (SP)
+    if (savePages)
     {
         cdb[1] |= BIT0;
+    }
+    if (resetToDefaults)
+    {
+        cdb[1] |= BIT1;
     }
     cdb[2] = RESERVED;
     cdb[3] = RESERVED;
@@ -659,7 +663,7 @@ int scsi_Mode_Select_6(tDevice *device, uint8_t parameterListLength, bool PF, bo
     return ret;
 }
 
-int scsi_Mode_Select_10(tDevice *device, uint16_t parameterListLength, bool PF, bool SP, uint8_t *ptrData, uint32_t dataSize)
+int scsi_Mode_Select_10(tDevice *device, uint16_t parameterListLength, bool pageFormat, bool savePages, bool resetToDefaults, uint8_t *ptrData, uint32_t dataSize)
 {
     int       ret       = FAILURE;
     uint8_t   cdb[CDB_LEN_10]       = { 0 };
@@ -671,13 +675,17 @@ int scsi_Mode_Select_10(tDevice *device, uint16_t parameterListLength, bool PF, 
 
     // Set up the CDB.
     cdb[OPERATION_CODE] = MODE_SELECT10;
-    if (PF)
+    if (pageFormat)
     {
         cdb[1] |= BIT4;
     }
-    if (SP)
+    if (savePages)
     {
         cdb[1] |= BIT0;
+    }
+    if (resetToDefaults)
+    {
+        cdb[1] |= BIT1;
     }
     cdb[2] = RESERVED;
     cdb[3] = RESERVED;

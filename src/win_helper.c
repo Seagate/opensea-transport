@@ -4945,7 +4945,7 @@ int win10_Translate_Set_Error_Recovery_Time_Limit(nvmeCmdCtx *nvmeIoCtx)
                 errorRecoveryMP[MODE_HEADER_LENGTH10 + 10] = M_Byte1(nvmTimeLimitedErrorRecovery);
                 errorRecoveryMP[MODE_HEADER_LENGTH10 + 11] = M_Byte0(nvmTimeLimitedErrorRecovery);
                 //send it back to the drive
-                ret = scsi_Mode_Select_10(nvmeIoCtx->device, MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN, true, false, errorRecoveryMP, MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN);
+                ret = scsi_Mode_Select_10(nvmeIoCtx->device, MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN, true, false, false, errorRecoveryMP, MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN);
             }
             safe_Free(errorRecoveryMP);
         }
@@ -4986,7 +4986,7 @@ int win10_Translate_Set_Volatile_Write_Cache(nvmeCmdCtx *nvmeIoCtx)
                     }
                 }
                 //send it back to the drive
-                ret = scsi_Mode_Select_10(nvmeIoCtx->device, MODE_HEADER_LENGTH10 + MP_CACHING_LEN, true, false, cachingMP, MODE_HEADER_LENGTH10 + MP_CACHING_LEN);
+                ret = scsi_Mode_Select_10(nvmeIoCtx->device, MODE_HEADER_LENGTH10 + MP_CACHING_LEN, true, false, false, cachingMP, MODE_HEADER_LENGTH10 + MP_CACHING_LEN);
             }
             safe_Free(cachingMP);
         }
@@ -5249,7 +5249,7 @@ int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
                 controlPageAndBD[MODE_HEADER_LENGTH10 + 14] = M_Byte1(lbaSize);
                 controlPageAndBD[MODE_HEADER_LENGTH10 + 15] = M_Byte0(lbaSize);
                 //Leave everything else alone! Just send it to the drive now :)
-                if (SUCCESS != scsi_Mode_Select_10(nvmeIoCtx->device, 36, true, true, controlPageAndBD, 36))
+                if (SUCCESS != scsi_Mode_Select_10(nvmeIoCtx->device, 36, true, true, false, controlPageAndBD, 36))
                 {
                     return OS_COMMAND_NOT_AVAILABLE;
                 }
