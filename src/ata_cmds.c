@@ -1472,6 +1472,9 @@ int ata_SCT_Check_Status(tDevice *device, uint32_t retries, uint16_t actionCode,
 			return ret;
 		}
 
+		// check if Action code and Status code matches the SCT status response(byte 16-17 which is Action code for command currently being processed
+		// and byte 18-19 which is Function code for command currently bein processed), if value doesn't matches, then some different SCT command has been sent to drive,
+		// and we should abort and send interrupt status.
 		if ((((functionCode & 0xFF00) >> 8) != commandBuffer[19])
 			|| ((functionCode & 0x00FF) != commandBuffer[18])
 			|| (((actionCode & 0xFF00) >> 8) != commandBuffer[17])
@@ -1479,15 +1482,16 @@ int ata_SCT_Check_Status(tDevice *device, uint32_t retries, uint16_t actionCode,
 		{
 			return COMMAND_INTERRUPTED;
 		}
+		// check SCT status response byte 10 which is Device State, if set to 0, then we are good, and can return
 		else if ((commandBuffer[10] == 0)
-			&& (commandBuffer[0] == 3) && (commandBuffer[1] == 0)
-			&& (commandBuffer[2] == 0) && (commandBuffer[3] == 0)
 			&& (((functionCode & 0xFF00) >> 8) == commandBuffer[19]) && ((functionCode & 0x00FF) == commandBuffer[18])
 			&& (((actionCode & 0xFF00) >> 8) == commandBuffer[17]) && ((actionCode & 0x00FF) == commandBuffer[16]))
 		{
 			ret = ((0x0000FFFF & commandBuffer[15]) << 8) + commandBuffer[14];
 			return ret;
 		}
+		// check if SCT command is still bein processed, with SCT status response byte 14-15, which is Extended Status code, 
+		// if  value of this field is FFFFh, then we'll wait for it to be finished
 		else if (0x0000FFFF == ((0x0000FFFF & commandBuffer[15]) << 8) + commandBuffer[14])
 		{
 			runningInBackgroundTimer++;
@@ -1497,6 +1501,7 @@ int ata_SCT_Check_Status(tDevice *device, uint32_t retries, uint16_t actionCode,
 				return COMMAND_TIMEOUT;
 			}
 		}
+		//if we exhausted all the number of retries, then return
 		else if (numRetries > retries)
 		{
 			return COMMAND_TIMEOUT;
@@ -2417,6 +2422,52 @@ int ata_Read_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t s
     return ret;
 }
 
+int ata_Read_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize)
+{
+	int ret = UNKNOWN;
+	ataPassthroughCommand ataCommandOptions;
+	memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+	ataCommandOptions.commandDirection = XFER_DATA_IN;
+	ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
+	ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
+	ataCommandOptions.ptrData = ptrData;
+	ataCommandOptions.dataSize = dataSize;
+	ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
+	ataCommandOptions.tfr.LbaLow = M_Byte0(LBA);
+	ataCommandOptions.tfr.LbaMid = M_Byte1(LBA);
+	ataCommandOptions.tfr.LbaHi = M_Byte2(LBA);
+	ataCommandOptions.tfr.SectorCount = M_Byte0(sectorCount);
+	ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+	if (device->drive_info.ata_Options.isDevice1)
+	{
+		ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+	}
+
+	ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
+
+	ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
+	ataCommandOptions.tfr.CommandStatus = ATA_READ_SECT_NORETRY;//0x21
+
+	if (!ptrData)
+	{
+		return BAD_PARAMETER;
+	}
+
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+	{
+		printf("Sending ATA Read Sectors(No Retry)\n");
+	}
+
+	ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+	{
+		print_Return_Enum("Read Sectors(No Retry)", ret);
+	}
+
+	return ret;
+}
+
 int ata_Read_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID, bool notSequential, bool readContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize)
 {
     int ret = UNKNOWN;
@@ -3322,6 +3373,51 @@ int ata_Write_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t 
     }
 
     return ret;
+}
+
+int ata_Write_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize)
+{
+	int ret = UNKNOWN;
+	ataPassthroughCommand ataCommandOptions;
+	memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+	ataCommandOptions.commandDirection = XFER_DATA_OUT;
+	ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
+	ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
+	ataCommandOptions.ptrData = ptrData;
+	ataCommandOptions.dataSize = dataSize;
+	ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
+	ataCommandOptions.tfr.LbaLow = M_Byte0(LBA);
+	ataCommandOptions.tfr.LbaMid = M_Byte1(LBA);
+	ataCommandOptions.tfr.LbaHi = M_Byte2(LBA);
+	ataCommandOptions.tfr.SectorCount = M_Byte0(dataSize / device->drive_info.deviceBlockSize);
+	ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+	if (device->drive_info.ata_Options.isDevice1)
+	{
+		ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+	}
+
+	ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
+	ataCommandOptions.tfr.CommandStatus = ATA_WRITE_SECT_NORETRY; //0x31
+	ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
+
+	if (!ptrData)
+	{
+		return BAD_PARAMETER;
+	}
+
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+	{
+		printf("Sending ATA Write Sectors(No Retry)\n");
+	}
+
+	ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+	if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+	{
+		print_Return_Enum("Write Sectors(No Retry)", ret);
+	}
+
+	return ret;
 }
 
 int ata_Write_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID, bool flush, bool writeContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize)
