@@ -791,9 +791,9 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     }
     if (retrievedIdentifyData)
     {
-        if (device->drive_info.interface_type == IDE_INTERFACE && device->drive_info.scsiVersion == 0)
+        if (device->drive_info.interface_type == IDE_INTERFACE && device->drive_info.scsiVersion == SCSI_VERSION_NO_STANDARD)
         {
-            device->drive_info.scsiVersion = 0x07;//SPC5. This is what software translator will set at the moment. Can make this configurable later, but this should be ok
+            device->drive_info.scsiVersion = SCSI_VERSION_SPC_5;//SPC5. This is what software translator will set at the moment. Can make this configurable later, but this should be ok
         }
         //print_Data_Buffer((uint8_t*)ident_word, 512, true);
         ret = SUCCESS;

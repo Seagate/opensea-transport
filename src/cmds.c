@@ -179,7 +179,7 @@ int spin_down_drive(tDevice *device, bool sleepState)
     }
     else if (device->drive_info.drive_type == SCSI_DRIVE)
     {
-        if (device->drive_info.scsiVersion > 2)
+        if (device->drive_info.scsiVersion > SCSI_VERSION_SCSI2)
         {
             if (sleepState)
             {
@@ -608,7 +608,7 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
     else if (device->drive_info.drive_type == SCSI_DRIVE)
     {
         //todo: if there is no data transfer and the drive doesn't support that feature, we need to allocate local zeroed memory to send as the pattern
-        if (device->drive_info.scsiVersion > 3 && device->drive_info.deviceMaxLba > SCSI_MAX_32_LBA)
+        if (device->drive_info.scsiVersion > SCSI_VERSION_SPC && device->drive_info.deviceMaxLba > SCSI_MAX_32_LBA)
         {
             //write same 16 was made in SBC2 so need to report conformance to version greater than SPC (3) to do this.
             ret = scsi_Write_Same_16(device, 0, false, false, noDataTransfer, startingLba, 0, (uint32_t)numberOfLogicalBlocks, pattern, device->drive_info.deviceBlockSize);
@@ -1287,7 +1287,7 @@ int scsi_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
     }
     else //synchronous reads
     {
-        if (device->drive_info.scsiVersion >= 5)//SBC2 introduced read 16 command, so checking for SPC3
+        if (device->drive_info.scsiVersion >= SCSI_VERSION_SPC_3)//SBC2 introduced read 16 command, so checking for SPC3
         {
             //there's no real way to tell when scsi drive supports read 10 vs read 16 (which are all we will care about in here), so just based on transfer length and the maxLBA
             if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && sectors <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
@@ -1335,7 +1335,7 @@ int scsi_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint
     }
     else //synchronous reads
     {
-        if (device->drive_info.scsiVersion >= 5)//SBC2 introduced write 16 command, so checking for SPC3
+        if (device->drive_info.scsiVersion >= SCSI_VERSION_SPC_3)//SBC2 introduced write 16 command, so checking for SPC3
         {
             //there's no real way to tell when scsi drive supports write 10 vs write 16 (which are all we will care about in here), so just based on transfer length and the maxLBA
             if (device->drive_info.deviceMaxLba <= UINT32_MAX && sectors <= UINT16_MAX && lba <= UINT32_MAX)

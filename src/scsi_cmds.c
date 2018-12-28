@@ -801,17 +801,17 @@ int scsi_Inquiry(tDevice *device, uint8_t *pdata, uint32_t dataLength, uint8_t p
             switch (version) //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
             {
             case 0x81:
-                version = 1;//changing to 1 for SCSI
+                version = SCSI_VERSION_SCSI;//changing to 1 for SCSI
                 break;
             case 0x80:
             case 0x82:
-                version = 2;//changing to 2 for SCSI 2
+                version = SCSI_VERSION_SCSI2;//changing to 2 for SCSI 2
                 break;
             case 0x83:
-                version = 3;//changing to 3 for SPC
+                version = SCSI_VERSION_SPC;//changing to 3 for SPC
                 break;
             case 0x84:
-                version = 4;//changing to 4 for SPC2
+                version = SCSI_VERSION_SPC_2;//changing to 4 for SPC2
                 break;
             default:
                 //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
