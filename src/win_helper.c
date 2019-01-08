@@ -6182,9 +6182,9 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         case NVME_CMD_DATA_SET_MANAGEMENT://SCSI Unmap or Win API call?
             ret = win10_Translate_Data_Set_Management(nvmeIoCtx);
             break;
-        case NVME_CMD_WRITE_ZEROS://This isn't translatable unless the SCSI to NVM translation spec is updated. - TJE
+        //case NVME_CMD_WRITE_ZEROS://This isn't translatable unless the SCSI to NVM translation spec is updated. - TJE
             //FSCTL_SET_ZERO_DATA (and maybe also FSCTL_ALLOW_EXTENDED_DASD_IO)...might not work and only do filesystem level stuff
-            break;
+            //break;
         case NVME_CMD_RESERVATION_REGISTER://Translation only available in later specifications!
             ret = win10_Translate_Reservation_Register(nvmeIoCtx);
             break;
