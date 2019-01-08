@@ -367,6 +367,46 @@ int nvme_Read(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlo
     return ret;
 }
 
+int nvme_Compare(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks, bool limitedRetry, bool fua, uint8_t protectionInformationField, uint8_t *ptrData, uint32_t dataLength)
+{
+    int ret = SUCCESS;
+    nvmeCmdCtx nvmCommand;
+    memset(&nvmCommand, 0, sizeof(nvmeCmdCtx));
+    nvmCommand.commandType = NVM_CMD;
+    nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_COMPARE;
+    nvmCommand.commandDirection = XFER_DATA_OUT;
+    nvmCommand.ptrData = ptrData;
+    nvmCommand.dataSize = dataLength;
+    nvmCommand.device = device;
+
+    //slba
+    nvmCommand.cmd.nvmCmd.cdw10 = M_DoubleWord0(startingLBA);
+    nvmCommand.cmd.nvmCmd.cdw11 = M_DoubleWord1(startingLBA);
+    nvmCommand.cmd.nvmCmd.cdw12 = numberOfLogicalBlocks;
+    if (limitedRetry)
+    {
+        nvmCommand.cmd.nvmCmd.cdw12 |= BIT31;
+    }
+    if (fua)
+    {
+        nvmCommand.cmd.nvmCmd.cdw12 |= BIT30;
+    }
+    nvmCommand.cmd.nvmCmd.cdw12 |= (uint32_t)(protectionInformationField & 0x0F) << 26;
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        printf("Sending NVMe Compare Command\n");
+    }
+    ret = nvme_Cmd(device, &nvmCommand);
+    //TODO: Need a function to print out some verbose information for any/all commands (if possible)
+    //Command specific return codes:
+    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    {
+        print_Return_Enum("Compare", ret);
+    }
+    return ret;
+}
+
+
 int nvme_Firmware_Image_Dl(tDevice *device,\
                             uint32_t bufferOffset,\
                             uint32_t numberOfBytes,\

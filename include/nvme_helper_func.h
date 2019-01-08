@@ -484,6 +484,8 @@ OPENSEA_TRANSPORT_API int nvme_Write(tDevice *device, uint64_t startingLBA, uint
 
 OPENSEA_TRANSPORT_API int nvme_Read(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks, bool limitedRetry, bool fua, uint8_t protectionInformationField, uint8_t *ptrData, uint32_t dataLength);
 
+OPENSEA_TRANSPORT_API int nvme_Compare(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks, bool limitedRetry, bool fua, uint8_t protectionInformationField, uint8_t *ptrData, uint32_t dataLength);
+
 OPENSEA_TRANSPORT_API int pci_Correctble_Err(tDevice *device,uint8_t  opcode, uint32_t  nsid, uint32_t  cdw10, uint32_t cdw11, uint32_t data_len, void *data);
 
 

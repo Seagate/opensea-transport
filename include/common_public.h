@@ -589,11 +589,17 @@ extern "C"
     	uint8_t 			nmic;
     	uint8_t 			rescap;
     	uint8_t 			fpi;
-    	uint8_t 			rsvd33;
+    	uint8_t 			dlfeat;
     	uint16_t 			nawun;
     	uint16_t 			nawupf;
     	uint16_t 			nacwu;
-    	uint8_t 			rsvd40[80];
+		uint16_t			nabsn;
+		uint16_t			nabo;
+		uint16_t			nabspf;
+		uint16_t			noiob;
+		uint64_t			nvmcap;
+    	uint8_t 			rsvd40[40];//bytes 103:64
+		uint8_t				nguid[16];
     	uint8_t 			eui64[8];
     	nvmeLBAF	        lbaf[16];
     	uint8_t 			rsvd192[192];
