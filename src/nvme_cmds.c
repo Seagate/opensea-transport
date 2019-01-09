@@ -392,14 +392,14 @@ int nvme_Compare(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogical
         nvmCommand.cmd.nvmCmd.cdw12 |= BIT30;
     }
     nvmCommand.cmd.nvmCmd.cdw12 |= (uint32_t)(protectionInformationField & 0x0F) << 26;
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending NVMe Compare Command\n");
     }
     ret = nvme_Cmd(device, &nvmCommand);
     //TODO: Need a function to print out some verbose information for any/all commands (if possible)
     //Command specific return codes:
-    if (VERBOSITY_COMMAND_NAMES <= g_verbosity)
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Compare", ret);
     }
@@ -777,6 +777,157 @@ int nvme_Format(tDevice *device, nvmeFormatCmdOpts * formatCmdOpts)
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Format", ret);
+    }
+
+    return ret;
+}
+
+int nvme_Reservation_Report(tDevice *device, bool extendedDataStructure, uint8_t *ptrData, uint32_t dataSize)
+{
+    int ret = UNKNOWN;
+    nvmeCmdCtx nvmCmd;
+    memset(&nvmCmd, 0, sizeof(nvmeCmdCtx));
+    nvmCmd.cmd.nvmCmd.opcode = NVME_CMD_RESERVATION_REPORT;
+    nvmCmd.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
+    nvmCmd.cmd.nvmCmd.prp1 = (uint64_t)ptrData;
+    nvmCmd.commandDirection = XFER_DATA_IN;
+    nvmCmd.commandType = NVM_CMD;
+    nvmCmd.dataSize = dataSize;
+    nvmCmd.device = device;
+    nvmCmd.ptrData = ptrData;
+    nvmCmd.timeout = 15;
+
+    nvmCmd.cmd.nvmCmd.cdw10 = (dataSize >> 2) - 1;//convert bytes to a number of dwords (zeros based value)
+
+    if (extendedDataStructure)
+    {
+        nvmCmd.cmd.nvmCmd.cdw11 |= BIT0;
+    }
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending NVMe Reservation Report Command\n");
+    }
+
+    ret = nvme_Cmd(device, &nvmCmd);
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Reservation Report", ret);
+    }
+
+    return ret;
+}
+
+int nvme_Reservation_Register(tDevice *device, uint8_t changePersistThroughPowerLossState, bool ignoreExistingKey, uint8_t reservationRegisterAction, uint8_t *ptrData, uint32_t dataSize)
+{
+    int ret = UNKNOWN;
+    nvmeCmdCtx nvmCmd;
+    memset(&nvmCmd, 0, sizeof(nvmeCmdCtx));
+    nvmCmd.cmd.nvmCmd.opcode = NVME_CMD_RESERVATION_REGISTER;
+    nvmCmd.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
+    nvmCmd.cmd.nvmCmd.prp1 = (uint64_t)ptrData;
+    nvmCmd.commandDirection = XFER_DATA_OUT;
+    nvmCmd.commandType = NVM_CMD;
+    nvmCmd.dataSize = dataSize;
+    nvmCmd.device = device;
+    nvmCmd.ptrData = ptrData;
+    nvmCmd.timeout = 15;
+
+    nvmCmd.cmd.nvmCmd.cdw10 = changePersistThroughPowerLossState << 30;
+    if (ignoreExistingKey)
+    {
+        nvmCmd.cmd.nvmCmd.cdw10 |= BIT3;
+    }
+    nvmCmd.cmd.nvmCmd.cdw10 |= M_GETBITRANGE(reservationRegisterAction, 2, 0);
+
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending NVMe Reservation Register Command\n");
+    }
+
+    ret = nvme_Cmd(device, &nvmCmd);
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Reservation Register", ret);
+    }
+
+    return ret;
+}
+
+int nvme_Reservation_Acquire(tDevice *device, uint8_t reservationType, bool ignoreExistingKey, uint8_t reservtionAcquireAction, uint8_t *ptrData, uint32_t dataSize)
+{
+    int ret = UNKNOWN;
+    nvmeCmdCtx nvmCmd;
+    memset(&nvmCmd, 0, sizeof(nvmeCmdCtx));
+    nvmCmd.cmd.nvmCmd.opcode = NVME_CMD_RESERVATION_ACQUIRE;
+    nvmCmd.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
+    nvmCmd.cmd.nvmCmd.prp1 = (uint64_t)ptrData;
+    nvmCmd.commandDirection = XFER_DATA_OUT;
+    nvmCmd.commandType = NVM_CMD;
+    nvmCmd.dataSize = dataSize;
+    nvmCmd.device = device;
+    nvmCmd.ptrData = ptrData;
+    nvmCmd.timeout = 15;
+
+    nvmCmd.cmd.nvmCmd.cdw10 = reservationType << 8;
+    if (ignoreExistingKey)
+    {
+        nvmCmd.cmd.nvmCmd.cdw10 |= BIT3;
+    }
+    nvmCmd.cmd.nvmCmd.cdw10 |= M_GETBITRANGE(reservtionAcquireAction, 2, 0);
+
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending NVMe Reservation Acquire Command\n");
+    }
+
+    ret = nvme_Cmd(device, &nvmCmd);
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Reservation Acquire", ret);
+    }
+
+    return ret;
+}
+
+int nvme_Reservation_Release(tDevice *device, uint8_t reservationType, bool ignoreExistingKey, uint8_t reservtionReleaseAction, uint8_t *ptrData, uint32_t dataSize)
+{
+    int ret = UNKNOWN;
+    nvmeCmdCtx nvmCmd;
+    memset(&nvmCmd, 0, sizeof(nvmeCmdCtx));
+    nvmCmd.cmd.nvmCmd.opcode = NVME_CMD_RESERVATION_RELEASE;
+    nvmCmd.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
+    nvmCmd.cmd.nvmCmd.prp1 = (uint64_t)ptrData;
+    nvmCmd.commandDirection = XFER_DATA_OUT;
+    nvmCmd.commandType = NVM_CMD;
+    nvmCmd.dataSize = dataSize;
+    nvmCmd.device = device;
+    nvmCmd.ptrData = ptrData;
+    nvmCmd.timeout = 15;
+
+    nvmCmd.cmd.nvmCmd.cdw10 = reservationType << 8;
+    if (ignoreExistingKey)
+    {
+        nvmCmd.cmd.nvmCmd.cdw10 |= BIT3;
+    }
+    nvmCmd.cmd.nvmCmd.cdw10 |= M_GETBITRANGE(reservtionReleaseAction, 2, 0);
+
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending NVMe Reservation Release Command\n");
+    }
+
+    ret = nvme_Cmd(device, &nvmCmd);
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Reservation Release", ret);
     }
 
     return ret;

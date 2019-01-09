@@ -1,17 +1,48 @@
-
-
-
-
-
+//
+// Do NOT modify or remove this copyright and license
+//
+// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//
+// This software is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// ******************************************************************************************
+// 
+// \file sntl_helper.c
+// \brief Defines the function headers to help with SCSI to NVMe translation
 
 #include "sntl_helper.h"
 #include "scsi_helper.h"
 #include "nvme_helper.h"
 #include "nvme_helper_func.h"
 
+//This file is written based on what is described in the SCSI to NVMe translation white paper (SNTL).
+//Some things that are clearly wrong (incorrect bit or offset, etc) are fixed as this was written. Most of these are noted in comments.
+//The plan is to expand this beyond what is provided in the white paper for other translations. These will be wrapped in a #define for SNTL_EXT
+//The whitepaper was originally created to help cover transitions in some environments from SCSI to native NVMe at a driver level.
+//Most operating systems quickly implemented a driver and this is not necessary.
+//This was put into this code base to help adapt for places that are treating NVMe as SCSI.
+//It will probably not be used much, but it is educational to see how the translation works.
+//The biggest thing missing from the SNTL whitepaper is a way to issue pass-through commands. Any implementation of this should use a vendor unique opertion code
+//  so as to not confuse other OS's or software into thinking it's some other type of device (such as an ATA device behind a SATL)
+
+//Translations not yet complete (per whitepaper):
+// -issuing the appropriate reset after sending a firmware activate command
+// -returning all mode pages + subpages
+// -returning all sub pages of a particular mode page
+// -compare and write. This translation is not possible without the ability to issue fused commands, which is not currently possible.
+// -format unit translation. Needs the ability to save changes in a block descriptor. Recommend implementing a mode page 0 that is empty for this (use page format, set first 4 bytes to "SNTL" as a signature.
+// -need clarification on translation of SCSI verify with bytechk set to zero
 
 
 //SNTL_EXT is used to enable extensions beyond the SNTL spec...which we want since it's pretty out of date and we might as well add everything we can
+//Extention translations not yet complete:
+// - DST
+// - mode page policy VPD page
+// - various statistics on different SCSI log pages (read/write info in general statistics and performance, POH in background media log)
+// - nvme passthrough command (needs to handle admin vs nvm, nondata, data-in, data-out, bidirectional transfers and vendor unique commands
+// - read buffer command to return the NVMe telemetry log (similar to SAT translation to return current internal status log)
 
 void sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(uint8_t data[8], bool cd, bool bpv, uint8_t bitPointer, uint16_t fieldPointer)
 {
@@ -5325,6 +5356,751 @@ int sntl_Translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx *scsiIo
     return ret;
 }
 
+int sntl_Translate_Persistent_Reserve_In(tDevice * device, ScsiIoCtx * scsiIoCtx)
+{
+    int ret = SUCCESS;
+    uint8_t *persistentReserveData = NULL;
+    uint32_t persistentReserveDataLength = 8;//start with this...it could change.
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
+    uint8_t serviceAction = M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0);
+    uint16_t allocationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+    //filter out invalid fields
+    if (((fieldPointer = 1) != 0 && M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0)
+        || ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[2] != 0)
+        || ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[3] != 0)
+        || ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[4] != 0)
+        || ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[5] != 0)
+        || ((fieldPointer = 6) != 0 && scsiIoCtx->cdb[6] != 0)
+        )
+    {
+        if (bitPointer == 0)
+        {
+            uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+            uint8_t counter = 0;
+            if (fieldPointer == 1)
+            {
+                reservedByteVal &= 0xE0;//strip off the service action bits since those are usable.
+            }
+            while (reservedByteVal > 0 && counter < 8)
+            {
+                reservedByteVal >>= 1;
+                ++counter;
+            }
+            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        }
+        sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        //invalid field in CDB
+        ret = NOT_SUPPORTED;
+        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return ret;
+    }
+    //process based on service action
+    switch (serviceAction)
+    {
+    case 0://read keys
+    {
+        uint8_t nvmeReportKeys[4096] = { 0 };//I hope this is big enough...may need to redo this!
+        if (SUCCESS != nvme_Reservation_Report(device, false, nvmeReportKeys, 4096))
+        {
+            //Set error based on the status the controller replied with!!!
+        }
+        uint16_t numberOfRegisteredControllers = M_BytesTo2ByteValue(nvmeReportKeys[5], nvmeReportKeys[6]);
+        persistentReserveDataLength = (numberOfRegisteredControllers * 8) + 8;
+        //allocate the memory we need.
+        persistentReserveData = (uint8_t*)calloc(persistentReserveDataLength, sizeof(uint8_t));
+        //set PRGeneration (remember, the endianness is different!)
+        persistentReserveData[0] = nvmeReportKeys[3];
+        persistentReserveData[1] = nvmeReportKeys[2];
+        persistentReserveData[2] = nvmeReportKeys[1];
+        persistentReserveData[3] = nvmeReportKeys[0];
+        //set the additional length
+        persistentReserveData[4] = M_Byte3(persistentReserveDataLength - 8);
+        persistentReserveData[5] = M_Byte2(persistentReserveDataLength - 8);
+        persistentReserveData[6] = M_Byte1(persistentReserveDataLength - 8);
+        persistentReserveData[7] = M_Byte0(persistentReserveDataLength - 8);
+        //now set the keys in the list.
+        uint32_t persistentReseverOffset = 8;//each key is 8 bytes and starts at this offset
+        uint32_t nvmeReportOffset = 24;//increment by 24 for each key due to extra data NVMe returns
+        for (; persistentReseverOffset < persistentReserveDataLength && nvmeReportOffset < 4096; persistentReseverOffset += 8, nvmeReportOffset += 24)
+        {
+            persistentReserveData[persistentReseverOffset + 0] = nvmeReportKeys[nvmeReportOffset + 23];
+            persistentReserveData[persistentReseverOffset + 1] = nvmeReportKeys[nvmeReportOffset + 22];
+            persistentReserveData[persistentReseverOffset + 2] = nvmeReportKeys[nvmeReportOffset + 21];
+            persistentReserveData[persistentReseverOffset + 3] = nvmeReportKeys[nvmeReportOffset + 20];
+            persistentReserveData[persistentReseverOffset + 4] = nvmeReportKeys[nvmeReportOffset + 19];
+            persistentReserveData[persistentReseverOffset + 5] = nvmeReportKeys[nvmeReportOffset + 18];
+            persistentReserveData[persistentReseverOffset + 6] = nvmeReportKeys[nvmeReportOffset + 17];
+            persistentReserveData[persistentReseverOffset + 7] = nvmeReportKeys[nvmeReportOffset + 16];
+        }
+    }
+        break;
+    case 1://read reservation
+    {
+        uint8_t nvmeReport[4096] = { 0 };//I hope this is big enough...may need to redo this!
+        if (SUCCESS != nvme_Reservation_Report(device, false, nvmeReport, 4096))
+        {
+            //Set error based on the status the controller replied with!!!
+        }
+        uint16_t numberOfRegisteredControllers = M_BytesTo2ByteValue(nvmeReport[5], nvmeReport[6]);
+        //figure out what, if any controller is holding a reservation
+        bool foundReservationActive = false;
+        uint32_t nvmeReportOffset = 24;//increment by 24 for each key due to extra data NVMe returns
+        for (; nvmeReportOffset < 4096; nvmeReportOffset += 24)
+        {
+            if (nvmeReport[nvmeReportOffset + 2] & BIT2)
+            {
+                foundReservationActive = true;
+                break;
+            }
+        }
+        persistentReserveDataLength = 8;
+        if (foundReservationActive)
+        {
+            persistentReserveDataLength += 16;
+        }
+        //allocate the memory we need.
+        persistentReserveData = (uint8_t*)calloc(persistentReserveDataLength, sizeof(uint8_t));
+        //set PRGeneration (remember, the endianness is different!)
+        persistentReserveData[0] = nvmeReport[3];
+        persistentReserveData[1] = nvmeReport[2];
+        persistentReserveData[2] = nvmeReport[1];
+        persistentReserveData[3] = nvmeReport[0];
+        //set the additional length
+        persistentReserveData[4] = M_Byte3(persistentReserveDataLength - 8);
+        persistentReserveData[5] = M_Byte2(persistentReserveDataLength - 8);
+        persistentReserveData[6] = M_Byte1(persistentReserveDataLength - 8);
+        persistentReserveData[7] = M_Byte0(persistentReserveDataLength - 8);
+        if (foundReservationActive)
+        {
+            //set the key from controller holding reservation
+            persistentReserveData[8] = nvmeReport[nvmeReportOffset + 23];
+            persistentReserveData[9] = nvmeReport[nvmeReportOffset + 22];
+            persistentReserveData[10] = nvmeReport[nvmeReportOffset + 21];
+            persistentReserveData[11] = nvmeReport[nvmeReportOffset + 20];
+            persistentReserveData[12] = nvmeReport[nvmeReportOffset + 19];
+            persistentReserveData[13] = nvmeReport[nvmeReportOffset + 18];
+            persistentReserveData[14] = nvmeReport[nvmeReportOffset + 17];
+            persistentReserveData[15] = nvmeReport[nvmeReportOffset + 16];
+            //set scope (0) and type (R-Type - translate to SCSI)
+            switch (nvmeReport[4])
+            {
+            case 0:
+                persistentReserveData[21] = 0;
+                break;
+            case 1:
+                persistentReserveData[21] = 1;
+                break;
+            case 2:
+                persistentReserveData[21] = 3;
+                break;
+            case 3:
+                persistentReserveData[21] = 5;
+                break;
+            case 4:
+                persistentReserveData[21] = 6;
+                break;
+            case 5:
+                persistentReserveData[21] = 7;
+                break;
+            case 6:
+                persistentReserveData[21] = 8;
+                break;
+            default:
+                persistentReserveData[21] = 0x0F;//set to something invalid..we should be able to get this right
+                break;
+            }
+        }
+    }
+        break;
+    case 2://report capabilities
+    {
+        //send NVMe identify command, CNS set to 0, current namespace being queried.
+        if (SUCCESS != nvme_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.nvme.ns, device->drive_info.namespaceID, 0))
+        {
+            //TODO: translate to a SCSI error
+        }
+        //then do a get features with FID set to 83h (reservation persistence)
+        nvmeFeaturesCmdOpt getReservationPersistence;
+        memset(&getReservationPersistence, 0, sizeof(nvmeFeaturesCmdOpt));
+        getReservationPersistence.fid = 0x83;
+        if (SUCCESS != nvme_Get_Features(device, &getReservationPersistence))
+        {
+            //TODO: translate to a SCSI error
+        }
+        //Both commands must complete before translating!
+        persistentReserveDataLength = 8;
+        persistentReserveData = (uint8_t*)calloc(persistentReserveDataLength, sizeof(uint8_t));
+        //length
+        persistentReserveData[0] = 0;
+        persistentReserveData[1] = 0x08;
+        //set ATP_C bit
+        persistentReserveData[2] |= BIT2;
+        //set PTPL_C bit
+        if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT0)
+        {
+            persistentReserveData[2] |= BIT0;
+        }
+        //TMV set to 1
+        persistentReserveData[3] |= BIT7;
+        //allowed commands set to zero
+        //set PTL_A
+        if (getReservationPersistence.featSetGetValue & BIT0)
+        {
+            persistentReserveData[3] |= BIT0;
+        }
+        //set the type mask
+        if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT1)
+        {
+            //wr_ex
+            persistentReserveData[4] |= BIT1;
+        }
+        if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT2)
+        {
+            //ex_ac
+            persistentReserveData[4] |= BIT3;
+        }
+        if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT3)
+        {
+            //wr_ex_ro
+            persistentReserveData[4] |= BIT5;
+        }
+        if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT4)
+        {
+            //ex_ac_ro
+            persistentReserveData[4] |= BIT6;
+        }
+        if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT5)
+        {
+            //wr_ex_ar
+            persistentReserveData[4] |= BIT7;
+        }
+        if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT6)
+        {
+            //ex_ac_ar
+            persistentReserveData[5] |= BIT0;
+        }
+    }
+        break;
+    case 3://read full status
+    {
+        uint8_t nvmeReport[4096] = { 0 };//I hope this is big enough...may need to redo this!
+        if (SUCCESS != nvme_Reservation_Report(device, false, nvmeReport, 4096))
+        {
+            //Set error based on the status the controller replied with!!!
+        }
+        uint16_t numberOfRegisteredControllers = M_BytesTo2ByteValue(nvmeReport[5], nvmeReport[6]);
+        persistentReserveDataLength = (numberOfRegisteredControllers * 32) + 8;//data structure size for full status is 32 bytes
+        //allocate the memory we need.
+        persistentReserveData = (uint8_t*)calloc(persistentReserveDataLength, sizeof(uint8_t));
+        //set PRGeneration (remember, the endianness is different!)
+        persistentReserveData[0] = nvmeReport[3];
+        persistentReserveData[1] = nvmeReport[2];
+        persistentReserveData[2] = nvmeReport[1];
+        persistentReserveData[3] = nvmeReport[0];
+        //set the additional length
+        persistentReserveData[4] = M_Byte3(persistentReserveDataLength - 8);
+        persistentReserveData[5] = M_Byte2(persistentReserveDataLength - 8);
+        persistentReserveData[6] = M_Byte1(persistentReserveDataLength - 8);
+        persistentReserveData[7] = M_Byte0(persistentReserveDataLength - 8);
+        //now set the keys in the list.
+        uint32_t persistentReseverOffset = 8;//each key is 32 bytes and starts at this offset
+        uint32_t nvmeReportOffset = 24;//nvme structures start here. each is 24 bytes in size
+        for (; persistentReseverOffset < persistentReserveDataLength && nvmeReportOffset < 4096; persistentReseverOffset += 32, nvmeReportOffset += 24)
+        {
+            //set reservation key
+            persistentReserveData[persistentReseverOffset + 0] = nvmeReport[nvmeReportOffset + 23];
+            persistentReserveData[persistentReseverOffset + 1] = nvmeReport[nvmeReportOffset + 22];
+            persistentReserveData[persistentReseverOffset + 2] = nvmeReport[nvmeReportOffset + 21];
+            persistentReserveData[persistentReseverOffset + 3] = nvmeReport[nvmeReportOffset + 20];
+            persistentReserveData[persistentReseverOffset + 4] = nvmeReport[nvmeReportOffset + 19];
+            persistentReserveData[persistentReseverOffset + 5] = nvmeReport[nvmeReportOffset + 18];
+            persistentReserveData[persistentReseverOffset + 6] = nvmeReport[nvmeReportOffset + 17];
+            persistentReserveData[persistentReseverOffset + 7] = nvmeReport[nvmeReportOffset + 16];
+            //bytes 8 - 11 are reserved
+            //set all_tg_pt to 1
+            persistentReserveData[persistentReseverOffset + 12] |= BIT1;
+            //set r_holder
+            if (nvmeReport[nvmeReportOffset + 2] & BIT0)//SNTL says bit 1, but that is not correct as that bit is still reserved...
+            {
+                persistentReserveData[persistentReseverOffset + 12] |= BIT0;
+            }
+            //scope = 0, type is translated
+            //set scope (0) and type (R-Type - translate to SCSI)
+            switch (nvmeReport[4])
+            {
+            case 0:
+                persistentReserveData[persistentReseverOffset + 13] = 0;
+                break;
+            case 1:
+                persistentReserveData[persistentReseverOffset + 13] = 1;
+                break;
+            case 2:
+                persistentReserveData[persistentReseverOffset + 13] = 3;
+                break;
+            case 3:
+                persistentReserveData[persistentReseverOffset + 13] = 5;
+                break;
+            case 4:
+                persistentReserveData[persistentReseverOffset + 13] = 6;
+                break;
+            case 5:
+                persistentReserveData[persistentReseverOffset + 13] = 7;
+                break;
+            case 6:
+                persistentReserveData[persistentReseverOffset + 13] = 8;
+                break;
+            default:
+                persistentReserveData[persistentReseverOffset + 13] = 0x0F;//set to something invalid..we should be able to get this right
+                break;
+            }
+            //set relative target port identifier to nvme host identifier (swap endianness)
+            persistentReserveData[persistentReseverOffset + 18] = nvmeReport[nvmeReportOffset + 1];
+            persistentReserveData[persistentReseverOffset + 19] = nvmeReport[nvmeReportOffset + 0];
+            //set additional descriptor length to 8 for transport ID
+            persistentReserveData[persistentReseverOffset + 20] = 0;
+            persistentReserveData[persistentReseverOffset + 21] = 0;
+            persistentReserveData[persistentReseverOffset + 22] = 0;
+            persistentReserveData[persistentReseverOffset + 23] = 0x08;
+            //set transport ID to nvme host idnetifier (remember diffferent endianness...)
+            persistentReserveData[persistentReseverOffset + 24] = nvmeReport[nvmeReportOffset + 15];
+            persistentReserveData[persistentReseverOffset + 25] = nvmeReport[nvmeReportOffset + 14];
+            persistentReserveData[persistentReseverOffset + 26] = nvmeReport[nvmeReportOffset + 13];
+            persistentReserveData[persistentReseverOffset + 27] = nvmeReport[nvmeReportOffset + 12];
+            persistentReserveData[persistentReseverOffset + 28] = nvmeReport[nvmeReportOffset + 11];
+            persistentReserveData[persistentReseverOffset + 29] = nvmeReport[nvmeReportOffset + 10];
+            persistentReserveData[persistentReseverOffset + 30] = nvmeReport[nvmeReportOffset + 9];
+            persistentReserveData[persistentReseverOffset + 31] = nvmeReport[nvmeReportOffset + 8];
+        }
+    }
+        break;
+    default:
+        //invalid field in cdb (service action is not valid)
+        bitPointer = 4;
+        fieldPointer = 1;
+        sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        //invalid field in CDB
+        ret = NOT_SUPPORTED;
+        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return ret;
+    }
+    if (scsiIoCtx->pdata)
+    {
+        memcpy(scsiIoCtx->pdata, persistentReserveData, M_Min(persistentReserveDataLength, allocationLength));
+    }
+    safe_Free(persistentReserveData);
+    return ret;
+}
+
+int sntl_Translate_Persistent_Reserve_Out(tDevice * device, ScsiIoCtx * scsiIoCtx)
+{
+    int ret = SUCCESS;
+    uint8_t *persistentReserveData = NULL;
+    uint32_t persistentReserveDataLength = 8;//start with this...it could change.
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
+    uint8_t serviceAction = M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0);
+    uint32_t parameterListLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+    uint8_t scope = M_Nibble1(scsiIoCtx->cdb[2]);//must be set to zero
+    uint8_t type = M_Nibble0(scsiIoCtx->cdb[2]);//used for some actions, ignored for others
+    //filter out invalid fields
+    if (((fieldPointer = 1) != 0 && M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0)
+        || (fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && scope != 0
+        || ((fieldPointer = 3) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[3] != 0)
+        || ((fieldPointer = 4) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[4] != 0)
+        )
+    {
+        if (bitPointer == 0)
+        {
+            uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+            uint8_t counter = 0;
+            if (fieldPointer == 1)
+            {
+                reservedByteVal &= 0xE0;//strip off the service action bits since those are usable.
+            }
+            while (reservedByteVal > 0 && counter < 8)
+            {
+                reservedByteVal >>= 1;
+                ++counter;
+            }
+            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        }
+        sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        //invalid field in CDB
+        ret = NOT_SUPPORTED;
+        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return ret;
+    }
+    //process based on service action
+    //check that parameter length is at least 24 bytes...
+    if (parameterListLength < 24)
+    {
+        //invalid field in cdb (parameter list length)
+        bitPointer = 7;
+        fieldPointer = 5;
+        sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        //invalid field in CDB
+        ret = NOT_SUPPORTED;
+        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return ret;
+    }
+    if (serviceAction == 7)
+    {
+        //different parameter data format...handle it separate of other translations.
+        //check if any reserved fields are set.
+        if (((fieldPointer = 16) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->pdata[16] != 0) //reserved
+            || ((fieldPointer = 17) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->pdata[17], 7, 1) != 0)//reserved and unreg bit...not supporting unreg since it isn't mentioned in SNTL
+            )
+        {
+            if (bitPointer == 0)
+            {
+                uint8_t reservedByteVal = scsiIoCtx->pdata[fieldPointer];
+                uint8_t counter = 0;
+                if (fieldPointer == 17)
+                {
+                    reservedByteVal = scsiIoCtx->pdata[fieldPointer] & 0xFE;//remove lower bits since they may be valid
+                }
+                while (reservedByteVal > 0 && counter < 8)
+                {
+                    reservedByteVal >>= 1;
+                    ++counter;
+                }
+                bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+            }
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+            //invalid field in CDB
+            ret = NOT_SUPPORTED;
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            return ret;
+        }
+        //TODO: the SNTL doesn't mention what, if anything, to do with the transport ID that can be provided here...ignoring it for now since I don't see a way to send that to the nvme drive.
+        //NOTE: NVMe spec doesn't mention the unreg bit or the relative target port identifier...should it be an error?
+        //now translate to the register command with the correct inputs for the NVMe data
+        //iekey = 0, rrega = 010 (replace)
+        uint8_t buffer[16] = { 0 };
+        uint8_t changeThroughPowerLoss = 0;//no change
+        //set the reservation key
+        buffer[0] = scsiIoCtx->pdata[7];
+        buffer[1] = scsiIoCtx->pdata[6];
+        buffer[2] = scsiIoCtx->pdata[5];
+        buffer[3] = scsiIoCtx->pdata[4];
+        buffer[4] = scsiIoCtx->pdata[3];
+        buffer[5] = scsiIoCtx->pdata[2];
+        buffer[6] = scsiIoCtx->pdata[1];
+        buffer[7] = scsiIoCtx->pdata[0];
+        //set the service action reservation key to new reservation key field
+        buffer[8] = scsiIoCtx->pdata[15];
+        buffer[9] = scsiIoCtx->pdata[14];
+        buffer[10] = scsiIoCtx->pdata[13];
+        buffer[11] = scsiIoCtx->pdata[12];
+        buffer[12] = scsiIoCtx->pdata[11];
+        buffer[13] = scsiIoCtx->pdata[10];
+        buffer[14] = scsiIoCtx->pdata[9];
+        buffer[15] = scsiIoCtx->pdata[8];
+        //aptpl is unused in this translation
+        if (SUCCESS != nvme_Reservation_Register(device, changeThroughPowerLoss, false, 0x02, buffer, 16))
+        {
+            //TODO: set an error through translation
+        }
+    }
+    else
+    {
+        //check if bytes 16 though 19 are set...they are obsolete and not supported.
+        if (((fieldPointer = 16) != 0 && (bitPointer = 7) != 0 && scsiIoCtx->pdata[16] != 0) //obsolete (scope specific address)
+            || ((fieldPointer = 16) != 0 && (bitPointer = 7) != 0 && scsiIoCtx->pdata[17] != 0)//obsolete (scope specific address)
+            || ((fieldPointer = 16) != 0 && (bitPointer = 7) != 0 && scsiIoCtx->pdata[18] != 0)//obsolete (scope specific address)
+            || ((fieldPointer = 16) != 0 && (bitPointer = 7) != 0 && scsiIoCtx->pdata[19] != 0)//obsolete (scope specific address)
+            || ((fieldPointer = 20) != 0 && (bitPointer = 3) != 0 && M_GETBITRANGE(scsiIoCtx->pdata[20],7, 4) != 0)
+            || ((fieldPointer = 20) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->pdata[20] & BIT3)//SPEC_I_PT bit
+            || ((fieldPointer = 20) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->pdata[20] & BIT1)//reserved bit
+            || ((fieldPointer = 21) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->pdata[21])//reserved
+            || ((fieldPointer = 22) != 0 && (bitPointer = 7) != 0 && scsiIoCtx->pdata[22])//obsolete (extent length)
+            || ((fieldPointer = 22) != 0 && (bitPointer = 7) != 0 && scsiIoCtx->pdata[23])//obsolete (extent length)
+            )
+        {
+            if (bitPointer == 0)
+            {
+                uint8_t reservedByteVal = scsiIoCtx->pdata[fieldPointer];
+                uint8_t counter = 0;
+                if (fieldPointer == 20)
+                {
+                    reservedByteVal = scsiIoCtx->pdata[fieldPointer] & 0xF0;//remove lower bits since they may be valid
+                }
+                while (reservedByteVal > 0 && counter < 8)
+                {
+                    reservedByteVal >>= 1;
+                    ++counter;
+                }
+                bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+            }
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+            //invalid field in CDB
+            ret = NOT_SUPPORTED;
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            return ret;
+        }
+        bool aptpl = scsiIoCtx->pdata[20] & BIT0;//used on register and register and ignore existing key actions. ignored otherwise
+        //NOTE: parameter data is DIFFERENT for register and move. Everything else uses the same format
+        switch (serviceAction)
+        {
+        case 0://register
+        case 6://register and ignore existing key
+        {
+            uint8_t buffer[16] = { 0 };
+            uint8_t zeros[8] = { 0 };
+            //iekey = 0. (register), iekey = 1 register and ignore existing key
+            bool iekey = false;
+            uint8_t changeThroughPowerLoss = 2;//10b
+            uint8_t rrega = 0;
+            if (serviceAction == 6)
+            {
+                iekey = true;
+            }
+            //setup the buffer.
+            //rrega is zero OR 1 depending on service action key.
+            //if service action key is zero, set rrega to 001 (unregister) and set CRKEY to the reservation key.
+            //else reservation key is ignored. CRKEY is as though it is reserved. RREGA set to zero
+            if (memcmp(zeros, &scsiIoCtx->pdata[8], 8) == 0)
+            {
+                //service action reservation key is zero
+                //crkey = reservation key
+                rrega = 1;//unregister
+                //set the reservation key
+                buffer[0] = scsiIoCtx->pdata[7];
+                buffer[1] = scsiIoCtx->pdata[6];
+                buffer[2] = scsiIoCtx->pdata[5];
+                buffer[3] = scsiIoCtx->pdata[4];
+                buffer[4] = scsiIoCtx->pdata[3];
+                buffer[5] = scsiIoCtx->pdata[2];
+                buffer[6] = scsiIoCtx->pdata[1];
+                buffer[7] = scsiIoCtx->pdata[0];
+                //set the service action reservation key to new reservation key field (can safely do this as it's just setting zeros)
+                buffer[8] = scsiIoCtx->pdata[15];
+                buffer[9] = scsiIoCtx->pdata[14];
+                buffer[10] = scsiIoCtx->pdata[13];
+                buffer[11] = scsiIoCtx->pdata[12];
+                buffer[12] = scsiIoCtx->pdata[11];
+                buffer[13] = scsiIoCtx->pdata[10];
+                buffer[14] = scsiIoCtx->pdata[9];
+                buffer[15] = scsiIoCtx->pdata[8];
+            }
+            else
+            {
+                //service action reservation key is non-zero
+                //crkey is reserved (leave set to zero, ignoring any provided reservation key)
+                rrega = 0;//register
+                //NRKEY - service action reservation key
+                //set the service action reservation key to new reservation key field
+                buffer[8] = scsiIoCtx->pdata[15];
+                buffer[9] = scsiIoCtx->pdata[14];
+                buffer[10] = scsiIoCtx->pdata[13];
+                buffer[11] = scsiIoCtx->pdata[12];
+                buffer[12] = scsiIoCtx->pdata[11];
+                buffer[13] = scsiIoCtx->pdata[10];
+                buffer[14] = scsiIoCtx->pdata[9];
+                buffer[15] = scsiIoCtx->pdata[8];
+            }
+            if (aptpl)//aptpl
+            {
+                //=1
+                changeThroughPowerLoss = 3;//11b
+                if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT0)
+                {
+                    //send a set features for reservation persistence with PTPL set to 1 before sending the reservation register command
+                    nvmeFeaturesCmdOpt setPTPL;
+                    memset(&setPTPL, 0, sizeof(nvmeFeaturesCmdOpt));
+                    setPTPL.fid = 0x83;
+                    setPTPL.featSetGetValue = BIT0;
+                    if (SUCCESS != nvme_Set_Features(device, &setPTPL))
+                    {
+                        //TODO: set an error based on translation
+                    }
+                }
+                else
+                {
+                    //ERROR! Invalid field in parameter list since the drive doesn't support this mode!
+                    bitPointer = 0;
+                    fieldPointer = 17;
+                    sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+                    //invalid field in CDB
+                    ret = NOT_SUPPORTED;
+                    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                    return ret;
+                }
+            }
+            //send the reservation register command
+            if (SUCCESS != nvme_Reservation_Register(device, changeThroughPowerLoss, iekey, rrega, buffer, 16))
+            {
+                //TODO: set error from translation
+            }
+        }
+            break;
+        case 1://reserve
+        case 4://preempt
+        case 5://preempt and abort
+        {
+            uint8_t buffer[16] = { 0 };
+            //translate type field
+            uint8_t rtype = 0;
+            uint8_t racqa = 0;
+            switch (type)
+            {
+            case 0:
+                rtype = 0;
+                break;
+            case 1:
+                rtype = 1;
+                break;
+            case 3:
+                rtype = 2;
+                break;
+            case 5:
+                rtype = 3;
+                break;
+            case 6:
+                rtype = 4;
+                break;
+            case 7:
+                rtype = 5;
+                break;
+            case 8:
+                rtype = 6;
+                break;
+            default:
+                //Invalid field in parameter cdb!
+                bitPointer = 3;
+                fieldPointer = 2;
+                sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                //invalid field in CDB
+                ret = NOT_SUPPORTED;
+                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                return ret;
+                break;
+            }
+            switch (serviceAction)
+            {
+            case 1://reserve
+                racqa = 0;
+                break;
+            case 4://preempt
+                racqa = 1;
+                break;
+            case 5://preempt and abort
+                racqa = 2;
+                break;
+            }
+            //set the reservation key
+            buffer[0] = scsiIoCtx->pdata[7];
+            buffer[1] = scsiIoCtx->pdata[6];
+            buffer[2] = scsiIoCtx->pdata[5];
+            buffer[3] = scsiIoCtx->pdata[4];
+            buffer[4] = scsiIoCtx->pdata[3];
+            buffer[5] = scsiIoCtx->pdata[2];
+            buffer[6] = scsiIoCtx->pdata[1];
+            buffer[7] = scsiIoCtx->pdata[0];
+            if (serviceAction != 1)
+            {
+                //set the PRKEY to service action reservation key field
+                buffer[8] = scsiIoCtx->pdata[15];
+                buffer[9] = scsiIoCtx->pdata[14];
+                buffer[10] = scsiIoCtx->pdata[13];
+                buffer[11] = scsiIoCtx->pdata[12];
+                buffer[12] = scsiIoCtx->pdata[11];
+                buffer[13] = scsiIoCtx->pdata[10];
+                buffer[14] = scsiIoCtx->pdata[9];
+                buffer[15] = scsiIoCtx->pdata[8];
+            }
+            if (SUCCESS != nvme_Reservation_Acquire(device, rtype, false, racqa, buffer, 16))
+            {
+                //TODO: Set error for translation
+            }
+        }
+            break;
+        case 2://release
+        case 3://clear
+        {
+            //reservation release IEKEY = 0, RRELA = 0 (release)
+            //reservation release IEKEY = 0, RRELA = 1 (clear)
+            uint8_t buffer[8] = { 0 };
+            uint8_t rrela = 0;
+            uint8_t rtype = 0;
+            //translate type field
+            if (serviceAction != 2)
+            {
+                rrela = 1;//clear
+            }
+            switch (type)
+            {
+            case 0:
+                rtype = 0;
+                break;
+            case 1:
+                rtype = 1;
+                break;
+            case 3:
+                rtype = 2;
+                break;
+            case 5:
+                rtype = 3;
+                break;
+            case 6:
+                rtype = 4;
+                break;
+            case 7:
+                rtype = 5;
+                break;
+            case 8:
+                rtype = 6;
+                break;
+            default:
+                //Invalid field in parameter cdb!
+                bitPointer = 3;
+                fieldPointer = 2;
+                sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                //invalid field in CDB
+                ret = NOT_SUPPORTED;
+                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                return ret;
+                break;
+            }
+            //set the reservation key
+            buffer[0] = scsiIoCtx->pdata[7];
+            buffer[1] = scsiIoCtx->pdata[6];
+            buffer[2] = scsiIoCtx->pdata[5];
+            buffer[3] = scsiIoCtx->pdata[4];
+            buffer[4] = scsiIoCtx->pdata[3];
+            buffer[5] = scsiIoCtx->pdata[2];
+            buffer[6] = scsiIoCtx->pdata[1];
+            buffer[7] = scsiIoCtx->pdata[0];
+            if (SUCCESS != nvme_Reservation_Release(device, rtype, false, rrela, buffer, 8))
+            {
+                //TODO: set an error for translation
+            }
+        }
+        break;
+        //case 7://register and move <- handled above in if since parameter data is different
+        case 8://replace lost reservation (no translation available)
+        default:
+            //invalid field in cdb (service action is not valid)
+            bitPointer = 4;
+            fieldPointer = 1;
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            //invalid field in CDB
+            ret = NOT_SUPPORTED;
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            return ret;
+        }
+    }
+    if (scsiIoCtx->pdata)
+    {
+        memcpy(scsiIoCtx->pdata, persistentReserveData, M_Min(persistentReserveDataLength, parameterListLength));
+    }
+    safe_Free(persistentReserveData);
+    return ret;
+}
+
 void sntl_Set_Command_Timeouts_Descriptor(uint32_t nominalCommandProcessingTimeout, uint32_t recommendedCommandProcessingTimeout, uint8_t *pdata, uint32_t *offset)
 {
     pdata[*offset + 0] = 0x00;
@@ -5345,6 +6121,7 @@ void sntl_Set_Command_Timeouts_Descriptor(uint32_t nominalCommandProcessingTimeo
     //increment the offset
     *offset += 12;
 }
+
 //TODO: add in support info for immediate bits (requires command support via threading)
 int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t operationCode, bool rctd, uint8_t **pdata, uint32_t *dataLength)
 {
@@ -7442,6 +8219,7 @@ int sntl_Translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 			break;
 		}
 		break;
+    //To Support format, we need to store the last block descriptor so we format with the correct block size when running format. We also need to send back "format corrupt" until the format has been done.
 	//case SCSI_FORMAT_UNIT_CMD:
 		//ret = sntl_Translate_SCSI_Format_Unit_Command(device, scsiIoCtx);
 		//break;
@@ -7462,7 +8240,7 @@ int sntl_Translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 	case READ16://read commands
 		ret = sntl_Translate_SCSI_Read_Command(device, scsiIoCtx);
 		break;
-	//STNL spec doesn't define it, but we should add a way to read the telemetry log through here similar to SAT's translation for SATA Internal Status log
+	//SNTL spec doesn't define it, but we should add a way to read the telemetry log through here similar to SAT's translation for SATA Internal Status log
 	//case READ_BUFFER_CMD:
 	//	ret = sntl_Translate_SCSI_Read_Buffer_Command(device, scsiIoCtx);
 	//	break;
@@ -7599,18 +8377,28 @@ int sntl_Translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 	//case WRITE_SAME_16_CMD://Sequential write commands
 	//	ret = sntl_Translate_SCSI_Write_Same_Command(device, scsiIoCtx);
 	//	break;
-	//TODO: Need to add these in for NVMe translation
 	case PERSISTENT_RESERVE_IN_CMD:
+        if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT5)
+        {
+            //reservations supported
+            ret = sntl_Translate_Persistent_Reserve_In(device, scsiIoCtx);
+        }
+        else
+        {
+            invalidOperationCode = true;
+        }
+        break;
 	case PERSISTENT_RESERVE_OUT_CMD:
-        //if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT5)
-        //{
-        //    //reservations supported
-        //}
-        //else
-        //{
-        //    invalidOperationCode = true;
-        //}
-        //break;
+        if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT5)
+        {
+            //reservations supported
+            ret = sntl_Translate_Persistent_Reserve_Out(device, scsiIoCtx);
+        }
+        else
+        {
+            invalidOperationCode = true;
+        }
+        break;
 	default:
 		invalidOperationCode = true;
 		break;
