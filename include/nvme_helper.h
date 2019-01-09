@@ -51,9 +51,10 @@ extern "C"
     } eNvmeCmdType; 
 
     typedef enum _eNvmeIdentifyCNS {
-        NVME_IDENTIFY_NS,
-        NVME_IDENTIFY_CTRL,
-        NVME_IDENTIFY_ALL_ACTIVE_NS
+        NVME_IDENTIFY_NS = 0,
+        NVME_IDENTIFY_CTRL = 1,
+        NVME_IDENTIFY_ALL_ACTIVE_NS = 2,
+        NVME_IDENTIFY_NS_ID_DESCRIPTOR_LIST = 3,
     } eNvmeIdentifyCNS;
 
     typedef enum _eNvmePowerFlags{
@@ -61,15 +62,15 @@ extern "C"
     	NVME_PS_FLAG_NON_OP_STATE	= 1 << 1,
     } eNvmePowerFlags;
 
+#if 0
     typedef enum _eNvmeCtrlCap {
     	NVME_ONCS_CTRL_COMPARE			= 1 << 0,
     	NVME_ONCS_CTRL_WRITE_UNCORRECTABLE	= 1 << 1,
     	NVME_ONCS_CTRL_DSM			= 1 << 2,
     	NVME_VWC_CTRL_PRESENT			= 1 << 0,
     } eNvmeCtrlCap;
-
+#endif
     typedef enum _eNvmeNameSpace {
-    	NVME_NS_FEATURE_THIN_	    = 1 << 0,
     	NVME_NS_LBAF_BEST_RP	    = 0,
     	NVME_NS_LBAF_BETTER_RP	    = 1,
     	NVME_NS_LBAF_GOOD_RP	    = 2,
@@ -404,6 +405,7 @@ extern "C"
         uint32_t 			cdw15;//CDW15
     } nvmCommand;
 
+#if 0
     typedef struct _nvmeRWCommand {
     	uint8_t 			opcode;
     	uint8_t 			flags;
@@ -466,6 +468,7 @@ extern "C"
     	uint32_t 			nlb;
     	uint64_t 			slba;
     } nvmeDsmRange;
+#endif
 
     // NVMe Spec - Figure 62: Firmware Commit - Command Dword 10
     typedef enum _nvmeFWCommitAction {
@@ -473,23 +476,11 @@ extern "C"
         NVME_CA_REPLACE_ACTIVITE_ON_RST = 1,
         NVME_CA_ACTIVITE_ON_RST = 2,
         NVME_CA_ACTIVITE_IMMEDIATE = 3,
-        NVME_CA_INVALID
+        NVME_CA_DOWNLOAD_REP_BOOT_PART_W_PART_ID    = 6,
+        NVME_CA_MARK_BOOT_PART_AS_ACTIVE    = 7
     } nvmeFWCommitAction;
 
-    // NVMe Spec - Figure 63: Firmware Commit - Command Specific Status Values
-    typedef enum _nvmeFWCommitRC {
-        NVME_FW_DL_INVALID_SLOT         = 0x06,
-        NVME_FW_DL_INVALID_IMG          = 0x07,
-        NVME_FW_DL_REQUIRES_SYS_RST     = 0x0B,
-        NVME_FW_DL_REQUIRES_NVM_RST     = 0x10,
-        NVME_FW_DL_ON_NEXT_RST          = 0x11,
-        NVME_FW_DL_MAX_TIME_VIOLATION   = 0x12,
-        NVME_FW_DL_ACT_PROHIBITED       = 0x13,
-        NVME_FW_DL_OVERLAPPING_RANGE    = 0x14,
-    } nvmeFWCommitRC;
-
     /* Admin commands */
-
     typedef enum _eNVMeAdminOpCodes {
     	NVME_ADMIN_CMD_DELETE_SQ		            = 0x00,
     	NVME_ADMIN_CMD_CREATE_SQ		            = 0x01,
@@ -520,15 +511,12 @@ extern "C"
         NVME_ADMIN_CMD_SANITIZE                     = 0x84,
     } eNVMeAdminOpCodes;
 
+    //This enum should only be for thing in set/get features commands!!!
+    //Anything else should be in a separate enum. No need to clutter this one!
+    //TODO: we should name these so we don't need a trailing underscore
     typedef enum _eNvmeFeatures {
-    	NVME_QUEUE_PHYS_CONTIG_	= (1 << 0),
-    	NVME_CQ_IRQ_ENABLED_	= (1 << 1),
-    	NVME_SQ_PRIO_URGENT_	= (0 << 1),
-    	NVME_SQ_PRIO_HIGH_	= (1 << 1),
-    	NVME_SQ_PRIO_MEDIUM_	= (2 << 1),
-    	NVME_SQ_PRIO_LOW_	= (3 << 1),
     	NVME_FEAT_ARBITRATION_	= 0x01,
-    	NVME_POWER_MGMT_FEAT	= 0x02,
+    	NVME_FEAT_POWER_MGMT_   = 0x02,
     	NVME_FEAT_LBA_RANGE_	= 0x03,
     	NVME_FEAT_TEMP_THRESH_	= 0x04,
     	NVME_FEAT_ERR_RECOVERY_	= 0x05,
@@ -536,21 +524,47 @@ extern "C"
     	NVME_FEAT_NUM_QUEUES_	= 0x07,
     	NVME_FEAT_IRQ_COALESCE_	= 0x08,
     	NVME_FEAT_IRQ_CONFIG_	= 0x09,
-    	NVME_FEAT_WRITE_ATOMIC_	= 0x0a,
-    	NVME_FEAT_ASYNC_EVENT_	= 0x0b,
-    	NVME_FEAT_SW_PROGRESS_	= 0x0c,
-    	NVME_LOG_ERROR_ID   	= 0x01,
-    	NVME_LOG_SMART_ID		= 0x02,
-    	NVME_LOG_FW_SLOT_ID	    = 0x03,
-        NVME_LOG_CMD_SPT_EFET_ID    = 0x05,
-        NVME_LOG_DEV_SELF_TEST	    = 0x06,
-    	NVME_LOG_TELEMETRY_HOST = 0x07,
-    	NVME_LOG_TELEMETRY_CTRL = 0x08,
-    	NVME_LOG_RESERVATION_ID	= 0x80,
-    	NVME_FWACT_REPL_		= (0 << 3),
-    	NVME_FWACT_REPL_ACTV_	= (1 << 3),
-    	NVME_FWACT_ACTV_		= (2 << 3),
+    	NVME_FEAT_WRITE_ATOMIC_	= 0x0A,
+    	NVME_FEAT_ASYNC_EVENT_	= 0x0B,
+    	NVME_FEAT_AUTONOMOUS_POWER_STATE_TRANSITION_	= 0x0C,
+        NVME_FEAT_HOST_MEMORY_BUFFER_   = 0x0D,
+        NVME_FEAT_TIMESTAMP_            = 0x0E,
+        NVME_FEAT_KEEP_ALIVE_TIMER_     = 0x0F,
+        NVME_FEAT_HOST_CONTROLLED_THERMAL_MANAGEMENT_   = 0x10,
+        NVME_FEAT_NON_OPERATIONAL_POWER_STATE_CONFIG_   = 0x11,
+        //NVM command set specific
+        NVME_FEAT_SOFTWARE_PROGRESS_MARKER_ = 0x80,
+        NVME_FEAT_HOST_IDENTIFIER_          = 0x81,
+        NVME_FEAT_RESERVATION_NOTIFICATION_MASK_    = 0x82,
+        NVME_FEAT_RESERVATION_PERSISTANCE_          = 0x83,
     } eNvmeFeatures;
+
+    //Not sure where these belong...but not in the above enum
+    /*NVME_QUEUE_PHYS_CONTIG_	= (1 << 0),
+        NVME_CQ_IRQ_ENABLED_	= (1 << 1),
+        NVME_SQ_PRIO_URGENT_	= (0 << 1),
+        NVME_SQ_PRIO_HIGH_	= (1 << 1),
+        NVME_SQ_PRIO_MEDIUM_	= (2 << 1),
+        NVME_SQ_PRIO_LOW_	= (3 << 1),*/
+
+    typedef enum _eNvmeLogs
+    {
+        NVME_LOG_ERROR_ID = 0x01,
+        NVME_LOG_SMART_ID = 0x02,
+        NVME_LOG_FW_SLOT_ID = 0x03,
+        NVME_LOG_CMD_SPT_EFET_ID = 0x05,
+        NVME_LOG_DEV_SELF_TEST = 0x06,
+        NVME_LOG_TELEMETRY_HOST = 0x07,
+        NVME_LOG_TELEMETRY_CTRL = 0x08,
+        NVME_LOG_RESERVATION_ID = 0x80,
+    }eNvmeLogs;
+
+    typedef enum _eNvmeFWActivation
+    {
+        NVME_FWACT_REPL_ = (0 << 3),
+        NVME_FWACT_REPL_ACTV_ = (1 << 3),
+        NVME_FWACT_ACTV_ = (2 << 3),
+    }eNvmeFWActivation;
 
 
     typedef enum _eNvmeFeaturesSelectValue {
@@ -589,6 +603,7 @@ extern "C"
         uint32_t    featSetGetValue; //Value returned or to be set as Dword11
     } nvmeFeaturesCmdOpt;
 
+#if 0
     typedef struct _nvmeIdentify {
     	uint8_t 			opcode;
     	uint8_t 			flags;
@@ -673,6 +688,7 @@ extern "C"
     	uint32_t 			offset;
     	uint32_t 			rsvd12[4];
     } nvmeDownloadFirmware;
+#endif
 
     typedef enum _eProtectionInfoLoc {
         PROTECTION_INFO_AT_END,
@@ -688,6 +704,7 @@ extern "C"
         uint8_t             ses;  //Secure Erase Settings. 0=none requested, 1=requested, 2=use Crtypto Erase
     } nvmeFormatCmdOpts;
 
+#if 0
     typedef struct _nvmeFormatCMD {
     	uint8_t 			opcode;
     	uint8_t 			flags;
@@ -697,46 +714,114 @@ extern "C"
     	uint32_t 			cdw10;
     	uint32_t 			rsvd11[5];
     } nvmeFormatCMD;
+#endif
 
-    typedef enum _eNvmeReturnStatus {
-    	NVME_SC_SUCCESS_			= 0x0,
-    	NVME_SC_INVALID_OPCODE_		= 0x1,
-    	NVME_SC_INVALID_FIELD_		= 0x2,
-    	NVME_SC_CMDID_CONFLICT_		= 0x3,
-    	NVME_SC_DATA_XFER_ERROR_		= 0x4,
-    	NVME_SC_POWER_LOSS_		= 0x5,
-    	NVME_SC_INTERNAL_		= 0x6,
-    	NVME_SC_ABORT_REQ_		= 0x7,
-    	NVME_SC_ABORT_QUEUE_		= 0x8,
-    	NVME_SC_FUSED_FAIL_		= 0x9,
-    	NVME_SC_FUSED_MISSING_		= 0xa,
-    	NVME_SC_INVALID_NS_		= 0xb,
-    	NVME_SC_CMD_SEQ_ERROR_		= 0xc,
-    	NVME_SC_LBA_RANGE_		= 0x80,
-    	NVME_SC_CAP_EXCEEDED_		= 0x81,
-    	NVME_SC_NS_NOT_READY_		= 0x82,
-    	NVME_SC_CQ_INVALID_		= 0x100,
-    	NVME_SC_QID_INVALID_		= 0x101,
-    	NVME_SC_QUEUE_SIZE_		= 0x102,
-    	NVME_SC_ABORT_LIMIT_		= 0x103,
-    	NVME_SC_ABORT_MISSING_		= 0x104,
-    	NVME_SC_ASYNC_LIMIT_		= 0x105,
-    	NVME_SC_FIRMWARE_SLOT_		= 0x106,
-    	NVME_SC_FIRMWARE_IMAGE_		= 0x107,
-    	NVME_SC_INVALID_VECTOR_		= 0x108,
-    	NVME_SC_INVALID_LOG_PAGE_	= 0x109,
-    	NVME_SC_INVALID_FORMAT_		= 0x10a,
-    	NVME_SC_BAD_ATTRIBUTES_		= 0x180,
-    	NVME_SC_WRITE_FAULT_		= 0x280,
-    	NVME_SC_READ_ERROR_		= 0x281,
-    	NVME_SC_GUARD_CHECK_		= 0x282,
-    	NVME_SC_APPTAG_CHECK_		= 0x283,
-    	NVME_SC_REFTAG_CHECK_		= 0x284,
-    	NVME_SC_COMPARE_FAILED_		= 0x285,
-    	NVME_SC_ACCESS_DENIED_		= 0x286,
-    	NVME_SC_DNR_			= 0x4000,
+    typedef enum _eNvmeStatusCodeType
+    {
+        NVME_SCT_GENERIC_COMMAND_STATUS = 0,
+        NVME_SCT_COMMAND_SPECIFIC_STATUS = 1,
+        NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS = 2,
+        //3-6 are reserved
+        NVME_SCT_VENDOR_SPECIFIC = 7
+    }eNvmeStatusCodeType;
+
+    typedef enum _eNvmeGenericStatusCode {
+    	NVME_GEN_SC_SUCCESS_            = 0x0,
+    	NVME_GEN_SC_INVALID_OPCODE_     = 0x1,
+    	NVME_GEN_SC_INVALID_FIELD_      = 0x2,
+    	NVME_GEN_SC_CMDID_CONFLICT_	    = 0x3,
+    	NVME_GEN_SC_DATA_XFER_ERROR_    = 0x4,
+    	NVME_GEN_SC_POWER_LOSS_         = 0x5,
+    	NVME_GEN_SC_INTERNAL_           = 0x6,
+    	NVME_GEN_SC_ABORT_REQ_          = 0x7,
+    	NVME_GEN_SC_ABORT_QUEUE_        = 0x8,
+    	NVME_GEN_SC_FUSED_FAIL_         = 0x9,
+    	NVME_GEN_SC_FUSED_MISSING_      = 0xA,
+    	NVME_GEN_SC_INVALID_NS_         = 0xB,
+    	NVME_GEN_SC_CMD_SEQ_ERROR_      = 0xC,
+        NVME_GEN_SC_INVALID_SGL_SEGMENT_DESCRIPTOR  = 0x0D,
+        NVME_GEN_SC_INVALID_NUMBER_OF_SGL_DESCRIPTORS   = 0x0E,
+        NVME_GEN_SC_DATA_SGL_LENGTH_INVALID = 0x0F,
+        NVME_GEN_SC_METADATA_SGL_LENGTH_INVALID = 0x10,
+        NVME_GEN_SC_SGL_DESCRIPTOR_TYPE_INVALID = 0x11,
+        NVME_GEN_SC_INVALID_USE_OF_CONTROLLER_MEMORY_BUFFER = 0x12,
+        NVME_GEN_SC_PRP_OFFSET_INVALID  = 0x13,
+        NVME_GEN_SC_ATOMIC_WRITE_UNIT_EXCEEDED  = 0x14,
+        NVME_GEN_SC_OPERATION_DENIED    = 0x15,
+        NVME_GEN_SC_SGL_OFFSET_INVALID  = 0x16,
+        NVME_GEN_SC_HOST_IDENTIFIER_INCONSISTENT_FORMAT = 0x18,
+        NVME_GEN_SC_KEEP_ALIVE_TIMEOUT_EXPIRED  = 0x19,
+        NVME_GEN_SC_KEEP_ALIVE_TIMEOUT_INVALID  = 0x1A,
+        NVME_GEN_SC_COMMAND_ABORTED_DUE_TO_PREEMPT_AND_ABORT    = 0x1B,
+        NVME_GEN_SC_SANITIZE_FAILED = 0x1C,
+        NVME_GEN_SC_SANITIZE_IN_PROGRESS    = 0x1D,
+        NVME_GEN_SC_SGL_DATA_BLOCK_GRANULARITY_INVALID  = 0x1E,
+        NVME_GEN_SC_COMMAND_NOT_SUPPORTED_FOR_QUEUE_IN_CMB  = 0x1F,
+        //80-BF are NVM command set specific
+    	NVME_GEN_SC_LBA_RANGE_          = 0x80,
+    	NVME_GEN_SC_CAP_EXCEEDED_       = 0x81,
+    	NVME_GEN_SC_NS_NOT_READY_       = 0x82,
+        NVME_GEN_SC_RESERVATION_CONFLICT    = 0x83,
+        NVME_GEN_SC_FORMAT_IN_PROGRESS      = 0x84,
     } eNvmeReturnStatus;
 
+    typedef enum _eNvmeCmdSpecificStatus 
+    {
+        NVME_CMD_SP_SC_CQ_INVALID_ = 0x00,
+        NVME_CMD_SP_SC_QID_INVALID_ = 0x01,
+        NVME_CMD_SP_SC_QUEUE_SIZE_ = 0x02,
+        NVME_CMD_SP_SC_ABORT_LIMIT_ = 0x03,
+        //NVME_CMD_SP_SC_ABORT_MISSING_ = 0x04,//reserved in NVMe specs
+        NVME_CMD_SP_SC_ASYNC_LIMIT_ = 0x05,
+        NVME_CMD_SP_SC_INVALID_FIRMWARE_SLOT_ = 0x06,
+        NVME_CMD_SP_SC_INVALIDFIRMWARE_IMAGE_ = 0x07,
+        NVME_CMD_SP_SC_INVALID_INTERRUPT_VECTOR_ = 0x08,
+        NVME_CMD_SP_SC_INVALID_LOG_PAGE_ = 0x09,
+        NVME_CMD_SP_SC_INVALID_FORMAT_ = 0x0A,
+        NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET    = 0x0B,
+        NVME_CMD_SP_SC_INVALID_QUEUE_DELETION   = 0x0C,
+        NVME_CMD_SP_SC_FEATURE_IDENTIFIER_NOT_SAVABLE   = 0x0D,
+        NVME_CMD_SP_SC_FEATURE_NOT_CHANGEABLE   = 0x0E,
+        NVME_CMD_SP_SC_FEATURE_NOT_NAMESPACE_SPECIFC    = 0x0F,
+        NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET = 0x10,
+        NVME_CMD_SP_SC_FW_ACT_REQ_RESET = 0x11,
+        NVME_CMD_SP_SC_FW_ACT_REQ_MAX_TIME_VIOALTION    = 0x12,
+        NVME_CMD_SP_SC_FW_ACT_PROHIBITED    = 0x13,
+        NVME_CMD_SP_SC_OVERLAPPING_RANGE    = 0x14,
+        NVME_CMD_SP_SC_NS_INSUFFICIENT_CAP  = 0x15,
+        NVME_CMD_SP_SC_NS_ID_UNAVAILABLE    = 0x16,
+        NVME_CMD_SP_SC_NS_ALREADY_ATTACHED  = 0x18,
+        NVME_CMD_SP_SC_NS_IS_PRIVATE        = 0x19,
+        NVME_CMD_SP_SC_NS_NOT_ATTACHED      = 0x1A,
+        NVME_CMD_SP_SC_THIN_PROVISIONING_NOT_SUPPORTED  = 0x1B,
+        NVME_CMD_SP_SC_CONTROLLER_LIST_INVALID  = 0x1C,
+        NVME_CMD_SP_SC_DEVICE_SELF_TEST_IN_PROGRESS = 0x1D,
+        NVME_CMD_SP_SC_BOOT_PARTITION_WRITE_PROHIBITED  = 0x1E,
+        NVME_CMD_SP_SC_INVALID_CONTROLLER_IDENTIFIER    = 0x1F,
+        NVME_CMD_SP_SC_INVALID_SECONDARY_CONTROLLER_STATE   = 0x20,
+        NVME_CMD_SP_SC_INVALID_NUMBER_OF_CONTROLLER_RESOURCES   = 0x21,
+        NVME_CMD_SP_SC_INVALID_RESOURCE_IDENTIFIER  = 0x22,
+        //80-BF are NVM command set specific
+        NVME_CMD_SP_SC_CONFLICTING_ATTRIBUTES_ = 0x80,
+        NVME_CMD_SP_SC_INVALID_PROTECTION_INFORMATION   = 0x81,
+        NVME_CMD_SP_SC_ATTEMPTED_WRITE_TO_READ_ONLY_RANGE   = 0x82,
+    }eNvmeCmdSpecificStatus;
+
+    typedef enum _eNvmeMediaDataErrStatus
+    {
+        NVME_MED_ERR_SC_WRITE_FAULT_		= 0x80,
+        NVME_MED_ERR_SC_UNREC_READ_ERROR_		    = 0x81,
+        NVME_MED_ERR_SC_ETE_GUARD_CHECK_		= 0x82,
+        NVME_MED_ERR_SC_ETE_APPTAG_CHECK_		= 0x83,
+        NVME_MED_ERR_SC_ETE_REFTAG_CHECK_		= 0x84,
+        NVME_MED_ERR_SC_COMPARE_FAILED_		= 0x85,
+        NVME_MED_ERR_SC_ACCESS_DENIED_		= 0x86,
+        NVME_MED_ERR_SC_DEALLOCATED_OR_UNWRITTEN_LOGICAL_BLOCK  = 0x87
+    }eNvmeMediaDataErrStatus;
+
+    //NVME_SC_DNR_			= 0x4000 //Where is this coming from???
+
+#if 0
     typedef struct _nvmeCompletion {
     	uint32_t 	result;		/* Used by admin commands to return data */
     	uint32_t 	rsvd;
@@ -760,6 +845,7 @@ extern "C"
     	uint16_t 	apptag;
     	uint16_t 	appmask;
     } nvmeUserIO;
+#endif
 
     typedef struct _nvmeAdminCommand {
     	uint8_t 	opcode; //Common Dword 0 (CDW0)
@@ -771,7 +857,7 @@ extern "C"
     	uint64_t	metadata; // MPTR
     	uint64_t	addr;   //PRP Entry 1
     	uint32_t 	metadataLen;
-    	uint32_t 	dataLen;
+    	//uint32_t 	dataLen; //REMOVED THIS BECAUSE ITS REDUNDANT - TJE
     	uint32_t 	cdw10; //Command Dword 10(CDW10)
     	uint32_t 	cdw11; //Command Dword 10(CDW10)
     	uint32_t 	cdw12; //Command Dword 10(CDW10)
@@ -807,23 +893,33 @@ extern "C"
         };
     } nvmeCommands;
 
+    typedef struct _completionQueueEntry
+    {
+        bool dw0Valid;//OS doing passthrough may or may not get this field back...so this is set to indicate it was retrieved by the OS
+        uint32_t commandSpecific;//AKA result
+        bool dw1Valid;
+        uint32_t dw1Reserved;
+        bool dw2Valid;
+        uint32_t sqIDandHeadPtr;//This likely won't contain anything valid even if the OS passthrough gave us this DWORD
+        bool dw3Valid;//AKA status and CID. Don't expect a valid CID though! Not every OS will give us that.
+        uint32_t statusAndCID;
+    }completionQueueEntry;
+
     // \struct typedef struct _nvmeCmdCtx
     typedef struct _nvmeCmdCtx
     {
         tDevice                 *device;
-        eNvmeCmdType            commandType;
-        eDataTransferDirection  commandDirection;
-        nvmeCommands            cmd;
-        uint8_t                 *ptrData;
-        uint32_t                dataSize;
+        eNvmeCmdType            commandType;//admin vs nvm command (needed for some OSs to send to the correct queue)
+        eDataTransferDirection  commandDirection;//this should match the NVMe definition in opcode bits 1:0. 00 - no data, 01 - host to controller (out), 10 - controller to host (in), 11 - bidirectional
+        nvmeCommands            cmd; //cmd definition. This will be accessed depending on what is set to comandType field
+        uint8_t                 *ptrData;//buffer to hold data being sent or received
+        uint32_t                dataSize;//size of data being sent or received in BYTES
         uint32_t                timeout; //in seconds 
-        uint32_t                result; //For Admin commands
+        completionQueueEntry    commandCompletionData;
+        //This is primarily used for the vendor unique pass-through, 
+        //but may be checked otherwise since Win10 API only talks to the current NSID, 
+        //unless you are pulling a log or identify data from the controller. - TJE
         bool                    useSpecificNSID;//This MUST be used to be compatible with Windows 10 API. Set to true when attempting to read a specific NSID that is NOT the same as the current handle. I.E. getting namespace data from a different namespace
-                                                //This is primarily used for the vendor unique pass-through, 
-                                                //but may be checked otherwise since Win10 API only talks to the current NSID, 
-                                                //unless you are pulling a log or identify data from the controller. - TJE
-        //uint8_t                 reserved1[3];
-        //tDevice                 *device;
     } nvmeCmdCtx;
 
     //Linga

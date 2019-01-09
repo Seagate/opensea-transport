@@ -128,12 +128,16 @@ int nvme_Device_Self_Test(tDevice *device, uint32_t nsid, uint8_t selfTestCode)
         printf("Sending NVMe Device Self Test Command\n");
     }
     ret = nvme_Cmd(device, &adminCommand);
-    //TODO: Need a function to print out some verbose information for any/all commands (if possible)
     //Command specific return codes:
     // 1Dh = The controller or NVM subsystem already has a device self-test operation in process
-    if (adminCommand.result == 0x1D)
+    //TODO: we should try putting this at a different level in case this is returned on some other command to inform that something is happening
+    if (adminCommand.commandCompletionData.dw3Valid)
     {
-        ret = IN_PROGRESS;
+        if (M_GETBITRANGE(adminCommand.commandCompletionData.statusAndCID, 27, 25) == NVME_SCT_COMMAND_SPECIFIC_STATUS
+            && M_GETBITRANGE(adminCommand.commandCompletionData.statusAndCID, 24, 17) == 0x1D)
+        {
+            ret = IN_PROGRESS;
+        }
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -152,7 +156,6 @@ int nvme_Security_Send(tDevice *device, uint8_t securityProtocol, uint16_t secur
     adminCommand.commandDirection = XFER_DATA_OUT;
     adminCommand.cmd.adminCmd.addr = (uint64_t)ptrData;//TODO: does this need a cast?
     adminCommand.ptrData = ptrData;
-    adminCommand.cmd.adminCmd.dataLen = dataLength;
     adminCommand.dataSize = dataLength;
     adminCommand.cmd.adminCmd.cdw10 = M_BytesTo4ByteValue(securityProtocol, M_Word1(securityProtocolSpecific), M_Word0(securityProtocolSpecific), nvmeSecuritySpecificField);
     adminCommand.cmd.adminCmd.cdw11 = dataLength;
@@ -180,7 +183,6 @@ int nvme_Security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t se
     adminCommand.commandDirection = XFER_DATA_IN;
     adminCommand.cmd.adminCmd.addr = (uint64_t)ptrData;//TODO: does this need a cast?
     adminCommand.ptrData = ptrData;
-    adminCommand.cmd.adminCmd.dataLen = dataLength;
     adminCommand.dataSize = dataLength;
     adminCommand.cmd.adminCmd.cdw10 = M_BytesTo4ByteValue(securityProtocol, M_Word1(securityProtocolSpecific), M_Word0(securityProtocolSpecific), nvmeSecuritySpecificField);
     adminCommand.cmd.adminCmd.cdw11 = dataLength;
@@ -420,10 +422,10 @@ int nvme_Firmware_Image_Dl(tDevice *device,\
     ImageDl.commandType = NVM_ADMIN_CMD;
     ImageDl.commandDirection = XFER_DATA_OUT;
 	ImageDl.cmd.adminCmd.addr = (uint64_t)ptrData;
-	ImageDl.cmd.adminCmd.dataLen = numberOfBytes;
+    ImageDl.ptrData = ptrData;
+    ImageDl.dataSize = numberOfBytes;
 	ImageDl.cmd.adminCmd.cdw10 = (numberOfBytes >> 2) - 1; //Since this is, 0 based, number of DWords not Bytes. 
     ImageDl.cmd.adminCmd.cdw11 = bufferOffset >> 2;
-    ImageDl.result = 0;
     ImageDl.timeout = 15;
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -431,11 +433,6 @@ int nvme_Firmware_Image_Dl(tDevice *device,\
         printf("Sending NVMe Firmware Image Download Command\n");
     }
     ret = nvme_Cmd(device, &ImageDl);
-    if ( (ret != SUCCESS) && (VERBOSITY_QUIET < device->deviceVerbosity) )
-    {
-        //14h is OVERLAPPING RANGE
-        printf("\nNVME Firmware Download Command Failed (0x%02X)\n",ImageDl.result);
-    }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Firmware Image Download", ret);
@@ -448,16 +445,9 @@ int nvme_Firmware_Commit(tDevice *device, nvmeFWCommitAction commitAction, uint8
     int ret = BAD_PARAMETER;
     nvmeCmdCtx FirmwareCommit;
 
-    if ( (firmwareSlot < 1) 
-         || (firmwareSlot > 7)
-         || (commitAction >= NVME_CA_INVALID) )
+    if (firmwareSlot > 7)
     {
-        if(VERBOSITY_QUIET < device->deviceVerbosity)
-        {
-            printf("WARN: Possibly invalid parameters for Firmware Commit CMD CA=0x%02X, FS=0x%02X\n",\
-                   firmwareSlot, commitAction);
-        }
-        // return ret; // Not returning in case someone wants to test their drive with bogus params
+        return BAD_PARAMETER;//returning this for now.
     }
     memset(&FirmwareCommit, 0, sizeof(FirmwareCommit));
 
@@ -466,7 +456,6 @@ int nvme_Firmware_Commit(tDevice *device, nvmeFWCommitAction commitAction, uint8
     FirmwareCommit.commandDirection = XFER_NO_DATA;
 	FirmwareCommit.cmd.adminCmd.cdw10 = (commitAction << 3); // 05:03 Bits CA
     FirmwareCommit.cmd.adminCmd.cdw10 |= (firmwareSlot & 0x07); // 02:00 Bits Firmware Slot
-    FirmwareCommit.result = 0;
     FirmwareCommit.timeout = 15;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -474,51 +463,7 @@ int nvme_Firmware_Commit(tDevice *device, nvmeFWCommitAction commitAction, uint8
     }
     ret = nvme_Cmd(device, &FirmwareCommit);
 
-    if(ret != SUCCESS)
-    {
-        switch(device->os_info.last_error & 0x00FF)
-        {
-        case NVME_FW_DL_REQUIRES_SYS_RST:
-        case NVME_FW_DL_REQUIRES_NVM_RST:
-        case NVME_FW_DL_ON_NEXT_RST:
-            ret = SUCCESS;
-            break;
-        case NVME_FW_DL_INVALID_SLOT:
-            if(VERBOSITY_QUIET < device->deviceVerbosity)
-            {
-                printf("INVALID SLOT\n");
-            }
-        case NVME_FW_DL_INVALID_IMG:
-            if(VERBOSITY_QUIET < device->deviceVerbosity)
-            {
-                printf("INVALID IMAGE\n");
-            }
-        case NVME_FW_DL_MAX_TIME_VIOLATION:
-            if(VERBOSITY_QUIET < device->deviceVerbosity)
-            {
-                printf("Err: Firmware Activation Requires Maximum Time Violation\n");
-            }
-        case NVME_FW_DL_ACT_PROHIBITED:
-            if(VERBOSITY_QUIET < device->deviceVerbosity)
-            {
-                printf("ACTIVATION PROHIBITED\n");
-            }
-        case NVME_FW_DL_OVERLAPPING_RANGE:
-            if(VERBOSITY_QUIET < device->deviceVerbosity)
-            {
-                printf("OVERLAPPING RANGE\n");
-            }
-        default:
-            printf("device->os_info.last_error=0x%x\n", device->os_info.last_error);
-            break;
-        }
-    }
-        
-    if ( (ret != SUCCESS) && (VERBOSITY_QUIET < device->deviceVerbosity) )
-    {
-        printf("\nNVME Firmware Commit Command Failed (0x%02X)\n",FirmwareCommit.result);
-        //TODO: add a switch statement for enum nvmeFWCommitRC 
-    }
+    //removed all the code checking for specific status code since it was not really in the right place.
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Firmware Commit", ret);
@@ -536,10 +481,8 @@ int nvme_Identify(tDevice *device, uint8_t *ptrData, uint32_t nvmeNamespace, uin
     identify.commandDirection = XFER_DATA_IN;
 	identify.cmd.adminCmd.nsid = nvmeNamespace;
 	identify.cmd.adminCmd.addr = (uint64_t)ptrData;
-	identify.cmd.adminCmd.dataLen = NVME_IDENTIFY_DATA_LEN;
 	identify.cmd.adminCmd.cdw10 = cns;
     identify.timeout = 15;
-	//Added the following for Windows. 
 	identify.ptrData = ptrData;
 	identify.dataSize = NVME_IDENTIFY_DATA_LEN;
 
@@ -564,10 +507,9 @@ int nvme_Get_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
 	getFeatures.cmd.adminCmd.opcode = NVME_ADMIN_CMD_GET_FEATURES;
     getFeatures.commandType = NVM_ADMIN_CMD;
     getFeatures.commandDirection = XFER_DATA_IN;
-	//getFeatures.cmd.adminCmd.addr = NULL;
-	getFeatures.cmd.adminCmd.dataLen = 0;
     getFeatures.cmd.adminCmd.addr = featCmdOpts->prp1; // TODO: dataLen? 
     getFeatures.cmd.adminCmd.metadata = featCmdOpts->prp2; 
+    //getFeatures.dataSize = featCmdOpts.dataSize; //TODO: allow this since a get features could return other data
 
     dWord10 = featCmdOpts->sel << 8; 
     dWord10 |= featCmdOpts->fid;
@@ -591,7 +533,7 @@ int nvme_Get_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
 
     if (ret == SUCCESS) 
     {
-        featCmdOpts->featSetGetValue = getFeatures.result;
+        featCmdOpts->featSetGetValue = getFeatures.commandCompletionData.commandSpecific;
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -609,9 +551,8 @@ int nvme_Set_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
     setFeatures.cmd.adminCmd.opcode = NVME_ADMIN_CMD_SET_FEATURES;
     setFeatures.commandType = NVM_ADMIN_CMD;
     setFeatures.commandDirection = XFER_DATA_OUT;
-    //getFeatures.cmd.adminCmd.addr = NULL;
-    setFeatures.cmd.adminCmd.dataLen = 0;
-    setFeatures.cmd.adminCmd.addr = featCmdOpts->prp1; // TODO: dataLen? 
+    setFeatures.cmd.adminCmd.addr = featCmdOpts->prp1; 
+    //setFeatures.dataSize = featCmdOpts.dataSize;// TODO: dataLen? 
     setFeatures.cmd.adminCmd.metadata = featCmdOpts->prp2; 
 
     dWord10 = featCmdOpts->sv << 30; 
@@ -693,7 +634,8 @@ int nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts
     #else
     getLogPage.cmd.adminCmd.addr = (uint64_t)getLogPageCmdOpts->addr;
     #endif
-    getLogPage.cmd.adminCmd.dataLen = getLogPageCmdOpts->dataLen;
+    getLogPage.dataSize = getLogPageCmdOpts->dataLen;
+    getLogPage.ptrData = getLogPageCmdOpts->addr;
     getLogPage.cmd.adminCmd.nsid = getLogPageCmdOpts->nsid;
 
     numDwords = (getLogPageCmdOpts->dataLen / NVME_DWORD_SIZE) - 1;//zero based DWORD value
@@ -986,7 +928,7 @@ int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *ExtdSMARTInfo)
     extSmatLog.commandDirection = XFER_DATA_IN;
     extSmatLog.cmd.adminCmd.nsid = nsid;
     extSmatLog.cmd.adminCmd.addr = (uint64_t)ptr;
-    extSmatLog.cmd.adminCmd.dataLen = data_len;
+    extSmatLog.dataSize = data_len;
     extSmatLog.cmd.adminCmd.cdw10 = log_id | (numdl << 16);
     extSmatLog.cmd.adminCmd.cdw11 = numdu;
     extSmatLog.timeout = 15;
@@ -1017,7 +959,7 @@ int pci_Correctble_Err(tDevice *device,uint8_t  opcode, uint32_t  nsid, uint32_t
     //pciEr.commandDirection = XFER_DATA_IN;
     pciEr.cmd.adminCmd.nsid = nsid;
     pciEr.cmd.adminCmd.addr = (uint64_t)data;
-    pciEr.cmd.adminCmd.dataLen = data_len;
+    pciEr.dataSize = data_len;
     pciEr.cmd.adminCmd.cdw10 = cdw10;
     pciEr.cmd.adminCmd.cdw11 = cdw11;
     pciEr.timeout = 15;

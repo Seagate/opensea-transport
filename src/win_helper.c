@@ -4096,7 +4096,11 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     default:
     }*/
     //get the error return code
-    nvmeIoCtx->result = pNVMeWinCtx->storageProtocolCommand.ErrorCode;
+    nvmeIoCtx->commandCompletionData.commandSpecific = pNVMeWinCtx->storageProtocolCommand.CommandSpecific;
+    nvmeIoCtx->commandCompletionData.dw0Valid = true;
+    nvmeIoCtx->commandCompletionData.statusAndCID = pNVMeWinCtx->storageProtocolCommand.ErrorCode;
+    nvmeIoCtx->commandCompletionData.dw1Valid = true;
+    //TODO: do we need this error code, or do we look at the error info offset for the provided length???
     //set last command time
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     //check how long it took to set timeout error if necessary
@@ -4551,7 +4555,7 @@ int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
 	protocolData->ProtocolDataRequestValue = nvmeIoCtx->cmd.adminCmd.cdw10 & 0x000000FF;
 	protocolData->ProtocolDataRequestSubValue = M_Nibble2(nvmeIoCtx->cmd.adminCmd.cdw10);//bits 11:08 log page specific
 	protocolData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA);
-	protocolData->ProtocolDataLength = nvmeIoCtx->cmd.adminCmd.dataLen;
+	protocolData->ProtocolDataLength = nvmeIoCtx->dataSize;
 	
 	//
 	// Send request down.
@@ -4600,15 +4604,20 @@ int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
 		protocolData = &protocolDataDescr->ProtocolSpecificData;
 
 		if ((protocolData->ProtocolDataOffset < sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA)) ||
-			(protocolData->ProtocolDataLength < nvmeIoCtx->cmd.adminCmd.dataLen)) 
+			(protocolData->ProtocolDataLength < nvmeIoCtx->dataSize))
 		{			
 			#if defined (_DEBUG)
 			printf("%s: Error Log - ProtocolData Offset/Length not valid\n", __FUNCTION__);
 			#endif
 			returnValue = OS_PASSTHROUGH_FAILURE;
 		}
-		char* logData = (char*)((PCHAR)protocolData + protocolData->ProtocolDataOffset);
-		memcpy(nvmeIoCtx->ptrData, (void*)logData, nvmeIoCtx->cmd.adminCmd.dataLen);
+		uint8_t* logData = (uint8_t*)((PCHAR)protocolData + protocolData->ProtocolDataOffset);
+        if (nvmeIoCtx->ptrData && protocolData->ProtocolDataLength > 0)
+        {
+            memcpy(nvmeIoCtx->ptrData, logData, M_Min(protocolData->ProtocolDataLength, nvmeIoCtx->dataSize));
+        }
+        nvmeIoCtx->commandCompletionData.commandSpecific = protocolData->FixedProtocolReturnData;//This should only be DWORD 0
+        nvmeIoCtx->commandCompletionData.dw0Valid = true;
 	}
 
 	free(buffer);
@@ -4658,7 +4667,7 @@ int send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
     protocolData->ProtocolDataRequestValue = M_Byte0(nvmeIoCtx->cmd.adminCmd.cdw10);
     protocolData->ProtocolDataRequestSubValue = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 10, 8);//Examples show this as set to zero...I'll try setting this to the "select" field value...0 does get current info, which is probably what is wanted most of the time.
     protocolData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA);
-    protocolData->ProtocolDataLength = nvmeIoCtx->cmd.adminCmd.dataLen;
+    protocolData->ProtocolDataLength = nvmeIoCtx->dataSize;
 
     //
     // Send request down.
@@ -4707,18 +4716,23 @@ int send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
         protocolData = &protocolDataDescr->ProtocolSpecificData;
 
         if ((protocolData->ProtocolDataOffset < sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA)) ||
-            (protocolData->ProtocolDataLength < nvmeIoCtx->cmd.adminCmd.dataLen))
+            (protocolData->ProtocolDataLength < nvmeIoCtx->dataSize))
         {
 #if defined (_DEBUG)
             printf("%s: Error Feature - ProtocolData Offset/Length not valid\n", __FUNCTION__);
 #endif
             returnValue = OS_PASSTHROUGH_FAILURE;
         }
-        char* logData = (char*)((PCHAR)protocolData + protocolData->ProtocolDataOffset);
-        memcpy(nvmeIoCtx->ptrData, (void*)logData, nvmeIoCtx->cmd.adminCmd.dataLen);
+        uint8_t* featData = (uint8_t*)((PCHAR)protocolData + protocolData->ProtocolDataOffset);
+        if (nvmeIoCtx->ptrData && protocolData->ProtocolDataLength > 0)
+        {
+            memcpy(nvmeIoCtx->ptrData, featData, M_Min(nvmeIoCtx->dataSize, protocolData->ProtocolDataLength));
+        }
+        nvmeIoCtx->commandCompletionData.commandSpecific = protocolData->FixedProtocolReturnData;//This should only be DWORD 0 on a get features command anyways...
+        nvmeIoCtx->commandCompletionData.dw0Valid = true;
     }
 
-    free(buffer);
+    safe_Free(buffer);
 
     return returnValue;
 }
@@ -4776,7 +4790,8 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
     if (fwdlIO)
     {
         ret = SUCCESS;
-        nvmeIoCtx->result = 0;
+        nvmeIoCtx->commandCompletionData.commandSpecific = 0;
+        nvmeIoCtx->commandCompletionData.dw0Valid = true;
     }
     else
     {
@@ -4799,7 +4814,7 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
 int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
-    uint32_t dataLength = nvmeIoCtx->cmd.adminCmd.dataLen;
+    uint32_t dataLength = nvmeIoCtx->dataSize;
     //send download IOCTL
     DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + dataLength;
     PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD)malloc(downloadStructureSize);
@@ -4870,7 +4885,8 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     if (fwdlIO)
     {
         ret = SUCCESS;
-        nvmeIoCtx->result = 0;
+        nvmeIoCtx->commandCompletionData.commandSpecific = 0;
+        nvmeIoCtx->commandCompletionData.dw0Valid = true;
     }
     else
     {
@@ -5126,6 +5142,8 @@ int send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx *nvmeIoCtx)
     {
         //TODO: should we validate the returned data to make sure we got what value we requested? - TJE
         ret = SUCCESS;
+        nvmeIoCtx->commandCompletionData.commandSpecific = 0;
+        nvmeIoCtx->commandCompletionData.dw0Valid = true;
     }
     else
     {
@@ -5135,7 +5153,8 @@ int send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx *nvmeIoCtx)
             print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
         }
         //Todo....set a better error condition
-        nvmeIoCtx->result = 0x0E;
+        nvmeIoCtx->commandCompletionData.commandSpecific = 0x0E;
+        nvmeIoCtx->commandCompletionData.dw0Valid = true;
         ret = FAILURE;
     }
 
@@ -6185,18 +6204,19 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         //case NVME_CMD_WRITE_ZEROS://This isn't translatable unless the SCSI to NVM translation spec is updated. - TJE
             //FSCTL_SET_ZERO_DATA (and maybe also FSCTL_ALLOW_EXTENDED_DASD_IO)...might not work and only do filesystem level stuff
             //break;
-        case NVME_CMD_RESERVATION_REGISTER://Translation only available in later specifications!
-            ret = win10_Translate_Reservation_Register(nvmeIoCtx);
-            break;
-        case NVME_CMD_RESERVATION_REPORT://Translation only available in later specifications!
-            ret = win10_Translate_Reservation_Report(nvmeIoCtx);
-            break;
-        case NVME_CMD_RESERVATION_ACQUIRE://Translation only available in later specifications!
-            ret = win10_Translate_Reservation_Acquire(nvmeIoCtx);
-            break;
-        case NVME_CMD_RESERVATION_RELEASE://Translation only available in later specifications!
-            ret = win10_Translate_Reservation_Release(nvmeIoCtx);
-            break;
+        //Removing reservation translations for now...need to review them. - TJE
+        //case NVME_CMD_RESERVATION_REGISTER://Translation only available in later specifications!
+        //    ret = win10_Translate_Reservation_Register(nvmeIoCtx);
+        //    break;
+        //case NVME_CMD_RESERVATION_REPORT://Translation only available in later specifications!
+        //    ret = win10_Translate_Reservation_Report(nvmeIoCtx);
+        //    break;
+        //case NVME_CMD_RESERVATION_ACQUIRE://Translation only available in later specifications!
+        //    ret = win10_Translate_Reservation_Acquire(nvmeIoCtx);
+        //    break;
+        //case NVME_CMD_RESERVATION_RELEASE://Translation only available in later specifications!
+        //    ret = win10_Translate_Reservation_Release(nvmeIoCtx);
+        //    break;
         default:
             //Check if it's a vendor unique op code.
             if (nvmeIoCtx->cmd.adminCmd.opcode >= 0x80 && nvmeIoCtx->cmd.adminCmd.opcode <= 0xFF)//admin commands in this range are vendor unique

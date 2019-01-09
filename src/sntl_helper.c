@@ -4976,7 +4976,7 @@ int sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsi
             {
                 nvmeFeaturesCmdOpt features;
                 memset(&features, 0, sizeof(nvmeFeaturesCmdOpt));
-                features.fid = NVME_POWER_MGMT_FEAT;
+                features.fid = NVME_FEAT_POWER_MGMT_;
                 features.featSetGetValue = 0;//power state zero
                 if (!noFlush)
                 {
@@ -4988,7 +4988,7 @@ int sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsi
             {
                 nvmeFeaturesCmdOpt features;
                 memset(&features, 0, sizeof(nvmeFeaturesCmdOpt));
-                features.fid = NVME_POWER_MGMT_FEAT;
+                features.fid = NVME_FEAT_POWER_MGMT_;
                 //send lowest state, which is a higher number value for lowest power consumption (zero means max).
                 features.featSetGetValue = device->drive_info.IdentifyData.nvme.ctrl.npss;
                 if (!noFlush)
@@ -5013,7 +5013,7 @@ int sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsi
         {
             nvmeFeaturesCmdOpt features;
             memset(&features, 0, sizeof(nvmeFeaturesCmdOpt));
-            features.fid = NVME_POWER_MGMT_FEAT;
+            features.fid = NVME_FEAT_POWER_MGMT_;
             features.featSetGetValue = 0;//power state zero
             if (!noFlush)
             {
@@ -5039,7 +5039,7 @@ int sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsi
         {
             nvmeFeaturesCmdOpt features;
             memset(&features, 0, sizeof(nvmeFeaturesCmdOpt));
-            features.fid = NVME_POWER_MGMT_FEAT;
+            features.fid = NVME_FEAT_POWER_MGMT_;
             features.featSetGetValue = powerConditionModifier + 1;
             if (!noFlush)
             {
@@ -5065,7 +5065,7 @@ int sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsi
         {
             nvmeFeaturesCmdOpt features;
             memset(&features, 0, sizeof(nvmeFeaturesCmdOpt));
-            features.fid = NVME_POWER_MGMT_FEAT;
+            features.fid = NVME_FEAT_POWER_MGMT_;
             features.featSetGetValue = device->drive_info.IdentifyData.nvme.ctrl.npss - 2;
             if (!noFlush)
             {
@@ -5077,7 +5077,7 @@ int sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsi
         {
             nvmeFeaturesCmdOpt features;
             memset(&features, 0, sizeof(nvmeFeaturesCmdOpt));
-            features.fid = NVME_POWER_MGMT_FEAT;
+            features.fid = NVME_FEAT_POWER_MGMT_;
             features.featSetGetValue = device->drive_info.IdentifyData.nvme.ctrl.npss - 1;
             if (!noFlush)
             {

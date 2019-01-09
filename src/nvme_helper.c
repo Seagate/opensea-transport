@@ -125,6 +125,7 @@ void print_NVMe_Cmd_Verbose(const nvmeCmdCtx * cmdCtx)
         break;
     }
     printf("\n");
+    printf("Data Length: %" PRIu32 "\n", cmdCtx->dataSize);
     //printf("Cmd result 0x%02X\n", cmdCtx->result);
     printf("Command Bytes:\n");
     switch (cmdCtx->commandType)
@@ -139,7 +140,6 @@ void print_NVMe_Cmd_Verbose(const nvmeCmdCtx * cmdCtx)
         printf("\tMetadata = %" PRIu64 "\n", cmdCtx->cmd.adminCmd.metadata);
         printf("\tMetadata Length = %" PRIu32 "\n", cmdCtx->cmd.adminCmd.metadataLen);
         printf("\tAddress = %" PRIu64 "\n", cmdCtx->cmd.adminCmd.addr);
-        printf("\tData Length = %" PRIu32 "\n", cmdCtx->cmd.adminCmd.dataLen);
         printf("\tCDW10 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw10);
         printf("\tCDW11 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw11);
         printf("\tCDW12 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw12);
@@ -188,7 +188,45 @@ void print_NVMe_Cmd_Verbose(const nvmeCmdCtx * cmdCtx)
 void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
 {
     //TODO: Print out the result/error information!
-    printf("NVM Command Result: %08" PRIX32 "h\n", cmdCtx->result);
+    printf("NVM Command Completion:\n");
+    printf("\tCommand Specific (DW0): ");
+    if (cmdCtx->commandCompletionData.dw0Valid)
+    {
+        printf("%" PRIu32 "\n", cmdCtx->commandCompletionData.commandSpecific);
+    }
+    else
+    {
+        printf("Unavailable from OS\n");
+    }
+    printf("\tReserved (DW1): ");
+    if (cmdCtx->commandCompletionData.dw1Valid)
+    {
+        printf("%" PRIu32 "\n", cmdCtx->commandCompletionData.dw1Reserved);
+    }
+    else
+    {
+        printf("Unavailable from OS\n");
+    }
+    printf("\tSQ ID & SQ Head Ptr (DW2): ");
+    if (cmdCtx->commandCompletionData.dw2Valid)
+    {
+        printf("%" PRIu32 "\n", cmdCtx->commandCompletionData.sqIDandHeadPtr);
+    }
+    else
+    {
+        printf("Unavailable from OS\n");
+    }
+    printf("\tStatus & CID (DW3): ");
+    if (cmdCtx->commandCompletionData.dw3Valid)
+    {
+        printf("%" PRIu32 "\n", cmdCtx->commandCompletionData.statusAndCID);
+        //TODO: get the status code type and status code and decode this to something human readable!!!
+        //also print out the phase tag, CID, more bit, and do not retry bit
+    }
+    else
+    {
+        printf("Unavailable from OS\n");
+    }
 }
 
 
@@ -393,7 +431,7 @@ int nvme_Print_PM_Feature_Details(tDevice *device, eNvmeFeaturesSelectValue sele
     printf("-->%s\n",__FUNCTION__);
 #endif
     memset(&featureCmd, 0, sizeof(nvmeFeaturesCmdOpt));
-    featureCmd.fid = NVME_POWER_MGMT_FEAT;
+    featureCmd.fid = NVME_FEAT_POWER_MGMT_;
     featureCmd.sel = selectType;
     ret = nvme_Get_Features(device, &featureCmd);
     if(ret == SUCCESS)
@@ -606,7 +644,7 @@ int nvme_Print_Feature_Details(tDevice *device, uint8_t featureID, eNvmeFeatures
     case NVME_FEAT_ARBITRATION_:
         ret = nvme_Print_Arbitration_Feature_Details(device, selectType);
         break;
-    case NVME_POWER_MGMT_FEAT:
+    case NVME_FEAT_POWER_MGMT_:
         ret = nvme_Print_PM_Feature_Details(device, selectType);
         break;
     case NVME_FEAT_TEMP_THRESH_:
