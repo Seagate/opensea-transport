@@ -23,6 +23,46 @@ int nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
 {
     int ret = UNKNOWN;
     cmdCtx->device = device;
+    //check the opcode bits for data direction and the data direction and make sure they match!
+    //If they don't match, return an error for BAD_PARAMETER. Most OS passthroughs parse the op code to figure this out
+    //The enum helps us confirm we know what the command sender is intending to do and it will get done correctly!
+    uint8_t opcode = M_Byte0(cmdCtx->cmd.dwords.cdw0);
+    if (cmdCtx->commandType == NVM_ADMIN_CMD)
+    {
+        opcode = cmdCtx->cmd.adminCmd.opcode;
+    }
+    else if (cmdCtx->commandType == NVM_CMD)
+    {
+        opcode = cmdCtx->cmd.nvmCmd.opcode;
+    }
+    switch (M_GETBITRANGE(opcode, 1, 0))
+    {
+    case 0://no data
+        if (cmdCtx->commandDirection != XFER_NO_DATA)
+        {
+            return BAD_PARAMETER;
+        }
+        break;
+    case 1://host to controller (out)
+        if (cmdCtx->commandDirection != XFER_DATA_OUT)
+        {
+            return BAD_PARAMETER;
+        }
+        break;
+    case 2://controller to host (in)
+        if (cmdCtx->commandDirection != XFER_DATA_IN)
+        {
+            return BAD_PARAMETER;
+        }
+        break;
+    case 3://bidirectional
+    default://handles bidirectional...
+        if (cmdCtx->commandDirection != XFER_DATA_IN_OUT && cmdCtx->commandDirection != XFER_DATA_OUT_IN)
+        {
+            return BAD_PARAMETER;
+        }
+        break;
+    }
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
         print_NVMe_Cmd_Verbose(cmdCtx);
@@ -41,6 +81,15 @@ int nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
         printf("\n");
     }
     ret = send_NVMe_IO(cmdCtx);
+    if (cmdCtx->commandCompletionData.dw3Valid)
+    {
+        device->drive_info.lastNVMeStatus = cmdCtx->commandCompletionData.statusAndCID;
+    }
+    else
+    {
+        //didn't get a status for one reason or another, so clear out anything that may have been left behind from a previous command.
+        device->drive_info.lastNVMeStatus = 0;
+    }
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
         print_NVMe_Cmd_Result_Verbose(cmdCtx);//This function is currently a stub! Need to fill it in with something useful! We may need to add reading the error log to get something to print out! - TJE
