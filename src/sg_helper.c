@@ -1328,7 +1328,7 @@ int close_Device(tDevice *dev)
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 {
-    int ret = 0;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
+    int ret = SUCCESS;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
 	seatimer_t commandTimer;
 	memset(&commandTimer, 0, sizeof(commandTimer));
     struct nvme_admin_cmd adminCmd;
@@ -1353,7 +1353,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         adminCmd.metadata = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.adminCmd.metadata;
         adminCmd.addr = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.adminCmd.addr;
         adminCmd.metadata_len = nvmeIoCtx->cmd.adminCmd.metadataLen;
-        adminCmd.data_len = nvmeIoCtx->cmd.adminCmd.dataLen;
+        adminCmd.data_len = nvmeIoCtx->dataSize;
         adminCmd.cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
         adminCmd.cdw11 = nvmeIoCtx->cmd.adminCmd.cdw11;
         adminCmd.cdw12 = nvmeIoCtx->cmd.adminCmd.cdw12;
@@ -1362,14 +1362,12 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         adminCmd.cdw15 = nvmeIoCtx->cmd.adminCmd.cdw15;
         adminCmd.timeout_ms = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
 		start_Timer(&commandTimer);
-        ret = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_ADMIN_CMD, &adminCmd);
+        nvmeIoCtx->commandCompletionData.statusAndCID = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_ADMIN_CMD, &adminCmd);
 		stop_Timer(&commandTimer);
-        nvmeIoCtx->device->os_info.last_error = ret;
-		if (ret < 0)
-		{
-			ret = OS_PASSTHROUGH_FAILURE;
-		}
-        nvmeIoCtx->result = adminCmd.result;
+        nvmeIoCtx->device->os_info.last_error = errno;
+        nvmeIoCtx->commandCompletionData.commandSpecific = adminCmd.result;
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw0Valid = true;
         break;
     case NVM_CMD:
         //check opcode to perform the correct IOCTL
@@ -1392,15 +1390,11 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             nvmCmd.apptag = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw15);
             nvmCmd.appmask = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw15);
             start_Timer(&commandTimer);
-            ret = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_SUBMIT_IO, &nvmCmd);
+            nvmeIoCtx->commandCompletionData.statusAndCID = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_SUBMIT_IO, &nvmCmd);
     		stop_Timer(&commandTimer);
-            nvmeIoCtx->device->os_info.last_error = ret;
-            if (ret < 0)
-    		{
-    			ret = OS_PASSTHROUGH_FAILURE;
-    		}
-            //TODO: How do we set the result on read/write?
-            //nvmeIoCtx->result = adminCmd.result;
+    		nvmeIoCtx->commandCompletionData.dw3Valid = true;
+            nvmeIoCtx->device->os_info.last_error = errno;
+            //TODO: How do we set the command specific result on read/write?
             break;
         default:
             //use the generic passthrough command structure and IO_CMD
@@ -1423,14 +1417,12 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             passThroughCmd->cdw15 = nvmeIoCtx->cmd.nvmCmd.cdw15;
             passThroughCmd->timeout_ms = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;//timeout is in seconds, so converting to milliseconds
             start_Timer(&commandTimer);
-            ret = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_IO_CMD, passThroughCmd);
+            nvmeIoCtx->commandCompletionData.statusAndCID = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_IO_CMD, passThroughCmd);
     		stop_Timer(&commandTimer);
-            nvmeIoCtx->device->os_info.last_error = ret;
-            if (ret < 0)
-    		{
-    			ret = OS_PASSTHROUGH_FAILURE;
-    		}
-            nvmeIoCtx->result = passThroughCmd->result;
+            nvmeIoCtx->device->os_info.last_error = errno;
+            nvmeIoCtx->commandCompletionData.commandSpecific = passThroughCmd->result;
+            nvmeIoCtx->commandCompletionData.dw3Valid = true;
+            nvmeIoCtx->commandCompletionData.dw0Valid = true;
             break;
         }
         break;
