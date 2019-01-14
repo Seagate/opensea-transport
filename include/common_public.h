@@ -597,7 +597,7 @@ extern "C"
 		uint16_t			nabo;
 		uint16_t			nabspf;
 		uint16_t			noiob;
-		uint64_t			nvmcap;
+		uint8_t			    nvmcap[16];//128bit number
     	uint8_t 			rsvd40[40];//bytes 103:64
 		uint8_t				nguid[16];
     	uint8_t 			eui64[8];
@@ -950,7 +950,6 @@ extern "C"
             uint8_t         minorVersion;
             uint8_t         revision;
         }sgDriverVersion;
-        bool                sntlViaSG;//When set to true, we can use SGIO to issue scsi commands and they'll be translated to NVMe for us. If false, this is not available. TODO: if false, use software translation.
         long                pageSize;//A.K.A. alignment requirements for Linux.
         #elif defined (_WIN32)
         HANDLE              fd;

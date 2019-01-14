@@ -23,6 +23,7 @@ extern "C"
 
     void print_NVMe_Cmd_Verbose(const nvmeCmdCtx * cmdCtx);
     void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx);
+    void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord, bool *doNotRetry, bool *more, uint8_t *statusCodeType, uint8_t *statusCode);
 
 //-----------------------------------------------------------------------------
 //

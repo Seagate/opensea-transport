@@ -192,7 +192,7 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
     printf("\tCommand Specific (DW0): ");
     if (cmdCtx->commandCompletionData.dw0Valid)
     {
-        printf("%" PRIu32 "\n", cmdCtx->commandCompletionData.commandSpecific);
+        printf("%" PRIX32 "h\n", cmdCtx->commandCompletionData.commandSpecific);
     }
     else
     {
@@ -201,7 +201,7 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
     printf("\tReserved (DW1): ");
     if (cmdCtx->commandCompletionData.dw1Valid)
     {
-        printf("%" PRIu32 "\n", cmdCtx->commandCompletionData.dw1Reserved);
+        printf("%" PRIX32 "h\n", cmdCtx->commandCompletionData.dw1Reserved);
     }
     else
     {
@@ -210,7 +210,7 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
     printf("\tSQ ID & SQ Head Ptr (DW2): ");
     if (cmdCtx->commandCompletionData.dw2Valid)
     {
-        printf("%" PRIu32 "\n", cmdCtx->commandCompletionData.sqIDandHeadPtr);
+        printf("%" PRIX32 "h\n", cmdCtx->commandCompletionData.sqIDandHeadPtr);
     }
     else
     {
@@ -219,7 +219,7 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
     printf("\tStatus & CID (DW3): ");
     if (cmdCtx->commandCompletionData.dw3Valid)
     {
-        printf("%" PRIu32 "\n", cmdCtx->commandCompletionData.statusAndCID);
+        printf("%" PRIX32 "h\n", cmdCtx->commandCompletionData.statusAndCID);
         //TODO: get the status code type and status code and decode this to something human readable!!!
         //also print out the phase tag, CID, more bit, and do not retry bit
     }
@@ -229,6 +229,16 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
     }
 }
 
+void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord, bool *doNotRetry, bool *more, uint8_t *statusCodeType, uint8_t *statusCode)
+{
+    if (doNotRetry && more && statusCodeType && statusCode)
+    {
+        *doNotRetry = nvmeStatusDWord & BIT31;
+        *more  = nvmeStatusDWord & BIT30;
+        *statusCodeType = M_GETBITRANGE(nvmeStatusDWord, 27, 25);
+        *statusCode = M_GETBITRANGE(nvmeStatusDWord, 24, 17);
+    }
+}
 
 char *nvme_cmd_to_string(int admin, uint8_t opcode)
 {
