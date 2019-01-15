@@ -95,6 +95,9 @@ extern "C"
     //-----------------------------------------------------------------------------
     int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
 
+    int nvme_Reset(tDevice *device);
+
+    int nvme_Subsystem_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //

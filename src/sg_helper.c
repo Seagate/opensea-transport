@@ -1478,6 +1478,106 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     return ret;
 }
 
+//to be used with a deep scan???
+int nvme_Rescan()
+{
+    int ret = OS_PASSTHROUGH_FAILURE;
+    int ioRes = ioctl(device->os_info.fd, NVME_IOCTL_RESCAN);
+    if (ioRes < 0)
+    {   
+        //failed!
+        perror("NVMe Rescan");
+    }
+    else
+    {
+        //success!
+        ret = SUCCESS;
+    }
+    return ret;
+}
+
+int nvme_Reset(tDevice *device)
+{
+    int ret = OS_PASSTHROUGH_FAILURE;
+    seatimer_t commandTimer;
+	memset(&commandTimer, 0, sizeof(commandTimer));
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        printf("Sending NVMe Reset\n");
+    }
+    device->os_info.last_error = 0;
+    start_Timer(&commandTimer);
+    int ioRes = ioctl(device->os_info.fd, NVME_IOCTL_RESET);
+    stop_Timer(&commandTimer);
+    device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    device->drive_info.lastNVMeStatus = 0;
+    if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+    {   
+        print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
+    }
+    if (ioRes < 0)
+    {   
+        //failed!
+        device->os_info.last_error = errno;
+        if (device->deviceVerbosity > VERBOSITY_COMMAND_VERBOSE && device->os_info.last_error != 0)
+        {
+            printf("Error: ");
+            print_Errno_To_Screen(device->os_info.last_error);
+        }
+    }
+    else
+    {
+        //success!
+        ret = SUCCESS;
+    }
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        print_Return_Enum("NVMe Reset", ret);
+    }
+    return ret;
+}
+
+int nvme_Subsystem_Reset(tDevice *device)
+{
+    int ret = OS_PASSTHROUGH_FAILURE;
+    seatimer_t commandTimer;
+	memset(&commandTimer, 0, sizeof(commandTimer));
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        printf("Sending NVMe Subsystem Reset\n");
+    }
+    device->os_info.last_error = 0;
+    start_Timer(&commandTimer);
+    int ioRes = ioctl(device->os_info.fd, NVME_IOCTL_SUBSYS_RESET);
+    stop_Timer(&commandTimer);
+    device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    device->drive_info.lastNVMeStatus = 0;
+    if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+    {   
+        print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
+    }
+    if (ioRes < 0)
+    {   
+        //failed!
+        device->os_info.last_error = errno;
+        if (device->deviceVerbosity > VERBOSITY_COMMAND_VERBOSE && device->os_info.last_error != 0)
+        {
+            printf("Error: ");
+            print_Errno_To_Screen(device->os_info.last_error);
+        }
+    }
+    else
+    {
+        //success!
+        ret = SUCCESS;
+    }
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        print_Return_Enum("NVMe Subsystem Reset", ret);
+    }
+    return ret;
+}
+
 //Case to remove this from sg_helper.h/c and have a platform/lin/pci-herlper.h vs platform/win/pci-helper.c 
 
 int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )

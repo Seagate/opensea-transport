@@ -6235,6 +6235,36 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 	return ret;
 }
 
+int nvme_Reset(tDevice *device)
+{
+    //This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code otherwise compile without ifdefs
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        printf("Sending NVMe Reset\n");
+    }
+    
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        print_Return_Enum("NVMe Reset", OS_COMMAND_NOT_AVAILABLE);
+    }
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+
+int nvme_Subsystem_Reset(tDevice *device)
+{
+    //This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code otherwise compile without ifdefs
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        printf("Sending NVMe Subsystem Reset\n");
+    }
+    
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        print_Return_Enum("NVMe Subsystem Reset", OS_COMMAND_NOT_AVAILABLE);
+    }
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+
 int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize)
 {
     return NOT_SUPPORTED;

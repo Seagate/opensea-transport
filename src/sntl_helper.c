@@ -4833,9 +4833,43 @@ int sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoC
                 set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 return ret;
             }
-            if (commitAction == NVME_CA_REPLACE_ACTIVITE_ON_RST)
+            //need to check if the status of the commit says we need a reset too!
+            int resetType = 0;//0 = no reset, 1 = reset, 2 = susb system reset
+            bool dnr = false, more = false;
+            uint8_t sct = 0, sc = 0;
+            get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeStatus, &dnr, &more, &sct, &sc);
+            if (sct == NVME_SCT_COMMAND_SPECIFIC_STATUS)
             {
-                //TODO: issue a nvme reset to activate the firmware!!!
+                switch (sc)
+                {
+                case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
+                    resetType = 2;
+                    break;
+                case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
+                case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
+                    resetType = 1;
+                    break;
+                default:
+                    resetType = 0;
+                    break;
+                }
+            }
+            if (commitAction == NVME_CA_REPLACE_ACTIVITE_ON_RST || resetType > 0)
+            {
+                if (resetType == 0)
+                {
+                    resetType = 1;
+                }
+                if (resetType == 1)
+                {
+                    //reset
+                    nvme_Reset(device);
+                }
+                else if (resetType == 2)
+                {
+                    //subsystem reset
+                    nvme_Subsystem_Reset(device);
+                }
             }
         }
         else //these fields are reserved or vendor specific so make sure they are zeroed out
@@ -4922,9 +4956,43 @@ int sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoC
                     set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                     return ret;
                 }
-                if (commitAction == NVME_CA_REPLACE_ACTIVITE_ON_RST)
+                //need to check if the status of the commit says we need a reset too!
+                int resetType = 0;//0 = no reset, 1 = reset, 2 = susb system reset
+                bool dnr = false, more = false;
+                uint8_t sct = 0, sc = 0;
+                get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeStatus, &dnr, &more, &sct, &sc);
+                if (sct == NVME_SCT_COMMAND_SPECIFIC_STATUS)
                 {
-                    //TODO: issue a nvme reset to activate the firmware!!!
+                    switch (sc)
+                    {
+                    case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
+                        resetType = 2;
+                        break;
+                    case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
+                    case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
+                        resetType = 1;
+                        break;
+                    default:
+                        resetType = 0;
+                        break;
+                    }
+                }
+                if (commitAction == NVME_CA_REPLACE_ACTIVITE_ON_RST || resetType > 0)
+                {
+                    if (resetType == 0)
+                    {
+                        resetType = 1;
+                    }
+                    if (resetType == 1)
+                    {
+                        //reset
+                        nvme_Reset(device);
+                    }
+                    else if (resetType == 2)
+                    {
+                        //subsystem reset
+                        nvme_Subsystem_Reset(device);
+                    }
                 }
             }
             else
