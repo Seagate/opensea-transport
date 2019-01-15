@@ -84,6 +84,10 @@ int nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
     if (cmdCtx->commandCompletionData.dw3Valid)
     {
         device->drive_info.lastNVMeStatus = cmdCtx->commandCompletionData.statusAndCID;
+        if (ret != OS_PASSTHROUGH_FAILURE && ret != OS_COMMAND_NOT_AVAILABLE && ret != OS_COMMAND_BLOCKED)
+        {
+            ret = check_NVMe_Status(cmdCtx->commandCompletionData.statusAndCID);
+        }
     }
     else
     {
@@ -92,7 +96,7 @@ int nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
     }
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
-        print_NVMe_Cmd_Result_Verbose(cmdCtx);//This function is currently a stub! Need to fill it in with something useful! We may need to add reading the error log to get something to print out! - TJE
+        print_NVMe_Cmd_Result_Verbose(cmdCtx);
     }
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {

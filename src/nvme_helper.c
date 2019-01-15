@@ -134,12 +134,12 @@ void print_NVMe_Cmd_Verbose(const nvmeCmdCtx * cmdCtx)
         printf("\tOpcode (CDW0) = %" PRIu8 "\n", cmdCtx->cmd.adminCmd.opcode);
         printf("\tFlags (CDW0) = %" PRIu8 "\n", cmdCtx->cmd.adminCmd.flags);
         printf("\tReserved (CDW0) = %" PRIu16 "\n", cmdCtx->cmd.adminCmd.rsvd1);
-        printf("\tNSID = %" PRIu32 "\n", cmdCtx->cmd.adminCmd.nsid);
+        printf("\tNSID = %" PRIX32 "h\n", cmdCtx->cmd.adminCmd.nsid);
         printf("\tCDW2 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw2);
         printf("\tCDW3 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw3);
-        printf("\tMetadata = %" PRIu64 "\n", cmdCtx->cmd.adminCmd.metadata);
+        printf("\tMetadata Ptr = %" PRIX64 "h\n", cmdCtx->cmd.adminCmd.metadata);
         printf("\tMetadata Length = %" PRIu32 "\n", cmdCtx->cmd.adminCmd.metadataLen);
-        printf("\tAddress = %" PRIu64 "\n", cmdCtx->cmd.adminCmd.addr);
+        printf("\tData Ptr = %" PRIX64 "h\n", cmdCtx->cmd.adminCmd.addr);
         printf("\tCDW10 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw10);
         printf("\tCDW11 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw11);
         printf("\tCDW12 = %08" PRIX32 "h\n", cmdCtx->cmd.adminCmd.cdw12);
@@ -151,12 +151,12 @@ void print_NVMe_Cmd_Verbose(const nvmeCmdCtx * cmdCtx)
         printf("\tOpcode (CDW0) = %" PRIu8 "\n", cmdCtx->cmd.nvmCmd.opcode);
         printf("\tFlags (CDW0) = %" PRIu8 "\n", cmdCtx->cmd.nvmCmd.flags);
         printf("\tCommand ID (CDW0) = %" PRIu16 "\n", cmdCtx->cmd.nvmCmd.commandId);
-        printf("\tNSID = %" PRIu32 "\n", cmdCtx->cmd.nvmCmd.nsid);
+        printf("\tNSID = %" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.nsid);
         printf("\tCDW2 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw2);
         printf("\tCDW3 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw3);
-        printf("\tMetadata (CDW4 & 5) = %" PRIu64 "\n", cmdCtx->cmd.nvmCmd.metadata);
-        printf("\tPRP1 (CDW6 & 7) = %" PRIu64 "\n", cmdCtx->cmd.nvmCmd.prp1);
-        printf("\tPRP2 (CDW8 & 9) = %" PRIu64 "\n", cmdCtx->cmd.nvmCmd.prp2);
+        printf("\tMetadata Ptr (CDW4 & 5) = %" PRIX64 "h\n", cmdCtx->cmd.nvmCmd.metadata);
+        printf("\tData Pointer (CDW6 & 7) = %" PRIX64 "h\n", cmdCtx->cmd.nvmCmd.prp1);
+        printf("\tData Pointer (CDW8 & 9) = %" PRIX64 "h\n", cmdCtx->cmd.nvmCmd.prp2);
         printf("\tCDW10 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw10);
         printf("\tCDW11 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw11);
         printf("\tCDW12 = %08" PRIX32 "h\n", cmdCtx->cmd.nvmCmd.cdw12);
@@ -183,6 +183,241 @@ void print_NVMe_Cmd_Verbose(const nvmeCmdCtx * cmdCtx)
         printf("\tCDW15 = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw15);
         break;
     }
+    printf("\n");
+}
+
+void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord, bool *doNotRetry, bool *more, uint8_t *statusCodeType, uint8_t *statusCode)
+{
+    if (doNotRetry && more && statusCodeType && statusCode)
+    {
+        *doNotRetry = nvmeStatusDWord & BIT31;
+        *more  = nvmeStatusDWord & BIT30;
+        *statusCodeType = M_GETBITRANGE(nvmeStatusDWord, 27, 25);
+        *statusCode = M_GETBITRANGE(nvmeStatusDWord, 24, 17);
+    }
+}
+
+//TODO: this function needs to be expanded as new status codes are added
+//TODO: use doNotRetry and more bits in some useful way?
+int check_NVMe_Status(uint32_t nvmeStatusDWord)
+{
+    int ret = SUCCESS;
+    //bool doNotRetry = nvmeStatusDWord & BIT31;
+    //bool more  = nvmeStatusDWord & BIT30;
+    uint8_t statusCodeType = M_GETBITRANGE(nvmeStatusDWord, 27, 25);
+    uint8_t statusCode = M_GETBITRANGE(nvmeStatusDWord, 24, 17);
+
+    switch (statusCodeType)
+    {
+    case NVME_SCT_GENERIC_COMMAND_STATUS://generic
+        switch (statusCode)
+        {
+        case NVME_GEN_SC_SUCCESS_:
+            ret = SUCCESS;
+            break;
+        case NVME_GEN_SC_INVALID_OPCODE_:
+            ret = NOT_SUPPORTED;
+            break;
+        case NVME_GEN_SC_INVALID_FIELD_:
+            ret = NOT_SUPPORTED;
+            break;
+        case NVME_GEN_SC_CMDID_CONFLICT_:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_DATA_XFER_ERROR_:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_POWER_LOSS_:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_INTERNAL_:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_ABORT_REQ_:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_ABORT_QUEUE_:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_FUSED_FAIL_:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_FUSED_MISSING_:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_INVALID_NS_:
+            ret = NOT_SUPPORTED;
+            break;
+        case NVME_GEN_SC_CMD_SEQ_ERROR_:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_INVALID_SGL_SEGMENT_DESCRIPTOR:
+            ret = NOT_SUPPORTED;
+            break;
+        case NVME_GEN_SC_INVALID_NUMBER_OF_SGL_DESCRIPTORS:
+            ret = NOT_SUPPORTED;
+            break;
+        case NVME_GEN_SC_DATA_SGL_LENGTH_INVALID:
+            ret = NOT_SUPPORTED;
+            break;
+        case NVME_GEN_SC_METADATA_SGL_LENGTH_INVALID:
+            ret = NOT_SUPPORTED;
+            break;
+        case NVME_GEN_SC_SGL_DESCRIPTOR_TYPE_INVALID:
+            ret = NOT_SUPPORTED;
+            break;
+        case NVME_GEN_SC_INVALID_USE_OF_CONTROLLER_MEMORY_BUFFER:
+            ret = NOT_SUPPORTED;
+            break;
+        case NVME_GEN_SC_PRP_OFFSET_INVALID:
+            ret = NOT_SUPPORTED;
+            break;
+        case NVME_GEN_SC_ATOMIC_WRITE_UNIT_EXCEEDED:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_OPERATION_DENIED:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_SGL_OFFSET_INVALID:
+            ret = NOT_SUPPORTED;
+            break;
+        case NVME_GEN_SC_HOST_IDENTIFIER_INCONSISTENT_FORMAT:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_KEEP_ALIVE_TIMEOUT_EXPIRED:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_KEEP_ALIVE_TIMEOUT_INVALID:
+            ret = NOT_SUPPORTED;
+            break;
+        case NVME_GEN_SC_COMMAND_ABORTED_DUE_TO_PREEMPT_AND_ABORT:
+            ret = ABORTED;
+            break;
+        case NVME_GEN_SC_SANITIZE_FAILED:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_SANITIZE_IN_PROGRESS:
+            ret = IN_PROGRESS;
+            break;
+        case NVME_GEN_SC_SGL_DATA_BLOCK_GRANULARITY_INVALID:
+            ret = NOT_SUPPORTED;
+            break;
+        case NVME_GEN_SC_COMMAND_NOT_SUPPORTED_FOR_QUEUE_IN_CMB:
+            ret = NOT_SUPPORTED;
+            break;
+            //80-BF are NVM command set specific                
+        case NVME_GEN_SC_LBA_RANGE_:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_CAP_EXCEEDED_:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_NS_NOT_READY_:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_RESERVATION_CONFLICT:
+            ret = FAILURE;
+            break;
+        case NVME_GEN_SC_FORMAT_IN_PROGRESS:
+            ret = IN_PROGRESS;
+            break;
+        default:
+            ret = UNKNOWN;
+            break;
+        }
+        break;
+    case NVME_SCT_COMMAND_SPECIFIC_STATUS://command specific
+        switch (statusCode)
+        {
+        case NVME_CMD_SP_SC_CQ_INVALID_:
+        case NVME_CMD_SP_SC_QID_INVALID_:
+        case NVME_CMD_SP_SC_QUEUE_SIZE_:
+        case NVME_CMD_SP_SC_ABORT_LIMIT_:
+            //NVME_CMD_SP_SC_ABORT_MISSING_ = 0x04,//reserved in NVMe specs
+        case NVME_CMD_SP_SC_ASYNC_LIMIT_:
+            ret = FAILURE;
+            break;
+        case NVME_CMD_SP_SC_INVALID_FIRMWARE_SLOT_:
+        case NVME_CMD_SP_SC_INVALIDFIRMWARE_IMAGE_:
+        case NVME_CMD_SP_SC_INVALID_INTERRUPT_VECTOR_:
+        case NVME_CMD_SP_SC_INVALID_LOG_PAGE_:
+        case NVME_CMD_SP_SC_INVALID_FORMAT_:
+            ret = NOT_SUPPORTED;
+            break;
+        case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
+            ret = SUCCESS;
+            break;
+        case NVME_CMD_SP_SC_INVALID_QUEUE_DELETION:
+        case NVME_CMD_SP_SC_FEATURE_IDENTIFIER_NOT_SAVABLE:
+        case NVME_CMD_SP_SC_FEATURE_NOT_CHANGEABLE:
+        case NVME_CMD_SP_SC_FEATURE_NOT_NAMESPACE_SPECIFC:
+            ret = FAILURE;
+            break;
+        case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
+        case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
+        case NVME_CMD_SP_SC_FW_ACT_REQ_MAX_TIME_VIOALTION:
+            ret = SUCCESS;
+            break;
+        case NVME_CMD_SP_SC_FW_ACT_PROHIBITED:
+        case NVME_CMD_SP_SC_OVERLAPPING_RANGE:
+        case NVME_CMD_SP_SC_NS_INSUFFICIENT_CAP:
+        case NVME_CMD_SP_SC_NS_ID_UNAVAILABLE:
+        case NVME_CMD_SP_SC_NS_ALREADY_ATTACHED:
+        case NVME_CMD_SP_SC_NS_IS_PRIVATE:
+        case NVME_CMD_SP_SC_NS_NOT_ATTACHED:
+            ret = FAILURE;
+            break;
+        case NVME_CMD_SP_SC_THIN_PROVISIONING_NOT_SUPPORTED:
+        case NVME_CMD_SP_SC_CONTROLLER_LIST_INVALID:
+            ret = NOT_SUPPORTED;
+            break;
+        case NVME_CMD_SP_SC_DEVICE_SELF_TEST_IN_PROGRESS:
+            ret = IN_PROGRESS;
+            break;
+        case NVME_CMD_SP_SC_BOOT_PARTITION_WRITE_PROHIBITED:
+            ret = FAILURE;
+            break;
+        case NVME_CMD_SP_SC_INVALID_CONTROLLER_IDENTIFIER:
+        case NVME_CMD_SP_SC_INVALID_SECONDARY_CONTROLLER_STATE:
+        case NVME_CMD_SP_SC_INVALID_NUMBER_OF_CONTROLLER_RESOURCES:
+        case NVME_CMD_SP_SC_INVALID_RESOURCE_IDENTIFIER:
+            ret = NOT_SUPPORTED;
+            break;
+            //80-BF are NVM command set specific                 
+        case NVME_CMD_SP_SC_CONFLICTING_ATTRIBUTES_:
+        case NVME_CMD_SP_SC_INVALID_PROTECTION_INFORMATION:
+        case NVME_CMD_SP_SC_ATTEMPTED_WRITE_TO_READ_ONLY_RANGE:
+            ret = FAILURE;
+            break;
+        default:
+            return UNKNOWN;
+        }
+        break;
+    case NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS://media or data errors
+        switch (statusCode)
+        {
+        case NVME_MED_ERR_SC_WRITE_FAULT_:
+        case NVME_MED_ERR_SC_UNREC_READ_ERROR_:
+        case NVME_MED_ERR_SC_ETE_GUARD_CHECK_:
+        case NVME_MED_ERR_SC_ETE_APPTAG_CHECK_:
+        case NVME_MED_ERR_SC_ETE_REFTAG_CHECK_:
+        case NVME_MED_ERR_SC_COMPARE_FAILED_:
+        case NVME_MED_ERR_SC_ACCESS_DENIED_:
+        case NVME_MED_ERR_SC_DEALLOCATED_OR_UNWRITTEN_LOGICAL_BLOCK:
+            ret = FAILURE;
+            break;
+        default:
+            return UNKNOWN;
+        }
+        break;
+    case NVME_SCT_VENDOR_SPECIFIC:
+        //fall through to default.
+    default:
+        //unknown meaning. Either reserved or vendor unique.
+        ret = UNKNOWN;
+        break;
+    }
+    return ret;
 }
 
 void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
@@ -219,7 +454,31 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
     printf("\tStatus & CID (DW3): ");
     if (cmdCtx->commandCompletionData.dw3Valid)
     {
+        bool dnr = false, more = false;
+        uint8_t statusCodeType = 0;
+        uint8_t statusCode = 0;
         printf("%" PRIX32 "h\n", cmdCtx->commandCompletionData.statusAndCID);
+        get_NVMe_Status_Fields_From_DWord(cmdCtx->commandCompletionData.statusAndCID, &dnr, &more, &statusCodeType, &statusCode);
+        printf("\t\tDo Not Retry: ");
+        if (dnr)
+        {
+            printf("True\n");
+        }
+        else
+        {
+            printf("False\n");
+        }
+        printf("\t\tMore: ");
+        if (more)
+        {
+            printf("True\n");
+        }
+        else
+        {
+            printf("False\n");
+        }
+        printf("\t\tStatus Code Type: %" PRIX8 "h\n", statusCodeType);
+        printf("\t\tStatus Code: %" PRIX8 "h\n", statusCode);
         //TODO: get the status code type and status code and decode this to something human readable!!!
         //also print out the phase tag, CID, more bit, and do not retry bit
     }
@@ -227,17 +486,7 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
     {
         printf("Unavailable from OS\n");
     }
-}
-
-void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord, bool *doNotRetry, bool *more, uint8_t *statusCodeType, uint8_t *statusCode)
-{
-    if (doNotRetry && more && statusCodeType && statusCode)
-    {
-        *doNotRetry = nvmeStatusDWord & BIT31;
-        *more  = nvmeStatusDWord & BIT30;
-        *statusCodeType = M_GETBITRANGE(nvmeStatusDWord, 27, 25);
-        *statusCode = M_GETBITRANGE(nvmeStatusDWord, 24, 17);
-    }
+    printf("\n");
 }
 
 char *nvme_cmd_to_string(int admin, uint8_t opcode)

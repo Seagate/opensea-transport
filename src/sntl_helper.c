@@ -1923,11 +1923,8 @@ int sntl_Translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *scsiIoCtx)
     //    offset += increment;
     //}
     //temperature log
-    if (device->drive_info.softSATFlags.deviceStatsPages.temperatureStatisticsSupported)
-    {
-        supportedPages[offset] = LP_TEMPERATURE;
-        offset += increment;
-    }
+    supportedPages[offset] = LP_TEMPERATURE;
+    offset += increment;
     ////If smart self test is supported, add the self test results log (10h)
     //if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)
     //{
@@ -1948,11 +1945,8 @@ int sntl_Translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *scsiIoCtx)
     //TODO: add logs
 
     //if smart is supported, add informational exceptions log page (2Fh)
-    if (device->drive_info.IdentifyData.ata.Word082 & BIT0)
-    {
-        supportedPages[offset] = LP_INFORMATION_EXCEPTIONS;
-        offset += increment;
-    }
+    supportedPages[offset] = LP_INFORMATION_EXCEPTIONS;
+    offset += increment;
     //TODO: add logs
 
     //set the page length (Do this last)
@@ -2008,13 +2002,14 @@ int sntl_Translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiIoCtx)
             set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             return FAILURE;
         }
+        uint16_t currentTempK = M_BytesTo2ByteValue(logPage[2], logPage[1]);
         //current temp
         temperatureLog[offset + 0] = 0;
         temperatureLog[offset + 1] = 0;
         temperatureLog[offset + 2] = 0x03;//format and linking = 11b
         temperatureLog[offset + 3] = 0x02;//length
         temperatureLog[offset + 4] = RESERVED;
-        temperatureLog[offset + 5] = M_BytesTo2ByteValue(logPage[2], logPage[1]) - 273;
+        temperatureLog[offset + 5] = (uint8_t)(currentTempK - 273);
         offset += 6;
     }
     if (parameterPointer <= 1)
@@ -2028,12 +2023,13 @@ int sntl_Translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiIoCtx)
         getTempThresh.featSetGetValue = 0;
         if(SUCCESS == nvme_Get_Features(device, &getTempThresh))
         {
+            uint16_t tempThreshK = (uint16_t)getTempThresh.featSetGetValue;
             temperatureLog[offset + 0] = 0;
             temperatureLog[offset + 1] = 1;
             temperatureLog[offset + 2] = 0x03;//format and linking = 11b
             temperatureLog[offset + 3] = 0x02;
             temperatureLog[offset + 4] = RESERVED;
-            temperatureLog[offset + 5] = getTempThresh.featSetGetValue - 273;
+            temperatureLog[offset + 5] = (uint8_t)(tempThreshK - 273);
             offset += 6;
         }
         else
@@ -2047,7 +2043,7 @@ int sntl_Translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiIoCtx)
     temperatureLog[3] = M_Byte0(offset - 4);
     if (scsiIoCtx->pdata)
     {
-        memcpy(scsiIoCtx->pdata, temperatureLog, M_Min(M_Min(14U, offset), scsiIoCtx->dataLength));
+        memcpy(scsiIoCtx->pdata, temperatureLog, M_Min(M_Max(16U, offset), scsiIoCtx->dataLength));
     }
     return ret;
 }

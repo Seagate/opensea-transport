@@ -653,6 +653,7 @@ int get_Device(const char *filename, tDevice *device)
                  return ret;
             }
             device->drive_info.lunOrNSID = (uint32_t) ret;
+            device->drive_info.namespaceID = (uint32_t)ret;
             device->os_info.osType = OS_LINUX;
             device->drive_info.media_type = MEDIA_NVM;
 
@@ -1320,6 +1321,8 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     struct nvme_user_io nvmCmd;// it's possible that this is not defined in some funky early nvme kernel, but we don't see that today. This seems to be defined everywhere. -TJE
     struct nvme_passthru_cmd *passThroughCmd = (struct nvme_passthru_cmd*)&adminCmd;//setting a pointer since these are defined to be the same. No point in allocating yet another structure. - TJE
 
+    int32_t ioctlResult = 0;
+
     if (!nvmeIoCtx)
     {
         return BAD_PARAMETER; 
@@ -1347,12 +1350,28 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         adminCmd.cdw15 = nvmeIoCtx->cmd.adminCmd.cdw15;
         adminCmd.timeout_ms = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
 		start_Timer(&commandTimer);
-        nvmeIoCtx->commandCompletionData.statusAndCID = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_ADMIN_CMD, &adminCmd);
+        ioctlResult = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_ADMIN_CMD, &adminCmd);
 		stop_Timer(&commandTimer);
         nvmeIoCtx->device->os_info.last_error = errno;
-        nvmeIoCtx->commandCompletionData.commandSpecific = adminCmd.result;
-        nvmeIoCtx->commandCompletionData.dw3Valid = true;
-        nvmeIoCtx->commandCompletionData.dw0Valid = true;
+        if (ioctlResult < 0)
+        {
+            ret = OS_PASSTHROUGH_FAILURE;
+            if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
+            {
+                if (nvmeIoCtx->device->os_info.last_error != 0)
+                {
+                    printf("Error: ");
+                    print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
+                }
+            }
+        }
+        else
+        {
+            nvmeIoCtx->commandCompletionData.commandSpecific = adminCmd.result;
+            nvmeIoCtx->commandCompletionData.dw3Valid = true;
+            nvmeIoCtx->commandCompletionData.dw0Valid = true;
+            nvmeIoCtx->commandCompletionData.statusAndCID = ioctlResult << 17;//shift into place since we don't get the phase tag or command ID bits and these are the status field
+        }
         break;
     case NVM_CMD:
         //check opcode to perform the correct IOCTL
@@ -1375,11 +1394,27 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             nvmCmd.apptag = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw15);
             nvmCmd.appmask = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw15);
             start_Timer(&commandTimer);
-            nvmeIoCtx->commandCompletionData.statusAndCID = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_SUBMIT_IO, &nvmCmd);
+            ioctlResult = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_SUBMIT_IO, &nvmCmd);
     		stop_Timer(&commandTimer);
-    		nvmeIoCtx->commandCompletionData.dw3Valid = true;
             nvmeIoCtx->device->os_info.last_error = errno;
-            //TODO: How do we set the command specific result on read/write?
+            if (ioctlResult < 0)
+            {
+                ret = OS_PASSTHROUGH_FAILURE;
+                if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
+                {
+                    if (nvmeIoCtx->device->os_info.last_error != 0)
+                    {
+                        printf("Error: ");
+                        print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
+                    }
+                }
+            }
+            else
+            {
+        		nvmeIoCtx->commandCompletionData.dw3Valid = true;
+                //TODO: How do we set the command specific result on read/write?
+                nvmeIoCtx->commandCompletionData.statusAndCID = ioctlResult << 17;//shift into place since we don't get the phase tag or command ID bits and these are the status field
+            }
             break;
         default:
             //use the generic passthrough command structure and IO_CMD
@@ -1402,12 +1437,28 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             passThroughCmd->cdw15 = nvmeIoCtx->cmd.nvmCmd.cdw15;
             passThroughCmd->timeout_ms = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;//timeout is in seconds, so converting to milliseconds
             start_Timer(&commandTimer);
-            nvmeIoCtx->commandCompletionData.statusAndCID = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_IO_CMD, passThroughCmd);
+            ioctlResult = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_IO_CMD, passThroughCmd);
     		stop_Timer(&commandTimer);
             nvmeIoCtx->device->os_info.last_error = errno;
-            nvmeIoCtx->commandCompletionData.commandSpecific = passThroughCmd->result;
-            nvmeIoCtx->commandCompletionData.dw3Valid = true;
-            nvmeIoCtx->commandCompletionData.dw0Valid = true;
+            if (ioctlResult < 0)
+            {
+                ret = OS_PASSTHROUGH_FAILURE;
+                if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
+                {
+                    if (nvmeIoCtx->device->os_info.last_error != 0)
+                    {
+                        printf("Error: ");
+                        print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
+                    }
+                }
+            }
+            else
+            {
+                nvmeIoCtx->commandCompletionData.commandSpecific = passThroughCmd->result;
+                nvmeIoCtx->commandCompletionData.dw3Valid = true;
+                nvmeIoCtx->commandCompletionData.dw0Valid = true;
+                nvmeIoCtx->commandCompletionData.statusAndCID = ioctlResult << 17;//shift into place since we don't get the phase tag or command ID bits and these are the status field
+            }
             break;
         }
         break;

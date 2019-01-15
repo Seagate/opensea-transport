@@ -24,6 +24,7 @@ extern "C"
     void print_NVMe_Cmd_Verbose(const nvmeCmdCtx * cmdCtx);
     void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx);
     void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord, bool *doNotRetry, bool *more, uint8_t *statusCodeType, uint8_t *statusCode);
+    int check_NVMe_Status(uint32_t nvmeStatusDWord);//converts NVMe status to a return status used by open-sea libs
 
 //-----------------------------------------------------------------------------
 //
