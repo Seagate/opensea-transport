@@ -26,6 +26,10 @@ extern "C"
     void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord, bool *doNotRetry, bool *more, uint8_t *statusCodeType, uint8_t *statusCode);
     int check_NVMe_Status(uint32_t nvmeStatusDWord);//converts NVMe status to a return status used by open-sea libs
 
+    //These reset functions will be defined in the os_Helper file since this is OS specific. Not all OS's will support this function either.
+    int nvme_Reset(tDevice *device);
+    int nvme_Subsystem_Reset(tDevice *device);
+
 //-----------------------------------------------------------------------------
 //
 //  nvme_Cmd()

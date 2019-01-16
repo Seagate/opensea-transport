@@ -1478,7 +1478,118 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     return ret;
 }
 
+int linux_NVMe_Reset(tDevice *device, bool subsystemReset)
+{
+    //Can only do a reset on a controller handle. Need to get the controller handle if this is a namespace handle!!!
+    int ret = OS_PASSTHROUGH_FAILURE;
+    int handleToReset = device->os_info.fd;
+    seatimer_t commandTimer;
+	memset(&commandTimer, 0, sizeof(commandTimer));
+    uint16_t controllerNumber = 0;
+    uint32_t namespaceID = 0;
+    int ioRes = 0;
+    bool openedControllerHandle = false;//used so we can close the handle at the end.
+    //Need to make sure the handle we use to issue the reset is a controller handle and not a namespace handle.
+    int sscanfRes = sscanf(device->os_info.name, "/dev/nvme%" SCNu16 "n%" SCNu32 , &controllerNumber, &namespaceID);
+    if (sscanfRes == 2)
+    {
+        //found a namespace. Need to open a controller handle instead and use it.
+        char controllerHandle[40] = { 0 };
+        snprintf(controllerHandle, 40, "/dev/nvme%" PRIu16, controllerNumber);
+        if ((handleToReset = open(controllerHandle, O_RDWR | O_NONBLOCK)) < 0)
+        {
+            device->os_info.last_error = errno;
+            if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+            {
+                printf("Error opening controller handle for nvme reset: ");
+                print_Errno_To_Screen(errno);
+            }
+            if (errno == EACCES) 
+            {
+                return PERMISSION_DENIED;
+            }
+            else
+            {
+                return OS_PASSTHROUGH_FAILURE;
+            }
+        }
+        openedControllerHandle = true;
+    }
+    device->os_info.last_error = 0;
+    if (subsystemReset)
+    {
+        start_Timer(&commandTimer);
+        ioRes = ioctl(handleToReset, NVME_IOCTL_SUBSYS_RESET);
+        stop_Timer(&commandTimer);
+    }
+    else
+    {   
+        start_Timer(&commandTimer);
+        ioRes = ioctl(handleToReset, NVME_IOCTL_RESET);
+        stop_Timer(&commandTimer);
+    }
+    device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    device->drive_info.lastNVMeStatus = 0;
+    if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+    {   
+        print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
+    }
+    if (ioRes < 0)
+    {   
+        //failed!
+        device->os_info.last_error = errno;
+        if (device->deviceVerbosity > VERBOSITY_COMMAND_VERBOSE && device->os_info.last_error != 0)
+        {
+            printf("Error: ");
+            print_Errno_To_Screen(device->os_info.last_error);
+        }
+    }
+    else
+    {
+        //success!
+        ret = SUCCESS;
+    }
+    if (openedControllerHandle)
+    {
+        //close the controller handle we opened in this function
+        close(handleToReset);
+    }
+    return ret;
+}
+
+int nvme_Reset(tDevice *device)
+{
+    int ret = SUCCESS;
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        printf("Sending NVMe Reset\n");
+    }
+    ret = linux_NVMe_Reset(device, false);
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        print_Return_Enum("NVMe Reset", ret);
+    }
+    return ret;
+}
+
+int nvme_Subsystem_Reset(tDevice *device)
+{
+    int ret = SUCCESS;
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        printf("Sending NVMe Subsystem Reset\n");
+    }
+    ret = linux_NVMe_Reset(device, false);
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        print_Return_Enum("NVMe Subsystem Reset", ret);
+    }
+    return ret;
+}
+
 //to be used with a deep scan???
+//fd must be a controller handle
+//TODO: Should we rework the linux_NVMe_Reset call to handle this too?
 int nvme_Namespace_Rescan(int fd)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
@@ -1492,88 +1603,6 @@ int nvme_Namespace_Rescan(int fd)
     {
         //success!
         ret = SUCCESS;
-    }
-    return ret;
-}
-
-int nvme_Reset(tDevice *device)
-{
-    int ret = OS_PASSTHROUGH_FAILURE;
-    seatimer_t commandTimer;
-	memset(&commandTimer, 0, sizeof(commandTimer));
-    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-    {
-        printf("Sending NVMe Reset\n");
-    }
-    device->os_info.last_error = 0;
-    start_Timer(&commandTimer);
-    int ioRes = ioctl(device->os_info.fd, NVME_IOCTL_RESET);
-    stop_Timer(&commandTimer);
-    device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    device->drive_info.lastNVMeStatus = 0;
-    if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-    {   
-        print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
-    }
-    if (ioRes < 0)
-    {   
-        //failed!
-        device->os_info.last_error = errno;
-        if (device->deviceVerbosity > VERBOSITY_COMMAND_VERBOSE && device->os_info.last_error != 0)
-        {
-            printf("Error: ");
-            print_Errno_To_Screen(device->os_info.last_error);
-        }
-    }
-    else
-    {
-        //success!
-        ret = SUCCESS;
-    }
-    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-    {
-        print_Return_Enum("NVMe Reset", ret);
-    }
-    return ret;
-}
-
-int nvme_Subsystem_Reset(tDevice *device)
-{
-    int ret = OS_PASSTHROUGH_FAILURE;
-    seatimer_t commandTimer;
-	memset(&commandTimer, 0, sizeof(commandTimer));
-    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-    {
-        printf("Sending NVMe Subsystem Reset\n");
-    }
-    device->os_info.last_error = 0;
-    start_Timer(&commandTimer);
-    int ioRes = ioctl(device->os_info.fd, NVME_IOCTL_SUBSYS_RESET);
-    stop_Timer(&commandTimer);
-    device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    device->drive_info.lastNVMeStatus = 0;
-    if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-    {   
-        print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
-    }
-    if (ioRes < 0)
-    {   
-        //failed!
-        device->os_info.last_error = errno;
-        if (device->deviceVerbosity > VERBOSITY_COMMAND_VERBOSE && device->os_info.last_error != 0)
-        {
-            printf("Error: ");
-            print_Errno_To_Screen(device->os_info.last_error);
-        }
-    }
-    else
-    {
-        //success!
-        ret = SUCCESS;
-    }
-    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-    {
-        print_Return_Enum("NVMe Subsystem Reset", ret);
     }
     return ret;
 }

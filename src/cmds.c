@@ -293,7 +293,7 @@ int fill_Drive_Info_Data(tDevice *device)
 	return status;
 }
 
-int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber)
+int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber, bool existingImage)
 {
     int ret = UNKNOWN;
 #ifdef _DEBUG
@@ -337,7 +337,64 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
         switch (dlMode)
         {
         case DL_FW_ACTIVATE:
-            ret = nvme_Firmware_Commit(device, NVME_CA_REPLACE_ACTIVITE_ON_RST, slotNumber);
+            {
+                uint8_t statusCodeType = 0, statusCode = 0;
+                bool doNotRetry = false, more = false;
+                bool issueReset = false, subsystem = false;
+                if (device->drive_info.IdentifyData.nvme.ctrl.frmw & BIT4)
+                {
+                    //this activate action can be used for replacing or activating existing images if the controller supports it.
+                    ret = nvme_Firmware_Commit(device, NVME_CA_ACTIVITE_IMMEDIATE, slotNumber);
+                }
+                else
+                {
+                    if (existingImage)
+                    {
+                        ret = nvme_Firmware_Commit(device, NVME_CA_ACTIVITE_ON_RST, slotNumber);
+                    }
+                    else
+                    {
+                        ret = nvme_Firmware_Commit(device, NVME_CA_REPLACE_ACTIVITE_ON_RST, slotNumber);
+                    }
+                    if (ret == SUCCESS)
+                    {
+                        issueReset = true;
+                    }
+                }
+                //Issue a reset if we need to!
+                get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeStatus, &doNotRetry, &more, &statusCodeType, &statusCode);
+                if (statusCodeType == NVME_SCT_COMMAND_SPECIFIC_STATUS)
+                {
+                    switch (statusCode)
+                    {
+                    case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
+                        issueReset = true;
+                        subsystem = true;
+                        break;
+                    case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
+                    case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
+                        issueReset = true;
+                        break;
+                    default:
+                        break;
+                    }
+                }
+                if (issueReset)
+                {
+                    //send an appropriate reset to the device to activate the firmware.
+                    //NOTE: On Windows, this is a stub since their API call will do this for us.
+                    if (subsystem)
+                    {
+                        //subsystem reset
+                        nvme_Subsystem_Reset(device);
+                    }
+                    else
+                    {
+                        //reset
+                        nvme_Reset(device);
+                    }
+                }
+            }
             break;
         case DL_FW_DEFERRED:
             ret = nvme_Firmware_Image_Dl(device, offset, xferLen, ptrData);
@@ -393,9 +450,9 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
     return ret;
 }
 
-int firmware_Download_Activate(tDevice *device, uint8_t slotNumber)
+int firmware_Download_Activate(tDevice *device, uint8_t slotNumber, bool existingImage)
 {
-    return firmware_Download_Command(device, DL_FW_ACTIVATE, 0, 0, NULL, slotNumber);
+    return firmware_Download_Command(device, DL_FW_ACTIVATE, 0, 0, NULL, slotNumber, existingImage);
 }
 
 int security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
