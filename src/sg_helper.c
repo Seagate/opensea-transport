@@ -184,6 +184,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
         {
             device->drive_info.interface_type = NVME_INTERFACE;
     		device->drive_info.drive_type = NVME_DRIVE;
+            sprintf(device->os_info.name, "%s", handle);
+            sprintf(device->os_info.friendlyName, "%s", basename(handle));
         }
         else //not NVMe, so we need to do some investigation of the handle. NOTE: this requires 2.6 and later kernel since it reads a link in the /sys/class/ filesystem
         {
@@ -676,7 +678,7 @@ int get_Device(const char *filename, tDevice *device)
             return NOT_SUPPORTED;//return not supported since NVMe-passthrough is disabled
             #endif //DISABLE_NVME_PASSTHROUGH
         }
-        else
+        else //not NVMe
         {
 
             #if defined (_DEBUG)
