@@ -1479,10 +1479,10 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 }
 
 //to be used with a deep scan???
-int nvme_Rescan()
+int nvme_Namespace_Rescan(int fd)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
-    int ioRes = ioctl(device->os_info.fd, NVME_IOCTL_RESCAN);
+    int ioRes = ioctl(fd, NVME_IOCTL_RESCAN);
     if (ioRes < 0)
     {   
         //failed!

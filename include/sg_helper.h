@@ -138,7 +138,8 @@ int nvme_Reset(tDevice *device);
 int nvme_Subsystem_Reset(tDevice *device);
 
 //to be used with a deep scan???
-int nvme_Rescan()
+int nvme_Namespace_Rescan(int fd)//rescans a controller for namespaces. This must be a file descriptor without a namespace. EX: /dev/nvme0 and NOT /dev/nvme0n1
+
 
 #endif
 
