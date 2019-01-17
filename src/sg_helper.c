@@ -1469,14 +1469,6 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         break;
     }
 	nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
-    {
-        if (nvmeIoCtx->device->os_info.last_error != 0)
-        {
-            printf("Error: ");
-            print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
-        }
-    }
     return ret;
 }
 
