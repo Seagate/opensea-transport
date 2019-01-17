@@ -227,48 +227,10 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
             {
                 bool printToScreen = true;
                 bool fileOpened = false;
-                JSONContext *scanjsonContext = NULL;//allocate if we use it.
                 if (outputInfo)
                 {
                     switch (outputInfo->outputFormat)
                     {
-                    case SEAC_OUTPUT_JSON:
-                        printToScreen = false;
-                        scanjsonContext = (JSONContext*)calloc(sizeof(JSONContext) * 1, sizeof(JSONContext));
-                        if (!scanjsonContext)
-                        {
-                            perror("could not allocate memory!");
-                            return;
-                        }
-                        //find the file to print to
-                        if (!outputInfo->outputFilePtr)
-                        {
-                            char fileNameAndPath[OPENSEA_PATH_MAX] = { 0 };
-                            if (outputInfo->outputPath && *outputInfo->outputPath && strlen(*outputInfo->outputPath))
-                            {
-                                strcpy(fileNameAndPath, *outputInfo->outputPath);
-                                strcat(fileNameAndPath, "/");
-                            }
-                            if (outputInfo->outputFileName && *outputInfo->outputFileName && strlen(*outputInfo->outputFileName))
-                            {
-                                strcat(fileNameAndPath, *outputInfo->outputFileName);
-                            }
-                            else
-                            {
-                                strcat(fileNameAndPath, "scanOutput");
-                            }
-                            strcat(fileNameAndPath, ".json");
-                            if (!(outputInfo->outputFilePtr = fopen(fileNameAndPath, "w+")))
-                            {
-                                safe_Free(deviceList);
-                                perror("could not open file!");
-                                return;
-                            }
-                        }
-                        fileOpened = true;
-                        //setup JSON context
-                        InitializeJSONContextData(scanjsonContext, write_JSON_To_File, (void*)outputInfo->outputFilePtr, 2, 20);
-                        break;
                     case SEAC_OUTPUT_TEXT:
                         //make sure that the file it open to write...
                         if (!outputInfo->outputFilePtr)
@@ -310,10 +272,6 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                     //if json, open and put header
                     switch (outputInfo->outputFormat)
                     {
-                    case SEAC_OUTPUT_JSON:
-                        OpenJSON(scanjsonContext);
-                        OpenJSONObject("Scan Output", scanjsonContext);
-                        break;
                     case SEAC_OUTPUT_TEXT:
                         fprintf(outputInfo->outputFilePtr, "%-8s %-12s %-23s %-22s %-10s\n", "Vendor", "Handle", "Model Number", "Serial Number", "FwRev");
                         break;
@@ -430,15 +388,6 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                         {
                             switch (outputInfo->outputFormat)
                             {
-                            case SEAC_OUTPUT_JSON:
-                                OpenJSONObject("Device", scanjsonContext);
-                                WriteJSONPair("Handle", displayHandle, scanjsonContext);
-                                WriteJSONPair("Vendor ID", deviceList[devIter].drive_info.T10_vendor_ident, scanjsonContext);
-                                WriteJSONPair("Model Number", deviceList[devIter].drive_info.product_identification, scanjsonContext);
-                                WriteJSONPair("Serial Number", printable_sn, scanjsonContext);
-                                WriteJSONPair("Firmware Version", deviceList[devIter].drive_info.product_revision, scanjsonContext);
-                                CloseJSONObject(scanjsonContext);
-                                break;
                             case SEAC_OUTPUT_TEXT:
                                 fprintf(outputInfo->outputFilePtr, "%-8s %-12s %-23s %-22s %-10s\n", \
                                     deviceList[devIter].drive_info.T10_vendor_ident, displayHandle, \
@@ -457,10 +406,6 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                 {
                     switch (outputInfo->outputFormat)
                     {
-                    case SEAC_OUTPUT_JSON:
-                        CloseJSONObject(scanjsonContext);
-                        CloseJSON(scanjsonContext);
-                        break;
                     case SEAC_OUTPUT_TEXT:
                         //nothing that we need to do....(maybe put some new line characters?)
                         break;
@@ -473,7 +418,6 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                         fclose(outputInfo->outputFilePtr);
                     }
                 }
-                safe_Free(scanjsonContext);
             }
             safe_Free(deviceList);
         }
