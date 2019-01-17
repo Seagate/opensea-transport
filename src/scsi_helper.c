@@ -8848,21 +8848,21 @@ int fill_In_Device_Info(tDevice *device)
         {
         case 0:
             checkForSAT = false;//NOTE: some cheap USB to SATA/PATA adapters will set this version or no version. The only way to work around this, is to make sure the low level for the OS detects it on USB interface and it can be run through the usb_hacks file instead.
-            version = 0;
+            version = SCSI_VERSION_NO_STANDARD;
             break;
         case 0x81:
-            version = 1;//changing to 1 for SCSI
+            version = SCSI_VERSION_SCSI;//changing to 1 for SCSI
             checkForSAT = false;//NOTE: some cheap USB to SATA/PATA adapters will set this version or no version. The only way to work around this, is to make sure the low level for the OS detects it on USB interface and it can be run through the usb_hacks file instead.
             break;
         case 0x80:
         case 0x82:
-            version = 2;//changing to 2 for SCSI 2
+            version = SCSI_VERSION_SCSI2;//changing to 2 for SCSI 2
             break;
         case 0x83:
-            version = 3;//changing to 3 for SPC
+            version = SCSI_VERSION_SPC;//changing to 3 for SPC
             break;
         case 0x84:
-            version = 4;//changing to 4 for SPC2
+            version = SCSI_VERSION_SPC_2;//changing to 4 for SPC2
             break;
         default:
             //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers

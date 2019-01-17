@@ -27,6 +27,19 @@ extern "C"
     #define INQ_DATA_PRODUCT_ID_LEN     (16)
     #define INQ_DATA_PRODUCT_REV_LEN    (4)
 
+    typedef enum _eSCSIVersion 
+    {
+        SCSI_VERSION_SASI           = 0,
+        SCSI_VERSION_NO_STANDARD    = 0,
+        SCSI_VERSION_SCSI           = 1,
+        SCSI_VERSION_SCSI2          = 2,
+        SCSI_VERSION_SPC            = 3,
+        SCSI_VERSION_SPC_2          = 4,
+        SCSI_VERSION_SPC_3          = 5,
+        SCSI_VERSION_SPC_4          = 6,
+        SCSI_VERSION_SPC_5          = 7,
+    }eSCSIVersion;
+
     typedef enum _eCDBLen{
         CDB_LEN_6  = 6,
         CDB_LEN_10 = 10,

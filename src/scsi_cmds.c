@@ -619,7 +619,7 @@ int scsi_Mode_Sense_10(tDevice *device, uint8_t pageCode, uint32_t allocationLen
     return ret;
 }
 
-int scsi_Mode_Select_6(tDevice *device, uint8_t parameterListLength, bool PF, bool SP, uint8_t *ptrData, uint32_t dataSize)
+int scsi_Mode_Select_6(tDevice *device, uint8_t parameterListLength, bool pageFormat, bool savePages, bool resetToDefaults, uint8_t *ptrData, uint32_t dataSize)
 {
     int ret = UNKNOWN;
     uint8_t cdb[CDB_LEN_6] = { 0 };
@@ -631,13 +631,17 @@ int scsi_Mode_Select_6(tDevice *device, uint8_t parameterListLength, bool PF, bo
 
     // Set up the CDB.
     cdb[OPERATION_CODE] = MODE_SELECT10;
-    if (PF)
+    if (pageFormat)
     {
         cdb[1] |= BIT4;
     }
-    if (SP)
+    if (savePages)
     {
         cdb[1] |= BIT0;
+    }
+    if (resetToDefaults)
+    {
+        cdb[1] |= BIT1;
     }
     cdb[2] = RESERVED;
     cdb[3] = RESERVED;
@@ -659,7 +663,7 @@ int scsi_Mode_Select_6(tDevice *device, uint8_t parameterListLength, bool PF, bo
     return ret;
 }
 
-int scsi_Mode_Select_10(tDevice *device, uint16_t parameterListLength, bool PF, bool SP, uint8_t *ptrData, uint32_t dataSize)
+int scsi_Mode_Select_10(tDevice *device, uint16_t parameterListLength, bool pageFormat, bool savePages, bool resetToDefaults, uint8_t *ptrData, uint32_t dataSize)
 {
     int       ret       = FAILURE;
     uint8_t   cdb[CDB_LEN_10]       = { 0 };
@@ -671,13 +675,17 @@ int scsi_Mode_Select_10(tDevice *device, uint16_t parameterListLength, bool PF, 
 
     // Set up the CDB.
     cdb[OPERATION_CODE] = MODE_SELECT10;
-    if (PF)
+    if (pageFormat)
     {
         cdb[1] |= BIT4;
     }
-    if (SP)
+    if (savePages)
     {
         cdb[1] |= BIT0;
+    }
+    if (resetToDefaults)
+    {
+        cdb[1] |= BIT1;
     }
     cdb[2] = RESERVED;
     cdb[3] = RESERVED;
@@ -793,17 +801,17 @@ int scsi_Inquiry(tDevice *device, uint8_t *pdata, uint32_t dataLength, uint8_t p
             switch (version) //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
             {
             case 0x81:
-                version = 1;//changing to 1 for SCSI
+                version = SCSI_VERSION_SCSI;//changing to 1 for SCSI
                 break;
             case 0x80:
             case 0x82:
-                version = 2;//changing to 2 for SCSI 2
+                version = SCSI_VERSION_SCSI2;//changing to 2 for SCSI 2
                 break;
             case 0x83:
-                version = 3;//changing to 3 for SPC
+                version = SCSI_VERSION_SPC;//changing to 3 for SPC
                 break;
             case 0x84:
-                version = 4;//changing to 4 for SPC2
+                version = SCSI_VERSION_SPC_2;//changing to 4 for SPC2
                 break;
             default:
                 //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
