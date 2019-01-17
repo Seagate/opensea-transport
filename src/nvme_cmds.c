@@ -509,7 +509,7 @@ int nvme_Firmware_Commit(tDevice *device, nvmeFWCommitAction commitAction, uint8
     FirmwareCommit.commandDirection = XFER_NO_DATA;
 	FirmwareCommit.cmd.adminCmd.cdw10 = (commitAction << 3); // 05:03 Bits CA
     FirmwareCommit.cmd.adminCmd.cdw10 |= (firmwareSlot & 0x07); // 02:00 Bits Firmware Slot
-    FirmwareCommit.timeout = 15;
+    FirmwareCommit.timeout = 30;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending NVMe Firmware Commit Command\n");
