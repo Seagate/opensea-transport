@@ -3965,20 +3965,24 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         memcpy(command, &nvmeIoCtx->cmd.nvmCmd, STORAGE_PROTOCOL_COMMAND_LENGTH_NVME);
     }
 
+    //TODO: Save error info? Seems to be from NVMe error log
+    protocolCommand->ErrorInfoLength = NVME_ERROR_ENTRY_LENGTH;
+    protocolCommand->ErrorInfoOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
+
     //TODO: If we stor the error info (NVMe error log info) in this structure, we will need to adjust the data offsets below
     switch (nvmeIoCtx->commandDirection)
     {
     case XFER_DATA_IN:
         protocolCommand->DataToDeviceTransferLength = 0;
         protocolCommand->DataFromDeviceTransferLength = nvmeIoCtx->dataSize;
-        protocolCommand->DataToDeviceBufferOffset = 0;// FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
-        protocolCommand->DataFromDeviceBufferOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
+        protocolCommand->DataToDeviceBufferOffset = 0;
+        protocolCommand->DataFromDeviceBufferOffset = protocolCommand->ErrorInfoOffset + protocolCommand->ErrorInfoLength;
         break;
     case XFER_DATA_OUT:
         protocolCommand->DataToDeviceTransferLength = nvmeIoCtx->dataSize;
         protocolCommand->DataFromDeviceTransferLength = 0;
-        protocolCommand->DataToDeviceBufferOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
-        protocolCommand->DataFromDeviceBufferOffset = 0;// FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
+        protocolCommand->DataToDeviceBufferOffset = protocolCommand->ErrorInfoOffset + protocolCommand->ErrorInfoLength;
+        protocolCommand->DataFromDeviceBufferOffset = 0;
         //copy the data we're sending into this structure to send to the device
         memcpy(&commandBuffer[protocolCommand->DataToDeviceBufferOffset], nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
         break;
@@ -3991,16 +3995,12 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     default://Bi-directional transfers are not supported in NVMe right now.
         protocolCommand->DataToDeviceTransferLength = nvmeIoCtx->dataSize;
         protocolCommand->DataFromDeviceTransferLength = nvmeIoCtx->dataSize;
-        protocolCommand->DataToDeviceBufferOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
-        protocolCommand->DataFromDeviceBufferOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME + protocolCommand->DataToDeviceTransferLength;
+        protocolCommand->DataToDeviceBufferOffset = protocolCommand->ErrorInfoOffset + protocolCommand->ErrorInfoLength;
+        protocolCommand->DataFromDeviceBufferOffset = protocolCommand->ErrorInfoOffset + protocolCommand->ErrorInfoLength + protocolCommand->DataToDeviceTransferLength;
         //copy the data we're sending into this structure to send to the device
         memcpy(&commandBuffer[protocolCommand->DataToDeviceBufferOffset], nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
         break;
     }
-
-    //TODO: Save error info? Seems to be from NVMe error log
-    //protocolCommand->ErrorInfoLength = NVME_ERROR_ENTRY_LENGTH;
-    //protocolCommand->ErrorInfoOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + protocolCommand->DataToDeviceTransferLength + protocolCommand->DataFromDeviceTransferLength;
 
     if (nvmeIoCtx->timeout == 0)
     {
@@ -4072,28 +4072,34 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         }
     }
 
-    /*if (protocolCommand->ErrorInfoOffset > 0)
+#if defined (_DEBUG)
+    if (protocolCommand->ErrorInfoOffset > 0)
     {
-        uint64_t errorCount = M_BytesTo8ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 7], commandBuffer[protocolCommand->ErrorInfoOffset + 6], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 5], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 4], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 3], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 2], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 1], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 0]);
-        uint16_t submissionQueueID = M_BytesTo2ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 9], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 8]);
-        uint16_t commandID = M_BytesTo2ByteValue(commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 11], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 10]);
-        uint16_t statusField = M_BytesTo2ByteValue(commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 13], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 12]);
-        uint16_t parameterErrorLocation = M_BytesTo2ByteValue(commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 15], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 14]);
-        uint64_t lba = M_BytesTo8ByteValue(commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 23], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 22], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 21], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 20], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 19], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 18], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 17], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 16]);
-        uint32_t nsid = M_BytesTo4ByteValue(commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 27], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 26], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 25], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 24]);
-        uint8_t vendorSpecific = commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 28];
-        uint64_t commandSpecific = M_BytesTo8ByteValue(commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 39], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 38], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 37], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 36], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 35], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 34], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 33], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 32]);
-        printf("Win 10 VU IO Error Info:\n");
-        printf("\tError Count: %" PRIu64 "\n", errorCount);
-        printf("\tSQID: %" PRIu16 "\n", submissionQueueID);
-        printf("\tCID: %" PRIu16 "\n", commandID);
-        printf("\tStatus: %" PRIu16"\n", statusField);
-        printf("\tParameterErrorLocation: %" PRIu16 "\n", parameterErrorLocation);
-        printf("\tLBA: %" PRIu64 "\n", lba);
-        printf("\tNSID: %" PRIu32 "\n", nsid);
-        printf("\tVU: %" PRIX8 "\n", vendorSpecific);
-        printf("\tCommand Specific: %" PRIX64 "\n", commandSpecific);
-    }*/
+        uint64_t errorCount = M_BytesTo8ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 7], commandBuffer[protocolCommand->ErrorInfoOffset + 6], commandBuffer[protocolCommand->ErrorInfoOffset + 5], commandBuffer[protocolCommand->ErrorInfoOffset + 4], commandBuffer[protocolCommand->ErrorInfoOffset + 3], commandBuffer[protocolCommand->ErrorInfoOffset + 2], commandBuffer[protocolCommand->ErrorInfoOffset + 1], commandBuffer[protocolCommand->ErrorInfoOffset + 0]);
+        uint16_t submissionQueueID = M_BytesTo2ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 9], commandBuffer[protocolCommand->ErrorInfoOffset + 8]);
+        uint16_t commandID = M_BytesTo2ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 11], commandBuffer[protocolCommand->ErrorInfoOffset + 10]);
+        uint16_t statusField = M_BytesTo2ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 13], commandBuffer[protocolCommand->ErrorInfoOffset + 12]);
+        uint16_t parameterErrorLocation = M_BytesTo2ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 15], commandBuffer[protocolCommand->ErrorInfoOffset + 14]);
+        uint64_t lba = M_BytesTo8ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 23], commandBuffer[protocolCommand->ErrorInfoOffset + 22], commandBuffer[protocolCommand->ErrorInfoOffset + 21], commandBuffer[protocolCommand->ErrorInfoOffset + 20], commandBuffer[protocolCommand->ErrorInfoOffset + 19], commandBuffer[protocolCommand->ErrorInfoOffset + 18], commandBuffer[protocolCommand->ErrorInfoOffset + 17], commandBuffer[protocolCommand->ErrorInfoOffset + 16]);
+        uint32_t nsid = M_BytesTo4ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 27], commandBuffer[protocolCommand->ErrorInfoOffset + 26], commandBuffer[protocolCommand->ErrorInfoOffset + 25], commandBuffer[protocolCommand->ErrorInfoOffset + 24]);
+        uint8_t vendorSpecific = commandBuffer[protocolCommand->ErrorInfoOffset + 28];
+        uint64_t commandSpecific = M_BytesTo8ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 39], commandBuffer[protocolCommand->ErrorInfoOffset + 38], commandBuffer[protocolCommand->ErrorInfoOffset + 37], commandBuffer[protocolCommand->ErrorInfoOffset + 36], commandBuffer[protocolCommand->ErrorInfoOffset + 35], commandBuffer[protocolCommand->ErrorInfoOffset + 34], commandBuffer[protocolCommand->ErrorInfoOffset + 33], commandBuffer[protocolCommand->ErrorInfoOffset + 32]);
+        //TODO: This is useful for debugging but may not want it showing otherwise!!!
+        if (errorCount > 0)
+        {
+            printf("Win 10 VU IO Error Info:\n");
+            printf("\tError Count: %" PRIu64 "\n", errorCount);
+            printf("\tSQID: %" PRIu16 "\n", submissionQueueID);
+            printf("\tCID: %" PRIu16 "\n", commandID);
+            printf("\tStatus: %" PRIu16"\n", statusField);
+            printf("\tParameterErrorLocation: %" PRIu16 "\n", parameterErrorLocation);
+            printf("\tLBA: %" PRIu64 "\n", lba);
+            printf("\tNSID: %" PRIu32 "\n", nsid);
+            printf("\tVU: %" PRIX8 "\n", vendorSpecific);
+            printf("\tCommand Specific: %" PRIX64 "\n", commandSpecific);
+        }
+    }
+#endif
 
     //TODO: figure out if we need to check this return status or not.
     /*switch (pNVMeWinCtx->storageProtocolCommand.ReturnStatus)
