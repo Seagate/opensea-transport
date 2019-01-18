@@ -3924,63 +3924,62 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 
 #if WINVER >= SEA_WIN32_WINNT_WIN10
-typedef struct _NVMePassThroughIOStruct {
-	STORAGE_PROTOCOL_COMMAND    storageProtocolCommand;
-	nvmCommand	                cmdNVMe;
-    //TODO: we may need to insert some padding bytes here!
-    uint8_t                     Data[1];
-} NVMePassThroughIOStruct, *ptrNVMePassThroughIOStruct;
-
 /*
 	MS Windows treats specification commands different from Vendor Unique Commands. 
-
 */
 int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = SUCCESS;
-    uint32_t nvmePassthroughDataSize = sizeof(NVMePassThroughIOStruct) + nvmeIoCtx->dataSize;
-	ptrNVMePassThroughIOStruct pNVMeWinCtx = malloc(nvmePassthroughDataSize);
-    memset(pNVMeWinCtx, 0, nvmePassthroughDataSize);
+    uint32_t nvmePassthroughDataSize = nvmeIoCtx->dataSize + sizeof(STORAGE_PROTOCOL_COMMAND) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
+    if (nvmeIoCtx->commandDirection == XFER_DATA_IN_OUT || nvmeIoCtx->commandDirection == XFER_DATA_OUT_IN)
+    {
+        //assuming bidirectional commands have the same amount of data transferring in each direction
+        //TODO: Validate that this assumption is actually correct.
+        nvmePassthroughDataSize += nvmeIoCtx->dataSize;
+    }
+    uint8_t *commandBuffer = (uint8_t*)_aligned_malloc(nvmePassthroughDataSize, 8);
+    memset(commandBuffer, 0, nvmePassthroughDataSize);
 
-	PSTORAGE_PROTOCOL_COMMAND protocolCommand = (PSTORAGE_PROTOCOL_COMMAND)pNVMeWinCtx;
+    //Setup the storage protocol command structure.
+
+	PSTORAGE_PROTOCOL_COMMAND protocolCommand = (PSTORAGE_PROTOCOL_COMMAND)(commandBuffer);
 
 	protocolCommand->Version = STORAGE_PROTOCOL_STRUCTURE_VERSION;
 	protocolCommand->Length = sizeof(STORAGE_PROTOCOL_COMMAND);
 	protocolCommand->ProtocolType = ProtocolTypeNvme;
-
-    if (nvmeIoCtx->useSpecificNSID)
-    {
-        protocolCommand->Flags = STORAGE_PROTOCOL_COMMAND_FLAG_ADAPTER_REQUEST;
-    }
-
     protocolCommand->ReturnStatus = 0;
     protocolCommand->ErrorCode = 0;
 	protocolCommand->CommandLength = STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
     if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
     {
         protocolCommand->CommandSpecific = STORAGE_PROTOCOL_SPECIFIC_NVME_ADMIN_COMMAND;
+        protocolCommand->Flags = STORAGE_PROTOCOL_COMMAND_FLAG_ADAPTER_REQUEST;
+        nvmeAdminCommand *command = (nvmeAdminCommand*)&protocolCommand->Command;
+        memcpy(command, &nvmeIoCtx->cmd.adminCmd, STORAGE_PROTOCOL_COMMAND_LENGTH_NVME);
     }
     else
     {
         protocolCommand->CommandSpecific = STORAGE_PROTOCOL_SPECIFIC_NVME_NVM_COMMAND;
+        nvmCommand *command = (nvmCommand*)&protocolCommand->Command;
+        memcpy(command, &nvmeIoCtx->cmd.nvmCmd, STORAGE_PROTOCOL_COMMAND_LENGTH_NVME);
     }
-	protocolCommand->ErrorInfoLength = 0; //TODO: should this be a non-zero value for some kind of error return info?
 
+    //TODO: If we stor the error info (NVMe error log info) in this structure, we will need to adjust the data offsets below
     switch (nvmeIoCtx->commandDirection)
     {
     case XFER_DATA_IN:
         protocolCommand->DataToDeviceTransferLength = 0;
         protocolCommand->DataFromDeviceTransferLength = nvmeIoCtx->dataSize;
         protocolCommand->DataToDeviceBufferOffset = 0;
-        protocolCommand->DataFromDeviceBufferOffset = offsetof(NVMePassThroughIOStruct, Data);
+        protocolCommand->DataFromDeviceBufferOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
         break;
     case XFER_DATA_OUT:
         protocolCommand->DataToDeviceTransferLength = nvmeIoCtx->dataSize;
         protocolCommand->DataFromDeviceTransferLength = 0;
-        protocolCommand->DataToDeviceBufferOffset = offsetof(NVMePassThroughIOStruct, Data);
+        protocolCommand->DataToDeviceBufferOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
         protocolCommand->DataFromDeviceBufferOffset = 0;
         //copy the data we're sending into this structure to send to the device
-        memcpy(pNVMeWinCtx->Data, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+        memcpy(&commandBuffer[protocolCommand->DataToDeviceBufferOffset], nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
         break;
     case XFER_NO_DATA:
         protocolCommand->DataToDeviceTransferLength = 0;
@@ -3988,13 +3987,19 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         protocolCommand->DataToDeviceBufferOffset = 0;
         protocolCommand->DataFromDeviceBufferOffset = 0;
         break;
-    default://Bi-directional transfers are not supported in NVMe
-        safe_Free(pNVMeWinCtx);
-        return BAD_PARAMETER;
+    default://Bi-directional transfers are not supported in NVMe right now.
+        protocolCommand->DataToDeviceTransferLength = nvmeIoCtx->dataSize;
+        protocolCommand->DataFromDeviceTransferLength = nvmeIoCtx->dataSize;
+        protocolCommand->DataToDeviceBufferOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
+        protocolCommand->DataFromDeviceBufferOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME + protocolCommand->DataToDeviceTransferLength;
+        //copy the data we're sending into this structure to send to the device
+        memcpy(&commandBuffer[protocolCommand->DataToDeviceBufferOffset], nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+        break;
     }
 
-    protocolCommand->ErrorInfoOffset = 0;//TODO: need to use this when we want returned error info...
-    //protocolCommand->ErrorInfoOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
+    //TODO: Save error info? Seems to be from NVMe error log
+    protocolCommand->ErrorInfoLength = 0;
+    protocolCommand->ErrorInfoOffset = 0;
 
     if (nvmeIoCtx->timeout == 0)
     {
@@ -4012,22 +4017,6 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         protocolCommand->TimeOutValue = nvmeIoCtx->timeout;
     }
 	
-    if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
-    {
-        protocolCommand->CommandSpecific = STORAGE_PROTOCOL_SPECIFIC_NVME_ADMIN_COMMAND;
-        memcpy(&pNVMeWinCtx->cmdNVMe, &nvmeIoCtx->cmd.adminCmd, sizeof(nvmCommand));
-    }
-    else if (nvmeIoCtx->commandType == NVM_CMD)
-    {
-        protocolCommand->CommandSpecific = STORAGE_PROTOCOL_SPECIFIC_NVME_NVM_COMMAND;
-        memcpy(&pNVMeWinCtx->cmdNVMe, &nvmeIoCtx->cmd.nvmCmd, sizeof(nvmCommand));
-    }
-    else
-    {
-        safe_Free(pNVMeWinCtx);
-        return BAD_PARAMETER;
-    }
-
     //Command has been set up, so send it!
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
     nvmeIoCtx->device->os_info.last_error = 0;
@@ -4040,9 +4029,9 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     start_Timer(&commandTimer);
     BOOL success = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
         IOCTL_STORAGE_PROTOCOL_COMMAND,
-        pNVMeWinCtx,
+        commandBuffer,
         nvmePassthroughDataSize,
-        pNVMeWinCtx,
+        commandBuffer,
         nvmePassthroughDataSize,
         &returned_data,
         &overlappedStruct);
@@ -4076,9 +4065,9 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
 
     if (ret == SUCCESS)
     {
-        if (nvmeIoCtx->commandDirection == XFER_DATA_IN)
+        if (nvmeIoCtx->commandDirection != XFER_DATA_OUT && protocolCommand->DataFromDeviceBufferOffset != 0)
         {
-            memcpy(nvmeIoCtx->ptrData, pNVMeWinCtx->Data, nvmeIoCtx->dataSize);
+            memcpy(nvmeIoCtx->ptrData, &commandBuffer[protocolCommand->DataFromDeviceBufferOffset], nvmeIoCtx->dataSize);
         }
     }
     //TODO: figure out if we need to check this return status or not.
@@ -4096,9 +4085,9 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     default:
     }*/
     //get the error return code
-    nvmeIoCtx->commandCompletionData.commandSpecific = pNVMeWinCtx->storageProtocolCommand.CommandSpecific;
+    nvmeIoCtx->commandCompletionData.commandSpecific = protocolCommand->CommandSpecific;
     nvmeIoCtx->commandCompletionData.dw0Valid = true;
-    nvmeIoCtx->commandCompletionData.statusAndCID = pNVMeWinCtx->storageProtocolCommand.ErrorCode;
+    nvmeIoCtx->commandCompletionData.statusAndCID = protocolCommand->ErrorCode;
     nvmeIoCtx->commandCompletionData.dw1Valid = true;
     //TODO: do we need this error code, or do we look at the error info offset for the provided length???
     //set last command time
@@ -4108,7 +4097,8 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     {
         ret = COMMAND_TIMEOUT;
     }
-    safe_Free(pNVMeWinCtx);
+    _aligned_free(commandBuffer);
+    commandBuffer = NULL;
 	return ret;
 }
 
