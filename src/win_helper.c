@@ -3927,10 +3927,11 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
 /*
 	MS Windows treats specification commands different from Vendor Unique Commands. 
 */
+#define NVME_ERROR_ENTRY_LENGTH 64
 int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = SUCCESS;
-    uint32_t nvmePassthroughDataSize = nvmeIoCtx->dataSize + sizeof(STORAGE_PROTOCOL_COMMAND) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
+    uint32_t nvmePassthroughDataSize = nvmeIoCtx->dataSize + sizeof(STORAGE_PROTOCOL_COMMAND) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME + NVME_ERROR_ENTRY_LENGTH;
     if (nvmeIoCtx->commandDirection == XFER_DATA_IN_OUT || nvmeIoCtx->commandDirection == XFER_DATA_OUT_IN)
     {
         //assuming bidirectional commands have the same amount of data transferring in each direction
@@ -3970,14 +3971,14 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     case XFER_DATA_IN:
         protocolCommand->DataToDeviceTransferLength = 0;
         protocolCommand->DataFromDeviceTransferLength = nvmeIoCtx->dataSize;
-        protocolCommand->DataToDeviceBufferOffset = 0;
+        protocolCommand->DataToDeviceBufferOffset = 0;// FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
         protocolCommand->DataFromDeviceBufferOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
         break;
     case XFER_DATA_OUT:
         protocolCommand->DataToDeviceTransferLength = nvmeIoCtx->dataSize;
         protocolCommand->DataFromDeviceTransferLength = 0;
         protocolCommand->DataToDeviceBufferOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
-        protocolCommand->DataFromDeviceBufferOffset = 0;
+        protocolCommand->DataFromDeviceBufferOffset = 0;// FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
         //copy the data we're sending into this structure to send to the device
         memcpy(&commandBuffer[protocolCommand->DataToDeviceBufferOffset], nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
         break;
@@ -3998,8 +3999,8 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     }
 
     //TODO: Save error info? Seems to be from NVMe error log
-    protocolCommand->ErrorInfoLength = 0;
-    protocolCommand->ErrorInfoOffset = 0;
+    //protocolCommand->ErrorInfoLength = NVME_ERROR_ENTRY_LENGTH;
+    //protocolCommand->ErrorInfoOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + protocolCommand->DataToDeviceTransferLength + protocolCommand->DataFromDeviceTransferLength;
 
     if (nvmeIoCtx->timeout == 0)
     {
@@ -4070,6 +4071,30 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
             memcpy(nvmeIoCtx->ptrData, &commandBuffer[protocolCommand->DataFromDeviceBufferOffset], nvmeIoCtx->dataSize);
         }
     }
+
+    /*if (protocolCommand->ErrorInfoOffset > 0)
+    {
+        uint64_t errorCount = M_BytesTo8ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 7], commandBuffer[protocolCommand->ErrorInfoOffset + 6], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 5], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 4], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 3], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 2], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 1], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 0]);
+        uint16_t submissionQueueID = M_BytesTo2ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 9], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 8]);
+        uint16_t commandID = M_BytesTo2ByteValue(commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 11], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 10]);
+        uint16_t statusField = M_BytesTo2ByteValue(commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 13], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 12]);
+        uint16_t parameterErrorLocation = M_BytesTo2ByteValue(commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 15], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 14]);
+        uint64_t lba = M_BytesTo8ByteValue(commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 23], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 22], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 21], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 20], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 19], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 18], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 17], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 16]);
+        uint32_t nsid = M_BytesTo4ByteValue(commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 27], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 26], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 25], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 24]);
+        uint8_t vendorSpecific = commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 28];
+        uint64_t commandSpecific = M_BytesTo8ByteValue(commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 39], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 38], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 37], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 36], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 35], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 34], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 33], commandBuffer[protocolCommand->DataFromDeviceBufferOffset + 32]);
+        printf("Win 10 VU IO Error Info:\n");
+        printf("\tError Count: %" PRIu64 "\n", errorCount);
+        printf("\tSQID: %" PRIu16 "\n", submissionQueueID);
+        printf("\tCID: %" PRIu16 "\n", commandID);
+        printf("\tStatus: %" PRIu16"\n", statusField);
+        printf("\tParameterErrorLocation: %" PRIu16 "\n", parameterErrorLocation);
+        printf("\tLBA: %" PRIu64 "\n", lba);
+        printf("\tNSID: %" PRIu32 "\n", nsid);
+        printf("\tVU: %" PRIX8 "\n", vendorSpecific);
+        printf("\tCommand Specific: %" PRIX64 "\n", commandSpecific);
+    }*/
+
     //TODO: figure out if we need to check this return status or not.
     /*switch (pNVMeWinCtx->storageProtocolCommand.ReturnStatus)
     {
@@ -4085,7 +4110,7 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     default:
     }*/
     //get the error return code
-    nvmeIoCtx->commandCompletionData.commandSpecific = protocolCommand->CommandSpecific;
+    nvmeIoCtx->commandCompletionData.commandSpecific = protocolCommand->FixedProtocolReturnData;
     nvmeIoCtx->commandCompletionData.dw0Valid = true;
     nvmeIoCtx->commandCompletionData.statusAndCID = protocolCommand->ErrorCode;
     nvmeIoCtx->commandCompletionData.dw1Valid = true;
