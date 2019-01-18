@@ -387,6 +387,10 @@ extern "C"
         NVME_CMD_RESERVATION_RELEASE    = 0x15,
     } eNvmeOPCodes;
 
+
+    #if !defined (__GNUC__)
+    #pragma pack(push, 1)
+    #endif
     typedef struct _nvmCommand {
         uint8_t 			opcode; //CDW0
         uint8_t 			flags; //CDW0
@@ -403,7 +407,12 @@ extern "C"
         uint32_t 			cdw13;//CDW13
         uint32_t 			cdw14;//CDW14
         uint32_t 			cdw15;//CDW15
-    } nvmCommand;
+    #if !defined (__GNUC__)
+        }nvmCommand;
+    #pragma pack(pop)
+    #else
+        }__attribute__((packed, aligned(1))) nvmCommand;
+    #endif
 
 #if 0
     typedef struct _nvmeRWCommand {
@@ -847,6 +856,9 @@ extern "C"
     } nvmeUserIO;
 #endif
 
+#if !defined (__GNUC__)
+#pragma pack(push, 1)
+#endif
     typedef struct _nvmeAdminCommand {
     	uint8_t 	opcode; //Common Dword 0 (CDW0)
     	uint8_t 	flags; //Common Dword 0 (CDW0) 
@@ -857,14 +869,19 @@ extern "C"
     	uint64_t	metadata; // MPTR
     	uint64_t	addr;   //PRP Entry 1
     	uint32_t 	metadataLen;
-    	//uint32_t 	dataLen; //REMOVED THIS BECAUSE ITS REDUNDANT - TJE
+    	uint32_t 	empty; //Was set to datalen, but that is redundant where this is otherwise used. Need this here to keep this the correct size for use elsewhere.
     	uint32_t 	cdw10; //Command Dword 10(CDW10)
     	uint32_t 	cdw11; //Command Dword 10(CDW10)
     	uint32_t 	cdw12; //Command Dword 10(CDW10)
     	uint32_t 	cdw13; //Command Dword 10(CDW10)
     	uint32_t 	cdw14; //Command Dword 10(CDW10)
     	uint32_t 	cdw15; //Command Dword 10(CDW10)
-    } nvmeAdminCommand;
+#if !defined (__GNUC__)
+    }nvmeAdminCommand;
+#pragma pack(pop)
+#else
+    }__attribute__((packed, aligned(1))) nvmeAdminCommand;
+#endif
 
     typedef struct _nvmCommandDWORDS {
         uint32_t 			cdw0; //CDW0
