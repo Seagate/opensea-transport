@@ -4834,10 +4834,9 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
 int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
-    uint32_t dataLength = nvmeIoCtx->dataSize;
     //send download IOCTL
 #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
-    DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2) + dataLength;
+    DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2) + nvmeIoCtx->dataSize;
     PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2 downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2)malloc(downloadStructureSize);
 #else
     DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + dataLength;
@@ -4872,14 +4871,14 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     //TODO: add firmware slot number?
     //downloadIO->Slot = M_GETBITRANGE(nvmeIoCtx->cmd, 1, 0);
     //we need to set the offset since MS uses this in the command sent to the device.
-    downloadIO->Offset = nvmeIoCtx->cmd.adminCmd.cdw11;
+    downloadIO->Offset = nvmeIoCtx->cmd.adminCmd.cdw11 << 2;//convert #DWords to bytes for offset
     //set the size of the buffer
-    downloadIO->BufferSize = dataLength;
+    downloadIO->BufferSize = nvmeIoCtx->dataSize;
 #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
-    downloadIO->ImageSize = dataLength;
+    downloadIO->ImageSize = nvmeIoCtx->dataSize;
 #endif
     //now copy the buffer into this IOCTL struct
-    memcpy(downloadIO->ImageBuffer, (BYTE*)nvmeIoCtx->cmd.adminCmd.addr, dataLength);
+    memcpy(downloadIO->ImageBuffer, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
 	
     //time to issue the IO
     DWORD returned_data = 0;
