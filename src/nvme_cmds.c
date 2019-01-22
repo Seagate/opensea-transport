@@ -958,49 +958,6 @@ int nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegisters * ctrlRegs)
     return ret;
 }
 
-//TODO: This should be calling the get log page function, not being it's own function!
-int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *ExtdSMARTInfo)
-{
-#ifdef _DEBUG
-    printf("-->%s\n",__FUNCTION__);
-#endif
-   // EXTENDED_SMART_INFO_T ExtdSMARTInfo;
-    uint32_t   nsid = 1;
-    uint8_t  log_id = 0xC4;
-    uint32_t data_len = sizeof(EXTENDED_SMART_INFO_T);
-    void* ptr = ExtdSMARTInfo;
-	 
-    nvmeCmdCtx extSmatLog;
-    memset(&extSmatLog, 0, sizeof(extSmatLog));
-    int ret = SUCCESS;
-    uint32_t  numd = (data_len >> 2) - 1;
-    uint16_t  numdu = numd >> 16, numdl = numd & 0xffff;
-    
-    extSmatLog.cmd.adminCmd.opcode = NVME_ADMIN_CMD_GET_LOG_PAGE;
-    extSmatLog.commandType = NVM_ADMIN_CMD;
-    extSmatLog.commandDirection = XFER_DATA_IN;
-    extSmatLog.cmd.adminCmd.nsid = nsid;
-    extSmatLog.cmd.adminCmd.addr = (uint64_t)ptr;
-    extSmatLog.dataSize = data_len;
-    extSmatLog.cmd.adminCmd.cdw10 = log_id | (numdl << 16);
-    extSmatLog.cmd.adminCmd.cdw11 = numdu;
-    extSmatLog.timeout = 15;
-	//Added the following for Windows. 
-    extSmatLog.ptrData = ptr;
-    extSmatLog.dataSize = NVME_IDENTIFY_DATA_LEN;
-
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        printf("Reading NVMe Ext SMART Log through duplicate function\n");
-    }
-    ret = nvme_Cmd(device, &extSmatLog);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Ext SMART Log", ret);
-    }
-    return ret;
-}
-
 //TODO: The naming scheme of this function doesn't match the rest of the file, and this may be Seagate unique. Will need to investiage how this can be cleaned up.
 int pci_Correctble_Err(tDevice *device,uint8_t  opcode, uint32_t  nsid, uint32_t  cdw10, uint32_t cdw11, uint32_t data_len, void *data)
 {
