@@ -2799,8 +2799,12 @@ int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busType)
 	memset(&fwdlInfo, 0, sizeof(STORAGE_HW_FIRMWARE_INFO_QUERY));
 	fwdlInfo.Version = sizeof(STORAGE_HW_FIRMWARE_INFO_QUERY);
 	fwdlInfo.Size = sizeof(STORAGE_HW_FIRMWARE_INFO_QUERY);
-	uint8_t slotCount = 7;//Max of 7 firmware slots on NVMe...might as well read in everything even if we aren't using it today.-TJE
-	uint32_t outputDataSize = sizeof(STORAGE_HW_FIRMWARE_INFO) + sizeof(STORAGE_HW_FIRMWARE_SLOT_INFO) * (slotCount - 1);//this is what MSDN says to do...
+	uint8_t slotCount = 1;
+    if (busType == BusTypeNvme)
+    {
+        slotCount = 7;//Max of 7 firmware slots on NVMe...might as well read in everything even if we aren't using it today.-TJE
+    }
+	uint32_t outputDataSize = sizeof(STORAGE_HW_FIRMWARE_INFO) + (sizeof(STORAGE_HW_FIRMWARE_SLOT_INFO) * slotCount);
 	uint8_t *outputData = (uint8_t*)malloc(outputDataSize);
     if (!outputData)
     {
@@ -4787,7 +4791,7 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
 		//Activate action 0 & 1 say to replace a firmware image in a specified slot (and to or not to activate).
         downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
     }
-    downloadActivate.Slot = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);// M_Byte0(nvmeIoCtx->cmd.adminCmd.cdw10);
+    downloadActivate.Slot = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
     DWORD returned_data = 0;
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
     seatimer_t commandTimer;
