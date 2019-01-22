@@ -608,7 +608,7 @@ int nvme_Set_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
     //setFeatures.dataSize = featCmdOpts.dataSize;// TODO: dataLen? 
     setFeatures.cmd.adminCmd.metadata = featCmdOpts->prp2; 
 
-    dWord10 = featCmdOpts->sv << 30; 
+    dWord10 = featCmdOpts->sv << 31; 
     dWord10 |= featCmdOpts->fid;
 
     setFeatures.cmd.adminCmd.cdw10 = dWord10;
@@ -958,33 +958,4 @@ int nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegisters * ctrlRegs)
     return ret;
 }
 
-//TODO: The naming scheme of this function doesn't match the rest of the file, and this may be Seagate unique. Will need to investiage how this can be cleaned up.
-int pci_Correctble_Err(tDevice *device,uint8_t  opcode, uint32_t  nsid, uint32_t  cdw10, uint32_t cdw11, uint32_t data_len, void *data)
-{
-    int ret = 0;
-    nvmeCmdCtx pciEr;
-    memset (&pciEr, 0x00, sizeof(nvmeCmdCtx));
-    pciEr.cmd.adminCmd.opcode = opcode;
-    pciEr.commandType = NVM_ADMIN_CMD;
-    //pciEr.commandDirection = XFER_DATA_IN;
-    pciEr.cmd.adminCmd.nsid = nsid;
-    pciEr.cmd.adminCmd.addr = (uint64_t)data;
-    pciEr.dataSize = data_len;
-    pciEr.cmd.adminCmd.cdw10 = cdw10;
-    pciEr.cmd.adminCmd.cdw11 = cdw11;
-    pciEr.timeout = 15;
-        //Added the following for Windows.
-    pciEr.ptrData = data;
-    pciEr.dataSize = NVME_IDENTIFY_DATA_LEN;
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        printf("PCI Correctable Error\n");
-    }
-    ret = nvme_Cmd(device, &pciEr);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("PCI Correctable Error", ret);
-    }
-    return ret;
-}
 #endif
