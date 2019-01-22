@@ -961,7 +961,7 @@ int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *ExtdSMARTInfo)
     getExtSMARTLog.dataLen = sizeof(EXTENDED_SMART_INFO_T);
     getExtSMARTLog.lid = 0xC4;
     getExtSMARTLog.nsid = device->drive_info.namespaceID;
-    getExtSMARTLog.addr = (uint64_t)ExtdSMARTInfo;
+    getExtSMARTLog.addr = (uint8_t*)ExtdSMARTInfo;
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
