@@ -58,7 +58,7 @@ extern bool validate_Device_Struct(versionBlock);
 
 int get_Windows_SMART_IO_Support(tDevice *device);
 #if WINVER >= SEA_WIN32_WINNT_WIN10
-int get_Windows_FWDL_IO_Support(tDevice *device);
+int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE deviceType);
 bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx);//TODO: add nvme support...may not need an NVMe version since it's the only way to update code on NVMe
 int send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx);
 int send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx);
@@ -491,7 +491,7 @@ int get_Device(const char *filename, tDevice *device )
                             if (win_ret > 0)
                             {
 #if WINVER >= SEA_WIN32_WINNT_WIN10
-								get_Windows_FWDL_IO_Support(device);
+								get_Windows_FWDL_IO_Support(device, device_desc->BusType);
 #endif
                                 //#if defined (_DEBUG)
                                 //printf("Drive BusType: ");
@@ -2792,7 +2792,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
 }
 
 //TODO: handle more than 1 firmware slot per device.-TJE
-int get_Windows_FWDL_IO_Support(tDevice *device)
+int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busType)
 {
 	int ret = NOT_SUPPORTED;
 	STORAGE_HW_FIRMWARE_INFO_QUERY fwdlInfo;
@@ -2808,7 +2808,11 @@ int get_Windows_FWDL_IO_Support(tDevice *device)
     }
 	memset(outputData, 0, outputDataSize);
 	DWORD returned_data = 0;
-	//STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER can be set to request controller properties instead of what is associated with the handle...we may or maynot need this
+	//STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER is needed for NVMe to report relavant data. Without it, we only see 1 slot available.
+    if (busType == BusTypeNvme)
+    {
+        fwdlInfo.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;
+    }
 	int fwdlRet = DeviceIoControl(device->os_info.fd,
 		IOCTL_STORAGE_FIRMWARE_GET_INFO,
 		&fwdlInfo,
@@ -2832,6 +2836,15 @@ int get_Windows_FWDL_IO_Support(tDevice *device)
         printf("\tmaxXferSize: %d\n", fwdlSupportedInfo->ImagePayloadMaxSize);
         printf("\tPendingActivate: %d\n", fwdlSupportedInfo->PendingActivateSlot);
         printf("\tActiveSlot: %d\n", fwdlSupportedInfo->ActiveSlot);
+        printf("\tSlot Count: %d\n", fwdlSupportedInfo->SlotCount);
+        printf("\tFirmware Shared: %d\n", fwdlSupportedInfo->FirmwareShared);
+        //print out what's in the slots!
+        for (uint8_t iter = 0; iter < fwdlSupportedInfo->SlotCount && iter < slotCount; ++iter)
+        {
+            printf("\t    Firmware Slot %d:\n", fwdlSupportedInfo->Slot[iter].SlotNumber);
+            printf("\t\tRead Only: %d\n", fwdlSupportedInfo->Slot[iter].ReadOnly);
+            printf("\t\tRevision: %s\n", fwdlSupportedInfo->Slot[iter].Revision);
+        }
 #endif
 		ret = SUCCESS;
 	}
@@ -4869,7 +4882,7 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     }
 #endif
     //TODO: add firmware slot number?
-    //downloadIO->Slot = M_GETBITRANGE(nvmeIoCtx->cmd, 1, 0);
+    downloadIO->Slot = 0;// M_GETBITRANGE(nvmeIoCtx->cmd, 1, 0);
     //we need to set the offset since MS uses this in the command sent to the device.
     downloadIO->Offset = nvmeIoCtx->cmd.adminCmd.cdw11 << 2;//convert #DWords to bytes for offset
     //set the size of the buffer
