@@ -4768,14 +4768,13 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
     downloadActivate.Size = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
     uint8_t activateAction = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3);
 	downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;//this command must go to the controller, not the namespace
-    if (activateAction == 0x2 || activateAction == 0x03)//check the activate action
+    if (activateAction == NVME_CA_ACTIVITE_ON_RST || activateAction == NVME_CA_ACTIVITE_IMMEDIATE)//check the activate action
     {
         //Activate actions 2, & 3 sound like the closest match to this flag. Each of these requests switching to the a firmware already on the drive.
 		//Activate action 0 & 1 say to replace a firmware image in a specified slot (and to or not to activate).
         downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
     }
-    //TODO: FIgure out when to set this flag: STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER
-    downloadActivate.Slot = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
+    downloadActivate.Slot = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);// M_Byte0(nvmeIoCtx->cmd.adminCmd.cdw10);
     DWORD returned_data = 0;
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
     seatimer_t commandTimer;
@@ -4837,14 +4836,23 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     int ret = OS_PASSTHROUGH_FAILURE;
     uint32_t dataLength = nvmeIoCtx->dataSize;
     //send download IOCTL
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+    DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2) + dataLength;
+    PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2 downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2)malloc(downloadStructureSize);
+#else
     DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + dataLength;
     PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD)malloc(downloadStructureSize);
+#endif
     if (!downloadIO)
     {
         return MEMORY_FAILURE;
     }
     memset(downloadIO, 0, downloadStructureSize);
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+    downloadIO->Version = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2);
+#else
     downloadIO->Version = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD);
+#endif
     downloadIO->Size = downloadStructureSize;
 	downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;
 #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
@@ -4867,6 +4875,9 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     downloadIO->Offset = nvmeIoCtx->cmd.adminCmd.cdw11;
     //set the size of the buffer
     downloadIO->BufferSize = dataLength;
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+    downloadIO->ImageSize = dataLength;
+#endif
     //now copy the buffer into this IOCTL struct
     memcpy(downloadIO->ImageBuffer, (BYTE*)nvmeIoCtx->cmd.adminCmd.addr, dataLength);
 	
