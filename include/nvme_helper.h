@@ -568,14 +568,6 @@ extern "C"
         NVME_LOG_RESERVATION_ID = 0x80,
     }eNvmeLogs;
 
-    typedef enum _eNvmeFWActivation
-    {
-        NVME_FWACT_REPL_ = (0 << 3),
-        NVME_FWACT_REPL_ACTV_ = (1 << 3),
-        NVME_FWACT_ACTV_ = (2 << 3),
-    }eNvmeFWActivation;
-
-
     typedef enum _eNvmeFeaturesSelectValue {
         NVME_CURRENT_FEAT_SEL,
         NVME_DEFAULT_FEAT_SEL,
