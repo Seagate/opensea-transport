@@ -925,14 +925,7 @@ extern "C"
         uint32_t                dataSize;//size of data being sent or received in BYTES
         uint32_t                timeout; //in seconds 
         completionQueueEntry    commandCompletionData;
-        //This is primarily used for the vendor unique pass-through, 
-        //but may be checked otherwise since Win10 API only talks to the current NSID, 
-        //unless you are pulling a log or identify data from the controller. - TJE
-        bool                    useSpecificNSID;//This MUST be used to be compatible with Windows 10 API. Set to true when attempting to read a specific NSID that is NOT the same as the current handle. I.E. getting namespace data from a different namespace
     } nvmeCmdCtx;
-
-    //Linga
-    #define nvme_admin_get_ext_log_page  0x02
 
     //Smart attribute IDs
 
