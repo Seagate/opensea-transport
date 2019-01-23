@@ -835,7 +835,6 @@ extern "C"
         uint32_t       dataTransferSize;//this the block size that will be transfered
         uint16_t       sectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
         uint64_t       deviceMaxLba;
-        uint32_t       lunOrNSID; //shared between SCSI / NVMe 
         char           serialNumber[SERIAL_NUM_LEN + 1];
         char           T10_vendor_ident[T10_VENDOR_ID_LEN + 1];
         char           product_identification[MODEL_NUM_LEN + 1]; //not INQ
@@ -865,7 +864,10 @@ extern "C"
         uint64_t        lastCommandTimeNanoSeconds;//The time the last command took in nanoseconds
         softwareSATFlags softSATFlags;//This is used by the software SAT translation layer. DO NOT Update this directly. This should only be updated by the lower layers of opensea-transport.
         uint32_t defaultTimeoutSeconds;//If this is not set (set to zero), a default value of 15 seconds will be used.
-        uint32_t namespaceID;//This is the current namespace you are talking with. If this is zero, then this value is invalid. This may not be available on all OS's or driver interfaces
+        union {
+            uint32_t namespaceID;//This is the current namespace you are talking with. If this is zero, then this value is invalid. This may not be available on all OS's or driver interfaces
+            uint32_t lun;//Logical unit number for SCSI. Not currently populated.
+        };
         uint8_t currentProtectionType;//Useful for certain operations. Read in readCapacityOnSCSI. TODO: NVMe
         uint8_t piExponent;//Only valid for protection types 2 & 3 I believe...-TJE
         uint8_t scsiVersion;//from STD Inquiry. Can be used elsewhere to help filter capabilities. NOTE: not an exact copy for old products where there was also EMCA and ISO versions. Set to ANSI version number in those cases.

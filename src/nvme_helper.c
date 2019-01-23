@@ -61,7 +61,7 @@ printf("fill NVMe info ret = %d\n", ret);
         //TODO: currently we set NAA to 5, but we should probably at least follow the SCSI-NVMe translation specification!
         device->drive_info.worldWideName = M_BytesTo8ByteValue(0x05, ctrlData->ieee[2], ctrlData->ieee[1], ctrlData->ieee[0], 0, 0, 0, 0) << 4;
 
-        ret = nvme_Identify(device,(uint8_t *)nsData,device->drive_info.lunOrNSID,NVME_IDENTIFY_NS);
+        ret = nvme_Identify(device,(uint8_t *)nsData, device->drive_info.namespaceID, NVME_IDENTIFY_NS);
 
         if (ret == SUCCESS) 
         {

@@ -654,7 +654,6 @@ int get_Device(const char *filename, tDevice *device)
                  perror("nvme_ioctl_id");
                  return ret;
             }
-            device->drive_info.lunOrNSID = (uint32_t) ret;
             device->drive_info.namespaceID = (uint32_t)ret;
             device->os_info.osType = OS_LINUX;
             device->drive_info.media_type = MEDIA_NVM;
