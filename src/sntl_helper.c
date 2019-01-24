@@ -28,19 +28,18 @@
 //  so as to not confuse other OS's or software into thinking it's some other type of device (such as an ATA device behind a SATL)
 
 //Translations not yet complete (per whitepaper):
-// -issuing the appropriate reset after sending a firmware activate command
 // -returning all mode pages + subpages
 // -returning all sub pages of a particular mode page
 // -compare and write. This translation is not possible without the ability to issue fused commands, which is not currently possible.
 // -format unit translation. Needs the ability to save changes in a block descriptor. Recommend implementing a mode page 0 that is empty for this (use page format, set first 4 bytes to "SNTL" as a signature.
 // -need clarification on translation of SCSI verify with bytechk set to zero
 
-
+#define SNTL_EXT
 //SNTL_EXT is used to enable extensions beyond the SNTL spec...which we want since it's pretty out of date and we might as well add everything we can
 //Extention translations not yet complete:
 // - DST
+// - Sanitize
 // - mode page policy VPD page
-// - various statistics on different SCSI log pages (read/write info in general statistics and performance, POH in background media log)
 // - nvme passthrough command (needs to handle admin vs nvm, nondata, data-in, data-out, bidirectional transfers and vendor unique commands
 // - read buffer command to return the NVMe telemetry log (similar to SAT translation to return current internal status log)
 
@@ -1369,14 +1368,14 @@ int sntl_Translate_Extended_Inquiry_Data_VPD_Page_86h(tDevice *device, ScsiIoCtx
     extendedInquiry[7] |= BIT0;//LUICLR is supported
 
     //Extended self test completion time set to zero since not supported (our extension will set this if the drive supports the DST commands from NVMe 1.3)
-#if defined SNTL_EXT
-    if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)
-    {
-        //DST command is supported! So get the time long dst will take to run and put it in here
-        extendedInquiry[10] = M_Byte1(device->drive_info.IdentifyData.nvme.ctrl.edstt);
-        extendedInquiry[11] = M_Byte0(device->drive_info.IdentifyData.nvme.ctrl.edstt);
-    }
-    else
+#if defined (SNTL_EXT)
+    //if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)
+    //{
+    //    //DST command is supported! So get the time long dst will take to run and put it in here
+    //    extendedInquiry[10] = M_Byte1(device->drive_info.IdentifyData.nvme.ctrl.edstt);
+    //    extendedInquiry[11] = M_Byte0(device->drive_info.IdentifyData.nvme.ctrl.edstt);
+    //}
+    //else
 #endif
     {
         extendedInquiry[10] = 0;
@@ -1646,7 +1645,7 @@ int sntl_Translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 			inquiryData[0] = 0;
 			inquiryData[1] = 0;//not removable or a conglomerate
 			//version
-#if SNTL_EXT
+#if defined SNTL_EXT
 			//SPC5
 			inquiryData[2] = 0x07;
 #else
@@ -1656,7 +1655,7 @@ int sntl_Translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 			//response format
 			inquiryData[3] = 2 | BIT4;//set response format to 2 and hisup bit
 			//additional length
-#if SNTL_EXT
+#if defined SNTL_EXT
 			inquiryData[4] = 92;
 #else
 			inquiryData[4] = 0x1F; 
@@ -1699,7 +1698,7 @@ int sntl_Translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 			}
 
 			//currently this is where the translation spec ends. Anything below here is above and beyond the spec
-#if SNTL_EXT
+#if defined SNTL_EXT
 			//Vendor specific...we'll set the controller SN here
 			char nvmSN[SERIAL_NUM_LEN + 1] = { 0 };
 			memcpy(nvmSN, device->drive_info.IdentifyData.nvme.ctrl.sn, SERIAL_NUM_LEN);
@@ -1916,12 +1915,6 @@ int sntl_Translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *scsiIoCtx)
         supportedPages[offset + 1] = 0xFF;
         offset += increment;
     }
-    ////read error counters log
-    //if (device->drive_info.softSATFlags.deviceStatsPages.rotatingMediaStatisticsPageSupported || device->drive_info.softSATFlags.deviceStatsPages.generalErrorStatisticsSupported)
-    //{
-    //    supportedPages[offset] = LP_READ_ERROR_COUNTERS;
-    //    offset += increment;
-    //}
     //temperature log
     supportedPages[offset] = LP_TEMPERATURE;
     offset += increment;
@@ -1934,14 +1927,14 @@ int sntl_Translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *scsiIoCtx)
     //solid state media
     supportedPages[offset] = LP_SOLID_STATE_MEDIA;
     offset += increment;
-    ////background scan results and general statistics and performance
-    //if (device->drive_info.softSATFlags.deviceStatsPages.generalStatisitcsSupported)
-    //{
-    //    supportedPages[offset] = LP_BACKGROUND_SCAN_RESULTS;
-    //    offset += increment;
-    //    supportedPages[offset] = LP_GENERAL_STATISTICS_AND_PERFORMANCE;
-    //    offset += increment;
-    //}
+#if defined (SNTL_EXT)
+    //background scan results 
+    supportedPages[offset] = LP_BACKGROUND_SCAN_RESULTS;
+    offset += increment;
+    //general statistics and performance
+    supportedPages[offset] = LP_GENERAL_STATISTICS_AND_PERFORMANCE;
+    offset += increment;
+#endif
     //TODO: add logs
 
     //if smart is supported, add informational exceptions log page (2Fh)
@@ -2169,6 +2162,227 @@ int sntl_Translate_Informational_Exceptions_Log_Page_2F(tDevice *device, ScsiIoC
     return ret;
 }
 
+#if defined (SNTL_EXT)
+int sntl_Translate_Background_Scan_Results_Log_0x15(tDevice *device, ScsiIoCtx *scsiIoCtx)
+{
+    int ret = SUCCESS;
+    uint8_t backgroundResults[20] = { 0 };
+    uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
+    uint8_t offset = 4;
+    uint8_t logPage[512] = { 0 };
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
+    if (parameterPointer > 0)
+    {
+        fieldPointer = 5;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        ret = NOT_SUPPORTED;
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return ret;
+    }
+    nvmeGetLogPageCmdOpts readSmartLog;
+    memset(&readSmartLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+    readSmartLog.addr = logPage;
+    readSmartLog.dataLen = 512;
+    readSmartLog.lid = NVME_LOG_SMART_ID;
+    if (device->drive_info.IdentifyData.nvme.ctrl.lpa & BIT0)
+    {
+        //request the page for the current namespace
+        readSmartLog.nsid = device->drive_info.namespaceID;
+    }
+    else
+    {
+        //request for controller wide data
+        readSmartLog.nsid = UINT32_MAX;//or zero?
+    }
+    if (SUCCESS != nvme_Get_Log_Page(device, &readSmartLog))
+    {
+        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+        return FAILURE;
+    }
+    backgroundResults[0] = 0x11;
+    backgroundResults[1] = 0x00;
+    if (parameterPointer <= 0)
+    {
+        //poh
+        uint64_t pohMinutes = 0;
+        double nvmePOH = convert_128bit_to_double(&logPage[128]);
+        if ((nvmePOH * 60.0) >= UINT64_MAX)
+        {
+            pohMinutes = UINT64_MAX;
+        }
+        else
+        {
+            pohMinutes = (uint64_t)(60 * nvmePOH);
+        }
+        backgroundResults[offset + 0] = 0x00;
+        backgroundResults[offset + 1] = 0x00;
+        backgroundResults[offset + 2] = 0x03;//format and linking = 11b
+        backgroundResults[offset + 3] = 0x0C;
+        backgroundResults[offset + 4] = M_Byte3(pohMinutes);
+        backgroundResults[offset + 5] = M_Byte2(pohMinutes);
+        backgroundResults[offset + 6] = M_Byte1(pohMinutes);
+        backgroundResults[offset + 7] = M_Byte0(pohMinutes);
+        backgroundResults[offset + 8] = RESERVED;
+        backgroundResults[offset + 9] = 0;//background scan status
+        backgroundResults[offset + 10] = 0;//background scans performed
+        backgroundResults[offset + 11] = 0;
+        backgroundResults[offset + 12] = 0;//background scan progress
+        backgroundResults[offset + 13] = 0;
+        backgroundResults[offset + 14] = 0;//number of background medium scans performed
+        backgroundResults[offset + 15] = 0;
+        offset += 8;
+    }
+    return ret;
+}
+
+int sntl_Translate_General_Statistics_And_Performance_Log_0x19(tDevice *device, ScsiIoCtx *scsiIoCtx)
+{
+    int ret = SUCCESS;
+    uint8_t generalStatisticsAndPerformance[72] = { 0 };
+    uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
+    uint8_t offset = 4;
+    uint8_t logPage[512] = { 0 };
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
+    if (parameterPointer > 1)
+    {
+        fieldPointer = 5;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        ret = NOT_SUPPORTED;
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return ret;
+    }
+    nvmeGetLogPageCmdOpts readSmartLog;
+    memset(&readSmartLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+    readSmartLog.addr = logPage;
+    readSmartLog.dataLen = 512;
+    readSmartLog.lid = NVME_LOG_SMART_ID;
+    if (device->drive_info.IdentifyData.nvme.ctrl.lpa & BIT0)
+    {
+        //request the page for the current namespace
+        readSmartLog.nsid = device->drive_info.namespaceID;
+    }
+    else
+    {
+        //request for controller wide data
+        readSmartLog.nsid = UINT32_MAX;//or zero?
+    }
+    if (SUCCESS != nvme_Get_Log_Page(device, &readSmartLog))
+    {
+        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+        return FAILURE;
+    }
+    generalStatisticsAndPerformance[0] = 0x19;
+    generalStatisticsAndPerformance[1] = 0x00;
+    if (parameterPointer <= 1)
+    {
+        generalStatisticsAndPerformance[offset + 0] = 0x00;
+        generalStatisticsAndPerformance[offset + 1] = 0x01;
+        generalStatisticsAndPerformance[offset + 2] = 0x03;//format and linking = 11b
+        generalStatisticsAndPerformance[offset + 3] = 0x40;
+        //Number of read Commands
+        {
+            double nvmeReads = convert_128bit_to_double(&logPage[64]);
+            uint64_t numberReads = 0;
+            if (nvmeReads >= UINT64_MAX)
+            {
+                numberReads = UINT64_MAX;
+            }
+            else
+            {
+                numberReads = M_BytesTo8ByteValue(logPage[71], logPage[70], logPage[69], logPage[68], logPage[67], logPage[66], logPage[65], logPage[64]);
+            }
+            generalStatisticsAndPerformance[offset + 4] = M_Byte7(numberReads);
+            generalStatisticsAndPerformance[offset + 5] = M_Byte6(numberReads);
+            generalStatisticsAndPerformance[offset + 6] = M_Byte5(numberReads);
+            generalStatisticsAndPerformance[offset + 7] = M_Byte4(numberReads);
+            generalStatisticsAndPerformance[offset + 8] = M_Byte3(numberReads);
+            generalStatisticsAndPerformance[offset + 9] = M_Byte2(numberReads);
+            generalStatisticsAndPerformance[offset + 10] = M_Byte1(numberReads);
+            generalStatisticsAndPerformance[offset + 11] = M_Byte0(numberReads);
+        }
+        //number of write commands
+        {
+            double nvmeWrites = convert_128bit_to_double(&logPage[80]);
+            uint64_t numberWrites = 0;
+            if (nvmeWrites >= UINT64_MAX)
+            {
+                numberWrites = UINT64_MAX;
+            }
+            else
+            {
+                numberWrites = M_BytesTo8ByteValue(logPage[87], logPage[86], logPage[85], logPage[84], logPage[83], logPage[82], logPage[81], logPage[80]);
+            }
+            generalStatisticsAndPerformance[offset + 12] = M_Byte7(numberWrites);
+            generalStatisticsAndPerformance[offset + 13] = M_Byte6(numberWrites);
+            generalStatisticsAndPerformance[offset + 14] = M_Byte5(numberWrites);
+            generalStatisticsAndPerformance[offset + 15] = M_Byte4(numberWrites);
+            generalStatisticsAndPerformance[offset + 16] = M_Byte3(numberWrites);
+            generalStatisticsAndPerformance[offset + 17] = M_Byte2(numberWrites);
+            generalStatisticsAndPerformance[offset + 18] = M_Byte1(numberWrites);
+            generalStatisticsAndPerformance[offset + 19] = M_Byte0(numberWrites);
+        }
+        //number of logical blocks received
+        {
+            double nvmeWritesInLBAs = (convert_128bit_to_double(&logPage[48]) * 1000 * 512) / device->drive_info.deviceBlockSize;
+            uint64_t numLogBlocksWritten = 0;
+            if (nvmeWritesInLBAs >= UINT64_MAX)
+            {
+                numLogBlocksWritten = UINT64_MAX;
+            }
+            else
+            {
+                numLogBlocksWritten = (uint64_t)nvmeWritesInLBAs;
+            }
+            generalStatisticsAndPerformance[offset + 20] = M_Byte7(numLogBlocksWritten);
+            generalStatisticsAndPerformance[offset + 21] = M_Byte6(numLogBlocksWritten);
+            generalStatisticsAndPerformance[offset + 22] = M_Byte5(numLogBlocksWritten);
+            generalStatisticsAndPerformance[offset + 23] = M_Byte4(numLogBlocksWritten);
+            generalStatisticsAndPerformance[offset + 24] = M_Byte3(numLogBlocksWritten);
+            generalStatisticsAndPerformance[offset + 25] = M_Byte2(numLogBlocksWritten);
+            generalStatisticsAndPerformance[offset + 26] = M_Byte1(numLogBlocksWritten);
+            generalStatisticsAndPerformance[offset + 27] = M_Byte0(numLogBlocksWritten);
+        }
+        //number of logical blocks transmitted
+        {
+            double nvmeReadsInLBAs = (convert_128bit_to_double(&logPage[32]) * 1000 * 512) / device->drive_info.deviceBlockSize;
+            uint64_t numLogBlocksRead = 0;
+            if (nvmeReadsInLBAs >= UINT64_MAX)
+            {
+                numLogBlocksRead = UINT64_MAX;
+            }
+            else
+            {
+                numLogBlocksRead = (uint64_t)nvmeReadsInLBAs;
+            }
+            generalStatisticsAndPerformance[offset + 28] = M_Byte7(numLogBlocksRead);
+            generalStatisticsAndPerformance[offset + 29] = M_Byte6(numLogBlocksRead);
+            generalStatisticsAndPerformance[offset + 30] = M_Byte5(numLogBlocksRead);
+            generalStatisticsAndPerformance[offset + 31] = M_Byte4(numLogBlocksRead);
+            generalStatisticsAndPerformance[offset + 32] = M_Byte3(numLogBlocksRead);
+            generalStatisticsAndPerformance[offset + 33] = M_Byte2(numLogBlocksRead);
+            generalStatisticsAndPerformance[offset + 34] = M_Byte1(numLogBlocksRead);
+            generalStatisticsAndPerformance[offset + 35] = M_Byte0(numLogBlocksRead);
+        }
+        //all other fields to be set to zero since translation is unspecified - TJE
+        offset += 68;
+    }
+    //set page length at the end
+    generalStatisticsAndPerformance[2] = M_Byte1(offset - 4);
+    generalStatisticsAndPerformance[3] = M_Byte0(offset - 4);
+    if (scsiIoCtx->pdata)
+    {
+        memcpy(scsiIoCtx->pdata, generalStatisticsAndPerformance, M_Min(M_Min(72U, offset), scsiIoCtx->dataLength));
+    }
+    return ret;
+}
+#endif
+
 int sntl_Translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
 	int ret = SUCCESS;
@@ -2281,60 +2495,40 @@ int sntl_Translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 					break;
 				}
 				break;
-			//TODO: add this page in to report POH
-			//case 0x15://background scan (for POH)
-			//	switch (subpageCode)
-			//	{
-			//	case 0:
-			//		if (device->drive_info.softSATFlags.deviceStatsPages.generalStatisitcsSupported)
-			//		{
-			//			ret = translate_Background_Scan_Results_Log_0x15(device, scsiIoCtx);
-			//		}
-			//		else
-			//		{
-			//			fieldPointer = 2;
-			//			bitPointer = 5;
-			//			sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-			//			ret = NOT_SUPPORTED;
-			//			sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-			//		}
-			//		break;
-			//	default:
-			//		fieldPointer = 3;
-			//		bitPointer = 7;
-			//		sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-			//		ret = NOT_SUPPORTED;
-			//		sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-			//		break;
-			//	}
-			//	break;
-			//TODO: add this to report total reads/writes etc
-			//case 0x19://general statistics and performance
-			//	switch (subpageCode)
-			//	{
-			//	case 0:
-			//		if (device->drive_info.softSATFlags.deviceStatsPages.generalStatisitcsSupported)
-			//		{
-			//			ret = translate_General_Statistics_And_Performance_Log_0x19(device, scsiIoCtx);
-			//		}
-			//		else
-			//		{
-			//			fieldPointer = 2;
-			//			bitPointer = 5;
-			//			sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-			//			ret = NOT_SUPPORTED;
-			//			sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-			//		}
-			//		break;
-			//	default:
-			//		fieldPointer = 3;
-			//		bitPointer = 7;
-			//		sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-			//		ret = NOT_SUPPORTED;
-			//		sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-			//		break;
-			//	}
-			//	break;
+			//add this page in to report POH
+#if defined (SNTL_EXT)
+			case 0x15://background scan (for POH)
+				switch (subpageCode)
+				{
+				case 0:
+					ret = sntl_Translate_Background_Scan_Results_Log_0x15(device, scsiIoCtx);
+                    break;
+				default:
+					fieldPointer = 3;
+					bitPointer = 7;
+					sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+					ret = NOT_SUPPORTED;
+					sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+					break;
+				}
+				break;
+			//add this to report total reads/writes etc
+			case 0x19://general statistics and performance
+				switch (subpageCode)
+				{
+				case 0:
+					ret = sntl_Translate_General_Statistics_And_Performance_Log_0x19(device, scsiIoCtx);
+					break;
+				default:
+					fieldPointer = 3;
+					bitPointer = 7;
+					sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+					ret = NOT_SUPPORTED;
+					sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+					break;
+				}
+				break;
+#endif
 			case 0x2F://Informational Exceptions
 				if (subpageCode == 0)
 				{
@@ -7196,7 +7390,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
             }
         }
     }
-    break;
+    break;//Write buffer cmd
 #if defined SNTL_EXT
     //case READ_BUFFER_CMD:
     //    switch (serviceAction)
@@ -7248,11 +7442,11 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
         //        commandSupported = false;
         //    }
         //    break;
-        default:
+        /*default:
             commandSupported = false;
             break;
         }
-        break;
+        break;*/
 #endif
     case 0x9F:
         switch (serviceAction)
@@ -8407,12 +8601,14 @@ int sntl_Translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 		ret = sntl_Translate_SCSI_Read_Command(device, scsiIoCtx);
 		break;
 	//SNTL spec doesn't define it, but we should add a way to read the telemetry log through here similar to SAT's translation for SATA Internal Status log
+#if defined (SNTL_EXT)
 	//case READ_BUFFER_CMD:
 	//	ret = sntl_Translate_SCSI_Read_Buffer_Command(device, scsiIoCtx);
 	//	break;
+#endif
 	case REPORT_LUNS_CMD:
 		ret = sntl_Translate_SCSI_Report_Luns_Command(device, scsiIoCtx);
-		//break;
+		break;
 	case 0xA3://check the service action for this one!
 		switch (scsiIoCtx->cdb[1] & 0x1F)
 		{
@@ -8431,9 +8627,11 @@ int sntl_Translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 		ret = sntl_Translate_SCSI_Request_Sense_Command(device, scsiIoCtx);
 		break;
 	//SNTL doesn't have this, but we should add it similar to SAT
+#if defined (SNTL_EXT)
 	//case SANITIZE_CMD://NVMe Sanitize
 	//	ret = sntl_Translate_SCSI_Sanitize_Command(device, scsiIoCtx);
 	//	break;
+#endif
 	case SECURITY_PROTOCOL_IN:
         if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT0)
         {
@@ -8488,6 +8686,7 @@ int sntl_Translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 	case WRITE16:
 		ret = sntl_Translate_SCSI_Write_Command(device, scsiIoCtx);//write command
 		break;
+#if defined (SNTL_EXT)
 	//These are not part of SNTL. We could add support IF the bytecheck field is specified the same as verify translation requires.
 	//The similar command (but reverse order of operations) is below (compare and write)
 	//case WRITE_AND_VERIFY_10:
@@ -8495,6 +8694,7 @@ int sntl_Translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 	//case WRITE_AND_VERIFY_16:
 	//	ret = sntl_Translate_SCSI_Write_And_Verify_Command(device, scsiIoCtx);//ATA Write, then read-verify commands
 	//	break;
+#endif
 	//case COMPARE_AND_WRITE://can only do this if fused commands are supported
 		//ret = sntl_Translate_SCSI_Compare_And_Write_Command(device, scsiIoCtx);
 		//break;
@@ -8538,11 +8738,13 @@ int sntl_Translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 			break;
 		}
 		break;
+#if defined (SNTL_EXT)
 	//SNTL doesn't describe these, but they could be added similar to SAT's specification
 	//case WRITE_SAME_10_CMD://Sequential write commands
 	//case WRITE_SAME_16_CMD://Sequential write commands
 	//	ret = sntl_Translate_SCSI_Write_Same_Command(device, scsiIoCtx);
 	//	break;
+#endif
 	case PERSISTENT_RESERVE_IN_CMD:
         if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT5)
         {
