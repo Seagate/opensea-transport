@@ -3041,6 +3041,209 @@ int sntl_Translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *scs
     return ret;
 }
 
+#if defined (SNTL_EXT)
+int sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
+{
+    int ret = SUCCESS;
+    uint8_t *controlExtPage = NULL;//will be allocated later
+    uint16_t pageLength = 32;//add onto this depending on the length of the header and block descriptors
+    uint16_t offset = 0;//used later when we start setting data in the buffer since we need to account for mode parameter header and DBDs
+    uint8_t headerLength = 4;
+    uint8_t blockDescLength = 0;
+    if (!modeParameterHeader)
+    {
+        return BAD_PARAMETER;
+    }
+    if (longHeader)
+    {
+        pageLength += 8;
+        offset += 8;
+        headerLength = 8;
+    }
+    else
+    {
+        pageLength += 4;
+        offset += 4;
+    }
+    if (returnDataBlockDescriptor)
+    {
+        if (longLBABit)
+        {
+            pageLength += 16;
+            offset += 16;
+            blockDescLength = 16;
+        }
+        else
+        {
+            pageLength += 8;
+            offset += 8;
+            blockDescLength = 8;
+        }
+    }
+    //now that we know how many bytes we need for this, allocate memory
+    controlExtPage = (uint8_t*)calloc(pageLength * sizeof(uint8_t), sizeof(uint8_t));
+    if (!controlExtPage)
+    {
+        //TODO: set an error in the sense data
+        return MEMORY_FAILURE;
+    }
+    //copy header into place
+    memcpy(&controlExtPage[0], modeParameterHeader, headerLength);
+    //copy block descriptor if it is to be returned
+    if (blockDescLength > 0)
+    {
+        memcpy(&controlExtPage[headerLength], modeParameterHeader, blockDescLength);
+    }
+    //set the remaining part of the page up
+    controlExtPage[offset + 0] = 0x0A;
+    controlExtPage[offset + 0] |= BIT6;//set spf bit
+    controlExtPage[offset + 1] = 0x01;
+    controlExtPage[offset + 2] = 0x00;
+    controlExtPage[offset + 3] = 0x1C;
+    if (pageControl != 0x01)//default, current, & saved...nothing on this page will be changeable - TJE
+    {
+        controlExtPage[offset + 4] = 0;//dlc = 0, tcmos = 0, scsip = 0, ialuae = 0
+        controlExtPage[offset + 5] = 0;//initial command priority = 0 (for no/vendor spcific priority)
+        controlExtPage[offset + 6] = SPC3_SENSE_LEN;//252
+        controlExtPage[offset + 7] = RESERVED;
+        controlExtPage[offset + 8] = RESERVED;
+        controlExtPage[offset + 9] = RESERVED;
+        controlExtPage[offset + 10] = RESERVED;
+        controlExtPage[offset + 11] = RESERVED;
+        controlExtPage[offset + 12] = RESERVED;
+        controlExtPage[offset + 13] = RESERVED;
+        controlExtPage[offset + 14] = RESERVED;
+        controlExtPage[offset + 15] = RESERVED;
+        controlExtPage[offset + 16] = RESERVED;
+        controlExtPage[offset + 17] = RESERVED;
+        controlExtPage[offset + 18] = RESERVED;
+        controlExtPage[offset + 19] = RESERVED;
+        controlExtPage[offset + 20] = RESERVED;
+        controlExtPage[offset + 21] = RESERVED;
+        controlExtPage[offset + 22] = RESERVED;
+        controlExtPage[offset + 23] = RESERVED;
+        controlExtPage[offset + 24] = RESERVED;
+        controlExtPage[offset + 25] = RESERVED;
+        controlExtPage[offset + 26] = RESERVED;
+        controlExtPage[offset + 27] = RESERVED;
+        controlExtPage[offset + 28] = RESERVED;
+        controlExtPage[offset + 29] = RESERVED;
+        controlExtPage[offset + 30] = RESERVED;
+        controlExtPage[offset + 31] = RESERVED;
+    }
+    //set the mode data length
+    if (longHeader)
+    {
+        controlExtPage[0] = M_Byte1(pageLength - 2);
+        controlExtPage[1] = M_Byte0(pageLength - 2);
+    }
+    else
+    {
+        controlExtPage[0] = pageLength - 1;
+    }
+    //now copy the data back and return from this function
+    if (scsiIoCtx->pdata)
+    {
+        memcpy(scsiIoCtx->pdata, controlExtPage, M_Min(pageLength, allocationLength));
+    }
+    safe_Free(controlExtPage);
+    return ret;
+}
+
+int sntl_Translate_Mode_Sense_Informational_Exceptions_Control_1Ch(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
+{
+    int ret = SUCCESS;
+    uint8_t *informationalExceptions = NULL;//will be allocated later
+    uint16_t pageLength = 12;//add onto this depending on the length of the header and block descriptors
+    uint16_t offset = 0;//used later when we start setting data in the buffer since we need to account for mode parameter header and DBDs
+    uint8_t headerLength = 4;
+    uint8_t blockDescLength = 0;
+    if (!modeParameterHeader)
+    {
+        return BAD_PARAMETER;
+    }
+    if (longHeader)
+    {
+        pageLength += 8;
+        offset += 8;
+        headerLength = 8;
+    }
+    else
+    {
+        pageLength += 4;
+        offset += 4;
+    }
+    if (returnDataBlockDescriptor)
+    {
+        if (longLBABit)
+        {
+            pageLength += 16;
+            offset += 16;
+            blockDescLength = 16;
+        }
+        else
+        {
+            pageLength += 8;
+            offset += 8;
+            blockDescLength = 8;
+        }
+    }
+    //now that we know how many bytes we need for this, allocate memory
+    informationalExceptions = (uint8_t*)calloc(pageLength * sizeof(uint8_t), sizeof(uint8_t));
+    if (!informationalExceptions)
+    {
+        //TODO: set an error in the sense data
+        return MEMORY_FAILURE;
+    }
+    //copy header into place
+    memcpy(&informationalExceptions[0], modeParameterHeader, headerLength);
+    //copy block descriptor if it is to be returned
+    if (blockDescLength > 0)
+    {
+        memcpy(&informationalExceptions[headerLength], modeParameterHeader, blockDescLength);
+    }
+    //set the remaining part of the page up
+    informationalExceptions[offset + 0] = 0x1C;//page number
+    informationalExceptions[offset + 1] = 0x0A;//page length
+    if (pageControl != 0x1)
+    {
+        informationalExceptions[offset + 2] = 0;//perf = 0, reserved = 0, ebf = 0 (no background functions), EWAsc = 0 (doesn't report warnings), DExcpt = 0 (device does not disable reporting failure predictions), test = 0, ebackerr = 0, logerr = 0
+        informationalExceptions[offset + 3] = 0;//MRIE = 0h //TODO: should this be different? We won't ever set a trip, but it isn't disabled either...should be either 0 or 6. 0 meaning will not trip. 6 meaning will check on request sense
+        informationalExceptions[offset + 4] = 0;//interval timer = 0 (not used/vendor specific)
+        informationalExceptions[offset + 5] = 0;//interval timer = 0 (not used/vendor specific)
+        informationalExceptions[offset + 6] = 0;//interval timer = 0 (not used/vendor specific)
+        informationalExceptions[offset + 7] = 0;//interval timer = 0 (not used/vendor specific)
+        informationalExceptions[offset + 8] = 0;//report count = 0 (no limit)
+        informationalExceptions[offset + 9] = 0;//report count = 0 (no limit)
+        informationalExceptions[offset + 10] = 0;//report count = 0 (no limit)
+        informationalExceptions[offset + 11] = 0;//report count = 0 (no limit)
+    }
+    else
+    {
+        //DExcpt can be changed. But we won't allow it right now. - TJE
+        //MRIE modes other than 6 are allowed, but unspecified. Not going to support them right now - TJE
+    }
+    //set the mode data length
+    if (longHeader)
+    {
+        informationalExceptions[0] = M_Byte1(pageLength - 2);
+        informationalExceptions[1] = M_Byte0(pageLength - 2);
+    }
+    else
+    {
+        informationalExceptions[0] = pageLength - 1;
+    }
+    //now copy the data back and return from this function
+    if (scsiIoCtx->pdata)
+    {
+        memcpy(scsiIoCtx->pdata, informationalExceptions, M_Min(pageLength, allocationLength));
+    }
+    safe_Free(informationalExceptions);
+    return ret;
+}
+
+#endif
+
 int sntl_Translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
 	int ret = SUCCESS;
@@ -3187,10 +3390,11 @@ int sntl_Translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
 		case 0://control
 			ret = sntl_Translate_Mode_Sense_Control_0Ah(device, scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
 			break;
-		//TODO: is there anything on this page that can be supported?
-		//case 0x01://control extension
-		//	ret = translate_Mode_Sense_Control_Extension_0Ah_01h(device, scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
-		//	break;
+#if defined (SNTL_EXT)
+		case 0x01://control extension
+			ret = sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(device, scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
+			break;
+#endif
 		default:
 			ret = NOT_SUPPORTED;
 			fieldPointer = 2;
@@ -3230,32 +3434,23 @@ int sntl_Translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
 			break;
 		}
 		break;
-	//case 0x1C://informational exceptions control - add under SNTL_EXT
-	//	switch (subpageCode)
-	//	{
-	//	case 0:
-	//		if (device->drive_info.IdentifyData.ata.Word082 & BIT0)
-	//		{
-	//			ret = sntl_Translate_Mode_Sense_Informational_Exceptions_Control_1Ch(device, scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
-	//		}
-	//		else
-	//		{
-	//			ret = NOT_SUPPORTED;
-	//			fieldPointer = 2;
-	//			bitPointer = 5;
-	//			sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-	//			sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-	//		}
-	//		break;
-	//	default:
-	//		ret = NOT_SUPPORTED;
-	//		fieldPointer = 2;
-	//		bitPointer = 5;
-	//		sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-	//		sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-	//		break;
-	//	}
-	//	break;
+#if defined (SNTL_EXT)
+	case 0x1C://informational exceptions control - add under SNTL_EXT
+		switch (subpageCode)
+		{
+		case 0:
+			ret = sntl_Translate_Mode_Sense_Informational_Exceptions_Control_1Ch(device, scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
+			break;
+		default:
+			ret = NOT_SUPPORTED;
+			fieldPointer = 2;
+			bitPointer = 5;
+			sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+			sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+			break;
+		}
+		break;
+#endif
 	case 0x1A://Power Condition
 		switch (subpageCode)
 		{
