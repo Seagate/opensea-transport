@@ -1374,11 +1374,27 @@ bool is_Seagate_Model_Number_Vendor_G(tDevice *device, bool USBchildDrive)
 	return isSeagateVendor;
 }
 
+bool is_Seagate_Model_Number_Vendor_H(tDevice *device)
+{
+	bool isSeagateVendor = false;
+	char *partialModelString = NULL;
+
+	//we need to check the model number for the ones used on consumer NVMe SSDs
+	if (device->drive_info.drive_type == NVME_DRIVE)
+	{
+		if (strstr(device->drive_info.product_identification, "ZP") != NULL)
+		{
+			isSeagateVendor = true;
+		}
+	}
+	return isSeagateVendor;
+}
+
 eSeagateFamily is_Seagate_Family(tDevice *device)
 {
     eSeagateFamily isSeagateFamily = NON_SEAGATE;
     uint8_t iter = 0;
-    uint8_t numChecks = 10;//maxtor, seagate, samsung, lacie, seagate-Vendor. As the family of seagate drives expands, we will need to increase this and add new checks
+    uint8_t numChecks = 11;//maxtor, seagate, samsung, lacie, seagate-Vendor. As the family of seagate drives expands, we will need to increase this and add new checks
     for (iter = 0; iter < numChecks && isSeagateFamily == NON_SEAGATE; iter++)
     {
         switch (iter)
@@ -1489,6 +1505,12 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
 			if (is_Seagate_Model_Number_Vendor_G(device, false))
 			{
 				isSeagateFamily = SEAGATE_VENDOR_G;
+			}
+			break;
+		case 10://is_Vendor_H - NVMe SSDs
+			if (is_Seagate_Model_Number_Vendor_H(device))
+			{
+				isSeagateFamily = SEAGATE_VENDOR_H;
 			}
 			break;
             //TODO: Add in CDC, DEC, & PrarieTek detection. Currently not in since these drives are even more rare than the Conner and Miniscribe drives...
