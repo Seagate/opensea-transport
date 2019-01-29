@@ -12,6 +12,8 @@
 // \file sntl_helper.c
 // \brief Defines the function headers to help with SCSI to NVMe translation
 
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+
 #include "sntl_helper.h"
 #include "scsi_helper.h"
 #include "nvme_helper.h"
@@ -9050,3 +9052,5 @@ int sntl_Translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 	}
 	return ret;
 }
+
+#endif // (DISABLE_NVME_PASSTHROUGH)
