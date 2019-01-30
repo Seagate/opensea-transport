@@ -10,7 +10,7 @@ matrix:
     - os: linux
       sudo: false
       compiler: gcc
-      dist: trusty
+      dist: xenial
       before_script:
         - git clone https://github.com/Seagate/opensea-common.git
         - mv opensea-common ../
