@@ -718,6 +718,10 @@ int ata_SMART_Read_Log(tDevice *device, uint8_t logAddress, uint8_t *ptrData, ui
             if (!is_Checksum_Valid(ptrData, dataSize, &invalidSec))
             {
                 ret = WARN_INVALID_CHECKSUM;
+                if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+                {
+                    printf("Warning: Checksum is invalid\n");
+                }
             }
             break;
         default:
@@ -747,6 +751,10 @@ int ata_SMART_Read_Data(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
         if (!is_Checksum_Valid(ptrData, dataSize, &invalidSec))
         {
             ret = WARN_INVALID_CHECKSUM;
+            if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+            {
+                printf("Warning: Checksum is invalid\n");
+            }
         }
     }
     return ret;
@@ -754,7 +762,7 @@ int ata_SMART_Read_Data(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
 
 int ata_SMART_Return_Status(tDevice *device)
 {
-    return ata_SMART_Command(device,ATA_SMART_RTSMART, 0, NULL, 0, 15, true, 0);
+    return ata_SMART_Command(device, ATA_SMART_RTSMART, 0, NULL, 0, 15, true, 0);
 }
 
 int ata_SMART_Enable_Operations(tDevice *device)
@@ -777,6 +785,10 @@ int ata_SMART_Read_Thresholds(tDevice *device, uint8_t *ptrData, uint32_t dataSi
         if (!is_Checksum_Valid(ptrData, dataSize, &invalidSec))
         {
             ret = WARN_INVALID_CHECKSUM;
+            if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+            {
+                printf("Warning: Checksum is invalid\n");
+            }
         }
     }
     return ret;
