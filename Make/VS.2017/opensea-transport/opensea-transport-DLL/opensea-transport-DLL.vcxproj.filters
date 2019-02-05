@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\vendor">
+      <UniqueIdentifier>{9c86fa6d-a860-4f1b-85f5-60a28b2ddf9a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\vendor\seagate">
+      <UniqueIdentifier>{3089321e-4291-4be5-b693-3b4ccdb81d5d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\ata_helper.h">
@@ -92,6 +98,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\usb_hacks.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\vendor\seagate\seagate_ata_types.h">
+      <Filter>Header Files\vendor\seagate</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
