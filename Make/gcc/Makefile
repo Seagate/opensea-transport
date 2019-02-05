@@ -22,7 +22,7 @@ MINOR=19
 PATCH=0
 VERSION=$(MAJOR).$(MINOR).$(PATCH)
 SRC_DIR=../../src/
-INC_DIR=-I../../include -I../../include/vendor/seagate -I../../../opensea-common/include  
+INC_DIR=-I../../include -I../../include/vendor -I../../../opensea-common/include  
 CC ?= gcc
 AR ?= ar
 
