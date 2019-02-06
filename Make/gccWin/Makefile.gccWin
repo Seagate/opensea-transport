@@ -17,13 +17,13 @@
 NAME = opensea-transport
 #Change the Major version when major interface changes are made. E.g. tDevice changes
 MAJOR = 1
-#Change the Minor version when new features are added. 
+#Change the Minor version when new features are added.
 MINOR = 19
 #Change the patch version when only bug fixes are made.
 PATCH = 0
 VERSION = $(MAJOR).$(MINOR).$(PATCH)
 SRC_DIR = ../../src/
-INC_DIR = -I../../include -I../../../opensea-common/include
+INC_DIR = -I../../include -I../../include/vendor -I../../../opensea-common/include
 
 CC = gcc
 AR = ar
@@ -39,7 +39,7 @@ LDLIBS = ../../../opensea-common/Make/gccWin/$(FILE_OUTPUT_DIR)/libopensea-commo
 UNAME := $(shell uname -s)
 ifneq (,$(findstring MINGW64,$(UNAME)))
     #BR note: pragma comment(lib,"Version.lib") is not supported by gcc, use the below supply the version.lib functions
-    LDFLAGS += -L/msys64/mingw64/x86_64-w64-mingw32/lib 
+    LDFLAGS += -L/msys64/mingw64/x86_64-w64-mingw32/lib
     LDLIBS += -lversion
     LDLIBS += -lcfgmgr32
 endif
@@ -79,7 +79,7 @@ ifneq (,$(findstring MINGW64,$(UNAME)))
     PROJECT_DEFINES += -D_WIN32_WINNT=0x0601
     # PROJECT_DEFINES += -DWIN_API_TARGET_VERSION=100150630L
     # PROJECT_DEFINES += -DWIN_API_TARGET_VERSION=81000000L
-    # PROJECT_DEFINES += -DWINVER=SEA_WIN32_WINNT_WIN10 
+    # PROJECT_DEFINES += -DWINVER=SEA_WIN32_WINNT_WIN10
 endif
 
 #All of the source files have associated object files
@@ -91,7 +91,7 @@ LIBS = lib$(NAME).a
 
 FILE_OUTPUT_DIR = lib
 
-.PHONY: all 
+.PHONY: all
 all: clean mkoutputdir $(LIBS)
 
 opensea-libs:
@@ -104,7 +104,7 @@ $(LIBS): $(LIB_OBJ_FILES) opensea-libs
 	rm -f $(FILE_OUTPUT_DIR)/$@
 	$(AR) cq $(FILE_OUTPUT_DIR)/$@ $(LIB_OBJ_FILES)
 
-	$(CC) -shared $(LIB_OBJ_FILES) $(LDFLAGS) $(LDLIBS) -o $(FILE_OUTPUT_DIR)/lib$(NAME).so.$(VERSION) 
+	$(CC) -shared $(LIB_OBJ_FILES) $(LDFLAGS) $(LDLIBS) -o $(FILE_OUTPUT_DIR)/lib$(NAME).so.$(VERSION)
 #	cd $(FILE_OUTPUT_DIR) && ln -s lib$(NAME).so* lib$(NAME).so
 
 clean:
