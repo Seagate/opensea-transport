@@ -30,7 +30,7 @@ AR = ar
 
 CFLAGS ?= -Wall
 #BR note: If you want to hide all of the informational compiler messages, uncomment the line below
-CFLAGS += -Wno-unknown-pragmas -Wno-incompatible-pointer-types -Wno-unused-variable
+CFLAGS += -Wno-incompatible-pointer-types
 CFLAGS += -c -fPIC -I. -std=gnu99
 
 LDFLAGS = -Wall

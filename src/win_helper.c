@@ -382,7 +382,7 @@ int get_Device(const char *filename, tDevice *device )
                                 }
                             }
                         }
-                        DWORD lastError = GetLastError();
+                        //DWORD lastError = GetLastError();
                         safe_Free(diskExtents);
                     }
                 }
@@ -3683,11 +3683,11 @@ int device_Reset(ScsiIoCtx *scsiIoCtx)
 {
     int ret = FAILURE;
     //this IOCTL is only supported for non-scsi devices, which includes anything (ata or scsi) attached to a USB or SCSI or SAS interface
-    if (scsiIoCtx->device->drive_info.drive_type == IDE_INTERFACE)
+    if (scsiIoCtx->device->drive_info.drive_type == ATA_DRIVE)
     {
         //This does not seem to work since it is obsolete and likely not implemented in modern drivers
         //use the Windows API call - http://msdn.microsoft.com/en-us/library/windows/hardware/ff560603%28v=vs.85%29.aspx
-        ULONG returned_data = 0;
+        //ULONG returned_data = 0;
         BOOL success = 0;
         scsiIoCtx->device->os_info.last_error = 0;
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd,
@@ -6242,7 +6242,8 @@ int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_
     //used for setting the timeout
     COMMTIMEOUTS comTimeout;
     memset(&comTimeout, 0, sizeof(COMMTIMEOUTS));
-    BOOL timeoutGot = GetCommTimeouts(device->os_info.fd, &comTimeout);//get timeouts if possible before trying to change them...
+    /*BOOL timeoutGot = */
+    GetCommTimeouts(device->os_info.fd, &comTimeout);//get timeouts if possible before trying to change them...
     uint64_t timeoutInSeconds = 0;
     if (device->drive_info.defaultTimeoutSeconds == 0)
     {
@@ -6254,7 +6255,8 @@ int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_
         comTimeout.ReadTotalTimeoutConstant = device->drive_info.defaultTimeoutSeconds * 1000;//convert time in seconds to milliseconds
         timeoutInSeconds = device->drive_info.defaultTimeoutSeconds;
     }
-    BOOL timeoutSet = SetCommTimeouts(device->os_info.fd, &comTimeout);
+    /*BOOL timeoutSet = */
+    SetCommTimeouts(device->os_info.fd, &comTimeout);
     device->os_info.last_error = GetLastError();
     //for use by the setFilePointerEx function
     LARGE_INTEGER liDistanceToMove = { 0 }, lpNewFilePointer = { 0 };
@@ -6380,7 +6382,8 @@ int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
     //used for setting the timeout
     COMMTIMEOUTS comTimeout;
     memset(&comTimeout, 0, sizeof(COMMTIMEOUTS));
-    BOOL timeoutGot = GetCommTimeouts(device->os_info.fd, &comTimeout);//get timeouts if possible before trying to change them...
+    /*BOOL timeoutGot = */
+    GetCommTimeouts(device->os_info.fd, &comTimeout);//get timeouts if possible before trying to change them...
     uint64_t timeoutInSeconds = 0;
     if (device->drive_info.defaultTimeoutSeconds == 0)
     {
@@ -6392,7 +6395,8 @@ int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
         comTimeout.WriteTotalTimeoutConstant = device->drive_info.defaultTimeoutSeconds * 1000;//convert time in seconds to milliseconds
         timeoutInSeconds = device->drive_info.defaultTimeoutSeconds;
     }
-    BOOL timeoutSet = SetCommTimeouts(device->os_info.fd, &comTimeout);
+    /*BOOL timeoutSet = */
+    SetCommTimeouts(device->os_info.fd, &comTimeout);
     device->os_info.last_error = GetLastError();
     //for use by the setFilePointerEx function
     LARGE_INTEGER liDistanceToMove = { 0 }, lpNewFilePointer = { 0 };
@@ -6690,7 +6694,8 @@ int os_Flush(tDevice *device)
     //used for setting the timeout
     COMMTIMEOUTS comTimeout;
     memset(&comTimeout, 0, sizeof(COMMTIMEOUTS));
-    BOOL timeoutGot = GetCommTimeouts(device->os_info.fd, &comTimeout);//get timeouts if possible before trying to change them...
+    /*BOOL timeoutGot = */
+    GetCommTimeouts(device->os_info.fd, &comTimeout);//get timeouts if possible before trying to change them...
     uint64_t timeoutInSeconds = 0;
     if (device->drive_info.defaultTimeoutSeconds == 0)
     {
@@ -6702,9 +6707,10 @@ int os_Flush(tDevice *device)
         comTimeout.ReadTotalTimeoutConstant = device->drive_info.defaultTimeoutSeconds * 1000;//convert time in seconds to milliseconds
         timeoutInSeconds = device->drive_info.defaultTimeoutSeconds;
     }
-    BOOL timeoutSet = SetCommTimeouts(device->os_info.fd, &comTimeout);
+    /*BOOL timeoutSet = */
+    SetCommTimeouts(device->os_info.fd, &comTimeout);
     device->os_info.last_error = GetLastError();
-    DWORD bytesReturned = 0;
+    //DWORD bytesReturned = 0;
 
     //this api call will need some changes when asynchronous support is added in
     seatimer_t commandTimer;
