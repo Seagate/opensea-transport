@@ -388,7 +388,7 @@ extern "C"
     } eNvmeOPCodes;
 
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct _nvmCommand {
@@ -407,7 +407,7 @@ extern "C"
         uint32_t 			cdw13;//CDW13
         uint32_t 			cdw14;//CDW14
         uint32_t 			cdw15;//CDW15
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
         }nvmCommand;
     #pragma pack(pop)
     #else
@@ -848,7 +848,7 @@ extern "C"
     } nvmeUserIO;
 #endif
 
-#if !defined (__GNUC__)
+#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
 #pragma pack(push, 1)
 #endif
     typedef struct _nvmeAdminCommand {
@@ -868,7 +868,7 @@ extern "C"
     	uint32_t 	cdw13; //Command Dword 10(CDW10)
     	uint32_t 	cdw14; //Command Dword 10(CDW10)
     	uint32_t 	cdw15; //Command Dword 10(CDW10)
-#if !defined (__GNUC__)
+#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeAdminCommand;
 #pragma pack(pop)
 #else
