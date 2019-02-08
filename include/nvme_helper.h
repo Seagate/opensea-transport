@@ -77,7 +77,7 @@ extern "C"
     } eNvmeNameSpace ;
 
     //Figure 78: Get Log Page - Error Information Log Entry (Log Identifier 01h)
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct _nvmeErrLogEntry {
@@ -92,14 +92,14 @@ extern "C"
         uint8_t             resv1[3]; 
         uint64_t            cmdSpecificInfo;
         uint8_t             resv2[24];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     } nvmeErrLogEntry;
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeErrLogEntry;
     #endif
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct _nvmeSmartLog {
@@ -127,14 +127,14 @@ extern "C"
 		uint32_t			totalTimeThermalMgmtTemp1;
 		uint32_t			totalTimeThermalMgmtTemp2;
     	uint8_t 			rsvd216[280];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     } nvmeSmartLog;
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeSmartLog;
     #endif
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct _nvmeFirmwareSlotInfo {
@@ -142,7 +142,7 @@ extern "C"
         uint8_t     rsvd1[7];
         uint64_t    FSR[7];
         uint8_t     rsvd2[448];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     } nvmeFirmwareSlotInfo;
     #pragma pack(pop)
     #else
@@ -158,7 +158,7 @@ extern "C"
     	NVME_SELF_TEST_REPORTS		= 20,
     };
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct _nvmeSelfTestRes {
@@ -172,13 +172,13 @@ extern "C"
     	uint8_t			statusCodeType;
     	uint8_t			statusCode;
     	uint8_t			vendorSpecific[2];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     } nvmeSelfTestRes;
     #else
     }__attribute__((packed,aligned(1))) nvmeSelfTestRes;
     #endif
     
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct _nvmeSelfTestLog {
@@ -186,7 +186,7 @@ extern "C"
     	uint8_t                 crntDevSelftestCompln;
     	uint8_t                 rsvd[2];
     	nvmeSelfTestRes         result[20];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     } nvmeSelfTestLog;
     #else
     }__attribute__((packed,aligned(1))) nvmeSelfTestLog;
@@ -201,14 +201,14 @@ extern "C"
     	NVME_CMD_EFFECTS_CSE_MASK	= 3 << 16,
     };
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct _nvmeEffectsLog {
     	uint32_t acs[256];
     	uint32_t iocs[256];
     	uint8_t  resv[2048];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     } nvmeEffectsLog;
     #else
     }__attribute__((packed,aligned(1))) nvmeEffectsLog;
@@ -283,7 +283,7 @@ extern "C"
         uint64_t MS__u64;
     } u128;
 
-    #if !defined (__GNUC__) 
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__) 
     #pragma pack(push, 1)
     #endif
     typedef struct _nvmeSuperCapDramSmartAttr {
@@ -295,7 +295,7 @@ extern "C"
        u128         dataUnitsWrittenToDramNamespace;   // 24-39
        uint64_t     dramCorrectableErrorCount;         // 40-47
        uint64_t     dramUncorrectableErrorCount;       // 48-55
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     } nvmeSuperCapDramSmartAttr;
     #pragma pack(pop)
     #else
@@ -309,7 +309,7 @@ extern "C"
 
     #define BLOCK_SIZE      512
 
-    #if !defined (__GNUC__) 
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__) 
     #pragma pack(push, 1)
     #endif
     typedef struct _nvmeTemetryLogHdr {
@@ -323,7 +323,7 @@ extern "C"
         uint8_t     teleDataAval;
         uint8_t     teleDataGenNum;
         uint8_t     reasonIdentifier[128];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     } nvmeTemetryLogHdr;
     #pragma pack(pop)
     #else
@@ -333,7 +333,7 @@ extern "C"
 /**************************
 * PCIE ERROR INFORMATION
 **************************/
-    #if !defined (__GNUC__) 
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__) 
     #pragma pack(push, 1)
     #endif
     typedef struct _nvmePcieErrorLogPage {
@@ -356,7 +356,7 @@ extern "C"
        uint32_t   malformedTlpErrCnt;
        uint32_t   cplTlpPoisonedErrCnt;
        uint32_t   memRdTlpPoisonedErrCnt;
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     } nvmePcieErrorLogPage;
     #pragma pack(pop)
     #else
