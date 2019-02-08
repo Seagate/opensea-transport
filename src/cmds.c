@@ -362,7 +362,7 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
                     }
                 }
                 //Issue a reset if we need to!
-                get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeStatus, &doNotRetry, &more, &statusCodeType, &statusCode);
+                get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &doNotRetry, &more, &statusCodeType, &statusCode);
                 if (statusCodeType == NVME_SCT_COMMAND_SPECIFIC_STATUS)
                 {
                     switch (statusCode)

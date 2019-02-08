@@ -1994,7 +1994,7 @@ int sntl_Translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiIoCtx)
     {
         if (SUCCESS != nvme_Get_Log_Page(device, &getSMARTHealthData))
         {
-            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             return FAILURE;
         }
         uint16_t currentTempK = M_BytesTo2ByteValue(logPage[2], logPage[1]);
@@ -2029,7 +2029,7 @@ int sntl_Translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiIoCtx)
         }
         else
         {
-            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             return FAILURE;
         }
     }
@@ -2084,7 +2084,7 @@ int sntl_Translate_Solid_State_Media_Log_0x11(tDevice *device, ScsiIoCtx *scsiIo
         //endurance
         if (SUCCESS != nvme_Get_Log_Page(device, &getSMARTHealthData))
         {
-            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             return FAILURE;
         }
         solidStateMediaLog[offset + 0] = 0x00;
@@ -2129,7 +2129,7 @@ int sntl_Translate_Informational_Exceptions_Log_Page_2F(tDevice *device, ScsiIoC
     }
     if (SUCCESS != nvme_Get_Log_Page(device, &getSMARTHealthData))
     {
-        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
         return FAILURE;
     }
     //set the header data
@@ -2201,7 +2201,7 @@ int sntl_Translate_Background_Scan_Results_Log_0x15(tDevice *device, ScsiIoCtx *
     }
     if (SUCCESS != nvme_Get_Log_Page(device, &readSmartLog))
     {
-        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
         return FAILURE;
     }
     backgroundResults[0] = 0x11;
@@ -2276,7 +2276,7 @@ int sntl_Translate_General_Statistics_And_Performance_Log_0x19(tDevice *device, 
     }
     if (SUCCESS != nvme_Get_Log_Page(device, &readSmartLog))
     {
-        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
         return FAILURE;
     }
     generalStatisticsAndPerformance[0] = 0x19;
@@ -2684,7 +2684,7 @@ int sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(tDevice *device, Scs
         else
         {
             safe_Free(readWriteErrorRecovery);
-            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             return ret;
         }
     }
@@ -2817,7 +2817,7 @@ int sntl_Translate_Mode_Sense_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx,
             else
             {
                 //TODO: set an error...even though this shouldn't happen
-                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 safe_Free(caching);
                 return ret;
             }
@@ -3571,7 +3571,7 @@ int sntl_Translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx
         //TODO: remove this if and pass along the DWORD returned with status for translation instead.
         if (wceRet)
         {
-            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             ret = FAILURE;
             return ret;
         }
@@ -4048,7 +4048,7 @@ int sntl_Translate_SCSI_Synchronize_Cache_Command(tDevice *device, ScsiIoCtx *sc
     }
     ret = nvme_Flush(device);
     //now set sense data
-    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
     return ret;
 }
 
@@ -4209,7 +4209,7 @@ int sntl_Translate_SCSI_Read_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         }
     }
     int ret = nvme_Read(device, lba, transferLength - 1, false, fua, pi, scsiIoCtx->pdata, scsiIoCtx->dataLength);
-    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
     return ret;
 }
 
@@ -4370,7 +4370,7 @@ int sntl_Translate_SCSI_Write_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         }
     }
     int ret = nvme_Write(device, lba, transferLength - 1, false, fua, pi, 0, scsiIoCtx->pdata, scsiIoCtx->dataLength);
-    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
     return ret;
 }
 
@@ -4521,7 +4521,7 @@ int sntl_Translate_SCSI_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             }
         }
         ret = nvme_Compare(device, lba, verificationLength - 1, false, true, pi, scsiIoCtx->pdata, scsiIoCtx->dataLength);
-        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
         break;
     case 2://not defined
         fieldPointer = 1;
@@ -4606,7 +4606,7 @@ int sntl_Translate_SCSI_Security_Protocol_In_Command(tDevice *device, ScsiIoCtx 
         }
     }
     ret = nvme_Security_Receive(device, securityProtocol, securityProtocolSpecific, 0, scsiIoCtx->pdata, allocationLength);
-    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
     return ret;
 }
 
@@ -4667,7 +4667,7 @@ int sntl_Translate_SCSI_Security_Protocol_Out_Command(tDevice *device, ScsiIoCtx
         }
     }
     ret = nvme_Security_Send(device, securityProtocol, securityProtocolSpecific, 0, scsiIoCtx->pdata, transferLength);
-    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
     return ret;
 }
 
@@ -4983,7 +4983,7 @@ int sntl_Translate_SCSI_Write_Long(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     else
                     {
                         ret = nvme_Write_Uncorrectable(device, lba, 0);//only 1 block at a time
-                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                     }
                 }
                 else
@@ -5209,7 +5209,7 @@ int sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoC
             ret = nvme_Firmware_Image_Dl(device, bufferOffset, parameterListLength, scsiIoCtx->pdata);
             if (ret != SUCCESS)
             {
-                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 return ret;
             }
             //send the activate command!
@@ -5221,14 +5221,14 @@ int sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoC
             ret = nvme_Firmware_Commit(device, commitAction, bufferID);//todo: need to catch any errors
             if (ret != SUCCESS)
             {
-                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 return ret;
             }
             //need to check if the status of the commit says we need a reset too!
             int resetType = 0;//0 = no reset, 1 = reset, 2 = susb system reset
             bool dnr = false, more = false;
             uint8_t sct = 0, sc = 0;
-            get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeStatus, &dnr, &more, &sct, &sc);
+            get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &dnr, &more, &sct, &sc);
             if (sct == NVME_SCT_COMMAND_SPECIFIC_STATUS)
             {
                 switch (sc)
@@ -5308,7 +5308,7 @@ int sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoC
                     ret = nvme_Firmware_Image_Dl(device, bufferOffset, parameterListLength, scsiIoCtx->pdata);
                     if (ret != SUCCESS)
                     {
-                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                         return ret;
                     }
                 }
@@ -5344,14 +5344,14 @@ int sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoC
                 ret = nvme_Firmware_Commit(device, commitAction, bufferID);
                 if (ret != SUCCESS)
                 {
-                    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                     return ret;
                 }
                 //need to check if the status of the commit says we need a reset too!
                 int resetType = 0;//0 = no reset, 1 = reset, 2 = susb system reset
                 bool dnr = false, more = false;
                 uint8_t sct = 0, sc = 0;
-                get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeStatus, &dnr, &more, &sct, &sc);
+                get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &dnr, &more, &sct, &sc);
                 if (sct == NVME_SCT_COMMAND_SPECIFIC_STATUS)
                 {
                     switch (sc)
@@ -5466,14 +5466,14 @@ int sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsi
                     ret = nvme_Flush(device);
                     if (ret != SUCCESS)
                     {
-                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                         return ret;
                     }
                 }
                 ret = nvme_Set_Features(device, &features);
                 if (ret != SUCCESS)
                     {
-                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                         return ret;
                     }
             }
@@ -5489,14 +5489,14 @@ int sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsi
                     ret = nvme_Flush(device);
                     if (ret != SUCCESS)
                     {
-                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                         return ret;
                     }
                 }
                 ret = nvme_Set_Features(device, &features);
                 if (ret != SUCCESS)
                 {
-                    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                     return ret;
                 }
             }
@@ -5523,14 +5523,14 @@ int sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsi
                 ret = nvme_Flush(device);
                 if (ret != SUCCESS)
                 {
-                    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                     return ret;
                 }
             }
             ret = nvme_Set_Features(device, &features);
             if (ret != SUCCESS)
             {
-                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 return ret;
             }
         }
@@ -5559,14 +5559,14 @@ int sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsi
                 ret = nvme_Flush(device);
                 if (ret != SUCCESS)
                 {
-                    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                     return ret;
                 }
             }
             ret = nvme_Set_Features(device, &features);
             if (ret != SUCCESS)
             {
-                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 return ret;
             }
         }
@@ -5595,14 +5595,14 @@ int sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsi
                 ret = nvme_Flush(device);
                 if (ret != SUCCESS)
                 {
-                    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                     return ret;
                 }
             }
             ret = nvme_Set_Features(device, &features);
             if (ret != SUCCESS)
             {
-                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 return ret;
             }
         }
@@ -5617,14 +5617,14 @@ int sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsi
                 ret = nvme_Flush(device);
                 if (ret != SUCCESS)
                 {
-                    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                     return ret;
                 }
             }
             ret = nvme_Set_Features(device, &features);
             if (ret != SUCCESS)
             {
-                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 return ret;
             }
         }
@@ -5808,7 +5808,7 @@ int sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                         else
                         {
                             ret = FAILURE;
-                            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                             exitLoop = true;
                             break;
                         }
@@ -5825,7 +5825,7 @@ int sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 if (SUCCESS != nvme_Dataset_Management(device, numberOfRanges, true, false, false, dsmBuffer, 4096))
                 {
                     ret = FAILURE;
-                    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 }
             }
             safe_Free(dsmBuffer);
@@ -5880,7 +5880,7 @@ int sntl_Translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx *scsiIo
     if (SUCCESS != nvme_Get_Features(device, &powerState))
     {
         //TODO: set error based on status code translation
-        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
         return ret;
     }
     uint8_t currentPowerState = M_GETBITRANGE(powerState.featSetGetValue, 4, 0);
@@ -5950,7 +5950,7 @@ int sntl_Translate_Persistent_Reserve_In(tDevice * device, ScsiIoCtx * scsiIoCtx
         if (SUCCESS != nvme_Reservation_Report(device, false, nvmeReportKeys, 4096))
         {
             //Set error based on the status the controller replied with!!!
-            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             return ret;
         }
         uint16_t numberOfRegisteredControllers = M_BytesTo2ByteValue(nvmeReportKeys[5], nvmeReportKeys[6]);
@@ -5989,7 +5989,7 @@ int sntl_Translate_Persistent_Reserve_In(tDevice * device, ScsiIoCtx * scsiIoCtx
         if (SUCCESS != nvme_Reservation_Report(device, false, nvmeReport, 4096))
         {
             //Set error based on the status the controller replied with!!!
-            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             return ret;
         }
         //uint16_t numberOfRegisteredControllers = M_BytesTo2ByteValue(nvmeReport[5], nvmeReport[6]);
@@ -6068,7 +6068,7 @@ int sntl_Translate_Persistent_Reserve_In(tDevice * device, ScsiIoCtx * scsiIoCtx
         //send NVMe identify command, CNS set to 0, current namespace being queried.
         if (SUCCESS != nvme_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.nvme.ns, device->drive_info.namespaceID, 0))
         {
-            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             return ret;
         }
         //then do a get features with FID set to 83h (reservation persistence)
@@ -6077,7 +6077,7 @@ int sntl_Translate_Persistent_Reserve_In(tDevice * device, ScsiIoCtx * scsiIoCtx
         getReservationPersistence.fid = 0x83;
         if (SUCCESS != nvme_Get_Features(device, &getReservationPersistence))
         {
-            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             return ret;
         }
         //Both commands must complete before translating!
@@ -6139,7 +6139,7 @@ int sntl_Translate_Persistent_Reserve_In(tDevice * device, ScsiIoCtx * scsiIoCtx
         uint8_t nvmeReport[4096] = { 0 };//I hope this is big enough...may need to redo this!
         if (SUCCESS != nvme_Reservation_Report(device, false, nvmeReport, 4096))
         {
-            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             return ret;
         }
         uint16_t numberOfRegisteredControllers = M_BytesTo2ByteValue(nvmeReport[5], nvmeReport[6]);
@@ -6354,7 +6354,7 @@ int sntl_Translate_Persistent_Reserve_Out(tDevice * device, ScsiIoCtx * scsiIoCt
         //aptpl is unused in this translation
         if (SUCCESS != nvme_Reservation_Register(device, changeThroughPowerLoss, false, 0x02, buffer, 16))
         {
-            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             return ret;
         }
     }
@@ -6468,7 +6468,7 @@ int sntl_Translate_Persistent_Reserve_Out(tDevice * device, ScsiIoCtx * scsiIoCt
                     setPTPL.featSetGetValue = BIT0;
                     if (SUCCESS != nvme_Set_Features(device, &setPTPL))
                     {
-                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                         return ret;
                     }
                 }
@@ -6487,7 +6487,7 @@ int sntl_Translate_Persistent_Reserve_Out(tDevice * device, ScsiIoCtx * scsiIoCt
             //send the reservation register command
             if (SUCCESS != nvme_Reservation_Register(device, changeThroughPowerLoss, iekey, rrega, buffer, 16))
             {
-                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 return ret;
             }
         }
@@ -6569,7 +6569,7 @@ int sntl_Translate_Persistent_Reserve_Out(tDevice * device, ScsiIoCtx * scsiIoCt
             }
             if (SUCCESS != nvme_Reservation_Acquire(device, rtype, false, racqa, buffer, 16))
             {
-                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 return ret;
             }
         }
@@ -6632,7 +6632,7 @@ int sntl_Translate_Persistent_Reserve_Out(tDevice * device, ScsiIoCtx * scsiIoCt
             buffer[7] = scsiIoCtx->pdata[0];
             if (SUCCESS != nvme_Reservation_Release(device, rtype, false, rrela, buffer, 8))
             {
-                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 return ret;
             }
         }

@@ -83,7 +83,7 @@ int nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
     ret = send_NVMe_IO(cmdCtx);
     if (cmdCtx->commandCompletionData.dw3Valid)
     {
-        device->drive_info.lastNVMeStatus = cmdCtx->commandCompletionData.statusAndCID;
+        device->drive_info.lastNVMeResult.lastNVMeStatus = cmdCtx->commandCompletionData.statusAndCID;
         if (ret != OS_PASSTHROUGH_FAILURE && ret != OS_COMMAND_NOT_AVAILABLE && ret != OS_COMMAND_BLOCKED)
         {
             ret = check_NVMe_Status(cmdCtx->commandCompletionData.statusAndCID);
@@ -92,7 +92,16 @@ int nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
     else
     {
         //didn't get a status for one reason or another, so clear out anything that may have been left behind from a previous command.
-        device->drive_info.lastNVMeStatus = 0;
+        device->drive_info.lastNVMeResult.lastNVMeStatus = 0;
+    }
+    if (cmdCtx->commandCompletionData.dw0Valid)
+    {
+        device->drive_info.lastNVMeResult.lastNVMeCommandSpecific = cmdCtx->commandCompletionData.commandSpecific;
+    }
+    else
+    {
+        //didn't get a status for one reason or another, so clear out anything that may have been left behind from a previous command.
+        device->drive_info.lastNVMeResult.lastNVMeCommandSpecific = 0;
     }
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
