@@ -1584,22 +1584,22 @@ int nvme_Subsystem_Reset(tDevice *device)
 //to be used with a deep scan???
 //fd must be a controller handle
 //TODO: Should we rework the linux_NVMe_Reset call to handle this too?
-int nvme_Namespace_Rescan(int fd)
-{
-    int ret = OS_PASSTHROUGH_FAILURE;
-    int ioRes = ioctl(fd, NVME_IOCTL_RESCAN);
-    if (ioRes < 0)
-    {   
-        //failed!
-        perror("NVMe Rescan");
-    }
-    else
-    {
-        //success!
-        ret = SUCCESS;
-    }
-    return ret;
-}
+//int nvme_Namespace_Rescan(int fd)
+//{
+//    int ret = OS_PASSTHROUGH_FAILURE;
+//    int ioRes = ioctl(fd, NVME_IOCTL_RESCAN);
+//    if (ioRes < 0)
+//    {
+//        //failed!
+//        perror("NVMe Rescan");
+//    }
+//    else
+//    {
+//        //success!
+//        ret = SUCCESS;
+//    }
+//    return ret;
+//}
 
 //Case to remove this from sg_helper.h/c and have a platform/lin/pci-herlper.h vs platform/win/pci-helper.c 
 
