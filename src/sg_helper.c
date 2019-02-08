@@ -1522,7 +1522,8 @@ int linux_NVMe_Reset(tDevice *device, bool subsystemReset)
         stop_Timer(&commandTimer);
     }
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    device->drive_info.lastNVMeStatus = 0;
+    device->drive_info.lastNVMeResult.lastNVMeStatus = 0;
+    device->drive_info.lastNVMeResult.lastNVMeCommandSpecific = 0;
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {   
         print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
