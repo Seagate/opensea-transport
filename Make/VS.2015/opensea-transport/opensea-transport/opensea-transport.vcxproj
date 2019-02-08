@@ -159,7 +159,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -176,7 +176,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
@@ -194,7 +194,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -211,7 +211,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
@@ -231,7 +231,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -252,7 +252,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
@@ -274,7 +274,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -295,7 +295,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=100143930L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
@@ -442,6 +442,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\include\vendor\seagate\seagate_ata_types.h" />
     <ClInclude Include="..\..\..\..\include\version.h" />
     <ClInclude Include="..\..\..\..\include\vm_helper.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>

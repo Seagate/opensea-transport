@@ -875,6 +875,25 @@ extern "C"
        SCT_EXT_STATUS_SCT_COMMAND_PROCESSING_IN_BACKGROUND                                                                  = 0xFFFF
    }eSCTExtendedStatus;
 
+   typedef enum _eSCTFeature
+   {
+       SCT_FEATURE_CONTROL_WRITE_CACHE_STATE            = 0x0001,
+       SCT_FEATURE_CONTROL_WRITE_CACHE_REORDERING       = 0x0002,
+       SCT_FEATURE_CONTROL_SET_HDA_TEMPERATURE_INTERVAL = 0x0003,
+       SCT_FEATURE_CONTROL_RESERVED,
+       //0004 & 0005 = reserved for SATA
+       //0006 - CFFF = reserved
+       //D000 - FFFF = vendor specifc
+       SCT_FEATURE_CONTROL_VENDOR                       = 0xD000,
+   }eSCTFeature;
+
+   typedef enum _eSCTFeatureControlFunction
+   {
+       SCT_FEATURE_FUNCTION_SET_STATE_AND_OPTIONS   = 0x0001,
+       SCT_FEATURE_FUNCTION_RETURN_CURRENT_STATE    = 0x0002,
+       SCT_FEATURE_FUNCTION_RETURN_CURRENT_OPTIONS  = 0x0003,
+   }eSCTFeatureControlFunction;
+
    typedef enum _eAMACCommand //accessible max address configuration
    {
        AMAC_GET_NATIVE_MAX_ADDRESS          = 0x0000,

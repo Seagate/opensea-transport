@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\vendor">
+      <UniqueIdentifier>{ad55cde8-e18f-47af-84e1-639ecd406686}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\vendor\seagate">
+      <UniqueIdentifier>{c6c660d3-6a0c-4a60-b73d-89751c0448b0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\src\ata_cmds.c">
@@ -184,6 +190,8 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\vm_nvme_mgmt.h">
       <Filter>Header Files</Filter>
+    <ClInclude Include="..\..\..\..\include\vendor\seagate\seagate_ata_types.h">
+      <Filter>Header Files\vendor\seagate</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
