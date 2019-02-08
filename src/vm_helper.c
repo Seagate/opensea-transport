@@ -1540,9 +1540,14 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
                 perror("send_IO");
             }
         }
-        //nvmeIoCtx->result = adminCmd.result;
-        nvmeIoCtx->result = ret;
-
+        nvmeIoCtx->commandCompletionData.commandSpecific = uio.comp.param.cmdSpecific;
+        nvmeIoCtx->commandCompletionData.dw0Valid = true;
+        nvmeIoCtx->commandCompletionData.dw1Reserved = uio.comp.reserved;
+        nvmeIoCtx->commandCompletionData.dw1Valid = true;
+        nvmeIoCtx->commandCompletionData.sqIDandHeadPtr = M_WordsTo4ByteValue(uio.comp.sqID, uio.comp.sqHdPtr);
+        nvmeIoCtx->commandCompletionData.dw2Valid = true;
+        nvmeIoCtx->commandCompletionData.statusAndCID = uio.comp.cmdID | (uio.comp.phaseTag << 16) | (uio.comp.SC << 17) | (uio.comp.SCT << 25) | (uio.comp.more << 30) | (uio.comp.noRetry << 31);
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
         break;
 
     #if 0

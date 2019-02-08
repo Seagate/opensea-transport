@@ -62,7 +62,8 @@ LIB_SRC_FILES = \
 	$(SRC_DIR)scsi_helper.c\
 	$(SRC_DIR)ti_legacy_helper.c\
 	$(SRC_DIR)usb_hacks.c\
-	$(SRC_DIR)win_helper.c
+	$(SRC_DIR)win_helper.c\
+	$(SRC_DIR)sntl_helper.c
 
 PROJECT_DEFINES += -DSTATIC_OPENSEA_TRANSPORT
 PROJECT_DEFINES += -D_CRT_SECURE_NO_WARNINGS

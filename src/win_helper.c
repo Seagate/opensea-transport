@@ -58,7 +58,7 @@ extern bool validate_Device_Struct(versionBlock);
 
 int get_Windows_SMART_IO_Support(tDevice *device);
 #if WINVER >= SEA_WIN32_WINNT_WIN10
-int get_Windows_FWDL_IO_Support(tDevice *device);
+int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE deviceType);
 bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx);//TODO: add nvme support...may not need an NVMe version since it's the only way to update code on NVMe
 int send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx);
 int send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx);
@@ -491,7 +491,7 @@ int get_Device(const char *filename, tDevice *device )
                             if (win_ret > 0)
                             {
 #if WINVER >= SEA_WIN32_WINNT_WIN10
-								get_Windows_FWDL_IO_Support(device);
+								get_Windows_FWDL_IO_Support(device, device_desc->BusType);
 #endif
                                 //#if defined (_DEBUG)
                                 //printf("Drive BusType: ");
@@ -2792,15 +2792,19 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
 }
 
 //TODO: handle more than 1 firmware slot per device.-TJE
-int get_Windows_FWDL_IO_Support(tDevice *device)
+int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busType)
 {
 	int ret = NOT_SUPPORTED;
 	STORAGE_HW_FIRMWARE_INFO_QUERY fwdlInfo;
 	memset(&fwdlInfo, 0, sizeof(STORAGE_HW_FIRMWARE_INFO_QUERY));
 	fwdlInfo.Version = sizeof(STORAGE_HW_FIRMWARE_INFO_QUERY);
 	fwdlInfo.Size = sizeof(STORAGE_HW_FIRMWARE_INFO_QUERY);
-	uint8_t slotCount = 7;//Max of 7 firmware slots on NVMe...might as well read in everything even if we aren't using it today.-TJE
-	uint32_t outputDataSize = sizeof(STORAGE_HW_FIRMWARE_INFO) + sizeof(STORAGE_HW_FIRMWARE_SLOT_INFO) * (slotCount - 1);//this is what MSDN says to do...
+	uint8_t slotCount = 1;
+    if (busType == BusTypeNvme)
+    {
+        slotCount = 7;//Max of 7 firmware slots on NVMe...might as well read in everything even if we aren't using it today.-TJE
+    }
+	uint32_t outputDataSize = sizeof(STORAGE_HW_FIRMWARE_INFO) + (sizeof(STORAGE_HW_FIRMWARE_SLOT_INFO) * slotCount);
 	uint8_t *outputData = (uint8_t*)malloc(outputDataSize);
     if (!outputData)
     {
@@ -2808,7 +2812,11 @@ int get_Windows_FWDL_IO_Support(tDevice *device)
     }
 	memset(outputData, 0, outputDataSize);
 	DWORD returned_data = 0;
-	//STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER can be set to request controller properties instead of what is associated with the handle...we may or maynot need this
+	//STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER is needed for NVMe to report relavant data. Without it, we only see 1 slot available.
+    if (busType == BusTypeNvme)
+    {
+        fwdlInfo.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;
+    }
 	int fwdlRet = DeviceIoControl(device->os_info.fd,
 		IOCTL_STORAGE_FIRMWARE_GET_INFO,
 		&fwdlInfo,
@@ -2832,6 +2840,15 @@ int get_Windows_FWDL_IO_Support(tDevice *device)
         printf("\tmaxXferSize: %d\n", fwdlSupportedInfo->ImagePayloadMaxSize);
         printf("\tPendingActivate: %d\n", fwdlSupportedInfo->PendingActivateSlot);
         printf("\tActiveSlot: %d\n", fwdlSupportedInfo->ActiveSlot);
+        printf("\tSlot Count: %d\n", fwdlSupportedInfo->SlotCount);
+        printf("\tFirmware Shared: %d\n", fwdlSupportedInfo->FirmwareShared);
+        //print out what's in the slots!
+        for (uint8_t iter = 0; iter < fwdlSupportedInfo->SlotCount && iter < slotCount; ++iter)
+        {
+            printf("\t    Firmware Slot %d:\n", fwdlSupportedInfo->Slot[iter].SlotNumber);
+            printf("\t\tRead Only: %d\n", fwdlSupportedInfo->Slot[iter].ReadOnly);
+            printf("\t\tRevision: %s\n", fwdlSupportedInfo->Slot[iter].Revision);
+        }
 #endif
 		ret = SUCCESS;
 	}
@@ -3924,63 +3941,67 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 
 #if WINVER >= SEA_WIN32_WINNT_WIN10
-typedef struct _NVMePassThroughIOStruct {
-	STORAGE_PROTOCOL_COMMAND    storageProtocolCommand;
-	nvmCommand	                cmdNVMe;
-    //TODO: we may need to insert some padding bytes here!
-    uint8_t                     Data[1];
-} NVMePassThroughIOStruct, *ptrNVMePassThroughIOStruct;
-
 /*
 	MS Windows treats specification commands different from Vendor Unique Commands. 
-
 */
+#define NVME_ERROR_ENTRY_LENGTH 64
 int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = SUCCESS;
-    uint32_t nvmePassthroughDataSize = sizeof(NVMePassThroughIOStruct) + nvmeIoCtx->dataSize;
-	ptrNVMePassThroughIOStruct pNVMeWinCtx = malloc(nvmePassthroughDataSize);
-    memset(pNVMeWinCtx, 0, nvmePassthroughDataSize);
+    uint32_t nvmePassthroughDataSize = nvmeIoCtx->dataSize + sizeof(STORAGE_PROTOCOL_COMMAND) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME + NVME_ERROR_ENTRY_LENGTH;
+    if (nvmeIoCtx->commandDirection == XFER_DATA_IN_OUT || nvmeIoCtx->commandDirection == XFER_DATA_OUT_IN)
+    {
+        //assuming bidirectional commands have the same amount of data transferring in each direction
+        //TODO: Validate that this assumption is actually correct.
+        nvmePassthroughDataSize += nvmeIoCtx->dataSize;
+    }
+    uint8_t *commandBuffer = (uint8_t*)_aligned_malloc(nvmePassthroughDataSize, 8);
+    memset(commandBuffer, 0, nvmePassthroughDataSize);
 
-	PSTORAGE_PROTOCOL_COMMAND protocolCommand = (PSTORAGE_PROTOCOL_COMMAND)pNVMeWinCtx;
+    //Setup the storage protocol command structure.
+
+	PSTORAGE_PROTOCOL_COMMAND protocolCommand = (PSTORAGE_PROTOCOL_COMMAND)(commandBuffer);
 
 	protocolCommand->Version = STORAGE_PROTOCOL_STRUCTURE_VERSION;
 	protocolCommand->Length = sizeof(STORAGE_PROTOCOL_COMMAND);
 	protocolCommand->ProtocolType = ProtocolTypeNvme;
-
-    if (nvmeIoCtx->useSpecificNSID)
-    {
-        protocolCommand->Flags = STORAGE_PROTOCOL_COMMAND_FLAG_ADAPTER_REQUEST;
-    }
-
     protocolCommand->ReturnStatus = 0;
     protocolCommand->ErrorCode = 0;
 	protocolCommand->CommandLength = STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
     if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
     {
         protocolCommand->CommandSpecific = STORAGE_PROTOCOL_SPECIFIC_NVME_ADMIN_COMMAND;
+        protocolCommand->Flags = STORAGE_PROTOCOL_COMMAND_FLAG_ADAPTER_REQUEST;
+        nvmeAdminCommand *command = (nvmeAdminCommand*)&protocolCommand->Command;
+        memcpy(command, &nvmeIoCtx->cmd.adminCmd, STORAGE_PROTOCOL_COMMAND_LENGTH_NVME);
     }
     else
     {
         protocolCommand->CommandSpecific = STORAGE_PROTOCOL_SPECIFIC_NVME_NVM_COMMAND;
+        nvmCommand *command = (nvmCommand*)&protocolCommand->Command;
+        memcpy(command, &nvmeIoCtx->cmd.nvmCmd, STORAGE_PROTOCOL_COMMAND_LENGTH_NVME);
     }
-	protocolCommand->ErrorInfoLength = 0; //TODO: should this be a non-zero value for some kind of error return info?
 
+    //TODO: Save error info? Seems to be from NVMe error log
+    protocolCommand->ErrorInfoLength = NVME_ERROR_ENTRY_LENGTH;
+    protocolCommand->ErrorInfoOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
+
+    //TODO: If we stor the error info (NVMe error log info) in this structure, we will need to adjust the data offsets below
     switch (nvmeIoCtx->commandDirection)
     {
     case XFER_DATA_IN:
         protocolCommand->DataToDeviceTransferLength = 0;
         protocolCommand->DataFromDeviceTransferLength = nvmeIoCtx->dataSize;
         protocolCommand->DataToDeviceBufferOffset = 0;
-        protocolCommand->DataFromDeviceBufferOffset = offsetof(NVMePassThroughIOStruct, Data);
+        protocolCommand->DataFromDeviceBufferOffset = protocolCommand->ErrorInfoOffset + protocolCommand->ErrorInfoLength;
         break;
     case XFER_DATA_OUT:
         protocolCommand->DataToDeviceTransferLength = nvmeIoCtx->dataSize;
         protocolCommand->DataFromDeviceTransferLength = 0;
-        protocolCommand->DataToDeviceBufferOffset = offsetof(NVMePassThroughIOStruct, Data);
+        protocolCommand->DataToDeviceBufferOffset = protocolCommand->ErrorInfoOffset + protocolCommand->ErrorInfoLength;
         protocolCommand->DataFromDeviceBufferOffset = 0;
         //copy the data we're sending into this structure to send to the device
-        memcpy(pNVMeWinCtx->Data, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+        memcpy(&commandBuffer[protocolCommand->DataToDeviceBufferOffset], nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
         break;
     case XFER_NO_DATA:
         protocolCommand->DataToDeviceTransferLength = 0;
@@ -3988,13 +4009,15 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         protocolCommand->DataToDeviceBufferOffset = 0;
         protocolCommand->DataFromDeviceBufferOffset = 0;
         break;
-    default://Bi-directional transfers are not supported in NVMe
-        safe_Free(pNVMeWinCtx);
-        return BAD_PARAMETER;
+    default://Bi-directional transfers are not supported in NVMe right now.
+        protocolCommand->DataToDeviceTransferLength = nvmeIoCtx->dataSize;
+        protocolCommand->DataFromDeviceTransferLength = nvmeIoCtx->dataSize;
+        protocolCommand->DataToDeviceBufferOffset = protocolCommand->ErrorInfoOffset + protocolCommand->ErrorInfoLength;
+        protocolCommand->DataFromDeviceBufferOffset = protocolCommand->ErrorInfoOffset + protocolCommand->ErrorInfoLength + protocolCommand->DataToDeviceTransferLength;
+        //copy the data we're sending into this structure to send to the device
+        memcpy(&commandBuffer[protocolCommand->DataToDeviceBufferOffset], nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+        break;
     }
-
-    protocolCommand->ErrorInfoOffset = 0;//TODO: need to use this when we want returned error info...
-    //protocolCommand->ErrorInfoOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
 
     if (nvmeIoCtx->timeout == 0)
     {
@@ -4012,22 +4035,6 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         protocolCommand->TimeOutValue = nvmeIoCtx->timeout;
     }
 	
-    if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
-    {
-        protocolCommand->CommandSpecific = STORAGE_PROTOCOL_SPECIFIC_NVME_ADMIN_COMMAND;
-        memcpy(&pNVMeWinCtx->cmdNVMe, &nvmeIoCtx->cmd.adminCmd, sizeof(nvmCommand));
-    }
-    else if (nvmeIoCtx->commandType == NVM_CMD)
-    {
-        protocolCommand->CommandSpecific = STORAGE_PROTOCOL_SPECIFIC_NVME_NVM_COMMAND;
-        memcpy(&pNVMeWinCtx->cmdNVMe, &nvmeIoCtx->cmd.nvmCmd, sizeof(nvmCommand));
-    }
-    else
-    {
-        safe_Free(pNVMeWinCtx);
-        return BAD_PARAMETER;
-    }
-
     //Command has been set up, so send it!
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
     nvmeIoCtx->device->os_info.last_error = 0;
@@ -4040,9 +4047,9 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     start_Timer(&commandTimer);
     BOOL success = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
         IOCTL_STORAGE_PROTOCOL_COMMAND,
-        pNVMeWinCtx,
+        commandBuffer,
         nvmePassthroughDataSize,
-        pNVMeWinCtx,
+        commandBuffer,
         nvmePassthroughDataSize,
         &returned_data,
         &overlappedStruct);
@@ -4076,11 +4083,41 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
 
     if (ret == SUCCESS)
     {
-        if (nvmeIoCtx->commandDirection == XFER_DATA_IN)
+        if (nvmeIoCtx->commandDirection != XFER_DATA_OUT && protocolCommand->DataFromDeviceBufferOffset != 0)
         {
-            memcpy(nvmeIoCtx->ptrData, pNVMeWinCtx->Data, nvmeIoCtx->dataSize);
+            memcpy(nvmeIoCtx->ptrData, &commandBuffer[protocolCommand->DataFromDeviceBufferOffset], nvmeIoCtx->dataSize);
         }
     }
+
+#if defined (_DEBUG)
+    if (protocolCommand->ErrorInfoOffset > 0)
+    {
+        uint64_t errorCount = M_BytesTo8ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 7], commandBuffer[protocolCommand->ErrorInfoOffset + 6], commandBuffer[protocolCommand->ErrorInfoOffset + 5], commandBuffer[protocolCommand->ErrorInfoOffset + 4], commandBuffer[protocolCommand->ErrorInfoOffset + 3], commandBuffer[protocolCommand->ErrorInfoOffset + 2], commandBuffer[protocolCommand->ErrorInfoOffset + 1], commandBuffer[protocolCommand->ErrorInfoOffset + 0]);
+        uint16_t submissionQueueID = M_BytesTo2ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 9], commandBuffer[protocolCommand->ErrorInfoOffset + 8]);
+        uint16_t commandID = M_BytesTo2ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 11], commandBuffer[protocolCommand->ErrorInfoOffset + 10]);
+        uint16_t statusField = M_BytesTo2ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 13], commandBuffer[protocolCommand->ErrorInfoOffset + 12]);
+        uint16_t parameterErrorLocation = M_BytesTo2ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 15], commandBuffer[protocolCommand->ErrorInfoOffset + 14]);
+        uint64_t lba = M_BytesTo8ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 23], commandBuffer[protocolCommand->ErrorInfoOffset + 22], commandBuffer[protocolCommand->ErrorInfoOffset + 21], commandBuffer[protocolCommand->ErrorInfoOffset + 20], commandBuffer[protocolCommand->ErrorInfoOffset + 19], commandBuffer[protocolCommand->ErrorInfoOffset + 18], commandBuffer[protocolCommand->ErrorInfoOffset + 17], commandBuffer[protocolCommand->ErrorInfoOffset + 16]);
+        uint32_t nsid = M_BytesTo4ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 27], commandBuffer[protocolCommand->ErrorInfoOffset + 26], commandBuffer[protocolCommand->ErrorInfoOffset + 25], commandBuffer[protocolCommand->ErrorInfoOffset + 24]);
+        uint8_t vendorSpecific = commandBuffer[protocolCommand->ErrorInfoOffset + 28];
+        uint64_t commandSpecific = M_BytesTo8ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 39], commandBuffer[protocolCommand->ErrorInfoOffset + 38], commandBuffer[protocolCommand->ErrorInfoOffset + 37], commandBuffer[protocolCommand->ErrorInfoOffset + 36], commandBuffer[protocolCommand->ErrorInfoOffset + 35], commandBuffer[protocolCommand->ErrorInfoOffset + 34], commandBuffer[protocolCommand->ErrorInfoOffset + 33], commandBuffer[protocolCommand->ErrorInfoOffset + 32]);
+        //TODO: This is useful for debugging but may not want it showing otherwise!!!
+        if (errorCount > 0)
+        {
+            printf("Win 10 VU IO Error Info:\n");
+            printf("\tError Count: %" PRIu64 "\n", errorCount);
+            printf("\tSQID: %" PRIu16 "\n", submissionQueueID);
+            printf("\tCID: %" PRIu16 "\n", commandID);
+            printf("\tStatus: %" PRIu16"\n", statusField);
+            printf("\tParameterErrorLocation: %" PRIu16 "\n", parameterErrorLocation);
+            printf("\tLBA: %" PRIu64 "\n", lba);
+            printf("\tNSID: %" PRIu32 "\n", nsid);
+            printf("\tVU: %" PRIX8 "\n", vendorSpecific);
+            printf("\tCommand Specific: %" PRIX64 "\n", commandSpecific);
+        }
+    }
+#endif
+
     //TODO: figure out if we need to check this return status or not.
     /*switch (pNVMeWinCtx->storageProtocolCommand.ReturnStatus)
     {
@@ -4096,7 +4133,11 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     default:
     }*/
     //get the error return code
-    nvmeIoCtx->result = pNVMeWinCtx->storageProtocolCommand.ErrorCode;
+    nvmeIoCtx->commandCompletionData.commandSpecific = protocolCommand->FixedProtocolReturnData;
+    nvmeIoCtx->commandCompletionData.dw0Valid = true;
+    nvmeIoCtx->commandCompletionData.statusAndCID = protocolCommand->ErrorCode;
+    nvmeIoCtx->commandCompletionData.dw1Valid = true;
+    //TODO: do we need this error code, or do we look at the error info offset for the provided length???
     //set last command time
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     //check how long it took to set timeout error if necessary
@@ -4104,7 +4145,8 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     {
         ret = COMMAND_TIMEOUT;
     }
-    safe_Free(pNVMeWinCtx);
+    _aligned_free(commandBuffer);
+    commandBuffer = NULL;
 	return ret;
 }
 
@@ -4551,7 +4593,7 @@ int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
 	protocolData->ProtocolDataRequestValue = nvmeIoCtx->cmd.adminCmd.cdw10 & 0x000000FF;
 	protocolData->ProtocolDataRequestSubValue = M_Nibble2(nvmeIoCtx->cmd.adminCmd.cdw10);//bits 11:08 log page specific
 	protocolData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA);
-	protocolData->ProtocolDataLength = nvmeIoCtx->cmd.adminCmd.dataLen;
+	protocolData->ProtocolDataLength = nvmeIoCtx->dataSize;
 	
 	//
 	// Send request down.
@@ -4600,15 +4642,20 @@ int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
 		protocolData = &protocolDataDescr->ProtocolSpecificData;
 
 		if ((protocolData->ProtocolDataOffset < sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA)) ||
-			(protocolData->ProtocolDataLength < nvmeIoCtx->cmd.adminCmd.dataLen)) 
+			(protocolData->ProtocolDataLength < nvmeIoCtx->dataSize))
 		{			
 			#if defined (_DEBUG)
 			printf("%s: Error Log - ProtocolData Offset/Length not valid\n", __FUNCTION__);
 			#endif
 			returnValue = OS_PASSTHROUGH_FAILURE;
 		}
-		char* logData = (char*)((PCHAR)protocolData + protocolData->ProtocolDataOffset);
-		memcpy(nvmeIoCtx->ptrData, (void*)logData, nvmeIoCtx->cmd.adminCmd.dataLen);
+		uint8_t* logData = (uint8_t*)((PCHAR)protocolData + protocolData->ProtocolDataOffset);
+        if (nvmeIoCtx->ptrData && protocolData->ProtocolDataLength > 0)
+        {
+            memcpy(nvmeIoCtx->ptrData, logData, M_Min(protocolData->ProtocolDataLength, nvmeIoCtx->dataSize));
+        }
+        nvmeIoCtx->commandCompletionData.commandSpecific = protocolData->FixedProtocolReturnData;//This should only be DWORD 0
+        nvmeIoCtx->commandCompletionData.dw0Valid = true;
 	}
 
 	free(buffer);
@@ -4658,7 +4705,7 @@ int send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
     protocolData->ProtocolDataRequestValue = M_Byte0(nvmeIoCtx->cmd.adminCmd.cdw10);
     protocolData->ProtocolDataRequestSubValue = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 10, 8);//Examples show this as set to zero...I'll try setting this to the "select" field value...0 does get current info, which is probably what is wanted most of the time.
     protocolData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA);
-    protocolData->ProtocolDataLength = nvmeIoCtx->cmd.adminCmd.dataLen;
+    protocolData->ProtocolDataLength = nvmeIoCtx->dataSize;
 
     //
     // Send request down.
@@ -4707,18 +4754,23 @@ int send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
         protocolData = &protocolDataDescr->ProtocolSpecificData;
 
         if ((protocolData->ProtocolDataOffset < sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA)) ||
-            (protocolData->ProtocolDataLength < nvmeIoCtx->cmd.adminCmd.dataLen))
+            (protocolData->ProtocolDataLength < nvmeIoCtx->dataSize))
         {
 #if defined (_DEBUG)
             printf("%s: Error Feature - ProtocolData Offset/Length not valid\n", __FUNCTION__);
 #endif
             returnValue = OS_PASSTHROUGH_FAILURE;
         }
-        char* logData = (char*)((PCHAR)protocolData + protocolData->ProtocolDataOffset);
-        memcpy(nvmeIoCtx->ptrData, (void*)logData, nvmeIoCtx->cmd.adminCmd.dataLen);
+        uint8_t* featData = (uint8_t*)((PCHAR)protocolData + protocolData->ProtocolDataOffset);
+        if (nvmeIoCtx->ptrData && protocolData->ProtocolDataLength > 0)
+        {
+            memcpy(nvmeIoCtx->ptrData, featData, M_Min(nvmeIoCtx->dataSize, protocolData->ProtocolDataLength));
+        }
+        nvmeIoCtx->commandCompletionData.commandSpecific = protocolData->FixedProtocolReturnData;//This should only be DWORD 0 on a get features command anyways...
+        nvmeIoCtx->commandCompletionData.dw0Valid = true;
     }
 
-    free(buffer);
+    safe_Free(buffer);
 
     return returnValue;
 }
@@ -4733,13 +4785,12 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
     downloadActivate.Size = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
     uint8_t activateAction = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3);
 	downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;//this command must go to the controller, not the namespace
-    if (activateAction == 0x2 || activateAction == 0x03)//check the activate action
+    if (activateAction == NVME_CA_ACTIVITE_ON_RST || activateAction == NVME_CA_ACTIVITE_IMMEDIATE)//check the activate action
     {
         //Activate actions 2, & 3 sound like the closest match to this flag. Each of these requests switching to the a firmware already on the drive.
 		//Activate action 0 & 1 say to replace a firmware image in a specified slot (and to or not to activate).
         downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
     }
-    //TODO: FIgure out when to set this flag: STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER
     downloadActivate.Slot = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
     DWORD returned_data = 0;
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
@@ -4776,7 +4827,8 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
     if (fwdlIO)
     {
         ret = SUCCESS;
-        nvmeIoCtx->result = 0;
+        nvmeIoCtx->commandCompletionData.commandSpecific = 0;
+        nvmeIoCtx->commandCompletionData.dw0Valid = true;
     }
     else
     {
@@ -4796,19 +4848,31 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
     }
     return ret;
 }
+
+//uncomment this flag to switch to force using the older structure if we need to.
+//#define DISABLE_FWDL_V2 1
+
 int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
-    uint32_t dataLength = nvmeIoCtx->cmd.adminCmd.dataLen;
     //send download IOCTL
-    DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + dataLength;
+#if defined (WIN_API_TARGET_VERSION) && !defined (DISABLE_FWDL_V2) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+    DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2) + nvmeIoCtx->dataSize;
+    PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2 downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2)malloc(downloadStructureSize);
+#else
+    DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + nvmeIoCtx->dataSize;
     PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD)malloc(downloadStructureSize);
+#endif
     if (!downloadIO)
     {
         return MEMORY_FAILURE;
     }
     memset(downloadIO, 0, downloadStructureSize);
+#if defined (WIN_API_TARGET_VERSION) && !defined (DISABLE_FWDL_V2) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+    downloadIO->Version = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2);
+#else
     downloadIO->Version = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD);
+#endif
     downloadIO->Size = downloadStructureSize;
 	downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;
 #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
@@ -4826,13 +4890,16 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     }
 #endif
     //TODO: add firmware slot number?
-    //downloadIO->Slot = M_GETBITRANGE(nvmeIoCtx->cmd, 1, 0);
+    downloadIO->Slot = 0;// M_GETBITRANGE(nvmeIoCtx->cmd, 1, 0);
     //we need to set the offset since MS uses this in the command sent to the device.
-    downloadIO->Offset = nvmeIoCtx->cmd.adminCmd.cdw11;
+    downloadIO->Offset = (uint64_t)((uint64_t)nvmeIoCtx->cmd.adminCmd.cdw11 << 2);//convert #DWords to bytes for offset
     //set the size of the buffer
-    downloadIO->BufferSize = dataLength;
+    downloadIO->BufferSize = nvmeIoCtx->dataSize;
+#if defined (WIN_API_TARGET_VERSION) && !defined (DISABLE_FWDL_V2) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+    downloadIO->ImageSize = nvmeIoCtx->dataSize;
+#endif
     //now copy the buffer into this IOCTL struct
-    memcpy(downloadIO->ImageBuffer, (BYTE*)nvmeIoCtx->cmd.adminCmd.addr, dataLength);
+    memcpy(downloadIO->ImageBuffer, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
 	
     //time to issue the IO
     DWORD returned_data = 0;
@@ -4870,7 +4937,8 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     if (fwdlIO)
     {
         ret = SUCCESS;
-        nvmeIoCtx->result = 0;
+        nvmeIoCtx->commandCompletionData.commandSpecific = 0;
+        nvmeIoCtx->commandCompletionData.dw0Valid = true;
     }
     else
     {
@@ -5126,6 +5194,8 @@ int send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx *nvmeIoCtx)
     {
         //TODO: should we validate the returned data to make sure we got what value we requested? - TJE
         ret = SUCCESS;
+        nvmeIoCtx->commandCompletionData.commandSpecific = 0;
+        nvmeIoCtx->commandCompletionData.dw0Valid = true;
     }
     else
     {
@@ -5135,7 +5205,8 @@ int send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx *nvmeIoCtx)
             print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
         }
         //Todo....set a better error condition
-        nvmeIoCtx->result = 0x0E;
+        nvmeIoCtx->commandCompletionData.commandSpecific = 0x0E;
+        nvmeIoCtx->commandCompletionData.dw0Valid = true;
         ret = FAILURE;
     }
 
@@ -6182,21 +6253,22 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         case NVME_CMD_DATA_SET_MANAGEMENT://SCSI Unmap or Win API call?
             ret = win10_Translate_Data_Set_Management(nvmeIoCtx);
             break;
-        case NVME_CMD_WRITE_ZEROS://This isn't translatable unless the SCSI to NVM translation spec is updated. - TJE
+        //case NVME_CMD_WRITE_ZEROS://This isn't translatable unless the SCSI to NVM translation spec is updated. - TJE
             //FSCTL_SET_ZERO_DATA (and maybe also FSCTL_ALLOW_EXTENDED_DASD_IO)...might not work and only do filesystem level stuff
-            break;
-        case NVME_CMD_RESERVATION_REGISTER://Translation only available in later specifications!
-            ret = win10_Translate_Reservation_Register(nvmeIoCtx);
-            break;
-        case NVME_CMD_RESERVATION_REPORT://Translation only available in later specifications!
-            ret = win10_Translate_Reservation_Report(nvmeIoCtx);
-            break;
-        case NVME_CMD_RESERVATION_ACQUIRE://Translation only available in later specifications!
-            ret = win10_Translate_Reservation_Acquire(nvmeIoCtx);
-            break;
-        case NVME_CMD_RESERVATION_RELEASE://Translation only available in later specifications!
-            ret = win10_Translate_Reservation_Release(nvmeIoCtx);
-            break;
+            //break;
+        //Removing reservation translations for now...need to review them. - TJE
+        //case NVME_CMD_RESERVATION_REGISTER://Translation only available in later specifications!
+        //    ret = win10_Translate_Reservation_Register(nvmeIoCtx);
+        //    break;
+        //case NVME_CMD_RESERVATION_REPORT://Translation only available in later specifications!
+        //    ret = win10_Translate_Reservation_Report(nvmeIoCtx);
+        //    break;
+        //case NVME_CMD_RESERVATION_ACQUIRE://Translation only available in later specifications!
+        //    ret = win10_Translate_Reservation_Acquire(nvmeIoCtx);
+        //    break;
+        //case NVME_CMD_RESERVATION_RELEASE://Translation only available in later specifications!
+        //    ret = win10_Translate_Reservation_Release(nvmeIoCtx);
+        //    break;
         default:
             //Check if it's a vendor unique op code.
             if (nvmeIoCtx->cmd.adminCmd.opcode >= 0x80 && nvmeIoCtx->cmd.adminCmd.opcode <= 0xFF)//admin commands in this range are vendor unique
@@ -6213,6 +6285,36 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 #endif
     }
 	return ret;
+}
+
+int nvme_Reset(tDevice *device)
+{
+    //This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code otherwise compile without ifdefs
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        printf("Sending NVMe Reset\n");
+    }
+    
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        print_Return_Enum("NVMe Reset", OS_COMMAND_NOT_AVAILABLE);
+    }
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+
+int nvme_Subsystem_Reset(tDevice *device)
+{
+    //This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code otherwise compile without ifdefs
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        printf("Sending NVMe Subsystem Reset\n");
+    }
+    
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        print_Return_Enum("NVMe Subsystem Reset", OS_COMMAND_NOT_AVAILABLE);
+    }
+    return OS_COMMAND_NOT_AVAILABLE;
 }
 
 int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize)

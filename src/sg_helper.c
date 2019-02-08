@@ -27,6 +27,7 @@
 #include "ata_helper_func.h"
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper_func.h"
+#include "sntl_helper.h"
 #endif
 
 #if defined(DEGUG_SCAN_TIME)
@@ -183,6 +184,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
         {
             device->drive_info.interface_type = NVME_INTERFACE;
     		device->drive_info.drive_type = NVME_DRIVE;
+            sprintf(device->os_info.name, "%s", handle);
+            sprintf(device->os_info.friendlyName, "%s", basename(handle));
         }
         else //not NVMe, so we need to do some investigation of the handle. NOTE: this requires 2.6 and later kernel since it reads a link in the /sys/class/ filesystem
         {
@@ -651,7 +654,7 @@ int get_Device(const char *filename, tDevice *device)
                  perror("nvme_ioctl_id");
                  return ret;
             }
-            device->drive_info.lunOrNSID = (uint32_t) ret;
+            device->drive_info.namespaceID = (uint32_t)ret;
             device->os_info.osType = OS_LINUX;
             device->drive_info.media_type = MEDIA_NVM;
 
@@ -660,20 +663,6 @@ int get_Device(const char *filename, tDevice *device)
             sprintf(device->os_info.name, "/dev/%s", baseLink);
             sprintf(device->os_info.friendlyName, "%s", baseLink);
 
-            //Check if SGIO is available for use as a SCSI to NVMe translator.
-            if (!(ioctl(device->os_info.fd, SG_GET_VERSION_NUM, &k) < 0) || (k < 30000))
-            {
-                #if defined (_DEBUG)
-                printf("\nSGIO is available for NVMe. Will use it as the translator\n");
-                #endif
-                //http://www.faqs.org/docs/Linux-HOWTO/SCSI-Generic-HOWTO.html#IDDRIVER
-                device->os_info.sgDriverVersion.driverVersionValid = true;
-                device->os_info.sgDriverVersion.majorVersion = (uint8_t)(k / 10000);
-                device->os_info.sgDriverVersion.minorVersion = (uint8_t)((k - (device->os_info.sgDriverVersion.majorVersion * 10000)) / 100);
-                device->os_info.sgDriverVersion.revision = (uint8_t)(k - (device->os_info.sgDriverVersion.majorVersion * 10000) - (device->os_info.sgDriverVersion.minorVersion * 100));
-                //SGIO translation is available
-                device->os_info.sntlViaSG = true;
-            }
             ret = fill_Drive_Info_Data(device);
             #if defined (_DEBUG)
             printf("\nsg helper-nvmedev\n");
@@ -688,7 +677,7 @@ int get_Device(const char *filename, tDevice *device)
             return NOT_SUPPORTED;//return not supported since NVMe-passthrough is disabled
             #endif //DISABLE_NVME_PASSTHROUGH
         }
-        else
+        else //not NVMe
         {
 
             #if defined (_DEBUG)
@@ -858,11 +847,9 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     switch (scsiIoCtx->device->drive_info.interface_type)
     {
     case NVME_INTERFACE:
-        if (!scsiIoCtx->device->os_info.sntlViaSG)
-        {
-            //Returning not supported because SG_IO is no longer supported on NVMe devices in the modern linux kernel. We will need to add a software translator like we did for SAT to handle this case.
-            return NOT_SUPPORTED; 
-        }
+        #if !defined (DISABLE_NVME_PASSTHROUGH)
+        return sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
+        #endif
         //USB, ATA, and SCSI interface all use sg, so just issue an SG IO.
     case SCSI_INTERFACE:
     case IDE_INTERFACE:
@@ -1328,12 +1315,14 @@ int close_Device(tDevice *dev)
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 {
-    int ret = 0;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
+    int ret = SUCCESS;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
 	seatimer_t commandTimer;
 	memset(&commandTimer, 0, sizeof(commandTimer));
     struct nvme_admin_cmd adminCmd;
     struct nvme_user_io nvmCmd;// it's possible that this is not defined in some funky early nvme kernel, but we don't see that today. This seems to be defined everywhere. -TJE
     struct nvme_passthru_cmd *passThroughCmd = (struct nvme_passthru_cmd*)&adminCmd;//setting a pointer since these are defined to be the same. No point in allocating yet another structure. - TJE
+
+    int32_t ioctlResult = 0;
 
     if (!nvmeIoCtx)
     {
@@ -1353,7 +1342,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         adminCmd.metadata = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.adminCmd.metadata;
         adminCmd.addr = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.adminCmd.addr;
         adminCmd.metadata_len = nvmeIoCtx->cmd.adminCmd.metadataLen;
-        adminCmd.data_len = nvmeIoCtx->cmd.adminCmd.dataLen;
+        adminCmd.data_len = nvmeIoCtx->dataSize;
         adminCmd.cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
         adminCmd.cdw11 = nvmeIoCtx->cmd.adminCmd.cdw11;
         adminCmd.cdw12 = nvmeIoCtx->cmd.adminCmd.cdw12;
@@ -1362,14 +1351,28 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         adminCmd.cdw15 = nvmeIoCtx->cmd.adminCmd.cdw15;
         adminCmd.timeout_ms = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
 		start_Timer(&commandTimer);
-        ret = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_ADMIN_CMD, &adminCmd);
+        ioctlResult = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_ADMIN_CMD, &adminCmd);
 		stop_Timer(&commandTimer);
-        nvmeIoCtx->device->os_info.last_error = ret;
-		if (ret < 0)
-		{
-			ret = OS_PASSTHROUGH_FAILURE;
-		}
-        nvmeIoCtx->result = adminCmd.result;
+        nvmeIoCtx->device->os_info.last_error = errno;
+        if (ioctlResult < 0)
+        {
+            ret = OS_PASSTHROUGH_FAILURE;
+            if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
+            {
+                if (nvmeIoCtx->device->os_info.last_error != 0)
+                {
+                    printf("Error: ");
+                    print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
+                }
+            }
+        }
+        else
+        {
+            nvmeIoCtx->commandCompletionData.commandSpecific = adminCmd.result;
+            nvmeIoCtx->commandCompletionData.dw3Valid = true;
+            nvmeIoCtx->commandCompletionData.dw0Valid = true;
+            nvmeIoCtx->commandCompletionData.statusAndCID = ioctlResult << 17;//shift into place since we don't get the phase tag or command ID bits and these are the status field
+        }
         break;
     case NVM_CMD:
         //check opcode to perform the correct IOCTL
@@ -1392,15 +1395,27 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             nvmCmd.apptag = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw15);
             nvmCmd.appmask = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw15);
             start_Timer(&commandTimer);
-            ret = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_SUBMIT_IO, &nvmCmd);
+            ioctlResult = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_SUBMIT_IO, &nvmCmd);
     		stop_Timer(&commandTimer);
-            nvmeIoCtx->device->os_info.last_error = ret;
-            if (ret < 0)
-    		{
-    			ret = OS_PASSTHROUGH_FAILURE;
-    		}
-            //TODO: How do we set the result on read/write?
-            //nvmeIoCtx->result = adminCmd.result;
+            nvmeIoCtx->device->os_info.last_error = errno;
+            if (ioctlResult < 0)
+            {
+                ret = OS_PASSTHROUGH_FAILURE;
+                if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
+                {
+                    if (nvmeIoCtx->device->os_info.last_error != 0)
+                    {
+                        printf("Error: ");
+                        print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
+                    }
+                }
+            }
+            else
+            {
+        		nvmeIoCtx->commandCompletionData.dw3Valid = true;
+                //TODO: How do we set the command specific result on read/write?
+                nvmeIoCtx->commandCompletionData.statusAndCID = ioctlResult << 17;//shift into place since we don't get the phase tag or command ID bits and these are the status field
+            }
             break;
         default:
             //use the generic passthrough command structure and IO_CMD
@@ -1423,14 +1438,28 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             passThroughCmd->cdw15 = nvmeIoCtx->cmd.nvmCmd.cdw15;
             passThroughCmd->timeout_ms = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;//timeout is in seconds, so converting to milliseconds
             start_Timer(&commandTimer);
-            ret = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_IO_CMD, passThroughCmd);
+            ioctlResult = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_IO_CMD, passThroughCmd);
     		stop_Timer(&commandTimer);
-            nvmeIoCtx->device->os_info.last_error = ret;
-            if (ret < 0)
-    		{
-    			ret = OS_PASSTHROUGH_FAILURE;
-    		}
-            nvmeIoCtx->result = passThroughCmd->result;
+            nvmeIoCtx->device->os_info.last_error = errno;
+            if (ioctlResult < 0)
+            {
+                ret = OS_PASSTHROUGH_FAILURE;
+                if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
+                {
+                    if (nvmeIoCtx->device->os_info.last_error != 0)
+                    {
+                        printf("Error: ");
+                        print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
+                    }
+                }
+            }
+            else
+            {
+                nvmeIoCtx->commandCompletionData.commandSpecific = passThroughCmd->result;
+                nvmeIoCtx->commandCompletionData.dw3Valid = true;
+                nvmeIoCtx->commandCompletionData.dw0Valid = true;
+                nvmeIoCtx->commandCompletionData.statusAndCID = ioctlResult << 17;//shift into place since we don't get the phase tag or command ID bits and these are the status field
+            }
             break;
         }
         break;
@@ -1439,13 +1468,135 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         break;
     }
 	nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
+    return ret;
+}
+
+int linux_NVMe_Reset(tDevice *device, bool subsystemReset)
+{
+    //Can only do a reset on a controller handle. Need to get the controller handle if this is a namespace handle!!!
+    int ret = OS_PASSTHROUGH_FAILURE;
+    int handleToReset = device->os_info.fd;
+    seatimer_t commandTimer;
+	memset(&commandTimer, 0, sizeof(commandTimer));
+    uint16_t controllerNumber = 0;
+    uint32_t namespaceID = 0;
+    int ioRes = 0;
+    bool openedControllerHandle = false;//used so we can close the handle at the end.
+    //Need to make sure the handle we use to issue the reset is a controller handle and not a namespace handle.
+    int sscanfRes = sscanf(device->os_info.name, "/dev/nvme%" SCNu16 "n%" SCNu32 , &controllerNumber, &namespaceID);
+    if (sscanfRes == 2)
     {
-        if (nvmeIoCtx->device->os_info.last_error != 0)
+        //found a namespace. Need to open a controller handle instead and use it.
+        char controllerHandle[40] = { 0 };
+        snprintf(controllerHandle, 40, "/dev/nvme%" PRIu16, controllerNumber);
+        if ((handleToReset = open(controllerHandle, O_RDWR | O_NONBLOCK)) < 0)
+        {
+            device->os_info.last_error = errno;
+            if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+            {
+                printf("Error opening controller handle for nvme reset: ");
+                print_Errno_To_Screen(errno);
+            }
+            if (errno == EACCES) 
+            {
+                return PERMISSION_DENIED;
+            }
+            else
+            {
+                return OS_PASSTHROUGH_FAILURE;
+            }
+        }
+        openedControllerHandle = true;
+    }
+    device->os_info.last_error = 0;
+    if (subsystemReset)
+    {
+        start_Timer(&commandTimer);
+        ioRes = ioctl(handleToReset, NVME_IOCTL_SUBSYS_RESET);
+        stop_Timer(&commandTimer);
+    }
+    else
+    {   
+        start_Timer(&commandTimer);
+        ioRes = ioctl(handleToReset, NVME_IOCTL_RESET);
+        stop_Timer(&commandTimer);
+    }
+    device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    device->drive_info.lastNVMeResult.lastNVMeStatus = 0;
+    device->drive_info.lastNVMeResult.lastNVMeCommandSpecific = 0;
+    if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+    {   
+        print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
+    }
+    if (ioRes < 0)
+    {   
+        //failed!
+        device->os_info.last_error = errno;
+        if (device->deviceVerbosity > VERBOSITY_COMMAND_VERBOSE && device->os_info.last_error != 0)
         {
             printf("Error: ");
-            print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
+            print_Errno_To_Screen(device->os_info.last_error);
         }
+    }
+    else
+    {
+        //success!
+        ret = SUCCESS;
+    }
+    if (openedControllerHandle)
+    {
+        //close the controller handle we opened in this function
+        close(handleToReset);
+    }
+    return ret;
+}
+
+int nvme_Reset(tDevice *device)
+{
+    int ret = SUCCESS;
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        printf("Sending NVMe Reset\n");
+    }
+    ret = linux_NVMe_Reset(device, false);
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        print_Return_Enum("NVMe Reset", ret);
+    }
+    return ret;
+}
+
+int nvme_Subsystem_Reset(tDevice *device)
+{
+    int ret = SUCCESS;
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        printf("Sending NVMe Subsystem Reset\n");
+    }
+    ret = linux_NVMe_Reset(device, false);
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        print_Return_Enum("NVMe Subsystem Reset", ret);
+    }
+    return ret;
+}
+
+//to be used with a deep scan???
+//fd must be a controller handle
+//TODO: Should we rework the linux_NVMe_Reset call to handle this too?
+int nvme_Namespace_Rescan(int fd)
+{
+    int ret = OS_PASSTHROUGH_FAILURE;
+    int ioRes = ioctl(fd, NVME_IOCTL_RESCAN);
+    if (ioRes < 0)
+    {   
+        //failed!
+        perror("NVMe Rescan");
+    }
+    else
+    {
+        //success!
+        ret = SUCCESS;
     }
     return ret;
 }

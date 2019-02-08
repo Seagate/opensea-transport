@@ -96,6 +96,7 @@
             <F N="../../include/scsi_helper.h"/>
             <F N="../../include/scsi_helper_func.h"/>
             <F N="../../include/sg_helper.h"/>
+            <F N="../../include/sntl_helper.h"/>
             <F N="../../include/ti_legacy_helper.h"/>
             <F N="../../include/usb_hacks.h"/>
             <F N="../../include/uscsi_helper.h"/>
@@ -110,6 +111,7 @@
         <Folder Name="../../src">
             <F N="../../src/ata_cmds.c"/>
             <F N="../../src/ata_helper.c"/>
+            <F N="../../src/ata_legacy_cmds.c"/>
             <F N="../../src/cam_helper.c"/>
             <F N="../../src/cmds.c"/>
             <F N="../../src/common_public.c"/>
@@ -124,6 +126,7 @@
             <F N="../../src/scsi_cmds.c"/>
             <F N="../../src/scsi_helper.c"/>
             <F N="../../src/sg_helper.c"/>
+            <F N="../../src/sntl_helper.c"/>
             <F N="../../src/ti_legacy_helper.c"/>
             <F N="../../src/usb_hacks.c"/>
             <F N="../../src/uscsi_helper.c"/>
