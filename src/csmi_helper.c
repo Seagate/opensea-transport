@@ -116,7 +116,8 @@ void print_IOCTL_Return_Code(uint32_t returnCode)
 void print_Last_Error(DWORD lastError)
 {
     LPSTR messageBuffer = NULL;
-    size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+    /*size_t size = */
+    FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
         NULL, lastError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
 
     printf("Last Error Code was %"PRIu32": %s\n", lastError, messageBuffer);
@@ -940,6 +941,8 @@ int send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
         case XFER_NO_DATA:
             pSTPPassthrough->Parameters.uFlags |= CSMI_SAS_STP_UNSPECIFIED;
             break;
+        default:
+            return BAD_PARAMETER;
         }
         //set protocol flag
         switch (scsiIoCtx->pAtaCmdOpts->commadProtocol)
@@ -1281,7 +1284,7 @@ int get_CSMI_Device(const char *filename, tDevice *device)
         0,
 #endif
         NULL);
-    DWORD lastError = GetLastError();
+    //DWORD lastError = GetLastError();
     if (device->os_info.fd != INVALID_HANDLE_VALUE)
 #else
     if ((device->os_info.fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
@@ -1714,17 +1717,17 @@ void print_CSMI_Device_Info(tDevice * device)
             printf("PCMCIA\n");
             break;
         default:
-            printf("Unknown %"PRIX8"h\n", csmiDevice->controllerConfig.bIoBusType);
+            printf("Unknown %" PRIX8 "h\n", csmiDevice->controllerConfig.bIoBusType);
             break;
         }
         printf("PCI Bus Address: \n");
-        printf("\tBus Number: %"PRIX8"h\n", csmiDevice->controllerConfig.BusAddress.PciAddress.bBusNumber);
-        printf("\tDevice Number: %"PRIX8"h\n", csmiDevice->controllerConfig.BusAddress.PciAddress.bDeviceNumber);
-        printf("\tFunction Number: %"PRIX8"h\n", csmiDevice->controllerConfig.BusAddress.PciAddress.bFunctionNumber);
+        printf("\tBus Number: %" PRIX8 "h\n", csmiDevice->controllerConfig.BusAddress.PciAddress.bBusNumber);
+        printf("\tDevice Number: %" PRIX8 "h\n", csmiDevice->controllerConfig.BusAddress.PciAddress.bDeviceNumber);
+        printf("\tFunction Number: %" PRIX8 "h\n", csmiDevice->controllerConfig.BusAddress.PciAddress.bFunctionNumber);
         printf("Serial Number: %s\n", csmiDevice->controllerConfig.szSerialNumber);
-        printf("Version (maj.min.bld.rel): %"PRIu16".%"PRIu16".%"PRIu16".%"PRIu16"\n", csmiDevice->controllerConfig.usMajorRevision, csmiDevice->controllerConfig.usMinorRevision, csmiDevice->controllerConfig.usBuildRevision, csmiDevice->controllerConfig.usReleaseRevision);
-        printf("BIOS Version (maj.min.bld.rel): %"PRIu16".%"PRIu16".%"PRIu16".%"PRIu16"\n", csmiDevice->controllerConfig.usBIOSMajorRevision, csmiDevice->controllerConfig.usBIOSMinorRevision, csmiDevice->controllerConfig.usBIOSBuildRevision, csmiDevice->controllerConfig.usBIOSReleaseRevision);
-        printf("Controller Flags: %"PRIX32"\n", csmiDevice->controllerConfig.uControllerFlags);
+        printf("Version (maj.min.bld.rel): %" PRIu16 ".%" PRIu16 ".%" PRIu16 ".%" PRIu16 "\n", csmiDevice->controllerConfig.usMajorRevision, csmiDevice->controllerConfig.usMinorRevision, csmiDevice->controllerConfig.usBuildRevision, csmiDevice->controllerConfig.usReleaseRevision);
+        printf("BIOS Version (maj.min.bld.rel): %" PRIu16 ".%" PRIu16 ".%" PRIu16 ".%" PRIu16 "\n", csmiDevice->controllerConfig.usBIOSMajorRevision, csmiDevice->controllerConfig.usBIOSMinorRevision, csmiDevice->controllerConfig.usBIOSBuildRevision, csmiDevice->controllerConfig.usBIOSReleaseRevision);
+        printf("Controller Flags: %" PRIX32 "\n", csmiDevice->controllerConfig.uControllerFlags);
         //check the flags and print them out
         if (CSMI_SAS_CNTLR_SAS_HBA & csmiDevice->controllerConfig.uControllerFlags)
         {
