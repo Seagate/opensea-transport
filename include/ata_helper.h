@@ -427,7 +427,7 @@ extern "C"
 
     //added these packs to make sure this structure gets interpreted correctly
     // in the code when I point it to a buffer and try and access it.
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct _ataSMARTAttribute
@@ -437,14 +437,14 @@ extern "C"
         uint8_t     nominal;
         uint8_t     worstEver;
         uint8_t     rawData[7];//attribute and vendor specific
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataSMARTAttribute;
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) ataSMARTAttribute;
     #endif
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct _ataSMARTThreshold
@@ -452,7 +452,7 @@ extern "C"
         uint8_t      attributeNumber;
         uint8_t      thresholdValue;
         uint8_t      reservedBytes[10];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataSMARTThreshold;
     #pragma pack(pop)
     #else
@@ -470,7 +470,7 @@ extern "C"
     (b) - The device shall return command aborted if a SMART feature set (see 4.19) command accesses a log that
     is marked only with GPL.
     */
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct _ataLogDirectorySector
@@ -511,14 +511,14 @@ extern "C"
         uint16_t SCTCmdSts;                  //  E0          | SCT Command / Status                      | SCT           | R/W   | GPL, SL
         uint16_t SCTDataXfer;                //  E1          | SCT Data Transfer                         | SCT           | R/W   | GPL, SL
         uint16_t Reserved6[30];              //  E2..FF      |                                           |               |       |           
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataLogDirectorySector;
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) ataLogDirectorySector;
     #endif
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct _ataPowerConditionsDescriptor
@@ -533,7 +533,7 @@ extern "C"
         uint32_t minimumTimerSetting;
         uint32_t maximumTimerSetting;
         uint8_t reserved3[36];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataPowerConditionsDescriptor;
     #pragma pack(pop)
     #else

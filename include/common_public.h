@@ -70,7 +70,7 @@ extern "C"
 	} apiVersionInfo;
 
 // These need to be moved to ata_helper.h
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct
@@ -443,7 +443,7 @@ extern "C"
         uint16_t Word253;
         uint16_t Word254;
         uint16_t Word255;
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }tAtaIdentifyData, *ptAtaIdentifyData;
     #pragma pack(pop)
     #else
@@ -452,7 +452,7 @@ extern "C"
     
 
     #if !defined(DISABLE_NVME_PASSTHROUGH)
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     //All of the NVME structs in here were moved here to fix a circular include issue
@@ -472,14 +472,14 @@ extern "C"
     	uint16_t 			activePower;
     	uint8_t 			activeWorkScale;
     	uint8_t 			rsvd23[9];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDPowerState;
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeIDPowerState;
     #endif
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _nvmeIDCtrl {
@@ -552,28 +552,28 @@ extern "C"
         uint8_t             nvmeOverFabrics[256];
     	nvmeIDPowerState	psd[32];
     	uint8_t 			vs[1024];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDCtrl;
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeIDCtrl;
     #endif
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _nvmeLBAF {
     	uint16_t 			ms;
     	uint8_t 			lbaDS;
     	uint8_t 			rp;
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeLBAF;
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeLBAF;
     #endif
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _nvmeIDNameSpaces {
@@ -589,29 +589,35 @@ extern "C"
     	uint8_t 			nmic;
     	uint8_t 			rescap;
     	uint8_t 			fpi;
-    	uint8_t 			rsvd33;
+    	uint8_t 			dlfeat;
     	uint16_t 			nawun;
     	uint16_t 			nawupf;
     	uint16_t 			nacwu;
-    	uint8_t 			rsvd40[80];
+		uint16_t			nabsn;
+		uint16_t			nabo;
+		uint16_t			nabspf;
+		uint16_t			noiob;
+		uint8_t			    nvmcap[16];//128bit number
+    	uint8_t 			rsvd40[40];//bytes 103:64
+		uint8_t				nguid[16];
     	uint8_t 			eui64[8];
     	nvmeLBAF	        lbaf[16];
     	uint8_t 			rsvd192[192];
     	uint8_t 			vs[3712];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDNameSpaces;
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeIDNameSpaces;
     #endif
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _nvmeIdentifyData {
         nvmeIDCtrl          ctrl;
         nvmeIDNameSpaces    ns; // Currently we only support 1 NS - Revisit.  
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIdentifyData;
     #pragma pack(pop)
     #else
@@ -620,7 +626,7 @@ extern "C"
 
     #endif //disable NVME passthrough
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _ataReturnTFRs
@@ -636,7 +642,7 @@ extern "C"
         uint8_t                lbaHi;
         uint8_t                device;
         uint8_t                status;
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataReturnTFRs;
     #pragma pack(pop)
     #else
@@ -646,13 +652,13 @@ extern "C"
     // Defined by SPC3 as the maximum sense length
     #define SPC3_SENSE_LEN  UINT8_C(252)
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _tVpdData {
         uint8_t  inquiryData[96]; //INQ_RETURN_DATA_LENGTH
         uint8_t  vpdPage83[64];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }tVpdData;
     #pragma pack(pop)
     #else
@@ -693,7 +699,7 @@ extern "C"
         IEEE_1394_INTERFACE
     } eInterfaceType;
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     //revisit this later as this may not be the best way we want to do this
@@ -713,7 +719,7 @@ extern "C"
         uint32_t childDevicePhyBlockSize; // This is the physical block size reported by the drive. 
         uint16_t childSectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
         uint64_t childDeviceMaxLba;
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }bridgeInfo;
     #pragma pack(pop)
     #else
@@ -741,7 +747,7 @@ extern "C"
         ATA_PASSTHROUGH_UNKNOWN
     }ePassthroughType;
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _ataOptions
@@ -768,7 +774,7 @@ extern "C"
         bool alwaysSetCheckConditionBit;//this will cause all commands to set the check condition bit. This means any ATA Passthrough command should always get back an ATA status which may help with sense data and judging what went wrong better. Be aware that this may not be liked on some devices and some may just ignore it.
         bool enableLegacyPassthroughDetectionThroughTrialAndError;//This must be set to true in order to work on legacy (ancient) passthrough if the VID/PID is not in the list and not read from the system.
         bool senseDataReportingEnabled;//this is to track when the RTFRs may contain a sense data bit so it can be read automatically.
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataOptions;
     #pragma pack(pop)
     #else
@@ -784,7 +790,7 @@ extern "C"
     }eZonedDeviceType;
 
     //This is used by the software SAT translation layer. DO NOT Update this directly
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _softwareSATFlags
@@ -809,14 +815,14 @@ extern "C"
 		bool zeroExtSupported;
         uint8_t rtfrIndex;
         ataReturnTFRs ataPassthroughResults[16];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }softwareSATFlags;
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) softwareSATFlags;
     #endif
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _driveInfo {
@@ -829,7 +835,6 @@ extern "C"
         uint32_t       dataTransferSize;//this the block size that will be transfered
         uint16_t       sectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
         uint64_t       deviceMaxLba;
-        uint32_t       lunOrNSID; //shared between SCSI / NVMe 
         char           serialNumber[SERIAL_NUM_LEN + 1];
         char           T10_vendor_ident[T10_VENDOR_ID_LEN + 1];
         char           product_identification[MODEL_NUM_LEN + 1]; //not INQ
@@ -852,16 +857,24 @@ extern "C"
             uint8_t additionalSenseCodeQualifier;
         }ataSenseData;
         uint8_t lastCommandSenseData[SPC3_SENSE_LEN];//This holds the sense data for the last command to be sent to the device. This is not necessarily the last function called as functions may send multiple commands to the device.
+        struct {
+            uint32_t lastNVMeCommandSpecific;//DW0 of command completion. Not all OS's return this so it is not always valid...only really useful for SNTL when it is used. Linux, Solaris, FreeBSD, UEFI. Windows is the problem child here.
+            uint32_t lastNVMeStatus;//DW3 of command completion. Not all OS's return this so it is not always valid...only really useful for SNTL when it is used. Linux, Solaris, FreeBSD, UEFI. Windows is the problem child here.
+        }lastNVMeResult;
+        //TODO: a union or something so that we don't need to keep adding more bytes for drive types that won't use the ATA stuff or NVMe stuff in this struct.
         bridgeInfo      bridge_info;
         ataOptions      ata_Options;
         uint64_t        lastCommandTimeNanoSeconds;//The time the last command took in nanoseconds
         softwareSATFlags softSATFlags;//This is used by the software SAT translation layer. DO NOT Update this directly. This should only be updated by the lower layers of opensea-transport.
         uint32_t defaultTimeoutSeconds;//If this is not set (set to zero), a default value of 15 seconds will be used.
-        uint32_t namespaceID;//This is the current namespace you are talking with. If this is zero, then this value is invalid. This may not be available on all OS's or driver interfaces
+        union {
+            uint32_t namespaceID;//This is the current namespace you are talking with. If this is zero, then this value is invalid. This may not be available on all OS's or driver interfaces
+            uint32_t lun;//Logical unit number for SCSI. Not currently populated.
+        };
         uint8_t currentProtectionType;//Useful for certain operations. Read in readCapacityOnSCSI. TODO: NVMe
         uint8_t piExponent;//Only valid for protection types 2 & 3 I believe...-TJE
         uint8_t scsiVersion;//from STD Inquiry. Can be used elsewhere to help filter capabilities. NOTE: not an exact copy for old products where there was also EMCA and ISO versions. Set to ANSI version number in those cases.
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }driveInfo;
     #pragma pack(pop)
     #else
@@ -891,7 +904,7 @@ extern "C"
         WIN_IOCTL_MAX_METHOD
     }eWindowsIOCTLMethod;
 #endif
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     // \struct typedef struct _OSDriveInfo
@@ -942,7 +955,6 @@ extern "C"
             uint8_t         minorVersion;
             uint8_t         revision;
         }sgDriverVersion;
-        bool                sntlViaSG;//When set to true, we can use SGIO to issue scsi commands and they'll be translated to NVMe for us. If false, this is not available. TODO: if false, use software translation.
         long                pageSize;//A.K.A. alignment requirements for Linux.
         #elif defined (_WIN32)
         HANDLE              fd;
@@ -981,7 +993,7 @@ extern "C"
             bool hasFileSystem;//This will only be true for filesystems the current OS can detect. Ex: Windows will only set this for mounted volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem types since it can handle more than Windows by default
             bool isSystemDisk;//This will be set if the drive has a file system and the OS is running off of it. Ex: Windows' C:\Windows\System32, Linux's / & /boot, etc
         }fileSystemInfo;
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }OSDriveInfo;
     #pragma pack(pop)
     #else
@@ -1015,7 +1027,7 @@ extern "C"
 
 	#define DEVICE_BLOCK_VERSION	(4)
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
 	// verification for compatibility checking
@@ -1023,7 +1035,7 @@ extern "C"
 	{
 		uint32_t size;      // size of enclosing structure
 		uint32_t version;   // version of enclosing structure
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }versionBlock;
     #pragma pack(pop)
     #else
@@ -1031,7 +1043,7 @@ extern "C"
     #endif
 
     // \struct typedef struct _tDevice
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
 	typedef struct _tDevice
@@ -1043,7 +1055,7 @@ extern "C"
         issue_io_func       issue_io;
         eDiscoveryOptions   dFlags;
         eVerbosityLevels    deviceVerbosity;
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }tDevice;
     #pragma pack(pop)
     #else

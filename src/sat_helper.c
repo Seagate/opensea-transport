@@ -6701,8 +6701,13 @@ int translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     switch (scsiIoCtx->cdb[2])
     {
     case 0x00:
-        //set list length to 1
-        reportLunsData[15] = 1;
+        //set list length to 16 bytes
+        reportLunsData[0] = M_Byte3(16);
+        reportLunsData[1] = M_Byte2(16);
+        reportLunsData[2] = M_Byte1(16);
+        reportLunsData[3] = M_Byte0(16);
+        //set lun to zero since it's zero indexed
+        reportLunsData[15] = 0;
         if (scsiIoCtx->pdata)
         {
             memcpy(scsiIoCtx->pdata, reportLunsData, M_Min(16, allocationLength));
@@ -8378,7 +8383,7 @@ int translate_Read_Error_Counters_Log_0x03(tDevice *device, ScsiIoCtx *scsiIoCtx
     }
     if (parameterPointer <= 0x0006 && device->drive_info.softSATFlags.deviceStatsPages.generalErrorStatisticsSupported)
     {
-        if (SUCCESS != ata_Read_Log_Ext(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_ROTATING_MEDIA, logPage, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+        if (SUCCESS != ata_Read_Log_Ext(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_GEN_ERR, logPage, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
         {
             set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             return FAILURE;
@@ -13221,6 +13226,22 @@ int check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t operatio
         pdata[0][offset + 8] = 0xFF;
         pdata[0][offset + 9] = controlByte;//control byte
         break;
+    case READ6:
+        cdbLength = 6;
+        *dataLength += cdbLength;
+        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        if (!*pdata)
+        {
+            return MEMORY_FAILURE;
+        }
+        pdata[0][offset + 0] = operationCode;
+        pdata[0][offset + 1] = 0x1F;
+        pdata[0][offset + 2] = 0xFF;
+        pdata[0][offset + 3] = 0xFF;
+        pdata[0][offset + 4] = 0xFF;
+        pdata[0][offset + 5] = 0xFF;
+        pdata[0][offset + 6] = controlByte;
+        break;
     case READ10:
         cdbLength = 10;
         *dataLength += cdbLength;
@@ -13538,6 +13559,22 @@ int check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t operatio
         pdata[0][offset + 13] = 0xFF;
         pdata[0][offset + 14] = 0;//group number should be zero
         pdata[0][offset + 15] = controlByte;//control byte
+        break;
+    case WRITE6:
+        cdbLength = 6;
+        *dataLength += cdbLength;
+        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        if (!*pdata)
+        {
+            return MEMORY_FAILURE;
+        }
+        pdata[0][offset + 0] = operationCode;
+        pdata[0][offset + 1] = 0x1F;
+        pdata[0][offset + 2] = 0xFF;
+        pdata[0][offset + 3] = 0xFF;
+        pdata[0][offset + 4] = 0xFF;
+        pdata[0][offset + 5] = 0xFF;
+        pdata[0][offset + 6] = controlByte;
         break;
     case WRITE10:
         cdbLength = 10;
@@ -14502,6 +14539,40 @@ int create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint8_t **p
         //set up timeouts descriptor
         set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
     }
+    //READ6 = 0x08
+    pdata[0][offset + 0] = READ6;
+    pdata[0][offset + 1] = RESERVED;
+    pdata[0][offset + 2] = M_Byte1(0);//service action msb
+    pdata[0][offset + 3] = M_Byte0(0);//service action lsb if non zero set byte 5, bit0
+    pdata[0][offset + 4] = RESERVED;
+    //skipping offset 5 for this
+    pdata[0][offset + 6] = M_Byte1(CDB_LEN_6);
+    pdata[0][offset + 7] = M_Byte0(CDB_LEN_6);
+    offset += 8;
+    if (rctd)
+    {
+        //set CTPD to 1
+        pdata[0][offset - 8 + 5] |= BIT1;
+        //set up timeouts descriptor
+        set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
+    }
+    //WRITE6 = 0x0A
+    pdata[0][offset + 0] = WRITE6;
+    pdata[0][offset + 1] = RESERVED;
+    pdata[0][offset + 2] = M_Byte1(0);//service action msb
+    pdata[0][offset + 3] = M_Byte0(0);//service action lsb if non zero set byte 5, bit0
+    pdata[0][offset + 4] = RESERVED;
+    //skipping offset 5 for this
+    pdata[0][offset + 6] = M_Byte1(CDB_LEN_6);
+    pdata[0][offset + 7] = M_Byte0(CDB_LEN_6);
+    offset += 8;
+    if (rctd)
+    {
+        //set CTPD to 1
+        pdata[0][offset - 8 + 5] |= BIT1;
+        //set up timeouts descriptor
+        set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
+    }
     //INQUIRY_CMD = 0x12
     pdata[0][offset + 0] = INQUIRY_CMD;
     pdata[0][offset + 1] = RESERVED;
@@ -15430,7 +15501,7 @@ int create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint8_t **p
         //set up timeouts descriptor
         set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
     }
-    if (device->drive_info.softSATFlags.deviceStatsPages.temperatureStatisticsSupported)
+    if (device->drive_info.softSATFlags.deviceStatsPages.dateAndTimeTimestampSupported)
     {
         //0xA3 / 0x0F//report timestamp                 = 0xA3
         pdata[0][offset + 0] = 0xA3;

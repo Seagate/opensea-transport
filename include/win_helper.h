@@ -51,8 +51,9 @@ extern "C"
 
 	//Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
 	//NOTE: ARM requires 10.0.16299.0 API to get this library!
+#if !defined (__MINGW32__) && !defined (__MINGW64__)
     #pragma comment(lib,"Cfgmgr32.lib")//make sure this get's linked in
-
+#endif
     // \fn send_IO(scsiIoCtx * scsiIoCtx)
     // \brief Function to send a ioctl after converting it from the ScsiIoCtx to OS tSPTIoContext
     // \param ScsiIoCtx
@@ -95,6 +96,9 @@ extern "C"
     //-----------------------------------------------------------------------------
     int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
 
+    int nvme_Reset(tDevice *device);
+
+    int nvme_Subsystem_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //

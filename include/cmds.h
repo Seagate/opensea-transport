@@ -149,12 +149,13 @@ extern "C"
     //!   \param xferLen - transfer length
     //!   \param ptrData - pointer to the data buffer that will do the transfer
     //!   \param slotNumber - set to the slot number (NVMe) or buffer ID (SCSI) that you want to set. If unsure, set this to zero. Ignored on ATA drives. Only used for activate on NVMe drives.
+    //!   \param existingImage - set to true if using this command to activate an existing image in the specified slot, false if it is a new image to activate.
     //!   
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber);
+    OPENSEA_TRANSPORT_API int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber, bool existingImage);
 
     //-----------------------------------------------------------------------------
     //
@@ -164,12 +165,13 @@ extern "C"
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param slotNumber - set to the slot number (NVMe) or buffer ID (SCSI) that you want to set. If unsure, set this to zero. Ignored on ATA drives.
+    //!   \param existingImage - set to true if using this command to activate an existing image in the specified slot, false if it is a new image to activate.
     //!   
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int firmware_Download_Activate(tDevice *device, uint8_t slotNumber);
+    OPENSEA_TRANSPORT_API int firmware_Download_Activate(tDevice *device, uint8_t slotNumber, bool existingImage);
 
     typedef enum _eSecurityProtocols
     {
