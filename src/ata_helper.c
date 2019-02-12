@@ -998,22 +998,25 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             device->drive_info.ata_Options.downloadMicrocodeDMASupported = true;
         }
         //set zoned device type
-        switch (ident_word[69] & (BIT0 | BIT1))
+        if (device->drive_info.zonedType != ZONED_TYPE_HOST_MANAGED)
         {
-        case 0:
-            device->drive_info.zonedType = ZONED_TYPE_NOT_ZONED;
-            break;
-        case 1:
-            device->drive_info.zonedType = ZONED_TYPE_HOST_AWARE;
-            break;
-        case 2:
-            device->drive_info.zonedType = ZONED_TYPE_DEVICE_MANAGED;
-            break;
-        case 3:
-            device->drive_info.zonedType = ZONED_TYPE_RESERVED;
-            break;
-        default:
-            break;
+            switch (ident_word[69] & (BIT0 | BIT1))
+            {
+            case 0:
+                device->drive_info.zonedType = ZONED_TYPE_NOT_ZONED;
+                break;
+            case 1:
+                device->drive_info.zonedType = ZONED_TYPE_HOST_AWARE;
+                break;
+            case 2:
+                device->drive_info.zonedType = ZONED_TYPE_DEVICE_MANAGED;
+                break;
+            case 3:
+                device->drive_info.zonedType = ZONED_TYPE_RESERVED;
+                break;
+            default:
+                break;
+            }
         }
         //Determine if read/write log ext DMA commands are supported
         if (ident_word[119] & BIT3 || ident_word[120] & BIT3)
@@ -1244,6 +1247,20 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                         if (downloadCapabilities & BIT63 && downloadCapabilities & BIT34)
                         {
                             device->drive_info.softSATFlags.deferredDownloadSupported = true;
+                        }
+                        uint64_t supportedZACCapabilities = M_BytesTo8ByteValue(logBuffer[119], logBuffer[118], logBuffer[117], logBuffer[116], logBuffer[115], logBuffer[114], logBuffer[113], logBuffer[112]);
+                        if (supportedZACCapabilities & BIT63)//qword valid
+                        {
+                            //check if any of the ZAC commands are supported.
+                            if (supportedZACCapabilities & BIT0 || supportedZACCapabilities & BIT1 || supportedZACCapabilities & BIT2 || supportedZACCapabilities & BIT3 || supportedZACCapabilities & BIT4)
+                            {
+                                //according to what I can find in the spec, a HOST Managed drive reports a different signature, but doens't set any identify bytes like a host aware drive.
+                                //because of this and not being able to get the real signature, this check is the only way to determine we are talking to an ATA host managed drive. - TJE
+                                if (device->drive_info.zonedType == ZONED_TYPE_NOT_ZONED)
+                                {
+                                    device->drive_info.zonedType = ZONED_TYPE_HOST_MANAGED;
+                                }
+                            }
                         }
                     }
                 }
