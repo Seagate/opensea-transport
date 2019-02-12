@@ -182,10 +182,12 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
     {
         if (strstr(handle,"nvme") != NULL)
         {
+            char *nvmHandle = (char*)calloc(strlen(handle) + 1, sizeof(char));
+            strcpy(nvmHandle, handle);
             device->drive_info.interface_type = NVME_INTERFACE;
     		device->drive_info.drive_type = NVME_DRIVE;
-            sprintf(device->os_info.name, "%s", handle);
-            sprintf(device->os_info.friendlyName, "%s", basename(handle));
+            sprintf(device->os_info.name, "%s", nvmHandle);
+            sprintf(device->os_info.friendlyName, "%s", basename(nvmHandle));
         }
         else //not NVMe, so we need to do some investigation of the handle. NOTE: this requires 2.6 and later kernel since it reads a link in the /sys/class/ filesystem
         {
