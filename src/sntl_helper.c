@@ -2237,6 +2237,10 @@ int sntl_Translate_Background_Scan_Results_Log_0x15(tDevice *device, ScsiIoCtx *
         backgroundResults[offset + 15] = 0;
         offset += 8;
     }
+    if (scsiIoCtx->pdata)
+    {
+        memcpy(scsiIoCtx->pdata, backgroundResults, M_Min(20U, scsiIoCtx->dataLength));
+    }
     return ret;
 }
 
