@@ -1902,7 +1902,7 @@ int remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint3
 
 	for (i = driveToRemoveIdx; i < *numberOfDevices - 1; i++)
 	{
-		memcpy((deviceList + driveToRemoveIdx), (deviceList + driveToRemoveIdx + 1), sizeof(tDevice));
+		memcpy((deviceList + i), (deviceList + i + 1), sizeof(tDevice));
 	}
 
 	memset((deviceList + i), 0, sizeof(tDevice));

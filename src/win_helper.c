@@ -326,7 +326,6 @@ int get_Device(const char *filename, tDevice *device )
 #else
                 char device_name[40] = { 0 };
                 LPSTR ptrLetterName = &device_name[0];
-                strcpy(&device_name[0], filename);
                 snprintf(ptrLetterName, 40, "\\\\.\\%c:", currentLetter);
                 HANDLE letterHandle = CreateFile((LPCSTR)ptrLetterName,
 #endif
