@@ -1459,7 +1459,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             uio.direction = XFER_TO_DEV;
         }
 
-        uio.length = nvmeIoCtx->cmd.adminCmd.dataLen;
+        uio.length = nvmeIoCtx->dataSize;
         uio.addr = (vmk_uint32)nvmeIoCtx->cmd.adminCmd.addr;
         uio.namespaceID = nvmeIoCtx->cmd.adminCmd.nsid;
         uio.timeoutUs = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
