@@ -1575,6 +1575,18 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     return ret;
 }
 
+int nvme_Reset(tDevice *device)
+{
+    //This is a stub. If this is possible, this should perform an nvme reset;
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+
+int nvme_Subsystem_Reset(tDevice *device)
+{
+    //This is a stub. If this is possible, this should perform an nvme subsystem reset;
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+
 //Case to remove this from sg_helper.h/c and have a platform/lin/pci-herlper.h vs platform/win/pci-helper.c 
 
 int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
