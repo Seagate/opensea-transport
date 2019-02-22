@@ -570,8 +570,9 @@ int get_Device(const char *filename, tDevice *device)
 {
     char *deviceHandle = NULL;
     int ret = SUCCESS, k = 0;
-
-    //printf("Getting device for %s\n", filename);
+    #if defined (_DEBUG)
+    printf("%s: Getting device for %s\n", __FUNCTION__, filename);
+    #endif
 
     if(is_Block_Device_Handle((char*)filename))
     {
@@ -579,8 +580,10 @@ int get_Device(const char *filename, tDevice *device)
         char *genHandle = NULL;
         char *blockHandle = NULL;
         int mapResult = map_Block_To_Generic_Handle((char*)filename, &genHandle, &blockHandle);
-        //printf("sg = %s\tsd = %s\n", sgHandle, sdHandle);
-        if(mapResult == SUCCESS && strlen(genHandle))
+        #if defined (_DEBUG)
+        printf("sg = %s\tsd = %s\n", genHandle, blockHandle);
+        #endif
+        if(mapResult == SUCCESS && genHandle!=NULL)
         {
             deviceHandle = (char*)calloc(LIN_MAX_HANDLE_LENGTH, sizeof(char));
             //printf("Changing filename to SG device....\n");
@@ -596,6 +599,10 @@ int get_Device(const char *filename, tDevice *device)
             printf("\tfilename = %s\n", deviceHandle);
             #endif
         }
+        else //If we can't map, let still try anyway. 
+        {
+            deviceHandle = strdup(filename);
+        }
         safe_Free(genHandle);
         safe_Free(blockHandle);
     }
@@ -604,7 +611,7 @@ int get_Device(const char *filename, tDevice *device)
         deviceHandle = strdup(filename);
     }
     #if defined (_DEBUG)
-    printf("Attempting to open %s\n", deviceHandle);
+    printf("%s: Attempting to open %s\n", __FUNCTION__, deviceHandle);
     #endif
     // Note: We are opening a READ/Write flag
     if ((device->os_info.fd = open(deviceHandle, O_RDWR | O_NONBLOCK)) < 0)
