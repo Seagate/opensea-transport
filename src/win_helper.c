@@ -4777,6 +4777,9 @@ int send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
 int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
+#if defined (_DEBUG)
+	printf("%s: -->\n", __FUNCTION__);
+#endif
     //send the activate IOCTL
     STORAGE_HW_FIRMWARE_ACTIVATE downloadActivate;
     memset(&downloadActivate, 0, sizeof(STORAGE_HW_FIRMWARE_ACTIVATE));
@@ -4791,6 +4794,10 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
         downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
     }
     downloadActivate.Slot = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
+#if defined (_DEBUG)
+	printf("%s: downloadActivate->Version=%d\n\t->Size=%d\n\t->Flags=0x%X\n\t->Slot=%d\n",\
+		__FUNCTION__, downloadActivate.Version,downloadActivate.Size, downloadActivate.Flags, downloadActivate.Slot);
+#endif
     DWORD returned_data = 0;
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
     seatimer_t commandTimer;
@@ -4845,6 +4852,9 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
             break;
         }
     }
+#if defined (_DEBUG)
+	printf("%s: <-- (ret=%d)\n", __FUNCTION__, ret);
+#endif
     return ret;
 }
 
@@ -4854,13 +4864,23 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
 int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
+#if defined (_DEBUG)
+	printf("%s: -->\n", __FUNCTION__);
+#endif
     //send download IOCTL
 #if defined (WIN_API_TARGET_VERSION) && !defined (DISABLE_FWDL_V2) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
     DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2) + nvmeIoCtx->dataSize;
     PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2 downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2)malloc(downloadStructureSize);
+#if defined (_DEBUG)
+	printf("%s: sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2)=%zu+%d=%d\n", \
+		__FUNCTION__, sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2), nvmeIoCtx->dataSize, downloadStructureSize);
+#endif
 #else
     DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + nvmeIoCtx->dataSize;
     PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD)malloc(downloadStructureSize);
+#if defined (_DEBUG)
+	printf("%s: sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD)=%zu\n", __FUNCTION__, sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD));
+#endif
 #endif
     if (!downloadIO)
     {
@@ -4899,6 +4919,11 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
 #endif
     //now copy the buffer into this IOCTL struct
     memcpy(downloadIO->ImageBuffer, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+
+#if defined (_DEBUG)
+	printf("%s: downloadIO->Version=%d\n\t->Size=%d\n\t->Flags=0x%X\n\t->Slot=%d\n\t->Offset=0x%llX\n\t->BufferSize=0x%llX\n\t->ImageSize=0x%X\n", \
+		__FUNCTION__, downloadIO->Version, downloadIO->Size, downloadIO->Flags, downloadIO->Slot, downloadIO->Offset, downloadIO->BufferSize, downloadIO->ImageSize);
+#endif
 	
     //time to issue the IO
     DWORD returned_data = 0;
@@ -4955,6 +4980,9 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
             break;
         }
     }
+#if defined (_DEBUG)
+	printf("%s: <-- (ret=%d)\n", __FUNCTION__, ret);
+#endif
     return ret;
 }
 
