@@ -1844,9 +1844,13 @@ int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDe
 			ret = SUCCESS;
 			sameSlNo = false;
 
-			sameSlNo = (strncmp((deviceList + i)->drive_info.serialNumber,
-				(deviceList + j)->drive_info.serialNumber,
-				strlen((deviceList + i)->drive_info.serialNumber)) == 0);
+			if ( ((deviceList + i)->drive_info.serialNumber != NULL) &&
+				 ((deviceList + j)->drive_info.serialNumber != NULL) )
+			{
+				 sameSlNo = (strncmp((deviceList + i)->drive_info.serialNumber,
+					 (deviceList + j)->drive_info.serialNumber,
+					 strlen((deviceList + i)->drive_info.serialNumber)) == 0);
+			}
 
 			if (sameSlNo)
 			{

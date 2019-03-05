@@ -611,7 +611,7 @@ int fill_Drive_Info_USB(tDevice *device)
                             remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
                             for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
                             {
-                                if (!isprint(inq_buf[iter]))
+                                if (!isprint(device->drive_info.serialNumber[iter]))
                                 {
                                     device->drive_info.serialNumber[iter] = ' ';
                                 }
@@ -637,7 +637,7 @@ int fill_Drive_Info_USB(tDevice *device)
                 //make sure the SN is printable if it's coming from here since it's non-standardized
                 for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
                 {
-                    if (!isprint(inq_buf[iter]))
+                    if (!isprint(device->drive_info.serialNumber[iter]))
                     {
                         device->drive_info.serialNumber[iter] = ' ';
                     }
@@ -775,7 +775,7 @@ int fill_Drive_Info_USB(tDevice *device)
                                 remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
                                 for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
                                 {
-                                    if (!isprint(inq_buf[iter]))
+                                    if (!isprint(device->drive_info.serialNumber[iter]))
                                     {
                                         device->drive_info.serialNumber[iter] = ' ';
                                     }
@@ -932,7 +932,7 @@ int fill_Drive_Info_USB(tDevice *device)
             //make sure the SN is printable if it's coming from here since it's non-standardized
             for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
             {
-                if (!isprint(inq_buf[iter]))
+                if (!isprint(device->drive_info.serialNumber[iter]))
                 {
                     device->drive_info.serialNumber[iter] = ' ';
                 }

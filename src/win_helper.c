@@ -156,6 +156,124 @@ void print_bus_type( BYTE type )
 }
 #endif
 
+int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
+{
+	int ret = OS_PASSTHROUGH_FAILURE;
+	PSRB_IO_CONTROL         srbControl;
+	PFIRMWARE_REQUEST_BLOCK firmwareRequest;
+	PUCHAR                  buffer = NULL;
+	ULONG                   bufferSize;
+	ULONG                   firmwareStructureOffset;
+	PSTORAGE_FIRMWARE_ACTIVATE  firmwareActivate;
+#if defined (_DEBUG)
+	printf("%s: -->\n", __FUNCTION__);
+	printf("%s: Slot %d\n", __FUNCTION__, M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0));
+#endif
+
+	//
+	// The STORAGE_FIRMWARE_INFO is located after SRB_IO_CONTROL and FIRMWARE_RESQUEST_BLOCK
+	//
+	firmwareStructureOffset = ((sizeof(SRB_IO_CONTROL) + \
+		sizeof(FIRMWARE_REQUEST_BLOCK) - 1) / sizeof(PVOID) + 1) * sizeof(PVOID);
+	bufferSize = 4096; //Since Panther Max xfer is 4k
+	bufferSize += firmwareStructureOffset;
+	bufferSize += FIELD_OFFSET(STORAGE_FIRMWARE_DOWNLOAD, ImageBuffer);
+	
+	buffer = (PUCHAR)calloc(bufferSize,1);
+	if (!buffer)
+	{
+		return MEMORY_FAILURE;
+	}
+	
+	srbControl = (PSRB_IO_CONTROL)buffer;
+	srbControl->HeaderLength = sizeof(SRB_IO_CONTROL);
+	srbControl->ControlCode = IOCTL_SCSI_MINIPORT_FIRMWARE;
+	RtlMoveMemory(srbControl->Signature, IOCTL_MINIPORT_SIGNATURE_FIRMWARE, 8);
+	srbControl->Timeout = 30;
+	srbControl->Length = bufferSize - sizeof(SRB_IO_CONTROL);
+
+	firmwareRequest = (PFIRMWARE_REQUEST_BLOCK)(srbControl + 1);
+	firmwareRequest->Version = FIRMWARE_REQUEST_BLOCK_STRUCTURE_VERSION;
+	firmwareRequest->Size = sizeof(FIRMWARE_REQUEST_BLOCK);
+	firmwareRequest->Function = FIRMWARE_FUNCTION_ACTIVATE;
+	firmwareRequest->Flags = FIRMWARE_REQUEST_FLAG_CONTROLLER;
+	firmwareRequest->DataBufferOffset = firmwareStructureOffset;
+	firmwareRequest->DataBufferLength = bufferSize - firmwareStructureOffset;
+
+	firmwareActivate = (PSTORAGE_FIRMWARE_ACTIVATE)((PUCHAR)srbControl + firmwareRequest->DataBufferOffset);
+	firmwareActivate->Version = 1;
+	firmwareActivate->Size = sizeof(STORAGE_FIRMWARE_ACTIVATE);
+	firmwareActivate->SlotToActivate = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
+
+	DWORD returned_data = 0;
+	SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
+	seatimer_t commandTimer;
+	memset(&commandTimer, 0, sizeof(seatimer_t));
+	OVERLAPPED overlappedStruct;
+	memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
+	overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	start_Timer(&commandTimer);
+	//
+	// Send the activation request
+	//
+	//success = DeviceIoControl(IoContext.hHandle,
+	int fwdlIO = DeviceIoControl(nvmeIoCtx->device->os_info.fd, 
+		IOCTL_SCSI_MINIPORT,
+		buffer,
+		bufferSize,
+		buffer,
+		bufferSize,
+		&returned_data,
+		&overlappedStruct
+	);
+	nvmeIoCtx->device->os_info.last_error = GetLastError();
+	if (ERROR_IO_PENDING == nvmeIoCtx->device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
+	{
+		fwdlIO = GetOverlappedResult(nvmeIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
+		nvmeIoCtx->device->os_info.last_error = GetLastError();
+	}
+	else if (nvmeIoCtx->device->os_info.last_error != ERROR_SUCCESS)
+	{
+		ret = OS_PASSTHROUGH_FAILURE;
+	}
+	stop_Timer(&commandTimer);
+#if defined (_DEBUG)
+	printf("%s: nvmeIoCtx->device->os_info.last_error=%d(0x%x)\n", \
+		__FUNCTION__, nvmeIoCtx->device->os_info.last_error, nvmeIoCtx->device->os_info.last_error);
+#endif
+	nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+	CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+	overlappedStruct.hEvent = NULL;
+	//dummy up sense data for end result
+	if (fwdlIO)
+	{
+		ret = SUCCESS;
+		nvmeIoCtx->commandCompletionData.commandSpecific = 0;
+		nvmeIoCtx->commandCompletionData.dw0Valid = true;
+	}
+	else
+	{
+		if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+		{
+			printf("Windows Error: ");
+			print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
+		}
+		//TODO: We need to figure out what error codes Windows will return and how to dummy up the return value to match - TJE
+		switch (nvmeIoCtx->device->os_info.last_error)
+		{
+		case ERROR_IO_DEVICE:
+		default:
+			ret = OS_PASSTHROUGH_FAILURE;
+			break;
+		}
+	}
+#if defined (_DEBUG)
+	printf("%s: <-- (ret=%d)\n", __FUNCTION__, ret);
+#endif
+	return ret;
+
+}
+
 int get_os_drive_number( char *filename )
 {
     int  drive_num = -1;
@@ -4777,6 +4895,9 @@ int send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
 int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
+#if defined (_DEBUG)
+	printf("%s: -->\n", __FUNCTION__);
+#endif
     //send the activate IOCTL
     STORAGE_HW_FIRMWARE_ACTIVATE downloadActivate;
     memset(&downloadActivate, 0, sizeof(STORAGE_HW_FIRMWARE_ACTIVATE));
@@ -4791,6 +4912,10 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
         downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
     }
     downloadActivate.Slot = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
+#if defined (_DEBUG)
+	printf("%s: downloadActivate->Version=%d\n\t->Size=%d\n\t->Flags=0x%X\n\t->Slot=%d\n",\
+		__FUNCTION__, downloadActivate.Version,downloadActivate.Size, downloadActivate.Flags, downloadActivate.Slot);
+#endif
     DWORD returned_data = 0;
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
     seatimer_t commandTimer;
@@ -4819,6 +4944,10 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&commandTimer);
+#if defined (_DEBUG)
+	printf("%s: nvmeIoCtx->device->os_info.last_error=%d(0x%x)\n", \
+		__FUNCTION__, nvmeIoCtx->device->os_info.last_error, nvmeIoCtx->device->os_info.last_error);
+#endif
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
     overlappedStruct.hEvent = NULL;
@@ -4845,6 +4974,9 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
             break;
         }
     }
+#if defined (_DEBUG)
+	printf("%s: <-- (ret=%d)\n", __FUNCTION__, ret);
+#endif
     return ret;
 }
 
@@ -4854,13 +4986,23 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
 int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
+#if defined (_DEBUG)
+	printf("%s: -->\n", __FUNCTION__);
+#endif
     //send download IOCTL
 #if defined (WIN_API_TARGET_VERSION) && !defined (DISABLE_FWDL_V2) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
     DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2) + nvmeIoCtx->dataSize;
     PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2 downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2)malloc(downloadStructureSize);
+#if defined (_DEBUG)
+	printf("%s: sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2)=%zu+%d=%d\n", \
+		__FUNCTION__, sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2), nvmeIoCtx->dataSize, downloadStructureSize);
+#endif
 #else
     DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + nvmeIoCtx->dataSize;
     PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD)malloc(downloadStructureSize);
+#if defined (_DEBUG)
+	printf("%s: sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD)=%zu\n", __FUNCTION__, sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD));
+#endif
 #endif
     if (!downloadIO)
     {
@@ -4899,6 +5041,12 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
 #endif
     //now copy the buffer into this IOCTL struct
     memcpy(downloadIO->ImageBuffer, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+
+#if defined (_DEBUG)
+	printf("%s: downloadIO\n\t->Version=%d\n\t->Size=%d\n\t->Flags=0x%X\n\t->Slot=%d\n\t->Offset=0x%llX\n\t->BufferSize=0x%llX\n", \
+		__FUNCTION__, downloadIO->Version, downloadIO->Size, downloadIO->Flags, downloadIO->Slot, downloadIO->Offset, downloadIO->BufferSize);
+	//print_Data_Buffer(downloadIO->ImageBuffer, (downloadStructureSize - FIELD_OFFSET(STORAGE_HW_FIRMWARE_DOWNLOAD, ImageBuffer)), false);
+#endif
 	
     //time to issue the IO
     DWORD returned_data = 0;
@@ -4929,6 +5077,10 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&commandTimer);
+#if defined (_DEBUG)
+	printf("%s: nvmeIoCtx->device->os_info.last_error=%d(0x%x)\n", \
+		__FUNCTION__, nvmeIoCtx->device->os_info.last_error, nvmeIoCtx->device->os_info.last_error);
+#endif
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
     overlappedStruct.hEvent = NULL;
@@ -4955,6 +5107,9 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
             break;
         }
     }
+#if defined (_DEBUG)
+	printf("%s: <-- (ret=%d)\n", __FUNCTION__, ret);
+#endif
     return ret;
 }
 
@@ -6198,7 +6353,11 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             ret = send_Win_NVMe_Firmware_Image_Download_Command(nvmeIoCtx);
             break;
         case NVME_ADMIN_CMD_ACTIVATE_FW:
+#if defined(NVME_FW_ACTIVATE_WIN10)
             ret = send_Win_NVMe_Firmware_Activate_Command(nvmeIoCtx);
+#else
+			ret = send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeIoCtx);
+#endif
             break;
         case NVME_ADMIN_CMD_SECURITY_SEND:
             ret = win10_Translate_Security_Send(nvmeIoCtx);

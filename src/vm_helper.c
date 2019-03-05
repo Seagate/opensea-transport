@@ -1459,7 +1459,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             uio.direction = XFER_TO_DEV;
         }
 
-        uio.length = nvmeIoCtx->cmd.adminCmd.dataLen;
+        uio.length = nvmeIoCtx->dataSize;
         uio.addr = (vmk_uint32)nvmeIoCtx->cmd.adminCmd.addr;
         uio.namespaceID = nvmeIoCtx->cmd.adminCmd.nsid;
         uio.timeoutUs = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
@@ -1573,6 +1573,18 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     printf("<--%s (%d)\n",__FUNCTION__, ret);
 #endif
     return ret;
+}
+
+int nvme_Reset(tDevice *device)
+{
+    //This is a stub. If this is possible, this should perform an nvme reset;
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+
+int nvme_Subsystem_Reset(tDevice *device)
+{
+    //This is a stub. If this is possible, this should perform an nvme subsystem reset;
+    return OS_COMMAND_NOT_AVAILABLE;
 }
 
 //Case to remove this from sg_helper.h/c and have a platform/lin/pci-herlper.h vs platform/win/pci-helper.c 
