@@ -21,7 +21,7 @@ matrix:
     - git config --global user.name "Travis CI"
     - git checkout develop
     - git commit -am "[skip travis] version changed"
-    - git push -q https://${GH_TOKEN}@github.com/Seagate/opensea-common.git
+    - git push -q https://${GH_TOKEN}@github.com/Seagate/opensea-transport.git
   - os: windows
     env:
     - MSBUILD_PATH="c:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin"
