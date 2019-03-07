@@ -1139,6 +1139,7 @@ extern "C"
 		//Recently Added
 		SEAGATE_VENDOR_F = BIT18,
 		SEAGATE_VENDOR_G = BIT19,
+		SEAGATE_VENDOR_H = BIT20
     }eSeagateFamily;
 
     //The scan flags should each be a bit in a 32bit unsigned integer.
