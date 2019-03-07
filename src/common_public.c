@@ -1374,17 +1374,39 @@ bool is_Seagate_Model_Number_Vendor_G(tDevice *device, bool USBchildDrive)
 	return isSeagateVendor;
 }
 
-bool is_Seagate_Model_Number_Vendor_H(tDevice *device)
+bool is_Seagate_Model_Number_Vendor_H(tDevice *device, bool USBchildDrive)
 {
 	bool isSeagateVendor = false;
-	char *partialModelString = NULL;
 
-	//we need to check the model number for the ones used on consumer NVMe SSDs
-	if (device->drive_info.drive_type == NVME_DRIVE)
+	//we need to check the model number for the ones used on the Vendor products
+	if (USBchildDrive)
 	{
-		if (strstr(device->drive_info.product_identification, "ZP") != NULL)
+		if (((strstr(device->drive_info.bridge_info.childDriveMN, "ZP") != NULL)
+				&& (((strstr(device->drive_info.bridge_info.childDriveMN, "CM") != NULL) && (strlen(strstr(device->drive_info.product_identification, "CM")) == 7))
+					|| ((strstr(device->drive_info.bridge_info.childDriveMN, "GM") != NULL) && (strlen(strstr(device->drive_info.product_identification, "GM")) == 7))))
+			||
+			((strstr(device->drive_info.bridge_info.childDriveMN, "XP") != NULL)
+				&& ((strstr(device->drive_info.bridge_info.childDriveMN, "DC") != NULL) && (strlen(strstr(device->drive_info.product_identification, "DC")) == 7)))
+			)
 		{
 			isSeagateVendor = true;
+		}
+	}
+	else
+	{
+		if (((strstr(device->drive_info.product_identification, "ZP") != NULL)
+				&& (((strstr(device->drive_info.product_identification, "CM") != NULL) && (strlen(strstr(device->drive_info.product_identification, "CM")) == 7))
+					|| ((strstr(device->drive_info.product_identification, "GM") != NULL) && (strlen(strstr(device->drive_info.product_identification, "GM")) == 7))))
+			||
+			((strstr(device->drive_info.product_identification, "XP") != NULL)
+				&& ((strstr(device->drive_info.product_identification, "DC") != NULL) && (strlen(strstr(device->drive_info.product_identification, "DC")) == 7)))
+			)
+		{
+			isSeagateVendor = true;
+		}
+		if (!isSeagateVendor)
+		{
+			return (is_Seagate_Model_Number_Vendor_H(device, true));
 		}
 	}
 	return isSeagateVendor;
@@ -1448,6 +1470,10 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
 				{
 					isSeagateFamily = SEAGATE_VENDOR_G;
 				}
+				else if (is_Seagate_Model_Number_Vendor_H(device, false))
+				{
+					isSeagateFamily = SEAGATE_VENDOR_H;
+				}
             }
             break;
         case 2://is_Maxtor
@@ -1508,7 +1534,7 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
 			}
 			break;
 		case 10://is_Vendor_H - NVMe SSDs
-			if (is_Seagate_Model_Number_Vendor_H(device))
+			if (is_Seagate_Model_Number_Vendor_H(device, false))
 			{
 				isSeagateFamily = SEAGATE_VENDOR_H;
 			}
