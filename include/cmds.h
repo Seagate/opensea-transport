@@ -124,7 +124,7 @@ extern "C"
 	//!   \return SUCCESS = pass, !SUCCESS = something when wrong
 	//
 	//-----------------------------------------------------------------------------
-	int fill_Drive_Info_Data(tDevice *device);
+	OPENSEA_TRANSPORT_API int fill_Drive_Info_Data(tDevice *device);
 
     typedef enum _eDownloadMode
     {
