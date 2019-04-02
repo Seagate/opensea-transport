@@ -18,6 +18,7 @@
 #include "ata_helper.h"
 #include "ata_helper_func.h"
 #include <ctype.h>//for checking for printable characters
+#include "common.h"
 
 //Some VID/PID info comes from these pages:
 //https://usb-ids.gowdy.us/
@@ -932,7 +933,7 @@ int fill_Drive_Info_USB(tDevice *device)
             //make sure the SN is printable if it's coming from here since it's non-standardized
             for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
             {
-                if (!isprint(device->drive_info.serialNumber[iter]))
+                if (!is_ASCII(device->drive_info.serialNumber[iter]) || !isprint(device->drive_info.serialNumber[iter]))
                 {
                     device->drive_info.serialNumber[iter] = ' ';
                 }

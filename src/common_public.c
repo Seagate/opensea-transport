@@ -611,7 +611,7 @@ bool is_Seagate_MN(char* string)
         }
         strcpy(localString, string);
         localString[stringLen] = '\0';
-        convert_String_To_Upper_Case(localString);
+        //convert_String_To_Upper_Case(localString);//Removing uppercase converstion, thus making this a case sensitive comparison to fix issues with other non-Seagate products being detected as Seagate.
         if (strlen(localString) >= seagateLen && strncmp(localString, "ST", seagateLen) == 0)
         {
             isSeagate = true;
