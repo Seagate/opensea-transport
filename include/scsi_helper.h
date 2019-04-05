@@ -489,7 +489,8 @@ extern "C"
         LPC_THRESHOLD_VALUES          = 0x0,
         LPC_CUMULATIVE_VALUES         = 0x1,
         LPC_DEFAULT_THRESHOLD_VALUES  = 0x2,
-        LPC_DEFAULT_CUMULATIVE_VALUES = 0x3
+        LPC_DEFAULT_CUMULATIVE_VALUES = 0x3,
+		LPC_DEFAULT_ALL_VALUES        = 0x4,
     }eScsiLogPageControl;
 
     typedef enum _eScsiModeParameters//does not do subpage codes...only page codes. Add more as needed
