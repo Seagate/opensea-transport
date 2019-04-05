@@ -1333,7 +1333,6 @@ bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
 bool is_Seagate_Model_Number_Vendor_G(tDevice *device, bool USBchildDrive)
 {
 	bool isSeagateVendor = false;
-	char *partialModelString = NULL;
 
 	//we need to check the model number for the ones used on the Vendor products
 	if (USBchildDrive)
