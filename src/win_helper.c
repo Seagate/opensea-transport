@@ -58,7 +58,7 @@ extern bool validate_Device_Struct(versionBlock);
 
 int get_Windows_SMART_IO_Support(tDevice *device);
 #if WINVER >= SEA_WIN32_WINNT_WIN10
-int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE deviceType);
+int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busType);
 bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx);//TODO: add nvme support...may not need an NVMe version since it's the only way to update code on NVMe
 int send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx);
 int send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx);
@@ -3004,10 +3004,385 @@ bool is_Activate_Command(ScsiIoCtx *scsiIoCtx)
     }
 	return isActivate;
 }
+
+int win10_FW_Activate_IO_SCSI(ScsiIoCtx *scsiIoCtx)
+{
+    int ret = OS_PASSTHROUGH_FAILURE;
+    //send the activate IOCTL
+    STORAGE_HW_FIRMWARE_ACTIVATE downloadActivate;
+    memset(&downloadActivate, 0, sizeof(STORAGE_HW_FIRMWARE_ACTIVATE));
+    downloadActivate.Version = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
+    downloadActivate.Size = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
+    //downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
+    if (scsiIoCtx && !scsiIoCtx->pAtaCmdOpts)
+    {
+        downloadActivate.Slot = scsiIoCtx->cdb[2];//Set the slot number to the buffer ID number...This is the closest this translates.
+    }
+    if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)
+    {
+        //if we are on NVMe, but the command comes to here, then someone forced SCSI mode, so let's set this flag correctly
+        downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;
+    }
+    DWORD returned_data = 0;
+    SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
+    seatimer_t commandTimer;
+    memset(&commandTimer, 0, sizeof(seatimer_t));
+    OVERLAPPED overlappedStruct;
+    memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
+    overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    start_Timer(&commandTimer);
+    int fwdlIO = DeviceIoControl(scsiIoCtx->device->os_info.fd,
+        IOCTL_STORAGE_FIRMWARE_ACTIVATE,
+        &downloadActivate,
+        sizeof(STORAGE_HW_FIRMWARE_ACTIVATE),
+        NULL,
+        0,
+        &returned_data,
+        &overlappedStruct
+    );
+    scsiIoCtx->device->os_info.last_error = GetLastError();
+    if (ERROR_IO_PENDING == scsiIoCtx->device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
+    {
+        fwdlIO = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
+        scsiIoCtx->device->os_info.last_error = GetLastError();
+    }
+    else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
+    {
+        ret = OS_PASSTHROUGH_FAILURE;
+    }
+    stop_Timer(&commandTimer);
+    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+    overlappedStruct.hEvent = NULL;
+    //dummy up sense data for end result
+    if (fwdlIO)
+    {
+        ret = SUCCESS;
+        memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
+        if (scsiIoCtx->pAtaCmdOpts)
+        {
+            //set status register to 50
+            memset(&scsiIoCtx->pAtaCmdOpts->rtfr, 0, sizeof(ataReturnTFRs));
+            scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
+            scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = 0x02;//This is supposed to be set when the drive has applied the new code.
+            //also set sense data with an ATA passthrough return descriptor
+            if (scsiIoCtx->senseDataSize >= 22)//check that the sense data buffer is big enough to fill in our rtfrs using descriptor format
+            {
+                scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
+                scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
+                                                        //setting ASC/ASCQ to ATA Passthrough Information Available
+                scsiIoCtx->returnStatus.asc = 0x00;
+                scsiIoCtx->returnStatus.ascq = 0x1D;
+                //now fill in the sens buffer
+                scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
+                scsiIoCtx->psense[1] = 0x01;//recovered error
+                                            //setting ASC/ASCQ to ATA Passthrough Information Available
+                scsiIoCtx->psense[2] = 0x00;//ASC
+                scsiIoCtx->psense[3] = 0x1D;//ASCQ
+                scsiIoCtx->psense[4] = 0;
+                scsiIoCtx->psense[5] = 0;
+                scsiIoCtx->psense[6] = 0;
+                scsiIoCtx->psense[7] = 0x0E;//additional sense length
+                scsiIoCtx->psense[8] = 0x09;//descriptor code
+                scsiIoCtx->psense[9] = 0x0C;//additional descriptor length
+                scsiIoCtx->psense[10] = 0;
+                //fill in the returned 28bit registers
+                scsiIoCtx->psense[11] = scsiIoCtx->pAtaCmdOpts->rtfr.error;// Error
+                scsiIoCtx->psense[13] = scsiIoCtx->pAtaCmdOpts->rtfr.secCnt;// Sector Count
+                scsiIoCtx->psense[15] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow;// LBA Lo
+                scsiIoCtx->psense[17] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid;// LBA Mid
+                scsiIoCtx->psense[19] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi;// LBA Hi
+                scsiIoCtx->psense[20] = scsiIoCtx->pAtaCmdOpts->rtfr.device;// Device/Head
+                scsiIoCtx->psense[21] = scsiIoCtx->pAtaCmdOpts->rtfr.status;// Status
+            }
+        }
+    }
+    else
+    {
+        switch (scsiIoCtx->device->os_info.last_error)
+        {
+        case ERROR_IO_DEVICE://aborted command is the best we can do
+            memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
+            if (scsiIoCtx->pAtaCmdOpts)
+            {
+                memset(&scsiIoCtx->pAtaCmdOpts->rtfr, 0, sizeof(ataReturnTFRs));
+                scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                scsiIoCtx->pAtaCmdOpts->rtfr.error = ATA_ERROR_BIT_ABORT;
+                //we need to also set sense data that matches...
+                if (scsiIoCtx->senseDataSize >= 22)//check that the sense data buffer is big enough to fill in our rtfrs using descriptor format
+                {
+                    scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
+                    scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
+                                                            //setting ASC/ASCQ to ATA Passthrough Information Available
+                    scsiIoCtx->returnStatus.asc = 0x00;
+                    scsiIoCtx->returnStatus.ascq = 0x1D;
+                    //now fill in the sens buffer
+                    scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
+                    scsiIoCtx->psense[1] = 0x01;//recovered error
+                                                //setting ASC/ASCQ to ATA Passthrough Information Available
+                    scsiIoCtx->psense[2] = 0x00;//ASC
+                    scsiIoCtx->psense[3] = 0x1D;//ASCQ
+                    scsiIoCtx->psense[4] = 0;
+                    scsiIoCtx->psense[5] = 0;
+                    scsiIoCtx->psense[6] = 0;
+                    scsiIoCtx->psense[7] = 0x0E;//additional sense length
+                    scsiIoCtx->psense[8] = 0x09;//descriptor code
+                    scsiIoCtx->psense[9] = 0x0C;//additional descriptor length
+                    scsiIoCtx->psense[10] = 0;
+                    //fill in the returned 28bit registers
+                    scsiIoCtx->psense[11] = scsiIoCtx->pAtaCmdOpts->rtfr.error;// Error
+                    scsiIoCtx->psense[13] = scsiIoCtx->pAtaCmdOpts->rtfr.secCnt;// Sector Count
+                    scsiIoCtx->psense[15] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow;// LBA Lo
+                    scsiIoCtx->psense[17] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid;// LBA Mid
+                    scsiIoCtx->psense[19] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi;// LBA Hi
+                    scsiIoCtx->psense[20] = scsiIoCtx->pAtaCmdOpts->rtfr.device;// Device/Head
+                    scsiIoCtx->psense[21] = scsiIoCtx->pAtaCmdOpts->rtfr.status;// Status
+                }
+            }
+            else
+            {
+                //setting fixed format...
+                scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
+                scsiIoCtx->psense[2] = SENSE_KEY_ABORTED_COMMAND;
+                scsiIoCtx->psense[7] = 7;//set so that ASC, ASCQ, & FRU are available...even though they are zeros
+            }
+            break;
+        default:
+            ret = OS_PASSTHROUGH_FAILURE;
+            break;
+        }
+        if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            printf("Windows Error: ");
+            print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
+        }
+    }
+    return ret;
+}
+
+int win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
+{
+    int ret = OS_PASSTHROUGH_FAILURE;
+    uint32_t dataLength = 0;
+    if (scsiIoCtx->pAtaCmdOpts)
+    {
+        dataLength = scsiIoCtx->pAtaCmdOpts->dataSize;
+    }
+    else
+    {
+        dataLength = scsiIoCtx->dataLength;
+    }
+    //send download IOCTL
+#if defined (WIN_API_TARGET_VERSION) && !defined (DISABLE_FWDL_V2) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+    DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2) + dataLength;
+    PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2 downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2)malloc(downloadStructureSize);
+#else
+    DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + dataLength;
+    PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD)malloc(downloadStructureSize);
+#endif
+    if (!downloadIO)
+    {
+        return MEMORY_FAILURE;
+    }
+    memset(downloadIO, 0, downloadStructureSize);
+#if defined (WIN_API_TARGET_VERSION) && !defined (DISABLE_FWDL_V2) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+    downloadIO->Version = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2);
+#else
+    downloadIO->Version = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD);
+#endif
+    downloadIO->Size = downloadStructureSize;
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
+    if (scsiIoCtx->device->os_info.fwdlIOsupport.isLastSegmentOfDownload)
+    {
+        //This IS documented on MSDN but VS2015 can't seem to find it...
+        //One website says that this flag is new in Win10 1704 - creators update (10.0.15021)
+        downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_LAST_SEGMENT;
+    }
+#endif
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+    if (scsiIoCtx->device->os_info.fwdlIOsupport.isFirstSegmentOfDownload)
+    {
+        downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT;
+    }
+#endif
+    if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)
+    {
+        //if we are on NVMe, but the command comes to here, then someone forced SCSI mode, so let's set this flag correctly
+        downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;
+    }
+    if (scsiIoCtx && !scsiIoCtx->pAtaCmdOpts)
+    {
+        downloadIO->Slot = scsiIoCtx->cdb[2];//Set the slot number to the buffer ID number...This is the closest this translates.
+    }
+    //we need to set the offset since MS uses this in the command sent to the device.
+    downloadIO->Offset = 0;//TODO: Make sure this works even though the buffer pointer is only the current segment!
+    if (scsiIoCtx && scsiIoCtx->pAtaCmdOpts)
+    {
+        //get offset from the tfrs
+        downloadIO->Offset = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaHi, scsiIoCtx->pAtaCmdOpts->tfr.LbaMid) * LEGACY_DRIVE_SEC_SIZE;
+    }
+    else if (scsiIoCtx)
+    {
+        //get offset from the cdb
+        downloadIO->Offset = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+    }
+    else
+    {
+        return BAD_PARAMETER;
+    }
+    //set the size of the buffer
+    downloadIO->BufferSize = dataLength;
+#if defined (WIN_API_TARGET_VERSION) && !defined (DISABLE_FWDL_V2) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+    downloadIO->ImageSize = scsiIoCtx->dataLength;
+#endif
+    //now copy the buffer into this IOCTL struct
+    memcpy(downloadIO->ImageBuffer, scsiIoCtx->pdata, dataLength);
+    //time to issue the IO
+    DWORD returned_data = 0;
+    SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
+    seatimer_t commandTimer;
+    memset(&commandTimer, 0, sizeof(seatimer_t));
+    OVERLAPPED overlappedStruct;
+    memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
+    overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    start_Timer(&commandTimer);
+    int fwdlIO = DeviceIoControl(scsiIoCtx->device->os_info.fd,
+        IOCTL_STORAGE_FIRMWARE_DOWNLOAD,
+        downloadIO,
+        downloadStructureSize,
+        NULL,
+        0,
+        &returned_data,
+        &overlappedStruct
+    );
+    scsiIoCtx->device->os_info.last_error = GetLastError();
+    if (ERROR_IO_PENDING == scsiIoCtx->device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
+    {
+        fwdlIO = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
+        scsiIoCtx->device->os_info.last_error = GetLastError();
+    }
+    else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
+    {
+        ret = OS_PASSTHROUGH_FAILURE;
+    }
+    stop_Timer(&commandTimer);
+    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+    overlappedStruct.hEvent = NULL;
+    //dummy up sense data for end result
+    if (fwdlIO)
+    {
+        ret = SUCCESS;
+        memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
+        if (scsiIoCtx->pAtaCmdOpts)
+        {
+            //set status register to 50
+            memset(&scsiIoCtx->pAtaCmdOpts->rtfr, 0, sizeof(ataReturnTFRs));
+            scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
+            if (scsiIoCtx->device->os_info.fwdlIOsupport.isLastSegmentOfDownload)
+            {
+                scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = 0x03;//device has all segments saved and is ready to activate
+            }
+            else
+            {
+                scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = 0x01;//device is expecting more code
+            }
+            //also set sense data with an ATA passthrough return descriptor
+            if (scsiIoCtx->senseDataSize >= 22)//check that the sense data buffer is big enough to fill in our rtfrs using descriptor format
+            {
+                scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
+                scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
+                                                        //setting ASC/ASCQ to ATA Passthrough Information Available
+                scsiIoCtx->returnStatus.asc = 0x00;
+                scsiIoCtx->returnStatus.ascq = 0x1D;
+                //now fill in the sens buffer
+                scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
+                scsiIoCtx->psense[1] = 0x01;//recovered error
+                                            //setting ASC/ASCQ to ATA Passthrough Information Available
+                scsiIoCtx->psense[2] = 0x00;//ASC
+                scsiIoCtx->psense[3] = 0x1D;//ASCQ
+                scsiIoCtx->psense[4] = 0;
+                scsiIoCtx->psense[5] = 0;
+                scsiIoCtx->psense[6] = 0;
+                scsiIoCtx->psense[7] = 0x0E;//additional sense length
+                scsiIoCtx->psense[8] = 0x09;//descriptor code
+                scsiIoCtx->psense[9] = 0x0C;//additional descriptor length
+                scsiIoCtx->psense[10] = 0;
+                //fill in the returned 28bit registers
+                scsiIoCtx->psense[11] = scsiIoCtx->pAtaCmdOpts->rtfr.error;// Error
+                scsiIoCtx->psense[13] = scsiIoCtx->pAtaCmdOpts->rtfr.secCnt;// Sector Count
+                scsiIoCtx->psense[15] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow;// LBA Lo
+                scsiIoCtx->psense[17] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid;// LBA Mid
+                scsiIoCtx->psense[19] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi;// LBA Hi
+                scsiIoCtx->psense[20] = scsiIoCtx->pAtaCmdOpts->rtfr.device;// Device/Head
+                scsiIoCtx->psense[21] = scsiIoCtx->pAtaCmdOpts->rtfr.status;// Status
+            }
+        }
+    }
+    else
+    {
+        switch (scsiIoCtx->device->os_info.last_error)
+        {
+        case ERROR_IO_DEVICE://aborted command is the best we can do
+            memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
+            if (scsiIoCtx->pAtaCmdOpts)
+            {
+                memset(&scsiIoCtx->pAtaCmdOpts->rtfr, 0, sizeof(ataReturnTFRs));
+                scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                scsiIoCtx->pAtaCmdOpts->rtfr.error = ATA_ERROR_BIT_ABORT;
+                //we need to also set sense data that matches...
+                if (scsiIoCtx->senseDataSize >= 22)//check that the sense data buffer is big enough to fill in our rtfrs using descriptor format
+                {
+                    scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
+                    scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
+                                                            //setting ASC/ASCQ to ATA Passthrough Information Available
+                    scsiIoCtx->returnStatus.asc = 0x00;
+                    scsiIoCtx->returnStatus.ascq = 0x1D;
+                    //now fill in the sens buffer
+                    scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
+                    scsiIoCtx->psense[1] = 0x01;//recovered error
+                                                //setting ASC/ASCQ to ATA Passthrough Information Available
+                    scsiIoCtx->psense[2] = 0x00;//ASC
+                    scsiIoCtx->psense[3] = 0x1D;//ASCQ
+                    scsiIoCtx->psense[4] = 0;
+                    scsiIoCtx->psense[5] = 0;
+                    scsiIoCtx->psense[6] = 0;
+                    scsiIoCtx->psense[7] = 0x0E;//additional sense length
+                    scsiIoCtx->psense[8] = 0x09;//descriptor code
+                    scsiIoCtx->psense[9] = 0x0C;//additional descriptor length
+                    scsiIoCtx->psense[10] = 0;
+                    //fill in the returned 28bit registers
+                    scsiIoCtx->psense[11] = scsiIoCtx->pAtaCmdOpts->rtfr.error;// Error
+                    scsiIoCtx->psense[13] = scsiIoCtx->pAtaCmdOpts->rtfr.secCnt;// Sector Count
+                    scsiIoCtx->psense[15] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow;// LBA Lo
+                    scsiIoCtx->psense[17] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid;// LBA Mid
+                    scsiIoCtx->psense[19] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi;// LBA Hi
+                    scsiIoCtx->psense[20] = scsiIoCtx->pAtaCmdOpts->rtfr.device;// Device/Head
+                    scsiIoCtx->psense[21] = scsiIoCtx->pAtaCmdOpts->rtfr.status;// Status
+                }
+            }
+            else
+            {
+                //setting fixed format...
+                scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
+                scsiIoCtx->psense[2] = SENSE_KEY_ABORTED_COMMAND;
+                scsiIoCtx->psense[7] = 7;//set so that ASC, ASCQ, & FRU are available...even though they are zeros
+            }
+            break;
+        default:
+            ret = OS_PASSTHROUGH_FAILURE;
+            break;
+        }
+        if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            printf("Windows Error: ");
+            print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
+        }
+    }
+    return ret;
+}
+
 //call check function above to make sure this api call will actually work...
 int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
     if (!scsiIoCtx)
     {
         return BAD_PARAMETER;
@@ -3017,362 +3392,12 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
 #endif
 	if (is_Activate_Command(scsiIoCtx))
 	{
-		//send the activate IOCTL
-        STORAGE_HW_FIRMWARE_ACTIVATE downloadActivate;
-        memset(&downloadActivate, 0, sizeof(STORAGE_HW_FIRMWARE_ACTIVATE));
-        downloadActivate.Version = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
-        downloadActivate.Size = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
-        //downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
-        if (scsiIoCtx && !scsiIoCtx->pAtaCmdOpts)
-        {
-            downloadActivate.Slot = scsiIoCtx->cdb[2];//Set the slot number to the buffer ID number...This is the closest this translates.
-        }
-		if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)
-		{
-			//if we are on NVMe, but the command comes to here, then someone forced SCSI mode, so let's set this flag correctly
-			downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;
-		}
-        DWORD returned_data = 0;
-        SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
-        seatimer_t commandTimer;
-        memset(&commandTimer, 0, sizeof(seatimer_t));
-        OVERLAPPED overlappedStruct;
-        memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-        overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-        start_Timer(&commandTimer);
-        int fwdlIO = DeviceIoControl(scsiIoCtx->device->os_info.fd,
-            IOCTL_STORAGE_FIRMWARE_ACTIVATE,
-            &downloadActivate,
-            sizeof(STORAGE_HW_FIRMWARE_ACTIVATE),
-            NULL,
-            0,
-            &returned_data,
-            &overlappedStruct
-        );
-        scsiIoCtx->device->os_info.last_error = GetLastError();
-        if (ERROR_IO_PENDING == scsiIoCtx->device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
-        {
-            fwdlIO = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
-            scsiIoCtx->device->os_info.last_error = GetLastError();
-        }
-        else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
-        {
-            ret = OS_PASSTHROUGH_FAILURE;
-        }
-        stop_Timer(&commandTimer);
-        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
-        //dummy up sense data for end result
-        if (fwdlIO)
-        {
-            ret = SUCCESS;
-            memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-            if (scsiIoCtx->pAtaCmdOpts)
-            {
-                //set status register to 50
-                memset(&scsiIoCtx->pAtaCmdOpts->rtfr, 0, sizeof(ataReturnTFRs));
-                scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
-                scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = 0x02;//This is supposed to be set when the drive has applied the new code.
-                //also set sense data with an ATA passthrough return descriptor
-                if (scsiIoCtx->senseDataSize >= 22)//check that the sense data buffer is big enough to fill in our rtfrs using descriptor format
-                {
-                    scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
-                    scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
-                                                            //setting ASC/ASCQ to ATA Passthrough Information Available
-                    scsiIoCtx->returnStatus.asc = 0x00;
-                    scsiIoCtx->returnStatus.ascq = 0x1D;
-                    //now fill in the sens buffer
-                    scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
-                    scsiIoCtx->psense[1] = 0x01;//recovered error
-                                                //setting ASC/ASCQ to ATA Passthrough Information Available
-                    scsiIoCtx->psense[2] = 0x00;//ASC
-                    scsiIoCtx->psense[3] = 0x1D;//ASCQ
-                    scsiIoCtx->psense[4] = 0;
-                    scsiIoCtx->psense[5] = 0;
-                    scsiIoCtx->psense[6] = 0;
-                    scsiIoCtx->psense[7] = 0x0E;//additional sense length
-                    scsiIoCtx->psense[8] = 0x09;//descriptor code
-                    scsiIoCtx->psense[9] = 0x0C;//additional descriptor length
-                    scsiIoCtx->psense[10] = 0;
-                    //fill in the returned 28bit registers
-                    scsiIoCtx->psense[11] = scsiIoCtx->pAtaCmdOpts->rtfr.error;// Error
-                    scsiIoCtx->psense[13] = scsiIoCtx->pAtaCmdOpts->rtfr.secCnt;// Sector Count
-                    scsiIoCtx->psense[15] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow;// LBA Lo
-                    scsiIoCtx->psense[17] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid;// LBA Mid
-                    scsiIoCtx->psense[19] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi;// LBA Hi
-                    scsiIoCtx->psense[20] = scsiIoCtx->pAtaCmdOpts->rtfr.device;// Device/Head
-                    scsiIoCtx->psense[21] = scsiIoCtx->pAtaCmdOpts->rtfr.status;// Status
-                }
-            }
-        }
-        else
-        {
-            switch (scsiIoCtx->device->os_info.last_error)
-            {
-            case ERROR_IO_DEVICE://aborted command is the best we can do
-                memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-                if (scsiIoCtx->pAtaCmdOpts)
-                {
-                    memset(&scsiIoCtx->pAtaCmdOpts->rtfr, 0, sizeof(ataReturnTFRs));
-                    scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
-                    scsiIoCtx->pAtaCmdOpts->rtfr.error = ATA_ERROR_BIT_ABORT;
-                    //we need to also set sense data that matches...
-                    if (scsiIoCtx->senseDataSize >= 22)//check that the sense data buffer is big enough to fill in our rtfrs using descriptor format
-                    {
-                        scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
-                        scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
-                                                                //setting ASC/ASCQ to ATA Passthrough Information Available
-                        scsiIoCtx->returnStatus.asc = 0x00;
-                        scsiIoCtx->returnStatus.ascq = 0x1D;
-                        //now fill in the sens buffer
-                        scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
-                        scsiIoCtx->psense[1] = 0x01;//recovered error
-                                                    //setting ASC/ASCQ to ATA Passthrough Information Available
-                        scsiIoCtx->psense[2] = 0x00;//ASC
-                        scsiIoCtx->psense[3] = 0x1D;//ASCQ
-                        scsiIoCtx->psense[4] = 0;
-                        scsiIoCtx->psense[5] = 0;
-                        scsiIoCtx->psense[6] = 0;
-                        scsiIoCtx->psense[7] = 0x0E;//additional sense length
-                        scsiIoCtx->psense[8] = 0x09;//descriptor code
-                        scsiIoCtx->psense[9] = 0x0C;//additional descriptor length
-                        scsiIoCtx->psense[10] = 0;
-                        //fill in the returned 28bit registers
-                        scsiIoCtx->psense[11] = scsiIoCtx->pAtaCmdOpts->rtfr.error;// Error
-                        scsiIoCtx->psense[13] = scsiIoCtx->pAtaCmdOpts->rtfr.secCnt;// Sector Count
-                        scsiIoCtx->psense[15] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow;// LBA Lo
-                        scsiIoCtx->psense[17] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid;// LBA Mid
-                        scsiIoCtx->psense[19] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi;// LBA Hi
-                        scsiIoCtx->psense[20] = scsiIoCtx->pAtaCmdOpts->rtfr.device;// Device/Head
-                        scsiIoCtx->psense[21] = scsiIoCtx->pAtaCmdOpts->rtfr.status;// Status
-                    }
-                }
-                else
-                {
-                    //setting fixed format...
-                    scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
-                    scsiIoCtx->psense[2] = SENSE_KEY_ABORTED_COMMAND;
-                    scsiIoCtx->psense[7] = 7;//set so that ASC, ASCQ, & FRU are available...even though they are zeros
-                }
-                break;
-            default:
-                ret = OS_PASSTHROUGH_FAILURE;
-                break;
-            }
-            if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                printf("Windows Error: ");
-                print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
-            }
-        }
+        return win10_FW_Activate_IO_SCSI(scsiIoCtx);
 	}
 	else
 	{
-		uint32_t dataLength = 0;
-		if (scsiIoCtx->pAtaCmdOpts)
-		{
-			dataLength = scsiIoCtx->pAtaCmdOpts->dataSize;
-		}
-		else
-		{
-			dataLength = scsiIoCtx->dataLength;
-		}
-		//send download IOCTL
-		DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + dataLength;
-		PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD)malloc(downloadStructureSize);
-        if (!downloadIO)
-        {
-            return MEMORY_FAILURE;
-        }
-		memset(downloadIO, 0, downloadStructureSize);
-		downloadIO->Version = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD);
-		downloadIO->Size = downloadStructureSize;
-#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
-		if (scsiIoCtx->device->os_info.fwdlIOsupport.isLastSegmentOfDownload)
-		{
-			//This IS documented on MSDN but VS2015 can't seem to find it...
-			//One website says that this flag is new in Win10 1704 - creators update (10.0.15021)
-			downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_LAST_SEGMENT;
-		}
-#endif
-#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
-        if (scsiIoCtx->device->os_info.fwdlIOsupport.isFirstSegmentOfDownload)
-        {
-            downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT;
-        }
-#endif
-		if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)
-		{
-			//if we are on NVMe, but the command comes to here, then someone forced SCSI mode, so let's set this flag correctly
-			downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;
-		}
-		if (scsiIoCtx && !scsiIoCtx->pAtaCmdOpts)
-		{
-			downloadIO->Slot = scsiIoCtx->cdb[2];//Set the slot number to the buffer ID number...This is the closest this translates.
-		}
-        //we need to set the offset since MS uses this in the command sent to the device.
-        downloadIO->Offset = 0;//TODO: Make sure this works even though the buffer pointer is only the current segment!
-        if (scsiIoCtx && scsiIoCtx->pAtaCmdOpts)
-        {
-            //get offset from the tfrs
-            downloadIO->Offset = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaHi, scsiIoCtx->pAtaCmdOpts->tfr.LbaMid) * LEGACY_DRIVE_SEC_SIZE;
-        }
-        else if (scsiIoCtx)
-        {
-            //get offset from the cdb
-            downloadIO->Offset = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-        }
-        else
-        {
-            return BAD_PARAMETER;
-        }
-		//set the size of the buffer
-		downloadIO->BufferSize = dataLength;
-		//now copy the buffer into this IOCTL struct
-		memcpy(downloadIO->ImageBuffer, scsiIoCtx->pdata, dataLength);
-		//time to issue the IO
-		DWORD returned_data = 0;
-        SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
-        seatimer_t commandTimer;
-        memset(&commandTimer, 0, sizeof(seatimer_t));
-		OVERLAPPED overlappedStruct;
-		memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-		overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-		start_Timer(&commandTimer);
-		int fwdlIO = DeviceIoControl(scsiIoCtx->device->os_info.fd,
-			IOCTL_STORAGE_FIRMWARE_DOWNLOAD,
-			downloadIO,
-			downloadStructureSize,
-			NULL,
-			0,
-			&returned_data,
-			&overlappedStruct
-		);
-		scsiIoCtx->device->os_info.last_error = GetLastError();
-		if (ERROR_IO_PENDING == scsiIoCtx->device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
-		{
-            fwdlIO = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
-            scsiIoCtx->device->os_info.last_error = GetLastError();
-		}
-		else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
-		{
-			ret = OS_PASSTHROUGH_FAILURE;
-		}
-		stop_Timer(&commandTimer);
-		CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-		overlappedStruct.hEvent = NULL;
-        //dummy up sense data for end result
-        if (fwdlIO)
-        {
-            ret = SUCCESS;
-            memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-            if (scsiIoCtx->pAtaCmdOpts)
-            {
-                //set status register to 50
-                memset(&scsiIoCtx->pAtaCmdOpts->rtfr, 0, sizeof(ataReturnTFRs));
-                scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
-                if (scsiIoCtx->device->os_info.fwdlIOsupport.isLastSegmentOfDownload)
-                {
-                    scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = 0x03;//device has all segments saved and is ready to activate
-                }
-                else
-                {
-                    scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = 0x01;//device is expecting more code
-                }
-                //also set sense data with an ATA passthrough return descriptor
-                if (scsiIoCtx->senseDataSize >= 22)//check that the sense data buffer is big enough to fill in our rtfrs using descriptor format
-                {
-                    scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
-                    scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
-                                                            //setting ASC/ASCQ to ATA Passthrough Information Available
-                    scsiIoCtx->returnStatus.asc = 0x00;
-                    scsiIoCtx->returnStatus.ascq = 0x1D;
-                    //now fill in the sens buffer
-                    scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
-                    scsiIoCtx->psense[1] = 0x01;//recovered error
-                                                //setting ASC/ASCQ to ATA Passthrough Information Available
-                    scsiIoCtx->psense[2] = 0x00;//ASC
-                    scsiIoCtx->psense[3] = 0x1D;//ASCQ
-                    scsiIoCtx->psense[4] = 0;
-                    scsiIoCtx->psense[5] = 0;
-                    scsiIoCtx->psense[6] = 0;
-                    scsiIoCtx->psense[7] = 0x0E;//additional sense length
-                    scsiIoCtx->psense[8] = 0x09;//descriptor code
-                    scsiIoCtx->psense[9] = 0x0C;//additional descriptor length
-                    scsiIoCtx->psense[10] = 0;
-                    //fill in the returned 28bit registers
-                    scsiIoCtx->psense[11] = scsiIoCtx->pAtaCmdOpts->rtfr.error;// Error
-                    scsiIoCtx->psense[13] = scsiIoCtx->pAtaCmdOpts->rtfr.secCnt;// Sector Count
-                    scsiIoCtx->psense[15] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow;// LBA Lo
-                    scsiIoCtx->psense[17] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid;// LBA Mid
-                    scsiIoCtx->psense[19] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi;// LBA Hi
-                    scsiIoCtx->psense[20] = scsiIoCtx->pAtaCmdOpts->rtfr.device;// Device/Head
-                    scsiIoCtx->psense[21] = scsiIoCtx->pAtaCmdOpts->rtfr.status;// Status
-                }
-            }
-        }
-        else
-        {
-            switch (scsiIoCtx->device->os_info.last_error)
-            {
-            case ERROR_IO_DEVICE://aborted command is the best we can do
-                memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-                if (scsiIoCtx->pAtaCmdOpts)
-                {
-                    memset(&scsiIoCtx->pAtaCmdOpts->rtfr, 0, sizeof(ataReturnTFRs));
-                    scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
-                    scsiIoCtx->pAtaCmdOpts->rtfr.error = ATA_ERROR_BIT_ABORT;
-                    //we need to also set sense data that matches...
-                    if (scsiIoCtx->senseDataSize >= 22)//check that the sense data buffer is big enough to fill in our rtfrs using descriptor format
-                    {
-                        scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
-                        scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
-                                                                //setting ASC/ASCQ to ATA Passthrough Information Available
-                        scsiIoCtx->returnStatus.asc = 0x00;
-                        scsiIoCtx->returnStatus.ascq = 0x1D;
-                        //now fill in the sens buffer
-                        scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
-                        scsiIoCtx->psense[1] = 0x01;//recovered error
-                                                    //setting ASC/ASCQ to ATA Passthrough Information Available
-                        scsiIoCtx->psense[2] = 0x00;//ASC
-                        scsiIoCtx->psense[3] = 0x1D;//ASCQ
-                        scsiIoCtx->psense[4] = 0;
-                        scsiIoCtx->psense[5] = 0;
-                        scsiIoCtx->psense[6] = 0;
-                        scsiIoCtx->psense[7] = 0x0E;//additional sense length
-                        scsiIoCtx->psense[8] = 0x09;//descriptor code
-                        scsiIoCtx->psense[9] = 0x0C;//additional descriptor length
-                        scsiIoCtx->psense[10] = 0;
-                        //fill in the returned 28bit registers
-                        scsiIoCtx->psense[11] = scsiIoCtx->pAtaCmdOpts->rtfr.error;// Error
-                        scsiIoCtx->psense[13] = scsiIoCtx->pAtaCmdOpts->rtfr.secCnt;// Sector Count
-                        scsiIoCtx->psense[15] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow;// LBA Lo
-                        scsiIoCtx->psense[17] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid;// LBA Mid
-                        scsiIoCtx->psense[19] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi;// LBA Hi
-                        scsiIoCtx->psense[20] = scsiIoCtx->pAtaCmdOpts->rtfr.device;// Device/Head
-                        scsiIoCtx->psense[21] = scsiIoCtx->pAtaCmdOpts->rtfr.status;// Status
-                    }
-                }
-                else
-                {
-                    //setting fixed format...
-                    scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
-                    scsiIoCtx->psense[2] = SENSE_KEY_ABORTED_COMMAND;
-                    scsiIoCtx->psense[7] = 7;//set so that ASC, ASCQ, & FRU are available...even though they are zeros
-                }
-                break;
-            default:
-                ret = OS_PASSTHROUGH_FAILURE;
-                break;
-            }
-            if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                printf("Windows Error: ");
-                print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
-            }
-        }
+        return win10_FW_Download_IO_SCSI(scsiIoCtx);
 	}
-    return ret;
 }
 #endif
 
