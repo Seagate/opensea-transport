@@ -2767,9 +2767,69 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
     //SCSI and RAID interfaces depend on the SATL to translate it correctly, but that is not checked by windows and is not possible since nothing responds to the report supported operation codes command
     //A future TODO will be to have either a lookup table or additional check somewhere to send the report supported operation codes command, but this is good enough for now, since it's unlikely a SATL will implement that...
 #if defined (_DEBUG_FWDL_API_COMPATABILITY)
-    printf("scsiIoCtx = %p\t->pAtaCmdOpts = %p\tinterface type: %d\n", scsiIoCtx, scsiIoCtx->pAtaCmdOpts, scsiIoCtx->device->drive_info.interface_type);
+	printf("scsiIoCtx = %p\t->pAtaCmdOpts = %p\tinterface type: %d\n", scsiIoCtx, scsiIoCtx->pAtaCmdOpts, scsiIoCtx->device->drive_info.interface_type);
 #endif
-	if (scsiIoCtx && scsiIoCtx->pAtaCmdOpts && scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
+	if (scsiIoCtx->device->os_info.fwdlIOsupport.allowFlexibleUseOfAPI)
+	{
+		uint32_t transferLengthBytes = 0;
+		bool supportedCMD = false;
+		bool isActivate = false;
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+		printf("Flexible Win10 FWDL API allowed. Checking for supported commands\n");
+#endif
+		if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
+		{
+			uint8_t wbMode = M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0);
+			if (wbMode == SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER)
+			{
+				supportedCMD = true;
+				transferLengthBytes = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+			}
+			else if (wbMode == SCSI_WB_ACTIVATE_DEFERRED_MICROCODE)
+			{
+				supportedCMD = true;
+				isActivate = true;
+			}
+		}
+		else if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
+		{
+
+			if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0E)
+			{
+				supportedCMD = true;
+				transferLengthBytes = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaLow, scsiIoCtx->pAtaCmdOpts->tfr.SectorCount) * LEGACY_DRIVE_SEC_SIZE;
+			}
+			else if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0F)
+			{
+				supportedCMD = true;
+				isActivate = true;
+			}
+		}
+		if (supportedCMD)
+		{
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+			printf("\tDetected supported command\n");
+#endif
+			if (isActivate)
+			{
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+				printf("\tTrue - is an activate command\n");
+#endif
+				return true;
+			}
+			else
+			{
+				if (transferLengthBytes < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (transferLengthBytes % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
+				{
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+					printf("\tTrue - payload fits FWDL requirements from OS/Driver\n");
+#endif
+					return true;
+				}
+			}
+		}
+	}
+	else if (scsiIoCtx && scsiIoCtx->pAtaCmdOpts && scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
 	{
 #if defined (_DEBUG_FWDL_API_COMPATABILITY)
         printf("Checking ATA command info for FWDL support\n");
@@ -2842,66 +2902,6 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
 			}
 		}
 	}
-    else if (scsiIoCtx->device->os_info.fwdlIOsupport.allowFlexibleUseOfAPI)
-    {
-        uint32_t transferLengthBytes = 0;
-        bool supportedCMD = false;
-        bool isActivate = false;
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-        printf("Flexible Win10 FWDL API allowed. Checking for supported commands\n");
-#endif
-        if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
-        {
-            uint8_t wbMode = M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0);
-            if (wbMode == SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER)
-            {
-                supportedCMD = true;
-                transferLengthBytes = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
-            }
-            else if (wbMode == SCSI_WB_ACTIVATE_DEFERRED_MICROCODE)
-            {
-                supportedCMD = true;
-                isActivate = true;
-            }
-        }
-        else if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
-        {
-            
-            if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0E)
-            {
-                supportedCMD = true;
-                transferLengthBytes = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaLow, scsiIoCtx->pAtaCmdOpts->tfr.SectorCount) * LEGACY_DRIVE_SEC_SIZE;
-            }
-            else if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0F)
-            {
-                supportedCMD = true;
-                isActivate = true;
-            }
-        }
-        if (supportedCMD)
-        {
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-            printf("\tDetected supported command\n");
-#endif
-            if (isActivate)
-            {
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-                printf("\tTrue - is an activate command\n");
-#endif
-                return true;
-            }
-            else
-            {
-                if (transferLengthBytes < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (transferLengthBytes % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
-                {
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-                    printf("\tTrue - payload fits FWDL requirements from OS/Driver\n");
-#endif
-                    return true;
-                }
-            }
-        }
-    }
 #if defined (_DEBUG_FWDL_API_COMPATABILITY)
     printf("\tFalse\n");
 #endif
@@ -3008,6 +3008,10 @@ bool is_Activate_Command(ScsiIoCtx *scsiIoCtx)
 int win10_FW_Activate_IO_SCSI(ScsiIoCtx *scsiIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
+	if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+	{
+		printf("Sending firmware activate with Win10 API\n");
+	}
     //send the activate IOCTL
     STORAGE_HW_FIRMWARE_ACTIVATE downloadActivate;
     memset(&downloadActivate, 0, sizeof(STORAGE_HW_FIRMWARE_ACTIVATE));
@@ -3146,6 +3150,16 @@ int win10_FW_Activate_IO_SCSI(ScsiIoCtx *scsiIoCtx)
                 scsiIoCtx->psense[7] = 7;//set so that ASC, ASCQ, & FRU are available...even though they are zeros
             }
             break;
+		case ERROR_INVALID_FUNCTION:
+			//disable the support bits for Win10 FWDL API.
+			//The driver said it's supported, but when we try to issue the commands it fails with this status, so try pass-through as we would otherwise use.
+			if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+			{
+				printf("Win 10 FWDL API returned invalid function, retrying with passthrough\n");
+			}
+			scsiIoCtx->device->os_info.fwdlIOsupport.fwdlIOSupported = false;
+			return send_IO(scsiIoCtx);
+			break;
         default:
             ret = OS_PASSTHROUGH_FAILURE;
             break;
@@ -3158,11 +3172,15 @@ int win10_FW_Activate_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     }
     return ret;
 }
-
+//DO NOT Attempt to use the STORAGE_HW_FIRMWARE_DOWNLOAD_V2 structure! This is not compatible as the low-level driver has a hard-coded alignment for the image buffer and will not transmit the correct data!!!
 int win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
     uint32_t dataLength = 0;
+	if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+	{
+		printf("Sending deferred download with Win10 API\n");
+	}
     if (scsiIoCtx->pAtaCmdOpts)
     {
         dataLength = scsiIoCtx->pAtaCmdOpts->dataSize;
@@ -3172,23 +3190,14 @@ int win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
         dataLength = scsiIoCtx->dataLength;
     }
     //send download IOCTL
-#if defined (WIN_API_TARGET_VERSION) && !defined (DISABLE_FWDL_V2) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
-    DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2) + dataLength;
-    PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2 downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2)malloc(downloadStructureSize);
-#else
     DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + dataLength;
     PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD)malloc(downloadStructureSize);
-#endif
     if (!downloadIO)
     {
         return MEMORY_FAILURE;
     }
     memset(downloadIO, 0, downloadStructureSize);
-#if defined (WIN_API_TARGET_VERSION) && !defined (DISABLE_FWDL_V2) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
-    downloadIO->Version = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2);
-#else
     downloadIO->Version = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD);
-#endif
     downloadIO->Size = downloadStructureSize;
 #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
     if (scsiIoCtx->device->os_info.fwdlIOsupport.isLastSegmentOfDownload)
@@ -3231,9 +3240,6 @@ int win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     }
     //set the size of the buffer
     downloadIO->BufferSize = dataLength;
-#if defined (WIN_API_TARGET_VERSION) && !defined (DISABLE_FWDL_V2) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
-    downloadIO->ImageSize = scsiIoCtx->dataLength;
-#endif
     //now copy the buffer into this IOCTL struct
     memcpy(downloadIO->ImageBuffer, scsiIoCtx->pdata, dataLength);
     //time to issue the IO
@@ -3367,6 +3373,16 @@ int win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
                 scsiIoCtx->psense[7] = 7;//set so that ASC, ASCQ, & FRU are available...even though they are zeros
             }
             break;
+		case ERROR_INVALID_FUNCTION:
+			//disable the support bits for Win10 FWDL API.
+			//The driver said it's supported, but when we try to issue the commands it fails with this status, so try pass-through as we would otherwise use.
+			if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+			{
+				printf("Win 10 FWDL API returned invalid function, retrying with passthrough\n");
+			}
+			scsiIoCtx->device->os_info.fwdlIOsupport.fwdlIOSupported = false;
+			return send_IO(scsiIoCtx);
+			break;
         default:
             ret = OS_PASSTHROUGH_FAILURE;
             break;
@@ -3387,9 +3403,6 @@ int windows_Firmware_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     {
         return BAD_PARAMETER;
     }
-#if defined (_DEBUG)
-    printf("Using Win10 FWDL API\n");
-#endif
 	if (is_Activate_Command(scsiIoCtx))
 	{
         return win10_FW_Activate_IO_SCSI(scsiIoCtx);
