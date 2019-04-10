@@ -166,8 +166,9 @@ int send_Sanitize_Exit_Failure_Mode(tDevice *device)
 int spin_down_drive(tDevice *device, bool sleepState)
 {
     int ret = UNKNOWN;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         if (sleepState)//send sleep command
         {
             ret = ata_Sleep(device);
@@ -176,9 +177,24 @@ int spin_down_drive(tDevice *device, bool sleepState)
         {
             ret = ata_Standby_Immediate(device);
         }
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
-    {
+        break;
+    case NVME_DRIVE:
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+        if (sleepState)
+        {
+            ret = NOT_SUPPORTED;
+        }
+        else
+        {
+            nvmeFeaturesCmdOpt standby;
+            memset(&standby, 0, sizeof(nvmeFeaturesCmdOpt));
+            standby.fid = NVME_FEAT_POWER_MGMT_;
+            standby.featSetGetValue = device->drive_info.IdentifyData.nvme.ctrl.npss;
+            ret = nvme_Set_Features(device, &standby);
+        }
+        break;
+#endif
+    case SCSI_DRIVE:
         if (device->drive_info.scsiVersion > SCSI_VERSION_SCSI2)
         {
             if (sleepState)
@@ -201,14 +217,14 @@ int spin_down_drive(tDevice *device, bool sleepState)
                 ret = scsi_Start_Stop_Unit(device, false, 0, PC_START_VALID, false, false, false);
             }
         }
-    }
-    else
-    {
+        break;
+    default:
         if (VERBOSITY_QUIET < device->deviceVerbosity)
         {
             printf("Spin down drive is not supported on this drive type at this time\n");
         }
         ret = NOT_SUPPORTED;
+        break;
     }
     return ret;
 }
