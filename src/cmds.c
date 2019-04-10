@@ -605,8 +605,9 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
     {
         noDataTransfer = true;
     }
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         if (device->drive_info.IdentifyData.ata.Word206 & BIT2)
         {
             if (noDataTransfer)
@@ -640,7 +641,7 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
                 numberOfLogicalBlocks = 0;
                 performWriteSame = true;
             }
-            else if(numberOfLogicalBlocks < UINT8_MAX)
+            else if (numberOfLogicalBlocks < UINT8_MAX)
             {
                 performWriteSame = true;
             }
@@ -677,9 +678,8 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
         {
             ret = NOT_SUPPORTED;
         }
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
-    {
+        break;
+    case SCSI_DRIVE:
         //todo: if there is no data transfer and the drive doesn't support that feature, we need to allocate local zeroed memory to send as the pattern
         if (device->drive_info.scsiVersion > SCSI_VERSION_SPC && device->drive_info.deviceMaxLba > SCSI_MAX_32_LBA)
         {
@@ -690,10 +690,10 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
         {
             ret = scsi_Write_Same_10(device, 0, false, false, (uint32_t)startingLba, 0, (uint16_t)numberOfLogicalBlocks, pattern, device->drive_info.deviceBlockSize);
         }
-    }
-    else
-    {
+        break;
+    default:
         ret = NOT_SUPPORTED;
+        break;
     }
     return ret;
 }
@@ -701,14 +701,20 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
 bool is_Write_Psuedo_Uncorrectable_Supported(tDevice *device)
 {
     bool supported = false;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         if (device->drive_info.ata_Options.writeUncorrectableExtSupported)
         {
             supported = true;
         }
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
+        break;
+    case NVME_DRIVE:
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+        supported = false;
+        break;
+#endif
+    case SCSI_DRIVE:
     {
         //check for wu_supp in extended inquiry vpd page (SPC4+) since this matches when it was added to SBC3
         uint8_t extendedInquiryData[VPD_EXTENDED_INQUIRY_LEN] = { 0 };
@@ -719,6 +725,10 @@ bool is_Write_Psuedo_Uncorrectable_Supported(tDevice *device)
                 supported = true;
             }
         }
+    }
+        break;
+    default:
+        break;
     }
     return supported;
 }
@@ -739,8 +749,9 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
         //set this flag for SCSI
         multipleLogicalPerPhysical = true;
     }
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         if (device->drive_info.ata_Options.writeUncorrectableExtSupported)
         {
             ret = ata_Write_Uncorrectable(device, 0x55, logicalPerPhysicalBlocks, corruptLBA);
@@ -749,9 +760,13 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
         {
             ret = NOT_SUPPORTED;
         }
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
-    {
+        break;
+    case NVME_DRIVE:
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+        ret = NOT_SUPPORTED;
+        break;
+#endif
+    case SCSI_DRIVE:
         if (device->drive_info.deviceMaxLba > UINT32_MAX)
         {
             ret = scsi_Write_Long_16(device, false, true, multipleLogicalPerPhysical, corruptLBA, 0, NULL);
@@ -760,10 +775,10 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
         {
             ret = scsi_Write_Long_10(device, false, true, multipleLogicalPerPhysical, (uint32_t)corruptLBA, 0, NULL);
         }
-    }
-    else
-    {
+        break;
+    default:
         ret = NOT_SUPPORTED;
+        break;
     }
     return ret;
 }
@@ -771,23 +786,23 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
 bool is_Write_Flagged_Uncorrectable_Supported(tDevice *device)
 {
     bool supported = false;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         if (device->drive_info.ata_Options.writeUncorrectableExtSupported)
         {
             supported = true;
         }
-    }
+        break;
+    case NVME_DRIVE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-    else if (device->drive_info.drive_type == NVME_DRIVE)
-    {
         if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT1)
         {
             supported = true;
         }
-    }
+        break;
 #endif
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
+    case SCSI_DRIVE:
     {
         //check for wu_supp in extended inquiry vpd page (SPC4+) since this matches when it was added to SBC3
         uint8_t extendedInquiryData[VPD_EXTENDED_INQUIRY_LEN] = { 0 };
@@ -798,6 +813,10 @@ bool is_Write_Flagged_Uncorrectable_Supported(tDevice *device)
                 supported = true;
             }
         }
+    }
+        break;
+    default:
+        break;
     }
     return supported;
 }
@@ -1773,7 +1792,7 @@ int flush_Cache(tDevice *device)
 #if !defined (DISABLE_NVME_PASSTHROUGH)
             return nvme_Flush(device);
 #else
-            //perform SCSI writes
+            //perform SCSI flush
             return scsi_Synchronize_Cache_Command(device);
 #endif
         case RAID_INTERFACE:
@@ -1791,17 +1810,17 @@ int flush_Cache(tDevice *device)
 int close_Zone(tDevice *device, bool closeAll, uint64_t zoneID)
 {
     int ret = UNKNOWN;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         ret = ata_Close_Zone_Ext(device, closeAll, zoneID);
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
-    {
+        break;
+    case SCSI_DRIVE:
         ret = scsi_Close_Zone(device, closeAll, zoneID);
-    }
-    else
-    {
+        break;
+    default:
         ret = NOT_SUPPORTED;
+        break;
     }
     return ret;
 }
@@ -1809,17 +1828,17 @@ int close_Zone(tDevice *device, bool closeAll, uint64_t zoneID)
 int finish_Zone(tDevice *device, bool finishAll, uint64_t zoneID)
 {
     int ret = UNKNOWN;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         ret = ata_Finish_Zone_Ext(device, finishAll, zoneID);
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
-    {
+        break;
+    case SCSI_DRIVE:
         ret = scsi_Finish_Zone(device, finishAll, zoneID);
-    }
-    else
-    {
+        break;
+    default:
         ret = NOT_SUPPORTED;
+        break;
     }
     return ret;
 }
@@ -1827,17 +1846,17 @@ int finish_Zone(tDevice *device, bool finishAll, uint64_t zoneID)
 int open_Zone(tDevice *device, bool openAll, uint64_t zoneID)
 {
     int ret = UNKNOWN;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         ret = ata_Open_Zone_Ext(device, openAll, zoneID);
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
-    {
+        break;
+    case SCSI_DRIVE:
         ret = scsi_Open_Zone(device, openAll, zoneID);
-    }
-    else
-    {
+        break;
+    default:
         ret = NOT_SUPPORTED;
+        break;
     }
     return ret;
 }
@@ -1845,17 +1864,17 @@ int open_Zone(tDevice *device, bool openAll, uint64_t zoneID)
 int reset_Write_Pointer(tDevice *device, bool resetAll, uint64_t zoneID)
 {
     int ret = UNKNOWN;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         ret = ata_Reset_Write_Pointers_Ext(device, resetAll, zoneID);
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
-    {
+        break;
+    case SCSI_DRIVE:
         ret = scsi_Reset_Write_Pointers(device, resetAll, zoneID);
-    }
-    else
-    {
+        break;
+    default:
         ret = NOT_SUPPORTED;
+        break;
     }
     return ret;
 }
@@ -1863,21 +1882,21 @@ int reset_Write_Pointer(tDevice *device, bool resetAll, uint64_t zoneID)
 int report_Zones(tDevice *device, eZoneReportingOptions reportingOptions, bool partial, uint64_t zoneLocator, uint8_t *ptrData, uint32_t dataSize)
 {
     int ret = UNKNOWN;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         if (dataSize % LEGACY_DRIVE_SEC_SIZE != 0)
         {
             return BAD_PARAMETER;
         }
         ret = ata_Report_Zones_Ext(device, reportingOptions, partial, dataSize / LEGACY_DRIVE_SEC_SIZE, zoneLocator, ptrData, dataSize);
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
-    {
+        break;
+    case SCSI_DRIVE:
         ret = scsi_Report_Zones(device, reportingOptions, partial, dataSize, zoneLocator, ptrData);
-    }
-    else
-    {
+        break;
+    default:
         ret = NOT_SUPPORTED;
+        break;
     }
     return ret;
 }
