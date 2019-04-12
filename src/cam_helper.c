@@ -661,7 +661,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
             {
                 //memcpy(scsiIoCtx->psense, &csio->sense_data.sense_buf[0], scsiIoCtx->senseDataSize);
                 memcpy(scsiIoCtx->psense, &csio->sense_data.error_code, sizeof(uint8_t));
-                memcpy(scsiIoCtx->psense+1, &csio->sense_data.sense_buf[0], scsiIoCtx->senseDataSize);
+                memcpy(scsiIoCtx->psense+1, &csio->sense_data.sense_buf[0], (scsiIoCtx->senseDataSize)-1);
                 #if defined (_DEBUG)  
                 printf("%s error code %d, sense [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x] \n\t \
 				   [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",\
