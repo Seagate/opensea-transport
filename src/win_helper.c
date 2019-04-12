@@ -156,6 +156,7 @@ void print_bus_type( BYTE type )
 }
 #endif
 
+#if !defined (DISABLE_NVME_PASSTHROUGH)
 int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
 {
 	int ret = OS_PASSTHROUGH_FAILURE;
@@ -273,7 +274,7 @@ int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
 	return ret;
 
 }
-
+#endif
 int get_os_drive_number( char *filename )
 {
     int  drive_num = -1;
