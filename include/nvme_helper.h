@@ -15,7 +15,7 @@
 
 #pragma once
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-typedef unsigned int* __uintptr_t;
+//typedef unsigned int* __uintptr_t;
 #include "common_public.h"
 #if defined (__cplusplus)
 extern "C"
@@ -723,7 +723,7 @@ extern "C"
         NVME_SCT_COMMAND_SPECIFIC_STATUS = 1,
         NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS = 2,
         //3-6 are reserved
-        NVME_SCT_VENDOR_SPECIFIC = 7
+        NVME_SCT_VENDOR_SPECIFIC_STATUS = 7
     }eNvmeStatusCodeType;
 
     typedef enum _eNvmeGenericStatusCode {

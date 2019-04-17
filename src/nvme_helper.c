@@ -412,7 +412,7 @@ int check_NVMe_Status(uint32_t nvmeStatusDWord)
             break;
         }
         break;
-    case NVME_SCT_VENDOR_SPECIFIC:
+    case NVME_SCT_VENDOR_SPECIFIC_STATUS:
         //fall through to default.
     default:
         //unknown meaning. Either reserved or vendor unique.
@@ -754,7 +754,7 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
                 break;
             }
             break;
-        case NVME_SCT_VENDOR_SPECIFIC:
+        case NVME_SCT_VENDOR_SPECIFIC_STATUS:
             snprintf(statusCodeTypeString, 60, "Vendor Specific");
             snprintf(statusCodeString, 60, "Unknown");
             break;

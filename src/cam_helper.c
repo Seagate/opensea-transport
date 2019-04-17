@@ -659,7 +659,9 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
                 && (ccb->csio.scsi_status == SCSI_STATUS_CHECK_COND)
                 && ((ccb->ccb_h.status & CAM_AUTOSNS_VALID) != 0))
             {
-                memcpy(scsiIoCtx->psense, &csio->sense_data.sense_buf[0], scsiIoCtx->senseDataSize);
+                //memcpy(scsiIoCtx->psense, &csio->sense_data.sense_buf[0], scsiIoCtx->senseDataSize);
+                memcpy(scsiIoCtx->psense, &csio->sense_data.error_code, sizeof(uint8_t));
+                memcpy(scsiIoCtx->psense+1, &csio->sense_data.sense_buf[0], (scsiIoCtx->senseDataSize)-1);
                 #if defined (_DEBUG)  
                 printf("%s error code %d, sense [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x] \n\t \
 				   [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",\
@@ -909,6 +911,16 @@ int os_Flush(tDevice *device)
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
+{
+    return NOT_SUPPORTED;
+}
+
+int nvme_Reset(tDevice *device)
+{
+    return NOT_SUPPORTED;
+}
+
+int nvme_Subsystem_Reset(tDevice *device)
 {
     return NOT_SUPPORTED;
 }
