@@ -6976,8 +6976,15 @@ int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
     os_Flush(device);
     //now do a read and throw away the data
     uint8_t *readData = (uint8_t*)malloc(device->drive_info.deviceBlockSize * range);
-    ret = os_Read(device, lba, false, readData, device->drive_info.deviceBlockSize * range);
-    safe_Free(readData);
+    if (readData)
+    {
+        ret = os_Read(device, lba, false, readData, device->drive_info.deviceBlockSize * range);
+        safe_Free(readData);
+    }
+    else
+    {
+        ret = MEMORY_FAILURE;
+    }
     return ret;
 }
 #endif
