@@ -138,7 +138,7 @@ extern "C"
         ATA_NOP_CMD                             = 0x00,
         ATA_CFA_REQUEST_SENSE                   = 0x03,
         ATASET                                  = 0x04,
-		ATA_DATA_SET_MANAGEMENT_CMD             = 0x06,
+        ATA_DATA_SET_MANAGEMENT_CMD             = 0x06,
         ATA_DATA_SET_MANAGEMENT_XL_CMD          = 0x07,
         ATAPI_RESET                             = 0x08,
         ATA_DEV_RESET                           = 0x08,
@@ -181,7 +181,7 @@ extern "C"
         ATA_READ_LOG_EXT_DMA                    = 0x47,
         ATA_ZONE_MANAGEMENT_IN                  = 0x4A,
         ATA_FORMAT_TRACK                        = 0x50,
-		ATA_CONFIGURE_STREAM                    = 0x51,
+        ATA_CONFIGURE_STREAM                    = 0x51,
         ATA_WRITE_LOG_EXT_DMA                   = 0x57,
         ATA_TRUSTED_NON_DATA                    = 0x5B,
         ATA_TRUSTED_RECEIVE                     = 0x5C,
@@ -823,7 +823,7 @@ extern "C"
        ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION = 0x09,
    }eIdentifyDeviceDataLogPage;
 
-	//
+    //
    typedef enum _eDeviceStatisticsLog //Log Address 04h, ACS-4 Section 9.5
    {
        ATA_DEVICE_STATS_LOG_LIST            = 0x00,
@@ -834,7 +834,7 @@ extern "C"
        ATA_DEVICE_STATS_LOG_TEMP            = 0x05,
        ATA_DEVICE_STATS_LOG_TRANSPORT       = 0x06,
        ATA_DEVICE_STATS_LOG_SSD             = 0x07,
-	   ATA_DEVICE_STATS_LOG_ZONED_DEVICE	= 0x08,
+       ATA_DEVICE_STATS_LOG_ZONED_DEVICE    = 0x08,
        //Add more
    } eDeviceStatisticsLog;
 

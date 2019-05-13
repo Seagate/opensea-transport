@@ -234,9 +234,9 @@ int spin_down_drive(tDevice *device, bool sleepState)
 //  fill_Drive_Info_Data()
 //
 //! \brief   Description:  Generic Function to get drive information data filled  
-//						   into the driveInfo_TYPE of the device structure. 
-//						   This function assumes the type & interface has already
-//						   determined by the OS layer. 
+//                         into the driveInfo_TYPE of the device structure. 
+//                         This function assumes the type & interface has already
+//                         determined by the OS layer. 
 //  Entry:
 //!   \param tDevice - pointer to the device structure
 //!   
@@ -246,19 +246,19 @@ int spin_down_drive(tDevice *device, bool sleepState)
 //-----------------------------------------------------------------------------
 int fill_Drive_Info_Data(tDevice *device)
 {
-	int status = SUCCESS;
+    int status = SUCCESS;
     #ifdef _DEBUG
     printf("%s: -->\n",__FUNCTION__);
     #endif
-	if (device)
-	{		
+    if (device)
+    {       
         if (device->drive_info.interface_type == UNKNOWN_INTERFACE)
         {
             status = BAD_PARAMETER;
             return status;
         }
-		switch (device->drive_info.interface_type)
-		{
+        switch (device->drive_info.interface_type)
+        {
         case IDE_INTERFACE:
             //We know this is an ATA interface and we SHOULD be able to send either an ATA or ATAPI identify...but that doesn't work right, so if the OS layer told us it is ATAPI, do SCSI device discovery
             if (device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE)
@@ -277,26 +277,26 @@ int fill_Drive_Info_Data(tDevice *device)
             }
             break;
         case IEEE_1394_INTERFACE:
-		case USB_INTERFACE:
+        case USB_INTERFACE:
             //On USB and firewire, call this instead since this includes various hacks/workarounds for some USB devices.
             status = fill_Drive_Info_USB(device);
             break;
-		case NVME_INTERFACE:
+        case NVME_INTERFACE:
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-			status = fill_In_NVMe_Device_Info(device);
-			break;
+            status = fill_In_NVMe_Device_Info(device);
+            break;
 #endif
         case SCSI_INTERFACE:
         default:
             //call this instead. It will handle issuing scsi commands and at the end will attempt an ATA Identify if needed
             status = fill_In_Device_Info(device);
-			break;
-		}		
-	}
-	else
-	{
-		status = BAD_PARAMETER;
-	}
+            break;
+        }       
+    }
+    else
+    {
+        status = BAD_PARAMETER;
+    }
     #ifdef _DEBUG
     if (device)
     {
@@ -305,8 +305,8 @@ int fill_Drive_Info_Data(tDevice *device)
         printf("Media type: %d\n", device->drive_info.media_type);
     }
     printf("%s: <--\n",__FUNCTION__);
-	#endif
-	return status;
+    #endif
+    return status;
 }
 
 int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber, bool existingImage)
@@ -580,7 +580,7 @@ int security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securit
 #endif
     case SCSI_DRIVE:
     {
-		//The inc512 bit is not allowed on NVMe drives when sent this command....we may want to remove setting it, but for now we'll leave it here.
+        //The inc512 bit is not allowed on NVMe drives when sent this command....we may want to remove setting it, but for now we'll leave it here.
         bool inc512 = false;
         if (dataSize >= LEGACY_DRIVE_SEC_SIZE && dataSize % LEGACY_DRIVE_SEC_SIZE == 0 && device->drive_info.drive_type != NVME_DRIVE && strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0)
         {
@@ -1684,20 +1684,20 @@ int scsi_Verify(tDevice *device, uint64_t lba, uint32_t range)
 #if !defined (DISABLE_NVME_PASSTHROUGH)
 int nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
 {
-	//NVME doesn't have a verify command like ATA or SCSI, so we're going to substitute by doing a read with FUA set....should be the same minus doing a data transfer.
-	int ret = SUCCESS;
-	uint32_t dataLength = device->drive_info.deviceBlockSize * range;
-	uint8_t *data = (uint8_t*)calloc(dataLength, sizeof(uint8_t));
-	if (data)
-	{
-		ret = nvme_Read(device, lba, range - 1, false, true, 0, data, dataLength);
-	}
-	else
-	{
-		ret = MEMORY_FAILURE;
-	}
-	safe_Free(data);
-	return ret;
+    //NVME doesn't have a verify command like ATA or SCSI, so we're going to substitute by doing a read with FUA set....should be the same minus doing a data transfer.
+    int ret = SUCCESS;
+    uint32_t dataLength = device->drive_info.deviceBlockSize * range;
+    uint8_t *data = (uint8_t*)calloc(dataLength, sizeof(uint8_t));
+    if (data)
+    {
+        ret = nvme_Read(device, lba, range - 1, false, true, 0, data, dataLength);
+    }
+    else
+    {
+        ret = MEMORY_FAILURE;
+    }
+    safe_Free(data);
+    return ret;
 }
 #endif
 
@@ -1725,7 +1725,7 @@ int verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
             break;
         case NVME_INTERFACE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-			return nvme_Verify_LBA(device, lba, range);
+            return nvme_Verify_LBA(device, lba, range);
 #else 
             //perform SCSI verifies
             return scsi_Verify(device, lba, range);

@@ -42,15 +42,15 @@ extern "C"
 #define SRB_TYPE_SCSI_REQUEST_BLOCK 0
 #endif
 
-#define WIN_PHYSICAL_DRIVE	"\\\\.\\PhysicalDrive"
+#define WIN_PHYSICAL_DRIVE  "\\\\.\\PhysicalDrive"
 #define WIN_TAPE_DRIVE "\\\\.\\Tape"
 #define WIN_CDROM_DRIVE "\\\\.\\CDROM" //Most likely an ATAPI device, but it could be a really old SCSI interface device...
 #define WIN_CHANGER_DEVICE "\\\\.\\Changer" //This is a SCSI type device
 
 #define DOUBLE_BUFFERED_MAX_TRANSFER_SIZE   16384 //Bytes....16KiB to be exact since that is what MS documentation says. - TJE
 
-	//Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
-	//NOTE: ARM requires 10.0.16299.0 API to get this library!
+    //Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
+    //NOTE: ARM requires 10.0.16299.0 API to get this library!
 #if !defined (__MINGW32__) && !defined (__MINGW64__)
     #pragma comment(lib,"Cfgmgr32.lib")//make sure this get's linked in
 #endif
@@ -112,7 +112,7 @@ extern "C"
     //!   \return long page size. 
     //
     //-----------------------------------------------------------------------------
-	long getpagesize(void);
+    long getpagesize(void);
 #endif
 
 #if defined (__cplusplus)

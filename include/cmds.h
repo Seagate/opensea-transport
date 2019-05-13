@@ -110,21 +110,21 @@ extern "C"
     OPENSEA_TRANSPORT_API int spin_down_drive(tDevice *device, bool sleepState);
 
     //-----------------------------------------------------------------------------
-	//
-	//  fill_Drive_Info_Data()
-	//
-	//! \brief   Description:  Generic Function to get drive information data filled  
-	//						   into the driveInfo_TYPE of the device structure. 
-	//						   This function assumes the type & interface has already
-	//						   determined by the OS layer. 
-	//  Entry:
-	//!   \param device - pointer to the device structure
-	//!   
-	//  Exit:
-	//!   \return SUCCESS = pass, !SUCCESS = something when wrong
-	//
-	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API int fill_Drive_Info_Data(tDevice *device);
+    //
+    //  fill_Drive_Info_Data()
+    //
+    //! \brief   Description:  Generic Function to get drive information data filled  
+    //                         into the driveInfo_TYPE of the device structure. 
+    //                         This function assumes the type & interface has already
+    //                         determined by the OS layer. 
+    //  Entry:
+    //!   \param device - pointer to the device structure
+    //!   
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int fill_Drive_Info_Data(tDevice *device);
 
     typedef enum _eDownloadMode
     {

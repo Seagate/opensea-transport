@@ -480,13 +480,13 @@ int nvme_Firmware_Image_Dl(tDevice *device,\
     nvmeCmdCtx ImageDl;
     memset(&ImageDl, 0, sizeof(ImageDl));
 
-	ImageDl.cmd.adminCmd.opcode = NVME_ADMIN_CMD_DOWNLOAD_FW;
+    ImageDl.cmd.adminCmd.opcode = NVME_ADMIN_CMD_DOWNLOAD_FW;
     ImageDl.commandType = NVM_ADMIN_CMD;
     ImageDl.commandDirection = XFER_DATA_OUT;
-	ImageDl.cmd.adminCmd.addr = (uint64_t)ptrData;
+    ImageDl.cmd.adminCmd.addr = (uint64_t)ptrData;
     ImageDl.ptrData = ptrData;
     ImageDl.dataSize = numberOfBytes;
-	ImageDl.cmd.adminCmd.cdw10 = (numberOfBytes >> 2) - 1; //Since this is, 0 based, number of DWords not Bytes. 
+    ImageDl.cmd.adminCmd.cdw10 = (numberOfBytes >> 2) - 1; //Since this is, 0 based, number of DWords not Bytes. 
     ImageDl.cmd.adminCmd.cdw11 = bufferOffset >> 2;
     ImageDl.timeout = 15;
 
@@ -513,10 +513,10 @@ int nvme_Firmware_Commit(tDevice *device, nvmeFWCommitAction commitAction, uint8
     }
     memset(&FirmwareCommit, 0, sizeof(FirmwareCommit));
 
-	FirmwareCommit.cmd.adminCmd.opcode = NVME_ADMIN_CMD_ACTIVATE_FW;
+    FirmwareCommit.cmd.adminCmd.opcode = NVME_ADMIN_CMD_ACTIVATE_FW;
     FirmwareCommit.commandType = NVM_ADMIN_CMD;
     FirmwareCommit.commandDirection = XFER_NO_DATA;
-	FirmwareCommit.cmd.adminCmd.cdw10 = (commitAction << 3); // 05:03 Bits CA
+    FirmwareCommit.cmd.adminCmd.cdw10 = (commitAction << 3); // 05:03 Bits CA
     FirmwareCommit.cmd.adminCmd.cdw10 |= (firmwareSlot & 0x07); // 02:00 Bits Firmware Slot
     FirmwareCommit.timeout = 30;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -535,24 +535,24 @@ int nvme_Firmware_Commit(tDevice *device, nvmeFWCommitAction commitAction, uint8
 
 int nvme_Identify(tDevice *device, uint8_t *ptrData, uint32_t nvmeNamespace, uint32_t cns)
 {
-	nvmeCmdCtx identify;
+    nvmeCmdCtx identify;
     int ret = SUCCESS;
-	memset(&identify, 0, sizeof(identify));
-	identify.cmd.adminCmd.opcode = NVME_ADMIN_CMD_IDENTIFY;
+    memset(&identify, 0, sizeof(identify));
+    identify.cmd.adminCmd.opcode = NVME_ADMIN_CMD_IDENTIFY;
     identify.commandType = NVM_ADMIN_CMD;
     identify.commandDirection = XFER_DATA_IN;
-	identify.cmd.adminCmd.nsid = nvmeNamespace;
-	identify.cmd.adminCmd.addr = (uint64_t)ptrData;
-	identify.cmd.adminCmd.cdw10 = cns;
+    identify.cmd.adminCmd.nsid = nvmeNamespace;
+    identify.cmd.adminCmd.addr = (uint64_t)ptrData;
+    identify.cmd.adminCmd.cdw10 = cns;
     identify.timeout = 15;
-	identify.ptrData = ptrData;
-	identify.dataSize = NVME_IDENTIFY_DATA_LEN;
+    identify.ptrData = ptrData;
+    identify.dataSize = NVME_IDENTIFY_DATA_LEN;
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending NVMe Identify Command\n");
     }
-	ret = nvme_Cmd(device, &identify);
+    ret = nvme_Cmd(device, &identify);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Identify", ret);
@@ -563,10 +563,10 @@ int nvme_Identify(tDevice *device, uint8_t *ptrData, uint32_t nvmeNamespace, uin
 int nvme_Get_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
 {
     int ret = UNKNOWN; 
-	nvmeCmdCtx getFeatures;
+    nvmeCmdCtx getFeatures;
     uint32_t dWord10 = 0;
-	memset(&getFeatures, 0, sizeof(getFeatures));
-	getFeatures.cmd.adminCmd.opcode = NVME_ADMIN_CMD_GET_FEATURES;
+    memset(&getFeatures, 0, sizeof(getFeatures));
+    getFeatures.cmd.adminCmd.opcode = NVME_ADMIN_CMD_GET_FEATURES;
     getFeatures.commandType = NVM_ADMIN_CMD;
     getFeatures.commandDirection = XFER_DATA_IN;
     getFeatures.cmd.adminCmd.addr = featCmdOpts->prp1; // TODO: dataLen? 
@@ -713,8 +713,8 @@ int nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts
     getLogPage.cmd.adminCmd.cdw12 = (uint32_t)(getLogPageCmdOpts->offset & 0xFFFFFFFF);
     getLogPage.cmd.adminCmd.cdw13 = (uint32_t)(getLogPageCmdOpts->offset >> 32);
 
-	getLogPage.ptrData = (uint8_t*)getLogPageCmdOpts->addr;
-	getLogPage.dataSize = getLogPageCmdOpts->dataLen;
+    getLogPage.ptrData = (uint8_t*)getLogPageCmdOpts->addr;
+    getLogPage.dataSize = getLogPageCmdOpts->dataLen;
 
     getLogPage.timeout = 15;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)

@@ -189,12 +189,12 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
     uint32_t csmiDeviceCount = 0;
     bool csmiDeviceCountValid = false;
 #endif
-	uint32_t getCountFlags = 0;
-	if (flags & AGRESSIVE_SCAN)
-	{
-		getCountFlags |= BUS_RESCAN_ALLOWED;
-	}
-	if (SUCCESS == get_Device_Count(&deviceCount, getCountFlags))
+    uint32_t getCountFlags = 0;
+    if (flags & AGRESSIVE_SCAN)
+    {
+        getCountFlags |= BUS_RESCAN_ALLOWED;
+    }
+    if (SUCCESS == get_Device_Count(&deviceCount, getCountFlags))
     {
         if (deviceCount > 0)
         {
@@ -295,13 +295,13 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                     {
                         continue;
                     }
-					if (flags & SCAN_SEAGATE_ONLY)
-					{
-						if (is_Seagate_Family(&deviceList[devIter]) == NON_SEAGATE)
-						{
-							continue;
-						}
-					}
+                    if (flags & SCAN_SEAGATE_ONLY)
+                    {
+                        if (is_Seagate_Family(&deviceList[devIter]) == NON_SEAGATE)
+                        {
+                            continue;
+                        }
+                    }
 #if defined (ENABLE_CSMI)
                     if (csmiDeviceCountValid && devIter >= (deviceCount - csmiDeviceCount))//if the csmi device count is valid then we found some for the scan and need to see if we need to check for duplicates.
                     {
@@ -434,7 +434,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
 }
 
 bool validate_Device_Struct(versionBlock sanity)
-{	
+{   
     size_t tdevSize = sizeof(tDevice);
     if ((sanity.size == tdevSize) && (sanity.version == DEVICE_BLOCK_VERSION))
     {
@@ -448,31 +448,31 @@ bool validate_Device_Struct(versionBlock sanity)
 
 int get_Opensea_Transport_Version(apiVersionInfo * ver)
 {
-	if (ver)
-	{
-		ver->majorVersion = OPENSEA_TRANSPORT_MAJOR_VERSION;
-		ver->minorVersion = OPENSEA_TRANSPORT_MINOR_VERSION;
-		ver->patchVersion = OPENSEA_TRANSPORT_PATCH_VERSION;
-		return SUCCESS;
-	}
-	else
-	{
-		return MEMORY_FAILURE;
-	}
+    if (ver)
+    {
+        ver->majorVersion = OPENSEA_TRANSPORT_MAJOR_VERSION;
+        ver->minorVersion = OPENSEA_TRANSPORT_MINOR_VERSION;
+        ver->patchVersion = OPENSEA_TRANSPORT_PATCH_VERSION;
+        return SUCCESS;
+    }
+    else
+    {
+        return MEMORY_FAILURE;
+    }
 }
 
 int get_Version_Block(versionBlock * blk)
 {
-	if (blk)
-	{
-		blk->size = sizeof(tDevice);
-		blk->version = DEVICE_BLOCK_VERSION;
-		return SUCCESS;
-	}
-	else
-	{
-		return MEMORY_FAILURE;
-	}
+    if (blk)
+    {
+        blk->size = sizeof(tDevice);
+        blk->version = DEVICE_BLOCK_VERSION;
+        return SUCCESS;
+    }
+    else
+    {
+        return MEMORY_FAILURE;
+    }
 }
 
 void set_IEEE_OUI(uint32_t* ieeeOUI, tDevice *device, bool USBchildDrive)
@@ -1282,128 +1282,128 @@ bool is_Seagate_Model_Number_Vendor_E(tDevice *device, bool USBchildDrive)
 
 bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
 {
-	bool isSeagateVendor = false;
+    bool isSeagateVendor = false;
 
-	//we need to check the model number for the ones used on the Vendor products
-	if (USBchildDrive)
-	{
-		if (
-			((strstr(device->drive_info.bridge_info.childDriveMN, "ST") != NULL)
-				&& (strstr(device->drive_info.bridge_info.childDriveMN, "401") != NULL))																					//newer models
-			||
-			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CM") == 7))
-			||
-			((strstr(device->drive_info.bridge_info.childDriveMN, "YA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CM") == 7))
-			||
-			((strstr(device->drive_info.bridge_info.childDriveMN, "XA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "DC") == 7))         //older models
-			)
-		{
-			isSeagateVendor = true;
-		}
-	}
-	else
-	{
-		if (
-			((strstr(device->drive_info.product_identification, "ST") != NULL)
-				&& (strstr(device->drive_info.product_identification, "401") != NULL))																					//newer models
-			||
-			((strstr(device->drive_info.product_identification, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "CM") == 7))
-			||
-			((strstr(device->drive_info.product_identification, "YA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "CM") == 7))
-			||
-			((strstr(device->drive_info.product_identification, "XA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "DC") == 7))       //older models
-			)
-		{
-			isSeagateVendor = true;
-		}
-		if (!isSeagateVendor)
-		{
-			return (is_Seagate_Model_Number_Vendor_F(device, true));
-		}
-	}
-	return isSeagateVendor;
+    //we need to check the model number for the ones used on the Vendor products
+    if (USBchildDrive)
+    {
+        if (
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "ST") != NULL)
+                && (strstr(device->drive_info.bridge_info.childDriveMN, "401") != NULL))                                                                                    //newer models
+            ||
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CM") == 7))
+            ||
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "YA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CM") == 7))
+            ||
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "XA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "DC") == 7))         //older models
+            )
+        {
+            isSeagateVendor = true;
+        }
+    }
+    else
+    {
+        if (
+            ((strstr(device->drive_info.product_identification, "ST") != NULL)
+                && (strstr(device->drive_info.product_identification, "401") != NULL))                                                                                  //newer models
+            ||
+            ((strstr(device->drive_info.product_identification, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.product_identification, "CM") == 7))
+            ||
+            ((strstr(device->drive_info.product_identification, "YA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.product_identification, "CM") == 7))
+            ||
+            ((strstr(device->drive_info.product_identification, "XA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.product_identification, "DC") == 7))       //older models
+            )
+        {
+            isSeagateVendor = true;
+        }
+        if (!isSeagateVendor)
+        {
+            return (is_Seagate_Model_Number_Vendor_F(device, true));
+        }
+    }
+    return isSeagateVendor;
 }
 
 bool is_Seagate_Model_Number_Vendor_G(tDevice *device, bool USBchildDrive)
 {
-	bool isSeagateVendor = false;
+    bool isSeagateVendor = false;
 
-	//we need to check the model number for the ones used on the Vendor products
-	if (USBchildDrive)
-	{
-		if (((strstr(device->drive_info.bridge_info.childDriveMN, "XA") != NULL)
-			&& ((find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "LE") == 7)
-				|| (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "ME") == 7)))
-			||
-			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "NM") == 7))
-			)
-		{
-			isSeagateVendor = true;
-		}
-	}
-	else
-	{
-		if (((strstr(device->drive_info.product_identification, "XA") != NULL)
-			&& ((find_last_occurrence_in_string(device->drive_info.product_identification, "LE") == 7)
-				|| (find_last_occurrence_in_string(device->drive_info.product_identification, "ME") == 7)))
-			||
-			((strstr(device->drive_info.product_identification, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "NM") == 7))
-			)
-		{
-			isSeagateVendor = true;
-		}
-		if (!isSeagateVendor)
-		{
-			return (is_Seagate_Model_Number_Vendor_G(device, true));
-		}
-	}
-	return isSeagateVendor;
+    //we need to check the model number for the ones used on the Vendor products
+    if (USBchildDrive)
+    {
+        if (((strstr(device->drive_info.bridge_info.childDriveMN, "XA") != NULL)
+            && ((find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "LE") == 7)
+                || (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "ME") == 7)))
+            ||
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "NM") == 7))
+            )
+        {
+            isSeagateVendor = true;
+        }
+    }
+    else
+    {
+        if (((strstr(device->drive_info.product_identification, "XA") != NULL)
+            && ((find_last_occurrence_in_string(device->drive_info.product_identification, "LE") == 7)
+                || (find_last_occurrence_in_string(device->drive_info.product_identification, "ME") == 7)))
+            ||
+            ((strstr(device->drive_info.product_identification, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.product_identification, "NM") == 7))
+            )
+        {
+            isSeagateVendor = true;
+        }
+        if (!isSeagateVendor)
+        {
+            return (is_Seagate_Model_Number_Vendor_G(device, true));
+        }
+    }
+    return isSeagateVendor;
 }
 
 bool is_Seagate_Model_Number_Vendor_H(tDevice *device, bool USBchildDrive)
 {
-	bool isSeagateVendor = false;
+    bool isSeagateVendor = false;
 
-	//we need to check the model number for the ones used on the Vendor products
-	if (USBchildDrive)
-	{
-		if (((strstr(device->drive_info.bridge_info.childDriveMN, "ZP") != NULL)
-			&& ((find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CM") == 7)
-				|| (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "GM") == 7)))
-			||
-			((strstr(device->drive_info.bridge_info.childDriveMN, "XP") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "DC") == 7))
-			)
-		{
-			isSeagateVendor = true;
-		}
-	}
-	else
-	{
-		if (((strstr(device->drive_info.product_identification, "ZP") != NULL)
-			&& ((find_last_occurrence_in_string(device->drive_info.product_identification, "CM") == 7)
-				|| (find_last_occurrence_in_string(device->drive_info.product_identification, "GM") == 7)))
-			||
-			((strstr(device->drive_info.product_identification, "XP") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "DC") == 7))
-			)
-		{
-			isSeagateVendor = true;
-		}
-		if (!isSeagateVendor)
-		{
-			return (is_Seagate_Model_Number_Vendor_H(device, true));
-		}
-	}
-	return isSeagateVendor;
+    //we need to check the model number for the ones used on the Vendor products
+    if (USBchildDrive)
+    {
+        if (((strstr(device->drive_info.bridge_info.childDriveMN, "ZP") != NULL)
+            && ((find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CM") == 7)
+                || (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "GM") == 7)))
+            ||
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "XP") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "DC") == 7))
+            )
+        {
+            isSeagateVendor = true;
+        }
+    }
+    else
+    {
+        if (((strstr(device->drive_info.product_identification, "ZP") != NULL)
+            && ((find_last_occurrence_in_string(device->drive_info.product_identification, "CM") == 7)
+                || (find_last_occurrence_in_string(device->drive_info.product_identification, "GM") == 7)))
+            ||
+            ((strstr(device->drive_info.product_identification, "XP") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.product_identification, "DC") == 7))
+            )
+        {
+            isSeagateVendor = true;
+        }
+        if (!isSeagateVendor)
+        {
+            return (is_Seagate_Model_Number_Vendor_H(device, true));
+        }
+    }
+    return isSeagateVendor;
 }
 
 eSeagateFamily is_Seagate_Family(tDevice *device)
@@ -1456,18 +1456,18 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
                 {
                     isSeagateFamily = SEAGATE_VENDOR_D;
                 }
-				else if (is_Seagate_Model_Number_Vendor_F(device, false))
-				{
-					isSeagateFamily = SEAGATE_VENDOR_F;
-				}
-				else if (is_Seagate_Model_Number_Vendor_G(device, false))
-				{
-					isSeagateFamily = SEAGATE_VENDOR_G;
-				}
-				else if (is_Seagate_Model_Number_Vendor_H(device, false))
-				{
-					isSeagateFamily = SEAGATE_VENDOR_H;
-				}
+                else if (is_Seagate_Model_Number_Vendor_F(device, false))
+                {
+                    isSeagateFamily = SEAGATE_VENDOR_F;
+                }
+                else if (is_Seagate_Model_Number_Vendor_G(device, false))
+                {
+                    isSeagateFamily = SEAGATE_VENDOR_G;
+                }
+                else if (is_Seagate_Model_Number_Vendor_H(device, false))
+                {
+                    isSeagateFamily = SEAGATE_VENDOR_H;
+                }
             }
             break;
         case 2://is_Maxtor
@@ -1515,24 +1515,24 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
                 isSeagateFamily = SEAGATE_MINISCRIBE;
             }
             break;
-		case 8://is_VENDOR_F
-			if (is_Seagate_Model_Number_Vendor_F(device, false))
-			{
-				isSeagateFamily = SEAGATE_VENDOR_F;
-			}
-			break;
-		case 9://is_VENDOR_G
-			if (is_Seagate_Model_Number_Vendor_G(device, false))
-			{
-				isSeagateFamily = SEAGATE_VENDOR_G;
-			}
-			break;
-		case 10://is_Vendor_H - NVMe SSDs
-			if (is_Seagate_Model_Number_Vendor_H(device, false))
-			{
-				isSeagateFamily = SEAGATE_VENDOR_H;
-			}
-			break;
+        case 8://is_VENDOR_F
+            if (is_Seagate_Model_Number_Vendor_F(device, false))
+            {
+                isSeagateFamily = SEAGATE_VENDOR_F;
+            }
+            break;
+        case 9://is_VENDOR_G
+            if (is_Seagate_Model_Number_Vendor_G(device, false))
+            {
+                isSeagateFamily = SEAGATE_VENDOR_G;
+            }
+            break;
+        case 10://is_Vendor_H - NVMe SSDs
+            if (is_Seagate_Model_Number_Vendor_H(device, false))
+            {
+                isSeagateFamily = SEAGATE_VENDOR_H;
+            }
+            break;
             //TODO: Add in CDC, DEC, & PrarieTek detection. Currently not in since these drives are even more rare than the Conner and Miniscribe drives...
         default:
             break;
@@ -1732,97 +1732,97 @@ void print_Command_Time(uint64_t timeInNanoSeconds)
 
 void print_Time(uint64_t timeInNanoSeconds)
 {
-	double printTime = (double)timeInNanoSeconds;
-	uint8_t unitCounter = 0;
-	bool breakLoop = false;;
-	while (printTime > 1 && unitCounter <= 6)
-	{
-		switch (unitCounter)
-		{
-		case 6://shouldn't get this far...
-			break;
-		case 5://h to d
-			if ((printTime / 24) < 1)
-			{
-				breakLoop = true;
-			}
-			break;
-			break;
-		case 4://m to h
-		case 3://s to m
-			if ((printTime / 60) < 1)
-			{
-				breakLoop = true;
-			}
-			break;
-		case 0://ns to us
-		case 1://us to ms
-		case 2://ms to s
-		default:
-			if ((printTime / 1000) < 1)
-			{
-				breakLoop = true;
-			}
-			break;
-		}
-		if (breakLoop)
-		{
-			break;
-		}
-		switch (unitCounter)
-		{
-		case 6://shouldn't get this far...
-			break;
-		case 5://h to d
-			printTime /= 24;
-			break;
-		case 4://m to h
-		case 3://s to m
-			printTime /= 60;
-			break;
-		case 0://ns to us
-		case 1://us to ms
-		case 2://ms to s
-		default:
-			printTime /= 1000;
-			break;
-		}
-		if (unitCounter == 6)
-		{
-			break;
-		}
-		++unitCounter;
-	}
-	printf(" (");
-	switch (unitCounter)
-	{
-	case 6://we shouldn't get to a days value, but room for future large drives I guess...-TJE
-		printf("d): ");
-		break;
-	case 5:
-		printf("h): ");
-		break;
-	case 4:
-		printf("m): ");
-		break;
-	case 3:
-		printf("s): ");
-		break;
-	case 2:
-		printf("ms): ");
-		break;
-	case 1:
-		printf("us): ");
-		break;
-	case 0:
-		printf("ns): ");
-		break;
-	default://couldn't get a good conversion or something weird happened so show original nanoseconds.
-		printf("ns): ");
-		printTime = (double)timeInNanoSeconds;
-		break;
-	}
-	printf("%0.02f\n", printTime);
+    double printTime = (double)timeInNanoSeconds;
+    uint8_t unitCounter = 0;
+    bool breakLoop = false;;
+    while (printTime > 1 && unitCounter <= 6)
+    {
+        switch (unitCounter)
+        {
+        case 6://shouldn't get this far...
+            break;
+        case 5://h to d
+            if ((printTime / 24) < 1)
+            {
+                breakLoop = true;
+            }
+            break;
+            break;
+        case 4://m to h
+        case 3://s to m
+            if ((printTime / 60) < 1)
+            {
+                breakLoop = true;
+            }
+            break;
+        case 0://ns to us
+        case 1://us to ms
+        case 2://ms to s
+        default:
+            if ((printTime / 1000) < 1)
+            {
+                breakLoop = true;
+            }
+            break;
+        }
+        if (breakLoop)
+        {
+            break;
+        }
+        switch (unitCounter)
+        {
+        case 6://shouldn't get this far...
+            break;
+        case 5://h to d
+            printTime /= 24;
+            break;
+        case 4://m to h
+        case 3://s to m
+            printTime /= 60;
+            break;
+        case 0://ns to us
+        case 1://us to ms
+        case 2://ms to s
+        default:
+            printTime /= 1000;
+            break;
+        }
+        if (unitCounter == 6)
+        {
+            break;
+        }
+        ++unitCounter;
+    }
+    printf(" (");
+    switch (unitCounter)
+    {
+    case 6://we shouldn't get to a days value, but room for future large drives I guess...-TJE
+        printf("d): ");
+        break;
+    case 5:
+        printf("h): ");
+        break;
+    case 4:
+        printf("m): ");
+        break;
+    case 3:
+        printf("s): ");
+        break;
+    case 2:
+        printf("ms): ");
+        break;
+    case 1:
+        printf("us): ");
+        break;
+    case 0:
+        printf("ns): ");
+        break;
+    default://couldn't get a good conversion or something weird happened so show original nanoseconds.
+        printf("ns): ");
+        printTime = (double)timeInNanoSeconds;
+        break;
+    }
+    printf("%0.02f\n", printTime);
 }
 
 
@@ -1842,122 +1842,122 @@ uint64_t align_LBA(tDevice *device, uint64_t LBA)
 
 int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag)
 {
-	volatile uint32_t i, j;
-	bool sameSlNo = false;
-	int ret;
+    volatile uint32_t i, j;
+    bool sameSlNo = false;
+    int ret;
 
 
-	/*
-	Go through all the devices in the list. 
-	*/
-	for (i = 0; i < *numberOfDevices - 1; i++)
-	{
-		/*
-		Go compare it to all the rest of the drives i + 1. 
-		*/
-		for (j = i + 1; j < *numberOfDevices; j++)
+    /*
+    Go through all the devices in the list. 
+    */
+    for (i = 0; i < *numberOfDevices - 1; i++)
+    {
+        /*
+        Go compare it to all the rest of the drives i + 1. 
+        */
+        for (j = i + 1; j < *numberOfDevices; j++)
 
-		{
+        {
 #ifdef _DEBUG
-			printf("%s --> For drive i : %d and j : %d \n", __FUNCTION__, i, j);
+            printf("%s --> For drive i : %d and j : %d \n", __FUNCTION__, i, j);
 #endif
-			ret = SUCCESS;
-			sameSlNo = false;
+            ret = SUCCESS;
+            sameSlNo = false;
 
-			if ( ((deviceList + i)->drive_info.serialNumber != NULL) &&
-				 ((deviceList + j)->drive_info.serialNumber != NULL) )
-			{
-				 sameSlNo = (strncmp((deviceList + i)->drive_info.serialNumber,
-					 (deviceList + j)->drive_info.serialNumber,
-					 strlen((deviceList + i)->drive_info.serialNumber)) == 0);
-			}
+            if ( ((deviceList + i)->drive_info.serialNumber != NULL) &&
+                 ((deviceList + j)->drive_info.serialNumber != NULL) )
+            {
+                 sameSlNo = (strncmp((deviceList + i)->drive_info.serialNumber,
+                     (deviceList + j)->drive_info.serialNumber,
+                     strlen((deviceList + i)->drive_info.serialNumber)) == 0);
+            }
 
-			if (sameSlNo)
-			{
+            if (sameSlNo)
+            {
 #ifdef _DEBUG
-				printf("We have same serial no \n");
+                printf("We have same serial no \n");
 #endif
 #if defined (_WIN32)
-				/* We are supporting csmi only - for now */
-				if (rmvDevFlag.csmi != 0)
-				{
-					if (is_CSMI_Device(deviceList + i))
-					{
-						ret |= remove_Device(deviceList, i, numberOfDevices);
-						i--;
-						j--;
-					}
+                /* We are supporting csmi only - for now */
+                if (rmvDevFlag.csmi != 0)
+                {
+                    if (is_CSMI_Device(deviceList + i))
+                    {
+                        ret |= remove_Device(deviceList, i, numberOfDevices);
+                        i--;
+                        j--;
+                    }
 
-					if (is_CSMI_Device(deviceList + j))
-					{
-						ret |= remove_Device(deviceList, j, numberOfDevices);
-						j--;
-					}
-				}
+                    if (is_CSMI_Device(deviceList + j))
+                    {
+                        ret |= remove_Device(deviceList, j, numberOfDevices);
+                        j--;
+                    }
+                }
 
 #endif
-			}
-		}
-	}
-	return ret;
+            }
+        }
+    }
+    return ret;
 }
 
 int remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint32_t * numberOfDevices)
 {
-	uint32_t i;
-	int ret = FAILURE;
+    uint32_t i;
+    int ret = FAILURE;
 
 #ifdef _DEBUG
-	printf("Removing Drive with index : %d \n", driveToRemoveIdx);
+    printf("Removing Drive with index : %d \n", driveToRemoveIdx);
 #endif
 
-	if (driveToRemoveIdx >= *numberOfDevices)
-	{
-		return ret;
-	}
+    if (driveToRemoveIdx >= *numberOfDevices)
+    {
+        return ret;
+    }
 
-	/*
-	 *	TODO - Use close_Handle() rather than free().
-	 **/
-	if (is_CSMI_Device(deviceList + driveToRemoveIdx))
-	{
-		free((deviceList + driveToRemoveIdx)->raid_device);
-	}
+    /*
+     *  TODO - Use close_Handle() rather than free().
+     **/
+    if (is_CSMI_Device(deviceList + driveToRemoveIdx))
+    {
+        free((deviceList + driveToRemoveIdx)->raid_device);
+    }
 
-	for (i = driveToRemoveIdx; i < *numberOfDevices - 1; i++)
-	{
-		memcpy((deviceList + i), (deviceList + i + 1), sizeof(tDevice));
-	}
+    for (i = driveToRemoveIdx; i < *numberOfDevices - 1; i++)
+    {
+        memcpy((deviceList + i), (deviceList + i + 1), sizeof(tDevice));
+    }
 
-	memset((deviceList + i), 0, sizeof(tDevice));
-	*numberOfDevices -= 1;
-	ret = SUCCESS;
+    memset((deviceList + i), 0, sizeof(tDevice));
+    *numberOfDevices -= 1;
+    ret = SUCCESS;
 
-	return ret;
+    return ret;
 }
 
 bool is_CSMI_Device(tDevice *device)
 {
-	bool csmiDevice = true;
+    bool csmiDevice = true;
 
 #ifdef _DEBUG
-	printf("friendly name : %s interface_type : %d raid_device : %" PRIXPTR "\n",
-		device->os_info.friendlyName, device->drive_info.interface_type, (uintptr_t)device->raid_device);
+    printf("friendly name : %s interface_type : %d raid_device : %" PRIXPTR "\n",
+        device->os_info.friendlyName, device->drive_info.interface_type, (uintptr_t)device->raid_device);
 #endif
 
-	csmiDevice = csmiDevice && (strncmp(device->os_info.friendlyName, "SCSI", 4) == 0);
-	csmiDevice = csmiDevice && (device->drive_info.interface_type == RAID_INTERFACE);
-	csmiDevice = csmiDevice && (device->raid_device != NULL);
+    csmiDevice = csmiDevice && (strncmp(device->os_info.friendlyName, "SCSI", 4) == 0);
+    csmiDevice = csmiDevice && (device->drive_info.interface_type == RAID_INTERFACE);
+    csmiDevice = csmiDevice && (device->raid_device != NULL);
 
 #ifdef _DEBUG
-	if (csmiDevice)
-	{
-		printf("This is a CSMI drive \n");
-	}
-	else
-	{
-		printf("This is not a CSMI drive \n");
-	}
+    if (csmiDevice)
+    {
+        printf("This is a CSMI drive \n");
+    }
+    else
+    {
+        printf("This is not a CSMI drive \n");
+    }
 #endif
-	return csmiDevice;
+    return csmiDevice;
 }

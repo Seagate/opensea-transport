@@ -331,7 +331,7 @@ int Nvme_DeleteNamespace_IDT(struct nvme_handle *handle, int ns)
 int Nvme_FWLoadImage(char *fw_path, void **fw_buf, int *fw_size)
 {
    int fd;
-   struct stat	sb;
+   struct stat  sb;
    int fw_file_size;
 
    assert (fw_path && fw_buf && fw_size);

@@ -135,18 +135,18 @@ void print_Last_Error(int lastError)
 
 int get_CSMI_Phy_Info(tDevice *device, PCSMI_SAS_PHY_INFO_BUFFER PhyInfo)
 {
-	int retval = FAILURE;
+    int retval = FAILURE;
 #if defined(_WIN32)
     DWORD bytesReturned = 0;
 #endif
-	memset(PhyInfo, 0, sizeof(CSMI_SAS_PHY_INFO_BUFFER));
+    memset(PhyInfo, 0, sizeof(CSMI_SAS_PHY_INFO_BUFFER));
     ptrCSMIDevice csmiDev = (ptrCSMIDevice)device->raid_device;
-	PhyInfo->IoctlHeader.HeaderLength = sizeof(IOCTL_HEADER);
-	PhyInfo->IoctlHeader.Length = sizeof(CSMI_SAS_PHY_INFO_BUFFER) - sizeof(IOCTL_HEADER);
-	PhyInfo->IoctlHeader.Timeout = CSMI_ALL_TIMEOUT;	
-	PhyInfo->IoctlHeader.ControlCode = CC_CSMI_SAS_GET_PHY_INFO;
+    PhyInfo->IoctlHeader.HeaderLength = sizeof(IOCTL_HEADER);
+    PhyInfo->IoctlHeader.Length = sizeof(CSMI_SAS_PHY_INFO_BUFFER) - sizeof(IOCTL_HEADER);
+    PhyInfo->IoctlHeader.Timeout = CSMI_ALL_TIMEOUT;    
+    PhyInfo->IoctlHeader.ControlCode = CC_CSMI_SAS_GET_PHY_INFO;
 
-	memcpy(PhyInfo->IoctlHeader.Signature, CSMI_SAS_SIGNATURE,sizeof(CSMI_SAS_SIGNATURE));
+    memcpy(PhyInfo->IoctlHeader.Signature, CSMI_SAS_SIGNATURE,sizeof(CSMI_SAS_SIGNATURE));
 
 #if defined (_WIN32)
     BOOL success = DeviceIoControl(device->os_info.fd,
@@ -178,7 +178,7 @@ int get_CSMI_Phy_Info(tDevice *device, PCSMI_SAS_PHY_INFO_BUFFER PhyInfo)
         print_Last_Error(device->os_info.last_error);
         print_IOCTL_Return_Code(PhyInfo->IoctlHeader.ReturnCode);
     }
-	return retval;
+    return retval;
 }
 //This is the same above...BUT this only needs a handle and it is only used by the get_Device_Count and get_Device_List calls
 int issue_Get_Phy_Info(HANDLE fd, PCSMI_SAS_PHY_INFO_BUFFER PhyInfo)
@@ -223,7 +223,7 @@ int issue_Get_Phy_Info(HANDLE fd, PCSMI_SAS_PHY_INFO_BUFFER PhyInfo)
 
 int get_CSMI_Controller_Info(tDevice *device, PCSMI_SAS_CNTLR_CONFIG controllerInfo)
 {
-	int retval = FAILURE;
+    int retval = FAILURE;
 #if defined (_WIN32)
     DWORD bytesReturned = 0;
 #endif
@@ -862,14 +862,14 @@ int send_SSP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
 
 void build_H2D_fis(FIS_REG_H2D *fis, ataTFRBlock *tfr)
 {
-	fis->fisType = FIS_TYPE_REG_H2D;
+    fis->fisType = FIS_TYPE_REG_H2D;
     fis->byte1 = COMMAND_BIT_MASK;
-	
+    
     fis->command = tfr->CommandStatus;
-	
+    
     fis->feature = tfr->ErrorFeature;
     fis->featureExt = tfr->Feature48;
-	
+    
     fis->lbaHi = tfr->LbaHi;
     fis->lbaHiExt = tfr->LbaHi48;
     fis->lbaLow = tfr->LbaLow;
@@ -1293,10 +1293,10 @@ int get_CSMI_Device(const char *filename, tDevice *device)
         device->raid_device = (ptrCSMIDevice)calloc(1 * sizeof(csmiDevice), sizeof(csmiDevice));
         device->issue_io = (issue_io_func)send_CSMI_IO;
         ptrCSMIDevice csmiDevice = (ptrCSMIDevice)device->raid_device;
-		if (!csmiDevice)
-		{
-			return MEMORY_FAILURE;
-		}
+        if (!csmiDevice)
+        {
+            return MEMORY_FAILURE;
+        }
         if (device->dFlags & CSMI_FLAG_VERBOSE)
         {
             csmiDevice->csmiVerbose = true;
@@ -1312,11 +1312,11 @@ int get_CSMI_Device(const char *filename, tDevice *device)
         //Using the data we've already gotten, we need to save phyidentifier, port identifier, port protocol, and SAS address.
         //TODO: Check if we should be using the Identify or Attached structure information to populate the support fields.
         //Identify appears to contain initiator data, and attached seems to include target data...
-		if (portNumber > 31)
-		{
-			//return this or some other error?
-			return FAILURE;
-		}
+        if (portNumber > 31)
+        {
+            //return this or some other error?
+            return FAILURE;
+        }
         if (!handleHasAddressInsteadOfPort)
         {
             csmiDevice->portIdentifier = phyInfo.Information.Phy[portNumber].bPortIdentifier;
@@ -1414,7 +1414,7 @@ int get_CSMI_Device(const char *filename, tDevice *device)
 //  Entry:
 //!   \param[out] numberOfDevices = integer to hold the number of devices found.
 //!   \param[in] flags = eScanFlags based mask to let application control.
-//!						 NOTE: currently flags param is not being used.
+//!                      NOTE: currently flags param is not being used.
 //!
 //  Exit:
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -1502,22 +1502,22 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //! \brief   Description:  Get a list of devices that the library supports.
 //!                        Use get_Device_Count to figure out how much memory is
 //!                        needed to be allocated for the device list. The memory
-//!						   allocated must be the multiple of device structure.
-//!						   The application can pass in less memory than needed
-//!						   for all devices in the system, in which case the library
+//!                        allocated must be the multiple of device structure.
+//!                        The application can pass in less memory than needed
+//!                        for all devices in the system, in which case the library
 //!                        will fill the provided memory with how ever many device
-//!						   structures it can hold.
+//!                        structures it can hold.
 //  Entry:
 //!   \param[out] ptrToDeviceList = pointer to the allocated memory for the device list
 //!   \param[in]  sizeInBytes = size of the entire list in bytes.
 //!   \param[in]  versionBlock = versionBlock structure filled in by application for
-//!								 sanity check by library.
+//!                              sanity check by library.
 //!   \param[in] flags = eScanFlags based mask to let application control.
-//!						 NOTE: currently flags param is not being used.
+//!                      NOTE: currently flags param is not being used.
 //!
 //  Exit:
 //!   \return SUCCESS - pass, WARN_NOT_ALL_DEVICES_ENUMERATED - some deviec had trouble being enumerated. 
-//!						Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
+//!                     Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
 int get_CSMI_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
@@ -1531,7 +1531,7 @@ int get_CSMI_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, 
 #else
     wchar_t deviceName[40] = { 0 };
 #endif
-    char	name[80] = { 0 }; //Because get device needs char
+    char    name[80] = { 0 }; //Because get device needs char
     HANDLE fd = INVALID_HANDLE_VALUE;
 #else
     int fd = -1;

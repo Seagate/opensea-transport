@@ -775,53 +775,53 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
 
 char *nvme_cmd_to_string(int admin, uint8_t opcode)
 {
-	if (admin) {
-		switch (opcode) {
-		case NVME_ADMIN_CMD_DELETE_SQ:	return "Delete I/O Submission Queue";
-		case NVME_ADMIN_CMD_CREATE_SQ:	return "Create I/O Submission Queue";
-		case NVME_ADMIN_CMD_GET_LOG_PAGE:	return "Get Log Page";
-		case NVME_ADMIN_CMD_DELETE_CQ:	return "Delete I/O Completion Queue";
-		case NVME_ADMIN_CMD_CREATE_CQ:	return "Create I/O Completion Queue";
-		case NVME_ADMIN_CMD_IDENTIFY:	return "Identify";
-		case NVME_ADMIN_CMD_ABORT_CMD:	return "Abort";
-		case NVME_ADMIN_CMD_SET_FEATURES:	return "Set Features";
-		case NVME_ADMIN_CMD_GET_FEATURES:	return "Get Features";
-		case NVME_ADMIN_CMD_ASYNC_EVENT:	return "Asynchronous Event Request";
-		case NVME_ADMIN_CMD_NAMESPACE_MANAGEMENT:	return "Namespace Management";
-		case NVME_ADMIN_CMD_ACTIVATE_FW:	return "Firmware Commit";
-		case NVME_ADMIN_CMD_DOWNLOAD_FW:	return "Firmware Image Download";
-		case NVME_ADMIN_CMD_DEVICE_SELF_TEST:	return "Device Self-test";
-		case NVME_ADMIN_CMD_NAMESPACE_ATTACHMENT:	return "Namespace Attachment";
-		case NVME_ADMIN_CMD_KEEP_ALIVE:	return "Keep Alive";
-		case NVME_ADMIN_CMD_DIRECTIVE_SEND:	return "Directive Send";
-		case NVME_ADMIN_CMD_DIRECTIVE_RECEIVE:	return "Directive Receive";
-		case NVME_ADMIN_CMD_VIRTUALIZATION_MANAGEMENT:	return "Virtualization Management";
-		case NVME_ADMIN_CMD_NVME_MI_SEND:	return "NVMEe-MI Send";
-		case NVME_ADMIN_CMD_NVME_MI_RECEIVE:	return "NVMEe-MI Receive";
-        case NVME_ADMIN_CMD_DOORBELL_BUFFER_CONFIG:		return "Doorbell Buffer Config";
+    if (admin) {
+        switch (opcode) {
+        case NVME_ADMIN_CMD_DELETE_SQ:  return "Delete I/O Submission Queue";
+        case NVME_ADMIN_CMD_CREATE_SQ:  return "Create I/O Submission Queue";
+        case NVME_ADMIN_CMD_GET_LOG_PAGE:   return "Get Log Page";
+        case NVME_ADMIN_CMD_DELETE_CQ:  return "Delete I/O Completion Queue";
+        case NVME_ADMIN_CMD_CREATE_CQ:  return "Create I/O Completion Queue";
+        case NVME_ADMIN_CMD_IDENTIFY:   return "Identify";
+        case NVME_ADMIN_CMD_ABORT_CMD:  return "Abort";
+        case NVME_ADMIN_CMD_SET_FEATURES:   return "Set Features";
+        case NVME_ADMIN_CMD_GET_FEATURES:   return "Get Features";
+        case NVME_ADMIN_CMD_ASYNC_EVENT:    return "Asynchronous Event Request";
+        case NVME_ADMIN_CMD_NAMESPACE_MANAGEMENT:   return "Namespace Management";
+        case NVME_ADMIN_CMD_ACTIVATE_FW:    return "Firmware Commit";
+        case NVME_ADMIN_CMD_DOWNLOAD_FW:    return "Firmware Image Download";
+        case NVME_ADMIN_CMD_DEVICE_SELF_TEST:   return "Device Self-test";
+        case NVME_ADMIN_CMD_NAMESPACE_ATTACHMENT:   return "Namespace Attachment";
+        case NVME_ADMIN_CMD_KEEP_ALIVE: return "Keep Alive";
+        case NVME_ADMIN_CMD_DIRECTIVE_SEND: return "Directive Send";
+        case NVME_ADMIN_CMD_DIRECTIVE_RECEIVE:  return "Directive Receive";
+        case NVME_ADMIN_CMD_VIRTUALIZATION_MANAGEMENT:  return "Virtualization Management";
+        case NVME_ADMIN_CMD_NVME_MI_SEND:   return "NVMEe-MI Send";
+        case NVME_ADMIN_CMD_NVME_MI_RECEIVE:    return "NVMEe-MI Receive";
+        case NVME_ADMIN_CMD_DOORBELL_BUFFER_CONFIG:     return "Doorbell Buffer Config";
         case NVME_ADMIN_CMD_NVME_OVER_FABRICS:      return "NVMe Over Fabric";
-		case NVME_ADMIN_CMD_FORMAT_NVM:	return "Format NVM";
-		case NVME_ADMIN_CMD_SECURITY_SEND:	return "Security Send";
-		case NVME_ADMIN_CMD_SECURITY_RECV:	return "Security Receive";
-		case NVME_ADMIN_CMD_SANITIZE:	return "Sanitize";
-		}
-	} else {
-		switch (opcode) {
-		case NVME_CMD_FLUSH:		return "Flush";
-		case NVME_CMD_WRITE:		return "Write";
-		case NVME_CMD_READ:		return "Read";
-		case NVME_CMD_WRITE_UNCOR:	return "Write Uncorrectable";
-		case NVME_CMD_COMPARE:		return "Compare";
-		case NVME_CMD_WRITE_ZEROS:	return "Write Zeroes";
-		case NVME_CMD_DATA_SET_MANAGEMENT:		return "Dataset Management";
-		case NVME_CMD_RESERVATION_REGISTER:	return "Reservation Register";
-		case NVME_CMD_RESERVATION_REPORT:	return "Reservation Report";
-		case NVME_CMD_RESERVATION_ACQUIRE:	return "Reservation Acquire";
-		case NVME_CMD_RESERVATION_RELEASE:	return "Reservation Release";
-		}
-	}
+        case NVME_ADMIN_CMD_FORMAT_NVM: return "Format NVM";
+        case NVME_ADMIN_CMD_SECURITY_SEND:  return "Security Send";
+        case NVME_ADMIN_CMD_SECURITY_RECV:  return "Security Receive";
+        case NVME_ADMIN_CMD_SANITIZE:   return "Sanitize";
+        }
+    } else {
+        switch (opcode) {
+        case NVME_CMD_FLUSH:        return "Flush";
+        case NVME_CMD_WRITE:        return "Write";
+        case NVME_CMD_READ:     return "Read";
+        case NVME_CMD_WRITE_UNCOR:  return "Write Uncorrectable";
+        case NVME_CMD_COMPARE:      return "Compare";
+        case NVME_CMD_WRITE_ZEROS:  return "Write Zeroes";
+        case NVME_CMD_DATA_SET_MANAGEMENT:      return "Dataset Management";
+        case NVME_CMD_RESERVATION_REGISTER: return "Reservation Register";
+        case NVME_CMD_RESERVATION_REPORT:   return "Reservation Report";
+        case NVME_CMD_RESERVATION_ACQUIRE:  return "Reservation Acquire";
+        case NVME_CMD_RESERVATION_RELEASE:  return "Reservation Release";
+        }
+    }
 
-	return "Unknown";
+    return "Unknown";
 }
 
 int nvme_Get_SMART_Log_Page(tDevice *device, uint32_t nsid, uint8_t * pData, uint32_t dataLen)
