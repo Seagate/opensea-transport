@@ -1242,7 +1242,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             if (fd >= 0)
             {
                 close(fd);
+                eVerbosityLevels temp = d->deviceVerbosity;
                 memset(d, 0, sizeof(tDevice));
+                d->deviceVerbosity = temp;
                 d->sanity.size = ver.size;
                 d->sanity.version = ver.version;
 #if defined (DEGUG_SCAN_TIME)

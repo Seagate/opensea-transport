@@ -864,7 +864,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 {
                     cam_close_device(cam_dev);
                 }
+                eVerbosityLevels temp = d->deviceVerbosity;
                 memset(d, 0, sizeof(tDevice));
+                d->deviceVerbosity = temp;
                 d->sanity.size = ver.size;
                 d->sanity.version = ver.version;
                 returnValue = get_Device(name, d);

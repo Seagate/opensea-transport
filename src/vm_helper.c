@@ -1338,9 +1338,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             }
             memset(name, 0, sizeof(name));//clear name before reusing it
             strncpy(name, devs[driveNumber], M_Min(sizeof(name), strlen(devs[driveNumber])));
-
+            eVerbosityLevels temp = d->deviceVerbosity;
             memset(d, 0, sizeof(tDevice));
-
+            d->deviceVerbosity = temp;
             d->sanity.size = ver.size;
             d->sanity.version = ver.version;
 #if defined (DEGUG_SCAN_TIME)

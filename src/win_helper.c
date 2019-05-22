@@ -955,9 +955,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN) && (found < numberOfDevices)); driveNumber++)
         {
 #if defined (UNICODE)
-            wsprintf(deviceName, L"\\\\.\\PHYSICALDRIVE%d", driveNumber);
+            wsprintf(deviceName, L"\\\\.\\%hs%d", WIN_PHYSICAL_DRIVE, driveNumber);
 #else
-            snprintf(deviceName, sizeof(deviceName), "\\\\.\\PhysicalDrive%d", driveNumber);
+            snprintf(deviceName, sizeof(deviceName), "%s%d", WIN_PHYSICAL_DRIVE, driveNumber);
 #endif
       //lets try to open the device.
             fd = CreateFile((LPCTSTR)deviceName,
@@ -974,8 +974,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             if (fd != INVALID_HANDLE_VALUE)
             {
                 CloseHandle(fd);
-                _snprintf(name, 80, "%s%i", WIN_PHYSICAL_DRIVE, driveNumber);
-                memset(d, 0, sizeof(tDevice)); /*TODO: Fix the verbosity flag setting. */
+                snprintf(name, 80, "%s%d", WIN_PHYSICAL_DRIVE, driveNumber);
+                eVerbosityLevels temp = d->deviceVerbosity;
+                memset(d, 0, sizeof(tDevice));
+                d->deviceVerbosity = temp;
                 d->sanity.size = ver.size;
                 d->sanity.version = ver.version;
                 d->dFlags = flags;
