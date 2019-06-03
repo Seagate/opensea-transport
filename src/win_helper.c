@@ -21,7 +21,7 @@
 #include <windows.h>                // added for forced PnP rescan
 //NOTE: ARM requires 10.0.16299.0 API to get this library!
 #include <cfgmgr32.h>               // added for forced PnP rescan
-#include <WinBase.h>
+#include <winbase.h>
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 #include <ntddstor.h>
 #endif
@@ -156,6 +156,7 @@ void print_bus_type( BYTE type )
 }
 #endif
 
+#if defined(DISABLE_NVME_PASSTHROUGH)
 int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
 {
 	int ret = OS_PASSTHROUGH_FAILURE;
@@ -273,6 +274,7 @@ int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
 	return ret;
 
 }
+#endif
 
 int get_os_drive_number( char *filename )
 {
