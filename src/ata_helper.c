@@ -1113,9 +1113,9 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     {
 #ifdef _DEBUG
         printf("Quiting device discovery early for %s per DO_NOT_WAKE_DRIVE\n", device->drive_info.serialNumber);
-    	printf("Drive type: %d\n",device->drive_info.drive_type);
-    	printf("Interface type: %d\n",device->drive_info.interface_type);
-    	printf("Media type: %d\n",device->drive_info.media_type);
+        printf("Drive type: %d\n",device->drive_info.drive_type);
+        printf("Interface type: %d\n",device->drive_info.interface_type);
+        printf("Media type: %d\n",device->drive_info.media_type);
         printf("SN: %s\n",device->drive_info.serialNumber);
         printf("%s <--\n",__FUNCTION__);
 #endif
@@ -1191,7 +1191,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                     {
                         //data is valid, so figure out supported pages
                         uint8_t listLen = logBuffer[8];
-                        for (uint8_t iter = 9; iter < (listLen + 8) && iter < 512; ++iter)
+                        for (uint16_t iter = 9; iter < (uint16_t)(listLen + 8) && iter < UINT16_C(512); ++iter)
                         {
                             switch (logBuffer[iter])
                             {
@@ -1231,18 +1231,18 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                     uint64_t qword0 = M_BytesTo8ByteValue(logBuffer[7], logBuffer[6], logBuffer[5], logBuffer[4], logBuffer[3], logBuffer[2], logBuffer[1], logBuffer[0]);
                     if (qword0 & BIT63 && M_Byte2(qword0) == ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES && M_Word0(qword0) >= 0x0001)
                     {
-						uint64_t supportedCapabilities = M_BytesTo8ByteValue(logBuffer[15], logBuffer[14], logBuffer[13], logBuffer[12], logBuffer[11], logBuffer[10], logBuffer[9], logBuffer[8]);
-						if (supportedCapabilities & BIT63)
-						{
-							if (supportedCapabilities & BIT50)
-							{
-								device->drive_info.softSATFlags.dataSetManagementXLSupported = true;
-							}
-							if (supportedCapabilities & BIT48)
-							{
-								device->drive_info.softSATFlags.zeroExtSupported = true;
-							}
-						}
+                        uint64_t supportedCapabilities = M_BytesTo8ByteValue(logBuffer[15], logBuffer[14], logBuffer[13], logBuffer[12], logBuffer[11], logBuffer[10], logBuffer[9], logBuffer[8]);
+                        if (supportedCapabilities & BIT63)
+                        {
+                            if (supportedCapabilities & BIT50)
+                            {
+                                device->drive_info.softSATFlags.dataSetManagementXLSupported = true;
+                            }
+                            if (supportedCapabilities & BIT48)
+                            {
+                                device->drive_info.softSATFlags.zeroExtSupported = true;
+                            }
+                        }
                         uint64_t downloadCapabilities = M_BytesTo8ByteValue(logBuffer[23], logBuffer[22], logBuffer[21], logBuffer[20], logBuffer[19], logBuffer[18], logBuffer[17], logBuffer[16]);
                         if (downloadCapabilities & BIT63 && downloadCapabilities & BIT34)
                         {
@@ -1338,9 +1338,9 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     }
     device->drive_info.dataTransferSize = LEGACY_DRIVE_SEC_SIZE;
 #ifdef _DEBUG
-	printf("Drive type: %d\n",device->drive_info.drive_type);
-	printf("Interface type: %d\n",device->drive_info.interface_type);
-	printf("Media type: %d\n",device->drive_info.media_type);
+    printf("Drive type: %d\n",device->drive_info.drive_type);
+    printf("Interface type: %d\n",device->drive_info.interface_type);
+    printf("Media type: %d\n",device->drive_info.media_type);
     printf("SN: %s\n",device->drive_info.serialNumber);
     printf("%s <--\n",__FUNCTION__);
 #endif

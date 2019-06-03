@@ -208,7 +208,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
         if (strstr(handle,"nvme") != NULL)
         {
             device->drive_info.interface_type = NVME_INTERFACE;
-    		device->drive_info.drive_type = NVME_DRIVE;
+            device->drive_info.drive_type = NVME_DRIVE;
         }
         else //not NVMe, so we need to do some investigation of the handle. NOTE: this requires 2.6 and later kernel since it reads a link in the /sys/class/ filesystem
         {
@@ -259,7 +259,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                         //example ata device link: ../../devices/pci0000:00/0000:00:1f.2/ata8/host8/target8:0:0/8:0:0:0/scsi_generic/sg2
                         //example usb device link: ../../devices/pci0000:00/0000:00:1c.1/0000:03:00.0/usb4/4-1/4-1:1.0/host21/target21:0:0/21:0:0:0/scsi_generic/sg4
                         //example sas device link: ../../devices/pci0000:00/0000:00:1c.0/0000:02:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_generic/sg3
-    					//example firewire device link: ../../devices/pci0000:00/0000:00:1c.5/0000:04:00.0/0000:05:09.0/0000:0b:00.0/0000:0c:02.0/fw1/fw1.0/host13/target13:0:0/13:0:0:0/scsi_generic/sg3
+                        //example firewire device link: ../../devices/pci0000:00/0000:00:1c.5/0000:04:00.0/0000:05:09.0/0000:0b:00.0/0000:0c:02.0/fw1/fw1.0/host13/target13:0:0/13:0:0:0/scsi_generic/sg3
                         //example sata over sas device link: ../../devices/pci0000:00/0000:00:1c.0/0000:02:00.0/host0/port-0:1/end_device-0:1/target0:0:1/0:0:1:0/scsi_generic/sg5
                         if (strstr(inHandleLink,"ata") != 0)
                         {
@@ -275,7 +275,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             #endif
                             device->drive_info.interface_type = USB_INTERFACE;
                         }
-    					else if (strstr(inHandleLink,"fw") != 0)
+                        else if (strstr(inHandleLink,"fw") != 0)
                         {
                             #if defined (_DEBUG)
                             printf("FireWire interface!\n");
@@ -1011,13 +1011,13 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     sg_io_hdr_t io_hdr;
     uint8_t     sense_buffer[SPC3_SENSE_LEN] = { 0 };
     int         ret          = SUCCESS;
-	seatimer_t  commandTimer;
+    seatimer_t  commandTimer;
 #ifdef _DEBUG
     printf("-->%s \n",__FUNCTION__);
 #endif
 
 
-	memset(&commandTimer,0,sizeof(seatimer_t));
+    memset(&commandTimer,0,sizeof(seatimer_t));
     //int idx = 0;
     memset(sense_buffer, 0, SPC3_SENSE_LEN);
     // Start with zapping the io_hdr
@@ -1095,9 +1095,9 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     scsiIoCtx->returnStatus.ascq = 0;
     //print_io_hdr(&io_hdr);
     //printf("scsiIoCtx->device->os_info.fd = %d\n", scsiIoCtx->device->os_info.fd);
-	start_Timer(&commandTimer);
+    start_Timer(&commandTimer);
     ret = ioctl(scsiIoCtx->device->os_info.fd, SG_IO, &io_hdr);
-	stop_Timer(&commandTimer);
+    stop_Timer(&commandTimer);
     scsiIoCtx->device->os_info.last_error = errno;
     if (ret < 0)
     {
@@ -1186,7 +1186,7 @@ static int nvme_filter( const struct dirent *entry)
 //  Entry:
 //!   \param[out] numberOfDevices = integer to hold the number of devices found. 
 //!   \param[in] flags = eScanFlags based mask to let application control. 
-//!						 NOTE: currently flags param is not being used.  
+//!                      NOTE: currently flags param is not being used.  
 //!
 //  Exit:
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -1226,8 +1226,8 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 #endif
 
     *numberOfDevices = num_devs + num_nvme_devs;
-	
-	return SUCCESS;
+    
+    return SUCCESS;
 }
 
 //-----------------------------------------------------------------------------
@@ -1237,18 +1237,18 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //! \brief   Description:  Get a list of devices that the library supports. 
 //!                        Use get_Device_Count to figure out how much memory is
 //!                        needed to be allocated for the device list. The memory 
-//!						   allocated must be the multiple of device structure. 
-//!						   The application can pass in less memory than needed 
-//!						   for all devices in the system, in which case the library 
+//!                        allocated must be the multiple of device structure. 
+//!                        The application can pass in less memory than needed 
+//!                        for all devices in the system, in which case the library 
 //!                        will fill the provided memory with how ever many device 
-//!						   structures it can hold. 
+//!                        structures it can hold. 
 //  Entry:
 //!   \param[out] ptrToDeviceList = pointer to the allocated memory for the device list
 //!   \param[in]  sizeInBytes = size of the entire list in bytes. 
 //!   \param[in]  versionBlock = versionBlock structure filled in by application for 
-//!								 sanity check by library. 
+//!                              sanity check by library. 
 //!   \param[in] flags = eScanFlags based mask to let application control. 
-//!						 NOTE: currently flags param is not being used.  
+//!                      NOTE: currently flags param is not being used.  
 //!
 //  Exit:
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -1256,12 +1256,12 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //-----------------------------------------------------------------------------
 int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
 {
-	int returnValue = SUCCESS;
-	int numberOfDevices = 0;
+    int returnValue = SUCCESS;
+    int numberOfDevices = 0;
     int driveNumber = 0, found = 0, failedGetDeviceCount = 0;
-	char name[128] = { 0 }; //Because get device needs char
-	int fd;
-	tDevice * d = NULL;
+    char name[128] = { 0 }; //Because get device needs char
+    int fd;
+    tDevice * d = NULL;
     struct nvme_adapter_list nvmeAdptList;
     int rc;
 #if defined (DEGUG_SCAN_TIME)
@@ -1272,7 +1272,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 #endif
     struct dirent **namelist;
 
-	int  num_sg_devs = 0, num_sd_devs = 0, num_nvme_devs = 0;
+    int  num_sg_devs = 0, num_sd_devs = 0, num_nvme_devs = 0;
 
     num_sg_devs = scandir("/dev/disks", &namelist, drive_filter, alphasort); 
     if(num_sg_devs == 0)
@@ -1314,33 +1314,33 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
 
 
-	//TODO: Check if sizeInBytes is a multiple of 
-	if (!(ptrToDeviceList) || (!sizeInBytes))
-	{
-		returnValue = BAD_PARAMETER;
-	}
+    //TODO: Check if sizeInBytes is a multiple of 
+    if (!(ptrToDeviceList) || (!sizeInBytes))
+    {
+        returnValue = BAD_PARAMETER;
+    }
     else if ((!(validate_Device_Struct(ver))))
     {
         returnValue = LIBRARY_MISMATCH;
     }
-	else
-	{
-		numberOfDevices = sizeInBytes / sizeof(tDevice);
-		d = ptrToDeviceList;
+    else
+    {
+        numberOfDevices = sizeInBytes / sizeof(tDevice);
+        d = ptrToDeviceList;
 #if defined (DEGUG_SCAN_TIME)
         start_Timer(&getDeviceListTimer);
 #endif
-		for (driveNumber = 0; ((driveNumber < MAX_DEVICES_PER_CONTROLLER && driveNumber < (num_sg_devs + num_sd_devs + num_nvme_devs)) || (found < numberOfDevices)); driveNumber++)
-		{
-    		if(strlen(devs[driveNumber]) == 0)
-    		{
-        	    continue;
-    		}
-    		memset(name, 0, sizeof(name));//clear name before reusing it
-		    strncpy(name, devs[driveNumber], M_Min(sizeof(name), strlen(devs[driveNumber])));
-
+        for (driveNumber = 0; ((driveNumber < MAX_DEVICES_PER_CONTROLLER && driveNumber < (num_sg_devs + num_sd_devs + num_nvme_devs)) || (found < numberOfDevices)); driveNumber++)
+        {
+            if(strlen(devs[driveNumber]) == 0)
+            {
+                continue;
+            }
+            memset(name, 0, sizeof(name));//clear name before reusing it
+            strncpy(name, devs[driveNumber], M_Min(sizeof(name), strlen(devs[driveNumber])));
+            eVerbosityLevels temp = d->deviceVerbosity;
             memset(d, 0, sizeof(tDevice));
-
+            d->deviceVerbosity = temp;
             d->sanity.size = ver.size;
             d->sanity.version = ver.version;
 #if defined (DEGUG_SCAN_TIME)
@@ -1360,7 +1360,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             }
             found++;
             d++;
-		}
+        }
 #if defined (DEGUG_SCAN_TIME)
         stop_Timer(&getDeviceListTimer);
         printf("Time to get all device = %fms\n", get_Milli_Seconds(getDeviceListTimer));
@@ -1373,9 +1373,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
-	}
+    }
     safe_Free(devs);
-	return returnValue;
+    return returnValue;
 }
 
 //-----------------------------------------------------------------------------
@@ -1393,18 +1393,18 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 //-----------------------------------------------------------------------------
 int close_Device(tDevice *dev)
 {
-	int retValue = 0;
-	if (dev)
-	{
-		Nvme_Close(dev->os_info.nvmeFd);
-		dev->os_info.last_error = errno;
+    int retValue = 0;
+    if (dev)
+    {
+        Nvme_Close(dev->os_info.nvmeFd);
+        dev->os_info.last_error = errno;
 
         return SUCCESS;
-	}
-	else
-	{
-		return MEMORY_FAILURE;
-	}
+    }
+    else
+    {
+        return MEMORY_FAILURE;
+    }
 }
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)

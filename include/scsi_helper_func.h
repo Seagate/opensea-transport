@@ -114,34 +114,34 @@ extern "C"
     OPENSEA_TRANSPORT_API void get_Sense_Key_ASC_ASCQ_FRU(uint8_t *pbuf, uint32_t pbufSize, uint8_t *senseKey, uint8_t *asc, uint8_t *ascq, uint8_t *fru);
 
 
-	OPENSEA_TRANSPORT_API void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseDataFields senseFields);
+    OPENSEA_TRANSPORT_API void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseDataFields senseFields);
 
-	OPENSEA_TRANSPORT_API void print_Sense_Fields(ptrSenseDataFields senseFields);
+    OPENSEA_TRANSPORT_API void print_Sense_Fields(ptrSenseDataFields senseFields);
 
-	//-----------------------------------------------------------------------------
-	//
-	//  get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp)
-	//
-	//! \brief   Description:  Will get the sense key specific information from a sense data buffer if one is available.
-	//
-	//  Entry:
-	//!   \param ptrSenseData - pointer to the sense buffer to analyze
-	//!   \param senseDataLength - size of the sense buffer pointed to by ptrSenseData
-	//!   \param sksp - pointer to the structure that will hold the returned data. check the valid bit to make sure something was filled in, use the type to parse the info out correctly
-	//!
-	//  Exit:
-	//!   \return none
-	//
-	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API void get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp);
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp)
+    //
+    //! \brief   Description:  Will get the sense key specific information from a sense data buffer if one is available.
+    //
+    //  Entry:
+    //!   \param ptrSenseData - pointer to the sense buffer to analyze
+    //!   \param senseDataLength - size of the sense buffer pointed to by ptrSenseData
+    //!   \param sksp - pointer to the structure that will hold the returned data. check the valid bit to make sure something was filled in, use the type to parse the info out correctly
+    //!
+    //  Exit:
+    //!   \return none
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API void get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp);
 
-	OPENSEA_TRANSPORT_API void get_Information_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *valid, uint64_t *information);
+    OPENSEA_TRANSPORT_API void get_Information_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *valid, uint64_t *information);
 
-	OPENSEA_TRANSPORT_API void get_Illegal_Length_Indicator_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *illegalLengthIndicator);
+    OPENSEA_TRANSPORT_API void get_Illegal_Length_Indicator_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *illegalLengthIndicator);
 
-	OPENSEA_TRANSPORT_API void get_Stream_Command_Bits_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *filemark, bool *endOfMedia, bool *illegalLengthIndicator);
+    OPENSEA_TRANSPORT_API void get_Stream_Command_Bits_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *filemark, bool *endOfMedia, bool *illegalLengthIndicator);
 
-	OPENSEA_TRANSPORT_API void get_Command_Specific_Information_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, uint64_t *commandSpecificInformation);
+    OPENSEA_TRANSPORT_API void get_Command_Specific_Information_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, uint64_t *commandSpecificInformation);
     //-----------------------------------------------------------------------------
     //
     //  uint16_t get_Returned_Sense_Data_Length(uint8_t *pbuf)

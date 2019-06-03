@@ -94,8 +94,8 @@ extern "C"
         SENSE_DESCRIPTOR_USER_DATA_SEGMENT_REFERRAL         = 0x0B,
         SENSE_DESCRIPTOR_FORWAREDED_SENSE_DATA              = 0x0C,
         SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE         = 0x0D,
-		SENSE_DESCRIPTOR_DEVICE_DESIGNATION					= 0x0E,
-		SENSE_DESCRIPTOR_MICROCODE_ACTIVATION				= 0x0F,
+        SENSE_DESCRIPTOR_DEVICE_DESIGNATION                 = 0x0E,
+        SENSE_DESCRIPTOR_MICROCODE_ACTIVATION               = 0x0F,
         //0x10 - 0x7F are reserved
         //0x80 - 0xFF are vendor specific
     }eSenseDescriptorType;
@@ -112,61 +112,61 @@ extern "C"
     #define SCSI_MAX_32_LBA UINT32_MAX
     #define SCSI_MAX_64_LBA UINT64_MAX
 
-	typedef enum _eSenseKeySpecificType
-	{
-		SENSE_KEY_SPECIFIC_UNKNOWN,
-		SENSE_KEY_SPECIFIC_FIELD_POINTER,
-		SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT,
-		SENSE_KEY_SPECIFIC_PROGRESS_INDICATION,
-		SENSE_KEY_SPECIFIC_SEGMENT_POINTER,
-		SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW
-	}eSenseKeySpecificType;
+    typedef enum _eSenseKeySpecificType
+    {
+        SENSE_KEY_SPECIFIC_UNKNOWN,
+        SENSE_KEY_SPECIFIC_FIELD_POINTER,
+        SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT,
+        SENSE_KEY_SPECIFIC_PROGRESS_INDICATION,
+        SENSE_KEY_SPECIFIC_SEGMENT_POINTER,
+        SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW
+    }eSenseKeySpecificType;
 
-	typedef struct _senseKeySpecificFieldPointer
-	{
-		bool cdbOrData;//true = cdb, false = data
-		bool bitPointerValid;
-		uint8_t bitPointer;
-		uint16_t fieldPointer;
-	}senseKeySpecificFieldPointer;
+    typedef struct _senseKeySpecificFieldPointer
+    {
+        bool cdbOrData;//true = cdb, false = data
+        bool bitPointerValid;
+        uint8_t bitPointer;
+        uint16_t fieldPointer;
+    }senseKeySpecificFieldPointer;
 
-	typedef struct _senseKeySpecificActualRetryCount
-	{
-		uint16_t actualRetryCount;
-	}senseKeySpecificActualRetryCount;
+    typedef struct _senseKeySpecificActualRetryCount
+    {
+        uint16_t actualRetryCount;
+    }senseKeySpecificActualRetryCount;
 
-	typedef struct _senseKeySpecificProgressIndication
-	{
-		uint16_t progressIndication;
-	}senseKeySpecificProgressIndication;
+    typedef struct _senseKeySpecificProgressIndication
+    {
+        uint16_t progressIndication;
+    }senseKeySpecificProgressIndication;
 
-	typedef struct _senseKeySpecificSegmentPointer
-	{
-		bool segmentDescriptor;
-		bool bitPointerValid;
-		uint8_t bitPointer;
-		uint16_t fieldPointer;
-	}senseKeySpecificSegmentPointer;
+    typedef struct _senseKeySpecificSegmentPointer
+    {
+        bool segmentDescriptor;
+        bool bitPointerValid;
+        uint8_t bitPointer;
+        uint16_t fieldPointer;
+    }senseKeySpecificSegmentPointer;
 
-	typedef struct _senseKeySpecificUnitAttentionQueueOverflow
-	{
-		bool overflow;
-	}senseKeySpecificUnitAttentionQueueOverflow;
+    typedef struct _senseKeySpecificUnitAttentionQueueOverflow
+    {
+        bool overflow;
+    }senseKeySpecificUnitAttentionQueueOverflow;
 
-	typedef struct _senseKeySpecific
-	{
-		bool senseKeySpecificValid; //Will be set when the sense data contains sense key specific information
-		eSenseKeySpecificType type; //use this to parse the correct structure from the union below.
-		union
-		{
-			uint8_t unknownDataType[3];
-			senseKeySpecificFieldPointer field;
-			senseKeySpecificActualRetryCount retryCount;
-			senseKeySpecificProgressIndication progress;
-			senseKeySpecificSegmentPointer segment;
-			senseKeySpecificUnitAttentionQueueOverflow unitAttention;
-		};
-	}senseKeySpecific, *ptrSenseKeySpecific;
+    typedef struct _senseKeySpecific
+    {
+        bool senseKeySpecificValid; //Will be set when the sense data contains sense key specific information
+        eSenseKeySpecificType type; //use this to parse the correct structure from the union below.
+        union
+        {
+            uint8_t unknownDataType[3];
+            senseKeySpecificFieldPointer field;
+            senseKeySpecificActualRetryCount retryCount;
+            senseKeySpecificProgressIndication progress;
+            senseKeySpecificSegmentPointer segment;
+            senseKeySpecificUnitAttentionQueueOverflow unitAttention;
+        };
+    }senseKeySpecific, *ptrSenseKeySpecific;
 
 // \struct scsiStatus
 // \param senseKey
@@ -181,66 +181,66 @@ extern "C"
         uint8_t         fru;
     } scsiStatus;
 
-	#define MAX_PROGRESS_INDICATION_DESCRIPTORS UINT8_C(32)
-	#define MAX_FORWARDED_SENSE_DATA_DESCRIPTORS UINT8_C(2)
+    #define MAX_PROGRESS_INDICATION_DESCRIPTORS UINT8_C(32)
+    #define MAX_FORWARDED_SENSE_DATA_DESCRIPTORS UINT8_C(2)
 
-	typedef struct _senseDataFields
-	{
-		bool validStructure;//Set to true if the rest of this structure was able to be parsed/filled in. This will only be false if we do not get 70h - 73h response codes
-		bool fixedFormat;//This will tell you if some fields, like information and command-specific information, are limited to 32bits or not
-		bool deferredError;//Set to true for response codes 71h & 73h
-		scsiStatus scsiStatusCodes;//sense key, asc, ascq, fru
-		bool senseDataOverflow;//gets set if the sense buffer is not big enough to return all necessary fields of the sense data. Request sense command is needed to get all the data.
-		bool valid;//valid bit. Used to know when the information field contains valid information
-		bool filemark;//filemark bit is set (stream commands)
-		bool endOfMedia;//end of media bit is set (stream commands)
-		bool illegalLengthIndication;//illegal length indicator bit is set (stream commands or read/write long SBC commands)
-		union {
-			uint32_t fixedInformation;
-			uint64_t descriptorInformation;
-		};
-		union {
-			uint32_t fixedCommandSpecificInformation;
-			uint64_t descriptorCommandSpecificInformation;
-		};
-		senseKeySpecific senseKeySpecificInformation;
-		//bools below can be used to know if other fields that are only available in some cases/commands are found. 
-		//If so, the caller can interpret these themselves. 
-		//We'll supply the offset in the sense data for them.
-		//The offset myst be > 7 to be valid.
-		uint8_t osdObjectIdentificationDescriptorOffset;
-		uint8_t osdResponseIntegrityCheckValueDescriptorOffset;
-		uint8_t osdAttributeIdentificationDescriptorOffset;
-		struct _ataStatusReturnDescriptor
-		{
-			bool valid;//must be set for this data to be valid. Means we found this in the sense data.
-			bool extend;
-			uint8_t error;
-			uint8_t sectorCountExt;
-			uint8_t sectorCount;
-			uint8_t lbaLowExt;
-			uint8_t lbaLow;
-			uint8_t lbaMidExt;
-			uint8_t lbaMid;
-			uint8_t lbaHiExt;
-			uint8_t lbaHi;
-			uint8_t device;
-			uint8_t status;
-		}ataStatusReturnDescriptor;
-		uint8_t anotherProgressIndicationDescriptorOffset[MAX_PROGRESS_INDICATION_DESCRIPTORS];
-		uint8_t userDataSegmentReferralDescriptorOffset;
-		uint8_t forwardedSenseDataDescriptorOffset[MAX_FORWARDED_SENSE_DATA_DESCRIPTORS];
-		uint8_t deviceDesignationDescriptorOffset;
-		struct _microCodeActivation
-		{
-			bool valid;
-			uint16_t microcodeActivationTimeSeconds;
-		}microCodeActivation;
-		//This will be set to true for any descriptors that could not be parsed (vendor unique or not part of the above output) or if the additional sense bytes field of fixed format is non-zero
-		//If this happens, the caller should check the sense data buffer themselves for the additional data that they could find useful
-		bool additionalDataAvailable;
-		uint8_t additionalDataOffset;//if bool above is set, then this will be set to the offset of the additional data that couldn't be parsed
-	}senseDataFields, *ptrSenseDataFields;
+    typedef struct _senseDataFields
+    {
+        bool validStructure;//Set to true if the rest of this structure was able to be parsed/filled in. This will only be false if we do not get 70h - 73h response codes
+        bool fixedFormat;//This will tell you if some fields, like information and command-specific information, are limited to 32bits or not
+        bool deferredError;//Set to true for response codes 71h & 73h
+        scsiStatus scsiStatusCodes;//sense key, asc, ascq, fru
+        bool senseDataOverflow;//gets set if the sense buffer is not big enough to return all necessary fields of the sense data. Request sense command is needed to get all the data.
+        bool valid;//valid bit. Used to know when the information field contains valid information
+        bool filemark;//filemark bit is set (stream commands)
+        bool endOfMedia;//end of media bit is set (stream commands)
+        bool illegalLengthIndication;//illegal length indicator bit is set (stream commands or read/write long SBC commands)
+        union {
+            uint32_t fixedInformation;
+            uint64_t descriptorInformation;
+        };
+        union {
+            uint32_t fixedCommandSpecificInformation;
+            uint64_t descriptorCommandSpecificInformation;
+        };
+        senseKeySpecific senseKeySpecificInformation;
+        //bools below can be used to know if other fields that are only available in some cases/commands are found. 
+        //If so, the caller can interpret these themselves. 
+        //We'll supply the offset in the sense data for them.
+        //The offset myst be > 7 to be valid.
+        uint8_t osdObjectIdentificationDescriptorOffset;
+        uint8_t osdResponseIntegrityCheckValueDescriptorOffset;
+        uint8_t osdAttributeIdentificationDescriptorOffset;
+        struct _ataStatusReturnDescriptor
+        {
+            bool valid;//must be set for this data to be valid. Means we found this in the sense data.
+            bool extend;
+            uint8_t error;
+            uint8_t sectorCountExt;
+            uint8_t sectorCount;
+            uint8_t lbaLowExt;
+            uint8_t lbaLow;
+            uint8_t lbaMidExt;
+            uint8_t lbaMid;
+            uint8_t lbaHiExt;
+            uint8_t lbaHi;
+            uint8_t device;
+            uint8_t status;
+        }ataStatusReturnDescriptor;
+        uint8_t anotherProgressIndicationDescriptorOffset[MAX_PROGRESS_INDICATION_DESCRIPTORS];
+        uint8_t userDataSegmentReferralDescriptorOffset;
+        uint8_t forwardedSenseDataDescriptorOffset[MAX_FORWARDED_SENSE_DATA_DESCRIPTORS];
+        uint8_t deviceDesignationDescriptorOffset;
+        struct _microCodeActivation
+        {
+            bool valid;
+            uint16_t microcodeActivationTimeSeconds;
+        }microCodeActivation;
+        //This will be set to true for any descriptors that could not be parsed (vendor unique or not part of the above output) or if the additional sense bytes field of fixed format is non-zero
+        //If this happens, the caller should check the sense data buffer themselves for the additional data that they could find useful
+        bool additionalDataAvailable;
+        uint8_t additionalDataOffset;//if bool above is set, then this will be set to the offset of the additional data that couldn't be parsed
+    }senseDataFields, *ptrSenseDataFields;
 
 
     typedef struct _biDirectionalCommandBuffers
@@ -383,7 +383,7 @@ extern "C"
         REPORT_LUNS_CMD                             = 0xA0,
         REPORT_PRIORITY_CMD                         = 0xA3,
         REPORT_SUPPORTED_OPERATION_CODES_CMD        = 0xA3,
-        REPORT_SUPPORTED_TASK_MANAGEMENT_FUNCS  	= 0xA3,
+        REPORT_SUPPORTED_TASK_MANAGEMENT_FUNCS      = 0xA3,
         REPORT_TARGET_PORT_GROUPS_CMD               = 0xA3,
         REQUEST_SENSE_CMD                           = 0x03,
         SANITIZE_CMD                                = 0x48,
@@ -489,7 +489,8 @@ extern "C"
         LPC_THRESHOLD_VALUES          = 0x0,
         LPC_CUMULATIVE_VALUES         = 0x1,
         LPC_DEFAULT_THRESHOLD_VALUES  = 0x2,
-        LPC_DEFAULT_CUMULATIVE_VALUES = 0x3
+        LPC_DEFAULT_CUMULATIVE_VALUES = 0x3,
+        LPC_DEFAULT_ALL_VALUES        = 0x4,
     }eScsiLogPageControl;
 
     typedef enum _eScsiModeParameters//does not do subpage codes...only page codes. Add more as needed
@@ -574,7 +575,7 @@ extern "C"
         LP_APPLICATION_CLIENT                             = 0x0F,
         LP_SELF_TEST_RESULTS                              = 0x10,
         LP_SOLID_STATE_MEDIA                              = 0x11,
-		LP_ZONED_DEVICE_STATISTICS                        = 0x14,//subpage 01
+        LP_ZONED_DEVICE_STATISTICS                        = 0x14,//subpage 01
         LP_BACKGROUND_SCAN_RESULTS                        = 0x15,
         LP_PENDING_DEFECTS                                = 0x15,
         LP_LPS_MISALLIGNMENT                              = 0x15,
@@ -655,14 +656,14 @@ extern "C"
         AD_RESERVED                                             = 0x07
     }eSCSIAddressDescriptors;
 
-	//for the report supported operations command
-	typedef enum _eSCSIReportingOptions
-	{
-		REPORT_ALL													= 0x0,
-		REPORT_OPERATION_CODE										= 0x1,
-		REPORT_OPERATION_CODE_AND_SERVICE_ACTION					= 0x2,
-		REPORT_OPERATION_CODE_AND_SERVICE_ACTION_ONE_COMMAND_FORMAT	= 0x3,
-	}eSCSIReportingOptions;
+    //for the report supported operations command
+    typedef enum _eSCSIReportingOptions
+    {
+        REPORT_ALL                                                  = 0x0,
+        REPORT_OPERATION_CODE                                       = 0x1,
+        REPORT_OPERATION_CODE_AND_SERVICE_ACTION                    = 0x2,
+        REPORT_OPERATION_CODE_AND_SERVICE_ACTION_ONE_COMMAND_FORMAT = 0x3,
+    }eSCSIReportingOptions;
 
     //for SCSI send/receive diagnostics commands
     typedef enum _eSCSIDiagnosticPages

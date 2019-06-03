@@ -25,11 +25,11 @@ extern "C"
 {
 #endif
 
-    #define COMMAND_BIT_MASK			(0x80)
+    #define COMMAND_BIT_MASK            (0x80)
     #if defined(_WIN32)
-        #define WIN_CSMI_DRIVE	"\\\\.\\SCSI"
+        #define WIN_CSMI_DRIVE  "\\\\.\\SCSI"
     #elif defined (__linux__)
-        #define LIN_CSMI_DRIVE	"/dev/hba"
+        #define LIN_CSMI_DRIVE  "/dev/hba"
     #else
         #message Unknown OS...may or may not need a device prefix.
     #endif
@@ -38,59 +38,59 @@ extern "C"
 
     typedef enum
     {
-	    FIS_TYPE_REG_H2D	= 0x27,	// Register FIS - host to device
-	    FIS_TYPE_REG_D2H	= 0x34,	// Register FIS - device to host
-	    FIS_TYPE_DMA_ACT	= 0x39,	// DMA activate FIS - device to host
-	    FIS_TYPE_DMA_SETUP	= 0x41,	// DMA setup FIS - bidirectional
-	    FIS_TYPE_DATA		= 0x46,	// Data FIS - bidirectional
-	    FIS_TYPE_BIST		= 0x58,	// BIST activate FIS - bidirectional
-	    FIS_TYPE_PIO_SETUP	= 0x5F,	// PIO setup FIS - device to host
-	    FIS_TYPE_DEV_BITS	= 0xA1,	// Set device bits FIS - device to host
-	    FIS_TYPE_RES_FUT1	= 0xA6,	// Reserved
-	    FIS_TYPE_RES_FUT2	= 0xB8,	// Reserved
-	    FIS_TYPE_RES_FUT3	= 0xBF,	// Reserved
-	    FIS_TYPE_VEN_UNQ1	= 0xC7,	// Vendor Specific 
-	    FIS_TYPE_VEN_UNQ2	= 0xD4,	// Vendor Specific 
-	    FIS_TYPE_RES_FUT4	= 0xD9	// Reserved.
+        FIS_TYPE_REG_H2D    = 0x27, // Register FIS - host to device
+        FIS_TYPE_REG_D2H    = 0x34, // Register FIS - device to host
+        FIS_TYPE_DMA_ACT    = 0x39, // DMA activate FIS - device to host
+        FIS_TYPE_DMA_SETUP  = 0x41, // DMA setup FIS - bidirectional
+        FIS_TYPE_DATA       = 0x46, // Data FIS - bidirectional
+        FIS_TYPE_BIST       = 0x58, // BIST activate FIS - bidirectional
+        FIS_TYPE_PIO_SETUP  = 0x5F, // PIO setup FIS - device to host
+        FIS_TYPE_DEV_BITS   = 0xA1, // Set device bits FIS - device to host
+        FIS_TYPE_RES_FUT1   = 0xA6, // Reserved
+        FIS_TYPE_RES_FUT2   = 0xB8, // Reserved
+        FIS_TYPE_RES_FUT3   = 0xBF, // Reserved
+        FIS_TYPE_VEN_UNQ1   = 0xC7, // Vendor Specific 
+        FIS_TYPE_VEN_UNQ2   = 0xD4, // Vendor Specific 
+        FIS_TYPE_RES_FUT4   = 0xD9  // Reserved.
     } FIS_TYPE;
 
     #pragma pack(push, 1)
     typedef struct _FIS_REG_H2D
     {
-	    // DWORD 0
-	    uint8_t	fisType;            // FIS_TYPE_REG_H2D
+        // DWORD 0
+        uint8_t fisType;            // FIS_TYPE_REG_H2D
  
         union {
-            uint8_t	byte1;          //Bit field below for CRRR_PM_Port bits...this SHOULD be ok, but do not rely on the compiler to handle your bit field correctly! they can order them differently! - TJE
+            uint8_t byte1;          //Bit field below for CRRR_PM_Port bits...this SHOULD be ok, but do not rely on the compiler to handle your bit field correctly! they can order them differently! - TJE
             struct {
-                uint8_t	pmport:4;   // Port multiplier
-                uint8_t	rsv0 : 3;   // Reserved
-                uint8_t	c : 1;      // 1: Command, 0: Control
+                uint8_t pmport:4;   // Port multiplier
+                uint8_t rsv0 : 3;   // Reserved
+                uint8_t c : 1;      // 1: Command, 0: Control
             }crrr_port;
         };
  
-        uint8_t	command;            // Command register
-        uint8_t	feature;            // Feature register, 7:0
+        uint8_t command;            // Command register
+        uint8_t feature;            // Feature register, 7:0
  
-	    // DWORD 1
-        uint8_t	lbaLow;             // LBA low register, 7:0
-        uint8_t	lbaMid;             // LBA mid register, 15:8
-        uint8_t	lbaHi;              // LBA high register, 23:16
-        uint8_t	device;             // Device register
+        // DWORD 1
+        uint8_t lbaLow;             // LBA low register, 7:0
+        uint8_t lbaMid;             // LBA mid register, 15:8
+        uint8_t lbaHi;              // LBA high register, 23:16
+        uint8_t device;             // Device register
  
-	    // DWORD 2
-        uint8_t	lbaLowExt;          // LBA register, 31:24
-        uint8_t	lbaMidExt;          // LBA register, 39:32
-        uint8_t	lbaHiExt;           // LBA register, 47:40
-        uint8_t	featureExt;         // Feature register, 15:8
+        // DWORD 2
+        uint8_t lbaLowExt;          // LBA register, 31:24
+        uint8_t lbaMidExt;          // LBA register, 39:32
+        uint8_t lbaHiExt;           // LBA register, 47:40
+        uint8_t featureExt;         // Feature register, 15:8
  
-	    // DWORD 3
-        uint8_t	sectorCount;        // Count register, 7:0
-        uint8_t	sectorCountExt;     // Count register, 15:8
-        uint8_t	icc;                // Isochronous command completion
-        uint8_t	control;            // Control register
+        // DWORD 3
+        uint8_t sectorCount;        // Count register, 7:0
+        uint8_t sectorCountExt;     // Count register, 15:8
+        uint8_t icc;                // Isochronous command completion
+        uint8_t control;            // Control register
  
-	    // DWORD 4
+        // DWORD 4
         uint8_t aux1;               //auxilary (7:0)
         uint8_t aux2;               //auxilary (15:8)
         uint8_t aux3;               //auxilary (23:16)
@@ -100,88 +100,88 @@ extern "C"
     typedef struct _FIS_REG_D2H
     {
         // DWORD 0
-        uint8_t	fisType;            // FIS_TYPE_REG_D2H = 34h
+        uint8_t fisType;            // FIS_TYPE_REG_D2H = 34h
 
         union {
-            uint8_t	byte1;          //Bit field below for CRRR_PM_Port bits...this SHOULD be ok, but do not rely on the compiler to handle your bit field correctly! they can order them differently! - TJE
+            uint8_t byte1;          //Bit field below for CRRR_PM_Port bits...this SHOULD be ok, but do not rely on the compiler to handle your bit field correctly! they can order them differently! - TJE
             struct {
-                uint8_t	pmport : 4;   // Port multiplier
-                uint8_t	rsv0 : 2;   // Reserved
+                uint8_t pmport : 4;   // Port multiplier
+                uint8_t rsv0 : 2;   // Reserved
                 uint8_t interupt : 1; //interupt bit
-                uint8_t	rsv1 : 1;      // Reserved
+                uint8_t rsv1 : 1;      // Reserved
             }rirr_port;
         };
 
-        uint8_t	status;             // status register
-        uint8_t	error;              // error register
+        uint8_t status;             // status register
+        uint8_t error;              // error register
 
         // DWORD 1
-        uint8_t	lbaLow;             // LBA low register, 7:0
-        uint8_t	lbaMid;             // LBA mid register, 15:8
-        uint8_t	lbaHi;              // LBA high register, 23:16
-        uint8_t	device;             // Device register
+        uint8_t lbaLow;             // LBA low register, 7:0
+        uint8_t lbaMid;             // LBA mid register, 15:8
+        uint8_t lbaHi;              // LBA high register, 23:16
+        uint8_t device;             // Device register
 
         // DWORD 2
-        uint8_t	lbaLowExt;          // LBA register, 31:24
-        uint8_t	lbaMidExt;          // LBA register, 39:32
-        uint8_t	lbaHiExt;           // LBA register, 47:40
-        uint8_t	reserved0;          // reserved
+        uint8_t lbaLowExt;          // LBA register, 31:24
+        uint8_t lbaMidExt;          // LBA register, 39:32
+        uint8_t lbaHiExt;           // LBA register, 47:40
+        uint8_t reserved0;          // reserved
 
         // DWORD 3
-        uint8_t	sectorCount;        // Count register, 7:0
-        uint8_t	sectorCountExt;     // Count register, 15:8
-        uint8_t	reserved1;          // reserved
-        uint8_t	reserved2;          // reserved
+        uint8_t sectorCount;        // Count register, 7:0
+        uint8_t sectorCountExt;     // Count register, 15:8
+        uint8_t reserved1;          // reserved
+        uint8_t reserved2;          // reserved
 
         // DWORD 4
-        uint8_t	reserved3;          // reserved
-        uint8_t	reserved4;          // reserved
-        uint8_t	reserved5;          // reserved
-        uint8_t	reserved6;          // reserved
+        uint8_t reserved3;          // reserved
+        uint8_t reserved4;          // reserved
+        uint8_t reserved5;          // reserved
+        uint8_t reserved6;          // reserved
     }FIS_REG_D2H, *pFIS_REG_D2H;
 
     typedef struct _FIS_REG_PIO_SETUP
     {
         // DWORD 0
-        uint8_t	fisType;            // FIS_TYPE_REG_D2H = 5Fh
+        uint8_t fisType;            // FIS_TYPE_REG_D2H = 5Fh
 
         union {
-            uint8_t	byte1;          //Bit field below for CRRR_PM_Port bits...this SHOULD be ok, but do not rely on the compiler to handle your bit field correctly! they can order them differently! - TJE
+            uint8_t byte1;          //Bit field below for CRRR_PM_Port bits...this SHOULD be ok, but do not rely on the compiler to handle your bit field correctly! they can order them differently! - TJE
             struct {
-                uint8_t	pmport : 4;   // Port multiplier
-                uint8_t	rsv0 : 1;   // Reserved
+                uint8_t pmport : 4;   // Port multiplier
+                uint8_t rsv0 : 1;   // Reserved
                 uint8_t dataDir : 1; //1 = D2H, 0 = H2D
                 uint8_t interupt : 1; //interupt bit
-                uint8_t	rsv1 : 1;      // Reserved
+                uint8_t rsv1 : 1;      // Reserved
             }ridr_port;
         };
 
-        uint8_t	status;             // status register
-        uint8_t	error;              // error register
+        uint8_t status;             // status register
+        uint8_t error;              // error register
 
         // DWORD 1
-        uint8_t	lbaLow;             // LBA low register, 7:0
-        uint8_t	lbaMid;             // LBA mid register, 15:8
-        uint8_t	lbaHi;              // LBA high register, 23:16
-        uint8_t	device;             // Device register
+        uint8_t lbaLow;             // LBA low register, 7:0
+        uint8_t lbaMid;             // LBA mid register, 15:8
+        uint8_t lbaHi;              // LBA high register, 23:16
+        uint8_t device;             // Device register
 
         // DWORD 2
-        uint8_t	lbaLowExt;          // LBA register, 31:24
-        uint8_t	lbaMidExt;          // LBA register, 39:32
-        uint8_t	lbaHiExt;           // LBA register, 47:40
-        uint8_t	reserved0;          // reserved
+        uint8_t lbaLowExt;          // LBA register, 31:24
+        uint8_t lbaMidExt;          // LBA register, 39:32
+        uint8_t lbaHiExt;           // LBA register, 47:40
+        uint8_t reserved0;          // reserved
 
         // DWORD 3
-        uint8_t	sectorCount;        // Count register, 7:0
-        uint8_t	sectorCountExt;     // Count register, 15:8
-        uint8_t	reserved1;          // reserved
-        uint8_t	eStatus;            // E_Status a.k.a. ending status register.
+        uint8_t sectorCount;        // Count register, 7:0
+        uint8_t sectorCountExt;     // Count register, 15:8
+        uint8_t reserved1;          // reserved
+        uint8_t eStatus;            // E_Status a.k.a. ending status register.
 
         // DWORD 4
-        uint8_t	transferCount;      // transfer count 7:0
-        uint8_t	transferCountHi;    // transfer count 15:8
-        uint8_t	reserved2;          // reserved
-        uint8_t	reserved3;          // reserved
+        uint8_t transferCount;      // transfer count 7:0
+        uint8_t transferCountHi;    // transfer count 15:8
+        uint8_t reserved2;          // reserved
+        uint8_t reserved3;          // reserved
     }FIS_REG_PIO_SETUP, *pFIS_REG_PIO_SETUP;
     #pragma pack(pop)
 

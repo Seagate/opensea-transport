@@ -82,7 +82,7 @@ extern "C"
     #include "nvme_helper.h"
 #endif
 
-#define SG_PHYSICAL_DRIVE	"/dev/sg" //followed by a number
+#define SG_PHYSICAL_DRIVE   "/dev/sg" //followed by a number
 #define SD_PHYSICAL_DRIVE   "/dev/sd" //followed by a letter
 #define BSG_PHYSICAL_DRIVE  "/dev/bsg/" //remaining part of the handle is h:c:t:l
 

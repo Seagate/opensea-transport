@@ -170,7 +170,7 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
         rtfr->device = ptrSenseData[5];
         rtfr->secCnt = ptrSenseData[6];
         //from fixed format command specific information field
-		rtfr->lbaHi = ptrSenseData[9];
+        rtfr->lbaHi = ptrSenseData[9];
         rtfr->lbaMid = ptrSenseData[10];
         rtfr->lbaLow = ptrSenseData[11];
         //now set the ext registers based on the boolean flags above
@@ -778,7 +778,7 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
         ataCommandOptions->ptrSenseData = senseData;
         ataCommandOptions->senseDataSize = SPC3_SENSE_LEN;
     }
-	ataCommandOptions->timeout = M_Max(ataCommandOptions->timeout, device->drive_info.defaultTimeoutSeconds);
+    ataCommandOptions->timeout = M_Max(ataCommandOptions->timeout, device->drive_info.defaultTimeoutSeconds);
     if (ataCommandOptions->timeout == 0)
     {
         ataCommandOptions->timeout = M_Max(15, device->drive_info.defaultTimeoutSeconds);
@@ -1079,20 +1079,20 @@ void set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLength,
         {
             //loop through descriptor copying each one to the sense data buffer
             uint8_t senseDataOffset = 8, descriptorLength = 0, counter = 0;
-			uint32_t descriptorOffset = 0;
-			while (counter < descriptorCount)
-			{
-				descriptorLength = descriptor[descriptorOffset + 1] + 1;
-				memcpy(&senseData[senseDataOffset], descriptor, descriptorLength);
-				additionalSenseLength += descriptorLength;
-				++counter;
-				descriptorOffset += descriptorLength;
-				senseDataOffset += descriptorLength;
-				if (descriptor[descriptorOffset] == 9)
-				{
-					descriptorOffset += 1;//adding 1 since we put the log index in one extra byte, which is non standard and not part of the actual descriptor. This handles going on to the next descriptor in the list properly. We don't return this byte in the descriptor anyways
-				}
-			}
+            uint32_t descriptorOffset = 0;
+            while (counter < descriptorCount)
+            {
+                descriptorLength = descriptor[descriptorOffset + 1] + 1;
+                memcpy(&senseData[senseDataOffset], descriptor, descriptorLength);
+                additionalSenseLength += descriptorLength;
+                ++counter;
+                descriptorOffset += descriptorLength;
+                senseDataOffset += descriptorLength;
+                if (descriptor[descriptorOffset] == 9)
+                {
+                    descriptorOffset += 1;//adding 1 since we put the log index in one extra byte, which is non standard and not part of the actual descriptor. This handles going on to the next descriptor in the list properly. We don't return this byte in the descriptor anyways
+                }
+            }
         }
         //set the additional sense length
         senseData[7] = additionalSenseLength;
@@ -1111,168 +1111,168 @@ void set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLength,
         senseData[7] = additionalSenseLength;
         if (descriptor)
         {
-			uint8_t senseDataOffset = 8, descriptorLength = 0, counter = 0;
-			uint32_t descriptorOffset = 0;
-			while (counter < descriptorCount)
-			{
-				uint8_t descriptorType = descriptor[0];
-				descriptorLength = descriptor[descriptorCount] + 1;
-				switch (descriptorType)
-				{
-				case 0://information
-				{
-					if (descriptor[descriptorOffset + 2] & BIT7)
-					{
-						senseData[0] |= BIT7;//set the valid bit
-					}
-					uint64_t descriptorInformation = M_BytesTo8ByteValue(&descriptor[descriptorOffset + 4], &descriptor[descriptorOffset + 5], &descriptor[descriptorOffset + 6], &descriptor[descriptorOffset + 7], &descriptor[descriptorOffset + 8], &descriptor[descriptorOffset + 9], &descriptor[descriptorOffset + 10], &descriptor[descriptorOffset + 11]);
-					if (descriptorInformation > UINT32_MAX)
-					{
-						memset(&senseData[3], UINT8_MAX, 4);
-					}
-					else
-					{
-						//copy lowest 4 bytes
-						memcpy(&senseData[3], &descriptor[descriptorOffset + 8], 4);
-					}
-				}
-					break;
-				case 1://command specific information
-				{
-					uint64_t descriptorCmdInformation = M_BytesTo8ByteValue(&descriptor[descriptorOffset + 4], &descriptor[descriptorOffset + 5], &descriptor[descriptorOffset + 6], &descriptor[descriptorOffset + 7], &descriptor[descriptorOffset + 8], &descriptor[descriptorOffset + 9], &descriptor[descriptorOffset + 10], &descriptor[descriptorOffset + 11]);
-					if (descriptorCmdInformation > UINT32_MAX)
-					{
-						memset(&senseData[8], UINT8_MAX, 4);
-					}
-					else
-					{
-						//copy lowest 4 bytes
-						memcpy(&senseData[8], &descriptor[descriptorOffset + 8], 4);
-					}
-				}
-					break;
-				case 2://sense key specific
-					//bytes 4, 5 , and 6
-					memcpy(&senseData[15], &descriptor[descriptorOffset + 4], 3);
-					break;
-				case 3://FRU
-					senseData[14] = descriptor[descriptorOffset + 3];
-					break;
-				case 4://Stream Commands
-					if (descriptor[descriptorOffset + 3] & BIT7)
-					{
-						//set filemark bit
-						senseData[2] |= BIT7;
-					}
-					if (descriptor[descriptorOffset + 3] & BIT6)
-					{
-						//set end of media bit
-						senseData[2] |= BIT6;
-					}
-					if (descriptor[descriptorOffset + 3] & BIT5)
-					{
-						//set illegal length indicator bit
-						senseData[2] |= BIT5;
-					}
-					break;
-				case 5://Block Commands
-					if (descriptor[descriptorOffset + 3] & BIT5)
-					{
-						//set illegal length indicator bit
-						senseData[2] |= BIT5;
-					}
-					break;
-				case 6://OSD Object Identification
-				case 7://OSD Response Integrity Value
-				case 8://OSD Attribute identification
-					//can't handle this type
-					break;
-				case 9://ATA Status return
-					senseData[0] |= BIT7;//set the valid bit since we are filling in the information field
-					//parse out the registers as best we can
-					//information offsets bytes 3-7
-					senseData[3] = descriptor[descriptorOffset + 3];//error
-					senseData[4] = descriptor[descriptorOffset + 13];//status
-					senseData[5] = descriptor[descriptorOffset + 12];//device
-					senseData[6] = descriptor[descriptorOffset + 5];//count 7:0
-					//command specific information bytes 8-11
-					if (descriptor[descriptorOffset + 2] & BIT0)
-					{
-						//extend bit set from issuing an extended command
-						senseData[8] |= BIT7;
-					}
-					if (descriptor[descriptorOffset + 10] || descriptor[descriptorOffset + 8] || descriptor[descriptorOffset + 6])
-					{
-						//set uppder LBA non-zero bit
-						senseData[8] |= BIT5;
-					}
-					if (descriptor[descriptorOffset + 4])
-					{
-						//set sector count 15:8 non-zero bit
-						senseData[8] |= BIT6;
-					}
-					senseData[8] |= M_Nibble0(descriptor[descriptorOffset + 14]);//setting the log index...this offset is nonstandard, so we will need to increment the offset one before leaving this case
-					senseData[9] = descriptor[descriptorOffset + 7];//lba
-					senseData[10] = descriptor[descriptorOffset + 9];//lba
-					senseData[11] = descriptor[descriptorOffset + 11];//lba
-					descriptorOffset += 1;//setting this since we added the log index in the last byte of this descriptor to make this easier to pass around
-					break;
-				case 10://Another Progress Indication
-					//cannot handle this in fixed format
-					break;
-				case 11://User Data Segment Referral
-					//cannot handle this in fixed format
-					break;
-				case 12://Forwarded Sense data
-					//cannot handle this in fixed format
-					break;
-				case 13://Direct Access Block Device
-					if (descriptor[descriptorOffset + 2] & BIT7)
-					{
-						senseData[0] |= BIT7;//set the valid bit
-					}
-					if (descriptor[descriptorOffset + 2] & BIT5)
-					{
-						//set illegal length indicator bit
-						senseData[2] |= BIT5;
-					}
-					//bytes 4, 5 , and 6 for sense key specific information
-					memcpy(&senseData[15], &descriptor[descriptorOffset + 4], 3);
-					//fru code
-					senseData[14] = descriptor[descriptorOffset + 7];
-					{
-						//information
-						uint64_t descriptorInformation = M_BytesTo8ByteValue(&descriptor[descriptorOffset + 8], &descriptor[descriptorOffset + 9], &descriptor[descriptorOffset + 10], &descriptor[descriptorOffset + 11], &descriptor[descriptorOffset + 12], &descriptor[descriptorOffset + 13], &descriptor[descriptorOffset + 14], &descriptor[descriptorOffset + 15]);
-						if (descriptorInformation > UINT32_MAX)
-						{
-							memset(&senseData[3], UINT8_MAX, 4);
-						}
-						else
-						{
-							//copy lowest 4 bytes
-							memcpy(&senseData[3], &descriptor[descriptorOffset + 12], 4);
-						}
-						//command specific information
-						uint64_t descriptorCmdInformation = M_BytesTo8ByteValue(&descriptor[descriptorOffset + 16], &descriptor[descriptorOffset + 17], &descriptor[descriptorOffset + 18], &descriptor[descriptorOffset + 19], &descriptor[descriptorOffset + 20], &descriptor[descriptorOffset + 21], &descriptor[descriptorOffset + 22], &descriptor[descriptorOffset + 23]);
-						if (descriptorCmdInformation > UINT32_MAX)
-						{
-							memset(&senseData[8], UINT8_MAX, 4);
-						}
-						else
-						{
-							//copy lowest 4 bytes
-							memcpy(&senseData[8], &descriptor[descriptorOffset + 20], 4);
-						}
-					}
-					break;
-				default://unsupported, break
-					//can't handle this type
-					break;
-				}
-				++counter;
-				descriptorOffset += descriptorLength;
-				senseDataOffset += descriptorLength;
-			}
+            uint8_t senseDataOffset = 8, descriptorLength = 0, counter = 0;
+            uint32_t descriptorOffset = 0;
+            while (counter < descriptorCount)
+            {
+                uint8_t descriptorType = descriptor[0];
+                descriptorLength = descriptor[descriptorCount] + 1;
+                switch (descriptorType)
+                {
+                case 0://information
+                {
+                    if (descriptor[descriptorOffset + 2] & BIT7)
+                    {
+                        senseData[0] |= BIT7;//set the valid bit
+                    }
+                    uint64_t descriptorInformation = M_BytesTo8ByteValue(&descriptor[descriptorOffset + 4], &descriptor[descriptorOffset + 5], &descriptor[descriptorOffset + 6], &descriptor[descriptorOffset + 7], &descriptor[descriptorOffset + 8], &descriptor[descriptorOffset + 9], &descriptor[descriptorOffset + 10], &descriptor[descriptorOffset + 11]);
+                    if (descriptorInformation > UINT32_MAX)
+                    {
+                        memset(&senseData[3], UINT8_MAX, 4);
+                    }
+                    else
+                    {
+                        //copy lowest 4 bytes
+                        memcpy(&senseData[3], &descriptor[descriptorOffset + 8], 4);
+                    }
+                }
+                    break;
+                case 1://command specific information
+                {
+                    uint64_t descriptorCmdInformation = M_BytesTo8ByteValue(&descriptor[descriptorOffset + 4], &descriptor[descriptorOffset + 5], &descriptor[descriptorOffset + 6], &descriptor[descriptorOffset + 7], &descriptor[descriptorOffset + 8], &descriptor[descriptorOffset + 9], &descriptor[descriptorOffset + 10], &descriptor[descriptorOffset + 11]);
+                    if (descriptorCmdInformation > UINT32_MAX)
+                    {
+                        memset(&senseData[8], UINT8_MAX, 4);
+                    }
+                    else
+                    {
+                        //copy lowest 4 bytes
+                        memcpy(&senseData[8], &descriptor[descriptorOffset + 8], 4);
+                    }
+                }
+                    break;
+                case 2://sense key specific
+                    //bytes 4, 5 , and 6
+                    memcpy(&senseData[15], &descriptor[descriptorOffset + 4], 3);
+                    break;
+                case 3://FRU
+                    senseData[14] = descriptor[descriptorOffset + 3];
+                    break;
+                case 4://Stream Commands
+                    if (descriptor[descriptorOffset + 3] & BIT7)
+                    {
+                        //set filemark bit
+                        senseData[2] |= BIT7;
+                    }
+                    if (descriptor[descriptorOffset + 3] & BIT6)
+                    {
+                        //set end of media bit
+                        senseData[2] |= BIT6;
+                    }
+                    if (descriptor[descriptorOffset + 3] & BIT5)
+                    {
+                        //set illegal length indicator bit
+                        senseData[2] |= BIT5;
+                    }
+                    break;
+                case 5://Block Commands
+                    if (descriptor[descriptorOffset + 3] & BIT5)
+                    {
+                        //set illegal length indicator bit
+                        senseData[2] |= BIT5;
+                    }
+                    break;
+                case 6://OSD Object Identification
+                case 7://OSD Response Integrity Value
+                case 8://OSD Attribute identification
+                    //can't handle this type
+                    break;
+                case 9://ATA Status return
+                    senseData[0] |= BIT7;//set the valid bit since we are filling in the information field
+                    //parse out the registers as best we can
+                    //information offsets bytes 3-7
+                    senseData[3] = descriptor[descriptorOffset + 3];//error
+                    senseData[4] = descriptor[descriptorOffset + 13];//status
+                    senseData[5] = descriptor[descriptorOffset + 12];//device
+                    senseData[6] = descriptor[descriptorOffset + 5];//count 7:0
+                    //command specific information bytes 8-11
+                    if (descriptor[descriptorOffset + 2] & BIT0)
+                    {
+                        //extend bit set from issuing an extended command
+                        senseData[8] |= BIT7;
+                    }
+                    if (descriptor[descriptorOffset + 10] || descriptor[descriptorOffset + 8] || descriptor[descriptorOffset + 6])
+                    {
+                        //set uppder LBA non-zero bit
+                        senseData[8] |= BIT5;
+                    }
+                    if (descriptor[descriptorOffset + 4])
+                    {
+                        //set sector count 15:8 non-zero bit
+                        senseData[8] |= BIT6;
+                    }
+                    senseData[8] |= M_Nibble0(descriptor[descriptorOffset + 14]);//setting the log index...this offset is nonstandard, so we will need to increment the offset one before leaving this case
+                    senseData[9] = descriptor[descriptorOffset + 7];//lba
+                    senseData[10] = descriptor[descriptorOffset + 9];//lba
+                    senseData[11] = descriptor[descriptorOffset + 11];//lba
+                    descriptorOffset += 1;//setting this since we added the log index in the last byte of this descriptor to make this easier to pass around
+                    break;
+                case 10://Another Progress Indication
+                    //cannot handle this in fixed format
+                    break;
+                case 11://User Data Segment Referral
+                    //cannot handle this in fixed format
+                    break;
+                case 12://Forwarded Sense data
+                    //cannot handle this in fixed format
+                    break;
+                case 13://Direct Access Block Device
+                    if (descriptor[descriptorOffset + 2] & BIT7)
+                    {
+                        senseData[0] |= BIT7;//set the valid bit
+                    }
+                    if (descriptor[descriptorOffset + 2] & BIT5)
+                    {
+                        //set illegal length indicator bit
+                        senseData[2] |= BIT5;
+                    }
+                    //bytes 4, 5 , and 6 for sense key specific information
+                    memcpy(&senseData[15], &descriptor[descriptorOffset + 4], 3);
+                    //fru code
+                    senseData[14] = descriptor[descriptorOffset + 7];
+                    {
+                        //information
+                        uint64_t descriptorInformation = M_BytesTo8ByteValue(&descriptor[descriptorOffset + 8], &descriptor[descriptorOffset + 9], &descriptor[descriptorOffset + 10], &descriptor[descriptorOffset + 11], &descriptor[descriptorOffset + 12], &descriptor[descriptorOffset + 13], &descriptor[descriptorOffset + 14], &descriptor[descriptorOffset + 15]);
+                        if (descriptorInformation > UINT32_MAX)
+                        {
+                            memset(&senseData[3], UINT8_MAX, 4);
+                        }
+                        else
+                        {
+                            //copy lowest 4 bytes
+                            memcpy(&senseData[3], &descriptor[descriptorOffset + 12], 4);
+                        }
+                        //command specific information
+                        uint64_t descriptorCmdInformation = M_BytesTo8ByteValue(&descriptor[descriptorOffset + 16], &descriptor[descriptorOffset + 17], &descriptor[descriptorOffset + 18], &descriptor[descriptorOffset + 19], &descriptor[descriptorOffset + 20], &descriptor[descriptorOffset + 21], &descriptor[descriptorOffset + 22], &descriptor[descriptorOffset + 23]);
+                        if (descriptorCmdInformation > UINT32_MAX)
+                        {
+                            memset(&senseData[8], UINT8_MAX, 4);
+                        }
+                        else
+                        {
+                            //copy lowest 4 bytes
+                            memcpy(&senseData[8], &descriptor[descriptorOffset + 20], 4);
+                        }
+                    }
+                    break;
+                default://unsupported, break
+                    //can't handle this type
+                    break;
+                }
+                ++counter;
+                descriptorOffset += descriptorLength;
+                senseDataOffset += descriptorLength;
+            }
         }
     }
     if (sensePtr)
@@ -2366,14 +2366,14 @@ int translate_Block_Limits_VPD_Page_B0h(tDevice *device, ScsiIoCtx *scsiIoCtx)
     if (device->drive_info.IdentifyData.ata.Word169 & BIT0 && device->drive_info.IdentifyData.ata.Word069 & BIT14)
     {
 #if SAT_SPEC_SUPPORTED > 3
-		uint8_t maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
-		uint64_t maxUnmapRangePerDescriptor = device->drive_info.softSATFlags.dataSetManagementXLSupported ? UINT64_MAX : UINT16_MAX;
-		uint64_t maxLBAsPerUnmap = maxDescriptorsPerBlock * device->drive_info.IdentifyData.ata.Word105 * maxUnmapRangePerDescriptor;
+        uint8_t maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
+        uint64_t maxUnmapRangePerDescriptor = device->drive_info.softSATFlags.dataSetManagementXLSupported ? UINT64_MAX : UINT16_MAX;
+        uint64_t maxLBAsPerUnmap = maxDescriptorsPerBlock * device->drive_info.IdentifyData.ata.Word105 * maxUnmapRangePerDescriptor;
         uint32_t unmapLBACount = maxLBAsPerUnmap > UINT32_MAX ? UINT32_MAX : (uint32_t)maxLBAsPerUnmap;
         uint32_t unmapMaxBlockDescriptors = maxDescriptorsPerBlock * device->drive_info.IdentifyData.ata.Word105;
 #else
-		uint32_t unmapLBACount = 64 * device->drive_info.IdentifyData.ata.Word105 * UINT16_MAX;
-		uint32_t unmapMaxBlockDescriptors = 64 * device->drive_info.IdentifyData.ata.Word105;
+        uint32_t unmapLBACount = 64 * device->drive_info.IdentifyData.ata.Word105 * UINT16_MAX;
+        uint32_t unmapMaxBlockDescriptors = 64 * device->drive_info.IdentifyData.ata.Word105;
 #endif
         //maximum unmap LBA count (unspecified....we decide)
         blockLimits[20] = M_Byte3(unmapLBACount);
@@ -8478,7 +8478,7 @@ int translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiIoCtx)
             }
             else
             {
-				currentValid = true;
+                currentValid = true;
                 temperatureLog[offset + 5] = M_Byte0(qwordPtr[1]);
             }
             offset += 6;
@@ -8500,7 +8500,7 @@ int translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiIoCtx)
             }
             else
             {
-				referenceValid = true;
+                referenceValid = true;
                 temperatureLog[offset + 5] = M_Byte0(qwordPtr[11]);
             }
             offset += 6;
@@ -9788,15 +9788,15 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         {
             uint8_t *trimBuffer = (uint8_t*)calloc(device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE * sizeof(uint8_t), sizeof(uint8_t));//allocate the max size the device supports...we'll fill in as much as we need to
 #if SAT_SPEC_SUPPORTED > 3
-			bool useXL = device->drive_info.softSATFlags.dataSetManagementXLSupported;
-			uint8_t maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
-			uint8_t descriptorSize = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 16 : 8;
-			uint64_t maxUnmapRangePerDescriptor = device->drive_info.softSATFlags.dataSetManagementXLSupported ? UINT64_MAX : UINT16_MAX;
+            bool useXL = device->drive_info.softSATFlags.dataSetManagementXLSupported;
+            uint8_t maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
+            uint8_t descriptorSize = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 16 : 8;
+            uint64_t maxUnmapRangePerDescriptor = device->drive_info.softSATFlags.dataSetManagementXLSupported ? UINT64_MAX : UINT16_MAX;
 #else
-			bool useXL = false
-			uint8_t maxDescriptorsPerBlock = 64;
-			uint8_t descriptorSize = 8;
-			uint64_t maxUnmapRangePerDescriptor = UINT16_MAX;
+            bool useXL = false
+            uint8_t maxDescriptorsPerBlock = 64;
+            uint8_t descriptorSize = 8;
+            uint64_t maxUnmapRangePerDescriptor = UINT16_MAX;
 #endif
             //need to check to make sure there weren't any truncated block descriptors before we begin
             uint16_t minBlockDescriptorLength = M_Min(unmapBlockDescriptorLength + 8, parameterListLength);
@@ -9877,40 +9877,40 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     trimBuffer[ataTrimOffset + 4] = M_Byte1(unmapLogicalBlockAddress);
                     trimBuffer[ataTrimOffset + 5] = M_Byte0(unmapLogicalBlockAddress);
                     //range (set for XL vs non-XL commands!)
-					if (useXL)
-					{
-						trimBuffer[ataTrimOffset + 6] = RESERVED;
-						trimBuffer[ataTrimOffset + 7] = RESERVED;
-						trimBuffer[ataTrimOffset + 8] = M_Byte7(unmapNumberOfLogicalBlocks);
-						trimBuffer[ataTrimOffset + 9] = M_Byte6(unmapNumberOfLogicalBlocks);
-						trimBuffer[ataTrimOffset + 10] = M_Byte5(unmapNumberOfLogicalBlocks);
-						trimBuffer[ataTrimOffset + 11] = M_Byte4(unmapNumberOfLogicalBlocks);
-						trimBuffer[ataTrimOffset + 12] = M_Byte3(unmapNumberOfLogicalBlocks);
-						trimBuffer[ataTrimOffset + 13] = M_Byte2(unmapNumberOfLogicalBlocks);
-						trimBuffer[ataTrimOffset + 14] = M_Byte1(unmapNumberOfLogicalBlocks);
-						trimBuffer[ataTrimOffset + 15] = M_Byte0(unmapNumberOfLogicalBlocks);
-					}
-					else
-					{
-						if (unmapNumberOfLogicalBlocks > UINT16_MAX)
-						{
-							trimBuffer[ataTrimOffset + 6] = UINT8_MAX;
-							trimBuffer[ataTrimOffset + 7] = UINT8_MAX;
-							unmapNumberOfLogicalBlocks -= UINT16_MAX;
-							unmapLogicalBlockAddress += UINT16_MAX;
-						}
-						else
-						{
-							trimBuffer[ataTrimOffset + 6] = M_Byte1(unmapNumberOfLogicalBlocks);
-							trimBuffer[ataTrimOffset + 7] = M_Byte0(unmapNumberOfLogicalBlocks);
-						}
-					}
+                    if (useXL)
+                    {
+                        trimBuffer[ataTrimOffset + 6] = RESERVED;
+                        trimBuffer[ataTrimOffset + 7] = RESERVED;
+                        trimBuffer[ataTrimOffset + 8] = M_Byte7(unmapNumberOfLogicalBlocks);
+                        trimBuffer[ataTrimOffset + 9] = M_Byte6(unmapNumberOfLogicalBlocks);
+                        trimBuffer[ataTrimOffset + 10] = M_Byte5(unmapNumberOfLogicalBlocks);
+                        trimBuffer[ataTrimOffset + 11] = M_Byte4(unmapNumberOfLogicalBlocks);
+                        trimBuffer[ataTrimOffset + 12] = M_Byte3(unmapNumberOfLogicalBlocks);
+                        trimBuffer[ataTrimOffset + 13] = M_Byte2(unmapNumberOfLogicalBlocks);
+                        trimBuffer[ataTrimOffset + 14] = M_Byte1(unmapNumberOfLogicalBlocks);
+                        trimBuffer[ataTrimOffset + 15] = M_Byte0(unmapNumberOfLogicalBlocks);
+                    }
+                    else
+                    {
+                        if (unmapNumberOfLogicalBlocks > UINT16_MAX)
+                        {
+                            trimBuffer[ataTrimOffset + 6] = UINT8_MAX;
+                            trimBuffer[ataTrimOffset + 7] = UINT8_MAX;
+                            unmapNumberOfLogicalBlocks -= UINT16_MAX;
+                            unmapLogicalBlockAddress += UINT16_MAX;
+                        }
+                        else
+                        {
+                            trimBuffer[ataTrimOffset + 6] = M_Byte1(unmapNumberOfLogicalBlocks);
+                            trimBuffer[ataTrimOffset + 7] = M_Byte0(unmapNumberOfLogicalBlocks);
+                        }
+                    }
                     //now increment the ataTrimOffset
                     ataTrimOffset += descriptorSize;
                     //check if the ATA Trim buffer is full...if it is and there are more or potentially more block descriptors, send the command now
                     if ((ataTrimOffset > (device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE)) && ((unmapBlockDescriptorIter + 16) < minBlockDescriptorLength))
                     {
-						//TODO: do we want to make it smart enough to only send as many 512B blocks as necessary without extras?
+                        //TODO: do we want to make it smart enough to only send as many 512B blocks as necessary without extras?
                         if (SUCCESS == ata_Data_Set_Management(device, true, trimBuffer, device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE, useXL))
                         {
                             //clear the buffer for reuse
@@ -9935,7 +9935,7 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             if (ret == SUCCESS)
             {
                 //send the data set management command with whatever is in the trim buffer at this point (all zeros is safe to send if we do get that)
-				//TODO: do we want to make it smart enough to only send as many 512B blocks as necessary without extras?
+                //TODO: do we want to make it smart enough to only send as many 512B blocks as necessary without extras?
                 if (SUCCESS != ata_Data_Set_Management(device, true, trimBuffer, device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE, useXL))
                 {
                     ret = FAILURE;
@@ -15733,8 +15733,8 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     int ret = UNKNOWN;
     bool invalidFieldInCDB = false;
     bool invalidOperationCode = false;
-	uint16_t fieldPointer = 0;
-	uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
+    uint8_t bitPointer = 0;
     /*
     static bool satConfigInitialized = false;//this is static because we only want to initialize the struct once!
     if (!satConfigInitialized)
@@ -15751,27 +15751,27 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         scsiIoCtx->senseDataSize = SPC3_SENSE_LEN;
     }
     memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-	uint8_t controlByteOffset = scsiIoCtx->cdbLength - 1;
+    uint8_t controlByteOffset = scsiIoCtx->cdbLength - 1;
     if (scsiIoCtx->cdb[OPERATION_CODE] == 0x7E || scsiIoCtx->cdb[OPERATION_CODE] == 0x7F)
     {
         //variable length and 32byte CDBs have the control byte at offset 1
-		controlByteOffset = 1;
+        controlByteOffset = 1;
     }
-	//check for bits in the control byte that are set that aren't supported
-	if ((bitPointer = 7 && scsiIoCtx->cdb[controlByteOffset] & BIT7) //vendor specific
-		|| (bitPointer = 6 && scsiIoCtx->cdb[controlByteOffset] & BIT6) //vendor specific
-		|| (bitPointer = 5 && scsiIoCtx->cdb[controlByteOffset] & BIT5) //reserved
-		|| (bitPointer = 4 && scsiIoCtx->cdb[controlByteOffset] & BIT4) //reserved
-		|| (bitPointer = 3 && scsiIoCtx->cdb[controlByteOffset] & BIT3) //reserved
-		|| (bitPointer = 2 && scsiIoCtx->cdb[controlByteOffset] & BIT2) //naca
-		|| (bitPointer = 1 && scsiIoCtx->cdb[controlByteOffset] & BIT1) //flag (obsolete in SAM2)
-		|| (!(bitPointer = 0) && scsiIoCtx->cdb[controlByteOffset] & BIT0) //link (obsolete in SAM4)
-		)
+    //check for bits in the control byte that are set that aren't supported
+    if ((bitPointer = 7 && scsiIoCtx->cdb[controlByteOffset] & BIT7) //vendor specific
+        || (bitPointer = 6 && scsiIoCtx->cdb[controlByteOffset] & BIT6) //vendor specific
+        || (bitPointer = 5 && scsiIoCtx->cdb[controlByteOffset] & BIT5) //reserved
+        || (bitPointer = 4 && scsiIoCtx->cdb[controlByteOffset] & BIT4) //reserved
+        || (bitPointer = 3 && scsiIoCtx->cdb[controlByteOffset] & BIT3) //reserved
+        || (bitPointer = 2 && scsiIoCtx->cdb[controlByteOffset] & BIT2) //naca
+        || (bitPointer = 1 && scsiIoCtx->cdb[controlByteOffset] & BIT1) //flag (obsolete in SAM2)
+        || (!(bitPointer = 0) && scsiIoCtx->cdb[controlByteOffset] & BIT0) //link (obsolete in SAM4)
+        )
     {
-		uint8_t senseKeySpecificDescriptor[8] = { 0 };
-		fieldPointer = controlByteOffset;
-		set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-		//set up a sense key specific information descriptor to say that this bit is not valid
+        uint8_t senseKeySpecificDescriptor[8] = { 0 };
+        fieldPointer = controlByteOffset;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        //set up a sense key specific information descriptor to say that this bit is not valid
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return SUCCESS;
     }
@@ -15837,8 +15837,8 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 ret = translate_SCSI_Read_Media_Serial_Number_Command(device, scsiIoCtx);
                 break;
             default:
-				fieldPointer = 1;
-				bitPointer = 4;
+                fieldPointer = 1;
+                bitPointer = 4;
                 invalidFieldInCDB = true;
                 break;
             }
@@ -15851,8 +15851,8 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 ret = translate_SCSI_Read_Capacity_Command(device, true, scsiIoCtx);
                 break;
             default:
-				fieldPointer = 1;
-				bitPointer = 4;
+                fieldPointer = 1;
+                bitPointer = 4;
                 invalidFieldInCDB = true;
                 break;
             }
@@ -15869,8 +15869,8 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 ret = translate_SCSI_ATA_Passthrough_Command(device, scsiIoCtx);
                 break;
             default:
-				fieldPointer = 8;
-				bitPointer = 7;
+                fieldPointer = 8;
+                bitPointer = 7;
                 invalidFieldInCDB = true;
                 break;
             }
@@ -15931,14 +15931,14 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 }
                 else
                 {
-					fieldPointer = 1;
-					bitPointer = 4;
+                    fieldPointer = 1;
+                    bitPointer = 4;
                     invalidFieldInCDB = true;
                 }
                 break;
             default:
-				fieldPointer = 1;
-				bitPointer = 4;
+                fieldPointer = 1;
+                bitPointer = 4;
                 invalidFieldInCDB = true;
                 break;
             }
@@ -16044,8 +16044,8 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 ret = translate_SCSI_Write_Long(device, scsiIoCtx);
                 break;
             default:
-				fieldPointer = 1;
-				bitPointer = 4;
+                fieldPointer = 1;
+                bitPointer = 4;
                 invalidFieldInCDB = true;
                 break;
             }

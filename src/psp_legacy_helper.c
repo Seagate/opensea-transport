@@ -52,7 +52,7 @@ int build_PSP_Legacy_CDB(uint8_t *cdb, uint8_t *cdbLen, ataPassthroughCommand *a
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
         *cdbLen = PSP_EXT_COMMAND_CDB_LEN;
-		cdb[0] = PSP_OPCODE;
+        cdb[0] = PSP_OPCODE;
         switch (ataCommandOptions->commandDirection)
         {
         case XFER_NO_DATA:
@@ -88,7 +88,7 @@ int build_PSP_Legacy_CDB(uint8_t *cdb, uint8_t *cdbLen, ataPassthroughCommand *a
     else //assume 28bit command
     {
         *cdbLen = CDB_LEN_12;
-		cdb[0] = PSP_OPCODE;
+        cdb[0] = PSP_OPCODE;
         switch (ataCommandOptions->commandDirection)
         {
         case XFER_NO_DATA:

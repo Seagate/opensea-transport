@@ -277,7 +277,7 @@ int close_Device(tDevice *device)
 //  Entry:
 //!   \param[out] numberOfDevices = integer to hold the number of devices found. 
 //!   \param[in] flags = eScanFlags based mask to let application control. 
-//!						 NOTE: currently flags param is not being used.  
+//!                      NOTE: currently flags param is not being used.  
 //!
 //  Exit:
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -291,8 +291,8 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     num_devs = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
 
     *numberOfDevices = num_devs;
-	
-	return SUCCESS;
+    
+    return SUCCESS;
 }
 
 //-----------------------------------------------------------------------------
@@ -302,18 +302,18 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //! \brief   Description:  Get a list of devices that the library supports. 
 //!                        Use get_Device_Count to figure out how much memory is
 //!                        needed to be allocated for the device list. The memory 
-//!						   allocated must be the multiple of device structure. 
-//!						   The application can pass in less memory than needed 
-//!						   for all devices in the system, in which case the library 
+//!                        allocated must be the multiple of device structure. 
+//!                        The application can pass in less memory than needed 
+//!                        for all devices in the system, in which case the library 
 //!                        will fill the provided memory with how ever many device 
-//!						   structures it can hold. 
+//!                        structures it can hold. 
 //  Entry:
 //!   \param[out] ptrToDeviceList = pointer to the allocated memory for the device list
 //!   \param[in]  sizeInBytes = size of the entire list in bytes. 
 //!   \param[in]  versionBlock = versionBlock structure filled in by application for 
-//!								 sanity check by library. 
+//!                              sanity check by library. 
 //!   \param[in] flags = eScanFlags based mask to let application control. 
-//!						 NOTE: currently flags param is not being used.  
+//!                      NOTE: currently flags param is not being used.  
 //!
 //  Exit:
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -321,14 +321,14 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //-----------------------------------------------------------------------------
 int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
 {
-	int returnValue = SUCCESS;
-	int numberOfDevices = 0;
+    int returnValue = SUCCESS;
+    int numberOfDevices = 0;
     int driveNumber = 0, found = 0, failedGetDeviceCount = 0;
-	char	name[80]; //Because get device needs char
-	int fd;
-	tDevice * d = NULL;
-	
-	struct dirent **namelist;
+    char    name[80]; //Because get device needs char
+    int fd;
+    tDevice * d = NULL;
+    
+    struct dirent **namelist;
     int num_devs = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
     
     char **devs = (char **)calloc(MAX_DEVICES_PER_CONTROLLER, sizeof(char *));
@@ -343,40 +343,42 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     devs[i] = NULL;
     free(namelist);
 
-	//TODO: Check if sizeInBytes is a multiple of 
-	if (!(ptrToDeviceList) || (!sizeInBytes))
-	{
-		returnValue = BAD_PARAMETER;
-	}
+    //TODO: Check if sizeInBytes is a multiple of 
+    if (!(ptrToDeviceList) || (!sizeInBytes))
+    {
+        returnValue = BAD_PARAMETER;
+    }
     else if ((!(validate_Device_Struct(ver))))
     {
         returnValue = LIBRARY_MISMATCH;
     }
-	else
-	{
-		numberOfDevices = sizeInBytes / sizeof(tDevice);
-		d = ptrToDeviceList;
-		for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_devs)) || (found < numberOfDevices)); driveNumber++)
-		{
-		    strncpy(name, devs[driveNumber], M_Min(sizeof(name), devs[driveNumber]));
+    else
+    {
+        numberOfDevices = sizeInBytes / sizeof(tDevice);
+        d = ptrToDeviceList;
+        for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_devs)) || (found < numberOfDevices)); driveNumber++)
+        {
+            strncpy(name, devs[driveNumber], M_Min(sizeof(name), devs[driveNumber]));
             fd = -1;
-            //lets try to open the device.		
+            //lets try to open the device.      
             fd = open(name, O_RDWR | O_NONBLOCK);
             if (fd >= 0)
             {
-				close(fd);
-				memset(d, 0, sizeof(tDevice));
-				d->sanity.size = ver.size;
-				d->sanity.version = ver.version;
-				returnValue = get_Device(name, d);
-				if (returnValue != SUCCESS)
-				{
+                close(fd);
+                eVerbosityLevels temp = d->deviceVerbosity;
+                memset(d, 0, sizeof(tDevice));
+                d->deviceVerbosity = temp;
+                d->sanity.size = ver.size;
+                d->sanity.version = ver.version;
+                returnValue = get_Device(name, d);
+                if (returnValue != SUCCESS)
+                {
                     failedGetDeviceCount++;
-				}
-				found++;
-				d++;
-			}
-		}
+                }
+                found++;
+                d++;
+            }
+        }
         if (found == failedGetDeviceCount)
         {
             returnValue = FAILURE;
@@ -385,9 +387,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
-	}
+    }
     safe_Free(devs);
-	return returnValue;
+    return returnValue;
 }
 
 int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
