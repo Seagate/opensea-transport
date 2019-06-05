@@ -1601,7 +1601,7 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  get_Sector_Count_For_Read_Write(tDevice *device, uint32_t *sectorCount)
+    //  get_Sector_Count_For_Read_Write(tDevice *device)
     //
     //! \brief  Gets the sectorCount based on the device interface. The value set is one that is most compatible across controllers/bridges and OSs
     //!         Will set 64K transfers for internal interfaces (SATA, SAS) and 32K for external (USB, IEEE1394)
@@ -1614,6 +1614,40 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_Read_Write(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Sector_Count_For_512B_Based_XFers(tDevice *device)
+    //
+    //! \brief  Gets the sectorCount based on the device interface for commands that are based on 512B transfer blocks. 
+    //!         The value set is one that is most compatible across controllers/bridges and OSs
+    //!         Will set 64K transfers for internal interfaces (SATA, SAS) and 32K for external (USB, IEEE1394)
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to the device struct.
+    //
+    //  Exit:
+    //!   \return uint32_t value to use for a sector count
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_512B_Based_XFers(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Sector_Count_For_4096B_Based_XFers(tDevice *device)
+    //
+    //! \brief  Gets the sectorCount based on the device interface for commands that are based on 4096B (4K) transfer blocks. 
+    //!         The value set is one that is most compatible across controllers/bridges and OSs
+    //!         Will set 64K transfers for internal interfaces (SATA, SAS) and 32K for external (USB, IEEE1394)
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to the device struct.
+    //
+    //  Exit:
+    //!   \return uint32_t value to use for a sector count
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_4096B_Based_XFers(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
