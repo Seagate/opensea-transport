@@ -18,7 +18,7 @@
 #include <assert.h>
 #include <string.h>
 #if defined(_WIN32)
-#include <Windows.h>
+#include <windows.h>
 #else
 #include <sys/ioctl.h>
 #endif

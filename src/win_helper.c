@@ -8,7 +8,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 // ******************************************************************************************
-// 
+//
 #include <stdio.h>
 #include <stdlib.h> // for mbstowcs_s
 #include <stddef.h> // offsetof
@@ -21,7 +21,7 @@
 #include <windows.h>                // added for forced PnP rescan
 //NOTE: ARM requires 10.0.16299.0 API to get this library!
 #include <cfgmgr32.h>               // added for forced PnP rescan
-#include <WinBase.h>
+#include <winbase.h>
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 #include <ntddstor.h>
 #endif
@@ -38,7 +38,7 @@
 #endif
 
 #if defined (ENABLE_CSMI) //when this is enabled, the "get_Device", "get_Device_Count", and "get_Device_List" will also check for CSMI devices unless a flag is given to ignore them. For apps only doing CSMI, call the csmi implementations directly
-#include "csmi_helper_func.h" 
+#include "csmi_helper_func.h"
 #endif
 
 //TODO: There are ifdefs now wrapping where these definitions could be used, so these defines for MinGW may not be necessary now.
@@ -157,6 +157,7 @@ void print_bus_type( BYTE type )
 #endif
 
 #if !defined (DISABLE_NVME_PASSTHROUGH)
+#if WINVER >= SEA_WIN32_WINNT_WINBLUE
 int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
@@ -179,13 +180,13 @@ int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
     bufferSize = 4096; //Since Panther Max xfer is 4k
     bufferSize += firmwareStructureOffset;
     bufferSize += FIELD_OFFSET(STORAGE_FIRMWARE_DOWNLOAD, ImageBuffer);
-    
+
     buffer = (PUCHAR)calloc(bufferSize,1);
     if (!buffer)
     {
         return MEMORY_FAILURE;
     }
-    
+
     srbControl = (PSRB_IO_CONTROL)buffer;
     srbControl->HeaderLength = sizeof(SRB_IO_CONTROL);
     srbControl->ControlCode = IOCTL_SCSI_MINIPORT_FIRMWARE;
@@ -218,7 +219,7 @@ int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
     // Send the activation request
     //
     //success = DeviceIoControl(IoContext.hHandle,
-    int fwdlIO = DeviceIoControl(nvmeIoCtx->device->os_info.fd, 
+    int fwdlIO = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
         IOCTL_SCSI_MINIPORT,
         buffer,
         bufferSize,
@@ -274,7 +275,9 @@ int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 
 }
-#endif
+#endif //WINVER
+#endif //DISABLE_NVME_PASSTHROUGH
+
 int get_os_drive_number( char *filename )
 {
     int  drive_num = -1;
@@ -365,12 +368,12 @@ int get_Device(const char *filename, tDevice *device )
 
     //lets try to open the device.
     device->os_info.fd = CreateFile(ptrDeviceName,
-                                    /* We are reverting to the GENERIC_WRITE | GENERIC_READ because 
+                                    /* We are reverting to the GENERIC_WRITE | GENERIC_READ because
                                        in the use case of a dll where multiple applications are using
                                        our library, this needs to not request full access. If you suspect
-                                       some commands might fail (e.g. ISE/SED because of that 
+                                       some commands might fail (e.g. ISE/SED because of that
                                        please write to developers  -MA */
-                                    GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
+                                    GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
                                     FILE_SHARE_READ | FILE_SHARE_WRITE,
                                     NULL,
                                     OPEN_EXISTING,
@@ -385,7 +388,7 @@ int get_Device(const char *filename, tDevice *device )
 
     // Check if we get a invalid handle back.
     if (device->os_info.fd == INVALID_HANDLE_VALUE)
-    {        
+    {
         if (VERBOSITY_QUIET < device->deviceVerbosity)
         {
             printf("Error: opening dev %s. Error: %"PRId32"\n", filename, device->os_info.last_error);
@@ -647,7 +650,7 @@ int get_Device(const char *filename, tDevice *device )
                                     {
                                         device->drive_info.drive_type = ATA_DRIVE;
                                     }
-                                    //we are assuming, for now, that SAT translation is being done below, and so far through testing on a few chipsets this appears to be correct. 
+                                    //we are assuming, for now, that SAT translation is being done below, and so far through testing on a few chipsets this appears to be correct.
                                     device->drive_info.interface_type = IDE_INTERFACE;
                                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                                     get_Windows_SMART_IO_Support(device);//might be used later
@@ -665,7 +668,7 @@ int get_Device(const char *filename, tDevice *device )
                                     device->drive_info.drive_type = SCSI_DRIVE;
                                     device->drive_info.interface_type = IEEE_1394_INTERFACE;
                                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
-                                }                               
+                                }
 #if WINVER >= SEA_WIN32_WINNT_WINBLUE//win 8.1 added NVME
                                 else if (device_desc->BusType == BusTypeNvme)
                                 {
@@ -674,14 +677,14 @@ int get_Device(const char *filename, tDevice *device )
                                     device->drive_info.interface_type = NVME_INTERFACE;
                                     set_Namespace_ID_For_Device(device);
                                     device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
-#else                                   
+#else
                                     device->drive_info.drive_type = SCSI_DRIVE;
                                     device->drive_info.interface_type = SCSI_INTERFACE;
                                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
-                                    //Because out of box driver fails if STORAGE_BLOCK flag is used. 
+                                    //Because out of box driver fails if STORAGE_BLOCK flag is used.
                                     device->os_info.srbtype = SRB_TYPE_SCSI_REQUEST_BLOCK;
-#endif                                  
-                                }                       
+#endif
+                                }
 #endif //WINVER >= Win8.1 for bustype NVMe
                                 // This else essentially eliminates the RAID support from this layer.
                                 // Please check the history of the file for more info.
@@ -906,7 +909,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //!                      NOTE: currently flags param is not being used.
 //!
 //  Exit:
-//!   \return SUCCESS - pass, WARN_NOT_ALL_DEVICES_ENUMERATED - some deviec had trouble being enumerated. 
+//!   \return SUCCESS - pass, WARN_NOT_ALL_DEVICES_ENUMERATED - some deviec had trouble being enumerated.
 //!                     Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
@@ -927,7 +930,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     uint32_t csmiDeviceCount = 0;
     if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI))//check whether they want CSMI devices or not
     {
-        
+
         int csmiRet = get_CSMI_Device_Count(&csmiDeviceCount, flags);
         if (csmiRet != SUCCESS)
         {
@@ -961,7 +964,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 #endif
       //lets try to open the device.
             fd = CreateFile((LPCTSTR)deviceName,
-                GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
+                GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
                 FILE_SHARE_READ | FILE_SHARE_WRITE,
                 NULL,
                 OPEN_EXISTING,
@@ -1015,7 +1018,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 }
 
 #if defined _NTSCSI_USER_MODE_
-typedef struct _scsiPassThroughEXIOStruct 
+typedef struct _scsiPassThroughEXIOStruct
 {
     union
     {
@@ -2737,7 +2740,7 @@ This table defines when this API is supported based on the Interface and the Com
 IDE       Y   |      Y     |    N
 SCSI      N   |      N     |    Y
 
-The reason the API is used only in the instances shown above is because the library is trying to 
+The reason the API is used only in the instances shown above is because the library is trying to
 honor issuing the expected command on a specific interface.
 
 If the drive is an ATA drive, behind a SAS controller, then a Write buffer command is issued to the
@@ -2745,7 +2748,7 @@ controller to be translated according to the SAT spec. Sometimes, this may not b
 so we assume that we will only issue the command the caller is expecting to issue.
 
 There is an option to allow using this API call with any supported FWDL command regardless of drive type and interface that can be set.
-Device->os_info.fwdlIOsupport.allowFlexibleUseOfAPI set to true will check for a supported SCSI or ATA command and all other payload 
+Device->os_info.fwdlIOsupport.allowFlexibleUseOfAPI set to true will check for a supported SCSI or ATA command and all other payload
 requirements and allow it to be issued for any case. This is good if your only goal is to get firmware to a drive and don't care about testing a specific command sequence.
 NOTE: Some SAS HBAs will issue a readlogext command before each download command when performing deferred download, which may not be expected if taking a bus trace of the sequence.
 
@@ -2766,7 +2769,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
 #endif
         return false;
     }
-    //If we are trying to send an ATA command, then only use the API if it's IDE. 
+    //If we are trying to send an ATA command, then only use the API if it's IDE.
     //SCSI and RAID interfaces depend on the SATL to translate it correctly, but that is not checked by windows and is not possible since nothing responds to the report supported operation codes command
     //A future TODO will be to have either a lookup table or additional check somewhere to send the report supported operation codes command, but this is good enough for now, since it's unlikely a SATL will implement that...
 #if defined (_DEBUG_FWDL_API_COMPATABILITY)
@@ -4100,7 +4103,7 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
 
 #if WINVER >= SEA_WIN32_WINNT_WIN10
 /*
-    MS Windows treats specification commands different from Vendor Unique Commands. 
+    MS Windows treats specification commands different from Vendor Unique Commands.
 */
 #define NVME_ERROR_ENTRY_LENGTH 64
 int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
@@ -4192,7 +4195,7 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     {
         protocolCommand->TimeOutValue = nvmeIoCtx->timeout;
     }
-    
+
     //Command has been set up, so send it!
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
     nvmeIoCtx->device->os_info.last_error = 0;
@@ -4310,7 +4313,7 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
 
 #if !defined(NVME_IDENTIFY_CNS_SPECIFIC_NAMESPACE)
 #define NVME_IDENTIFY_CNS_SPECIFIC_NAMESPACE 0
-#endif 
+#endif
 
 #if !defined(NVME_IDENTIFY_CNS_CONTROLLER)
 #define NVME_IDENTIFY_CNS_CONTROLLER 1
@@ -4410,7 +4413,7 @@ void set_Namespace_ID_For_Device(tDevice *device)
                             our library, this needs to not request full access. If you suspect
                             some commands might fail (e.g. ISE/SED because of that
                             please notify the developers -MA */
-                            GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
+                            GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
                             FILE_SHARE_READ | FILE_SHARE_WRITE,
                             NULL,
                             OPEN_EXISTING,
@@ -4586,7 +4589,7 @@ void set_Namespace_ID_For_Device(tDevice *device)
 
 int send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
 {
-    int     ret = SUCCESS; 
+    int     ret = SUCCESS;
     BOOL    result;
     PVOID   buffer = NULL;
     ULONG   bufferLength = 0;
@@ -4602,8 +4605,8 @@ int send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
     bufferLength = FIELD_OFFSET(STORAGE_PROPERTY_QUERY, AdditionalParameters) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA) + NVME_IDENTIFY_DATA_LEN;
     buffer = malloc(bufferLength);
 
-    if (buffer == NULL) 
-    {       
+    if (buffer == NULL)
+    {
         #if defined (_DEBUG)
         printf("%s: allocate buffer failed, exit",__FUNCTION__);
         #endif
@@ -4659,7 +4662,7 @@ int send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
     }
 
     query->QueryType = PropertyStandardQuery;
-    
+
     protocolData->ProtocolType = ProtocolTypeNvme;
     protocolData->DataType = NVMeDataTypeIdentify;
     protocolData->ProtocolDataRequestSubValue = 0;
@@ -4752,13 +4755,13 @@ int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
     protocolData->ProtocolDataRequestSubValue = M_Nibble2(nvmeIoCtx->cmd.adminCmd.cdw10);//bits 11:08 log page specific
     protocolData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA);
     protocolData->ProtocolDataLength = nvmeIoCtx->dataSize;
-    
+
     //
     // Send request down.
     //
 #if defined (_DEBUG)
     printf("%s Drive Path = %s", __FUNCTION__, nvmeIoCtx->device->os_info.name);
-#endif  
+#endif
     seatimer_t commandTimer;
     memset(&commandTimer, 0, sizeof(seatimer_t));
     start_Timer(&commandTimer);
@@ -4770,12 +4773,12 @@ int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
         bufferLength,
         &returnedLength,
         NULL
-    );  
+    );
     stop_Timer(&commandTimer);
     nvmeIoCtx->device->os_info.last_error = GetLastError();
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     if (!result || (returnedLength == 0))
-    {       
+    {
         if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
             printf("Windows Error: ");
@@ -4789,8 +4792,8 @@ int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
         // Validate the returned data.
         //
         if ((protocolDataDescr->Version != sizeof(STORAGE_PROTOCOL_DATA_DESCRIPTOR)) ||
-            (protocolDataDescr->Size != sizeof(STORAGE_PROTOCOL_DATA_DESCRIPTOR))) 
-        {           
+            (protocolDataDescr->Size != sizeof(STORAGE_PROTOCOL_DATA_DESCRIPTOR)))
+        {
             #if defined (_DEBUG)
             printf("%s: Error Log - data descriptor header not valid\n", __FUNCTION__);
             #endif
@@ -4801,7 +4804,7 @@ int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
 
         if ((protocolData->ProtocolDataOffset < sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA)) ||
             (protocolData->ProtocolDataLength < nvmeIoCtx->dataSize))
-        {           
+        {
             #if defined (_DEBUG)
             printf("%s: Error Log - ProtocolData Offset/Length not valid\n", __FUNCTION__);
             #endif
@@ -4870,7 +4873,7 @@ int send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
     //
 #if defined (_DEBUG)
     printf("%s Drive Path = %s", __FUNCTION__, nvmeIoCtx->device->os_info.name);
-#endif  
+#endif
     seatimer_t commandTimer;
     memset(&commandTimer, 0, sizeof(seatimer_t));
     start_Timer(&commandTimer);
@@ -5088,7 +5091,7 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
         __FUNCTION__, downloadIO->Version, downloadIO->Size, downloadIO->Flags, downloadIO->Slot, downloadIO->Offset, downloadIO->BufferSize);
     //print_Data_Buffer(downloadIO->ImageBuffer, (downloadStructureSize - FIELD_OFFSET(STORAGE_HW_FIRMWARE_DOWNLOAD, ImageBuffer)), false);
 #endif
-    
+
     //time to issue the IO
     DWORD returned_data = 0;
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
@@ -5273,7 +5276,7 @@ int win10_Translate_Set_Power_Management(nvmeCmdCtx *nvmeIoCtx)
     {
         //start-stop unit command? Or maybe IOCTL_STORAGE_DEVICE_POWER_CAP
         //I will use the IOCTL_STORAGE_DEVICE_POWER_CAP for this...-TJE
-        
+
         //we also need to return an error if the requested power state is not supported since the call we make may not be able to tell us that, or may round it to something close
         //power states start at byte 2079 in the controller identify data...
         double maxPowerScalar = 0.01;
@@ -5310,7 +5313,7 @@ int win10_Translate_Set_Power_Management(nvmeCmdCtx *nvmeIoCtx)
             stop_Timer(&commandTimer);
             nvmeIoCtx->device->os_info.last_error = GetLastError();
             nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-              
+
             if (success)
             {
                 //TODO: should we validate the returned data to make sure we got what value we requested? - TJE
@@ -6143,7 +6146,7 @@ int win10_Translate_Reservation_Release(nvmeCmdCtx *nvmeIoCtx)
         ret = scsi_Persistent_Reserve_Out(nvmeIoCtx->device, scsiServiceAction, 0, scsiType, 24, scsiCommandData);
         nvmeIoCtx->device->deviceVerbosity = inVerbosity;
     }
-    
+
     return ret;
 }
 
@@ -6198,7 +6201,7 @@ int send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx)
     //
 #if defined (_DEBUG)
     printf("%s Drive Path = %s", __FUNCTION__, scsiIoCtx->device->os_info.name);
-#endif  
+#endif
     seatimer_t commandTimer;
     memset(&commandTimer, 0, sizeof(seatimer_t));
     start_Timer(&commandTimer);
@@ -6305,7 +6308,7 @@ int send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx)
     //
 #if defined (_DEBUG)
     printf("%s Drive Path = %s", __FUNCTION__, scsiIoCtx->device->os_info.name);
-#endif  
+#endif
     seatimer_t commandTimer;
     memset(&commandTimer, 0, sizeof(seatimer_t));
     start_Timer(&commandTimer);
@@ -6385,8 +6388,8 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         case NVME_ADMIN_CMD_GET_LOG_PAGE:
             ret = send_Win_NVMe_Get_Log_Page_Cmd(nvmeIoCtx);
             break;
-        case NVME_ADMIN_CMD_GET_FEATURES: 
-            //NOTE: I don't know if this will work for different select field values...will need to debug this to find out. 
+        case NVME_ADMIN_CMD_GET_FEATURES:
+            //NOTE: I don't know if this will work for different select field values...will need to debug this to find out.
             //If different select fields are not supported with this call, then we either need to do a SCSI translation or we have to return "not-supported" - TJE
             ret = send_Win_NVMe_Get_Features_Cmd(nvmeIoCtx);
             break;
@@ -6493,7 +6496,7 @@ int nvme_Reset(tDevice *device)
     {
         printf("Sending NVMe Reset\n");
     }
-    
+
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
         print_Return_Enum("NVMe Reset", OS_COMMAND_NOT_AVAILABLE);
@@ -6508,7 +6511,7 @@ int nvme_Subsystem_Reset(tDevice *device)
     {
         printf("Sending NVMe Subsystem Reset\n");
     }
-    
+
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
         print_Return_Enum("NVMe Subsystem Reset", OS_COMMAND_NOT_AVAILABLE);
@@ -7040,7 +7043,7 @@ int os_Flush(tDevice *device)
             print_Windows_Error_To_Screen(device->os_info.last_error);
         }
     }
-    
+
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
