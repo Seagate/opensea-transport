@@ -25,8 +25,20 @@ VERSION = $(MAJOR).$(MINOR).$(PATCH)
 SRC_DIR = ../../src/
 INC_DIR = -I../../include -I../../include/vendor -I../../../opensea-common/include
 
-CC = gcc
-AR = ar
+MYUNAME := $(shell uname -s)
+ifneq (,$(findstring Linux,$(MYUNAME)))
+	UNAME = MINGW64
+else ifneq (,$(findstring MINGW64,$(MYUNAME)))
+	UNAME = MINGW64
+endif
+
+ifneq (,$(findstring Linux,$(MYUNAME)))
+	CC = x86_64-w64-mingw32-gcc
+	AR = x86_64-w64-mingw32-ar
+else
+	CC = gcc
+	AR = ar
+endif
 
 CFLAGS ?= -Wall
 #BR note: If you want to hide all of the informational compiler messages, uncomment the line below
@@ -36,12 +48,11 @@ CFLAGS += -c -fPIC -I. -std=gnu99
 LDFLAGS = -Wall
 LDLIBS = ../../../opensea-common/Make/gccWin/$(FILE_OUTPUT_DIR)/libopensea-common.a
 
-UNAME := $(shell uname -s)
 ifneq (,$(findstring MINGW64,$(UNAME)))
-    #BR note: pragma comment(lib,"Version.lib") is not supported by gcc, use the below supply the version.lib functions
-    LDFLAGS += -L/msys64/mingw64/x86_64-w64-mingw32/lib
-    LDLIBS += -lversion
-    LDLIBS += -lcfgmgr32
+	#BR note: pragma comment(lib,"Version.lib") is not supported by gcc, use the below supply the version.lib functions
+	LDFLAGS += -L/msys64/mingw64/x86_64-w64-mingw32/lib
+	LDLIBS += -lversion
+	LDLIBS += -lcfgmgr32
 endif
 
 LIB_SRC_FILES = \
@@ -68,19 +79,23 @@ LIB_SRC_FILES = \
 PROJECT_DEFINES += -DSTATIC_OPENSEA_TRANSPORT
 PROJECT_DEFINES += -D_CRT_SECURE_NO_WARNINGS
 PROJECT_DEFINES += -DENABLE_CSMI
-PROJECT_DEFINES += -DWIN_API_TARGET_VERSION=100162990L
-PROJECT_DEFINES += #-DDISABLE_NVME_PASSTHROUGH #-D_DEBUG
+PROJECT_DEFINES += -DWIN_API_TARGET_VERSION=100162990L #-D_DEBUG
+ifneq (,$(findstring Linux,$(MYUNAME)))
+	PROJECT_DEFINES += -DDISABLE_NVME_PASSTHROUGH
+else
+	PROJECT_DEFINES += #-DDISABLE_NVME_PASSTHROUGH
+endif
 
 ifneq (,$(findstring MINGW64,$(UNAME)))
-    PROJECT_DEFINES += -D__MINGW64__
-    # PROJECT_DEFINES += -D__MINGW32__
-    #BR note: trying different stuff during debugging
-    # PROJECT_DEFINES += -D_CRT_NONSTDC_NO_DEPRECATE
-    #BR note: -D_WIN32_WINNT=0x0601 fixes unknown Windows version in winioctl.h and  error: 'BusTypeSata' undeclared (first use in this function)
-    PROJECT_DEFINES += -D_WIN32_WINNT=0x0601
-    # PROJECT_DEFINES += -DWIN_API_TARGET_VERSION=100150630L
-    # PROJECT_DEFINES += -DWIN_API_TARGET_VERSION=81000000L
-    # PROJECT_DEFINES += -DWINVER=SEA_WIN32_WINNT_WIN10
+	PROJECT_DEFINES += -D__MINGW64__
+	# PROJECT_DEFINES += -D__MINGW32__
+	#BR note: trying different stuff during debugging
+	# PROJECT_DEFINES += -D_CRT_NONSTDC_NO_DEPRECATE
+	#BR note: -D_WIN32_WINNT=0x0601 fixes unknown Windows version in winioctl.h and  error: 'BusTypeSata' undeclared (first use in this function)
+	PROJECT_DEFINES += -D_WIN32_WINNT=0x0601
+	# PROJECT_DEFINES += -DWIN_API_TARGET_VERSION=100150630L
+	# PROJECT_DEFINES += -DWIN_API_TARGET_VERSION=81000000L
+	# PROJECT_DEFINES += -DWINVER=SEA_WIN32_WINNT_WIN10
 endif
 
 #All of the source files have associated object files
