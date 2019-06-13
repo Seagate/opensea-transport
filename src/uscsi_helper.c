@@ -421,4 +421,14 @@ int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
+
+int nvme_Reset(tDevice *device)
+{
+    return NOT_SUPPORTED;
+}
+
+int nvme_Subsystem_Reset(tDevice *device)
+{
+    return NOT_SUPPORTED;
+}
 #endif
