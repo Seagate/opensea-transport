@@ -52,7 +52,7 @@ int build_PSP_Legacy_CDB(uint8_t *cdb, uint8_t *cdbLen, ataPassthroughCommand *a
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
         *cdbLen = PSP_EXT_COMMAND_CDB_LEN;
-		cdb[0] = PSP_OPCODE;
+        cdb[0] = PSP_OPCODE;
         switch (ataCommandOptions->commandDirection)
         {
         case XFER_NO_DATA:
@@ -88,7 +88,7 @@ int build_PSP_Legacy_CDB(uint8_t *cdb, uint8_t *cdbLen, ataPassthroughCommand *a
     else //assume 28bit command
     {
         *cdbLen = CDB_LEN_12;
-		cdb[0] = PSP_OPCODE;
+        cdb[0] = PSP_OPCODE;
         switch (ataCommandOptions->commandDirection)
         {
         case XFER_NO_DATA:
@@ -177,14 +177,20 @@ int send_PSP_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *
     ret = build_PSP_Legacy_CDB(pspCDB, &cdbLen, ataCommandOptions);
     if (ret == SUCCESS)
     {
-        //print verbose tfr info
-        print_Verbose_ATA_Command_Information(ataCommandOptions);
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            //print verbose tfr info
+            print_Verbose_ATA_Command_Information(ataCommandOptions);
+        }
         //send it
         ret = scsi_Send_Cdb(device, pspCDB, cdbLen, ataCommandOptions->ptrData, ataCommandOptions->dataSize, ataCommandOptions->commandDirection, ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, 0);
         //get the RTFRs
         ret = get_RTFRs_From_PSP_Legacy(device, ataCommandOptions, ret);
-        //print RTFRs
-        print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            //print RTFRs
+            print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+        }
         //set return code
         //Based on the RTFRs or sense data, generate a return value
         if (ataCommandOptions->rtfr.status == (ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE))

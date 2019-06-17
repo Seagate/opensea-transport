@@ -138,7 +138,7 @@ extern "C"
         ATA_NOP_CMD                             = 0x00,
         ATA_CFA_REQUEST_SENSE                   = 0x03,
         ATASET                                  = 0x04,
-		ATA_DATA_SET_MANAGEMENT_CMD             = 0x06,
+        ATA_DATA_SET_MANAGEMENT_CMD             = 0x06,
         ATA_DATA_SET_MANAGEMENT_XL_CMD          = 0x07,
         ATAPI_RESET                             = 0x08,
         ATA_DEV_RESET                           = 0x08,
@@ -181,7 +181,7 @@ extern "C"
         ATA_READ_LOG_EXT_DMA                    = 0x47,
         ATA_ZONE_MANAGEMENT_IN                  = 0x4A,
         ATA_FORMAT_TRACK                        = 0x50,
-		ATA_CONFIGURE_STREAM                    = 0x51,
+        ATA_CONFIGURE_STREAM                    = 0x51,
         ATA_WRITE_LOG_EXT_DMA                   = 0x57,
         ATA_TRUSTED_NON_DATA                    = 0x5B,
         ATA_TRUSTED_RECEIVE                     = 0x5C,
@@ -427,7 +427,7 @@ extern "C"
 
     //added these packs to make sure this structure gets interpreted correctly
     // in the code when I point it to a buffer and try and access it.
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct _ataSMARTAttribute
@@ -437,14 +437,14 @@ extern "C"
         uint8_t     nominal;
         uint8_t     worstEver;
         uint8_t     rawData[7];//attribute and vendor specific
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataSMARTAttribute;
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) ataSMARTAttribute;
     #endif
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct _ataSMARTThreshold
@@ -452,7 +452,7 @@ extern "C"
         uint8_t      attributeNumber;
         uint8_t      thresholdValue;
         uint8_t      reservedBytes[10];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataSMARTThreshold;
     #pragma pack(pop)
     #else
@@ -470,7 +470,7 @@ extern "C"
     (b) - The device shall return command aborted if a SMART feature set (see 4.19) command accesses a log that
     is marked only with GPL.
     */
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct _ataLogDirectorySector
@@ -511,14 +511,14 @@ extern "C"
         uint16_t SCTCmdSts;                  //  E0          | SCT Command / Status                      | SCT           | R/W   | GPL, SL
         uint16_t SCTDataXfer;                //  E1          | SCT Data Transfer                         | SCT           | R/W   | GPL, SL
         uint16_t Reserved6[30];              //  E2..FF      |                                           |               |       |           
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataLogDirectorySector;
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) ataLogDirectorySector;
     #endif
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct _ataPowerConditionsDescriptor
@@ -533,7 +533,7 @@ extern "C"
         uint32_t minimumTimerSetting;
         uint32_t maximumTimerSetting;
         uint8_t reserved3[36];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataPowerConditionsDescriptor;
     #pragma pack(pop)
     #else
@@ -823,7 +823,7 @@ extern "C"
        ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION = 0x09,
    }eIdentifyDeviceDataLogPage;
 
-	//
+    //
    typedef enum _eDeviceStatisticsLog //Log Address 04h, ACS-4 Section 9.5
    {
        ATA_DEVICE_STATS_LOG_LIST            = 0x00,
@@ -834,6 +834,7 @@ extern "C"
        ATA_DEVICE_STATS_LOG_TEMP            = 0x05,
        ATA_DEVICE_STATS_LOG_TRANSPORT       = 0x06,
        ATA_DEVICE_STATS_LOG_SSD             = 0x07,
+       ATA_DEVICE_STATS_LOG_ZONED_DEVICE    = 0x08,
        //Add more
    } eDeviceStatisticsLog;
 
@@ -873,6 +874,25 @@ extern "C"
        SCT_EXT_STATUS_MOST_RECENT_NON_SCT_COMMAND_COMPLETED_WITH_ERROR_DUE_TO_ERROR_RECOVERY_READ_OR_WRITE_TIMER_EXPIRING   = 0x0015,
        SCT_EXT_STATUS_SCT_COMMAND_PROCESSING_IN_BACKGROUND                                                                  = 0xFFFF
    }eSCTExtendedStatus;
+
+   typedef enum _eSCTFeature
+   {
+       SCT_FEATURE_CONTROL_WRITE_CACHE_STATE            = 0x0001,
+       SCT_FEATURE_CONTROL_WRITE_CACHE_REORDERING       = 0x0002,
+       SCT_FEATURE_CONTROL_SET_HDA_TEMPERATURE_INTERVAL = 0x0003,
+       SCT_FEATURE_CONTROL_RESERVED,
+       //0004 & 0005 = reserved for SATA
+       //0006 - CFFF = reserved
+       //D000 - FFFF = vendor specifc
+       SCT_FEATURE_CONTROL_VENDOR                       = 0xD000,
+   }eSCTFeature;
+
+   typedef enum _eSCTFeatureControlFunction
+   {
+       SCT_FEATURE_FUNCTION_SET_STATE_AND_OPTIONS   = 0x0001,
+       SCT_FEATURE_FUNCTION_RETURN_CURRENT_STATE    = 0x0002,
+       SCT_FEATURE_FUNCTION_RETURN_CURRENT_OPTIONS  = 0x0003,
+   }eSCTFeatureControlFunction;
 
    typedef enum _eAMACCommand //accessible max address configuration
    {
@@ -956,7 +976,20 @@ extern "C"
        ATA_MINOR_VERSION_NOT_REPORTED_2         = 0xFFFF
    }eATAMinorVersionNumber;
 
-    #define ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS UINT8_C(128)
+   #define ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS UINT8_C(128)
+
+   #define ATA_SECURITY_MAX_PW_LENGTH UINT8_C(32)
+
+   typedef enum _eATASecurityState
+    {
+        ATA_SEC0 = 0, //powered off, we will never see this
+        ATA_SEC1 = 1, //not enabled, locked, or frozen
+        ATA_SEC2 = 2, //frozen
+        ATA_SEC3 = 3, //powered off, we will never see this
+        ATA_SEC4 = 4, //enabled, locked
+        ATA_SEC5 = 5, //enabled
+        ATA_SEC6 = 6  //enabled, frozen
+    }eATASecurityState;
 
     #if defined(__cplusplus)
 } //extern "C"

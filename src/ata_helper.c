@@ -791,9 +791,9 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     }
     if (retrievedIdentifyData)
     {
-        if (device->drive_info.interface_type == IDE_INTERFACE && device->drive_info.scsiVersion == 0)
+        if (device->drive_info.interface_type == IDE_INTERFACE && device->drive_info.scsiVersion == SCSI_VERSION_NO_STANDARD)
         {
-            device->drive_info.scsiVersion = 0x07;//SPC5. This is what software translator will set at the moment. Can make this configurable later, but this should be ok
+            device->drive_info.scsiVersion = SCSI_VERSION_SPC_5;//SPC5. This is what software translator will set at the moment. Can make this configurable later, but this should be ok
         }
         //print_Data_Buffer((uint8_t*)ident_word, 512, true);
         ret = SUCCESS;
@@ -998,22 +998,25 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             device->drive_info.ata_Options.downloadMicrocodeDMASupported = true;
         }
         //set zoned device type
-        switch (ident_word[69] & (BIT0 | BIT1))
+        if (device->drive_info.zonedType != ZONED_TYPE_HOST_MANAGED)
         {
-        case 0:
-            device->drive_info.zonedType = ZONED_TYPE_NOT_ZONED;
-            break;
-        case 1:
-            device->drive_info.zonedType = ZONED_TYPE_HOST_AWARE;
-            break;
-        case 2:
-            device->drive_info.zonedType = ZONED_TYPE_DEVICE_MANAGED;
-            break;
-        case 3:
-            device->drive_info.zonedType = ZONED_TYPE_RESERVED;
-            break;
-        default:
-            break;
+            switch (ident_word[69] & (BIT0 | BIT1))
+            {
+            case 0:
+                device->drive_info.zonedType = ZONED_TYPE_NOT_ZONED;
+                break;
+            case 1:
+                device->drive_info.zonedType = ZONED_TYPE_HOST_AWARE;
+                break;
+            case 2:
+                device->drive_info.zonedType = ZONED_TYPE_DEVICE_MANAGED;
+                break;
+            case 3:
+                device->drive_info.zonedType = ZONED_TYPE_RESERVED;
+                break;
+            default:
+                break;
+            }
         }
         //Determine if read/write log ext DMA commands are supported
         if (ident_word[119] & BIT3 || ident_word[120] & BIT3)
@@ -1110,9 +1113,9 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     {
 #ifdef _DEBUG
         printf("Quiting device discovery early for %s per DO_NOT_WAKE_DRIVE\n", device->drive_info.serialNumber);
-    	printf("Drive type: %d\n",device->drive_info.drive_type);
-    	printf("Interface type: %d\n",device->drive_info.interface_type);
-    	printf("Media type: %d\n",device->drive_info.media_type);
+        printf("Drive type: %d\n",device->drive_info.drive_type);
+        printf("Interface type: %d\n",device->drive_info.interface_type);
+        printf("Media type: %d\n",device->drive_info.media_type);
         printf("SN: %s\n",device->drive_info.serialNumber);
         printf("%s <--\n",__FUNCTION__);
 #endif
@@ -1188,7 +1191,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                     {
                         //data is valid, so figure out supported pages
                         uint8_t listLen = logBuffer[8];
-                        for (uint8_t iter = 9; iter < (listLen + 8) && iter < 512; ++iter)
+                        for (uint16_t iter = 9; iter < (uint16_t)(listLen + 8) && iter < UINT16_C(512); ++iter)
                         {
                             switch (logBuffer[iter])
                             {
@@ -1228,10 +1231,36 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                     uint64_t qword0 = M_BytesTo8ByteValue(logBuffer[7], logBuffer[6], logBuffer[5], logBuffer[4], logBuffer[3], logBuffer[2], logBuffer[1], logBuffer[0]);
                     if (qword0 & BIT63 && M_Byte2(qword0) == ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES && M_Word0(qword0) >= 0x0001)
                     {
+                        uint64_t supportedCapabilities = M_BytesTo8ByteValue(logBuffer[15], logBuffer[14], logBuffer[13], logBuffer[12], logBuffer[11], logBuffer[10], logBuffer[9], logBuffer[8]);
+                        if (supportedCapabilities & BIT63)
+                        {
+                            if (supportedCapabilities & BIT50)
+                            {
+                                device->drive_info.softSATFlags.dataSetManagementXLSupported = true;
+                            }
+                            if (supportedCapabilities & BIT48)
+                            {
+                                device->drive_info.softSATFlags.zeroExtSupported = true;
+                            }
+                        }
                         uint64_t downloadCapabilities = M_BytesTo8ByteValue(logBuffer[23], logBuffer[22], logBuffer[21], logBuffer[20], logBuffer[19], logBuffer[18], logBuffer[17], logBuffer[16]);
                         if (downloadCapabilities & BIT63 && downloadCapabilities & BIT34)
                         {
                             device->drive_info.softSATFlags.deferredDownloadSupported = true;
+                        }
+                        uint64_t supportedZACCapabilities = M_BytesTo8ByteValue(logBuffer[119], logBuffer[118], logBuffer[117], logBuffer[116], logBuffer[115], logBuffer[114], logBuffer[113], logBuffer[112]);
+                        if (supportedZACCapabilities & BIT63)//qword valid
+                        {
+                            //check if any of the ZAC commands are supported.
+                            if (supportedZACCapabilities & BIT0 || supportedZACCapabilities & BIT1 || supportedZACCapabilities & BIT2 || supportedZACCapabilities & BIT3 || supportedZACCapabilities & BIT4)
+                            {
+                                //according to what I can find in the spec, a HOST Managed drive reports a different signature, but doens't set any identify bytes like a host aware drive.
+                                //because of this and not being able to get the real signature, this check is the only way to determine we are talking to an ATA host managed drive. - TJE
+                                if (device->drive_info.zonedType == ZONED_TYPE_NOT_ZONED)
+                                {
+                                    device->drive_info.zonedType = ZONED_TYPE_HOST_MANAGED;
+                                }
+                            }
                         }
                     }
                 }
@@ -1309,9 +1338,9 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     }
     device->drive_info.dataTransferSize = LEGACY_DRIVE_SEC_SIZE;
 #ifdef _DEBUG
-	printf("Drive type: %d\n",device->drive_info.drive_type);
-	printf("Interface type: %d\n",device->drive_info.interface_type);
-	printf("Media type: %d\n",device->drive_info.media_type);
+    printf("Drive type: %d\n",device->drive_info.drive_type);
+    printf("Interface type: %d\n",device->drive_info.interface_type);
+    printf("Media type: %d\n",device->drive_info.media_type);
     printf("SN: %s\n",device->drive_info.serialNumber);
     printf("%s <--\n",__FUNCTION__);
 #endif
@@ -1339,136 +1368,130 @@ uint16_t ata_Is_One_Extended_Power_Conditions_Feature_Supported(uint16_t *pIdent
 
 void print_Verbose_ATA_Command_Information(ataPassthroughCommand *ataCommandOptions)
 {
-    if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity)
+    printf("Sending SAT ATA Pass-Through Command:\n");
+    //protocol
+    printf("\tProtocol: ");
+    switch (ataCommandOptions->commadProtocol)
     {
-        printf("Sending SAT ATA Pass-Through Command:\n");
-        //protocol
-        printf("\tProtocol: ");
-        switch (ataCommandOptions->commadProtocol)
-        {
-        case ATA_PROTOCOL_PIO:
-            printf("PIO");
-            break;
-        case ATA_PROTOCOL_DMA:
-            printf("DMA");
-            break;
-        case ATA_PROTOCOL_NO_DATA:
-            printf("NON-Data");
-            break;
-        case ATA_PROTOCOL_DEV_RESET:
-            printf("Device Reset");
-            break;
-        case ATA_PROTOCOL_DEV_DIAG:
-            printf("Device Diagnostic");
-            break;
-        case ATA_PROTOCOL_DMA_QUE:
-            printf("DMA Queued");
-            break;
-        case ATA_PROTOCOL_PACKET:
-        case ATA_PROTOCOL_PACKET_DMA:
-            printf("Packet");
-            break;
-        case ATA_PROTOCOL_DMA_FPDMA:
-            printf("FPDMA");
-            break;
-        case ATA_PROTOCOL_SOFT_RESET:
-            printf("Soft Reset");
-            break;
-        case ATA_PROTOCOL_HARD_RESET:
-            printf("Hard Reset");
-            break;
-        case ATA_PROTOCOL_RET_INFO:
-            printf("Return Response Information");
-            break;
-        case ATA_PROTOCOL_UDMA:
-            printf("UDMA");
-            break;
-        default:
-            break;
-        }
-        printf("\n");
-        printf("\tData Direction: ");
-        //Data Direction:
-        switch (ataCommandOptions->commandDirection)
-        {
-        case XFER_NO_DATA:
-            printf("No Data");
-            break;
-        case XFER_DATA_IN:
-            printf("Data In");
-            break;
-        case XFER_DATA_OUT:
-            printf("Data Out");
-            break;
-        default:
-            printf("Unknown");
-            break;
-        }
-        printf("\n");
-        //TFRs:
-        printf("\tTask File Registers:\n");
-        if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
-        {
-            printf("\t[FeatureExt] = %02" PRIX8 "h\n", ataCommandOptions->tfr.Feature48);
-        }
-        printf("\t[Feature] = %02" PRIX8 "h\n", ataCommandOptions->tfr.ErrorFeature);
-        if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
-        {
-            printf("\t[CountExt] = %02" PRIX8 "h\n", ataCommandOptions->tfr.SectorCount48);
-        }
-        printf("\t[Count] = %02" PRIX8 "h\n", ataCommandOptions->tfr.SectorCount);
-        if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
-        {
-            printf("\t[LBA Lo Ext] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaLow48);
-        }
-        printf("\t[LBA Lo] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaLow);
-        if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
-        {
-            printf("\t[LBA Mid Ext] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaMid48);
-        }
-        printf("\t[LBA Mid] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaMid);
-        if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
-        {
-            printf("\t[LBA Hi Ext] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaHi48);
-        }
-        printf("\t[LBA Hi] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaHi);
-        printf("\t[DeviceHead] = %02" PRIX8 "h\n", ataCommandOptions->tfr.DeviceHead);
-        printf("\t[Command] = %02" PRIX8"h\n", ataCommandOptions->tfr.CommandStatus);
-        //printf("\t[Device Control] = %02"PRIX8"h\n", ataCommandOptions->tfr.DeviceControl);
-        printf("\n");
+    case ATA_PROTOCOL_PIO:
+        printf("PIO");
+        break;
+    case ATA_PROTOCOL_DMA:
+        printf("DMA");
+        break;
+    case ATA_PROTOCOL_NO_DATA:
+        printf("NON-Data");
+        break;
+    case ATA_PROTOCOL_DEV_RESET:
+        printf("Device Reset");
+        break;
+    case ATA_PROTOCOL_DEV_DIAG:
+        printf("Device Diagnostic");
+        break;
+    case ATA_PROTOCOL_DMA_QUE:
+        printf("DMA Queued");
+        break;
+    case ATA_PROTOCOL_PACKET:
+    case ATA_PROTOCOL_PACKET_DMA:
+        printf("Packet");
+        break;
+    case ATA_PROTOCOL_DMA_FPDMA:
+        printf("FPDMA");
+        break;
+    case ATA_PROTOCOL_SOFT_RESET:
+        printf("Soft Reset");
+        break;
+    case ATA_PROTOCOL_HARD_RESET:
+        printf("Hard Reset");
+        break;
+    case ATA_PROTOCOL_RET_INFO:
+        printf("Return Response Information");
+        break;
+    case ATA_PROTOCOL_UDMA:
+        printf("UDMA");
+        break;
+    default:
+        break;
     }
+    printf("\n");
+    printf("\tData Direction: ");
+    //Data Direction:
+    switch (ataCommandOptions->commandDirection)
+    {
+    case XFER_NO_DATA:
+        printf("No Data");
+        break;
+    case XFER_DATA_IN:
+        printf("Data In");
+        break;
+    case XFER_DATA_OUT:
+        printf("Data Out");
+        break;
+    default:
+        printf("Unknown");
+        break;
+    }
+    printf("\n");
+    //TFRs:
+    printf("\tTask File Registers:\n");
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
+    {
+        printf("\t[FeatureExt] = %02" PRIX8 "h\n", ataCommandOptions->tfr.Feature48);
+    }
+    printf("\t[Feature] = %02" PRIX8 "h\n", ataCommandOptions->tfr.ErrorFeature);
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
+    {
+        printf("\t[CountExt] = %02" PRIX8 "h\n", ataCommandOptions->tfr.SectorCount48);
+    }
+    printf("\t[Count] = %02" PRIX8 "h\n", ataCommandOptions->tfr.SectorCount);
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
+    {
+        printf("\t[LBA Lo Ext] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaLow48);
+    }
+    printf("\t[LBA Lo] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaLow);
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
+    {
+        printf("\t[LBA Mid Ext] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaMid48);
+    }
+    printf("\t[LBA Mid] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaMid);
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
+    {
+        printf("\t[LBA Hi Ext] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaHi48);
+    }
+    printf("\t[LBA Hi] = %02" PRIX8 "h\n", ataCommandOptions->tfr.LbaHi);
+    printf("\t[DeviceHead] = %02" PRIX8 "h\n", ataCommandOptions->tfr.DeviceHead);
+    printf("\t[Command] = %02" PRIX8"h\n", ataCommandOptions->tfr.CommandStatus);
+    //printf("\t[Device Control] = %02"PRIX8"h\n", ataCommandOptions->tfr.DeviceControl);
+    printf("\n");
 }
 
 void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataCommandOptions)
 {
-    if (VERBOSITY_COMMAND_VERBOSE <= g_verbosity)
+    printf("\tReturn Task File Registers:\n");
+    printf("\t[Error] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.error);
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
-        printf("\tReturn Task File Registers:\n");
-        printf("\t[Error] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.error);
-        if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
-        {
-            printf("\t[Count Ext] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.secCntExt);
-        }
-        printf("\t[Count] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.secCnt);
-        if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
-        {
-            printf("\t[LBA Lo Ext] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaLowExt);
-        }
-        printf("\t[LBA Lo] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaLow);
-        if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
-        {
-            printf("\t[LBA Mid Ext] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaMidExt);
-        }
-        printf("\t[LBA Mid] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaMid);
-        if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
-        {
-            printf("\t[LBA Hi Ext] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaHiExt);
-        }
-        printf("\t[LBA Hi] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaHi);
-        printf("\t[Device] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.device);
-        printf("\t[Status] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.status);
-        printf("\n");
+        printf("\t[Count Ext] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.secCntExt);
     }
+    printf("\t[Count] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.secCnt);
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
+    {
+        printf("\t[LBA Lo Ext] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaLowExt);
+    }
+    printf("\t[LBA Lo] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaLow);
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
+    {
+        printf("\t[LBA Mid Ext] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaMidExt);
+    }
+    printf("\t[LBA Mid] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaMid);
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
+    {
+        printf("\t[LBA Hi Ext] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaHiExt);
+    }
+    printf("\t[LBA Hi] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaHi);
+    printf("\t[Device] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.device);
+    printf("\t[Status] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.status);
+    printf("\n");
 }
 
 uint8_t calculate_ATA_Checksum(uint8_t *ptrData)

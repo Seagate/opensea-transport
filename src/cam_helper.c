@@ -191,11 +191,11 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     int ret = FAILURE;
     //printf("%s -->\n",__FUNCTION__);
 
-	if (scsiIoCtx->device->drive_info.interface_type == SCSI_INTERFACE)
+    if (scsiIoCtx->device->drive_info.interface_type == SCSI_INTERFACE)
     {
         ret = send_Scsi_Cam_IO(scsiIoCtx);
     }
-	else if (scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
+    else if (scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
     {
         if (scsiIoCtx->pAtaCmdOpts)
         {
@@ -206,15 +206,15 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
             ret = translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
         }
     }
-	else if (scsiIoCtx->device->drive_info.interface_type == RAID_INTERFACE)
+    else if (scsiIoCtx->device->drive_info.interface_type == RAID_INTERFACE)
     {
-		if (scsiIoCtx->device->issue_io != NULL)
+        if (scsiIoCtx->device->issue_io != NULL)
         {
             ret = scsiIoCtx->device->issue_io(scsiIoCtx);
         }
         else
         {
-            if (VERBOSITY_QUIET < g_verbosity)
+            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("No Raid PassThrough IO Routine present for this device\n");
             }
@@ -222,7 +222,7 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     }
     else
     {
-        if (VERBOSITY_QUIET < g_verbosity)
+        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
             printf("Target Device does not have a valid interface %d\n",\
                        scsiIoCtx->device->drive_info.interface_type);
@@ -265,7 +265,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
             direction = CAM_DIR_BOTH;
             break;
         default:
-            if (VERBOSITY_QUIET < g_verbosity)
+            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("%s Didn't understand I/O direction\n", __FUNCTION__);
             }
@@ -383,7 +383,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                         if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_ATA_STATUS_ERROR)
                         {
                             ret = COMMAND_FAILURE;
-                            if (VERBOSITY_QUIET < g_verbosity)
+                            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
                             {
                                 printf("WARN: I/O went through but drive returned status=0x%02"PRIX8" error=0x%02"PRIX8"\n",\
                                            ataio->res.status, ataio->res.error);
@@ -391,14 +391,14 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                         }
                         else if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_CMD_TIMEOUT)
                         {
-                            if (VERBOSITY_QUIET < g_verbosity)
+                            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
                             {
                                 printf("WARN: I/O CAM_CMD_TIMEOUT occured\n");
                             }
                         }
                         else
                         {
-                            if (VERBOSITY_QUIET < g_verbosity)
+                            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
                             {
                                 printf("WARN: I/O error occurred %d\n", (ccb->ccb_h.status & CAM_STATUS_MASK));
                             }
@@ -461,7 +461,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
         }
         else
         {
-            if (VERBOSITY_DEFAULT < g_verbosity)
+            if (VERBOSITY_DEFAULT < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("WARN: Sending non-ATA commnad to ATA Drive [FreeBSD CAM driver does not support SAT Specification]\n");
             }
@@ -547,7 +547,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
             //io_hdr.dxfer_direction = SG_DXFER_UNKNOWN;
             //break;
         default:
-            if (VERBOSITY_QUIET < g_verbosity)
+            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("%s Didn't understand direction\n", __FUNCTION__);
             }
@@ -564,7 +564,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
         memcpy(&csio->cdb_io.cdb_bytes[0], &scsiIoCtx->cdb[0], IOCDBLEN);
         #if defined (_DEBUG)
         printf("%s cdb [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x] \n\t \
-			   [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",\
+               [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",\
                    __FUNCTION__,\
                    csio->cdb_io.cdb_bytes[0],\
                    csio->cdb_io.cdb_bytes[1],\
@@ -600,7 +600,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
             printf("%s success with ret %d & valid sense=%d\n",\
                        __FUNCTION__, ret, (ccb->ccb_h.status & CAM_AUTOSNS_VALID));
             printf("%s error code %d, sense [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x] \n\t \
-			   [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",\
+               [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",\
                        __FUNCTION__,\
                        csio->sense_data.error_code,\
                        csio->sense_data.sense_buf[0],\
@@ -649,7 +649,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
         {
             ret = COMMAND_FAILURE;
 
-            if (VERBOSITY_DEFAULT < g_verbosity)
+            if (VERBOSITY_DEFAULT < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("%s cam error %d, scsi error %d\n",\
                            __FUNCTION__, (ccb->ccb_h.status & CAM_STATUS_MASK), ccb->csio.scsi_status);
@@ -659,10 +659,12 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
                 && (ccb->csio.scsi_status == SCSI_STATUS_CHECK_COND)
                 && ((ccb->ccb_h.status & CAM_AUTOSNS_VALID) != 0))
             {
-                memcpy(scsiIoCtx->psense, &csio->sense_data.sense_buf[0], scsiIoCtx->senseDataSize);
+                //memcpy(scsiIoCtx->psense, &csio->sense_data.sense_buf[0], scsiIoCtx->senseDataSize);
+                memcpy(scsiIoCtx->psense, &csio->sense_data.error_code, sizeof(uint8_t));
+                memcpy(scsiIoCtx->psense+1, &csio->sense_data.sense_buf[0], (scsiIoCtx->senseDataSize)-1);
                 #if defined (_DEBUG)  
                 printf("%s error code %d, sense [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x] \n\t \
-				   [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",\
+                   [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",\
                            __FUNCTION__,\
                            csio->sense_data.error_code,\
                            csio->sense_data.sense_buf[0],\
@@ -758,7 +760,7 @@ int close_Device(tDevice *dev)
 //  Entry:
 //!   \param[out] numberOfDevices = integer to hold the number of devices found. 
 //!   \param[in] flags = eScanFlags based mask to let application control. 
-//!						 NOTE: currently flags param is not being used.  
+//!                      NOTE: currently flags param is not being used.  
 //!
 //  Exit:
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -774,8 +776,8 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
 
     *numberOfDevices = num_da_devs + num_ada_devs;
-	
-	return SUCCESS;
+    
+    return SUCCESS;
 }
 
 //-----------------------------------------------------------------------------
@@ -785,18 +787,18 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //! \brief   Description:  Get a list of devices that the library supports. 
 //!                        Use get_Device_Count to figure out how much memory is
 //!                        needed to be allocated for the device list. The memory 
-//!						   allocated must be the multiple of device structure. 
-//!						   The application can pass in less memory than needed 
-//!						   for all devices in the system, in which case the library 
+//!                        allocated must be the multiple of device structure. 
+//!                        The application can pass in less memory than needed 
+//!                        for all devices in the system, in which case the library 
 //!                        will fill the provided memory with how ever many device 
-//!						   structures it can hold. 
+//!                        structures it can hold. 
 //  Entry:
 //!   \param[out] ptrToDeviceList = pointer to the allocated memory for the device list
 //!   \param[in]  sizeInBytes = size of the entire list in bytes. 
 //!   \param[in]  versionBlock = versionBlock structure filled in by application for 
-//!								 sanity check by library. 
+//!                              sanity check by library. 
 //!   \param[in] flags = eScanFlags based mask to let application control. 
-//!						 NOTE: currently flags param is not being used.  
+//!                      NOTE: currently flags param is not being used.  
 //!
 //  Exit:
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -837,43 +839,45 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     free(danamelist);
     free(adanamelist);
 
-	//TODO: Check if sizeInBytes is a multiple of 
-	if (!(ptrToDeviceList) || (!sizeInBytes))
-	{
-		returnValue = BAD_PARAMETER;
-	}
+    //TODO: Check if sizeInBytes is a multiple of 
+    if (!(ptrToDeviceList) || (!sizeInBytes))
+    {
+        returnValue = BAD_PARAMETER;
+    }
     else if ((!(validate_Device_Struct(ver))))
     {
         returnValue = LIBRARY_MISMATCH;
     }
-	else
-	{
-		numberOfDevices = sizeInBytes / sizeof(tDevice);
-		d = ptrToDeviceList;
-		for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_da_devs + num_ada_devs)) || (found < numberOfDevices)); driveNumber++)
-		{
-		    strncpy(name, devs[driveNumber], M_Min(sizeof(name), devs[driveNumber]));
+    else
+    {
+        numberOfDevices = sizeInBytes / sizeof(tDevice);
+        d = ptrToDeviceList;
+        for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_da_devs + num_ada_devs)) || (found < numberOfDevices)); driveNumber++)
+        {
+            strncpy(name, devs[driveNumber], M_Min(sizeof(name), devs[driveNumber]));
             fd = -1;
-            //lets try to open the device.		
+            //lets try to open the device.      
             fd = cam_get_device(name, d->os_info.name, sizeof(d->os_info.name), &d->os_info.fd);
             if (fd >= 0)
             {
-				if (cam_dev)
+                if (cam_dev)
                 {
                     cam_close_device(cam_dev);
                 }
-				memset(d, 0, sizeof(tDevice));
-				d->sanity.size = ver.size;
-				d->sanity.version = ver.version;
-				returnValue = get_Device(name, d);
-				if (returnValue != SUCCESS)
-				{
+                eVerbosityLevels temp = d->deviceVerbosity;
+                memset(d, 0, sizeof(tDevice));
+                d->deviceVerbosity = temp;
+                d->sanity.size = ver.size;
+                d->sanity.version = ver.version;
+                returnValue = get_Device(name, d);
+                if (returnValue != SUCCESS)
+                {
                     failedGetDeviceCount++;
-				}
-				found++;
-				d++;
-			}
-		}
+                }
+                found++;
+                d++;
+            }
+        }
         if (found == failedGetDeviceCount)
         {
             returnValue = FAILURE;
@@ -882,9 +886,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
-	}
+    }
     safe_Free(devs);
-	return returnValue;
+    return returnValue;
 }
 
 int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
@@ -909,6 +913,16 @@ int os_Flush(tDevice *device)
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
+{
+    return NOT_SUPPORTED;
+}
+
+int nvme_Reset(tDevice *device)
+{
+    return NOT_SUPPORTED;
+}
+
+int nvme_Subsystem_Reset(tDevice *device)
 {
     return NOT_SUPPORTED;
 }

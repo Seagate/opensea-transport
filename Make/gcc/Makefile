@@ -1,7 +1,7 @@
 #
 # Do NOT modify or remove this copyright and license
 #
-# Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+# Copyright (c) 2012 - 2019 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 #
 # This software is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -17,14 +17,14 @@ FILE_OUTPUT_DIR=lib
 #Change the Major version when major interface changes are made. E.g. tDevice changes
 MAJOR=1
 #Change the Minor version when new features are added. 
-MINOR=18
+MINOR=19
 #Change the patch version when only bug fixes are made.
-PATCH=3
+PATCH=10
 VERSION=$(MAJOR).$(MINOR).$(PATCH)
 SRC_DIR=../../src/
-INC_DIR=-I../../include -I../../../opensea-common/include  
-CC=gcc
-AR=ar
+INC_DIR=-I../../include -I../../include/vendor -I../../../opensea-common/include  
+CC ?= gcc
+AR ?= ar
 
 #determine the proper NVMe include file. SEA_NVME_IOCTL_H, SEA_NVME_H, or SEA_UAPI_NVME_H
 NVME_IOCTL_H = /usr/include/linux/nvme_ioctl.h 
@@ -46,7 +46,7 @@ endif
 CFLAGS ?= -Wall 
 #setting std=c99 instead of std-gnu99 because we want __has_include to work. This means we must add -D_GNU_SOURCE to the project defines to keep the same functionality in Linux. NOTE: This seems to work in newGCC, but if you are unfortunate enough to HAVE to use old GCC within somehting like CentOS6, you must change back to gnu99.
 CFLAGS += -c -fPIC -I. -std=gnu99
-LFLAGS = -Wall ../../../opensea-common/Make/gcc/lib/$(FILE_OUTPUT_DIR)/libopensea-common.a
+LFLAGS ?= -Wall ../../../opensea-common/Make/gcc/lib/$(FILE_OUTPUT_DIR)/libopensea-common.a
 LIB_SRC_FILES = \
 	$(SRC_DIR)ata_cmds.c\
 	$(SRC_DIR)ata_legacy_cmds.c\
@@ -63,7 +63,8 @@ LIB_SRC_FILES = \
 	$(SRC_DIR)ti_legacy_helper.c\
 	$(SRC_DIR)nec_legacy_helper.c\
 	$(SRC_DIR)prolific_legacy_helper.c\
-	$(SRC_DIR)usb_hacks.c
+	$(SRC_DIR)usb_hacks.c\
+	$(SRC_DIR)sntl_helper.c
 
 UNAME := $(shell uname)
 ifeq ($(UNAME),Linux)

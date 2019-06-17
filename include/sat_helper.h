@@ -20,7 +20,7 @@ extern "C"
 {
 #endif
 
-    #define SAT_VPD_CMD_CODE_IDX	(56)
+    #define SAT_VPD_CMD_CODE_IDX    (56)
     #define SAT_VPD_PAGE_HEADER     (60)
 
     #define SAT_DESCRIPTOR_CODE     (0x09)

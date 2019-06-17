@@ -82,7 +82,7 @@ extern "C"
     #include "nvme_helper.h"
 #endif
 
-#define SG_PHYSICAL_DRIVE	"/dev/sg" //followed by a number
+#define SG_PHYSICAL_DRIVE   "/dev/sg" //followed by a number
 #define SD_PHYSICAL_DRIVE   "/dev/sd" //followed by a letter
 #define BSG_PHYSICAL_DRIVE  "/dev/bsg/" //remaining part of the handle is h:c:t:l
 
@@ -132,6 +132,10 @@ extern "C"
 int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize );
 
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
+
+//to be used with a deep scan???
+//int nvme_Namespace_Rescan(int fd);//rescans a controller for namespaces. This must be a file descriptor without a namespace. EX: /dev/nvme0 and NOT /dev/nvme0n1
+
 
 #endif
 

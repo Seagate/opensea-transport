@@ -40,7 +40,7 @@ int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode, bool znr)
         ret = scsi_Sanitize_Block_Erase(device, exitFailureMode, true, znr);
         break;
     default:
-        if (VERBOSITY_QUIET < g_verbosity)
+        if (VERBOSITY_QUIET < device->deviceVerbosity)
         {
             printf("Current device type not supported yet\n");
         }
@@ -68,7 +68,7 @@ int send_Sanitize_Crypto_Erase(tDevice *device, bool exitFailureMode, bool znr)
         ret = scsi_Sanitize_Cryptographic_Erase(device, exitFailureMode, true, znr);
         break;
     default:
-        if (VERBOSITY_QUIET < g_verbosity)
+        if (VERBOSITY_QUIET < device->deviceVerbosity)
         {
             printf("Current device type not supported yet\n");
         }
@@ -101,7 +101,7 @@ int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool in
         {
             nvmPattern = M_BytesTo4ByteValue(pattern[3], pattern[2], pattern[1], pattern[0]);
         }
-        ret = nvme_Sanitize(device, false, invertBetweenPasses, overwritePasses, exitFailureMode, SANITIZE_NVM_CRYPTO, nvmPattern);
+        ret = nvme_Sanitize(device, false, invertBetweenPasses, overwritePasses, exitFailureMode, SANITIZE_NVM_OVERWRITE, nvmPattern);
     }
         break;
 #else
@@ -166,8 +166,9 @@ int send_Sanitize_Exit_Failure_Mode(tDevice *device)
 int spin_down_drive(tDevice *device, bool sleepState)
 {
     int ret = UNKNOWN;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         if (sleepState)//send sleep command
         {
             ret = ata_Sleep(device);
@@ -176,10 +177,25 @@ int spin_down_drive(tDevice *device, bool sleepState)
         {
             ret = ata_Standby_Immediate(device);
         }
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
-    {
-        if (device->drive_info.scsiVersion > 2)
+        break;
+    case NVME_DRIVE:
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+        if (sleepState)
+        {
+            ret = NOT_SUPPORTED;
+        }
+        else
+        {
+            nvmeFeaturesCmdOpt standby;
+            memset(&standby, 0, sizeof(nvmeFeaturesCmdOpt));
+            standby.fid = NVME_FEAT_POWER_MGMT_;
+            standby.featSetGetValue = device->drive_info.IdentifyData.nvme.ctrl.npss;
+            ret = nvme_Set_Features(device, &standby);
+        }
+        break;
+#endif
+    case SCSI_DRIVE:
+        if (device->drive_info.scsiVersion > SCSI_VERSION_SCSI2)
         {
             if (sleepState)
             {
@@ -201,14 +217,14 @@ int spin_down_drive(tDevice *device, bool sleepState)
                 ret = scsi_Start_Stop_Unit(device, false, 0, PC_START_VALID, false, false, false);
             }
         }
-    }
-    else
-    {
-        if (VERBOSITY_QUIET < g_verbosity)
+        break;
+    default:
+        if (VERBOSITY_QUIET < device->deviceVerbosity)
         {
             printf("Spin down drive is not supported on this drive type at this time\n");
         }
         ret = NOT_SUPPORTED;
+        break;
     }
     return ret;
 }
@@ -218,9 +234,9 @@ int spin_down_drive(tDevice *device, bool sleepState)
 //  fill_Drive_Info_Data()
 //
 //! \brief   Description:  Generic Function to get drive information data filled  
-//						   into the driveInfo_TYPE of the device structure. 
-//						   This function assumes the type & interface has already
-//						   determined by the OS layer. 
+//                         into the driveInfo_TYPE of the device structure. 
+//                         This function assumes the type & interface has already
+//                         determined by the OS layer. 
 //  Entry:
 //!   \param tDevice - pointer to the device structure
 //!   
@@ -230,19 +246,19 @@ int spin_down_drive(tDevice *device, bool sleepState)
 //-----------------------------------------------------------------------------
 int fill_Drive_Info_Data(tDevice *device)
 {
-	int status = SUCCESS;
+    int status = SUCCESS;
     #ifdef _DEBUG
     printf("%s: -->\n",__FUNCTION__);
     #endif
-	if (device)
-	{		
+    if (device)
+    {       
         if (device->drive_info.interface_type == UNKNOWN_INTERFACE)
         {
             status = BAD_PARAMETER;
             return status;
         }
-		switch (device->drive_info.interface_type)
-		{
+        switch (device->drive_info.interface_type)
+        {
         case IDE_INTERFACE:
             //We know this is an ATA interface and we SHOULD be able to send either an ATA or ATAPI identify...but that doesn't work right, so if the OS layer told us it is ATAPI, do SCSI device discovery
             if (device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE)
@@ -261,26 +277,26 @@ int fill_Drive_Info_Data(tDevice *device)
             }
             break;
         case IEEE_1394_INTERFACE:
-		case USB_INTERFACE:
+        case USB_INTERFACE:
             //On USB and firewire, call this instead since this includes various hacks/workarounds for some USB devices.
             status = fill_Drive_Info_USB(device);
             break;
-		case NVME_INTERFACE:
+        case NVME_INTERFACE:
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-			status = fill_In_NVMe_Device_Info(device);
-			break;
+            status = fill_In_NVMe_Device_Info(device);
+            break;
 #endif
         case SCSI_INTERFACE:
         default:
             //call this instead. It will handle issuing scsi commands and at the end will attempt an ATA Identify if needed
             status = fill_In_Device_Info(device);
-			break;
-		}		
-	}
-	else
-	{
-		status = BAD_PARAMETER;
-	}
+            break;
+        }       
+    }
+    else
+    {
+        status = BAD_PARAMETER;
+    }
     #ifdef _DEBUG
     if (device)
     {
@@ -289,11 +305,11 @@ int fill_Drive_Info_Data(tDevice *device)
         printf("Media type: %d\n", device->drive_info.media_type);
     }
     printf("%s: <--\n",__FUNCTION__);
-	#endif
-	return status;
+    #endif
+    return status;
 }
 
-int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber)
+int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber, bool existingImage)
 {
     int ret = UNKNOWN;
 #ifdef _DEBUG
@@ -337,7 +353,64 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
         switch (dlMode)
         {
         case DL_FW_ACTIVATE:
-            ret = nvme_Firmware_Commit(device, NVME_CA_REPLACE_ACTIVITE_ON_RST, slotNumber);
+            {
+                uint8_t statusCodeType = 0, statusCode = 0;
+                bool doNotRetry = false, more = false;
+                bool issueReset = false, subsystem = false;
+                if (device->drive_info.IdentifyData.nvme.ctrl.frmw & BIT4)
+                {
+                    //this activate action can be used for replacing or activating existing images if the controller supports it.
+                    ret = nvme_Firmware_Commit(device, NVME_CA_ACTIVITE_IMMEDIATE, slotNumber);
+                }
+                else
+                {
+                    if (existingImage)
+                    {
+                        ret = nvme_Firmware_Commit(device, NVME_CA_ACTIVITE_ON_RST, slotNumber);
+                    }
+                    else
+                    {
+                        ret = nvme_Firmware_Commit(device, NVME_CA_REPLACE_ACTIVITE_ON_RST, slotNumber);
+                    }
+                    if (ret == SUCCESS)
+                    {
+                        issueReset = true;
+                    }
+                }
+                //Issue a reset if we need to!
+                get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &doNotRetry, &more, &statusCodeType, &statusCode);
+                if (statusCodeType == NVME_SCT_COMMAND_SPECIFIC_STATUS)
+                {
+                    switch (statusCode)
+                    {
+                    case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
+                        issueReset = true;
+                        subsystem = true;
+                        break;
+                    case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
+                    case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
+                        issueReset = true;
+                        break;
+                    default:
+                        break;
+                    }
+                }
+                if (issueReset)
+                {
+                    //send an appropriate reset to the device to activate the firmware.
+                    //NOTE: On Windows, this is a stub since their API call will do this for us.
+                    if (subsystem)
+                    {
+                        //subsystem reset
+                        nvme_Subsystem_Reset(device);
+                    }
+                    else
+                    {
+                        //reset
+                        nvme_Reset(device);
+                    }
+                }
+            }
             break;
         case DL_FW_DEFERRED:
             ret = nvme_Firmware_Image_Dl(device, offset, xferLen, ptrData);
@@ -393,9 +466,9 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
     return ret;
 }
 
-int firmware_Download_Activate(tDevice *device, uint8_t slotNumber)
+int firmware_Download_Activate(tDevice *device, uint8_t slotNumber, bool existingImage)
 {
-    return firmware_Download_Command(device, DL_FW_ACTIVATE, 0, 0, NULL, slotNumber);
+    return firmware_Download_Command(device, DL_FW_ACTIVATE, 0, 0, NULL, slotNumber, existingImage);
 }
 
 int security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
@@ -507,7 +580,7 @@ int security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securit
 #endif
     case SCSI_DRIVE:
     {
-		//The inc512 bit is not allowed on NVMe drives when sent this command....we may want to remove setting it, but for now we'll leave it here.
+        //The inc512 bit is not allowed on NVMe drives when sent this command....we may want to remove setting it, but for now we'll leave it here.
         bool inc512 = false;
         if (dataSize >= LEGACY_DRIVE_SEC_SIZE && dataSize % LEGACY_DRIVE_SEC_SIZE == 0 && device->drive_info.drive_type != NVME_DRIVE && strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0)
         {
@@ -532,8 +605,9 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
     {
         noDataTransfer = true;
     }
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         if (device->drive_info.IdentifyData.ata.Word206 & BIT2)
         {
             if (noDataTransfer)
@@ -567,7 +641,7 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
                 numberOfLogicalBlocks = 0;
                 performWriteSame = true;
             }
-            else if(numberOfLogicalBlocks < UINT8_MAX)
+            else if (numberOfLogicalBlocks < UINT8_MAX)
             {
                 performWriteSame = true;
             }
@@ -604,11 +678,10 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
         {
             ret = NOT_SUPPORTED;
         }
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
-    {
+        break;
+    case SCSI_DRIVE:
         //todo: if there is no data transfer and the drive doesn't support that feature, we need to allocate local zeroed memory to send as the pattern
-        if (device->drive_info.scsiVersion > 3 && device->drive_info.deviceMaxLba > SCSI_MAX_32_LBA)
+        if (device->drive_info.scsiVersion > SCSI_VERSION_SPC && device->drive_info.deviceMaxLba > SCSI_MAX_32_LBA)
         {
             //write same 16 was made in SBC2 so need to report conformance to version greater than SPC (3) to do this.
             ret = scsi_Write_Same_16(device, 0, false, false, noDataTransfer, startingLba, 0, (uint32_t)numberOfLogicalBlocks, pattern, device->drive_info.deviceBlockSize);
@@ -617,10 +690,10 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
         {
             ret = scsi_Write_Same_10(device, 0, false, false, (uint32_t)startingLba, 0, (uint16_t)numberOfLogicalBlocks, pattern, device->drive_info.deviceBlockSize);
         }
-    }
-    else
-    {
+        break;
+    default:
         ret = NOT_SUPPORTED;
+        break;
     }
     return ret;
 }
@@ -628,14 +701,20 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
 bool is_Write_Psuedo_Uncorrectable_Supported(tDevice *device)
 {
     bool supported = false;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         if (device->drive_info.ata_Options.writeUncorrectableExtSupported)
         {
             supported = true;
         }
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
+        break;
+    case NVME_DRIVE:
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+        supported = false;
+        break;
+#endif
+    case SCSI_DRIVE:
     {
         //check for wu_supp in extended inquiry vpd page (SPC4+) since this matches when it was added to SBC3
         uint8_t extendedInquiryData[VPD_EXTENDED_INQUIRY_LEN] = { 0 };
@@ -646,6 +725,10 @@ bool is_Write_Psuedo_Uncorrectable_Supported(tDevice *device)
                 supported = true;
             }
         }
+    }
+        break;
+    default:
+        break;
     }
     return supported;
 }
@@ -666,8 +749,9 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
         //set this flag for SCSI
         multipleLogicalPerPhysical = true;
     }
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         if (device->drive_info.ata_Options.writeUncorrectableExtSupported)
         {
             ret = ata_Write_Uncorrectable(device, 0x55, logicalPerPhysicalBlocks, corruptLBA);
@@ -676,9 +760,13 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
         {
             ret = NOT_SUPPORTED;
         }
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
-    {
+        break;
+    case NVME_DRIVE:
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+        ret = NOT_SUPPORTED;
+        break;
+#endif
+    case SCSI_DRIVE:
         if (device->drive_info.deviceMaxLba > UINT32_MAX)
         {
             ret = scsi_Write_Long_16(device, false, true, multipleLogicalPerPhysical, corruptLBA, 0, NULL);
@@ -687,10 +775,10 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
         {
             ret = scsi_Write_Long_10(device, false, true, multipleLogicalPerPhysical, (uint32_t)corruptLBA, 0, NULL);
         }
-    }
-    else
-    {
+        break;
+    default:
         ret = NOT_SUPPORTED;
+        break;
     }
     return ret;
 }
@@ -698,23 +786,23 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
 bool is_Write_Flagged_Uncorrectable_Supported(tDevice *device)
 {
     bool supported = false;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         if (device->drive_info.ata_Options.writeUncorrectableExtSupported)
         {
             supported = true;
         }
-    }
+        break;
+    case NVME_DRIVE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-    else if (device->drive_info.drive_type == NVME_DRIVE)
-    {
         if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT1)
         {
             supported = true;
         }
-    }
+        break;
 #endif
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
+    case SCSI_DRIVE:
     {
         //check for wu_supp in extended inquiry vpd page (SPC4+) since this matches when it was added to SBC3
         uint8_t extendedInquiryData[VPD_EXTENDED_INQUIRY_LEN] = { 0 };
@@ -725,6 +813,10 @@ bool is_Write_Flagged_Uncorrectable_Supported(tDevice *device)
                 supported = true;
             }
         }
+    }
+        break;
+    default:
+        break;
     }
     return supported;
 }
@@ -1287,7 +1379,7 @@ int scsi_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
     }
     else //synchronous reads
     {
-        if (device->drive_info.scsiVersion >= 5)//SBC2 introduced read 16 command, so checking for SPC3
+        if (device->drive_info.scsiVersion >= SCSI_VERSION_SPC_3)//SBC2 introduced read 16 command, so checking for SPC3
         {
             //there's no real way to tell when scsi drive supports read 10 vs read 16 (which are all we will care about in here), so just based on transfer length and the maxLBA
             if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && sectors <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
@@ -1335,7 +1427,7 @@ int scsi_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint
     }
     else //synchronous reads
     {
-        if (device->drive_info.scsiVersion >= 5)//SBC2 introduced write 16 command, so checking for SPC3
+        if (device->drive_info.scsiVersion >= SCSI_VERSION_SPC_3)//SBC2 introduced write 16 command, so checking for SPC3
         {
             //there's no real way to tell when scsi drive supports write 10 vs write 16 (which are all we will care about in here), so just based on transfer length and the maxLBA
             if (device->drive_info.deviceMaxLba <= UINT32_MAX && sectors <= UINT16_MAX && lba <= UINT32_MAX)
@@ -1592,20 +1684,20 @@ int scsi_Verify(tDevice *device, uint64_t lba, uint32_t range)
 #if !defined (DISABLE_NVME_PASSTHROUGH)
 int nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
 {
-	//NVME doesn't have a verify command like ATA or SCSI, so we're going to substitute by doing a read with FUA set....should be the same minus doing a data transfer.
-	int ret = SUCCESS;
-	uint32_t dataLength = device->drive_info.deviceBlockSize * range;
-	uint8_t *data = (uint8_t*)calloc(dataLength, sizeof(uint8_t));
-	if (data)
-	{
-		ret = nvme_Read(device, lba, range - 1, false, true, 0, data, dataLength);
-	}
-	else
-	{
-		ret = MEMORY_FAILURE;
-	}
-	safe_Free(data);
-	return ret;
+    //NVME doesn't have a verify command like ATA or SCSI, so we're going to substitute by doing a read with FUA set....should be the same minus doing a data transfer.
+    int ret = SUCCESS;
+    uint32_t dataLength = device->drive_info.deviceBlockSize * range;
+    uint8_t *data = (uint8_t*)calloc(dataLength, sizeof(uint8_t));
+    if (data)
+    {
+        ret = nvme_Read(device, lba, range - 1, false, true, 0, data, dataLength);
+    }
+    else
+    {
+        ret = MEMORY_FAILURE;
+    }
+    safe_Free(data);
+    return ret;
 }
 #endif
 
@@ -1633,7 +1725,7 @@ int verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
             break;
         case NVME_INTERFACE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-			return nvme_Verify_LBA(device, lba, range);
+            return nvme_Verify_LBA(device, lba, range);
 #else 
             //perform SCSI verifies
             return scsi_Verify(device, lba, range);
@@ -1700,7 +1792,7 @@ int flush_Cache(tDevice *device)
 #if !defined (DISABLE_NVME_PASSTHROUGH)
             return nvme_Flush(device);
 #else
-            //perform SCSI writes
+            //perform SCSI flush
             return scsi_Synchronize_Cache_Command(device);
 #endif
         case RAID_INTERFACE:
@@ -1718,17 +1810,17 @@ int flush_Cache(tDevice *device)
 int close_Zone(tDevice *device, bool closeAll, uint64_t zoneID)
 {
     int ret = UNKNOWN;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         ret = ata_Close_Zone_Ext(device, closeAll, zoneID);
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
-    {
+        break;
+    case SCSI_DRIVE:
         ret = scsi_Close_Zone(device, closeAll, zoneID);
-    }
-    else
-    {
+        break;
+    default:
         ret = NOT_SUPPORTED;
+        break;
     }
     return ret;
 }
@@ -1736,17 +1828,17 @@ int close_Zone(tDevice *device, bool closeAll, uint64_t zoneID)
 int finish_Zone(tDevice *device, bool finishAll, uint64_t zoneID)
 {
     int ret = UNKNOWN;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         ret = ata_Finish_Zone_Ext(device, finishAll, zoneID);
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
-    {
+        break;
+    case SCSI_DRIVE:
         ret = scsi_Finish_Zone(device, finishAll, zoneID);
-    }
-    else
-    {
+        break;
+    default:
         ret = NOT_SUPPORTED;
+        break;
     }
     return ret;
 }
@@ -1754,17 +1846,17 @@ int finish_Zone(tDevice *device, bool finishAll, uint64_t zoneID)
 int open_Zone(tDevice *device, bool openAll, uint64_t zoneID)
 {
     int ret = UNKNOWN;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         ret = ata_Open_Zone_Ext(device, openAll, zoneID);
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
-    {
+        break;
+    case SCSI_DRIVE:
         ret = scsi_Open_Zone(device, openAll, zoneID);
-    }
-    else
-    {
+        break;
+    default:
         ret = NOT_SUPPORTED;
+        break;
     }
     return ret;
 }
@@ -1772,17 +1864,17 @@ int open_Zone(tDevice *device, bool openAll, uint64_t zoneID)
 int reset_Write_Pointer(tDevice *device, bool resetAll, uint64_t zoneID)
 {
     int ret = UNKNOWN;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         ret = ata_Reset_Write_Pointers_Ext(device, resetAll, zoneID);
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
-    {
+        break;
+    case SCSI_DRIVE:
         ret = scsi_Reset_Write_Pointers(device, resetAll, zoneID);
-    }
-    else
-    {
+        break;
+    default:
         ret = NOT_SUPPORTED;
+        break;
     }
     return ret;
 }
@@ -1790,21 +1882,21 @@ int reset_Write_Pointer(tDevice *device, bool resetAll, uint64_t zoneID)
 int report_Zones(tDevice *device, eZoneReportingOptions reportingOptions, bool partial, uint64_t zoneLocator, uint8_t *ptrData, uint32_t dataSize)
 {
     int ret = UNKNOWN;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    switch (device->drive_info.drive_type)
     {
+    case ATA_DRIVE:
         if (dataSize % LEGACY_DRIVE_SEC_SIZE != 0)
         {
             return BAD_PARAMETER;
         }
         ret = ata_Report_Zones_Ext(device, reportingOptions, partial, dataSize / LEGACY_DRIVE_SEC_SIZE, zoneLocator, ptrData, dataSize);
-    }
-    else if (device->drive_info.drive_type == SCSI_DRIVE)
-    {
+        break;
+    case SCSI_DRIVE:
         ret = scsi_Report_Zones(device, reportingOptions, partial, dataSize, zoneLocator, ptrData);
-    }
-    else
-    {
+        break;
+    default:
         ret = NOT_SUPPORTED;
+        break;
     }
     return ret;
 }
