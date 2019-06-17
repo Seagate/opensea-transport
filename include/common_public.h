@@ -16,6 +16,9 @@
 
 #include "common.h"
 #include "version.h"
+#if defined (VMK_CROSS_COMP)
+#include "vm_nvme_lib.h"
+#endif
 
 #if defined (__cplusplus)
 #define __STDC_FORMAT_MACROS
@@ -58,16 +61,16 @@ extern "C"
     #define FW_REV_LEN              (10)
     #define T10_VENDOR_ID_LEN       (8)
 
-	typedef struct _apiVersionInfo
-	{
-		uint8_t	majorVersion;
-		uint8_t minorVersion;
-		uint8_t patchVersion;
-		uint8_t reserved;
-	} apiVersionInfo;
+    typedef struct _apiVersionInfo 
+    {
+        uint8_t majorVersion;
+        uint8_t minorVersion;
+        uint8_t patchVersion; 
+        uint8_t reserved; 
+    } apiVersionInfo;
 
 // These need to be moved to ata_helper.h
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
     typedef struct
@@ -440,7 +443,7 @@ extern "C"
         uint16_t Word253;
         uint16_t Word254;
         uint16_t Word255;
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }tAtaIdentifyData, *ptAtaIdentifyData;
     #pragma pack(pop)
     #else
@@ -449,49 +452,49 @@ extern "C"
 
 
     #if !defined(DISABLE_NVME_PASSTHROUGH)
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     //All of the NVME structs in here were moved here to fix a circular include issue
     typedef struct _nvmeIDPowerState {
-    	uint16_t 			maxPower;	/* centiwatts */
-    	uint8_t 			rsvd2;
-    	uint8_t 			flags;
-    	uint32_t 			entryLat;	/* microseconds */
-    	uint32_t 			exitLat;	/* microseconds */
-    	uint8_t 			readTPut;
-    	uint8_t 			readLat;
-    	uint8_t 			writeLput;
-    	uint8_t 			writeLat;
-    	uint16_t 			idlePower;
-    	uint8_t 			idleScale;
-    	uint8_t 			rsvd19;
-    	uint16_t 			activePower;
-    	uint8_t 			activeWorkScale;
-    	uint8_t 			rsvd23[9];
-    #if !defined (__GNUC__)
+        uint16_t            maxPower;   /* centiwatts */
+        uint8_t             rsvd2;
+        uint8_t             flags;
+        uint32_t            entryLat;   /* microseconds */
+        uint32_t            exitLat;    /* microseconds */
+        uint8_t             readTPut;
+        uint8_t             readLat;
+        uint8_t             writeLput;
+        uint8_t             writeLat;
+        uint16_t            idlePower;
+        uint8_t             idleScale;
+        uint8_t             rsvd19;
+        uint16_t            activePower;
+        uint8_t             activeWorkScale;
+        uint8_t             rsvd23[9];
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDPowerState;
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeIDPowerState;
     #endif
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _nvmeIDCtrl {
         //controller capabilities and features
-        uint16_t 			vid;
-        uint16_t 			ssvid;
-    	char			    sn[20];
-    	char			    mn[40];
-    	char			    fr[8];
-    	uint8_t 			rab;
-    	uint8_t 			ieee[3];
-    	uint8_t 			cmic;
-    	uint8_t 			mdts;
-    	uint16_t 			cntlid;
-    	uint32_t 			ver;
+        uint16_t            vid;
+        uint16_t            ssvid;
+        char                sn[20];
+        char                mn[40];
+        char                fr[8];
+        uint8_t             rab;
+        uint8_t             ieee[3];
+        uint8_t             cmic;
+        uint8_t             mdts;
+        uint16_t            cntlid;
+        uint32_t            ver;
         uint32_t            rtd3r;
         uint32_t            rtd3e;
         uint32_t            oaes;
@@ -501,17 +504,17 @@ extern "C"
         uint8_t             reservedBytes239_128[112];
         uint8_t             nvmManagement[16];
         //Admin command set attribues & optional controller capabilities
-    	uint16_t 			oacs;
-    	uint8_t 			acl;
-    	uint8_t 			aerl;
-    	uint8_t 			frmw;
-    	uint8_t 			lpa;
-    	uint8_t 			elpe;
-    	uint8_t 			npss;
-    	uint8_t 			avscc;
-    	uint8_t 			apsta;
-    	uint16_t 			wctemp;
-    	uint16_t 			cctemp;
+        uint16_t            oacs;
+        uint8_t             acl;
+        uint8_t             aerl;
+        uint8_t             frmw;
+        uint8_t             lpa;
+        uint8_t             elpe;
+        uint8_t             npss;
+        uint8_t             avscc;
+        uint8_t             apsta;
+        uint16_t            wctemp;
+        uint16_t            cctemp;
         uint16_t            mtfa;
         uint32_t            hmpre;
         uint32_t            hmmin;
@@ -528,87 +531,93 @@ extern "C"
         uint32_t            sanicap;
         uint8_t             reservedBytes511_332[180];
         //NVM command set attributes;
-    	uint8_t 			sqes;
-    	uint8_t 			cqes;
+        uint8_t             sqes;
+        uint8_t             cqes;
         uint16_t            maxcmd;
-    	uint32_t 			nn;
-    	uint16_t 			oncs;
-    	uint16_t 			fuses;
-    	uint8_t 			fna;
-    	uint8_t 			vwc;
-    	uint16_t 			awun;
-    	uint16_t 			awupf;
-    	uint8_t 			nvscc;
-    	uint8_t 		    reservedByte531;
-    	uint16_t 			acwu;
-    	uint8_t 			rsvd534[2];
-    	uint32_t 			sgls;
+        uint32_t            nn;
+        uint16_t            oncs;
+        uint16_t            fuses;
+        uint8_t             fna;
+        uint8_t             vwc;
+        uint16_t            awun;
+        uint16_t            awupf;
+        uint8_t             nvscc;
+        uint8_t             reservedByte531;
+        uint16_t            acwu;
+        uint8_t             rsvd534[2];
+        uint32_t            sgls;
         uint8_t             reservedBytes767_540[228];
         char                subnqn[256];
         uint8_t             reservedBytes1791_1024[768];
         uint8_t             nvmeOverFabrics[256];
-    	nvmeIDPowerState	psd[32];
-    	uint8_t 			vs[1024];
-    #if !defined (__GNUC__)
+        nvmeIDPowerState    psd[32];
+        uint8_t             vs[1024];
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDCtrl;
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeIDCtrl;
     #endif
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _nvmeLBAF {
-    	uint16_t 			ms;
-    	uint8_t 			lbaDS;
-    	uint8_t 			rp;
-    #if !defined (__GNUC__)
+        uint16_t            ms;
+        uint8_t             lbaDS;
+        uint8_t             rp;
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeLBAF;
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeLBAF;
     #endif
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _nvmeIDNameSpaces {
-    	uint64_t 			nsze;
-    	uint64_t 			ncap;
-    	uint64_t 			nuse;
-    	uint8_t 			nsfeat;
-    	uint8_t 			nlbaf;
-    	uint8_t 			flbas;
-    	uint8_t 			mc;
-    	uint8_t 			dpc;
-    	uint8_t 			dps;
-    	uint8_t 			nmic;
-    	uint8_t 			rescap;
-    	uint8_t 			fpi;
-    	uint8_t 			rsvd33;
-    	uint16_t 			nawun;
-    	uint16_t 			nawupf;
-    	uint16_t 			nacwu;
-    	uint8_t 			rsvd40[80];
-    	uint8_t 			eui64[8];
-    	nvmeLBAF	        lbaf[16];
-    	uint8_t 			rsvd192[192];
-    	uint8_t 			vs[3712];
-    #if !defined (__GNUC__)
+        uint64_t            nsze;
+        uint64_t            ncap;
+        uint64_t            nuse;
+        uint8_t             nsfeat;
+        uint8_t             nlbaf;
+        uint8_t             flbas;
+        uint8_t             mc;
+        uint8_t             dpc;
+        uint8_t             dps;
+        uint8_t             nmic;
+        uint8_t             rescap;
+        uint8_t             fpi;
+        uint8_t             dlfeat;
+        uint16_t            nawun;
+        uint16_t            nawupf;
+        uint16_t            nacwu;
+        uint16_t            nabsn;
+        uint16_t            nabo;
+        uint16_t            nabspf;
+        uint16_t            noiob;
+        uint8_t             nvmcap[16];//128bit number
+        uint8_t             rsvd40[40];//bytes 103:64
+        uint8_t             nguid[16];
+        uint8_t             eui64[8];
+        nvmeLBAF            lbaf[16];
+        uint8_t             rsvd192[192];
+        uint8_t             vs[3712];
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDNameSpaces;
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeIDNameSpaces;
     #endif
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _nvmeIdentifyData {
         nvmeIDCtrl          ctrl;
-        nvmeIDNameSpaces    ns; // Currently we only support 1 NS - Revisit.
-    #if !defined (__GNUC__)
+        nvmeIDNameSpaces    ns; // Currently we only support 1 NS - Revisit.  
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIdentifyData;
     #pragma pack(pop)
     #else
@@ -617,7 +626,7 @@ extern "C"
 
     #endif //disable NVME passthrough
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _ataReturnTFRs
@@ -633,7 +642,7 @@ extern "C"
         uint8_t                lbaHi;
         uint8_t                device;
         uint8_t                status;
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataReturnTFRs;
     #pragma pack(pop)
     #else
@@ -643,13 +652,13 @@ extern "C"
     // Defined by SPC3 as the maximum sense length
     #define SPC3_SENSE_LEN  UINT8_C(252)
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _tVpdData {
         uint8_t  inquiryData[96]; //INQ_RETURN_DATA_LENGTH
         uint8_t  vpdPage83[64];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }tVpdData;
     #pragma pack(pop)
     #else
@@ -690,7 +699,7 @@ extern "C"
         IEEE_1394_INTERFACE
     } eInterfaceType;
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     //revisit this later as this may not be the best way we want to do this
@@ -710,7 +719,7 @@ extern "C"
         uint32_t childDevicePhyBlockSize; // This is the physical block size reported by the drive.
         uint16_t childSectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
         uint64_t childDeviceMaxLba;
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }bridgeInfo;
     #pragma pack(pop)
     #else
@@ -738,7 +747,7 @@ extern "C"
         ATA_PASSTHROUGH_UNKNOWN
     }ePassthroughType;
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _ataOptions
@@ -752,6 +761,7 @@ extern "C"
         eATASynchronousDMAMode dmaMode;
         bool taggedCommandQueuingSupported;
         bool nativeCommandQueuingSupported;
+        bool readWriteMultipleSupported;
         uint8_t logicalSectorsPerDRQDataBlock;
         bool isParallelTransport;
         bool isDevice1;//Don't rely on this. Only here for some OS's/passthroughs. Most shouldn't need this. SAT or the OS's passthrough will ignore this bit in the commands anyways.
@@ -764,7 +774,7 @@ extern "C"
         bool alwaysSetCheckConditionBit;//this will cause all commands to set the check condition bit. This means any ATA Passthrough command should always get back an ATA status which may help with sense data and judging what went wrong better. Be aware that this may not be liked on some devices and some may just ignore it.
         bool enableLegacyPassthroughDetectionThroughTrialAndError;//This must be set to true in order to work on legacy (ancient) passthrough if the VID/PID is not in the list and not read from the system.
         bool senseDataReportingEnabled;//this is to track when the RTFRs may contain a sense data bit so it can be read automatically.
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataOptions;
     #pragma pack(pop)
     #else
@@ -780,7 +790,7 @@ extern "C"
     }eZonedDeviceType;
 
     //This is used by the software SAT translation layer. DO NOT Update this directly
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _softwareSATFlags
@@ -801,16 +811,18 @@ extern "C"
         bool deferredDownloadSupported;//Read from the identify device data log
         bool hostLogsSupported;//log addresses 80h - 9Fh
         bool senseDataDescriptorFormat;//DO NOT SET DIRECTLY! This should be changed through a mode select command to the software SAT layer. false = fixed format, true = descriptor format
+        bool dataSetManagementXLSupported;//Needed to help the translator know when this command is supported so it can be used.
+        bool zeroExtSupported;
         uint8_t rtfrIndex;
         ataReturnTFRs ataPassthroughResults[16];
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }softwareSATFlags;
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) softwareSATFlags;
     #endif
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     typedef struct _driveInfo {
@@ -819,10 +831,10 @@ extern "C"
         eInterfaceType interface_type;
         eZonedDeviceType zonedType;//most drives will report ZONED_TYPE_NOT_ZONED
         uint32_t       deviceBlockSize; //This is the logical block size reported by the drive
-		uint32_t	   devicePhyBlockSize; // This is the physical block size reported by the drive.
+        uint32_t       devicePhyBlockSize; // This is the physical block size reported by the drive.
+        uint32_t       dataTransferSize;//this the block size that will be transfered
         uint16_t       sectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
         uint64_t       deviceMaxLba;
-        uint32_t       lunOrNSID; //shared between SCSI / NVMe
         char           serialNumber[SERIAL_NUM_LEN + 1];
         char           T10_vendor_ident[T10_VENDOR_ID_LEN + 1];
         char           product_identification[MODEL_NUM_LEN + 1]; //not INQ
@@ -833,6 +845,8 @@ extern "C"
 #if !defined(DISABLE_NVME_PASSTHROUGH)
             nvmeIdentifyData nvme;
 #endif
+            //reserved field below is set to 8192 because nvmeIdentifyData structure holds both controller and namespace data which are 4k each
+            uint8_t reserved[8192];//putting this here to allow some compatibility when NVMe passthrough is NOT enabled.
         }IdentifyData;
         tVpdData         scsiVpdData; // Intentionally not part of the above IdentifyData union
         ataReturnTFRs lastCommandRTFRs;//This holds the RTFRs for the last command to be sent to the device. This is not necessarily the last function called as functions may send multiple commands to the device.
@@ -843,16 +857,24 @@ extern "C"
             uint8_t additionalSenseCodeQualifier;
         }ataSenseData;
         uint8_t lastCommandSenseData[SPC3_SENSE_LEN];//This holds the sense data for the last command to be sent to the device. This is not necessarily the last function called as functions may send multiple commands to the device.
+        struct {
+            uint32_t lastNVMeCommandSpecific;//DW0 of command completion. Not all OS's return this so it is not always valid...only really useful for SNTL when it is used. Linux, Solaris, FreeBSD, UEFI. Windows is the problem child here.
+            uint32_t lastNVMeStatus;//DW3 of command completion. Not all OS's return this so it is not always valid...only really useful for SNTL when it is used. Linux, Solaris, FreeBSD, UEFI. Windows is the problem child here.
+        }lastNVMeResult;
+        //TODO: a union or something so that we don't need to keep adding more bytes for drive types that won't use the ATA stuff or NVMe stuff in this struct.
         bridgeInfo      bridge_info;
         ataOptions      ata_Options;
         uint64_t        lastCommandTimeNanoSeconds;//The time the last command took in nanoseconds
         softwareSATFlags softSATFlags;//This is used by the software SAT translation layer. DO NOT Update this directly. This should only be updated by the lower layers of opensea-transport.
         uint32_t defaultTimeoutSeconds;//If this is not set (set to zero), a default value of 15 seconds will be used.
-        uint32_t namespaceID;//This is the current namespace you are talking with. If this is zero, then this value is invalid. This may not be available on all OS's or driver interfaces
+        union {
+            uint32_t namespaceID;//This is the current namespace you are talking with. If this is zero, then this value is invalid. This may not be available on all OS's or driver interfaces
+            uint32_t lun;//Logical unit number for SCSI. Not currently populated.
+        };
         uint8_t currentProtectionType;//Useful for certain operations. Read in readCapacityOnSCSI. TODO: NVMe
         uint8_t piExponent;//Only valid for protection types 2 & 3 I believe...-TJE
         uint8_t scsiVersion;//from STD Inquiry. Can be used elsewhere to help filter capabilities. NOTE: not an exact copy for old products where there was also EMCA and ISO versions. Set to ANSI version number in those cases.
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }driveInfo;
     #pragma pack(pop)
     #else
@@ -894,13 +916,13 @@ extern "C"
         WIN_IOCTL_MAX_METHOD
     }eWindowsIOCTLMethod;
 #endif
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
     // \struct typedef struct _OSDriveInfo
     typedef struct _OSDriveInfo
     {
-        char                name[30];//handle name (string)
+        char                name[256];//handle name (string)
         char                friendlyName[20];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
         eOSType             osType;//useful for lower layers to do OS specific things
         #if defined (UEFI)
@@ -929,7 +951,18 @@ extern "C"
         uint16_t            controllerID;
         uint16_t            deviceID;
         #elif defined (__linux__)
+        #if defined(VMK_CROSS_COMP)
+        /**
+         * In VMWare we discover or send IOCTL to NVMe throught NDDK. 
+         * So we will need 2 different handle for NVMe_IO and SG_IO 
+         * 
+         * @author 521852 (8/27/2018)
+         */
+        int                 fd;
+        struct nvme_handle *nvmeFd;
+        #else
         int                 fd;//primary handle
+        #endif
         bool                scsiAddressValid;//will be true if the SCSI address is a valid address
         struct {
             uint8_t         host;//AKA SCSI adapter #
@@ -941,13 +974,25 @@ extern "C"
         char                secondName[30];
         char                secondFriendlyName[30];
         bool                secondHandleOpened;
+        #if defined(VMK_CROSS_COMP)
+        /**
+         * In VMWare we discover or send IOCTL to NVMe throught NDDK. 
+         * So we will need 2 different handle for NVMe_IO and SG_IO 
+         * 
+         * @author 521852 (8/27/2018)
+         */
+        int                 fd2;
+        struct nvme_handle *nvmeFd2;
+        #else
         int                 fd2;//secondary handle. Ex: fd = sg handle opened, fd2 = sd handle opened.
+        #endif
         struct {
             bool            driverVersionValid;
             uint8_t         majorVersion;
             uint8_t         minorVersion;
             uint8_t         revision;
         }sgDriverVersion;
+        long                pageSize;//A.K.A. alignment requirements for Linux.
         #elif defined (_WIN32)
         HANDLE              fd;
         SCSI_ADDRESS        scsi_addr;
@@ -964,14 +1009,17 @@ extern "C"
             uint8_t deviceBitmap;//This specifies which channel the drive is on (PATA)...might need this for sending this IO on some legacy systems. See bIDEDeviceMap here https://msdn.microsoft.com/en-us/library/windows/hardware/ff554977(v=vs.85).aspx
         }winSMARTCmdSupport;
 #if WINVER >= SEA_WIN32_WINNT_WIN10
-		struct {
-			bool fwdlIOSupported;
-			uint32_t payloadAlignment; //From MSDN: The alignment of the image payload, in number of bytes. The maximum is PAGE_SIZE. The transfer size is a mutliple of this size. Some protocols require at least sector size. When this value is set to 0, this means that this value is invalid.
-			uint32_t maxXferSize; //From MSDN: The image payload maximum size, this is used for a single command
-			bool isLastSegmentOfDownload;//This should be set only when we are issuing a download command...We should find a better place for this.
-			//TODO: expand this struct if we need other data when we check for firmware download support on a device.
-		}fwdlIOsupport;
+        struct {
+            bool fwdlIOSupported;
+            bool allowFlexibleUseOfAPI;//Set this to true to allow using the Win10 API for FWDL for any compatible download commands. If this is false, the Win10 API will only be used on IDE_INTERFACE for an ATA download command and SCSI interface for a supported Write buffer command. If true, it will be used regardless of which command the caller is using. This is useful for pure FW updates versus testing a specific condition.
+            uint32_t payloadAlignment; //From MSDN: The alignment of the image payload, in number of bytes. The maximum is PAGE_SIZE. The transfer size is a mutliple of this size. Some protocols require at least sector size. When this value is set to 0, this means that this value is invalid.
+            uint32_t maxXferSize; //From MSDN: The image payload maximum size, this is used for a single command
+            bool isLastSegmentOfDownload;//This should be set only when we are issuing a download command...We should find a better place for this.
+            bool isFirstSegmentOfDownload;//This should be set only when we are issuing a download command...We should find a better place for this.
+            //TODO: expand this struct if we need other data when we check for firmware download support on a device.
+        }fwdlIOsupport;
 #endif
+        uint32_t adapterMaxTransferSize;//Bytes. Returned by querying for adapter properties. Can be used to know when trying to request more than the adapter or driver supports.
         #else
         int                 fd;//some other nix system that only needs a integer file handle
         #endif
@@ -982,7 +1030,7 @@ extern "C"
             bool hasFileSystem;//This will only be true for filesystems the current OS can detect. Ex: Windows will only set this for mounted volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem types since it can handle more than Windows by default
             bool isSystemDisk;//This will be set if the drive has a file system and the OS is running off of it. Ex: Windows' C:\Windows\System32, Linux's / & /boot, etc
         }fileSystemInfo;
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }OSDriveInfo;
     #pragma pack(pop)
     #else
@@ -996,7 +1044,7 @@ extern "C"
         DO_NOT_WAKE_DRIVE, //e.g OK to send commands that do NOT access media
         NO_DRIVE_CMD,
         OPEN_HANDLE_ONLY,
-		BUS_RESCAN_ALLOWED = BIT15,//this may wake the drive!
+        BUS_RESCAN_ALLOWED = BIT15,//this may wake the drive!
         //Flags below are bitfields...so multiple can be set. Flags above should be checked by only checking the first word of this enum.
         FORCE_ATA_PIO_ONLY = BIT16, //troubleshooting option to only send PIO versions of commands (used in get_Device/fill_Drive_Info).
         FORCE_ATA_DMA_SAT_MODE = BIT17, //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
@@ -1014,17 +1062,17 @@ extern "C"
 
     typedef int (*issue_io_func)( void * );
 
-	#define DEVICE_BLOCK_VERSION	(3)
+    #define DEVICE_BLOCK_VERSION    (4)
 
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
-	// verification for compatibility checking
-	typedef struct _versionBlock
-	{
-		uint32_t size;      // size of enclosing structure
-		uint32_t version;   // version of enclosing structure
-    #if !defined (__GNUC__)
+    // verification for compatibility checking
+    typedef struct _versionBlock
+    {
+        uint32_t size;      // size of enclosing structure
+        uint32_t version;   // version of enclosing structure
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }versionBlock;
     #pragma pack(pop)
     #else
@@ -1032,18 +1080,19 @@ extern "C"
     #endif
 
     // \struct typedef struct _tDevice
-    #if !defined (__GNUC__)
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
-	typedef struct _tDevice
+    typedef struct _tDevice
     {
-		versionBlock	    sanity;
-        OSDriveInfo		    os_info;
+        versionBlock        sanity;
+        OSDriveInfo         os_info;
         driveInfo           drive_info;
         void                *raid_device;
         issue_io_func       issue_io;
         eDiscoveryOptions   dFlags;
-    #if !defined (__GNUC__)
+        eVerbosityLevels    deviceVerbosity;
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }tDevice;
     #pragma pack(pop)
     #else
@@ -1124,6 +1173,10 @@ extern "C"
         SEAGATE_PRARIETEK = BIT15, //PrarieTek. Vendor ID PRAIRIE (SCSI).
         SEAGATE_PLUS_DEVELOPMENT = BIT16, //Plus Development. Unknown detection
         SEAGATE_CODATA = BIT17, //CoData. Unknown detection
+        //Recently Added
+        SEAGATE_VENDOR_F = BIT18,
+        SEAGATE_VENDOR_G = BIT19,
+        SEAGATE_VENDOR_H = BIT20
     }eSeagateFamily;
 
     //The scan flags should each be a bit in a 32bit unsigned integer.
@@ -1150,8 +1203,8 @@ extern "C"
     #define SD_HANDLES BIT16 //this is a Linux specific flag to show SDX handles instead of SGX handles
     #define SG_TO_SD BIT17
     #define SAT_12_BYTE BIT18
-	#define SCAN_SEAGATE_ONLY BIT19
-	#define AGRESSIVE_SCAN BIT20 //this can wake a drive up because a bus rescan may be issued. (currently only implemented in Windows)
+    #define SCAN_SEAGATE_ONLY BIT19
+    #define AGRESSIVE_SCAN BIT20 //this can wake a drive up because a bus rescan may be issued. (currently only implemented in Windows)
 #if defined (ENABLE_CSMI)
     #define ALLOW_DUPLICATE_DEVICE BIT24 //This is ONLY used by the scan_And_Print_Devs function to filter what is output from it. This does NOT affect get_Device_List.
     #define IGNORE_CSMI BIT25 //only works in Windows since Linux never adopted CSMI support. Set this to ignore CSMI devices, or compile opensea-transport without the ENABLE_CSMI preprocessor definition.
@@ -1181,36 +1234,36 @@ extern "C"
         ZM_ACTION_RESET_WRITE_POINTERS  = 0x04,//non data-out
     }eZMAction;
 
-	//-----------------------------------------------------------------------------
-	//
-	//  get_Opensea_Transport_Version()
-	//
-	//! \brief   Description:  Get the API version. Alternative way is to
-	//							read OPENSEA_TRANSPORT_VERSION from version.h
-	//
-	//  Entry:
-	//!   \param[out] ver = apiVersionInfo version block to be filled.
-		//!
-	//  Exit:
-	//!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-	//
-	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API int get_Opensea_Transport_Version(apiVersionInfo *ver);
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Opensea_Transport_Version()
+    //
+    //! \brief   Description:  Get the API version. Alternative way is to 
+    //                          read OPENSEA_TRANSPORT_VERSION from version.h
+    //
+    //  Entry:
+    //!   \param[out] ver = apiVersionInfo version block to be filled. 
+        //!
+    //  Exit:
+    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int get_Opensea_Transport_Version(apiVersionInfo *ver);
 
-	//-----------------------------------------------------------------------------
-	//
-	//  get_Version_Block()
-	//
-	//! \brief   Description:  Get the library device block version.
-	//
-	//  Entry:
-	//!   \param[out] ver = versionBlock structure to be filled.
-	//!
-	//  Exit:
-	//!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-	//
-	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API int get_Version_Block(versionBlock * ver);
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Version_Block()
+    //
+    //! \brief   Description:  Get the library device block version. 
+    //
+    //  Entry:
+    //!   \param[out] ver = versionBlock structure to be filled. 
+    //!
+    //  Exit:
+    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int get_Version_Block(versionBlock * ver);
 
     //-----------------------------------------------------------------------------
     //
@@ -1230,66 +1283,66 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int get_Device(const char *filename, tDevice *device);
 
-	//-----------------------------------------------------------------------------
-	//
-	//  get_Device_Count()
-	//
-	//! \brief   Description:  Get the count of devices in the system that this library
-	//!                        can talk to. This function is used in conjunction with
-	//!                        get_Device_List, so that enough memory is allocated.
-	//
-	//  Entry:
-	//!   \param[out] numberOfDevices = integer to hold the number of devices found.
-	//!   \param[in] flags = bit field based mask to let application control.
-	//!						 NOTE: only csmi flags are used right now.
-	//!
-	//  Exit:
-	//!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-	//
-	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags);
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Device_Count()
+    //
+    //! \brief   Description:  Get the count of devices in the system that this library
+    //!                        can talk to. This function is used in conjunction with
+    //!                        get_Device_List, so that enough memory is allocated.
+    //
+    //  Entry:
+    //!   \param[out] numberOfDevices = integer to hold the number of devices found. 
+    //!   \param[in] flags = bit field based mask to let application control. 
+    //!                      NOTE: only csmi flags are used right now.
+    //!
+    //  Exit:
+    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags);
 
-	//-----------------------------------------------------------------------------
-	//
-	//  get_Device_List()
-	//
-	//! \brief   Description:  Get a list of devices that the library supports.
-	//!                        Use get_Device_Count to figure out how much memory is
-	//!                        needed to be allocated for the device list. The memory
-	//!						   allocated must be the multiple of device structure.
-	//!						   The application can pass in less memory than needed
-	//!						   for all devices in the system, in which case the library
-	//!                        will fill the provided memory with how ever many device
-	//!						   structures it can hold.
-	//  Entry:
-	//!   \param[out] ptrToDeviceList = pointer to the allocated memory for the device list
-	//!   \param[in]  sizeInBytes = size of the entire list in bytes.
-	//!   \param[in]  ver = versionBlock structure filled in by application for
-	//!								 sanity check by library.
-	//!   \param[in] flags = bitfield based mask to let application control.
-	//!						 NOTE: only csmi flags are used right now
-	//!
-	//  Exit:
-	//!   \return SUCCESS - pass, WARN_NOT_ALL_DEVICES_ENUMERATED - some deviec had trouble being enumerated. Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
-	//
-	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags);
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Device_List()
+    //
+    //! \brief   Description:  Get a list of devices that the library supports. 
+    //!                        Use get_Device_Count to figure out how much memory is
+    //!                        needed to be allocated for the device list. The memory 
+    //!                        allocated must be the multiple of device structure. 
+    //!                        The application can pass in less memory than needed 
+    //!                        for all devices in the system, in which case the library 
+    //!                        will fill the provided memory with how ever many device 
+    //!                        structures it can hold. 
+    //  Entry:
+    //!   \param[out] ptrToDeviceList = pointer to the allocated memory for the device list
+    //!   \param[in]  sizeInBytes = size of the entire list in bytes. 
+    //!   \param[in]  ver = versionBlock structure filled in by application for 
+    //!                              sanity check by library. 
+    //!   \param[in] flags = bitfield based mask to let application control. 
+    //!                      NOTE: only csmi flags are used right now
+    //!
+    //  Exit:
+    //!   \return SUCCESS - pass, WARN_NOT_ALL_DEVICES_ENUMERATED - some deviec had trouble being enumerated. Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags);
 
 
-	//-----------------------------------------------------------------------------
-	//
-	//  close_Device()
-	//
-	//! \brief   Description:  Given a tDevice, close it's handle.
-	//
-	//  Entry:
-	//!   \param[in] device = device struct that holds device information.
-	//!
-	//  Exit:
-	//!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-	//
-	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API int close_Device(tDevice *device);
+    //-----------------------------------------------------------------------------
+    //
+    //  close_Device()
+    //
+    //! \brief   Description:  Given a tDevice, close it's handle. 
+    //
+    //  Entry:
+    //!   \param[in] device = device struct that holds device information. 
+    //!
+    //  Exit:
+    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int close_Device(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1302,12 +1355,13 @@ extern "C"
     //  Entry:
     //!   \param[in] flags = Flags for future use to control the scan
     //!   \param[in] outputInfo = pointer to an outputInfo struct to control how to output the scan information. If this is NULL, standard screen output is assumed
+    //!   \param[in] scanVerbosity = the verbosity to run the scan at
     //!
     //  Exit:
     //!   \return VOID
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo);
+    OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityLevels scanVerbosity);
 
     //-----------------------------------------------------------------------------
     //
@@ -1584,7 +1638,7 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  get_Sector_Count_For_Read_Write(tDevice *device, uint32_t *sectorCount)
+    //  get_Sector_Count_For_Read_Write(tDevice *device)
     //
     //! \brief  Gets the sectorCount based on the device interface. The value set is one that is most compatible across controllers/bridges and OSs
     //!         Will set 64K transfers for internal interfaces (SATA, SAS) and 32K for external (USB, IEEE1394)
@@ -1597,6 +1651,40 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_Read_Write(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Sector_Count_For_512B_Based_XFers(tDevice *device)
+    //
+    //! \brief  Gets the sectorCount based on the device interface for commands that are based on 512B transfer blocks. 
+    //!         The value set is one that is most compatible across controllers/bridges and OSs
+    //!         Will set 64K transfers for internal interfaces (SATA, SAS) and 32K for external (USB, IEEE1394)
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to the device struct.
+    //
+    //  Exit:
+    //!   \return uint32_t value to use for a sector count
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_512B_Based_XFers(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Sector_Count_For_4096B_Based_XFers(tDevice *device)
+    //
+    //! \brief  Gets the sectorCount based on the device interface for commands that are based on 4096B (4K) transfer blocks. 
+    //!         The value set is one that is most compatible across controllers/bridges and OSs
+    //!         Will set 64K transfers for internal interfaces (SATA, SAS) and 32K for external (USB, IEEE1394)
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to the device struct.
+    //
+    //  Exit:
+    //!   \return uint32_t value to use for a sector count
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_4096B_Based_XFers(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1616,9 +1704,21 @@ extern "C"
 
     OPENSEA_TRANSPORT_API void print_Command_Time(uint64_t timeInNanoSeconds);
 
-	OPENSEA_TRANSPORT_API void print_Time(uint64_t timeInNanoSeconds);
+    OPENSEA_TRANSPORT_API void print_Time(uint64_t timeInNanoSeconds);
 
     OPENSEA_TRANSPORT_API void write_JSON_To_File(void *customData, char *message); //callback function
+
+    typedef struct _removeDuplicateDriveType
+    {
+        uint8_t csmi;
+        uint8_t raid;
+    }removeDuplicateDriveType;
+
+    OPENSEA_TRANSPORT_API int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag);
+
+    OPENSEA_TRANSPORT_API int remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint32_t * numberOfDevices);
+
+    OPENSEA_TRANSPORT_API bool is_CSMI_Device(tDevice *device);
 
 #if defined (__cplusplus)
 } //extern "C"

@@ -57,22 +57,22 @@ int build_Prolific_Legacy_Passthrough_CDBs(uint8_t lowCDB[16], uint8_t hiCDB[16]
     }
     //set the normal bits
     lowCDB[1] |= 0x05;
-	lowCDB[2] = RESERVED;
-	lowCDB[3] = ataCommandOptions->tfr.ErrorFeature;
-	lowCDB[4] = M_Byte1(CHECK_WORD);
-	lowCDB[5] = M_Byte0(CHECK_WORD);
+    lowCDB[2] = RESERVED;
+    lowCDB[3] = ataCommandOptions->tfr.ErrorFeature;
+    lowCDB[4] = M_Byte1(CHECK_WORD);
+    lowCDB[5] = M_Byte0(CHECK_WORD);
     //Length
-	lowCDB[6] = M_Byte3(ataCommandOptions->dataSize);
-	lowCDB[7] = M_Byte2(ataCommandOptions->dataSize);
-	lowCDB[8] = M_Byte1(ataCommandOptions->dataSize);
-	lowCDB[9] = M_Byte0(ataCommandOptions->dataSize);
+    lowCDB[6] = M_Byte3(ataCommandOptions->dataSize);
+    lowCDB[7] = M_Byte2(ataCommandOptions->dataSize);
+    lowCDB[8] = M_Byte1(ataCommandOptions->dataSize);
+    lowCDB[9] = M_Byte0(ataCommandOptions->dataSize);
     //more registers
-	lowCDB[10] = ataCommandOptions->tfr.SectorCount;
-	lowCDB[11] = ataCommandOptions->tfr.LbaLow;
-	lowCDB[12] = ataCommandOptions->tfr.LbaMid;
-	lowCDB[13] = ataCommandOptions->tfr.LbaHi;
-	lowCDB[14] = ataCommandOptions->tfr.DeviceHead;
-	lowCDB[15] = ataCommandOptions->tfr.CommandStatus;//says PIO commands only...need to test this
+    lowCDB[10] = ataCommandOptions->tfr.SectorCount;
+    lowCDB[11] = ataCommandOptions->tfr.LbaLow;
+    lowCDB[12] = ataCommandOptions->tfr.LbaMid;
+    lowCDB[13] = ataCommandOptions->tfr.LbaHi;
+    lowCDB[14] = ataCommandOptions->tfr.DeviceHead;
+    lowCDB[15] = ataCommandOptions->tfr.CommandStatus;//says PIO commands only...need to test this
     return ret;
 }
 
@@ -133,8 +133,11 @@ int send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPassthroughComm
     ret = build_Prolific_Legacy_Passthrough_CDBs(prolificLowCDB, prolificHighCDB, &highCDBValid, ataCommandOptions);
     if (ret == SUCCESS)
     {
-        //print verbose tfr info
-        print_Verbose_ATA_Command_Information(ataCommandOptions);
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            //print verbose tfr info
+            print_Verbose_ATA_Command_Information(ataCommandOptions);
+        }
         //if the highCDB is valid, we need to send it first
         if (highCDBValid)
         {
@@ -144,8 +147,11 @@ int send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPassthroughComm
         ret = scsi_Send_Cdb(device, prolificLowCDB, CDB_LEN_16, ataCommandOptions->ptrData, ataCommandOptions->dataSize, ataCommandOptions->commandDirection, ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, 0);
         //get the RTFRs
         ret = get_RTFRs_From_Prolific_Legacy(device, ataCommandOptions, ret);
-        //print RTFRs
-        print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            //print RTFRs
+            print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+        }
         //set return code
         //Based on the RTFRs or sense data, generate a return value
         if (ataCommandOptions->rtfr.status == (ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE))

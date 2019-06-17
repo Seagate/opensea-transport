@@ -266,22 +266,6 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  scan_And_Print_CSMI_Devs(unsigned int flags, OutputInfo *outputInfo)
-    //
-    //! \brief   Description:  scan and print out only CSMI devices
-    //
-    //  Entry:
-    //!   \param[in] flags = flags to filter the output
-    //!   \param[in] outputInfo - pointer to the output info structure for tools changing from standard text output (Not supported at this time)
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void scan_And_Print_CSMI_Devs(unsigned int flags, OutputInfo *outputInfo);
-
-    //-----------------------------------------------------------------------------
-    //
     //  print_CSMI_Device_Info(tDevice * device)
     //
     //! \brief   Description:  for a given device output information we read and are using about the CSMI device we are talking to (driver, phy, signature, etc information)

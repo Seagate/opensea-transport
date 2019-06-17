@@ -18,7 +18,7 @@
 #include <assert.h>
 #include <string.h>
 #if defined(_WIN32)
-#include <Windows.h>
+#include <windows.h>
 #else
 #include <sys/ioctl.h>
 #endif
@@ -116,7 +116,8 @@ void print_IOCTL_Return_Code(uint32_t returnCode)
 void print_Last_Error(DWORD lastError)
 {
     LPSTR messageBuffer = NULL;
-    size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+    /*size_t size = */
+    FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
         NULL, lastError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
 
     printf("Last Error Code was %"PRIu32": %s\n", lastError, messageBuffer);
@@ -134,18 +135,18 @@ void print_Last_Error(int lastError)
 
 int get_CSMI_Phy_Info(tDevice *device, PCSMI_SAS_PHY_INFO_BUFFER PhyInfo)
 {
-	int retval = FAILURE;
+    int retval = FAILURE;
 #if defined(_WIN32)
     DWORD bytesReturned = 0;
 #endif
-	memset(PhyInfo, 0, sizeof(CSMI_SAS_PHY_INFO_BUFFER));
+    memset(PhyInfo, 0, sizeof(CSMI_SAS_PHY_INFO_BUFFER));
     ptrCSMIDevice csmiDev = (ptrCSMIDevice)device->raid_device;
-	PhyInfo->IoctlHeader.HeaderLength = sizeof(IOCTL_HEADER);
-	PhyInfo->IoctlHeader.Length = sizeof(CSMI_SAS_PHY_INFO_BUFFER) - sizeof(IOCTL_HEADER);
-	PhyInfo->IoctlHeader.Timeout = CSMI_ALL_TIMEOUT;	
-	PhyInfo->IoctlHeader.ControlCode = CC_CSMI_SAS_GET_PHY_INFO;
+    PhyInfo->IoctlHeader.HeaderLength = sizeof(IOCTL_HEADER);
+    PhyInfo->IoctlHeader.Length = sizeof(CSMI_SAS_PHY_INFO_BUFFER) - sizeof(IOCTL_HEADER);
+    PhyInfo->IoctlHeader.Timeout = CSMI_ALL_TIMEOUT;    
+    PhyInfo->IoctlHeader.ControlCode = CC_CSMI_SAS_GET_PHY_INFO;
 
-	memcpy(PhyInfo->IoctlHeader.Signature, CSMI_SAS_SIGNATURE,sizeof(CSMI_SAS_SIGNATURE));
+    memcpy(PhyInfo->IoctlHeader.Signature, CSMI_SAS_SIGNATURE,sizeof(CSMI_SAS_SIGNATURE));
 
 #if defined (_WIN32)
     BOOL success = DeviceIoControl(device->os_info.fd,
@@ -177,7 +178,7 @@ int get_CSMI_Phy_Info(tDevice *device, PCSMI_SAS_PHY_INFO_BUFFER PhyInfo)
         print_Last_Error(device->os_info.last_error);
         print_IOCTL_Return_Code(PhyInfo->IoctlHeader.ReturnCode);
     }
-	return retval;
+    return retval;
 }
 //This is the same above...BUT this only needs a handle and it is only used by the get_Device_Count and get_Device_List calls
 int issue_Get_Phy_Info(HANDLE fd, PCSMI_SAS_PHY_INFO_BUFFER PhyInfo)
@@ -222,7 +223,7 @@ int issue_Get_Phy_Info(HANDLE fd, PCSMI_SAS_PHY_INFO_BUFFER PhyInfo)
 
 int get_CSMI_Controller_Info(tDevice *device, PCSMI_SAS_CNTLR_CONFIG controllerInfo)
 {
-	int retval = FAILURE;
+    int retval = FAILURE;
 #if defined (_WIN32)
     DWORD bytesReturned = 0;
 #endif
@@ -861,14 +862,14 @@ int send_SSP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
 
 void build_H2D_fis(FIS_REG_H2D *fis, ataTFRBlock *tfr)
 {
-	fis->fisType = FIS_TYPE_REG_H2D;
+    fis->fisType = FIS_TYPE_REG_H2D;
     fis->byte1 = COMMAND_BIT_MASK;
-	
+    
     fis->command = tfr->CommandStatus;
-	
+    
     fis->feature = tfr->ErrorFeature;
     fis->featureExt = tfr->Feature48;
-	
+    
     fis->lbaHi = tfr->LbaHi;
     fis->lbaHiExt = tfr->LbaHi48;
     fis->lbaLow = tfr->LbaLow;
@@ -940,6 +941,8 @@ int send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
         case XFER_NO_DATA:
             pSTPPassthrough->Parameters.uFlags |= CSMI_SAS_STP_UNSPECIFIED;
             break;
+        default:
+            return BAD_PARAMETER;
         }
         //set protocol flag
         switch (scsiIoCtx->pAtaCmdOpts->commadProtocol)
@@ -1097,7 +1100,7 @@ int send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
                 scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
                 scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
                 //setting ASC/ASCQ to ATA Passthrough Information Available
-                scsiIoCtx->returnStatus.acq = 0x00;
+                scsiIoCtx->returnStatus.asc = 0x00;
                 scsiIoCtx->returnStatus.ascq = 0x1D;
                 //now fill in the sens buffer
                 scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
@@ -1281,15 +1284,19 @@ int get_CSMI_Device(const char *filename, tDevice *device)
         0,
 #endif
         NULL);
-    DWORD lastError = GetLastError();
+    //DWORD lastError = GetLastError();
     if (device->os_info.fd != INVALID_HANDLE_VALUE)
 #else
     if ((device->os_info.fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
 #endif
     {
         device->raid_device = (ptrCSMIDevice)calloc(1 * sizeof(csmiDevice), sizeof(csmiDevice));
-        device->issue_io = *send_CSMI_IO;
+        device->issue_io = (issue_io_func)send_CSMI_IO;
         ptrCSMIDevice csmiDevice = (ptrCSMIDevice)device->raid_device;
+        if (!csmiDevice)
+        {
+            return MEMORY_FAILURE;
+        }
         if (device->dFlags & CSMI_FLAG_VERBOSE)
         {
             csmiDevice->csmiVerbose = true;
@@ -1305,6 +1312,11 @@ int get_CSMI_Device(const char *filename, tDevice *device)
         //Using the data we've already gotten, we need to save phyidentifier, port identifier, port protocol, and SAS address.
         //TODO: Check if we should be using the Identify or Attached structure information to populate the support fields.
         //Identify appears to contain initiator data, and attached seems to include target data...
+        if (portNumber > 31)
+        {
+            //return this or some other error?
+            return FAILURE;
+        }
         if (!handleHasAddressInsteadOfPort)
         {
             csmiDevice->portIdentifier = phyInfo.Information.Phy[portNumber].bPortIdentifier;
@@ -1402,7 +1414,7 @@ int get_CSMI_Device(const char *filename, tDevice *device)
 //  Entry:
 //!   \param[out] numberOfDevices = integer to hold the number of devices found.
 //!   \param[in] flags = eScanFlags based mask to let application control.
-//!						 NOTE: currently flags param is not being used.
+//!                      NOTE: currently flags param is not being used.
 //!
 //  Exit:
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -1412,10 +1424,10 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
 #if defined (_WIN32)
     HANDLE fd = NULL;
-#if defined (__MINGW32__)
-    char deviceName[40];
+#if defined (UNICODE)
+    wchar_t deviceName[40] = { 0 };
 #else
-    wchar_t deviceName[40];
+    char deviceName[40] = { 0 };
 #endif
 #else
     int fd = -1;
@@ -1424,13 +1436,13 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     for (controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS; ++controllerNumber)
     {
 #if defined (_WIN32)
-#if defined (__MINGW32__)
-        snprintf(deviceName, sizeof(deviceName), "\\\\.\\SCSI%d:", controllerNumber);
-#else
+#if defined (UNICODE)
         wsprintf(deviceName, L"\\\\.\\SCSI%d:", controllerNumber);
+#else
+        snprintf(deviceName, sizeof(deviceName), "\\\\.\\SCSI%d:", controllerNumber);
 #endif
         //lets try to open the controller.
-        fd = CreateFile((LPCTSTR)deviceName,
+        fd = CreateFile(deviceName,
             GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
             FILE_SHARE_READ | FILE_SHARE_WRITE,
             NULL,
@@ -1490,22 +1502,22 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //! \brief   Description:  Get a list of devices that the library supports.
 //!                        Use get_Device_Count to figure out how much memory is
 //!                        needed to be allocated for the device list. The memory
-//!						   allocated must be the multiple of device structure.
-//!						   The application can pass in less memory than needed
-//!						   for all devices in the system, in which case the library
+//!                        allocated must be the multiple of device structure.
+//!                        The application can pass in less memory than needed
+//!                        for all devices in the system, in which case the library
 //!                        will fill the provided memory with how ever many device
-//!						   structures it can hold.
+//!                        structures it can hold.
 //  Entry:
 //!   \param[out] ptrToDeviceList = pointer to the allocated memory for the device list
 //!   \param[in]  sizeInBytes = size of the entire list in bytes.
 //!   \param[in]  versionBlock = versionBlock structure filled in by application for
-//!								 sanity check by library.
+//!                              sanity check by library.
 //!   \param[in] flags = eScanFlags based mask to let application control.
-//!						 NOTE: currently flags param is not being used.
+//!                      NOTE: currently flags param is not being used.
 //!
 //  Exit:
 //!   \return SUCCESS - pass, WARN_NOT_ALL_DEVICES_ENUMERATED - some deviec had trouble being enumerated. 
-//!						Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
+//!                     Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
 int get_CSMI_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
@@ -1519,7 +1531,7 @@ int get_CSMI_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, 
 #else
     wchar_t deviceName[40] = { 0 };
 #endif
-    char	name[80] = { 0 }; //Because get device needs char
+    char    name[80] = { 0 }; //Because get device needs char
     HANDLE fd = INVALID_HANDLE_VALUE;
 #else
     int fd = -1;
@@ -1668,251 +1680,6 @@ int send_CSMI_IO(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-void scan_And_Print_CSMI_Devs(unsigned int flags, OutputInfo *outputInfo)
-{
-    uint32_t deviceCount = 0;
-    if (SUCCESS == get_CSMI_Device_Count(&deviceCount, flags))
-    {
-        tDevice * deviceList = (tDevice*)calloc(deviceCount * sizeof(tDevice), sizeof(tDevice));
-        versionBlock version;
-        if (!deviceList)
-        {
-            perror("calloc failure!");
-            return;
-        }
-        memset(&version, 0, sizeof(versionBlock));
-        version.size = sizeof(tDevice);
-        version.version = DEVICE_BLOCK_VERSION;
-        uint64_t getDeviceflags = flags | FAST_SCAN;
-        int ret = get_CSMI_Device_List(deviceList, deviceCount * sizeof(tDevice), version, getDeviceflags);
-        if (ret == SUCCESS || ret == WARN_NOT_ALL_DEVICES_ENUMERATED)
-        {
-            bool printToScreen = true;
-            bool fileOpened = false;
-            JSONContext *scanjsonContext = NULL;//allocate if we use it.
-            if (outputInfo)
-            {
-                switch (outputInfo->outputFormat)
-                {
-                case SEAC_OUTPUT_JSON:
-                    printToScreen = false;
-                    scanjsonContext = (JSONContext*)calloc(sizeof(JSONContext) * 1, sizeof(JSONContext));
-                    if (!scanjsonContext)
-                    {
-                        perror("could not allocate memory!");
-                        return;
-                    }
-                    //find the file to print to
-                    if (!outputInfo->outputFilePtr)
-                    {
-                        char fileNameAndPath[OPENSEA_PATH_MAX] = { 0 };
-                        if (outputInfo->outputPath && *outputInfo->outputPath && strlen(*outputInfo->outputPath))
-                        {
-                            strcpy(fileNameAndPath, *outputInfo->outputPath);
-                            strcat(fileNameAndPath, "/");
-                        }
-                        if (outputInfo->outputFileName && *outputInfo->outputFileName && strlen(*outputInfo->outputFileName))
-                        {
-                            strcat(fileNameAndPath, *outputInfo->outputFileName);
-                        }
-                        else
-                        {
-                            strcat(fileNameAndPath, "scanOutput");
-                        }
-                        strcat(fileNameAndPath, ".json");
-                        if (!(outputInfo->outputFilePtr = fopen(fileNameAndPath, "w+")))
-                        {
-                            safe_Free(deviceList);
-                            perror("could not open file!");
-                            return;
-                        }
-                    }
-                    fileOpened = true;
-                    //setup JSON context
-                    InitializeJSONContextData(scanjsonContext, write_JSON_To_File, (void*)outputInfo->outputFilePtr, 2, 20);
-                    break;
-                case SEAC_OUTPUT_TEXT:
-                    //make sure that the file it open to write...
-                    if (!outputInfo->outputFilePtr)
-                    {
-                        char fileNameAndPath[OPENSEA_PATH_MAX] = { 0 };
-                        if (outputInfo->outputPath && *outputInfo->outputPath && strlen(*outputInfo->outputPath))
-                        {
-                            strcpy(fileNameAndPath, *outputInfo->outputPath);
-                            strcat(fileNameAndPath, "/");
-                        }
-                        if (outputInfo->outputFileName && *outputInfo->outputFileName && strlen(*outputInfo->outputFileName))
-                        {
-                            strcat(fileNameAndPath, *outputInfo->outputFileName);
-                        }
-                        else
-                        {
-                            strcat(fileNameAndPath, "scanOutput");
-                        }
-                        strcat(fileNameAndPath, ".txt");
-                        if (!(outputInfo->outputFilePtr = fopen(fileNameAndPath, "w+")))
-                        {
-                            safe_Free(deviceList);
-                            perror("could not open file!");
-                            return;
-                        }
-                    }
-                    fileOpened = true;
-                    break;
-                default://assume standard text output
-                    break;
-                }
-            }
-            if (printToScreen)
-            {
-                printf("%-8s %-12s %-23s %-22s %-10s\n", "Vendor", "Handle", "Model Number", "Serial Number", "FwRev");
-            }
-            else
-            {
-                //if json, open and put header
-                switch (outputInfo->outputFormat)
-                {
-                case SEAC_OUTPUT_JSON:
-                    OpenJSON(scanjsonContext);
-                    OpenJSONObject("Scan Output", scanjsonContext);
-                    break;
-                case SEAC_OUTPUT_TEXT:
-                    fprintf(outputInfo->outputFilePtr, "%-8s %-12s %-23s %-22s %-10s\n", "Vendor", "Handle", "Model Number", "Serial Number", "FwRev");
-                    break;
-                default:
-                    break;
-                }
-            }
-            for (uint32_t devIter = 0; devIter < deviceCount; ++devIter)
-            {
-                if (ret == WARN_NOT_ALL_DEVICES_ENUMERATED && UNKNOWN_DRIVE == deviceList[devIter].drive_info.drive_type)
-                {
-                    continue;
-                }
-                if (scan_Drive_Type_Filter(&deviceList[devIter], flags) && scan_Interface_Type_Filter(&deviceList[devIter], flags))
-                {
-                    char displayHandle[26] = { 0 };
-#if defined(_WIN32)
-                    uint16_t deviceNumber = UINT16_MAX;
-                    uint16_t controllerNumber = UINT16_MAX;
-                    int sscanfret = sscanf(deviceList[devIter].os_info.name, "\\\\.\\SCSI%"SCNu16":%"SCNu16"", &controllerNumber, &deviceNumber);
-                    if (sscanfret == 0 || sscanfret == EOF)
-                    {
-                        strcpy(displayHandle, deviceList[devIter].os_info.name);
-                    }
-                    else
-                    {
-                        sprintf(displayHandle, "SCSI%"PRIu16":%"PRIu16"", controllerNumber, deviceNumber);
-                    }
-#elif defined (__sun)
-                    sprintf(displayHandle, "/dev/rdsk/%s", deviceList[devIter].os_info.name);
-#else
-                    //TODO: Make sure this displays the handle as the user should enter it for each OS!
-                    sprintf(displayHandle, "/dev/%s", deviceList[devIter].os_info.name);
-#endif
-#if defined (__linux__)
-                    if ((flags & SG_TO_SD) > 0)
-                    {
-                        char *sgName = (char*)calloc(5, sizeof(char));
-                        char *sdName = (char*)calloc(5, sizeof(char));
-                        if (SUCCESS == map_sg_to_sd(displayHandle, sgName, sdName))
-                        {
-                            memset(displayHandle, 0, sizeof(displayHandle));
-                            strcpy(displayHandle, sgName);
-                            strcat(displayHandle, "<->");
-                            strcat(displayHandle, sdName);
-                        }
-                        safe_Free(sgName);
-                        safe_Free(sdName);
-                    }
-                    else if ((flags & SD_HANDLES) > 0)
-                    {
-                        char *sgName = (char*)calloc(5, sizeof(char));
-                        char *sdName = (char*)calloc(5, sizeof(char));
-                        if (SUCCESS == map_sg_to_sd(displayHandle, sgName, sdName))
-                        {
-                            memset(displayHandle, 0, sizeof(displayHandle));
-                            sprintf(displayHandle, "/dev/%s", sdName);
-                        }
-                        safe_Free(sgName);
-                        safe_Free(sdName);
-                    }
-#endif
-                    char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
-                    strncpy(printable_sn, deviceList[devIter].drive_info.serialNumber, SERIAL_NUM_LEN);
-                    //if seagate scsi, need to truncate to 8
-                    if (deviceList[devIter].drive_info.drive_type == SCSI_DRIVE && is_Seagate_Family(&deviceList[devIter]) == SEAGATE)
-                    {
-                        memset(printable_sn, 0, SERIAL_NUM_LEN);
-                        strncpy(printable_sn, deviceList[devIter].drive_info.serialNumber, 8);
-                    }
-                    //now show the results (or save to a file)
-                    if (printToScreen)
-                    {
-                        printf("%-8s %-12s %-23s %-22s %-10s\n", \
-                            deviceList[devIter].drive_info.T10_vendor_ident, displayHandle, \
-                            deviceList[devIter].drive_info.product_identification, \
-                            printable_sn, \
-                            deviceList[devIter].drive_info.product_revision);
-                    }
-                    else
-                    {
-                        switch (outputInfo->outputFormat)
-                        {
-                        case SEAC_OUTPUT_JSON:
-                            OpenJSONObject("Device", scanjsonContext);
-                            WriteJSONPair("Handle", displayHandle, scanjsonContext);
-                            WriteJSONPair("Vendor ID", deviceList[devIter].drive_info.T10_vendor_ident, scanjsonContext);
-                            WriteJSONPair("Model Number", deviceList[devIter].drive_info.product_identification, scanjsonContext);
-                            WriteJSONPair("Serial Number", printable_sn, scanjsonContext);
-                            WriteJSONPair("Firmware Version", deviceList[devIter].drive_info.product_revision, scanjsonContext);
-                            CloseJSONObject(scanjsonContext);
-                            break;
-                        case SEAC_OUTPUT_TEXT:
-                            fprintf(outputInfo->outputFilePtr, "%-8s %-12s %-23s %-22s %-10s\n", \
-                                deviceList[devIter].drive_info.T10_vendor_ident, displayHandle, \
-                                deviceList[devIter].drive_info.product_identification, \
-                                printable_sn, \
-                                deviceList[devIter].drive_info.product_revision);
-                            break;
-                        default://TODO: add other output format types
-                            break;
-                        }
-                    }
-                    fflush(stdout);
-                }
-            }
-            if (!printToScreen)
-            {
-                switch (outputInfo->outputFormat)
-                {
-                case SEAC_OUTPUT_JSON:
-                    CloseJSONObject(scanjsonContext);
-                    CloseJSON(scanjsonContext);
-                    break;
-                case SEAC_OUTPUT_TEXT:
-                    //nothing that we need to do....(maybe put some new line characters?)
-                    break;
-                default:
-                    break;
-                }
-                if (fileOpened)
-                {
-                    fflush(outputInfo->outputFilePtr);
-                    fclose(outputInfo->outputFilePtr);
-                }
-            }
-            safe_Free(scanjsonContext);
-        }
-        safe_Free(deviceList);
-    }
-    else
-    {
-        printf("Unable to get number of devices from OS\n");
-    }
-    return;
-}
-
 void print_CSMI_Device_Info(tDevice * device)
 {
     if (device && device->raid_device)
@@ -1950,17 +1717,17 @@ void print_CSMI_Device_Info(tDevice * device)
             printf("PCMCIA\n");
             break;
         default:
-            printf("Unknown %"PRIX8"h\n", csmiDevice->controllerConfig.bIoBusType);
+            printf("Unknown %" PRIX8 "h\n", csmiDevice->controllerConfig.bIoBusType);
             break;
         }
         printf("PCI Bus Address: \n");
-        printf("\tBus Number: %"PRIX8"h\n", csmiDevice->controllerConfig.BusAddress.PciAddress.bBusNumber);
-        printf("\tDevice Number: %"PRIX8"h\n", csmiDevice->controllerConfig.BusAddress.PciAddress.bDeviceNumber);
-        printf("\tFunction Number: %"PRIX8"h\n", csmiDevice->controllerConfig.BusAddress.PciAddress.bFunctionNumber);
+        printf("\tBus Number: %" PRIX8 "h\n", csmiDevice->controllerConfig.BusAddress.PciAddress.bBusNumber);
+        printf("\tDevice Number: %" PRIX8 "h\n", csmiDevice->controllerConfig.BusAddress.PciAddress.bDeviceNumber);
+        printf("\tFunction Number: %" PRIX8 "h\n", csmiDevice->controllerConfig.BusAddress.PciAddress.bFunctionNumber);
         printf("Serial Number: %s\n", csmiDevice->controllerConfig.szSerialNumber);
-        printf("Version (maj.min.bld.rel): %"PRIu16".%"PRIu16".%"PRIu16".%"PRIu16"\n", csmiDevice->controllerConfig.usMajorRevision, csmiDevice->controllerConfig.usMinorRevision, csmiDevice->controllerConfig.usBuildRevision, csmiDevice->controllerConfig.usReleaseRevision);
-        printf("BIOS Version (maj.min.bld.rel): %"PRIu16".%"PRIu16".%"PRIu16".%"PRIu16"\n", csmiDevice->controllerConfig.usBIOSMajorRevision, csmiDevice->controllerConfig.usBIOSMinorRevision, csmiDevice->controllerConfig.usBIOSBuildRevision, csmiDevice->controllerConfig.usBIOSReleaseRevision);
-        printf("Controller Flags: %"PRIX32"\n", csmiDevice->controllerConfig.uControllerFlags);
+        printf("Version (maj.min.bld.rel): %" PRIu16 ".%" PRIu16 ".%" PRIu16 ".%" PRIu16 "\n", csmiDevice->controllerConfig.usMajorRevision, csmiDevice->controllerConfig.usMinorRevision, csmiDevice->controllerConfig.usBuildRevision, csmiDevice->controllerConfig.usReleaseRevision);
+        printf("BIOS Version (maj.min.bld.rel): %" PRIu16 ".%" PRIu16 ".%" PRIu16 ".%" PRIu16 "\n", csmiDevice->controllerConfig.usBIOSMajorRevision, csmiDevice->controllerConfig.usBIOSMinorRevision, csmiDevice->controllerConfig.usBIOSBuildRevision, csmiDevice->controllerConfig.usBIOSReleaseRevision);
+        printf("Controller Flags: %" PRIX32 "\n", csmiDevice->controllerConfig.uControllerFlags);
         //check the flags and print them out
         if (CSMI_SAS_CNTLR_SAS_HBA & csmiDevice->controllerConfig.uControllerFlags)
         {

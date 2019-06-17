@@ -21,6 +21,15 @@ extern "C"
 {
 #endif
 
+    void print_NVMe_Cmd_Verbose(const nvmeCmdCtx * cmdCtx);
+    void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx);
+    void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord, bool *doNotRetry, bool *more, uint8_t *statusCodeType, uint8_t *statusCode);
+    int check_NVMe_Status(uint32_t nvmeStatusDWord);//converts NVMe status to a return status used by open-sea libs
+
+    //These reset functions will be defined in the os_Helper file since this is OS specific. Not all OS's will support this function either.
+    int nvme_Reset(tDevice *device);
+    int nvme_Subsystem_Reset(tDevice *device);
+
 //-----------------------------------------------------------------------------
 //
 //  nvme_Cmd()
@@ -107,22 +116,7 @@ OPENSEA_TRANSPORT_API int nvme_Get_SMART_Log_Page(tDevice *device, uint32_t nsid
 //-----------------------------------------------------------------------------
 OPENSEA_TRANSPORT_API int nvme_Get_ERROR_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen);
 
-//-----------------------------------------------------------------------------
-//
-//  nvme_Print_ERROR_Log_Page
-//
-//! \brief   Description:  Function to send Get Error Information Log Page NVMe command to a device
-//
-//  Entry:
-//!   \param[in] device = pointer to tDevice structure
-//!   \param[in] numOfErrToPrint = set to 0 to print all, otherwise set a reasonable value (e.g. 32) 
-//!                                [NVMe Identify data shows how many entries are present]
-//!
-//  Exit:
-//!   \return SUCCESS = pass, !SUCCESS = something when wrong
-//
-//-----------------------------------------------------------------------------
-OPENSEA_TRANSPORT_API int nvme_Print_ERROR_Log_Page(tDevice *device, uint64_t numOfErrToPrint);
+
 
 //-----------------------------------------------------------------------------
 //
@@ -143,87 +137,39 @@ OPENSEA_TRANSPORT_API int nvme_Get_FWSLOTS_Log_Page(tDevice *device, uint8_t * p
 
 //-----------------------------------------------------------------------------
 //
-//  nvme_Print_FWSLOTS_Log_Page
+//  nvme_Get_CmdSptEfft_Log_Page
 //
-//! \brief   Description:  Function to print Firmware Slots Log Page NVMe command to a device
+//! \brief   Description:  Function to send Get Commands Supported and Effects Log Page NVMe command to a device
 //
 //  Entry:
 //!   \param[in] device = pointer to tDevice structure
+//!   \param[out] pData = Data buffer 
+//!   \param[in] dataLen = Data buffer Length 
 //!
 //  Exit:
 //!   \return SUCCESS = pass, !SUCCESS = something when wrong
 //
 //-----------------------------------------------------------------------------
-OPENSEA_TRANSPORT_API int nvme_Print_FWSLOTS_Log_Page(tDevice *device);
+OPENSEA_TRANSPORT_API int nvme_Get_CmdSptEfft_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen);
+
+OPENSEA_TRANSPORT_API char *nvme_cmd_to_string(int admin, uint8_t opcode);
 
 //-----------------------------------------------------------------------------
 //
-//  nvme_Get_Log_Size
+//  nvme_Get_DevSelfTest_Log_Page
 //
-//! \brief   Description:  Function to get the size for GetLog Page command by a utility. 
-//!                        Currently it only supports the 3 mandatory logs, to expand later. 
-//!                        Note: For Error log a single entry size is returned. 
-//                         
-//  Entry:
-//!   \param[in] logPageId = Log Page Identifier. 
-//!   \param[out] logSize = size of the Log to return 
-//!
-//  Exit:
-//!   \return SUCCESS = pass, !SUCCESS = something when wrong
+//! \brief   Description:  Function to send Get Device Self-test Log Page NVMe command to a device
 //
-//-----------------------------------------------------------------------------
-OPENSEA_TRANSPORT_API int nvme_Get_Log_Size(uint8_t logPageId, uint64_t * logSize);
-
-
-//-----------------------------------------------------------------------------
-//
-//  nvme_Print_Feature_Identifiers_Help
-//
-//! \brief   Description:  Function to print Help info for Feature Identifiers 
-//                         
-//  Entry:
-//!
-//  Exit:
-//!   \return VOID
-//
-//-----------------------------------------------------------------------------
-OPENSEA_TRANSPORT_API void nvme_Print_Feature_Identifiers_Help();
-
-//-----------------------------------------------------------------------------
-//
-//  nvme_Print_Feature_Identifiers_Help
-//
-//! \brief   Description:  Function to print ALL the Feature Identifiers 
-//                         
 //  Entry:
 //!   \param[in] device = pointer to tDevice structure
-//!   \param[in] selectType eNvmeFeaturesSelectValue, i.e. current, default, saved etc. 
-//!   \param[in] listOnlySupportedFeatures = !!NOT USED!! list only supported features. 
+//!   \param[out] pData = Data buffer 
+//!   \param[in] dataLen = Data buffer Length 
 //!
 //  Exit:
 //!   \return SUCCESS = pass, !SUCCESS = something when wrong
 //
 //-----------------------------------------------------------------------------
-OPENSEA_TRANSPORT_API int nvme_Print_All_Feature_Identifiers (tDevice *device, eNvmeFeaturesSelectValue selectType, bool listOnlySupportedFeatures);
-
-
-//-----------------------------------------------------------------------------
-//
-//  nvme_Print_Feature_Details
-//
-//! \brief   Description:  Function to print ALL the Feature Identifiers 
-//                         
-//  Entry:
-//!   \param[in] device = pointer to tDevice structure
-//!   \param[in] featureID Feature Identifier 
-//!   \param[in] selectType eNvmeFeaturesSelectValue, i.e. current, default, saved etc. 
-//!
-//  Exit:
-//!   \return SUCCESS = pass, !SUCCESS = something when wrong
-//
-//-----------------------------------------------------------------------------
-OPENSEA_TRANSPORT_API int nvme_Print_Feature_Details(tDevice *device, uint8_t featureID, eNvmeFeaturesSelectValue selectType);
-
+OPENSEA_TRANSPORT_API int nvme_Get_DevSelfTest_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen);
 
 //-----------------------------------------------------------------------------
 //
@@ -347,24 +293,6 @@ OPENSEA_TRANSPORT_API int nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegiste
 #define FORMAT_NVME_PI_TYPE_III     (32)
 #define FORMAT_NVME_XFER_METADATA   (64)
 
-//-----------------------------------------------------------------------------
-//
-//  run_NVMe_Format
-//
-//! \brief   Description:  Function to help send NVMe Format command. 
-//
-//  Entry:
-//!   \param[in] device = pointer to tDevice structure
-//!   \param[in] newLBASize = size of the new LBA. 
-//!   \param[in] flags = flags for MetaData, PI, Secure Erase etc. 
-//!
-//  Exit:
-//!   \return SUCCESS = pass, !SUCCESS = something when wrong
-//
-//-----------------------------------------------------------------------------
-OPENSEA_TRANSPORT_API int run_NVMe_Format(tDevice * device, uint32_t newLBASize, uint64_t flags);
-
-
 OPENSEA_TRANSPORT_API int nvme_Abort_Command(tDevice *device, uint16_t commandIdentifier, uint16_t submissionQueueIdentifier);
 
 OPENSEA_TRANSPORT_API int nvme_Device_Self_Test(tDevice *device, uint32_t nsid, uint8_t selfTestCode);
@@ -390,18 +318,26 @@ OPENSEA_TRANSPORT_API int nvme_Write(tDevice *device, uint64_t startingLBA, uint
 
 OPENSEA_TRANSPORT_API int nvme_Read(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks, bool limitedRetry, bool fua, uint8_t protectionInformationField, uint8_t *ptrData, uint32_t dataLength);
 
-// \fn print_Nvme_Ctrl_Regs(tDevice * device)
-// \brief Prints the controller registers. 
-// \param[in] device struture
-// \return SUCCESS - pass, !SUCCESS fail or something went wrong
-int print_Nvme_Ctrl_Regs(tDevice * device);
+OPENSEA_TRANSPORT_API int nvme_Compare(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks, bool limitedRetry, bool fua, uint8_t protectionInformationField, uint8_t *ptrData, uint32_t dataLength);
 
+OPENSEA_TRANSPORT_API int nvme_Reservation_Report(tDevice *device, bool extendedDataStructure, uint8_t *ptrData, uint32_t dataSize);
+
+OPENSEA_TRANSPORT_API int nvme_Reservation_Register(tDevice *device, uint8_t changePersistThroughPowerLossState, bool ignoreExistingKey, uint8_t reservationRegisterAction, uint8_t *ptrData, uint32_t dataSize);
+
+OPENSEA_TRANSPORT_API int nvme_Reservation_Acquire(tDevice *device, uint8_t reservationType, bool ignoreExistingKey, uint8_t reservtionAcquireAction, uint8_t *ptrData, uint32_t dataSize);
+
+OPENSEA_TRANSPORT_API int nvme_Reservation_Release(tDevice *device, uint8_t reservationType, bool ignoreExistingKey, uint8_t reservtionReleaseAction, uint8_t *ptrData, uint32_t dataSize);
+
+OPENSEA_TRANSPORT_API int pci_Correctble_Err(tDevice *device,uint8_t  opcode, uint32_t  nsid, uint32_t  cdw10, uint32_t cdw11, uint32_t data_len, void *data);
 
 // \fn fill_In_NVMe_Device_Info(tDevice * device)
 // \brief Sends a set Identify etc commands & fills in the device information
 // \param device device struture
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
 int fill_In_NVMe_Device_Info(tDevice *device);
+
+//Seagate unique?
+OPENSEA_TRANSPORT_API int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *ExtdSMARTInfo);
 
 #if defined (__cplusplus)
 }
