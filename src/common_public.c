@@ -1635,6 +1635,50 @@ uint32_t get_Sector_Count_For_Read_Write(tDevice *device)
     return 0;
 }
 
+uint32_t get_Sector_Count_For_512B_Based_XFers(tDevice *device)
+{
+    switch (device->drive_info.interface_type)
+    {
+    case IDE_INTERFACE:
+    case SCSI_INTERFACE:
+    case RAID_INTERFACE:
+    case NVME_INTERFACE:
+        //set the sector count for a 64k transfer.
+        return 128;//DATA_64K / 512;
+    case USB_INTERFACE:
+    case MMC_INTERFACE:
+    case SD_INTERFACE:
+    case IEEE_1394_INTERFACE:
+        //set the sector count for a 32k transfer. This is most compatible on these external interface drives since they typically have RAM limitations on the bridge chip - TJE
+        return 64;//DATA_32K / 512;
+    default:
+        return 64;//just set something in case they try to use this value but didn't check the return code from this function - TJE
+    }
+    return 0;
+}
+
+uint32_t get_Sector_Count_For_4096B_Based_XFers(tDevice *device)
+{
+    switch (device->drive_info.interface_type)
+    {
+    case IDE_INTERFACE:
+    case SCSI_INTERFACE:
+    case RAID_INTERFACE:
+    case NVME_INTERFACE:
+        //set the sector count for a 64k transfer. 
+        return 16;//DATA_64K / 4096;
+    case USB_INTERFACE:
+    case MMC_INTERFACE:
+    case SD_INTERFACE:
+    case IEEE_1394_INTERFACE:
+        //set the sector count for a 32k transfer. This is most compatible on these external interface drives since they typically have RAM limitations on the bridge chip - TJE
+        return 8;//DATA_32K / 4096;
+    default:
+        return 8;//just set something in case they try to use this value but didn't check the return code from this function - TJE
+    }
+    return 0;
+}
+
 void print_Command_Time(uint64_t timeInNanoSeconds)
 {
     double printTime = (double)timeInNanoSeconds;

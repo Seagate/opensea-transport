@@ -1,139 +1,144 @@
 <!DOCTYPE Project SYSTEM "http://www.slickedit.com/dtd/vse/10.0/vpj.dtd">
 <Project
-    Version="10.0"
-    VendorName="SlickEdit"
-    TemplateName="(Other)"
-    WorkingDir=".">
-    <Config
-        Name="Release"
-        OutputFile=""
-        CompilerConfigName="">
-        <Menu>
-            <Target
-                Name="Compile"
-                MenuCaption="&amp;Compile"
-                CaptureOutputWith="ProcessBuffer"
-                SaveOption="SaveCurrent"
-                RunFromDir="%rw">
-                <Exec/>
-            </Target>
-            <Target
-                Name="Build"
-                MenuCaption="&amp;Build"
-                CaptureOutputWith="ProcessBuffer"
-                SaveOption="SaveWorkspaceFiles"
-                RunFromDir="%rw">
-                <Exec/>
-            </Target>
-            <Target
-                Name="Rebuild"
-                MenuCaption="&amp;Rebuild"
-                CaptureOutputWith="ProcessBuffer"
-                SaveOption="SaveWorkspaceFiles"
-                RunFromDir="%rw">
-                <Exec/>
-            </Target>
-            <Target
-                Name="Debug"
-                MenuCaption="&amp;Debug"
-                SaveOption="SaveNone"
-                RunFromDir="%rw">
-                <Exec/>
-            </Target>
-            <Target
-                Name="Execute"
-                MenuCaption="E&amp;xecute"
-                SaveOption="SaveNone"
-                RunFromDir="%rw">
-                <Exec CmdLine='".exe"'/>
-            </Target>
-        </Menu>
-    </Config>
-    <CustomFolders>
-        <Folder
-            Name="Source Files"
-            Filters="*.c;*.C;*.cc;*.cpp;*.cp;*.cxx;*.c++;*.prg;*.pas;*.dpr;*.asm;*.s;*.bas;*.java;*.cs;*.sc;*.e;*.cob;*.html;*.rc;*.tcl;*.py;*.pl;*.d;*.m;*.mm;*.go"></Folder>
-        <Folder
-            Name="Header Files"
-            Filters="*.h;*.H;*.hh;*.hpp;*.hxx;*.h++;*.inc;*.sh;*.cpy;*.if"></Folder>
-        <Folder
-            Name="Resource Files"
-            Filters="*.ico;*.cur;*.dlg"/>
-        <Folder
-            Name="Bitmaps"
-            Filters="*.bmp"/>
-        <Folder
-            Name="Other Files"
-            Filters=""/>
-    </CustomFolders>
-    <Files AutoFolders="DirectoryView">
-        <Folder Name="../..">
-            <F N="../../README.md"/>
-        </Folder>
-        <Folder Name="../gcc">
-            <F
-                N="../gcc/Makefile"
-                Type="Makefile"/>
-        </Folder>
-        <Folder Name="../../include">
-            <F N="../../include/ata_helper.h"/>
-            <F N="../../include/ata_helper_func.h"/>
-            <F N="../../include/cam_helper.h"/>
-            <F N="../../include/cmds.h"/>
-            <F N="../../include/common_public.h"/>
-            <F N="../../include/csmi_helper.h"/>
-            <F N="../../include/csmi_helper_func.h"/>
-            <F N="../../include/csmisas.h"/>
-            <F N="../../include/cypress_legacy_helper.h"/>
-            <F N="../../include/nec_legacy_helper.h"/>
-            <F N="../../include/nvme_helper.h"/>
-            <F N="../../include/nvme_helper_func.h"/>
-            <F N="../../include/platform_helper.h"/>
-            <F N="../../include/prolific_legacy_helper.h"/>
-            <F N="../../include/psp_legacy_helper.h"/>
-            <F N="../../include/sat_helper.h"/>
-            <F N="../../include/sat_helper_func.h"/>
-            <F N="../../include/scsi_helper.h"/>
-            <F N="../../include/scsi_helper_func.h"/>
-            <F N="../../include/sg_helper.h"/>
-            <F N="../../include/sntl_helper.h"/>
-            <F N="../../include/ti_legacy_helper.h"/>
-            <F N="../../include/usb_hacks.h"/>
-            <F N="../../include/uscsi_helper.h"/>
-            <F N="../../include/version.h"/>
-            <F N="../../include/vm_helper.h"/>
-            <F N="../../include/vm_nvme.h"/>
-            <F N="../../include/vm_nvme_drv_config.h"/>
-            <F N="../../include/vm_nvme_lib.h"/>
-            <F N="../../include/vm_nvme_mgmt.h"/>
-            <F N="../../include/win_helper.h"/>
-        </Folder>
-        <Folder Name="../../src">
-            <F N="../../src/ata_cmds.c"/>
-            <F N="../../src/ata_helper.c"/>
-            <F N="../../src/ata_legacy_cmds.c"/>
-            <F N="../../src/cam_helper.c"/>
-            <F N="../../src/cmds.c"/>
-            <F N="../../src/common_public.c"/>
-            <F N="../../src/csmi_helper.c"/>
-            <F N="../../src/cypress_legacy_helper.c"/>
-            <F N="../../src/nec_legacy_helper.c"/>
-            <F N="../../src/nvme_cmds.c"/>
-            <F N="../../src/nvme_helper.c"/>
-            <F N="../../src/prolific_legacy_helper.c"/>
-            <F N="../../src/psp_legacy_helper.c"/>
-            <F N="../../src/sat_helper.c"/>
-            <F N="../../src/scsi_cmds.c"/>
-            <F N="../../src/scsi_helper.c"/>
-            <F N="../../src/sg_helper.c"/>
-            <F N="../../src/sntl_helper.c"/>
-            <F N="../../src/ti_legacy_helper.c"/>
-            <F N="../../src/usb_hacks.c"/>
-            <F N="../../src/uscsi_helper.c"/>
-            <F N="../../src/vm_helper.c"/>
-            <F N="../../src/vm_nvme_lib.c"/>
-            <F N="../../src/vm_nvme_mgmt_common.c"/>
-            <F N="../../src/win_helper.c"/>
-        </Folder>
-    </Files>
+	Version="10.0"
+	VendorName="SlickEdit"
+	TemplateName="(Other)"
+	WorkingDir=".">
+	<Config
+		Name="Release"
+		OutputFile=""
+		CompilerConfigName="">
+		<Menu>
+			<Target
+				Name="Compile"
+				MenuCaption="&amp;Compile"
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveCurrent"
+				RunFromDir="%rw">
+				<Exec/>
+			</Target>
+			<Target
+				Name="Build"
+				MenuCaption="&amp;Build"
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveWorkspaceFiles"
+				RunFromDir="%rw">
+				<Exec/>
+			</Target>
+			<Target
+				Name="Rebuild"
+				MenuCaption="&amp;Rebuild"
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveWorkspaceFiles"
+				RunFromDir="%rw">
+				<Exec/>
+			</Target>
+			<Target
+				Name="Debug"
+				MenuCaption="&amp;Debug"
+				SaveOption="SaveNone"
+				RunFromDir="%rw">
+				<Exec/>
+			</Target>
+			<Target
+				Name="Execute"
+				MenuCaption="E&amp;xecute"
+				SaveOption="SaveNone"
+				RunFromDir="%rw">
+				<Exec CmdLine='".exe"'/>
+			</Target>
+		</Menu>
+	</Config>
+	<CustomFolders>
+		<Folder
+			Name="Source Files"
+			Filters="*.c;*.C;*.cc;*.cpp;*.cp;*.cxx;*.c++;*.prg;*.pas;*.dpr;*.asm;*.s;*.bas;*.java;*.cs;*.sc;*.e;*.cob;*.html;*.rc;*.tcl;*.py;*.pl;*.d;*.m;*.mm;*.go"></Folder>
+		<Folder
+			Name="Header Files"
+			Filters="*.h;*.H;*.hh;*.hpp;*.hxx;*.h++;*.inc;*.sh;*.cpy;*.if"></Folder>
+		<Folder
+			Name="Resource Files"
+			Filters="*.ico;*.cur;*.dlg"/>
+		<Folder
+			Name="Bitmaps"
+			Filters="*.bmp"/>
+		<Folder
+			Name="Other Files"
+			Filters=""/>
+	</CustomFolders>
+	<Files AutoFolders="DirectoryView">
+		<Folder Name="../..">
+			<F N="../../README.md"/>
+		</Folder>
+		<Folder Name="../gcc">
+			<F
+				N="../gcc/Makefile"
+				Type="Makefile"/>
+		</Folder>
+		<Folder Name="../gccWin">
+			<F
+				N="../gccWin/Makefile.gccWin"
+				Type="Makefile"/>
+		</Folder>
+		<Folder Name="../../include">
+			<F N="../../include/ata_helper.h"/>
+			<F N="../../include/ata_helper_func.h"/>
+			<F N="../../include/cam_helper.h"/>
+			<F N="../../include/cmds.h"/>
+			<F N="../../include/common_public.h"/>
+			<F N="../../include/csmi_helper.h"/>
+			<F N="../../include/csmi_helper_func.h"/>
+			<F N="../../include/csmisas.h"/>
+			<F N="../../include/cypress_legacy_helper.h"/>
+			<F N="../../include/nec_legacy_helper.h"/>
+			<F N="../../include/nvme_helper.h"/>
+			<F N="../../include/nvme_helper_func.h"/>
+			<F N="../../include/platform_helper.h"/>
+			<F N="../../include/prolific_legacy_helper.h"/>
+			<F N="../../include/psp_legacy_helper.h"/>
+			<F N="../../include/sat_helper.h"/>
+			<F N="../../include/sat_helper_func.h"/>
+			<F N="../../include/scsi_helper.h"/>
+			<F N="../../include/scsi_helper_func.h"/>
+			<F N="../../include/sg_helper.h"/>
+			<F N="../../include/sntl_helper.h"/>
+			<F N="../../include/ti_legacy_helper.h"/>
+			<F N="../../include/usb_hacks.h"/>
+			<F N="../../include/uscsi_helper.h"/>
+			<F N="../../include/version.h"/>
+			<F N="../../include/vm_helper.h"/>
+			<F N="../../include/vm_nvme.h"/>
+			<F N="../../include/vm_nvme_drv_config.h"/>
+			<F N="../../include/vm_nvme_lib.h"/>
+			<F N="../../include/vm_nvme_mgmt.h"/>
+			<F N="../../include/win_helper.h"/>
+		</Folder>
+		<Folder Name="../../src">
+			<F N="../../src/ata_cmds.c"/>
+			<F N="../../src/ata_helper.c"/>
+			<F N="../../src/ata_legacy_cmds.c"/>
+			<F N="../../src/cam_helper.c"/>
+			<F N="../../src/cmds.c"/>
+			<F N="../../src/common_public.c"/>
+			<F N="../../src/csmi_helper.c"/>
+			<F N="../../src/cypress_legacy_helper.c"/>
+			<F N="../../src/nec_legacy_helper.c"/>
+			<F N="../../src/nvme_cmds.c"/>
+			<F N="../../src/nvme_helper.c"/>
+			<F N="../../src/prolific_legacy_helper.c"/>
+			<F N="../../src/psp_legacy_helper.c"/>
+			<F N="../../src/sat_helper.c"/>
+			<F N="../../src/scsi_cmds.c"/>
+			<F N="../../src/scsi_helper.c"/>
+			<F N="../../src/sg_helper.c"/>
+			<F N="../../src/sntl_helper.c"/>
+			<F N="../../src/ti_legacy_helper.c"/>
+			<F N="../../src/usb_hacks.c"/>
+			<F N="../../src/uscsi_helper.c"/>
+			<F N="../../src/vm_helper.c"/>
+			<F N="../../src/vm_nvme_lib.c"/>
+			<F N="../../src/vm_nvme_mgmt_common.c"/>
+			<F N="../../src/win_helper.c"/>
+		</Folder>
+	</Files>
 </Project>
