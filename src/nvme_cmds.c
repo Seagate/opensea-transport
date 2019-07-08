@@ -755,17 +755,17 @@ int nvme_Format(tDevice *device, nvmeFormatCmdOpts * formatCmdOpts)
     formatCmd.cmd.adminCmd.nsid = formatCmdOpts->nsid;
 
     //Construct the correct 
-    dWord10 = formatCmdOpts->ses << 9; 
+    dWord10 = M_GETBITRANGE(formatCmdOpts->ses, 2, 0) << 9; 
     if (formatCmdOpts->pil) 
     {
         dWord10 |= BIT8;
     }
-    dWord10 |= formatCmdOpts->pi << 5; 
+    dWord10 |= M_GETBITRANGE(formatCmdOpts->pi, 2, 0) << 5; 
     if (formatCmdOpts->ms) 
     {
         dWord10 |= BIT4;
     }
-    dWord10 |= (formatCmdOpts->lbaf & 0x0F); // just the nibble. 
+    dWord10 |= M_Nibble0(formatCmdOpts->lbaf); // just the nibble. 
 
     formatCmd.cmd.adminCmd.cdw10 = dWord10;
 
