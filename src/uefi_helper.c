@@ -12,7 +12,7 @@
 
 
 #include "uefi_helper.h"
-
+#include "cmds.h"
 //these are EDK2 include files
 #include <Protocol/AtaPassThru.h>
 #include <Protocol/ScsiPassThru.h>
@@ -39,17 +39,18 @@ int get_Device(const char *filename, tDevice *device)
     {
         //TODO: retry for nvme namespace ID
     }
-    strcpy(device->drive_info.name, filename);
-    strcpy(device->drive_info.friendlyName, filename);
+    strcpy(device->os_info.name, filename);
+    strcpy(device->os_info.friendlyName, filename);
     device->os_info.osType = OS_UEFI;
     if (strcmp(interface, "ata") == 0)
     {
         int res = sscanf(filename, "%s:%" SCNx16 ":" SCNx16, &interface, &device->os_info.address.ata.port, &device->os_info.address.ata.portMultiplierPort);
-        if(ret >=3 && res != EOF)
+        if(res >=3 && res != EOF)
         {
             device->drive_info.interface_type = IDE_INTERFACE;
             device->drive_info.drive_type = ATA_DRIVE;
             device->os_info.passthroughType = UEFI_PASSTHROUGH_ATA;
+            EFI_ATA_PASS_THRU_PROTOCOL *pPassthru;
             EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
             EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, device->os_info.address.ata.port, device->os_info.address.ata.portMultiplierPort, &devicePath);
             if(buildPath == EFI_SUCCESS)
@@ -71,11 +72,12 @@ int get_Device(const char *filename, tDevice *device)
     else if (strcmp(interface, "scsi") == 0)
     {
         int res = sscanf(filename, "%s:%" SCNx32 ":" SCNx64, &interface, &device->os_info.address.scsi.target, &device->os_info.address.scsi.lun);
-        if(ret >=3 && res != EOF)
+        if(res >=3 && res != EOF)
         {
             device->drive_info.interface_type = SCSI_INTERFACE;
             device->drive_info.drive_type = SCSI_DRIVE;
             device->os_info.passthroughType = UEFI_PASSTHROUGH_SCSI;
+            EFI_SCSI_PASS_THRU_PROTOCOL *pPassthru;
             EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
             EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, device->os_info.address.scsi.target, device->os_info.address.scsi.lun, &devicePath);
             if(buildPath == EFI_SUCCESS)
@@ -98,21 +100,22 @@ int get_Device(const char *filename, tDevice *device)
     {
         char targetAsString[32] = { 0 };
         int res = sscanf(filename, "%s:%s:" SCNx64, &interface, &targetAsString[0], &device->os_info.address.scsiEx.lun);
-        if(ret >=3 && res != EOF)
+        if(res >=3 && res != EOF)
         {
             int8_t targetIDIter = 15;
             device->drive_info.interface_type = SCSI_INTERFACE;
             device->drive_info.drive_type = SCSI_DRIVE;
             device->os_info.passthroughType = UEFI_PASSTHROUGH_SCSI_EXT;
             //TODO: validate convertion of targetAsString to the array we need to save for the targetID
-            for(uint8_t iter = 0; iter < 32 && targetIDiter > 0; iter += 2, --targetIDIter)
+            for(uint8_t iter = 0; iter < 32 && targetIDIter > 0; iter += 2, --targetIDIter)
             {
-                char smallString[4] = { 0 };//need to break the string into two charaters at a time then convert that to a integer to save for target nme
-                sprintf(smallString, "%c%c", targetAsString[iter], taretAsString[iter + 1]);
+                char smallString[4] = { 0 };//need to break the string into two charaters at a time then convert that to a integer to save for target name
+                sprintf(smallString, "%c%c", targetAsString[iter], targetAsString[iter + 1]);
                 device->os_info.address.scsiEx.target[targetIDIter] = strtol(smallString, NULL, 16);
             }
+            EFI_EXT_SCSI_PASS_THRU_PROTOCOL *pPassthru;
             EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
-            EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, &device->os_info.address.scsiEx.target, device->os_info.address.scsiEx.lun, &devicePath);
+            EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, (uint8_t*)(&device->os_info.address.scsiEx.target), device->os_info.address.scsiEx.lun, &devicePath);
             if(buildPath == EFI_SUCCESS)
             {
                 memcpy(&device->os_info.devicePath[0], devicePath, devicePath->Length[0]);
@@ -128,14 +131,15 @@ int get_Device(const char *filename, tDevice *device)
     #if !defined (DISABLE_NVME_PASSTHROUGH)
     else if (strcmp(interface, "nvme") == 0)
     {
-        int res = sscanf(filename, "%s:%" SCNx32, &interface, &device->os_info.address.nvme.deviceID);
-        if(ret >=3 && res != EOF)
+        int res = sscanf(filename, "%s:%" SCNx32, &interface, &device->os_info.address.nvme.namespaceID);
+        if(res >=3 && res != EOF)
         {
             device->drive_info.interface_type = NVME_INTERFACE;
             device->drive_info.drive_type = NVME_DRIVE;
             device->os_info.passthroughType = UEFI_PASSTHROUGH_NVME;
+            EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL *pPassthru;
             EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
-            EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, device->os_info.address.nvme.deviceID, &devicePath);
+            EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, device->os_info.address.nvme.namespaceID, &devicePath);
             if(buildPath == EFI_SUCCESS)
             {
                 memcpy(&device->os_info.devicePath[0], devicePath, devicePath->Length[0]);
@@ -157,7 +161,7 @@ int get_Device(const char *filename, tDevice *device)
         return NOT_SUPPORTED;
     }
     //fill in the drive info
-    return fill_Drive_Info(device);
+    return fill_Drive_Info_Data(device);
 }
 
 int device_Reset(ScsiIoCtx *scsiIoCtx)
@@ -190,7 +194,7 @@ if(EFI_SUCCESS != (Status = gIDS.gBS->OpenProtocol(handle,
 
 */
 
-EFI_IDS gIDS = {NULL, NULL, NULL, FALSE};
+//EFI_IDS gIDS = { NULL, NULL, NULL, FALSE };
 
 int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
@@ -199,40 +203,32 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
     EFI_SCSI_PASS_THRU_PROTOCOL *pPassthru;
     EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET	*srp;// Extended scsi request packet
 
-    srp = (EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *) AllocateZeroPool(sizeof(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET));
+    srp = (EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *) malloc(sizeof(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET));
 
-    ZeroMem(srp, sizeof(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET));
-    if(scsiIoCTX->timeout == UIN32_MAX)
+    memset(srp, 0, sizeof(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET));
+    if(scsiIoCtx->timeout == UINT32_MAX)
     {
         srp->Timeout = 0;//value is in 100ns units. zero means wait indefinitely
     }
     else
     {
-        srp->Timeout = scsiIoCTX->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
+        srp->Timeout = scsiIoCtx->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
     }
+    srp->DataBuffer = scsiIoCtx->pdata;
+    srp->TransferLength = scsiIoCtx->dataLength;
     switch (scsiIoCtx->direction)
     {
     case XFER_DATA_OUT:
-        srp->OutDataBuffer = dataPtr;
-        srp->InDataBuffer = NULL;
-        srp->OutTransferLength = dataLen;
         srp->DataDirection = 1;
         break;
     case XFER_DATA_IN:
-        srp->InDataBuffer = dataPtr;
-        srp->OutDataBuffer = NULL;
-        srp->InTransferLength = dataLen;
         srp->DataDirection = 0;
         break;
     case XFER_NO_DATA:
-        srp->OutDataBuffer = NULL;
-        srp->OutDataBuffer = NULL;
         srp->DataDirection = 0;
-        srp->InTransferLength = 0;
-        srp->OutTransferLength = 0;
         break;
-    //case XFER_DATA_OUT_IN: //TODO: bidirectional command support
-        //srp->DataDirection = 2;//bidirectional command
+    case XFER_DATA_OUT_IN: //bidirectional command support not allowed with this type of passthru
+        return OS_COMMAND_NOT_AVAILABLE;
     default:
         return BAD_PARAMETER;
     }
@@ -241,13 +237,13 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
     srp->SenseDataLength = scsiIoCtx->senseDataSize;
     srp->Cdb = scsiIoCtx->cdb;
 
-    Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.scsi.targetID, scsiIoCtx->device->os_info.address.scsi.lun, srp, NULL);
+    Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.scsi.target, scsiIoCtx->device->os_info.address.scsi.lun, srp, NULL);
 
     if (Status == EFI_SUCCESS)
     {
         ret = SUCCESS;
     }
-    else if (Status == EFI_INVALIDPARAMETER || Status == EFI_NOT_FOUND)
+    else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
     {
         ret = BAD_PARAMETER;
     }
@@ -255,41 +251,42 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
+    safe_Free(srp);
     return ret;
 }
 
 //TODO: This was added later, prevously only SCSI passthrough existed. May need to add #if defiend (some UDK version)
-int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx);
+int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
     EFI_STATUS Status = EFI_SUCCESS;
     EFI_EXT_SCSI_PASS_THRU_PROTOCOL *pPassthru;
     EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET	*srp;// Extended scsi request packet
 
-    srp = (EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *) AllocateZeroPool(sizeof(EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET));
+    srp = (EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *) malloc(sizeof(EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET));
 
-    ZeroMem(srp, sizeof(EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET));
+    memset(srp, 0, sizeof(EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET));
 
-    if(scsiIoCTX->timeout == UIN32_MAX)
+    if(scsiIoCtx->timeout == UINT32_MAX)
     {
         srp->Timeout = 0;//value is in 100ns units. zero means wait indefinitely
     }
     else
     {
-        srp->Timeout = scsiIoCTX->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
+        srp->Timeout = scsiIoCtx->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
     }
     switch (scsiIoCtx->direction)
     {
     case XFER_DATA_OUT:
-        srp->OutDataBuffer = dataPtr;
+        srp->OutDataBuffer = scsiIoCtx->pdata;
         srp->InDataBuffer = NULL;
-        srp->OutTransferLength = dataLen;
+        srp->OutTransferLength = scsiIoCtx->dataLength;
         srp->DataDirection = 1;
         break;
     case XFER_DATA_IN:
-        srp->InDataBuffer = dataPtr;
+        srp->InDataBuffer = scsiIoCtx->pdata;
         srp->OutDataBuffer = NULL;
-        srp->InTransferLength = dataLen;
+        srp->InTransferLength = scsiIoCtx->dataLength;
         srp->DataDirection = 0;
         break;
     case XFER_NO_DATA:
@@ -309,13 +306,13 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx);
     srp->SenseDataLength = scsiIoCtx->senseDataSize;
     srp->Cdb = scsiIoCtx->cdb;
 
-    Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.scsiEx.targetID, scsiIoCtx->device->os_info.address.scsiEx.lun, srp, NULL);
+    Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.scsiEx.target, scsiIoCtx->device->os_info.address.scsiEx.lun, srp, NULL);
 
     if (Status == EFI_SUCCESS)
     {
         ret = SUCCESS;
     }
-    else if (Status == EFI_INVALIDPARAMETER || Status == EFI_NOT_FOUND)
+    else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
     {
         ret = BAD_PARAMETER;
     }
@@ -323,7 +320,7 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx);
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
-
+    safe_Free(srp);
     return ret;
 }
 
@@ -339,36 +336,36 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     memset(&ataCommand, 0, sizeof(EFI_ATA_COMMAND_BLOCK));
     memset(&ataStatus, 0, sizeof(EFI_ATA_STATUS_BLOCK));
 
-    ataPacket = (EFI_ATA_PASS_THRU_COMMAND_PACKET *) AllocateZeroPool(sizeof(EFI_ATA_PASS_THRU_COMMAND_PACKET));
+    ataPacket = (EFI_ATA_PASS_THRU_COMMAND_PACKET *) malloc(sizeof(EFI_ATA_PASS_THRU_COMMAND_PACKET));
 
-    ZeroMem(ataPacket, sizeof(EFI_ATA_PASS_THRU_COMMAND_PACKET));
+    memset(ataPacket, 0, sizeof(EFI_ATA_PASS_THRU_COMMAND_PACKET));
 
-    if(scsiIoCTX->timeout == UIN32_MAX)
+    if(scsiIoCtx->timeout == UINT32_MAX)
     {
         ataPacket->Timeout = 0;//value is in 100ns units. zero means wait indefinitely
     }
     else
     {
-        ataPacket->Timeout = scsiIoCTX->pAtaCmdOpts->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
+        ataPacket->Timeout = scsiIoCtx->pAtaCmdOpts->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
     }
-    switch (scsiIoCtx->pAtaCmdOpts->direction)
+    switch (scsiIoCtx->pAtaCmdOpts->commandDirection)
     {
     case XFER_DATA_OUT:
-        ataPacket->OutDataBuffer = dataPtr;
+        ataPacket->OutDataBuffer = scsiIoCtx->pAtaCmdOpts->ptrData;
         ataPacket->InDataBuffer = NULL;
-        ataPacket->OutTransferLength = dataLen;
-        ataPacket->DataDirection = 1;
+        ataPacket->OutTransferLength = scsiIoCtx->pAtaCmdOpts->dataSize;
+        //ataPacket->DataDirection = 1;
         break;
     case XFER_DATA_IN:
-        ataPacket->InDataBuffer = dataPtr;
+        ataPacket->InDataBuffer = scsiIoCtx->pAtaCmdOpts->ptrData;
         ataPacket->OutDataBuffer = NULL;
-        ataPacket->InTransferLength = dataLen;
-        ataPacket->DataDirection = 0;
+        ataPacket->InTransferLength = scsiIoCtx->pAtaCmdOpts->dataSize;
+        //ataPacket->DataDirection = 0;
         break;
     case XFER_NO_DATA:
         ataPacket->OutDataBuffer = NULL;
         ataPacket->OutDataBuffer = NULL;
-        ataPacket->DataDirection = 0;
+        //ataPacket->DataDirection = 0;
         ataPacket->InTransferLength = 0;
         ataPacket->OutTransferLength = 0;
         break;
@@ -446,7 +443,7 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         ataPacket->Protocol = EFI_ATA_PASS_THRU_PROTOCOL_RETURN_RESPONSE;
         break;
     default:
-        if (VERBOSITY_QUIET < g_verbosity)
+        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
             printf("\nProtocol Not Supported in ATA Pass Through.\n");
         }
@@ -458,7 +455,7 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     //NOTE: These defined values are unused right now because I don't understand how they should be used:
     //      EFI_ATA_PASS_THRU_LENGTH_MASK
     //      EFI_ATA_PASS_THRU_LENGTH_COUNT
-    switch (scsiIoCtx->pAtaCmdOpts->eATAPassthroughTransferBlocks)
+    switch (scsiIoCtx->pAtaCmdOpts->ataTransferBlocks)
     {
     case ATA_PT_512B_BLOCKS:
     case ATA_PT_LOGICAL_SECTOR_SIZE:
@@ -474,7 +471,7 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         break;
     }
 
-    switch (scsiIoCtx->pAtaCmdOpts->eATAPassthroughLength)
+    switch (scsiIoCtx->pAtaCmdOpts->ataCommandLengthLocation)
     {
     case ATA_PT_LEN_NO_DATA:
         ataPacket->Length |= EFI_ATA_PASS_THRU_LENGTH_NO_DATA_TRANSFER;
@@ -500,7 +497,7 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         ret = SUCCESS;
         //convert RTFRs to sense data since the above layer is using SAT for everthing to make it easy to port across systems
         scsiIoCtx->returnStatus.senseKey = 0;
-        scsiIoCtx->returnStatus.acq = 0x00;//might need to change this later
+        scsiIoCtx->returnStatus.asc = 0x00;//might need to change this later
         scsiIoCtx->returnStatus.ascq = 0x00;//might need to change this later
         if (scsiIoCtx->psense != NULL)//check that the pointer is valid
         {
@@ -509,7 +506,7 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
                 scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
                 scsiIoCtx->returnStatus.senseKey = 0x01;//check condition
                 //setting ASC/ASCQ to ATA Passthrough Information Available
-                scsiIoCtx->returnStatus.acq = 0x00;
+                scsiIoCtx->returnStatus.asc = 0x00;
                 scsiIoCtx->returnStatus.ascq = 0x1D;
                 //now fill in the sens buffer
                 scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
@@ -544,7 +541,7 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
             }
         }
     }
-    else if (Status == EFI_INVALIDPARAMETER || Status == EFI_NOT_FOUND)
+    else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
     {
         ret = BAD_PARAMETER;
     }
@@ -552,14 +549,14 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
-
+	safe_Free(ataPacket);
     return ret;
 }
 
 int send_IO( ScsiIoCtx *scsiIoCtx )
 {
     int ret = OS_PASSTHROUGH_FAILURE;
-    if (VERBOSITY_BUFFERS <= g_verbosity)
+    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
         printf("Sending command with send_IO\n");
     }
@@ -591,10 +588,10 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
   EFI_NVM_EXPRESS_COMMAND nvmCommand;
   EFI_NVM_EXPRESS_COMPLETION nvmCompletion;
 
-  nrp = (EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET *) AllocateZeroPool(sizeof(EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET));
+  nrp = (EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET *) malloc(sizeof(EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET));
 
-  ZeroMem(nrp, sizeof(EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET));
-  if(nvmeIoCtx->timeout == UIN32_MAX)
+  memset(nrp, 0, sizeof(EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET));
+  if(nvmeIoCtx->timeout == UINT32_MAX)
   {
       nrp->CommandTimeout = 0;//value is in 100ns units. zero means wait indefinitely
   }
@@ -604,8 +601,8 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
   }
 
   //set transfer information
-  nrp->TransferBuffer = dataPtr;
-  nrp->TransferLength = dataLen;
+  nrp->TransferBuffer = nvmeIoCtx->ptrData;
+  nrp->TransferLength = nvmeIoCtx->dataSize;
   nrp->MetadataBuffer = NULL;
   nrp->MetadataLength = 0;
 
@@ -614,7 +611,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
   {
   case NVM_ADMIN_CMD:
       nrp->QueueType = NVME_ADMIN_QUEUE;
-      nvmCommand.Cdw0.Opcode = nvmeIoCtx->cmd.adminCmd.opCode;
+      nvmCommand.Cdw0.Opcode = nvmeIoCtx->cmd.adminCmd.opcode;
       nvmCommand.Cdw0.FusedOperation = NORMAL_CMD;//TODO: handle fused Commands
       nvmCommand.Cdw0.Reserved = RESERVED;
       nvmCommand.Nsid = nvmeIoCtx->cmd.adminCmd.nsid;
@@ -661,7 +658,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
       break;
   case NVM_CMD:
       nrp->QueueType = NVME_IO_QUEUE;
-      nvmCommand.Cdw0.Opcode = nvmeIoCtx->cmd.nvmCmd.opCode;
+      nvmCommand.Cdw0.Opcode = nvmeIoCtx->cmd.nvmCmd.opcode;
       nvmCommand.Cdw0.FusedOperation = NORMAL_CMD;//TODO: handle fused Commands
       nvmCommand.Cdw0.Reserved = RESERVED;
       nvmCommand.Nsid = nvmeIoCtx->cmd.nvmCmd.nsid;
@@ -722,7 +719,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
   {
       ret = SUCCESS;
   }
-  else if (Status == EFI_INVALIDPARAMETER || Status == EFI_NOT_FOUND)
+  else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
   {
       ret = BAD_PARAMETER;
   }
@@ -922,7 +919,7 @@ uint32_t get_SCSIEx_Device_Count()
     EFI_EXT_SCSI_PASS_THRU_PROTOCOL *pPassthru;
     while (uefiStatus == EFI_SUCCESS)
     {
-        uefiStatus = pPassthru->GetNextTargetLun(pPassthru, &target, & lun);
+        uefiStatus = pPassthru->GetNextTargetLun(pPassthru, (uint8_t**)(&target), & lun);
         if(uefiStatus == EFI_SUCCESS)
         {
             //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
@@ -952,7 +949,7 @@ int get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, ve
     EFI_EXT_SCSI_PASS_THRU_PROTOCOL *pPassthru;
     while (uefiStatus == EFI_SUCCESS)
     {
-        uefiStatus = pPassthru->GetNextTargetLun(pPassthru, &target, & lun);
+        uefiStatus = pPassthru->GetNextTargetLun(pPassthru, (uint8_t**)(&target), & lun);
         if(uefiStatus == EFI_SUCCESS)
         {
             //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
@@ -1148,16 +1145,3 @@ int os_Flush(tDevice *device)
 {
     return NOT_SUPPORTED;
 }
-
-#if !defined(DISABLE_NVME_PASSTHROUGH)
-int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
-{
-    return NOT_SUPPORTED;
-}
-
-int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize)
-{
-    return NOT_SUPPORTED;
-}
-
-#endif

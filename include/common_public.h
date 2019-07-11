@@ -881,7 +881,7 @@ extern "C"
     }__attribute__((packed,aligned(1))) driveInfo;
     #endif
 
-#if defined (UEFI)
+#if defined(UEFI_C_SOURCE)
     typedef enum _eUEFIPassthroughType
     {
         UEFI_PASSTHROUGH_UNKNOWN,
@@ -894,7 +894,7 @@ extern "C"
     }eUEFIPassthroughType;
 #endif
 
-#if defined (_WIN32) && !defined (UEFI)
+#if defined (_WIN32) && !defined(UEFI_C_SOURCE)
     //TODO: see if we can move these WIndows specific enums out to the windows unique files.
     typedef enum _eWindowsIOCTLType
     {
@@ -925,7 +925,7 @@ extern "C"
         char                name[256];//handle name (string)
         char                friendlyName[20];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
         eOSType             osType;//useful for lower layers to do OS specific things
-        #if defined (UEFI)
+        #if defined (UEFI_C_SOURCE)
         EFI_HANDLE          fd;
         uint8_t devicePath[100];//not using a UEFI device path type because it has a header, then subtype data. This should be big enough to hold everything we want to store.
         eUEFIPassthroughType passthroughType;
@@ -937,7 +937,7 @@ extern "C"
             struct _scsiExtAddress{
                 uint8_t target[16];
                 uint64_t lun;
-            }
+            }scsiEx;
             struct _ataAddress{
                 uint16_t port;
                 uint16_t portMultiplierPort;
