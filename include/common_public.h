@@ -948,8 +948,7 @@ extern "C"
             }nvme;
             #endif
         }address;
-        uint16_t            controllerID;
-        uint16_t            deviceID;
+        uint16_t            controllerNum;//used to figure out which controller the above address applies to.
         #elif defined (__linux__)
         #if defined(VMK_CROSS_COMP)
         /**

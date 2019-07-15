@@ -80,6 +80,10 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
 	long getpagesize(void);
+
+    int nvme_Reset(tDevice *device);
+    int nvme_Subsystem_Reset(tDevice *device);
+
 #endif
 
 
