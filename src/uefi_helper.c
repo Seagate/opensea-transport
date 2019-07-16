@@ -10,7 +10,7 @@
 // ******************************************************************************************
 //
 
-
+#include "common.h"
 #include "uefi_helper.h"
 #include "cmds.h"
 #include "sat_helper_func.h"
@@ -106,6 +106,22 @@ int get_Device(const char *filename, tDevice *device)
             {
                 EFI_DEVICE_PATH_PROTOCOL *devicePath; //will be allocated in the call to the uefi systen
                 EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, device->os_info.address.ata.port, device->os_info.address.ata.portMultiplierPort, &devicePath);
+/*
+                if (pPassthru->Mode->Attributes & EFI_ATA_PASS_THRU_ATTRIBUTES_PHYSICAL)
+                {
+                    printf("ATA Passthru to physical device\n");
+                }
+                if (pPassthru->Mode->Attributes & EFI_ATA_PASS_THRU_ATTRIBUTES_LOGICAL)
+                {
+                    printf("ATA Passthru to logical device\n");
+                }
+                if (pPassthru->Mode->Attributes & EFI_ATA_PASS_THRU_ATTRIBUTES_NONBLOCKIO)
+                {
+                    printf("ATA Passthru non-blocking IO supported\n");
+                }
+                printf("IOAlignment required: %" PRIu32 "\n", pPassthru->Mode->IoAlign);
+*/
+
                 if(buildPath == EFI_SUCCESS)
                 {
                     memcpy(&device->os_info.devicePath[0], devicePath, devicePath->Length[0]);
@@ -264,12 +280,17 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
     EFI_SCSI_PASS_THRU_PROTOCOL *pPassthru;
     if(SUCCESS == get_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
     {   
+        uint8_t *alignedPointer = scsiIoCtx->pdata;
+        uint8_t *alignedCDB = scsiIoCtx->cdb;
+        uint8_t *alignedSensePtr = scsiIoCtx->psense;
+        uint8_t *localBuffer = NULL;
+        uint8_t *localCDB = NULL;
+        uint8_t *localSensePtr = NULL;
+        bool localAlignedBuffer = false, localSenseBuffer = false;
+        EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET	*srp;//scsi request packet
 
-        EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET	*srp;// Extended scsi request packet
+        srp = (EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *) calloc_aligned(1, sizeof(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET), pPassthru->Mode->IoAlign);
 
-        srp = (EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *) malloc(sizeof(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET));
-
-        memset(srp, 0, sizeof(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET));
         if(scsiIoCtx->timeout == UINT32_MAX)
         {
             srp->Timeout = 0;//value is in 100ns units. zero means wait indefinitely
@@ -278,7 +299,52 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         {
             srp->Timeout = scsiIoCtx->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
         }
-        srp->DataBuffer = scsiIoCtx->pdata;
+
+        alignedPointer = (uint8_t*)(((uint64_t)scsiIoCtx->pdata + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
+        if (scsiIoCtx->pdata != alignedPointer)
+        {
+            //allocate an aligned buffer here!
+            localAlignedBuffer = true;
+            localBuffer = (uint8_t*)calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), pPassthru->Mode->IoAlign);
+            if (!localBuffer)
+            {
+                printf("Failed to allocate memory for an aligned data pointer!\n");
+                return MEMORY_FAILURE;
+            }
+            if (scsiIoCtx->direction == XFER_DATA_OUT)
+            {
+                memcpy(alignedPointer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+            }
+        }
+
+        alignedCDB = (uint8_t*)(((uint64_t)scsiIoCtx->cdb + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
+        if (scsiIoCtx->cdb != alignedCDB)
+        {
+            //allocate an aligned buffer here!
+            localCDB = (uint8_t *)calloc_aligned(scsiIoCtx->cdbLength, sizeof(uint8_t), pPassthru->Mode->IoAlign);
+            if (!localBuffer)
+            {
+                printf("Failed to allocate memory for an aligned CDB pointer!\n");
+                return MEMORY_FAILURE;
+            }
+            //copy CDB into aligned CDB memory pointer
+            memcpy(alignedCDB, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+        }
+
+        alignedSensePtr = (uint8_t *)(((uint64_t)scsiIoCtx->psense + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
+        if (scsiIoCtx->psense != alignedSensePtr)
+        {
+            //allocate an aligned buffer here!
+            localSenseBuffer = true;
+            localSensePtr = (uint8_t *)calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign);
+            if (!localBuffer)
+            {
+                printf("Failed to allocate memory for an aligned sense data pointer!\n");
+                return MEMORY_FAILURE;
+            }
+        }
+
+        srp->DataBuffer = alignedPointer;
         srp->TransferLength = scsiIoCtx->dataLength;
         switch (scsiIoCtx->direction)
         {
@@ -297,16 +363,26 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         default:
             return BAD_PARAMETER;
         }
-        srp->SenseData = scsiIoCtx->psense;// Need to verify is this correct or not
+        srp->SenseData = alignedSensePtr;// Need to verify is this correct or not
         srp->CdbLength = scsiIoCtx->cdbLength;
         srp->SenseDataLength = scsiIoCtx->senseDataSize;
-        srp->Cdb = scsiIoCtx->cdb;
+        srp->Cdb = alignedCDB;
 
         Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.scsi.target, scsiIoCtx->device->os_info.address.scsi.lun, srp, NULL);
+
+        //TODO: Check host adapter status and target status
 
         if (Status == EFI_SUCCESS)
         {
             ret = SUCCESS;
+            if (localSenseBuffer)
+            {
+                memcpy(scsiIoCtx->psense, alignedSensePtr, M_Min(scsiIoCtx->senseDataSize, srp->SenseDataLength));
+            }
+            if (localAlignedBuffer && scsiIoCtx->direction == XFER_DATA_IN)
+            {
+                memcpy(scsiIoCtx->pdata, alignedPointer, scsiIoCtx->dataLength);
+            }
         }
         else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
         {
@@ -316,7 +392,10 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         {
             ret = OS_PASSTHROUGH_FAILURE;
         }
-        safe_Free(srp);
+        safe_Free_aligned(localBuffer);
+        safe_Free_aligned(localCDB);
+        safe_Free_aligned(localSensePtr);
+        safe_Free_aligned(srp);
     }
     else
     {
@@ -334,11 +413,16 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
 
     if(SUCCESS == get_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
     {
+        uint8_t *alignedPointer = scsiIoCtx->pdata;
+        uint8_t *alignedCDB = scsiIoCtx->cdb;
+        uint8_t *alignedSensePtr = scsiIoCtx->psense;
+        uint8_t *localBuffer = NULL;
+        uint8_t *localCDB = NULL;
+        uint8_t *localSensePtr = NULL;
+        bool localAlignedBuffer = false, localSenseBuffer = false;
         EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET	*srp;// Extended scsi request packet
 
-        srp = (EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *) malloc(sizeof(EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET));
-
-        memset(srp, 0, sizeof(EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET));
+        srp = (EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *) calloc_aligned(1, sizeof(EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET), pPassthru->Mode->IoAlign);
 
         if(scsiIoCtx->timeout == UINT32_MAX)
         {
@@ -348,16 +432,62 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
         {
             srp->Timeout = scsiIoCtx->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
         }
+
+        alignedPointer = (uint8_t*)(((uint64_t)scsiIoCtx->pdata + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
+        if (scsiIoCtx->pdata != alignedPointer)
+        {
+            //allocate an aligned buffer here!
+            localAlignedBuffer = true;
+            localBuffer = (uint8_t*)calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), pPassthru->Mode->IoAlign);
+            if (!localBuffer)
+            {
+                printf("Failed to allocate memory for an aligned data pointer!\n");
+                return MEMORY_FAILURE;
+            }
+            if (scsiIoCtx->direction == XFER_DATA_OUT)
+            {
+                memcpy(alignedPointer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+            }
+        }
+
+        alignedCDB = (uint8_t*)(((uint64_t)scsiIoCtx->cdb + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
+        if (scsiIoCtx->cdb != alignedCDB)
+        {
+            //allocate an aligned buffer here!
+            localCDB = (uint8_t *)calloc_aligned(scsiIoCtx->cdbLength, sizeof(uint8_t), pPassthru->Mode->IoAlign);
+            if (!localBuffer)
+            {
+                printf("Failed to allocate memory for an aligned CDB pointer!\n");
+                return MEMORY_FAILURE;
+            }
+            //copy CDB into aligned CDB memory pointer
+            memcpy(alignedCDB, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+        }
+
+        alignedSensePtr = (uint8_t *)(((uint64_t)scsiIoCtx->psense + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
+        if (scsiIoCtx->psense != alignedSensePtr)
+        {
+            //allocate an aligned buffer here!
+            localSenseBuffer = true;
+            localSensePtr = (uint8_t *)calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign);
+            if (!localBuffer)
+            {
+                printf("Failed to allocate memory for an aligned sense data pointer!\n");
+                return MEMORY_FAILURE;
+            }
+        }
+
+
         switch (scsiIoCtx->direction)
         {
         case XFER_DATA_OUT:
-            srp->OutDataBuffer = scsiIoCtx->pdata;
+            srp->OutDataBuffer = alignedPointer;
             srp->InDataBuffer = NULL;
             srp->OutTransferLength = scsiIoCtx->dataLength;
             srp->DataDirection = 1;
             break;
         case XFER_DATA_IN:
-            srp->InDataBuffer = scsiIoCtx->pdata;
+            srp->InDataBuffer = alignedPointer;
             srp->OutDataBuffer = NULL;
             srp->InTransferLength = scsiIoCtx->dataLength;
             srp->DataDirection = 0;
@@ -374,16 +504,26 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
         default:
             return BAD_PARAMETER;
         }
-        srp->SenseData = scsiIoCtx->psense;// Need to verify is this correct or not
+        srp->SenseData = alignedSensePtr;
         srp->CdbLength = scsiIoCtx->cdbLength;
         srp->SenseDataLength = scsiIoCtx->senseDataSize;
-        srp->Cdb = scsiIoCtx->cdb;
+        srp->Cdb = alignedCDB;
 
         Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.scsiEx.target, scsiIoCtx->device->os_info.address.scsiEx.lun, srp, NULL);
+
+        //TODO: check adapter and target status
 
         if (Status == EFI_SUCCESS)
         {
             ret = SUCCESS;
+            if (localSenseBuffer)
+            {
+                memcpy(scsiIoCtx->psense, alignedSensePtr, M_Min(scsiIoCtx->senseDataSize, srp->SenseDataLength));
+            }
+            if (localAlignedBuffer && scsiIoCtx->direction == XFER_DATA_IN)
+            {
+                memcpy(scsiIoCtx->pdata, alignedPointer, scsiIoCtx->dataLength);
+            }
         }
         else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
         {
@@ -393,7 +533,10 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
         {
             ret = OS_PASSTHROUGH_FAILURE;
         }
-        safe_Free(srp);
+        safe_Free_aligned(localBuffer);
+        safe_Free_aligned(localCDB);
+        safe_Free_aligned(localSensePtr);
+        safe_Free_aligned(srp);
     }
     else
     {
@@ -409,16 +552,15 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     EFI_STATUS Status = EFI_SUCCESS;
     EFI_ATA_PASS_THRU_PROTOCOL *pPassthru;
     if(SUCCESS == get_ATA_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
-    {   
+    {
+        uint8_t *alignedPointer = scsiIoCtx->pAtaCmdOpts->ptrData;
+        uint8_t* localBuffer = NULL;
+        bool localAlignedBuffer = false;
         EFI_ATA_PASS_THRU_COMMAND_PACKET	*ataPacket;// ata command packet
-        EFI_ATA_COMMAND_BLOCK ataCommand;//TODO: these have alignment requirements. May need to change how this is allocated.
-        EFI_ATA_STATUS_BLOCK ataStatus;//TODO: these have alignment requirements. May need to change how this is allocated.
-        memset(&ataCommand, 0, sizeof(EFI_ATA_COMMAND_BLOCK));
-        memset(&ataStatus, 0, sizeof(EFI_ATA_STATUS_BLOCK));
+        EFI_ATA_COMMAND_BLOCK *ataCommand = (EFI_ATA_COMMAND_BLOCK*)calloc_aligned(1, sizeof(EFI_ATA_COMMAND_BLOCK), pPassthru->Mode->IoAlign);
+        EFI_ATA_STATUS_BLOCK *ataStatus = (EFI_ATA_STATUS_BLOCK*)calloc_aligned(1, sizeof(EFI_ATA_STATUS_BLOCK), pPassthru->Mode->IoAlign);
 
-        ataPacket = (EFI_ATA_PASS_THRU_COMMAND_PACKET *) malloc(sizeof(EFI_ATA_PASS_THRU_COMMAND_PACKET));
-
-        memset(ataPacket, 0, sizeof(EFI_ATA_PASS_THRU_COMMAND_PACKET));
+        ataPacket = (EFI_ATA_PASS_THRU_COMMAND_PACKET *) calloc_aligned(1, sizeof(EFI_ATA_PASS_THRU_COMMAND_PACKET), pPassthru->Mode->IoAlign);
 
         if(scsiIoCtx->timeout == UINT32_MAX)
         {
@@ -428,24 +570,38 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         {
             ataPacket->Timeout = scsiIoCtx->pAtaCmdOpts->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
         }
+        alignedPointer = (uint8_t*)(((uint64_t)scsiIoCtx->pAtaCmdOpts->ptrData + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
+        if (scsiIoCtx->pAtaCmdOpts->ptrData != alignedPointer)
+        {
+            //allocate an aligned buffer here!
+            localAlignedBuffer = true;
+            localBuffer = (uint8_t*)calloc_aligned(scsiIoCtx->pAtaCmdOpts->dataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign);
+            if (!localBuffer)
+            {
+                printf("Failed to allocate memory for an aligned data pointer!\n");
+                return MEMORY_FAILURE;
+            }
+            if (scsiIoCtx->direction == XFER_DATA_OUT)
+            {
+                memcpy(alignedPointer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+            }
+        }
+
         switch (scsiIoCtx->pAtaCmdOpts->commandDirection)
         {
         case XFER_DATA_OUT:
-            ataPacket->OutDataBuffer = scsiIoCtx->pAtaCmdOpts->ptrData;
+            ataPacket->OutDataBuffer = alignedPointer;
             ataPacket->InDataBuffer = NULL;
             ataPacket->OutTransferLength = scsiIoCtx->pAtaCmdOpts->dataSize;
-            //ataPacket->DataDirection = 1;
             break;
         case XFER_DATA_IN:
-            ataPacket->InDataBuffer = scsiIoCtx->pAtaCmdOpts->ptrData;
+            ataPacket->InDataBuffer = alignedPointer;
             ataPacket->OutDataBuffer = NULL;
             ataPacket->InTransferLength = scsiIoCtx->pAtaCmdOpts->dataSize;
-            //ataPacket->DataDirection = 0;
             break;
         case XFER_NO_DATA:
             ataPacket->OutDataBuffer = NULL;
             ataPacket->OutDataBuffer = NULL;
-            //ataPacket->DataDirection = 0;
             ataPacket->InTransferLength = 0;
             ataPacket->OutTransferLength = 0;
             break;
@@ -456,21 +612,21 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         }
         //set status block and command block
         //TODO: we should probably check that scsiIoCtx->pAtaCmdOpts is available first, but this SHOULD be ok since this is what we do on other systems
-        ataCommand.AtaCommand = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus;
-        ataCommand.AtaFeatures = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature;
-        ataCommand.AtaSectorNumber = scsiIoCtx->pAtaCmdOpts->tfr.LbaLow;
-        ataCommand.AtaCylinderLow = scsiIoCtx->pAtaCmdOpts->tfr.LbaMid;
-        ataCommand.AtaCylinderHigh = scsiIoCtx->pAtaCmdOpts->tfr.LbaHi;
-        ataCommand.AtaDeviceHead = scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead;
-        ataCommand.AtaSectorNumberExp = scsiIoCtx->pAtaCmdOpts->tfr.LbaLow48;
-        ataCommand.AtaCylinderLowExp = scsiIoCtx->pAtaCmdOpts->tfr.LbaMid48;
-        ataCommand.AtaCylinderHighExp = scsiIoCtx->pAtaCmdOpts->tfr.LbaHi48;
-        ataCommand.AtaFeaturesExp = scsiIoCtx->pAtaCmdOpts->tfr.Feature48;
-        ataCommand.AtaSectorCount = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount;
-        ataCommand.AtaSectorCountExp = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount48;
+        ataCommand->AtaCommand = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus;
+        ataCommand->AtaFeatures = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature;
+        ataCommand->AtaSectorNumber = scsiIoCtx->pAtaCmdOpts->tfr.LbaLow;
+        ataCommand->AtaCylinderLow = scsiIoCtx->pAtaCmdOpts->tfr.LbaMid;
+        ataCommand->AtaCylinderHigh = scsiIoCtx->pAtaCmdOpts->tfr.LbaHi;
+        ataCommand->AtaDeviceHead = scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead;
+        ataCommand->AtaSectorNumberExp = scsiIoCtx->pAtaCmdOpts->tfr.LbaLow48;
+        ataCommand->AtaCylinderLowExp = scsiIoCtx->pAtaCmdOpts->tfr.LbaMid48;
+        ataCommand->AtaCylinderHighExp = scsiIoCtx->pAtaCmdOpts->tfr.LbaHi48;
+        ataCommand->AtaFeaturesExp = scsiIoCtx->pAtaCmdOpts->tfr.Feature48;
+        ataCommand->AtaSectorCount = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount;
+        ataCommand->AtaSectorCountExp = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount48;
 
-        ataPacket->Asb = &ataStatus;
-        ataPacket->Acb = &ataCommand;
+        ataPacket->Asb = ataStatus;
+        ataPacket->Acb = ataCommand;
 
         //Set the protocol
         switch (scsiIoCtx->pAtaCmdOpts->commadProtocol)
@@ -532,24 +688,24 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         }
 
         //Set the passthrough length data (where it is, bytes, etc) (essentially building an SAT ATA pass-through command)
-        //NOTE: These defined values are unused right now because I don't understand how they should be used:
-        //      EFI_ATA_PASS_THRU_LENGTH_MASK
-        //      EFI_ATA_PASS_THRU_LENGTH_COUNT
-        switch (scsiIoCtx->pAtaCmdOpts->ataTransferBlocks)
-        {
-        case ATA_PT_512B_BLOCKS:
-        case ATA_PT_LOGICAL_SECTOR_SIZE:
-            //TODO: Not sure what, if anything there is to set for these values
-            break;
-        case ATA_PT_NUMBER_OF_BYTES:
-            ataPacket->Length |= EFI_ATA_PASS_THRU_LENGTH_BYTES;
-            break;
-        case ATA_PT_NO_DATA_TRANSFER:
-            //TODO: not sure if there is anything to set for this value
-            break;
-        default:
-            break;
-        }
+        ataPacket->Length |= EFI_ATA_PASS_THRU_LENGTH_BYTES;//ALWAYS set this. We will always set the transfer length as a number of bytes to transfer.
+        //Setting 512B vs 4096 vs anything else doesn't matter in UEFI since we can set number of bytes for our transferlength anytime.
+
+//      switch (scsiIoCtx->pAtaCmdOpts->ataTransferBlocks)
+//      {
+//      case ATA_PT_512B_BLOCKS:
+//      case ATA_PT_LOGICAL_SECTOR_SIZE:
+//          //TODO: Not sure what, if anything there is to set for these values
+//          break;
+//      case ATA_PT_NUMBER_OF_BYTES:
+//
+//          break;
+//      case ATA_PT_NO_DATA_TRANSFER:
+//          //TODO: not sure if there is anything to set for this value
+//          break;
+//      default:
+//          break;
+//      }
 
         switch (scsiIoCtx->pAtaCmdOpts->ataCommandLengthLocation)
         {
@@ -570,10 +726,14 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         }
 
         Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.ata.port, scsiIoCtx->device->os_info.address.ata.portMultiplierPort, ataPacket, NULL);
-
         //convert return status from sending the command into a return value for opensea-transport
         if (Status == EFI_SUCCESS)
         {
+            if (localAlignedBuffer && scsiIoCtx->pAtaCmdOpts->commandDirection == XFER_DATA_IN)
+            {
+                //memcpy the data back to the user's pointer since we had to allocate one locally.
+                memcpy(scsiIoCtx->pAtaCmdOpts->ptrData, alignedPointer, scsiIoCtx->dataLength);
+            }
             ret = SUCCESS;
             //convert RTFRs to sense data since the above layer is using SAT for everthing to make it easy to port across systems
             scsiIoCtx->returnStatus.senseKey = 0;
@@ -605,22 +765,27 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
                     {
                         scsiIoCtx->psense[10] |= 0x01;//set the extend bit
                         //fill in the ext registers while we're in this if...no need for another one
-                        scsiIoCtx->psense[12] = ataStatus.AtaSectorCountExp;// Sector Count Ext
-                        scsiIoCtx->psense[14] = ataStatus.AtaSectorNumberExp;// LBA Lo Ext
-                        scsiIoCtx->psense[16] = ataStatus.AtaCylinderLowExp;// LBA Mid Ext
-                        scsiIoCtx->psense[18] = ataStatus.AtaCylinderHighExp;// LBA Hi
+                        scsiIoCtx->psense[12] = ataStatus->AtaSectorCountExp;// Sector Count Ext
+                        scsiIoCtx->psense[14] = ataStatus->AtaSectorNumberExp;// LBA Lo Ext
+                        scsiIoCtx->psense[16] = ataStatus->AtaCylinderLowExp;// LBA Mid Ext
+                        scsiIoCtx->psense[18] = ataStatus->AtaCylinderHighExp;// LBA Hi
                     }
                     //fill in the returned 28bit registers
-                    scsiIoCtx->psense[11] = ataStatus.AtaError;// Error
-                    scsiIoCtx->psense[13] = ataStatus.AtaSectorCount;// Sector Count
-                    scsiIoCtx->psense[15] = ataStatus.AtaSectorNumber;// LBA Lo
-                    scsiIoCtx->psense[17] = ataStatus.AtaCylinderLow;// LBA Mid
-                    scsiIoCtx->psense[19] = ataStatus.AtaCylinderHigh;// LBA Hi
-                    scsiIoCtx->psense[20] = ataStatus.AtaDeviceHead;// Device/Head
-                    scsiIoCtx->psense[21] = ataStatus.AtaStatus;// Status
+                    scsiIoCtx->psense[11] = ataStatus->AtaError;// Error
+                    scsiIoCtx->psense[13] = ataStatus->AtaSectorCount;// Sector Count
+                    scsiIoCtx->psense[15] = ataStatus->AtaSectorNumber;// LBA Lo
+                    scsiIoCtx->psense[17] = ataStatus->AtaCylinderLow;// LBA Mid
+                    scsiIoCtx->psense[19] = ataStatus->AtaCylinderHigh;// LBA Hi
+                    scsiIoCtx->psense[20] = ataStatus->AtaDeviceHead;// Device/Head
+                    scsiIoCtx->psense[21] = ataStatus->AtaStatus;// Status
                 }
             }
         }
+        else if (Status == EFI_DEVICE_ERROR)
+        {
+            //command failed. Not sure if this should be dummied up as 51h - 04h or not.
+            ret = OS_PASSTHROUGH_FAILURE;
+        } 
         else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
         {
             ret = BAD_PARAMETER;
@@ -629,7 +794,10 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         {
             ret = OS_PASSTHROUGH_FAILURE;
         }
-        safe_Free(ataPacket);
+        safe_Free_aligned(ataPacket);
+        safe_Free_aligned(localBuffer);
+        safe_Free_aligned(ataStatus);
+        safe_Free_aligned(ataCommand);
     }
     else
     {
@@ -684,13 +852,15 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
     EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL *pPassthru;
     if(SUCCESS == get_NVMe_Passthru_Protocol_Ptr(&pPassthru, nvmeIoCtx->device->os_info.controllerNum))
     { 
+        uint8_t *alignedPointer = nvmeIoCtx->ptrData;
+        uint8_t *localBuffer = NULL;
+        bool localAlignedBuffer = false;
         EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET	*nrp;
-        EFI_NVM_EXPRESS_COMMAND nvmCommand;
-        EFI_NVM_EXPRESS_COMPLETION nvmCompletion;
+        EFI_NVM_EXPRESS_COMMAND *nvmCommand = (EFI_NVM_EXPRESS_COMMAND*)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMMAND), pPassthru->Mode->IoAlign);
+        EFI_NVM_EXPRESS_COMPLETION *nvmCompletion = (EFI_NVM_EXPRESS_COMPLETION*)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMPLETION), pPassthru->Mode->IoAlign);
 
-        nrp = (EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET *) malloc(sizeof(EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET));
+        nrp = (EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET *)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET), pPassthru->Mode->IoAlign);
 
-        memset(nrp, 0, sizeof(EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET));
         if(nvmeIoCtx->timeout == UINT32_MAX)
         {
             nrp->CommandTimeout = 0;//value is in 100ns units. zero means wait indefinitely
@@ -700,9 +870,28 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             nrp->CommandTimeout = nvmeIoCtx->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
         }
 
+        alignedPointer = (uint8_t*)(((uint64_t)nvmeIoCtx->ptrData + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
+        if (nvmeIoCtx->ptrData != alignedPointer)
+        {
+            //allocate an aligned buffer here!
+            localAlignedBuffer = true;
+            localBuffer = (uint8_t*)calloc_aligned(nvmeIoCtx->dataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign);
+            if (!localBuffer)
+            {
+                printf("Failed to allocate memory for an aligned data pointer!\n");
+                return MEMORY_FAILURE;
+            }
+            if (nvmeIoCtx->commandDirection == XFER_DATA_OUT)
+            {
+                memcpy(alignedPointer, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+            }
+        }
+
         //set transfer information
-        nrp->TransferBuffer = nvmeIoCtx->ptrData;
+        nrp->TransferBuffer = alignedPointer;
         nrp->TransferLength = nvmeIoCtx->dataSize;
+
+        //TODO: Handle metadata pointer
         nrp->MetadataBuffer = NULL;
         nrp->MetadataLength = 0;
 
@@ -711,96 +900,96 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         {
         case NVM_ADMIN_CMD:
             nrp->QueueType = NVME_ADMIN_QUEUE;
-            nvmCommand.Cdw0.Opcode = nvmeIoCtx->cmd.adminCmd.opcode;
-            nvmCommand.Cdw0.FusedOperation = NORMAL_CMD;//TODO: handle fused Commands
-            nvmCommand.Cdw0.Reserved = RESERVED;
-            nvmCommand.Nsid = nvmeIoCtx->cmd.adminCmd.nsid;
+            nvmCommand->Cdw0.Opcode = nvmeIoCtx->cmd.adminCmd.opcode;
+            nvmCommand->Cdw0.FusedOperation = NORMAL_CMD;//TODO: handle fused Commands
+            nvmCommand->Cdw0.Reserved = RESERVED;
+            nvmCommand->Nsid = nvmeIoCtx->cmd.adminCmd.nsid;
             if(nvmeIoCtx->cmd.adminCmd.cdw2)
             {
-              nvmCommand.Cdw2 = nvmeIoCtx->cmd.adminCmd.cdw2;
-              nvmCommand.Flags |= CDW2_VALID;
+              nvmCommand->Cdw2 = nvmeIoCtx->cmd.adminCmd.cdw2;
+              nvmCommand->Flags |= CDW2_VALID;
             }
             if(nvmeIoCtx->cmd.adminCmd.cdw3)
             {
-              nvmCommand.Cdw3 = nvmeIoCtx->cmd.adminCmd.cdw3;
-              nvmCommand.Flags |= CDW3_VALID;
+              nvmCommand->Cdw3 = nvmeIoCtx->cmd.adminCmd.cdw3;
+              nvmCommand->Flags |= CDW3_VALID;
             }
             if(nvmeIoCtx->cmd.adminCmd.cdw10)
             {
-              nvmCommand.Cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
-              nvmCommand.Flags |= CDW10_VALID;
+              nvmCommand->Cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
+              nvmCommand->Flags |= CDW10_VALID;
             }
             if(nvmeIoCtx->cmd.adminCmd.cdw11)
             {
-              nvmCommand.Cdw11 = nvmeIoCtx->cmd.adminCmd.cdw11;
-              nvmCommand.Flags |= CDW11_VALID;
+              nvmCommand->Cdw11 = nvmeIoCtx->cmd.adminCmd.cdw11;
+              nvmCommand->Flags |= CDW11_VALID;
             }
             if(nvmeIoCtx->cmd.adminCmd.cdw12)
             {
-              nvmCommand.Cdw12 = nvmeIoCtx->cmd.adminCmd.cdw12;
-              nvmCommand.Flags |= CDW12_VALID;
+              nvmCommand->Cdw12 = nvmeIoCtx->cmd.adminCmd.cdw12;
+              nvmCommand->Flags |= CDW12_VALID;
             }
             if(nvmeIoCtx->cmd.adminCmd.cdw13)
             {
-              nvmCommand.Cdw13 = nvmeIoCtx->cmd.adminCmd.cdw13;
-              nvmCommand.Flags |= CDW13_VALID;
+              nvmCommand->Cdw13 = nvmeIoCtx->cmd.adminCmd.cdw13;
+              nvmCommand->Flags |= CDW13_VALID;
             }
             if(nvmeIoCtx->cmd.adminCmd.cdw14)
             {
-              nvmCommand.Cdw14 = nvmeIoCtx->cmd.adminCmd.cdw14;
-              nvmCommand.Flags |= CDW14_VALID;
+              nvmCommand->Cdw14 = nvmeIoCtx->cmd.adminCmd.cdw14;
+              nvmCommand->Flags |= CDW14_VALID;
             }
             if(nvmeIoCtx->cmd.adminCmd.cdw15)
             {
-              nvmCommand.Cdw15 = nvmeIoCtx->cmd.adminCmd.cdw15;
-              nvmCommand.Flags |= CDW15_VALID;
+              nvmCommand->Cdw15 = nvmeIoCtx->cmd.adminCmd.cdw15;
+              nvmCommand->Flags |= CDW15_VALID;
             }
             break;
         case NVM_CMD:
             nrp->QueueType = NVME_IO_QUEUE;
-            nvmCommand.Cdw0.Opcode = nvmeIoCtx->cmd.nvmCmd.opcode;
-            nvmCommand.Cdw0.FusedOperation = NORMAL_CMD;//TODO: handle fused Commands
-            nvmCommand.Cdw0.Reserved = RESERVED;
-            nvmCommand.Nsid = nvmeIoCtx->cmd.nvmCmd.nsid;
+            nvmCommand->Cdw0.Opcode = nvmeIoCtx->cmd.nvmCmd.opcode;
+            nvmCommand->Cdw0.FusedOperation = NORMAL_CMD;//TODO: handle fused Commands
+            nvmCommand->Cdw0.Reserved = RESERVED;
+            nvmCommand->Nsid = nvmeIoCtx->cmd.nvmCmd.nsid;
             if(nvmeIoCtx->cmd.nvmCmd.cdw2)
             {
-              nvmCommand.Cdw2 = nvmeIoCtx->cmd.nvmCmd.cdw2;
-              nvmCommand.Flags |= CDW2_VALID;
+              nvmCommand->Cdw2 = nvmeIoCtx->cmd.nvmCmd.cdw2;
+              nvmCommand->Flags |= CDW2_VALID;
             }
             if(nvmeIoCtx->cmd.nvmCmd.cdw3)
             {
-              nvmCommand.Cdw3 = nvmeIoCtx->cmd.nvmCmd.cdw3;
-              nvmCommand.Flags |= CDW3_VALID;
+              nvmCommand->Cdw3 = nvmeIoCtx->cmd.nvmCmd.cdw3;
+              nvmCommand->Flags |= CDW3_VALID;
             }
             if(nvmeIoCtx->cmd.nvmCmd.cdw10)
             {
-              nvmCommand.Cdw10 = nvmeIoCtx->cmd.nvmCmd.cdw10;
-              nvmCommand.Flags |= CDW10_VALID;
+              nvmCommand->Cdw10 = nvmeIoCtx->cmd.nvmCmd.cdw10;
+              nvmCommand->Flags |= CDW10_VALID;
             }
             if(nvmeIoCtx->cmd.nvmCmd.cdw11)
             {
-              nvmCommand.Cdw11 = nvmeIoCtx->cmd.nvmCmd.cdw11;
-              nvmCommand.Flags |= CDW11_VALID;
+              nvmCommand->Cdw11 = nvmeIoCtx->cmd.nvmCmd.cdw11;
+              nvmCommand->Flags |= CDW11_VALID;
             }
             if(nvmeIoCtx->cmd.nvmCmd.cdw12)
             {
-              nvmCommand.Cdw12 = nvmeIoCtx->cmd.nvmCmd.cdw12;
-              nvmCommand.Flags |= CDW12_VALID;
+              nvmCommand->Cdw12 = nvmeIoCtx->cmd.nvmCmd.cdw12;
+              nvmCommand->Flags |= CDW12_VALID;
             }
             if(nvmeIoCtx->cmd.nvmCmd.cdw13)
             {
-              nvmCommand.Cdw13 = nvmeIoCtx->cmd.nvmCmd.cdw13;
-              nvmCommand.Flags |= CDW13_VALID;
+              nvmCommand->Cdw13 = nvmeIoCtx->cmd.nvmCmd.cdw13;
+              nvmCommand->Flags |= CDW13_VALID;
             }
             if(nvmeIoCtx->cmd.nvmCmd.cdw14)
             {
-              nvmCommand.Cdw14 = nvmeIoCtx->cmd.nvmCmd.cdw14;
-              nvmCommand.Flags |= CDW14_VALID;
+              nvmCommand->Cdw14 = nvmeIoCtx->cmd.nvmCmd.cdw14;
+              nvmCommand->Flags |= CDW14_VALID;
             }
             if(nvmeIoCtx->cmd.nvmCmd.cdw15)
             {
-              nvmCommand.Cdw15 = nvmeIoCtx->cmd.nvmCmd.cdw15;
-              nvmCommand.Flags |= CDW15_VALID;
+              nvmCommand->Cdw15 = nvmeIoCtx->cmd.nvmCmd.cdw15;
+              nvmCommand->Flags |= CDW15_VALID;
             }
             break;
         default:
@@ -808,8 +997,8 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             break;
         }
 
-        nrp->NvmeCmd = &nvmCommand;
-        nrp->NvmeCompletion = &nvmCompletion;
+        nrp->NvmeCmd = nvmCommand;
+        nrp->NvmeCompletion = nvmCompletion;
 
         Status = pPassthru->PassThru(pPassthru, nvmeIoCtx->device->os_info.address.nvme.namespaceID, nrp, NULL);
 
@@ -818,6 +1007,18 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         if (Status == EFI_SUCCESS)
         {
             ret = SUCCESS;
+            nvmeIoCtx->commandCompletionData.commandSpecific = nvmCompletion->DW0;
+            nvmeIoCtx->commandCompletionData.dw1Reserved = nvmCompletion->DW1;
+            nvmeIoCtx->commandCompletionData.sqIDandHeadPtr = nvmCompletion->DW2;
+            nvmeIoCtx->commandCompletionData.statusAndCID = nvmCompletion->DW3;
+            nvmeIoCtx->commandCompletionData.dw0Valid = true;
+            nvmeIoCtx->commandCompletionData.dw1Valid = true;
+            nvmeIoCtx->commandCompletionData.dw2Valid = true;
+            nvmeIoCtx->commandCompletionData.dw3Valid = true;
+            if (nvmeIoCtx->commandDirection == XFER_DATA_IN && localAlignedBuffer)
+            {
+                memcpy(nvmeIoCtx->ptrData, alignedPointer, nvmeIoCtx->dataSize);
+            }
         }
         else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
         {
@@ -827,6 +1028,10 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         {
             ret = OS_PASSTHROUGH_FAILURE;
         }
+        safe_Free_aligned(nrp);
+        safe_Free_aligned(localBuffer);
+        safe_Free_aligned(nvmCommand);
+        safe_Free_aligned(nvmCompletion);
     }
     else
     {
