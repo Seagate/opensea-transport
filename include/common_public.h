@@ -19,6 +19,10 @@
 #if defined (VMK_CROSS_COMP)
 #include "vm_nvme_lib.h"
 #endif
+#if defined (UEFI_C_SOURCE)
+#include <Protocol/ScsiPassThruExt.h> //for TARGET_MAX_BYTES definition
+#include <Protocol/DevicePath.h> //for device path union/structures
+#endif
 
 #if defined (__cplusplus)
 #define __STDC_FORMAT_MACROS
@@ -927,7 +931,7 @@ extern "C"
         eOSType             osType;//useful for lower layers to do OS specific things
         #if defined (UEFI_C_SOURCE)
         EFI_HANDLE          fd;
-        uint8_t devicePath[100];//not using a UEFI device path type because it has a header, then subtype data. This should be big enough to hold everything we want to store.
+        EFI_DEV_PATH devicePath;//This type being used is a union of all the different possible device paths.
         eUEFIPassthroughType passthroughType;
         union _uefiAddress {
             struct _scsiAddress{
@@ -935,7 +939,7 @@ extern "C"
                 uint64_t lun;
             }scsi;
             struct _scsiExtAddress{
-                uint8_t target[16];
+                uint8_t target[TARGET_MAX_BYTES];
                 uint64_t lun;
             }scsiEx;
             struct _ataAddress{

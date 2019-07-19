@@ -11,6 +11,7 @@
 //
 
 #include "common.h"
+#include "common_platform.h"
 #include "uefi_helper.h"
 #include "cmds.h"
 #include "sat_helper_func.h"
@@ -21,12 +22,19 @@
 #include <Protocol/AtaPassThru.h>
 #include <Protocol/ScsiPassThru.h>
 #include <Protocol/ScsiPassThruExt.h>
+#include <Protocol/DevicePath.h> //TODO: Add a function that can print out a device path???
 #if !defined (DISABLE_NVME_PASSTHROUGH)
 #include <Protocol/NvmExpressPassthru.h>
 #endif
 extern bool validate_Device_Struct(versionBlock);
 
+//Define this to turn on extra prints to the screen for debugging UEFI passthrough issues.
+#define UEFI_PASSTHRU_DEBUG_MESSAGES
 
+#if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+//This color will be used for normal debug messages that are infomative. Critical memory allocation errors among other things are going to be RED.
+eConsoleColors uefiDebugMessageColor = BLUE;
+#endif
 
 int get_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void **pPassthru, uint32_t controllerID)
 {
@@ -106,25 +114,9 @@ int get_Device(const char *filename, tDevice *device)
             {
                 EFI_DEVICE_PATH_PROTOCOL *devicePath; //will be allocated in the call to the uefi systen
                 EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, device->os_info.address.ata.port, device->os_info.address.ata.portMultiplierPort, &devicePath);
-/*
-                if (pPassthru->Mode->Attributes & EFI_ATA_PASS_THRU_ATTRIBUTES_PHYSICAL)
-                {
-                    printf("ATA Passthru to physical device\n");
-                }
-                if (pPassthru->Mode->Attributes & EFI_ATA_PASS_THRU_ATTRIBUTES_LOGICAL)
-                {
-                    printf("ATA Passthru to logical device\n");
-                }
-                if (pPassthru->Mode->Attributes & EFI_ATA_PASS_THRU_ATTRIBUTES_NONBLOCKIO)
-                {
-                    printf("ATA Passthru non-blocking IO supported\n");
-                }
-                printf("IOAlignment required: %" PRIu32 "\n", pPassthru->Mode->IoAlign);
-*/
-
                 if(buildPath == EFI_SUCCESS)
                 {
-                    memcpy(&device->os_info.devicePath[0], devicePath, devicePath->Length[0]);
+                    memcpy(&device->os_info.devicePath, devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
                 }
                 else
                 {
@@ -158,7 +150,7 @@ int get_Device(const char *filename, tDevice *device)
             {
                 char smallString[4] = { 0 };//need to break the string into two charaters at a time then convert that to a integer to save for target name
                 sprintf(smallString, "%c%c", targetAsString[iter], targetAsString[iter + 1]);
-                device->os_info.address.scsiEx.target[targetIDIter] = strtol(smallString, NULL, 16);
+                device->os_info.address.scsiEx.target[targetIDIter] = strtol(smallString, NULL, TARGET_MAX_BYTES);
             }
             EFI_EXT_SCSI_PASS_THRU_PROTOCOL *pPassthru;
             if (SUCCESS == get_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum))
@@ -167,7 +159,7 @@ int get_Device(const char *filename, tDevice *device)
                 EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, (uint8_t*)(&device->os_info.address.scsiEx.target), device->os_info.address.scsiEx.lun, &devicePath);
                 if(buildPath == EFI_SUCCESS)
                 {
-                    memcpy(&device->os_info.devicePath[0], devicePath, devicePath->Length[0]);
+                    memcpy(&device->os_info.devicePath, devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
                 }
                 else
                 {
@@ -198,7 +190,7 @@ int get_Device(const char *filename, tDevice *device)
                 EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, device->os_info.address.scsi.target, device->os_info.address.scsi.lun, &devicePath);
                 if(buildPath == EFI_SUCCESS)
                 {
-                    memcpy(&device->os_info.devicePath[0], devicePath, devicePath->Length[0]);
+                    memcpy(&device->os_info.devicePath, devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
                 }
                 else
                 {
@@ -233,7 +225,7 @@ int get_Device(const char *filename, tDevice *device)
                 EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, device->os_info.address.nvme.namespaceID, &devicePath);
                 if(buildPath == EFI_SUCCESS)
                 {
-                    memcpy(&device->os_info.devicePath[0], devicePath, devicePath->Length[0]);
+                    memcpy(&device->os_info.devicePath, devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
                 }
                 else
                 {
@@ -278,6 +270,11 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
     int ret = OS_PASSTHROUGH_FAILURE;
     EFI_STATUS Status = EFI_SUCCESS;
     EFI_SCSI_PASS_THRU_PROTOCOL *pPassthru;
+    #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+    set_Console_Colors(true, uefiDebugMessageColor);
+    printf("Sending UEFI SCSI Passthru Command\n");
+    set_Console_Colors(true, DEFAULT);
+    #endif
     if(SUCCESS == get_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
     {   
         uint8_t *alignedPointer = scsiIoCtx->pdata;
@@ -290,6 +287,26 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET	*srp;//scsi request packet
 
         srp = (EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *) calloc_aligned(1, sizeof(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET), pPassthru->Mode->IoAlign);
+
+        #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+        set_Console_Colors(true, uefiDebugMessageColor);
+        printf("Got SCSI Passthru protocol pointer:\n");
+        if (pPassthru->Mode->Attributes & EFI_SCSI_PASS_THRU_ATTRIBUTES_PHYSICAL)
+        {
+            printf("\tphysical device\n");
+        }
+        if (pPassthru->Mode->Attributes & EFI_SCSI_PASS_THRU_ATTRIBUTES_LOGICAL)
+        {
+            printf("\tlogical device\n");
+        }
+        if (pPassthru->Mode->Attributes & EFI_SCSI_PASS_THRU_ATTRIBUTES_NONBLOCKIO)
+        {
+            printf("\tnon-blocking IO supported\n");
+        }
+        printf("\tIOAlignment required: %" PRIu32 "\n", pPassthru->Mode->IoAlign);
+        printf("\tAdapterID: %" PRIu32 "\n", pPassthru->Mode->AdapterId);
+        set_Console_Colors(true, DEFAULT);
+        #endif
 
         if(scsiIoCtx->timeout == UINT32_MAX)
         {
@@ -308,9 +325,14 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
             localBuffer = (uint8_t*)calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), pPassthru->Mode->IoAlign);
             if (!localBuffer)
             {
+                #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+                set_Console_Colors(true, RED);
                 printf("Failed to allocate memory for an aligned data pointer!\n");
+                set_Console_Colors(true, DEFAULT);
+                #endif
                 return MEMORY_FAILURE;
             }
+            alignedPointer = localBuffer;
             if (scsiIoCtx->direction == XFER_DATA_OUT)
             {
                 memcpy(alignedPointer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
@@ -324,9 +346,14 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
             localCDB = (uint8_t *)calloc_aligned(scsiIoCtx->cdbLength, sizeof(uint8_t), pPassthru->Mode->IoAlign);
             if (!localBuffer)
             {
+                #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+                set_Console_Colors(true, RED);
                 printf("Failed to allocate memory for an aligned CDB pointer!\n");
+                set_Console_Colors(true, DEFAULT);
+                #endif
                 return MEMORY_FAILURE;
             }
+            alignedCDB = localCDB;
             //copy CDB into aligned CDB memory pointer
             memcpy(alignedCDB, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
         }
@@ -339,9 +366,14 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
             localSensePtr = (uint8_t *)calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign);
             if (!localBuffer)
             {
+                #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+                set_Console_Colors(true, RED);
                 printf("Failed to allocate memory for an aligned sense data pointer!\n");
+                set_Console_Colors(true, DEFAULT);
+                #endif
                 return MEMORY_FAILURE;
             }
+            alignedSensePtr = localSensePtr;
         }
 
         srp->DataBuffer = alignedPointer;
@@ -358,7 +390,11 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
             srp->DataDirection = 0;
             break;
         case XFER_DATA_OUT_IN: //bidirectional command support not allowed with this type of passthru
+            #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+            set_Console_Colors(true, uefiDebugMessageColor);
             printf("Send UEFI SCSI PT CMD NOT AVAILABLE\n");
+            set_Console_Colors(true, DEFAULT);
+            #endif
             return OS_COMMAND_NOT_AVAILABLE;
         default:
             return BAD_PARAMETER;
@@ -368,8 +404,22 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         srp->SenseDataLength = scsiIoCtx->senseDataSize;
         srp->Cdb = alignedCDB;
 
+        #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+        set_Console_Colors(true, uefiDebugMessageColor);
+        printf("Sending SCSI Passthru command\n");
+        printf("\t->TransferLength = %" PRIu32 "\n", srp->TransferLength);
+        set_Console_Colors(true, DEFAULT);
+        #endif
+
         Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.scsi.target, scsiIoCtx->device->os_info.address.scsi.lun, srp, NULL);
 
+        #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+        set_Console_Colors(true, uefiDebugMessageColor);
+        printf("SCSI Passthru command returned %d\n", Status);
+        printf("\t<-TransferLength = %" PRIu32 "\n", srp->TransferLength);
+        printf("\tHost Adapter Status = %" PRIu8 "\t Target Status = %" PRIu8 "\n", srp->HostAdapterStatus, srp->TargetStatus);
+        set_Console_Colors(true, DEFAULT);
+        #endif
         //TODO: Check host adapter status and target status
 
         if (Status == EFI_SUCCESS)
@@ -383,6 +433,14 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
             {
                 memcpy(scsiIoCtx->pdata, alignedPointer, scsiIoCtx->dataLength);
             }
+        }
+        else if (Status == EFI_WRITE_PROTECTED)
+        {
+            ret = PERMISSION_DENIED;
+        }
+        else if (Status == EFI_DEVICE_ERROR)
+        {
+            ret = OS_PASSTHROUGH_FAILURE;
         }
         else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
         {
@@ -401,6 +459,11 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
+    #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+    set_Console_Colors(true, uefiDebugMessageColor);
+    printf("SCSI Passthru function returning %d\n", ret);
+    set_Console_Colors(true, DEFAULT);
+    #endif
     return ret;
 }
 
@@ -410,7 +473,11 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
     int ret = OS_PASSTHROUGH_FAILURE;
     EFI_STATUS Status = EFI_SUCCESS;
     EFI_EXT_SCSI_PASS_THRU_PROTOCOL *pPassthru;
-
+    #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+    set_Console_Colors(true, uefiDebugMessageColor);
+    printf("Sending UEFI SCSIEx Passthru Command\n");
+    set_Console_Colors(true, DEFAULT);
+    #endif
     if(SUCCESS == get_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
     {
         uint8_t *alignedPointer = scsiIoCtx->pdata;
@@ -423,6 +490,26 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
         EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET	*srp;// Extended scsi request packet
 
         srp = (EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *) calloc_aligned(1, sizeof(EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET), pPassthru->Mode->IoAlign);
+
+        #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+        set_Console_Colors(true, uefiDebugMessageColor);
+        printf("Got SCSIEx Passthru protocol pointer:\n");
+        if (pPassthru->Mode->Attributes & EFI_EXT_SCSI_PASS_THRU_ATTRIBUTES_PHYSICAL)
+        {
+            printf("\tphysical device\n");
+        }
+        if (pPassthru->Mode->Attributes & EFI_EXT_SCSI_PASS_THRU_ATTRIBUTES_LOGICAL)
+        {
+            printf("\tlogical device\n");
+        }
+        if (pPassthru->Mode->Attributes & EFI_EXT_SCSI_PASS_THRU_ATTRIBUTES_NONBLOCKIO)
+        {
+            printf("\tnon-blocking IO supported\n");
+        }
+        printf("\tIOAlignment required: %" PRIu32 "\n", pPassthru->Mode->IoAlign);
+        printf("\tAdapterID: %" PRIu32 "\n", pPassthru->Mode->AdapterId);
+        set_Console_Colors(true, DEFAULT);
+        #endif
 
         if(scsiIoCtx->timeout == UINT32_MAX)
         {
@@ -441,9 +528,14 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             localBuffer = (uint8_t*)calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), pPassthru->Mode->IoAlign);
             if (!localBuffer)
             {
+                #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+                set_Console_Colors(true, RED);
                 printf("Failed to allocate memory for an aligned data pointer!\n");
+                set_Console_Colors(true, DEFAULT);
+                #endif
                 return MEMORY_FAILURE;
             }
+            alignedPointer = localBuffer;
             if (scsiIoCtx->direction == XFER_DATA_OUT)
             {
                 memcpy(alignedPointer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
@@ -457,9 +549,14 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             localCDB = (uint8_t *)calloc_aligned(scsiIoCtx->cdbLength, sizeof(uint8_t), pPassthru->Mode->IoAlign);
             if (!localBuffer)
             {
+                #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+                set_Console_Colors(true, RED);
                 printf("Failed to allocate memory for an aligned CDB pointer!\n");
+                set_Console_Colors(true, DEFAULT);
+                #endif
                 return MEMORY_FAILURE;
             }
+            alignedCDB = localCDB;
             //copy CDB into aligned CDB memory pointer
             memcpy(alignedCDB, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
         }
@@ -472,9 +569,14 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             localSensePtr = (uint8_t *)calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign);
             if (!localBuffer)
             {
+                #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+                set_Console_Colors(true, RED);
                 printf("Failed to allocate memory for an aligned sense data pointer!\n");
+                set_Console_Colors(true, DEFAULT);
+                #endif
                 return MEMORY_FAILURE;
             }
+            alignedSensePtr = localSensePtr;
         }
 
 
@@ -509,7 +611,22 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
         srp->SenseDataLength = scsiIoCtx->senseDataSize;
         srp->Cdb = alignedCDB;
 
+        #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+        set_Console_Colors(true, uefiDebugMessageColor);
+        printf("Sending SCSIEx Passthru command\n");
+        printf("\t->InTransferLength = %" PRIu32 "\tOutTransferLength = %" PRIu32 "\n", srp->InTransferLength, srp->OutTransferLength);
+        set_Console_Colors(true, DEFAULT);
+        #endif
+
         Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.scsiEx.target, scsiIoCtx->device->os_info.address.scsiEx.lun, srp, NULL);
+
+        #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+        set_Console_Colors(true, uefiDebugMessageColor);
+        printf("SCSIEx Passthru command returned %d\n", Status);
+        printf("\t<-InTransferLength = %" PRIu32 "\tOutTransferLength = %" PRIu32 "\n", srp->InTransferLength, srp->OutTransferLength);
+        printf("\tHost Adapter Status = %" PRIu8 "\t Target Status = %" PRIu8 "\n", srp->HostAdapterStatus, srp->TargetStatus);
+        set_Console_Colors(true, DEFAULT);
+        #endif
 
         //TODO: check adapter and target status
 
@@ -524,6 +641,14 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             {
                 memcpy(scsiIoCtx->pdata, alignedPointer, scsiIoCtx->dataLength);
             }
+        }
+        else if (Status == EFI_WRITE_PROTECTED)
+        {
+            ret = PERMISSION_DENIED;
+        }
+        else if (Status == EFI_DEVICE_ERROR)
+        {
+            ret = OS_PASSTHROUGH_FAILURE;
         }
         else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
         {
@@ -542,6 +667,11 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
+    #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+    set_Console_Colors(true, uefiDebugMessageColor);
+    printf("SCSIEx Passthru function returning %d\n", ret);
+    set_Console_Colors(true, DEFAULT);
+    #endif
     return ret;
 }
 
@@ -551,6 +681,11 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     int ret = OS_PASSTHROUGH_FAILURE;
     EFI_STATUS Status = EFI_SUCCESS;
     EFI_ATA_PASS_THRU_PROTOCOL *pPassthru;
+    #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+    set_Console_Colors(true, uefiDebugMessageColor);
+    printf("Sending UEFI ATA Passthru command\n");
+    set_Console_Colors(true, DEFAULT);
+    #endif
     if(SUCCESS == get_ATA_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
     {
         uint8_t *alignedPointer = scsiIoCtx->pAtaCmdOpts->ptrData;
@@ -561,6 +696,25 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         EFI_ATA_STATUS_BLOCK *ataStatus = (EFI_ATA_STATUS_BLOCK*)calloc_aligned(1, sizeof(EFI_ATA_STATUS_BLOCK), pPassthru->Mode->IoAlign);
 
         ataPacket = (EFI_ATA_PASS_THRU_COMMAND_PACKET *) calloc_aligned(1, sizeof(EFI_ATA_PASS_THRU_COMMAND_PACKET), pPassthru->Mode->IoAlign);
+
+        #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+        set_Console_Colors(true, uefiDebugMessageColor);
+        printf("Got ATA Passthru protocol pointer:\n");
+        if (pPassthru->Mode->Attributes & EFI_ATA_PASS_THRU_ATTRIBUTES_PHYSICAL)
+        {
+            printf("\tphysical device\n");
+        }
+        if (pPassthru->Mode->Attributes & EFI_ATA_PASS_THRU_ATTRIBUTES_LOGICAL)
+        {
+            printf("\tlogical device\n");
+        }
+        if (pPassthru->Mode->Attributes & EFI_ATA_PASS_THRU_ATTRIBUTES_NONBLOCKIO)
+        {
+            printf("\tnon-blocking IO supported\n");
+        }
+        printf("\tIOAlignment required: %" PRIu32 "\n", pPassthru->Mode->IoAlign);
+        set_Console_Colors(true, DEFAULT);
+        #endif
 
         if(scsiIoCtx->timeout == UINT32_MAX)
         {
@@ -578,9 +732,14 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
             localBuffer = (uint8_t*)calloc_aligned(scsiIoCtx->pAtaCmdOpts->dataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign);
             if (!localBuffer)
             {
+                #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+                set_Console_Colors(true, RED);
                 printf("Failed to allocate memory for an aligned data pointer!\n");
+                set_Console_Colors(true, DEFAULT);
+                #endif
                 return MEMORY_FAILURE;
             }
+            alignedPointer = localBuffer;
             if (scsiIoCtx->direction == XFER_DATA_OUT)
             {
                 memcpy(alignedPointer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
@@ -724,9 +883,23 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         default:
             break;
         }
+        #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+        set_Console_Colors(true, uefiDebugMessageColor);
+        printf("Sending ATA Passthru command\n");
+        printf("\t->InTransferLength = %" PRIu32 "\t OutTransferLength = %" PRIu32 "\n", ataPacket->InTransferLength, ataPacket->OutTransferLength);
+        set_Console_Colors(true, DEFAULT);
+        #endif
 
         Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.ata.port, scsiIoCtx->device->os_info.address.ata.portMultiplierPort, ataPacket, NULL);
+
         //convert return status from sending the command into a return value for opensea-transport
+        #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+        set_Console_Colors(true, uefiDebugMessageColor);
+        printf("ATA Passthru command returned %d\n", Status);
+        printf("\t<-InTransferLength = %" PRIu32 "\t OutTransferLength = %" PRIu32 "\n", ataPacket->InTransferLength, ataPacket->OutTransferLength);
+        set_Console_Colors(true, DEFAULT);
+        #endif
+
         if (Status == EFI_SUCCESS)
         {
             if (localAlignedBuffer && scsiIoCtx->pAtaCmdOpts->commandDirection == XFER_DATA_IN)
@@ -781,18 +954,32 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
                 }
             }
         }
-        else if (Status == EFI_DEVICE_ERROR)
+        else //error, set appropriate return code
         {
-            //command failed. Not sure if this should be dummied up as 51h - 04h or not.
-            ret = OS_PASSTHROUGH_FAILURE;
-        } 
-        else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
-        {
-            ret = BAD_PARAMETER;
-        }
-        else
-        {
-            ret = OS_PASSTHROUGH_FAILURE;
+            if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+            {
+                set_Console_Colors(true, RED);
+                printf("EFI Status: ");
+                print_EFI_STATUS_To_Screen(scsiIoCtx->device->os_info.last_error);
+                set_Console_Colors(true, DEFAULT);
+            }
+            if (Status == EFI_DEVICE_ERROR)
+            {
+                //command failed. Not sure if this should be dummied up as 51h - 04h or not.
+                ret = OS_PASSTHROUGH_FAILURE;
+            } 
+            else if (Status == EFI_WRITE_PROTECTED)
+            {
+                ret = PERMISSION_DENIED;
+            }
+            else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
+            {
+                ret = BAD_PARAMETER;
+            }
+            else
+            {
+                ret = OS_PASSTHROUGH_FAILURE;
+            }
         }
         safe_Free_aligned(ataPacket);
         safe_Free_aligned(localBuffer);
@@ -803,6 +990,11 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
+    #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+    set_Console_Colors(true, uefiDebugMessageColor);
+    printf("ATA Passthru function returning %d\n", ret);
+    set_Console_Colors(true, DEFAULT);
+    #endif
     return ret;
 }
 
@@ -837,7 +1029,11 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
         break;
 #endif
     default:
+        #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+        set_Console_Colors(true, uefiDebugMessageColor);
         printf("SendIO CMD NOT AVAILABLE: %d\n", scsiIoCtx->device->os_info.passthroughType);
+        set_Console_Colors(true, DEFAULT);
+        #endif
         ret = OS_COMMAND_NOT_AVAILABLE;
         break;
     }
@@ -850,6 +1046,11 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
     int ret = OS_PASSTHROUGH_FAILURE;
     EFI_STATUS Status = EFI_SUCCESS;
     EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL *pPassthru;
+    #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+    set_Console_Colors(true, uefiDebugMessageColor);
+    printf("Sending UEFI NVMe Passthru Command\n");
+    set_Console_Colors(true, DEFAULT);
+    #endif
     if(SUCCESS == get_NVMe_Passthru_Protocol_Ptr(&pPassthru, nvmeIoCtx->device->os_info.controllerNum))
     { 
         uint8_t *alignedPointer = nvmeIoCtx->ptrData;
@@ -860,6 +1061,29 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         EFI_NVM_EXPRESS_COMPLETION *nvmCompletion = (EFI_NVM_EXPRESS_COMPLETION*)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMPLETION), pPassthru->Mode->IoAlign);
 
         nrp = (EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET *)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET), pPassthru->Mode->IoAlign);
+
+        #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+        set_Console_Colors(true, uefiDebugMessageColor);
+        printf("Got NVMe Passthru protocol pointer:\n");
+        if (pPassthru->Mode->Attributes & EFI_NVM_EXPRESS_PASS_THRU_ATTRIBUTES_PHYSICAL)
+        {
+            printf("\tphysical device\n");
+        }
+        if (pPassthru->Mode->Attributes & EFI_NVM_EXPRESS_PASS_THRU_ATTRIBUTES_LOGICAL)
+        {
+            printf("\tlogical device\n");
+        }
+        if (pPassthru->Mode->Attributes & EFI_NVM_EXPRESS_PASS_THRU_ATTRIBUTES_NONBLOCKIO)
+        {
+            printf("\tnon-blocking IO supported\n");
+        }
+        if (pPassthru->Mode->Attributes & EFI_NVM_EXPRESS_PASS_THRU_ATTRIBUTES_CMD_SET_NVM)
+        {
+            printf("\tNVM command set supported\n");
+        }
+        printf("\tIOAlignment required: %" PRIu32 "\n", pPassthru->Mode->IoAlign);
+        set_Console_Colors(true, DEFAULT);
+        #endif
 
         if(nvmeIoCtx->timeout == UINT32_MAX)
         {
@@ -878,9 +1102,14 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             localBuffer = (uint8_t*)calloc_aligned(nvmeIoCtx->dataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign);
             if (!localBuffer)
             {
+                #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+                set_Console_Colors(true, RED);
                 printf("Failed to allocate memory for an aligned data pointer!\n");
+                set_Console_Colors(true, DEFAULT);
+                #endif
                 return MEMORY_FAILURE;
             }
+            alignedPointer = localBuffer;
             if (nvmeIoCtx->commandDirection == XFER_DATA_OUT)
             {
                 memcpy(alignedPointer, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
@@ -1000,7 +1229,21 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         nrp->NvmeCmd = nvmCommand;
         nrp->NvmeCompletion = nvmCompletion;
 
+        #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+        set_Console_Colors(true, uefiDebugMessageColor);
+        printf("Sending NVMe Passthru command\n");
+        printf("\t->TransferLength = %" PRIu32 "\n", nrp->TransferLength);
+        set_Console_Colors(true, DEFAULT);
+        #endif
+
         Status = pPassthru->PassThru(pPassthru, nvmeIoCtx->device->os_info.address.nvme.namespaceID, nrp, NULL);
+
+        #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+        set_Console_Colors(true, uefiDebugMessageColor);
+        printf("NVMe Passthru command returned %d\n", Status);
+        printf("\t<-TransferLength = %" PRIu32 "\n", nrp->TransferLength);
+        set_Console_Colors(true, DEFAULT);
+        #endif
 
         //TODO: check completion information and pass it back up.
 
@@ -1020,6 +1263,14 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
                 memcpy(nvmeIoCtx->ptrData, alignedPointer, nvmeIoCtx->dataSize);
             }
         }
+        else if (Status == EFI_WRITE_PROTECTED)
+        {
+            ret = PERMISSION_DENIED;
+        }
+        else if (Status == EFI_DEVICE_ERROR)
+        {
+            ret = OS_PASSTHROUGH_FAILURE;
+        }
         else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
         {
             ret = BAD_PARAMETER;
@@ -1037,6 +1288,11 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
+    #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+    set_Console_Colors(true, uefiDebugMessageColor);
+    printf("NVMe Passthru function returning %d\n", ret);
+    set_Console_Colors(true, DEFAULT);
+    #endif
     return ret;
 }
 
@@ -1094,7 +1350,7 @@ uint32_t get_ATA_Device_Count()
     uefiStatus = gBS->LocateHandleBuffer ( ByProtocol, &ataPtGUID, NULL, &nodeCount, &handle);
     if(EFI_ERROR(uefiStatus))
     {
-        return FAILURE;
+        return 0;
     }
 
     UINTN counter = 0;
@@ -1139,6 +1395,11 @@ uint32_t get_ATA_Device_Count()
         }
         ++counter;
     }
+    #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+    set_Console_Colors(true, uefiDebugMessageColor);
+    printf("ATA Device count = %" PRIu32 "\n", deviceCount);
+    set_Console_Colors(true, DEFAULT);
+    #endif
     return deviceCount;
 }
 
@@ -1232,7 +1493,7 @@ uint32_t get_SCSI_Device_Count()
     uefiStatus = gBS->LocateHandleBuffer ( ByProtocol, &scsiPtGUID, NULL, &nodeCount, &handle);
     if(EFI_ERROR(uefiStatus))
     {
-        return FAILURE;
+        return 0;
     }
 
     UINTN counter = 0;
@@ -1266,6 +1527,11 @@ uint32_t get_SCSI_Device_Count()
         }
         ++counter;
     }
+    #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+    set_Console_Colors(true, uefiDebugMessageColor);
+    printf("SCSI Device count = %" PRIu32 "\n", deviceCount);
+    set_Console_Colors(true, DEFAULT);
+    #endif
     return deviceCount;
 }
 
@@ -1349,29 +1615,32 @@ uint32_t get_SCSIEx_Device_Count()
     uefiStatus = gBS->LocateHandleBuffer ( ByProtocol, &scsiPtGUID, NULL, &nodeCount, &handle);
     if(EFI_ERROR(uefiStatus))
     {
-        return FAILURE;
+        return 0;
     }
 
     UINTN counter = 0;
     while (counter < nodeCount)
     {
+        uint8_t invalidTarget[TARGET_MAX_BYTES];
+        uint8_t target[TARGET_MAX_BYTES];
+        uint8_t *targetPtr = &target[0];
+        uint64_t lun = 0xFF;//doesn't specify what we should start with for this.
         uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if(EFI_ERROR(uefiStatus))
         {
             //TODO: continue to next handle in loop? Or fail?
             continue;
         }
-        uint8_t target[16] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-        uint8_t *targetPtr = &target[0];
-        uint64_t lun = 0;//doesn't specify what we should start with for this.
+        memset(target, 0xFF, TARGET_MAX_BYTES);
+        memset(invalidTarget, 0xFF, TARGET_MAX_BYTES);
         while (uefiStatus == EFI_SUCCESS)
         {
-            uefiStatus = pPassthru->GetNextTargetLun(pPassthru, &targetPtr, & lun);
-            if(uefiStatus == EFI_SUCCESS)
+            uefiStatus = pPassthru->GetNextTargetLun(pPassthru, &targetPtr, &lun);
+            if(uefiStatus == EFI_SUCCESS && memcmp(target, invalidTarget, TARGET_MAX_BYTES) != 0)
             {
                 //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
                 EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
-                EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, target, lun, &devicePath);
+                EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, targetPtr, lun, &devicePath);
                 if(buildPath == EFI_SUCCESS)
                 {
                     //found a device!!!
@@ -1385,6 +1654,11 @@ uint32_t get_SCSIEx_Device_Count()
         }
         ++counter;
     }
+    #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+    set_Console_Colors(true, uefiDebugMessageColor);
+    printf("SCSIEx Device count = %" PRIu32 "\n", deviceCount);
+    set_Console_Colors(true, DEFAULT);
+    #endif
     return deviceCount;
 }
 
@@ -1407,19 +1681,22 @@ int get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, ve
     UINTN counter = 0;
     while (counter < nodeCount)
     {
+        uint8_t invalidTarget[TARGET_MAX_BYTES];
+        uint8_t target[TARGET_MAX_BYTES];
+        uint8_t *targetPtr = &target[0];
+        uint64_t lun = 0xFF;//doesn't specify what we should start with for this.
         uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if(EFI_ERROR(uefiStatus))
         {
             //TODO: continue to next handle in loop? Or fail?
             continue;
         }
-        uint8_t target[16] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-        uint8_t *targetPtr = &target[0];
-        uint64_t lun = 0;//doesn't specify what we should start with for this.
+        memset(target, 0xFF, TARGET_MAX_BYTES);
+        memset(invalidTarget, 0xFF, TARGET_MAX_BYTES);
         while (uefiStatus == EFI_SUCCESS)
         {
             uefiStatus = pPassthru->GetNextTargetLun(pPassthru, &targetPtr, & lun);
-            if(uefiStatus == EFI_SUCCESS)
+            if(uefiStatus == EFI_SUCCESS && memcmp(target, invalidTarget, TARGET_MAX_BYTES) != 0)
             {
                 //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
                 EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
@@ -1470,7 +1747,7 @@ uint32_t get_NVMe_Device_Count()
     uefiStatus = gBS->LocateHandleBuffer ( ByProtocol, &nvmePtGUID, NULL, &nodeCount, &handle);
     if(EFI_ERROR(uefiStatus))
     {
-        return FAILURE;
+        return 0;
     }
     UINTN counter = 0;
     while (counter < nodeCount)
@@ -1503,6 +1780,11 @@ uint32_t get_NVMe_Device_Count()
         }
         ++counter;
     }
+    #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+    set_Console_Colors(true, uefiDebugMessageColor);
+    printf("NVMe Device count = %" PRIu32 "\n", deviceCount);
+    set_Console_Colors(true, DEFAULT);
+    #endif
     return deviceCount;
 }
 
