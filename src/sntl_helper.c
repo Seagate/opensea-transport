@@ -7622,6 +7622,10 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
                 break;
             }
         }
+        else
+        {
+            commandSupported = false;
+        }
     }
     break;//Write buffer cmd
 #if defined SNTL_EXT
@@ -7710,8 +7714,12 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
                 pdata[0][offset + 13] = 0;
                 pdata[0][offset + 14] = RESERVED;
                 pdata[0][offset + 15] = controlByte;//control byte
-                break;
             }
+            else
+            {
+                commandSupported = false;
+            }
+            break;
         default:
             commandSupported = false;
             break;
