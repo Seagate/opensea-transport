@@ -7622,6 +7622,10 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
                 break;
             }
         }
+	else
+	{
+		commandSupported = false;
+	}
     }
     break;//Write buffer cmd
 #if defined SNTL_EXT
