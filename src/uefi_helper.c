@@ -276,7 +276,8 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
     set_Console_Colors(true, DEFAULT);
     #endif
     if(SUCCESS == get_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
-    {   
+    {
+        seatimer_t commandTimer;
         uint8_t *alignedPointer = scsiIoCtx->pdata;
         uint8_t *alignedCDB = scsiIoCtx->cdb;
         uint8_t *alignedSensePtr = scsiIoCtx->psense;
@@ -410,9 +411,9 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         printf("\t->TransferLength = %" PRIu32 "\n", srp->TransferLength);
         set_Console_Colors(true, DEFAULT);
         #endif
-
+        start_Timer(&commandTimer);
         Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.scsi.target, scsiIoCtx->device->os_info.address.scsi.lun, srp, NULL);
-
+        stop_Timer(&commandTimer);
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
         printf("SCSI Passthru command returned %d\n", Status);
@@ -421,6 +422,7 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         set_Console_Colors(true, DEFAULT);
         #endif
         //TODO: Check host adapter status and target status
+        scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
         if (Status == EFI_SUCCESS)
         {
@@ -480,6 +482,7 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
     #endif
     if(SUCCESS == get_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
     {
+        seatimer_t commandTimer;
         uint8_t *alignedPointer = scsiIoCtx->pdata;
         uint8_t *alignedCDB = scsiIoCtx->cdb;
         uint8_t *alignedSensePtr = scsiIoCtx->psense;
@@ -617,9 +620,9 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
         printf("\t->InTransferLength = %" PRIu32 "\tOutTransferLength = %" PRIu32 "\n", srp->InTransferLength, srp->OutTransferLength);
         set_Console_Colors(true, DEFAULT);
         #endif
-
+        start_Timer(&commandTimer);
         Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.scsiEx.target, scsiIoCtx->device->os_info.address.scsiEx.lun, srp, NULL);
-
+        stop_Timer(&commandTimer);
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
         printf("SCSIEx Passthru command returned %d\n", Status);
@@ -628,6 +631,7 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
         set_Console_Colors(true, DEFAULT);
         #endif
 
+        scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
         //TODO: check adapter and target status
 
         if (Status == EFI_SUCCESS)
@@ -688,6 +692,7 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     #endif
     if(SUCCESS == get_ATA_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
     {
+        seatimer_t commandTimer;
         uint8_t *alignedPointer = scsiIoCtx->pAtaCmdOpts->ptrData;
         uint8_t* localBuffer = NULL;
         bool localAlignedBuffer = false;
@@ -889,9 +894,9 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         printf("\t->InTransferLength = %" PRIu32 "\t OutTransferLength = %" PRIu32 "\n", ataPacket->InTransferLength, ataPacket->OutTransferLength);
         set_Console_Colors(true, DEFAULT);
         #endif
-
+        start_Timer(&commandTimer);
         Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.ata.port, scsiIoCtx->device->os_info.address.ata.portMultiplierPort, ataPacket, NULL);
-
+        stop_Timer(&commandTimer);
         //convert return status from sending the command into a return value for opensea-transport
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
@@ -899,6 +904,8 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         printf("\t<-InTransferLength = %" PRIu32 "\t OutTransferLength = %" PRIu32 "\n", ataPacket->InTransferLength, ataPacket->OutTransferLength);
         set_Console_Colors(true, DEFAULT);
         #endif
+
+        scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
         if (Status == EFI_SUCCESS)
         {
@@ -1052,7 +1059,8 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
     set_Console_Colors(true, DEFAULT);
     #endif
     if(SUCCESS == get_NVMe_Passthru_Protocol_Ptr(&pPassthru, nvmeIoCtx->device->os_info.controllerNum))
-    { 
+    {
+        seatimer_t commandTimer;
         uint8_t *alignedPointer = nvmeIoCtx->ptrData;
         uint8_t *localBuffer = NULL;
         bool localAlignedBuffer = false;
@@ -1235,9 +1243,9 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         printf("\t->TransferLength = %" PRIu32 "\n", nrp->TransferLength);
         set_Console_Colors(true, DEFAULT);
         #endif
-
+        start_Timer(&commandTimer);
         Status = pPassthru->PassThru(pPassthru, nvmeIoCtx->device->os_info.address.nvme.namespaceID, nrp, NULL);
-
+        stop_Timer(&commandTimer);
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
         printf("NVMe Passthru command returned %d\n", Status);
@@ -1245,6 +1253,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         set_Console_Colors(true, DEFAULT);
         #endif
 
+        nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
         //TODO: check completion information and pass it back up.
 
         if (Status == EFI_SUCCESS)
@@ -1506,11 +1515,11 @@ uint32_t get_SCSI_Device_Count()
             continue;
         }
         uint32_t target = UINT32_MAX;//start here since this will make the api find the first available scsi target
-        uint64_t lun = 0;//doesn't specify what we should start with for this.
+        uint64_t lun = UINT64_MAX;//doesn't specify what we should start with for this.
         while (uefiStatus == EFI_SUCCESS)
         {
             uefiStatus = pPassthru->GetNextDevice(pPassthru, &target, & lun);
-            if(uefiStatus == EFI_SUCCESS && target != UINT16_MAX)
+            if(uefiStatus == EFI_SUCCESS && target != UINT16_MAX && lun != UINT64_MAX)
             {
                 //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
                 EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
@@ -1561,11 +1570,11 @@ int get_SCSI_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, vers
             continue;
         }
         uint32_t target = UINT32_MAX;//start here since this will make the api find the first available scsi target
-        uint64_t lun = 0;//doesn't specify what we should start with for this.
+        uint64_t lun = UINT64_MAX;//doesn't specify what we should start with for this.
         while (uefiStatus == EFI_SUCCESS)
         {
             uefiStatus = pPassthru->GetNextDevice(pPassthru, &target, & lun);
-            if(uefiStatus == EFI_SUCCESS && target != UINT32_MAX)
+            if(uefiStatus == EFI_SUCCESS && target != UINT32_MAX && lun != UINT64_MAX)
             {
                 //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
                 EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
@@ -1624,7 +1633,7 @@ uint32_t get_SCSIEx_Device_Count()
         uint8_t invalidTarget[TARGET_MAX_BYTES];
         uint8_t target[TARGET_MAX_BYTES];
         uint8_t *targetPtr = &target[0];
-        uint64_t lun = 0xFF;//doesn't specify what we should start with for this.
+        uint64_t lun = UINT64_MAX;//doesn't specify what we should start with for this.
         uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if(EFI_ERROR(uefiStatus))
         {
@@ -1636,7 +1645,7 @@ uint32_t get_SCSIEx_Device_Count()
         while (uefiStatus == EFI_SUCCESS)
         {
             uefiStatus = pPassthru->GetNextTargetLun(pPassthru, &targetPtr, &lun);
-            if(uefiStatus == EFI_SUCCESS && memcmp(target, invalidTarget, TARGET_MAX_BYTES) != 0)
+            if(uefiStatus == EFI_SUCCESS && memcmp(target, invalidTarget, TARGET_MAX_BYTES) != 0 && lun != UINT64_MAX)
             {
                 //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
                 EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
@@ -1684,7 +1693,7 @@ int get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, ve
         uint8_t invalidTarget[TARGET_MAX_BYTES];
         uint8_t target[TARGET_MAX_BYTES];
         uint8_t *targetPtr = &target[0];
-        uint64_t lun = 0xFF;//doesn't specify what we should start with for this.
+        uint64_t lun = UINT64_MAX;//doesn't specify what we should start with for this.
         uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if(EFI_ERROR(uefiStatus))
         {
@@ -1696,7 +1705,7 @@ int get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, ve
         while (uefiStatus == EFI_SUCCESS)
         {
             uefiStatus = pPassthru->GetNextTargetLun(pPassthru, &targetPtr, & lun);
-            if(uefiStatus == EFI_SUCCESS && memcmp(target, invalidTarget, TARGET_MAX_BYTES) != 0)
+            if(uefiStatus == EFI_SUCCESS && memcmp(target, invalidTarget, TARGET_MAX_BYTES) != 0 && lun != UINT64_MAX)
             {
                 //we have a valid port - port multiplier port combination. Try "probing" it to make sure there is a device by using build device path
                 EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
