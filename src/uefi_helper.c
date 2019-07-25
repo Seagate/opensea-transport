@@ -445,7 +445,7 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         bool localAlignedBuffer = false, localSenseBuffer = false;
         EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET	*srp;//scsi request packet
 
-        srp = (EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *) calloc_aligned(1, sizeof(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET), pPassthru->Mode->IoAlign);
+        srp = (EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *) calloc_aligned(1, sizeof(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
 
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
@@ -482,7 +482,7 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         {
             //allocate an aligned buffer here!
             localAlignedBuffer = true;
-            localBuffer = (uint8_t*)calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), pPassthru->Mode->IoAlign);
+            localBuffer = (uint8_t*)calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
             if (!localBuffer)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -504,7 +504,7 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->cdb, pPassthru->Mode->IoAlign))
         {
             //allocate an aligned buffer here!
-            localCDB = (uint8_t *)calloc_aligned(scsiIoCtx->cdbLength, sizeof(uint8_t), pPassthru->Mode->IoAlign);
+            localCDB = (uint8_t *)calloc_aligned(scsiIoCtx->cdbLength, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
             if (!localCDB)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -525,7 +525,7 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         {
             //allocate an aligned buffer here!
             localSenseBuffer = true;
-            localSensePtr = (uint8_t *)calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign);
+            localSensePtr = (uint8_t *)calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
             if (!localSensePtr)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -753,7 +753,7 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
         bool localAlignedBuffer = false, localSenseBuffer = false;
         EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET	*srp;// Extended scsi request packet
 
-        srp = (EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *) calloc_aligned(1, sizeof(EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET), pPassthru->Mode->IoAlign);
+        srp = (EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *) calloc_aligned(1, sizeof(EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
 
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
@@ -795,7 +795,7 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             #endif
             //allocate an aligned buffer here!
             localAlignedBuffer = true;
-            localBuffer = (uint8_t*)calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), pPassthru->Mode->IoAlign);
+            localBuffer = (uint8_t*)calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
             if (!localBuffer)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -831,7 +831,7 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             set_Console_Colors(true, DEFAULT);
             #endif
             //allocate an aligned buffer here!
-            localCDB = (uint8_t *)calloc_aligned(scsiIoCtx->cdbLength, sizeof(uint8_t), pPassthru->Mode->IoAlign);
+            localCDB = (uint8_t *)calloc_aligned(scsiIoCtx->cdbLength, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
             if (!localCDB)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -865,7 +865,7 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             #endif
             //allocate an aligned buffer here!
             localSenseBuffer = true;
-            localSensePtr = (uint8_t *)calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign);
+            localSensePtr = (uint8_t *)calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
             if (!localSensePtr)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -1015,10 +1015,10 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         uint8_t* localBuffer = NULL;
         bool localAlignedBuffer = false;
         EFI_ATA_PASS_THRU_COMMAND_PACKET	*ataPacket = NULL;// ata command packet
-        EFI_ATA_COMMAND_BLOCK *ataCommand = (EFI_ATA_COMMAND_BLOCK*)calloc_aligned(1, sizeof(EFI_ATA_COMMAND_BLOCK), pPassthru->Mode->IoAlign);
-        EFI_ATA_STATUS_BLOCK *ataStatus = (EFI_ATA_STATUS_BLOCK*)calloc_aligned(1, sizeof(EFI_ATA_STATUS_BLOCK), pPassthru->Mode->IoAlign);
+        EFI_ATA_COMMAND_BLOCK *ataCommand = (EFI_ATA_COMMAND_BLOCK*)calloc_aligned(1, sizeof(EFI_ATA_COMMAND_BLOCK), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+        EFI_ATA_STATUS_BLOCK *ataStatus = (EFI_ATA_STATUS_BLOCK*)calloc_aligned(1, sizeof(EFI_ATA_STATUS_BLOCK), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
 
-        ataPacket = (EFI_ATA_PASS_THRU_COMMAND_PACKET *) calloc_aligned(1, sizeof(EFI_ATA_PASS_THRU_COMMAND_PACKET), pPassthru->Mode->IoAlign);
+        ataPacket = (EFI_ATA_PASS_THRU_COMMAND_PACKET *) calloc_aligned(1, sizeof(EFI_ATA_PASS_THRU_COMMAND_PACKET), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
 
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
@@ -1058,7 +1058,7 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
             #endif
             //allocate an aligned buffer here!
             localAlignedBuffer = true;
-            localBuffer = (uint8_t*)calloc_aligned(scsiIoCtx->pAtaCmdOpts->dataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign);
+            localBuffer = (uint8_t*)calloc_aligned(scsiIoCtx->pAtaCmdOpts->dataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
             if (!localBuffer)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -1400,10 +1400,10 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         uint8_t *localBuffer = NULL;
         bool localAlignedBuffer = false;
         EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET	*nrp;
-        EFI_NVM_EXPRESS_COMMAND *nvmCommand = (EFI_NVM_EXPRESS_COMMAND*)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMMAND), pPassthru->Mode->IoAlign);
-        EFI_NVM_EXPRESS_COMPLETION *nvmCompletion = (EFI_NVM_EXPRESS_COMPLETION*)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMPLETION), pPassthru->Mode->IoAlign);
+        EFI_NVM_EXPRESS_COMMAND *nvmCommand = (EFI_NVM_EXPRESS_COMMAND*)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMMAND), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+        EFI_NVM_EXPRESS_COMPLETION *nvmCompletion = (EFI_NVM_EXPRESS_COMPLETION*)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMPLETION), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
 
-        nrp = (EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET *)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET), pPassthru->Mode->IoAlign);
+        nrp = (EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET *)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
 
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
@@ -1448,7 +1448,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             #endif
             //allocate an aligned buffer here!
             localAlignedBuffer = true;
-            localBuffer = (uint8_t*)calloc_aligned(nvmeIoCtx->dataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign);
+            localBuffer = (uint8_t*)calloc_aligned(nvmeIoCtx->dataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
             if (!localBuffer)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
