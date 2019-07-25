@@ -23,6 +23,7 @@
 #include <Protocol/ScsiPassThru.h>
 #include <Protocol/ScsiPassThruExt.h>
 #include <Protocol/DevicePath.h> //TODO: Add a function that can print out a device path???
+#include <Bus/Ata/AtaAtapiPassThru/AtaAtapiPassThru.h>//part of mdemodulepackage. Being used to help see if ATAPassthrough is from IDE or AHCI driver.
 #if !defined (DISABLE_NVME_PASSTHROUGH)
 #include <Protocol/NvmExpressPassthru.h>
 #endif
@@ -173,6 +174,18 @@ int get_Device(const char *filename, tDevice *device)
                 if(buildPath == EFI_SUCCESS)
                 {
                     memcpy(&device->os_info.devicePath, devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
+                    ATA_ATAPI_PASS_THRU_INSTANCE *instance = ATA_PASS_THRU_PRIVATE_DATA_FROM_THIS(pPassthru);
+                    if (instance->Mode == EfiAtaIdeMode && device->os_info.address.ata.portMultiplierPort > 0)
+                    {
+                        //If the driver is running in IDE mode, it will set the pmport value to non-zero for device 1. Because of this, and some sample EDK2 code, we need to make sure we set the device 1 bit when issuing commands!
+                        device->drive_info.ata_Options.isDevice1 = true;
+                    }
+                    #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+                    set_Console_Colors(true, GREEN);
+                    printf("Protocol Mode = %d\n", instance->Mode);//0 means IDE, 1 means AHCI, 2 means RAID, but we shouldn't see RAID here ever.
+                    set_Console_Colors(true, DEFAULT);
+                    #endif
+                    //TODO: save ioalignment so callers above can properly allocate aligned memory.
                 }
                 else
                 {
@@ -463,8 +476,9 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
             srp->Timeout = scsiIoCtx->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
         }
 
-        alignedPointer = (uint8_t*)(((uint64_t)scsiIoCtx->pdata + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
-        if (scsiIoCtx->pdata != alignedPointer)
+        //alignedPointer = (uint8_t*)(((uint64_t)scsiIoCtx->pdata + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
+        //if (scsiIoCtx->pdata != alignedPointer)
+        if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->pdata, pPassthru->Mode->IoAlign))
         {
             //allocate an aligned buffer here!
             localAlignedBuffer = true;
@@ -485,12 +499,13 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
             }
         }
 
-        alignedCDB = (uint8_t*)(((uint64_t)scsiIoCtx->cdb + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
-        if (scsiIoCtx->cdb != alignedCDB)
+        //alignedCDB = (uint8_t*)(((uint64_t)scsiIoCtx->cdb + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
+        //if (scsiIoCtx->cdb != alignedCDB)
+        if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->cdb, pPassthru->Mode->IoAlign))
         {
             //allocate an aligned buffer here!
             localCDB = (uint8_t *)calloc_aligned(scsiIoCtx->cdbLength, sizeof(uint8_t), pPassthru->Mode->IoAlign);
-            if (!localBuffer)
+            if (!localCDB)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, RED);
@@ -504,13 +519,14 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
             memcpy(alignedCDB, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
         }
 
-        alignedSensePtr = (uint8_t *)(((uint64_t)scsiIoCtx->psense + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
-        if (scsiIoCtx->psense != alignedSensePtr)
+        //alignedSensePtr = (uint8_t *)(((uint64_t)scsiIoCtx->psense + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
+        //if (scsiIoCtx->psense != alignedSensePtr)
+        if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->psense, pPassthru->Mode->IoAlign))
         {
             //allocate an aligned buffer here!
             localSenseBuffer = true;
             localSensePtr = (uint8_t *)calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign);
-            if (!localBuffer)
+            if (!localSensePtr)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, RED);
@@ -584,21 +600,31 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
                 memcpy(scsiIoCtx->pdata, alignedPointer, scsiIoCtx->dataLength);
             }
         }
-        else if (Status == EFI_WRITE_PROTECTED)
-        {
-            ret = PERMISSION_DENIED;
-        }
-        else if (Status == EFI_DEVICE_ERROR)
-        {
-            ret = OS_PASSTHROUGH_FAILURE;
-        }
-        else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
-        {
-            ret = BAD_PARAMETER;
-        }
         else
         {
-            ret = OS_PASSTHROUGH_FAILURE;
+            if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+            {
+                set_Console_Colors(true, RED);
+                printf("EFI Status: ");
+                print_EFI_STATUS_To_Screen(scsiIoCtx->device->os_info.last_error);
+                set_Console_Colors(true, DEFAULT);
+            }
+            if (Status == EFI_WRITE_PROTECTED)
+            {
+                ret = PERMISSION_DENIED;
+            }
+            else if (Status == EFI_DEVICE_ERROR)
+            {
+                ret = OS_PASSTHROUGH_FAILURE;
+            }
+            else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
+            {
+                ret = BAD_PARAMETER;
+            }
+            else
+            {
+                ret = OS_PASSTHROUGH_FAILURE;
+            }
         }
         safe_Free_aligned(localBuffer);
         safe_Free_aligned(localCDB);
@@ -760,7 +786,7 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
 
         //alignedPointer = (uint8_t*)(((uint64_t)scsiIoCtx->pdata + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
         //if (scsiIoCtx->pdata != alignedPointer)
-        if (!IS_ALIGNED(scsiIoCtx->pdata, pPassthru->Mode->IoAlign))
+        if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->pdata, pPassthru->Mode->IoAlign))
         {
             #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
             set_Console_Colors(true, MAGENTA);
@@ -795,9 +821,9 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             
         }
 
-        alignedCDB = (uint8_t*)(((uint64_t)scsiIoCtx->cdb + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
+        //alignedCDB = (uint8_t*)(((uint64_t)scsiIoCtx->cdb + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
         //if (scsiIoCtx->cdb != alignedCDB)
-        if (!IS_ALIGNED(scsiIoCtx->cdb, pPassthru->Mode->IoAlign))
+        if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->cdb, pPassthru->Mode->IoAlign))
         {
             #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
             set_Console_Colors(true, MAGENTA);
@@ -828,9 +854,9 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             }
         }
 
-        alignedSensePtr = (uint8_t *)(((uint64_t)scsiIoCtx->psense + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
+        //alignedSensePtr = (uint8_t *)(((uint64_t)scsiIoCtx->psense + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
         //if (scsiIoCtx->psense != alignedSensePtr)
-        if (!IS_ALIGNED(scsiIoCtx->psense, pPassthru->Mode->IoAlign))
+        if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->psense, pPassthru->Mode->IoAlign))
         {
             #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
             set_Console_Colors(true, MAGENTA);
@@ -927,21 +953,31 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
                 memcpy(scsiIoCtx->pdata, alignedPointer, scsiIoCtx->dataLength);
             }
         }
-        else if (Status == EFI_WRITE_PROTECTED)
-        {
-            ret = PERMISSION_DENIED;
-        }
-        else if (Status == EFI_DEVICE_ERROR)
-        {
-            ret = OS_PASSTHROUGH_FAILURE;
-        }
-        else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
-        {
-            ret = BAD_PARAMETER;
-        }
         else
         {
-            ret = OS_PASSTHROUGH_FAILURE;
+            if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+            {
+                set_Console_Colors(true, RED);
+                printf("EFI Status: ");
+                print_EFI_STATUS_To_Screen(scsiIoCtx->device->os_info.last_error);
+                set_Console_Colors(true, DEFAULT);
+            }
+            if (Status == EFI_WRITE_PROTECTED)
+            {
+                ret = PERMISSION_DENIED;
+            }
+            else if (Status == EFI_DEVICE_ERROR)
+            {
+                ret = OS_PASSTHROUGH_FAILURE;
+            }
+            else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
+            {
+                ret = BAD_PARAMETER;
+            }
+            else
+            {
+                ret = OS_PASSTHROUGH_FAILURE;
+            }
         }
         safe_Free_aligned(localBuffer);
         safe_Free_aligned(localCDB);
@@ -960,7 +996,7 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
     #endif
     return ret;
 }
-#include <Bus/Ata/AtaAtapiPassThru/AtaAtapiPassThru.h>
+
 //TODO: This was added later, prevously only SCSI passthrough existed. May need to add #if defined (some UDK version)
 int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
@@ -978,19 +1014,11 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         uint8_t *alignedPointer = scsiIoCtx->pAtaCmdOpts->ptrData;
         uint8_t* localBuffer = NULL;
         bool localAlignedBuffer = false;
-        EFI_ATA_PASS_THRU_COMMAND_PACKET	*ataPacket;// ata command packet
+        EFI_ATA_PASS_THRU_COMMAND_PACKET	*ataPacket = NULL;// ata command packet
         EFI_ATA_COMMAND_BLOCK *ataCommand = (EFI_ATA_COMMAND_BLOCK*)calloc_aligned(1, sizeof(EFI_ATA_COMMAND_BLOCK), pPassthru->Mode->IoAlign);
         EFI_ATA_STATUS_BLOCK *ataStatus = (EFI_ATA_STATUS_BLOCK*)calloc_aligned(1, sizeof(EFI_ATA_STATUS_BLOCK), pPassthru->Mode->IoAlign);
 
         ataPacket = (EFI_ATA_PASS_THRU_COMMAND_PACKET *) calloc_aligned(1, sizeof(EFI_ATA_PASS_THRU_COMMAND_PACKET), pPassthru->Mode->IoAlign);
-
-        ATA_ATAPI_PASS_THRU_INSTANCE *instance = ATA_PASS_THRU_PRIVATE_DATA_FROM_THIS(pPassthru);
-
-        set_Console_Colors(true, GREEN);
-        printf("Protocol Mode = %d\n", instance->Mode);
-        set_Console_Colors(true, DEFAULT);
-
-
 
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
@@ -1019,9 +1047,15 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         {
             ataPacket->Timeout = scsiIoCtx->pAtaCmdOpts->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
         }
-        alignedPointer = (uint8_t*)(((uint64_t)scsiIoCtx->pAtaCmdOpts->ptrData + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
-        if (scsiIoCtx->pAtaCmdOpts->ptrData != alignedPointer)
+        //alignedPointer = (uint8_t*)(((uint64_t)scsiIoCtx->pAtaCmdOpts->ptrData + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
+        //if (scsiIoCtx->pAtaCmdOpts->ptrData != alignedPointer)
+        if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->pAtaCmdOpts->ptrData, pPassthru->Mode->IoAlign))
         {
+            #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+            set_Console_Colors(true, MAGENTA);
+            printf("scsiIoCtx->pAtaCmdOpts->ptrData is not aligned! Creating local aligned buffer\n");
+            set_Console_Colors(true, DEFAULT);
+            #endif
             //allocate an aligned buffer here!
             localAlignedBuffer = true;
             localBuffer = (uint8_t*)calloc_aligned(scsiIoCtx->pAtaCmdOpts->dataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign);
@@ -1038,6 +1072,14 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
             if (scsiIoCtx->direction == XFER_DATA_OUT)
             {
                 memcpy(alignedPointer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+            }
+            if (!IS_ALIGNED(alignedPointer, pPassthru->Mode->IoAlign))
+            {
+                #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+                set_Console_Colors(true, MAGENTA);
+                printf("WARNING! Alignedpointer is still not properly aligned\n");
+                set_Console_Colors(true, DEFAULT);
+                #endif
             }
         }
 
@@ -1185,7 +1227,7 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         set_Console_Colors(true, DEFAULT);
         #endif
         start_Timer(&commandTimer);
-        Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.ata.port, scsiIoCtx->device->os_info.address.ata.portMultiplierPort == 0xFFFF ? 0 : scsiIoCtx->device->os_info.address.ata.portMultiplierPort, ataPacket, NULL);
+        Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.ata.port, scsiIoCtx->device->os_info.address.ata.portMultiplierPort, ataPacket, NULL);
         stop_Timer(&commandTimer);
         //convert return status from sending the command into a return value for opensea-transport
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -1395,9 +1437,15 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             nrp->CommandTimeout = nvmeIoCtx->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
         }
 
-        alignedPointer = (uint8_t*)(((uint64_t)nvmeIoCtx->ptrData + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
-        if (nvmeIoCtx->ptrData != alignedPointer)
+        //alignedPointer = (uint8_t*)(((uint64_t)nvmeIoCtx->ptrData + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
+        //if (nvmeIoCtx->ptrData != alignedPointer)
+        if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(nvmeIoCtx->ptrData, pPassthru->Mode->IoAlign))
         {
+            #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+            set_Console_Colors(true, MAGENTA);
+            printf("nvmeIoCtx->ptrData is not aligned! Creating local aligned buffer\n");
+            set_Console_Colors(true, DEFAULT);
+            #endif
             //allocate an aligned buffer here!
             localAlignedBuffer = true;
             localBuffer = (uint8_t*)calloc_aligned(nvmeIoCtx->dataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign);
@@ -1414,6 +1462,14 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             if (nvmeIoCtx->commandDirection == XFER_DATA_OUT)
             {
                 memcpy(alignedPointer, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+            }
+            if (!IS_ALIGNED(alignedPointer, pPassthru->Mode->IoAlign))
+            {
+                #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+                set_Console_Colors(true, MAGENTA);
+                printf("WARNING! Alignedpointer is still not properly aligned\n");
+                set_Console_Colors(true, DEFAULT);
+                #endif
             }
         }
 
@@ -1562,26 +1618,36 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             nvmeIoCtx->commandCompletionData.dw1Valid = true;
             nvmeIoCtx->commandCompletionData.dw2Valid = true;
             nvmeIoCtx->commandCompletionData.dw3Valid = true;
-            if (nvmeIoCtx->commandDirection == XFER_DATA_IN && localAlignedBuffer)
+            if (localAlignedBuffer && nvmeIoCtx->commandDirection == XFER_DATA_IN)
             {
                 memcpy(nvmeIoCtx->ptrData, alignedPointer, nvmeIoCtx->dataSize);
             }
         }
-        else if (Status == EFI_WRITE_PROTECTED)
-        {
-            ret = PERMISSION_DENIED;
-        }
-        else if (Status == EFI_DEVICE_ERROR)
-        {
-            ret = OS_PASSTHROUGH_FAILURE;
-        }
-        else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
-        {
-            ret = BAD_PARAMETER;
-        }
         else
         {
-            ret = OS_PASSTHROUGH_FAILURE;
+            if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+            {
+                set_Console_Colors(true, RED);
+                printf("EFI Status: ");
+                print_EFI_STATUS_To_Screen(nvmeIoCtx->device->os_info.last_error);
+                set_Console_Colors(true, DEFAULT);
+            }
+            else if (Status == EFI_WRITE_PROTECTED)
+            {
+                ret = PERMISSION_DENIED;
+            }
+            else if (Status == EFI_DEVICE_ERROR)
+            {
+                ret = OS_PASSTHROUGH_FAILURE;
+            }
+            else if (Status == EFI_INVALID_PARAMETER || Status == EFI_NOT_FOUND)
+            {
+                ret = BAD_PARAMETER;
+            }
+            else
+            {
+                ret = OS_PASSTHROUGH_FAILURE;
+            }
         }
         safe_Free_aligned(nrp);
         safe_Free_aligned(localBuffer);
