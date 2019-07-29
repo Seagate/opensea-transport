@@ -85,7 +85,7 @@ void sntl_Set_Sense_Key_Specific_Descriptor_Progress_Indicator(uint8_t data[8], 
     }
 }
 
-void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLength, uint8_t senseKey, uint8_t asc, uint8_t ascq, bool descriptorFormat, uint8_t descriptor[], uint8_t descriptorCount /* this will probably only be 1, but up to 2 or 3 max */)
+void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLength, uint8_t senseKey, uint8_t asc, uint8_t ascq, bool descriptorFormat, uint8_t *descriptor, uint8_t descriptorCount /* this will probably only be 1, but up to 2 or 3 max */)
 {
     uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
     uint8_t additionalSenseLength = 0;
@@ -148,7 +148,7 @@ void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLe
                     {
                         senseData[0] |= BIT7;//set the valid bit
                     }
-                    uint64_t descriptorInformation = M_BytesTo8ByteValue(&descriptor[descriptorOffset + 4], &descriptor[descriptorOffset + 5], &descriptor[descriptorOffset + 6], &descriptor[descriptorOffset + 7], &descriptor[descriptorOffset + 8], &descriptor[descriptorOffset + 9], &descriptor[descriptorOffset + 10], &descriptor[descriptorOffset + 11]);
+                    uint64_t descriptorInformation = M_BytesTo8ByteValue(descriptor[descriptorOffset + 4], descriptor[descriptorOffset + 5], descriptor[descriptorOffset + 6], descriptor[descriptorOffset + 7], descriptor[descriptorOffset + 8], descriptor[descriptorOffset + 9], descriptor[descriptorOffset + 10], descriptor[descriptorOffset + 11]);
                     if (descriptorInformation > UINT32_MAX)
                     {
                         memset(&senseData[3], UINT8_MAX, 4);
@@ -162,7 +162,7 @@ void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLe
                 break;
                 case 1://command specific information
                 {
-                    uint64_t descriptorCmdInformation = M_BytesTo8ByteValue(&descriptor[descriptorOffset + 4], &descriptor[descriptorOffset + 5], &descriptor[descriptorOffset + 6], &descriptor[descriptorOffset + 7], &descriptor[descriptorOffset + 8], &descriptor[descriptorOffset + 9], &descriptor[descriptorOffset + 10], &descriptor[descriptorOffset + 11]);
+                    uint64_t descriptorCmdInformation = M_BytesTo8ByteValue(descriptor[descriptorOffset + 4], descriptor[descriptorOffset + 5], descriptor[descriptorOffset + 6], descriptor[descriptorOffset + 7], descriptor[descriptorOffset + 8], descriptor[descriptorOffset + 9], descriptor[descriptorOffset + 10], descriptor[descriptorOffset + 11]);
                     if (descriptorCmdInformation > UINT32_MAX)
                     {
                         memset(&senseData[8], UINT8_MAX, 4);
@@ -265,7 +265,7 @@ void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLe
                     senseData[14] = descriptor[descriptorOffset + 7];
                     {
                         //information
-                        uint64_t descriptorInformation = M_BytesTo8ByteValue(&descriptor[descriptorOffset + 8], &descriptor[descriptorOffset + 9], &descriptor[descriptorOffset + 10], &descriptor[descriptorOffset + 11], &descriptor[descriptorOffset + 12], &descriptor[descriptorOffset + 13], &descriptor[descriptorOffset + 14], &descriptor[descriptorOffset + 15]);
+                        uint64_t descriptorInformation = M_BytesTo8ByteValue(descriptor[descriptorOffset + 8], descriptor[descriptorOffset + 9], descriptor[descriptorOffset + 10], descriptor[descriptorOffset + 11], descriptor[descriptorOffset + 12], descriptor[descriptorOffset + 13], descriptor[descriptorOffset + 14], descriptor[descriptorOffset + 15]);
                         if (descriptorInformation > UINT32_MAX)
                         {
                             memset(&senseData[3], UINT8_MAX, 4);
@@ -276,7 +276,7 @@ void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLe
                             memcpy(&senseData[3], &descriptor[descriptorOffset + 12], 4);
                         }
                         //command specific information
-                        uint64_t descriptorCmdInformation = M_BytesTo8ByteValue(&descriptor[descriptorOffset + 16], &descriptor[descriptorOffset + 17], &descriptor[descriptorOffset + 18], &descriptor[descriptorOffset + 19], &descriptor[descriptorOffset + 20], &descriptor[descriptorOffset + 21], &descriptor[descriptorOffset + 22], &descriptor[descriptorOffset + 23]);
+                        uint64_t descriptorCmdInformation = M_BytesTo8ByteValue(descriptor[descriptorOffset + 16], descriptor[descriptorOffset + 17], descriptor[descriptorOffset + 18], descriptor[descriptorOffset + 19], descriptor[descriptorOffset + 20], descriptor[descriptorOffset + 21], descriptor[descriptorOffset + 22], descriptor[descriptorOffset + 23]);
                         if (descriptorCmdInformation > UINT32_MAX)
                         {
                             memset(&senseData[8], UINT8_MAX, 4);
@@ -2014,7 +2014,7 @@ int sntl_Translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiIoCtx)
         memset(&getTempThresh, 0, sizeof(nvmeFeaturesCmdOpt));
         memset(logPage, 0, 512);
         getTempThresh.fid = 0x04;//temperature threshold
-        getTempThresh.prp1 = (uint64_t)logPage;
+        getTempThresh.prp1 = (uintptr_t)logPage;
         getTempThresh.featSetGetValue = 0;
         if(SUCCESS == nvme_Get_Features(device, &getTempThresh))
         {
