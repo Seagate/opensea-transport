@@ -44,6 +44,7 @@
 // - mode page policy VPD page
 // - nvme passthrough command (needs to handle admin vs nvm, nondata, data-in, data-out, bidirectional transfers and vendor unique commands
 // - read buffer command to return the NVMe telemetry log (similar to SAT translation to return current internal status log)
+// - supported sector sizes log pages
 
 void sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(uint8_t data[8], bool cd, bool bpv, uint8_t bitPointer, uint16_t fieldPointer)
 {
@@ -4806,7 +4807,7 @@ int sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *scsiIoCt
     safe_Free(reportLunsData);
     return ret;
 }
-
+//TODO: if any kind of "device fault" occurs, send back a sense code similar to SAT with ATA devices
 int sntl_Translate_SCSI_Test_Unit_Ready_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
@@ -4837,35 +4838,38 @@ int sntl_Translate_SCSI_Test_Unit_Ready_Command(tDevice *device, ScsiIoCtx *scsi
         sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
+#if defined (SNTL_EXT)
+    //If the device supports sanitize or DST, check if either of these is in progress to report that before returing the default "ready"
+    if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.sanicap != 0)
+    {
+        //sanitize is supported. Check if sanitize is currently running or not
+        uint8_t logPage[512] = { 0 };
+        nvmeGetLogPageCmdOpts sanitizeLog;
+        memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+        sanitizeLog.addr = logPage;
+        sanitizeLog.dataLen = 512;
+        sanitizeLog.lid = NVME_LOG_SANITIZE_ID;
+        if (SUCCESS == nvme_Get_Log_Page(device, &sanitizeLog))
+        {
+            uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
+            uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
+            if(sanitizeStatus == 0x2)//sanitize in progress
+            {
+                //set sense data to in progress and set a progress indicator!
+                sntl_Set_Sense_Key_Specific_Descriptor_Progress_Indicator(senseKeySpecificDescriptor, M_BytesTo2ByteValue(logPage[1], logPage[0]));
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NOT_READY, 0x04, 0x1B, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                return SUCCESS;
+            }
+            else if (sanitizeStatus == 0x3)//sanitize failed
+            {
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                return SUCCESS;
+            }
+        }//no need for an else. We shouldn't fail just because this log read failed.
+    }
+#endif
     //SNTL only specifies saying if the drive is ready for commands or not...just going to say ready.
     sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-
-    //TODO: With extensions for Sanitize, DST, & format, we need to return if sanitize is in progress or not!
-    //check sanitize status...check if device supports sanitize before doing this?
-    //if (SUCCESS == ata_Sanitize_Status(device, false))
-    //{
-    //    //In progress?
-    //    if (device->drive_info.lastCommandRTFRs.secCntExt & BIT6)
-    //    {
-    //        //set up a progress descriptor
-    //        set_Sense_Key_Specific_Descriptor_Progress_Indicator(senseKeySpecificDescriptor, M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaMid, device->drive_info.lastCommandRTFRs.lbaLow));
-    //        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NOT_READY, 0x04, 0x1B, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-    //    }
-    //    else if (device->drive_info.lastCommandRTFRs.secCntExt & BIT15)
-    //    {
-    //        //sanitize completed without error
-    //        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-    //    }
-    //    else
-    //    {
-    //        //sanitize completed with error
-    //        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-    //    }
-    //}
-    //else
-    //{
-    //    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NOT_READY, 0x05, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-    //}
     return ret;
 }
 
@@ -5075,97 +5079,63 @@ int sntl_Translate_SCSI_Send_Diagnostic_Command(tDevice *device, ScsiIoCtx *scsi
         }
         else
         {
-            if (selfTestCode == 0)
+#if defined (SNTL_EXT)
+            if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)//DST supported
             {
-                ret = SUCCESS;//nothing to do! Take hints from SAT to translate the self test code to a DST if DST is supported.
+                //NOTE: doing all namespaces for now...not sure if this should be changed in the future.
+                switch (selfTestCode)
+                {
+                case 0://default self test
+                    ret = SUCCESS;
+                    break;
+                case 1://background self test
+                    ret = nvme_Device_Self_Test(device, UINT32_MAX, 1);
+                    if (ret != SUCCESS)
+                    {
+                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    }
+                    break;
+                case 2://background extended self test
+                    ret = nvme_Device_Self_Test(device, UINT32_MAX, 2);
+                    if (ret != SUCCESS)
+                    {
+                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    }
+                    break;
+                case 4://abort background self test
+                    ret = nvme_Device_Self_Test(device, UINT32_MAX, 0xF);
+                    if (ret != SUCCESS)
+                    {
+                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    }
+                    break;
+                default:
+                    ret = NOT_SUPPORTED;
+                    bitPointer = 7;
+                    fieldPointer = 1;
+                    sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                    break;
+                }
             }
             else
             {
-                ret = NOT_SUPPORTED;
-                bitPointer = 7;
-                fieldPointer = 1;
-                sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+#endif
+                if (selfTestCode == 0)
+                {
+                    ret = SUCCESS;//nothing to do! Take hints from SAT to translate the self test code to a DST if DST is supported.
+                }
+                else
+                {
+                    ret = NOT_SUPPORTED;
+                    bitPointer = 7;
+                    fieldPointer = 1;
+                    sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                }
+#if defined (SNTL_EXT)
             }
-            //if (nvmeSelfTestSupported)
-            //{
-            //        uint8_t smartReadData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
-            //        uint16_t timeout = 15;
-            //        switch (selfTestCode)
-            //        {
-            //        case 0://default self test
-            //            //return good status (not required to do anything according to the spec) - TJE
-            //            break;
-            //        case 1://background short self test
-            //            ata_SMART_Offline(device, 0x01, timeout);
-            //            break;
-            //        case 2://background extended self test
-            //            ata_SMART_Offline(device, 0x02, timeout);
-            //            break;
-            //        case 4://abort background self test
-            //            if (SUCCESS != ata_SMART_Offline(device, 0x7F, timeout))
-            //            {
-            //                ret = NOT_SUPPORTED;
-            //                bitPointer = 7;
-            //                fieldPointer = 1;
-            //                sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-            //                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-            //            }
-            //            break;
-            //        case 5://foreground short self test
-            //            timeout = 120;
-            //            if (SUCCESS != ata_SMART_Offline(device, 0x81, timeout))
-            //            {
-            //                ret = FAILURE;
-            //                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_HARDWARE_ERROR, 0x3E, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-            //            }
-            //            break;
-            //        case 6://foreground extended self test
-            //            //first get the timeout value from SMART Read Data command
-            //            if (SUCCESS == ata_SMART_Read_Data(device, smartReadData, LEGACY_DRIVE_SEC_SIZE))
-            //            {
-            //                timeout = smartReadData[373];
-            //                if (timeout == 0xFF)
-            //                {
-            //                    timeout = M_BytesTo2ByteValue(smartReadData[376], smartReadData[375]);
-            //                }
-            //            }
-            //            else //this case shouldn't ever happen...
-            //            {
-            //                //set the timeout to max
-            //                timeout = UINT16_MAX;
-            //            }
-            //            if (SUCCESS != ata_SMART_Offline(device, 0x82, timeout))
-            //            {
-            //                ret = FAILURE;
-            //                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_HARDWARE_ERROR, 0x3E, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-            //            }
-            //            break;
-            //        case 7://reserved
-            //        case 3://reserved
-            //        default:
-            //            ret = NOT_SUPPORTED;
-            //            bitPointer = 7;
-            //            fieldPointer = 1;
-            //            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-            //            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-            //            break;
-            //        }
-            //    }
-            //    else
-            //    {
-            //        ret = NOT_SUPPORTED;
-            //        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ABORTED_COMMAND, 0x67, 0x0B, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-            //    }
-            //}
-            //else
-            //{
-            //    bitPointer = 7;
-            //    fieldPointer = 1;
-            //    sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-            //    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-            //    ret = NOT_SUPPORTED;
-            //}
+#endif
         }
     }
     else
@@ -5839,8 +5809,8 @@ int sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 }
 
 //TODO: Add support for Format in progress
-//TODO: Add support sanitize commands with our extensions
-//TODO: Add detecting when background self test is in progress and reporting progress from that
+//Add support sanitize commands with our extensions
+//Add detecting when background self test is in progress and reporting progress from that
 //TODO: Figure out other ways to improve what happens in here to pass back out that would be useful. SNTL spec doesn't really say much about what to do here.
 int sntl_Translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
@@ -5877,6 +5847,57 @@ int sntl_Translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx *scsiIo
     {
         descriptorFormat = true;
     }
+#if defined (SNTL_EXT)
+    if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.sanicap != 0)
+    {
+        //sanitize is supported. Check if sanitize is currently running or not
+        uint8_t logPage[512] = { 0 };
+        nvmeGetLogPageCmdOpts sanitizeLog;
+        memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+        sanitizeLog.addr = logPage;
+        sanitizeLog.dataLen = 512;
+        sanitizeLog.lid = NVME_LOG_SANITIZE_ID;
+        if (SUCCESS == nvme_Get_Log_Page(device, &sanitizeLog))
+        {
+            uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
+            uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
+            if (sanitizeStatus == 0x2)//sanitize in progress
+            {
+                //set sense data to in progress and set a progress indicator!
+                sntl_Set_Sense_Key_Specific_Descriptor_Progress_Indicator(senseKeySpecificDescriptor, M_BytesTo2ByteValue(logPage[1], logPage[0]));
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NOT_READY, 0x04, 0x1B, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                return SUCCESS;
+            }
+            else if (sanitizeStatus == 0x3)//sanitize failed
+            {
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                return SUCCESS;
+            }
+        }//no need for an else. We shouldn't fail just because this log read failed.
+    }
+    //NOTE: DST progress should only report like this under request sense. In test unit ready, DST in progress should only happen for foreground mode (i.e. captive) which isn't supported on NVMe
+    if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)//DST is supported
+    {
+        uint8_t logPage[564] = { 0 };
+        nvmeGetLogPageCmdOpts dstLog;
+        memset(&dstLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+        dstLog.addr = logPage;
+        dstLog.dataLen = 512;
+        dstLog.lid = NVME_LOG_DEV_SELF_TEST;
+        if (SUCCESS == nvme_Get_Log_Page(device, &dstLog))
+        {
+            uint8_t currentSelfTest = M_Nibble0(logPage[0]);
+            if (currentSelfTest == 0x1 || currentSelfTest == 0x2)//DST in progress
+            {
+                //convert progress into a value whose divisor is 65535
+                uint16_t dstProgress = 656 * M_GETBITRANGE(logPage[1], 6, 0);//This comes out very close to the actual percent...close enough anyways. There is probably a way to scale it to more even round numbers but this will do fine.
+                sntl_Set_Sense_Key_Specific_Descriptor_Progress_Indicator(senseKeySpecificDescriptor, dstProgress);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NOT_READY, 0x04, 0x09, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                return SUCCESS;
+            }
+        }//no need for else for failure...just fall through
+    }
+#endif
     //read the current power state
     nvmeFeaturesCmdOpt powerState;
     memset(&powerState, 0, sizeof(nvmeFeaturesCmdOpt));
@@ -6661,6 +6682,371 @@ int sntl_Translate_Persistent_Reserve_Out(tDevice * device, ScsiIoCtx * scsiIoCt
     safe_Free(persistentReserveData);
     return ret;
 }
+
+#if defined (SNTL_EXT)
+int sntl_Translate_SCSI_Sanitize_Command(tDevice * device, ScsiIoCtx * scsiIoCtx)
+{
+    int ret = SUCCESS;
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
+    //filter out invalid fields
+    if (
+        ((fieldPointer = 1) != 0 && (bitPointer = 6) != 0 && scsiIoCtx->cdb[1] & BIT6) || //ZNR bit
+        ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[2] != 0)
+        || ((fieldPointer = 3) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[3] != 0)
+        || ((fieldPointer = 4) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[4] != 0)
+        || ((fieldPointer = 5) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[5] != 0)
+        || ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[6] != 0)
+        )
+    {
+        if (bitPointer == 0)
+        {
+            uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+            uint8_t counter = 0;
+            while (reservedByteVal > 0 && counter < 8)
+            {
+                reservedByteVal >>= 1;
+                ++counter;
+            }
+            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        }
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        //invalid field in CDB
+        ret = NOT_SUPPORTED;
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return ret;
+    }
+    if (device->drive_info.IdentifyData.nvme.ctrl.sanicap > 0)
+    {
+        uint8_t serviceAction = 0x1F & scsiIoCtx->cdb[1];
+        bool immediate = false;//this is ignored for now since there is no way to handle this without multi-threading
+        //bool znr = false;
+        bool ause = false;
+        uint16_t parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+        if (scsiIoCtx->cdb[1] & BIT7)
+        {
+            immediate = true;
+        }
+        /*if (scsiIoCtx->cdb[1] & BIT6)
+        {
+            znr = true;
+        }*/
+        if (scsiIoCtx->cdb[1] & BIT5)
+        {
+            ause = true;
+        }
+        //begin validating the parameters
+        switch (serviceAction)
+        {
+        case 0x01://overwrite
+            if (parameterListLength != 0x0008)
+            {
+                fieldPointer = 7;
+                bitPointer = 7;
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                ret = NOT_SUPPORTED;
+            }
+            else if (!scsiIoCtx->pdata)//if this pointer is invalid set sense data saying the cdb list is invalid...which shouldn't ever happen, but just in case...
+            {
+                fieldPointer = 7;
+                bitPointer = 7;
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                ret = BAD_PARAMETER;
+            }
+            else
+            {
+                if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT2)
+                {
+                    //check the parameter data
+                    bool invert = false;
+                    uint8_t numberOfPasses = scsiIoCtx->pdata[0] & 0x1F;
+                    uint32_t pattern = M_BytesTo4ByteValue(scsiIoCtx->pdata[4], scsiIoCtx->pdata[5], scsiIoCtx->pdata[6], scsiIoCtx->pdata[7]);
+                    if (scsiIoCtx->pdata[0] & BIT7)
+                    {
+                        invert = true;
+                    }
+                    //validate the parameter data for the number of passes and pattern length according to SAT
+                    if (
+                        ((fieldPointer = 0) == 0 && (bitPointer = 6) != 0 && scsiIoCtx->pdata[0] & BIT6)
+                        || ((fieldPointer = 0) == 0 && (bitPointer = 5) != 0 && scsiIoCtx->pdata[0] & BIT5)
+                        || ((fieldPointer = 1) != 0 && (bitPointer = 0) != 0 && scsiIoCtx->pdata[1] != 0)
+                        || ((fieldPointer = 0) != 0 && (bitPointer = 4) != 0 && (numberOfPasses == 0 || numberOfPasses > 0x10))
+                        || ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && 0x0004 != M_BytesTo2ByteValue(scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]))
+                        )
+                    {
+                        if (bitPointer == 0)
+                        {
+                            uint8_t reservedByteVal = scsiIoCtx->pdata[fieldPointer];
+                            uint8_t counter = 0;
+                            while (reservedByteVal > 0 && counter < 8)
+                            {
+                                reservedByteVal >>= 1;
+                                ++counter;
+                            }
+                            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+                        }
+                        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                        return NOT_SUPPORTED;
+                    }
+                    if (numberOfPasses == 0x10)
+                    {
+                        numberOfPasses = 0;//this needs to be set to zero to specify 16 passes as this is how ATA does it.
+                    }
+                    if (SUCCESS != nvme_Sanitize(device, false, invert, numberOfPasses, ause, SANITIZE_NVM_OVERWRITE, pattern) && !immediate)
+                    {
+                        ret = FAILURE;
+                        set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    }
+                    else if (!immediate)
+                    {
+                        //poll until there is no longer a sanitize command in progress
+                        uint8_t logPage[512] = { 0 };
+                        uint8_t sanitizeStatus = 0x02;//start as in progress
+                        nvmeGetLogPageCmdOpts sanitizeLog;
+                        memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+                        sanitizeLog.addr = logPage;
+                        sanitizeLog.dataLen = 512;
+                        sanitizeLog.lid = NVME_LOG_SANITIZE_ID;
+                        while (sanitizeStatus == 0x2)
+                        {
+                            delay_Seconds(5);
+                            if (SUCCESS == nvme_Get_Log_Page(device, &sanitizeLog))
+                            {
+                                uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
+                                uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
+                                if (sanitizeStatus == 0x3)//sanitize failed
+                                {
+                                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                //set failure for command failing to work
+                                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                                break;
+                            }
+                        }
+                        if (sanitizeStatus == 0x03)
+                        {
+                            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        }
+                    }
+                }
+                else
+                {
+                    fieldPointer = 1;
+                    bitPointer = 4;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                    ret = NOT_SUPPORTED;
+                }
+            }
+            break;
+        case 0x02://block erase
+            if (parameterListLength != 0)
+            {
+                fieldPointer = 7;
+                bitPointer = 7;
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                ret = NOT_SUPPORTED;
+            }
+            else
+            {
+                if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT1)
+                {
+                    if (SUCCESS != nvme_Sanitize(device, false, false, 0, ause, SANITIZE_NVM_BLOCK_ERASE, 0) && !immediate)
+                    {
+                        ret = FAILURE;
+                        set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    }
+                    else if (!immediate)
+                    {
+                        //poll until there is no longer a sanitize command in progress
+                        uint8_t logPage[512] = { 0 };
+                        uint8_t sanitizeStatus = 0x02;//start as in progress
+                        nvmeGetLogPageCmdOpts sanitizeLog;
+                        memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+                        sanitizeLog.addr = logPage;
+                        sanitizeLog.dataLen = 512;
+                        sanitizeLog.lid = NVME_LOG_SANITIZE_ID;
+                        while (sanitizeStatus == 0x2)
+                        {
+                            delay_Seconds(5);
+                            if (SUCCESS == nvme_Get_Log_Page(device, &sanitizeLog))
+                            {
+                                uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
+                                uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
+                                if (sanitizeStatus == 0x3)//sanitize failed
+                                {
+                                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                //set failure for command failing to work
+                                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                                break;
+                            }
+                        }
+                        if (sanitizeStatus == 0x03)
+                        {
+                            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        }
+                    }
+                }
+                else
+                {
+                    fieldPointer = 1;
+                    bitPointer = 4;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                    ret = NOT_SUPPORTED;
+                }
+            }
+            break;
+        case 0x03://cryptographic erase
+            if (parameterListLength != 0)
+            {
+                fieldPointer = 7;
+                bitPointer = 7;
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                ret = NOT_SUPPORTED;
+            }
+            else
+            {
+                if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT0)
+                {
+                    if (SUCCESS != nvme_Sanitize(device, false, false, 0, ause, SANITIZE_NVM_CRYPTO, 0) && !immediate)
+                    {
+                        ret = FAILURE;
+                        set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    }
+                    else if (!immediate)
+                    {
+                        //poll until there is no longer a sanitize command in progress
+                        uint8_t logPage[512] = { 0 };
+                        uint8_t sanitizeStatus = 0x02;//start as in progress
+                        nvmeGetLogPageCmdOpts sanitizeLog;
+                        memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+                        sanitizeLog.addr = logPage;
+                        sanitizeLog.dataLen = 512;
+                        sanitizeLog.lid = NVME_LOG_SANITIZE_ID;
+                        while (sanitizeStatus == 0x2)
+                        {
+                            delay_Seconds(5);
+                            if (SUCCESS == nvme_Get_Log_Page(device, &sanitizeLog))
+                            {
+                                uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
+                                uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
+                                if (sanitizeStatus == 0x3)//sanitize failed
+                                {
+                                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                //set failure for command failing to work
+                                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                                break;
+                            }
+                        }
+                        if (sanitizeStatus == 0x03)
+                        {
+                            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        }
+                    }
+                }
+                else
+                {
+                    fieldPointer = 1;
+                    bitPointer = 4;
+                    set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                    ret = NOT_SUPPORTED;
+                }
+            }
+            break;
+        case 0x1F://exit failure mode
+            if (parameterListLength != 0)
+            {
+                fieldPointer = 7;
+                bitPointer = 7;
+                set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                ret = NOT_SUPPORTED;
+            }
+            else
+            {
+                if (SUCCESS != nvme_Sanitize(device, false, false, 0, ause, SANITIZE_NVM_EXIT_FAILURE_MODE, 0) && !immediate)
+                {
+                    ret = FAILURE;
+                    set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                }
+                else if (!immediate)
+                {
+                    //poll until there is no longer a sanitize command in progress
+                    uint8_t logPage[512] = { 0 };
+                    uint8_t sanitizeStatus = 0x02;//start as in progress
+                    nvmeGetLogPageCmdOpts sanitizeLog;
+                    memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+                    sanitizeLog.addr = logPage;
+                    sanitizeLog.dataLen = 512;
+                    sanitizeLog.lid = NVME_LOG_SANITIZE_ID;
+                    while (sanitizeStatus == 0x2)
+                    {
+                        delay_Seconds(5);
+                        if (SUCCESS == nvme_Get_Log_Page(device, &sanitizeLog))
+                        {
+                            uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
+                            uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
+                            if (sanitizeStatus == 0x3)//sanitize failed
+                            {
+                                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            //set failure for command failing to work
+                            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                            break;
+                        }
+                    }
+                    if (sanitizeStatus == 0x03)
+                    {
+                        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    }
+                }
+            }
+            break;
+        default:
+            fieldPointer = 1;
+            bitPointer = 4;
+            set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            ret = NOT_SUPPORTED;
+        }
+    }
+    else //sanitize feature not supported.
+    {
+        fieldPointer = 0;
+        bitPointer = 7;
+        set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        ret = NOT_SUPPORTED;
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+    }
+    return ret;
+}
+#endif
 
 void sntl_Set_Command_Timeouts_Descriptor(uint32_t nominalCommandProcessingTimeout, uint32_t recommendedCommandProcessingTimeout, uint8_t *pdata, uint32_t *offset)
 {
@@ -8903,9 +9289,12 @@ int sntl_Translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         break;
     //SNTL doesn't have this, but we should add it similar to SAT
 #if defined (SNTL_EXT)
-    //case SANITIZE_CMD://NVMe Sanitize
-    //  ret = sntl_Translate_SCSI_Sanitize_Command(device, scsiIoCtx);
-    //  break;
+    case SANITIZE_CMD://NVMe Sanitize
+        if (device->drive_info.IdentifyData.nvme.ctrl.sanicap != 0)
+        {
+            ret = sntl_Translate_SCSI_Sanitize_Command(device, scsiIoCtx);
+        }
+      break;
 #endif
     case SECURITY_PROTOCOL_IN:
         if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT0)
