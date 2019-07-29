@@ -30,7 +30,7 @@
 extern bool validate_Device_Struct(versionBlock);
 
 //Define this to turn on extra prints to the screen for debugging UEFI passthrough issues.
-#define UEFI_PASSTHRU_DEBUG_MESSAGES
+//#define UEFI_PASSTHRU_DEBUG_MESSAGES
 
 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
 //This color will be used for normal debug messages that are infomative. Critical memory allocation errors among other things are going to be RED.
@@ -308,6 +308,7 @@ int get_Device(const char *filename, tDevice *device)
                 }
                 safe_Free(devicePath);
                 close_NVMe_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum);
+                device->drive_info.namespaceID = device->os_info.address.nvme.namespaceID;
             }
             else
             {
@@ -476,8 +477,6 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
             srp->Timeout = scsiIoCtx->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
         }
 
-        //alignedPointer = (uint8_t*)(((uint64_t)scsiIoCtx->pdata + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
-        //if (scsiIoCtx->pdata != alignedPointer)
         if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->pdata, pPassthru->Mode->IoAlign))
         {
             //allocate an aligned buffer here!
@@ -499,8 +498,6 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
             }
         }
 
-        //alignedCDB = (uint8_t*)(((uint64_t)scsiIoCtx->cdb + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
-        //if (scsiIoCtx->cdb != alignedCDB)
         if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->cdb, pPassthru->Mode->IoAlign))
         {
             //allocate an aligned buffer here!
@@ -519,8 +516,6 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
             memcpy(alignedCDB, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
         }
 
-        //alignedSensePtr = (uint8_t *)(((uint64_t)scsiIoCtx->psense + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
-        //if (scsiIoCtx->psense != alignedSensePtr)
         if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->psense, pPassthru->Mode->IoAlign))
         {
             //allocate an aligned buffer here!
@@ -784,8 +779,6 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             srp->Timeout = scsiIoCtx->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
         }
 
-        //alignedPointer = (uint8_t*)(((uint64_t)scsiIoCtx->pdata + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
-        //if (scsiIoCtx->pdata != alignedPointer)
         if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->pdata, pPassthru->Mode->IoAlign))
         {
             #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -810,19 +803,16 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             {
                 memcpy(alignedPointer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
             }
+            #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
             if (!IS_ALIGNED(alignedPointer, pPassthru->Mode->IoAlign))
             {
-                #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, MAGENTA);
                 printf("WARNING! Alignedpointer is still not properly aligned\n");
                 set_Console_Colors(true, DEFAULT);
-                #endif
             }
-            
+            #endif
         }
 
-        //alignedCDB = (uint8_t*)(((uint64_t)scsiIoCtx->cdb + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
-        //if (scsiIoCtx->cdb != alignedCDB)
         if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->cdb, pPassthru->Mode->IoAlign))
         {
             #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -844,18 +834,16 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             alignedCDB = localCDB;
             //copy CDB into aligned CDB memory pointer
             memcpy(alignedCDB, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+            #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
             if (!IS_ALIGNED(alignedCDB, pPassthru->Mode->IoAlign))
             {
-                #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, MAGENTA);
                 printf("WARNING! AlignedCDB is still not properly aligned\n");
                 set_Console_Colors(true, DEFAULT);
-                #endif
             }
+            #endif
         }
 
-        //alignedSensePtr = (uint8_t *)(((uint64_t)scsiIoCtx->psense + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
-        //if (scsiIoCtx->psense != alignedSensePtr)
         if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->psense, pPassthru->Mode->IoAlign))
         {
             #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -876,14 +864,14 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
                 return MEMORY_FAILURE;
             }
             alignedSensePtr = localSensePtr;
+            #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
             if (!IS_ALIGNED(alignedPointer, pPassthru->Mode->IoAlign))
             {
-                #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, MAGENTA);
                 printf("WARNING! Alignedsenseptr is still not properly aligned\n");
                 set_Console_Colors(true, DEFAULT);
-                #endif
             }
+            #endif
         }
 
 
@@ -1047,8 +1035,7 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         {
             ataPacket->Timeout = scsiIoCtx->pAtaCmdOpts->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
         }
-        //alignedPointer = (uint8_t*)(((uint64_t)scsiIoCtx->pAtaCmdOpts->ptrData + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
-        //if (scsiIoCtx->pAtaCmdOpts->ptrData != alignedPointer)
+
         if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->pAtaCmdOpts->ptrData, pPassthru->Mode->IoAlign))
         {
             #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -1073,14 +1060,14 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
             {
                 memcpy(alignedPointer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
             }
+            #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
             if (!IS_ALIGNED(alignedPointer, pPassthru->Mode->IoAlign))
             {
-                #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, MAGENTA);
                 printf("WARNING! Alignedpointer is still not properly aligned\n");
                 set_Console_Colors(true, DEFAULT);
-                #endif
             }
+            #endif
         }
 
         switch (scsiIoCtx->pAtaCmdOpts->commandDirection)
@@ -1399,11 +1386,23 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         uint8_t *alignedPointer = nvmeIoCtx->ptrData;
         uint8_t *localBuffer = NULL;
         bool localAlignedBuffer = false;
-        EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET	*nrp;
+        EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET	*nrp = NULL;
         EFI_NVM_EXPRESS_COMMAND *nvmCommand = (EFI_NVM_EXPRESS_COMMAND*)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMMAND), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
         EFI_NVM_EXPRESS_COMPLETION *nvmCompletion = (EFI_NVM_EXPRESS_COMPLETION*)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMPLETION), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
 
+        if (!nvmCommand || !nvmCompletion)
+        {
+            printf("Error allocating command or completion for nrp\n");
+            return MEMORY_FAILURE;
+        }
+
         nrp = (EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET *)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+
+        if (!nrp)
+        {
+            printf("Error allocating NRP\n");
+            return MEMORY_FAILURE;
+        }
 
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
@@ -1437,8 +1436,37 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             nrp->CommandTimeout = nvmeIoCtx->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
         }
 
-        //alignedPointer = (uint8_t*)(((uint64_t)nvmeIoCtx->ptrData + (uint64_t)pPassthru->Mode->IoAlign) & ~(uint64_t)pPassthru->Mode->IoAlign);
-        //if (nvmeIoCtx->ptrData != alignedPointer)
+        //This is a hack for now. We should be enforcing pointers and data transfer size on in, our, or bidirectional commands up above even if nothing is expected in the return data buffer - TJE
+        if (nvmeIoCtx->commandDirection != XFER_NO_DATA && (nvmeIoCtx->dataSize == 0 || !nvmeIoCtx->ptrData))
+        {
+            #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+            set_Console_Colors(true, YELLOW);
+            printf("WARNING! Data transfer command specifying zero length!\n");
+            set_Console_Colors(true, DEFAULT);
+            #endif
+            localAlignedBuffer = true;
+            localBuffer = (uint8_t*)calloc_aligned(M_Max(512, nvmeIoCtx->dataSize), sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+            if (!localBuffer)
+            {
+                #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+                set_Console_Colors(true, RED);
+                printf("Failed to allocate memory for an aligned data pointer - missing buffer on data xfer command!\n");
+                set_Console_Colors(true, DEFAULT);
+                #endif
+                return MEMORY_FAILURE;
+            }
+            alignedPointer = localBuffer;
+            nvmeIoCtx->dataSize = M_Max(512, nvmeIoCtx->dataSize);
+            #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
+            if (!IS_ALIGNED(alignedPointer, pPassthru->Mode->IoAlign))
+            {
+                set_Console_Colors(true, MAGENTA);
+                printf("WARNING! Alignedpointer is still not properly aligned\n");
+                set_Console_Colors(true, DEFAULT);
+            }
+            #endif
+        }
+
         if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(nvmeIoCtx->ptrData, pPassthru->Mode->IoAlign))
         {
             #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -1477,9 +1505,9 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         nrp->TransferBuffer = alignedPointer;
         nrp->TransferLength = nvmeIoCtx->dataSize;
 
-        //TODO: Handle metadata pointer
-        nrp->MetadataBuffer = NULL;
-        nrp->MetadataLength = 0;
+        //TODO: Handle metadata pointer...right now attempting to allocate something locally here just to get things working.
+        nrp->MetadataBuffer = calloc_aligned(16, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+        nrp->MetadataLength = 16;
 
         //set queue type & command
         switch(nvmeIoCtx->commandType)
@@ -1593,7 +1621,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         set_Console_Colors(true, DEFAULT);
         #endif
         start_Timer(&commandTimer);
-        Status = pPassthru->PassThru(pPassthru, nvmeIoCtx->device->os_info.address.nvme.namespaceID, nrp, NULL);
+        nvmeIoCtx->device->os_info.last_error = Status = pPassthru->PassThru(pPassthru, nvmeIoCtx->device->os_info.address.nvme.namespaceID, nrp, NULL);
         stop_Timer(&commandTimer);
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
@@ -1602,9 +1630,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         printf("\t<-TransferLength = %" PRIu32 "\n", nrp->TransferLength);
         set_Console_Colors(true, DEFAULT);
         #endif
-
         nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-        nvmeIoCtx->device->os_info.last_error = Status;
         //TODO: check completion information and pass it back up.
 
         if (Status == EFI_SUCCESS)
@@ -1618,7 +1644,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             nvmeIoCtx->commandCompletionData.dw1Valid = true;
             nvmeIoCtx->commandCompletionData.dw2Valid = true;
             nvmeIoCtx->commandCompletionData.dw3Valid = true;
-            if (localAlignedBuffer && nvmeIoCtx->commandDirection == XFER_DATA_IN)
+            if (localAlignedBuffer && nvmeIoCtx->commandDirection == XFER_DATA_IN && nvmeIoCtx->ptrData)
             {
                 memcpy(nvmeIoCtx->ptrData, alignedPointer, nvmeIoCtx->dataSize);
             }
@@ -1649,6 +1675,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
+        safe_Free_aligned(nrp->MetadataBuffer);//TODO: Need to figure out a better way to handle the metadata than this...
         safe_Free_aligned(nrp);
         safe_Free_aligned(localBuffer);
         safe_Free_aligned(nvmCommand);
