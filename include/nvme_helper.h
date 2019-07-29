@@ -566,6 +566,7 @@ extern "C"
         NVME_LOG_TELEMETRY_HOST = 0x07,
         NVME_LOG_TELEMETRY_CTRL = 0x08,
         NVME_LOG_RESERVATION_ID = 0x80,
+        NVME_LOG_SANITIZE_ID = 0x81,
     }eNvmeLogs;
 
     typedef enum _eNvmeFeaturesSelectValue {
