@@ -147,5 +147,10 @@
             <F N="../../src/vm_nvme_mgmt_common.c"/>
             <F N="../../src/win_helper.c"/>
         </Folder>
+        <Folder Name="../UEFI">
+            <F N="../UEFI/opensea-transport.dec"/>
+            <F N="../UEFI/opensea-transport.dsc"/>
+            <F N="../UEFI/opensea-transport.inf"/>
+        </Folder>
     </Files>
 </Project>
