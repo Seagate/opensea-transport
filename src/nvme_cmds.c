@@ -136,6 +136,7 @@ int nvme_Abort_Command(tDevice *device, uint16_t commandIdentifier, uint16_t sub
     adminCommand.cmd.adminCmd.opcode = NVME_ADMIN_CMD_ABORT_CMD;
     adminCommand.cmd.adminCmd.cdw10 = M_WordsTo4ByteValue(commandIdentifier, submissionQueueIdentifier);
     adminCommand.commandDirection = XFER_NO_DATA;
+    adminCommand.timeout = 15;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending NVMe Abort Command\n");
@@ -159,6 +160,7 @@ int nvme_Asynchronous_Event_Request(tDevice *device, uint8_t *logPageIdentifier,
     adminCommand.commandType = NVM_ADMIN_CMD;
     adminCommand.cmd.adminCmd.opcode = NVME_ADMIN_CMD_ASYNC_EVENT;
     adminCommand.commandDirection = XFER_NO_DATA;
+    adminCommand.timeout = 15;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending NVMe Asynchronous Event Request Command\n");
@@ -185,6 +187,7 @@ int nvme_Device_Self_Test(tDevice *device, uint32_t nsid, uint8_t selfTestCode)
     adminCommand.commandDirection = XFER_NO_DATA;
     adminCommand.cmd.adminCmd.nsid = nsid;
     adminCommand.cmd.adminCmd.cdw10 = selfTestCode;//lowest 4 bits. All others are reserved
+    adminCommand.timeout = 15;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending NVMe Device Self Test Command\n");
@@ -221,6 +224,7 @@ int nvme_Security_Send(tDevice *device, uint8_t securityProtocol, uint16_t secur
     adminCommand.dataSize = dataLength;
     adminCommand.cmd.adminCmd.cdw10 = M_BytesTo4ByteValue(securityProtocol, M_Word1(securityProtocolSpecific), M_Word0(securityProtocolSpecific), nvmeSecuritySpecificField);
     adminCommand.cmd.adminCmd.cdw11 = dataLength;
+    adminCommand.timeout = 15;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending NVMe Security Send Command\n");
@@ -248,6 +252,7 @@ int nvme_Security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t se
     adminCommand.dataSize = dataLength;
     adminCommand.cmd.adminCmd.cdw10 = M_BytesTo4ByteValue(securityProtocol, M_Word1(securityProtocolSpecific), M_Word0(securityProtocolSpecific), nvmeSecuritySpecificField);
     adminCommand.cmd.adminCmd.cdw11 = dataLength;
+    adminCommand.timeout = 15;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending NVMe Security Receive Command\n");
@@ -275,6 +280,7 @@ int nvme_Write_Uncorrectable(tDevice *device, uint64_t startingLBA, uint16_t num
     nvmCommand.cmd.nvmCmd.cdw10 = M_DoubleWord0(startingLBA);//lba
     nvmCommand.cmd.nvmCmd.cdw11 = M_DoubleWord1(startingLBA);//lba
     nvmCommand.cmd.nvmCmd.cdw12 = numberOfLogicalBlocks;
+    nvmCommand.timeout = 15;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending NVMe Write Uncorrectable Command\n");
@@ -301,6 +307,7 @@ int nvme_Dataset_Management(tDevice *device, uint8_t numberOfRanges, bool deallo
     nvmCommand.dataSize = dataLength;
     nvmCommand.device = device;
     nvmCommand.cmd.nvmCmd.cdw10 = numberOfRanges;//number of ranges
+    nvmCommand.timeout = 15;
     if (deallocate)
     {
         nvmCommand.cmd.nvmCmd.cdw11 |= BIT2;
@@ -338,6 +345,7 @@ int nvme_Flush(tDevice *device)
     nvmCommand.ptrData = NULL;
     nvmCommand.dataSize = 0;
     nvmCommand.device = device;
+    nvmCommand.timeout = 15;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending NVMe Flush Command\n");
@@ -363,6 +371,7 @@ int nvme_Write(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBl
     nvmCommand.ptrData = ptrData;
     nvmCommand.dataSize = dataLength;
     nvmCommand.device = device;
+    nvmCommand.timeout = 15;
 
     //slba
     nvmCommand.cmd.nvmCmd.cdw10 = M_DoubleWord0(startingLBA);
@@ -403,6 +412,7 @@ int nvme_Read(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlo
     nvmCommand.ptrData = ptrData;
     nvmCommand.dataSize = dataLength;
     nvmCommand.device = device;
+    nvmCommand.timeout = 15;
 
     //slba
     nvmCommand.cmd.nvmCmd.cdw10 = M_DoubleWord0(startingLBA);
@@ -442,6 +452,7 @@ int nvme_Compare(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogical
     nvmCommand.ptrData = ptrData;
     nvmCommand.dataSize = dataLength;
     nvmCommand.device = device;
+    nvmCommand.timeout = 15;
 
     //slba
     nvmCommand.cmd.nvmCmd.cdw10 = M_DoubleWord0(startingLBA);
@@ -647,6 +658,7 @@ int nvme_Sanitize(tDevice *device, bool noDeallocateAfterSanitize, bool invertBe
     nvmCommand.commandType = NVM_ADMIN_CMD;
     nvmCommand.cmd.adminCmd.opcode = NVME_ADMIN_CMD_SANITIZE;
     nvmCommand.commandDirection = XFER_NO_DATA;
+    nvmCommand.timeout = 15;
 
     //set the overwrite pass count first
     nvmCommand.cmd.adminCmd.cdw10 = (uint32_t)(overWritePassCount << 4);

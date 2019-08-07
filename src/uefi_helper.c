@@ -474,7 +474,14 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         }
         else
         {
-            srp->Timeout = scsiIoCtx->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
+            if (scsiIoCtx->timeout > 0)
+            {
+                srp->Timeout = scsiIoCtx->timeout * 1e7;//value is in 100ns units. zero means wait indefinitely
+            }
+            else
+            {
+                srp->Timeout = 15 * 1e7; //15 seconds. value is in 100ns units. zero means wait indefinitely
+            }
         }
 
         if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->pdata, pPassthru->Mode->IoAlign))
@@ -776,7 +783,14 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
         }
         else
         {
-            srp->Timeout = scsiIoCtx->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
+           if (scsiIoCtx->timeout > 0)
+            {
+                srp->Timeout = scsiIoCtx->timeout * 1e7;//value is in 100ns units. zero means wait indefinitely
+            }
+            else
+            {
+                srp->Timeout = 15 * 1e7; //15 seconds. value is in 100ns units. zero means wait indefinitely
+            }
         }
 
         if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->pdata, pPassthru->Mode->IoAlign))
@@ -1033,7 +1047,14 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         }
         else
         {
-            ataPacket->Timeout = scsiIoCtx->pAtaCmdOpts->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
+            if (scsiIoCtx->timeout > 0)
+            {
+                ataPacket->Timeout = scsiIoCtx->pAtaCmdOpts->timeout * 1e7; //value is in 100ns units. zero means wait indefinitely
+            }
+            else
+            {
+                ataPacket->Timeout = 15 * 1e7; //15 seconds. value is in 100ns units. zero means wait indefinitely
+            }
         }
 
         if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->pAtaCmdOpts->ptrData, pPassthru->Mode->IoAlign))
@@ -1427,14 +1448,25 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         set_Console_Colors(true, DEFAULT);
         #endif
 
+        printf("\tnvmeIoCtx->timeout = %" PRIu32 " seconds\n", nvmeIoCtx->timeout);
+
         if(nvmeIoCtx->timeout == UINT32_MAX)
         {
             nrp->CommandTimeout = 0;//value is in 100ns units. zero means wait indefinitely
         }
         else
         {
-            nrp->CommandTimeout = nvmeIoCtx->timeout * 1e-7;//value is in 100ns units. zero means wait indefinitely
+            if (nvmeIoCtx->timeout > 0)
+            {
+                nrp->CommandTimeout = nvmeIoCtx->timeout * 1e7; //value is in 100ns units. zero means wait indefinitely
+            }
+            else
+            {
+                nrp->CommandTimeout = 15 * 1e7; //15 seconds. value is in 100ns units. zero means wait indefinitely
+            }
         }
+
+        printf("\tnrp->CommandTimeout = %" PRIu64 " 100ns units\n", nrp->CommandTimeout);
 
         //This is a hack for now. We should be enforcing pointers and data transfer size on in, our, or bidirectional commands up above even if nothing is expected in the return data buffer - TJE
         if (nvmeIoCtx->commandDirection != XFER_NO_DATA && (nvmeIoCtx->dataSize == 0 || !nvmeIoCtx->ptrData))
