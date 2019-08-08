@@ -1448,8 +1448,6 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         set_Console_Colors(true, DEFAULT);
         #endif
 
-        printf("\tnvmeIoCtx->timeout = %" PRIu32 " seconds\n", nvmeIoCtx->timeout);
-
         if(nvmeIoCtx->timeout == UINT32_MAX)
         {
             nrp->CommandTimeout = 0;//value is in 100ns units. zero means wait indefinitely
@@ -1465,8 +1463,6 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
                 nrp->CommandTimeout = 15 * 1e7; //15 seconds. value is in 100ns units. zero means wait indefinitely
             }
         }
-
-        printf("\tnrp->CommandTimeout = %" PRIu64 " 100ns units\n", nrp->CommandTimeout);
 
         //This is a hack for now. We should be enforcing pointers and data transfer size on in, our, or bidirectional commands up above even if nothing is expected in the return data buffer - TJE
         if (nvmeIoCtx->commandDirection != XFER_NO_DATA && (nvmeIoCtx->dataSize == 0 || !nvmeIoCtx->ptrData))
