@@ -646,6 +646,7 @@ extern "C"
         uint8_t                lbaHi;
         uint8_t                device;
         uint8_t                status;
+        uint8_t                padding[5];//empty padding to make sure this structure endds on an 8byte aligned boundary
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataReturnTFRs;
     #pragma pack(pop)
@@ -712,16 +713,23 @@ extern "C"
         bool isValid;
         uint16_t productID;
         uint16_t vendorID;
+        uint16_t childSectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
+        uint8_t padd0[2];
         char childDriveMN[MODEL_NUM_LEN + 1];
+        uint8_t padd1[7];
         char childDriveSN[SERIAL_NUM_LEN + 1];
+        uint8_t padd2[3];
         char childDriveFW[FW_REV_LEN + 1];
+        uint8_t padd3[5];
         uint64_t childWWN;
         char t10SATvendorID[9];//VPD page 89h
+        uint8_t padd4[7];
         char SATproductID[17];//VPD page 89h
+        uint8_t padd5[7];
         char SATfwRev[9];//VPD page 89h
+        uint8_t padd6[7];
         uint32_t childDeviceBlockSize; //This is the logical block size reported by the drive
         uint32_t childDevicePhyBlockSize; // This is the physical block size reported by the drive.
-        uint16_t childSectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
         uint64_t childDeviceMaxLba;
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }bridgeInfo;
@@ -756,13 +764,14 @@ extern "C"
     #endif
     typedef struct _ataOptions
     {
+        ePassthroughType passthroughType;//This should be left alone unless you know for a fact which passthrough to use. SAT is the default and should be used unless you know you need a legacy (pre-SAT) passthrough type.
+        eATASynchronousDMAMode dmaMode;
         bool use12ByteSATCDBs;
         bool dmaSupported;
         bool readLogWriteLogDMASupported;
         bool readBufferDMASupported;
         bool writeBufferDMASupported;
         bool downloadMicrocodeDMASupported;
-        eATASynchronousDMAMode dmaMode;
         bool taggedCommandQueuingSupported;
         bool nativeCommandQueuingSupported;
         bool readWriteMultipleSupported;
@@ -773,11 +782,11 @@ extern "C"
         bool writeUncorrectableExtSupported;
         bool fourtyEightBitAddressFeatureSetSupported;
         bool generalPurposeLoggingSupported;
-        ePassthroughType passthroughType;//This should be left alone unless you know for a fact which passthrough to use. SAT is the default and should be used unless you know you need a legacy (pre-SAT) passthrough type.
         bool followUpRequestRTFRcommandSupported;//Some devices may support this command, but not all. Some USB device reset when issued this, which is why this boolean flag exists
         bool alwaysSetCheckConditionBit;//this will cause all commands to set the check condition bit. This means any ATA Passthrough command should always get back an ATA status which may help with sense data and judging what went wrong better. Be aware that this may not be liked on some devices and some may just ignore it.
         bool enableLegacyPassthroughDetectionThroughTrialAndError;//This must be set to true in order to work on legacy (ancient) passthrough if the VID/PID is not in the list and not read from the system.
         bool senseDataReportingEnabled;//this is to track when the RTFRs may contain a sense data bit so it can be read automatically.
+        uint8_t padd[4];//padding to keep this structure 8 byte aligned
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataOptions;
     #pragma pack(pop)
@@ -838,11 +847,16 @@ extern "C"
         uint32_t       devicePhyBlockSize; // This is the physical block size reported by the drive.
         uint32_t       dataTransferSize;//this the block size that will be transfered
         uint16_t       sectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
+        uint8_t padd0[2];
         uint64_t       deviceMaxLba;
         char           serialNumber[SERIAL_NUM_LEN + 1];
+        uint8_t padd1[7];
         char           T10_vendor_ident[T10_VENDOR_ID_LEN + 1];
+        uint8_t padd2[7];
         char           product_identification[MODEL_NUM_LEN + 1]; //not INQ
+        uint8_t padd3[7];
         char           product_revision[FW_REV_LEN + 1];
+        uint8_t padd4[5];
         uint64_t       worldWideName;
         union{
             tAtaIdentifyData ata;
@@ -859,8 +873,10 @@ extern "C"
             uint8_t senseKey;
             uint8_t additionalSenseCode;
             uint8_t additionalSenseCodeQualifier;
+            uint8_t padd[4];
         }ataSenseData;
         uint8_t lastCommandSenseData[SPC3_SENSE_LEN];//This holds the sense data for the last command to be sent to the device. This is not necessarily the last function called as functions may send multiple commands to the device.
+        uint8_t padd5[4];
         struct {
             uint32_t lastNVMeCommandSpecific;//DW0 of command completion. Not all OS's return this so it is not always valid...only really useful for SNTL when it is used. Linux, Solaris, FreeBSD, UEFI. Windows is the problem child here.
             uint32_t lastNVMeStatus;//DW3 of command completion. Not all OS's return this so it is not always valid...only really useful for SNTL when it is used. Linux, Solaris, FreeBSD, UEFI. Windows is the problem child here.
@@ -871,6 +887,7 @@ extern "C"
         uint64_t        lastCommandTimeNanoSeconds;//The time the last command took in nanoseconds
         softwareSATFlags softSATFlags;//This is used by the software SAT translation layer. DO NOT Update this directly. This should only be updated by the lower layers of opensea-transport.
         uint32_t defaultTimeoutSeconds;//If this is not set (set to zero), a default value of 15 seconds will be used.
+        uint8_t padd6[4];
         union {
             uint32_t namespaceID;//This is the current namespace you are talking with. If this is zero, then this value is invalid. This may not be available on all OS's or driver interfaces
             uint32_t lun;//Logical unit number for SCSI. Not currently populated.
@@ -878,6 +895,7 @@ extern "C"
         uint8_t currentProtectionType;//Useful for certain operations. Read in readCapacityOnSCSI. TODO: NVMe
         uint8_t piExponent;//Only valid for protection types 2 & 3 I believe...-TJE
         uint8_t scsiVersion;//from STD Inquiry. Can be used elsewhere to help filter capabilities. NOTE: not an exact copy for old products where there was also EMCA and ISO versions. Set to ANSI version number in those cases.
+        uint8_t padd7[4];//padd to 9304 bytes to make divisible by 8
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }driveInfo;
     #pragma pack(pop)
@@ -927,11 +945,12 @@ extern "C"
     typedef struct _OSDriveInfo
     {
         char                name[256];//handle name (string)
-        char                friendlyName[20];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
+        char                friendlyName[24];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
         eOSType             osType;//useful for lower layers to do OS specific things
+        uint8_t padd0[4];
         #if defined (UEFI_C_SOURCE)
         EFI_HANDLE          fd;
-        EFI_DEV_PATH devicePath;//This type being used is a union of all the different possible device paths.
+        EFI_DEV_PATH devicePath;//This type being used is a union of all the different possible device paths. - This is 48 bytes
         eUEFIPassthroughType passthroughType;
         union _uefiAddress {
             struct _scsiAddress{
@@ -951,8 +970,10 @@ extern "C"
                 uint32_t namespaceID;
             }nvme;
             #endif
+            uint8_t raw[24];
         }address;
         uint16_t            controllerNum;//used to figure out which controller the above address applies to.
+        uint8_t paddUEFIAddr[2];
         #elif defined (__linux__)
         #if defined(VMK_CROSS_COMP)
         /**
@@ -1033,6 +1054,7 @@ extern "C"
             bool hasFileSystem;//This will only be true for filesystems the current OS can detect. Ex: Windows will only set this for mounted volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem types since it can handle more than Windows by default
             bool isSystemDisk;//This will be set if the drive has a file system and the OS is running off of it. Ex: Windows' C:\Windows\System32, Linux's / & /boot, etc
         }fileSystemInfo;
+        uint8_t paddEnd[4];//padd to 400 byte on UEFI. TODO: Make all OS's keep this structure the same size!!!
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }OSDriveInfo;
     #pragma pack(pop)
@@ -1065,7 +1087,7 @@ extern "C"
 
     typedef int (*issue_io_func)( void * );
 
-    #define DEVICE_BLOCK_VERSION    (4)
+    #define DEVICE_BLOCK_VERSION    (5)
 
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
