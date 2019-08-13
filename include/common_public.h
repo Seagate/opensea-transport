@@ -947,7 +947,8 @@ extern "C"
         char                name[256];//handle name (string)
         char                friendlyName[24];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
         eOSType             osType;//useful for lower layers to do OS specific things
-        uint8_t padd0[4];
+        uint8_t             minimumAlignment;//This is a power of 2 value representing the byte alignment required. 0 - no requirement, 1 - single byte alignment, 2 - word, 4 - dword, 8 - qword, 16 - 128bit aligned
+        uint8_t padd0[3];
         #if defined (UEFI_C_SOURCE)
         EFI_HANDLE          fd;
         EFI_DEV_PATH devicePath;//This type being used is a union of all the different possible device paths. - This is 48 bytes
@@ -1016,7 +1017,11 @@ extern "C"
             uint8_t         minorVersion;
             uint8_t         revision;
         }sgDriverVersion;
-        long                pageSize;//A.K.A. alignment requirements for Linux.
+        #if defined(VMK_CROSS_COMP)
+        uint8_t paddSG[35];//TODO: need to change this based on size of NVMe handle for VMWare.
+        #else
+        uint8_t paddSG[35];
+        #endif
         #elif defined (_WIN32)
         HANDLE              fd;
         SCSI_ADDRESS        scsi_addr;
@@ -1032,7 +1037,6 @@ extern "C"
             bool smartSupported;//B0 command can be sent through this IO
             uint8_t deviceBitmap;//This specifies which channel the drive is on (PATA)...might need this for sending this IO on some legacy systems. See bIDEDeviceMap here https://msdn.microsoft.com/en-us/library/windows/hardware/ff554977(v=vs.85).aspx
         }winSMARTCmdSupport;
-#if WINVER >= SEA_WIN32_WINNT_WIN10
         struct {
             bool fwdlIOSupported;
             bool allowFlexibleUseOfAPI;//Set this to true to allow using the Win10 API for FWDL for any compatible download commands. If this is false, the Win10 API will only be used on IDE_INTERFACE for an ATA download command and SCSI interface for a supported Write buffer command. If true, it will be used regardless of which command the caller is using. This is useful for pure FW updates versus testing a specific condition.
@@ -1042,10 +1046,17 @@ extern "C"
             bool isFirstSegmentOfDownload;//This should be set only when we are issuing a download command...We should find a better place for this.
             //TODO: expand this struct if we need other data when we check for firmware download support on a device.
         }fwdlIOsupport;
-#endif
         uint32_t adapterMaxTransferSize;//Bytes. Returned by querying for adapter properties. Can be used to know when trying to request more than the adapter or driver supports.
+        //padding to keep same size as other OSs. This is to keep things similar across OSs.
+        //Variable sizes based on 32 vs 64bit since handle is a void*
+        #if defined (_WIN64)
+            uint8_t paddWin[57];
+        #else
+            uint8_t paddWin[61];
+        #endif //Win64 for padding
         #else
         int                 fd;//some other nix system that only needs a integer file handle
+        uint8_t otherPadd[110];
         #endif
         bool                osReadWriteRecommended;//This will be set to true when it is recommended that OS read/write calls are used instead of IO read/write (typically when using SMART or IDE IOCTLs in Windows since they may not work right for read/write)
         unsigned int        last_error; // errno in Linux or GetLastError in Windows.
@@ -1744,6 +1755,11 @@ extern "C"
     OPENSEA_TRANSPORT_API int remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint32_t * numberOfDevices);
 
     OPENSEA_TRANSPORT_API bool is_CSMI_Device(tDevice *device);
+
+    #if defined (_DEBUG)
+    //This function is more for debugging than anything else!
+    void print_tDevice_Size();
+    #endif//_DEBUG
 
 #if defined (__cplusplus)
 } //extern "C"

@@ -95,7 +95,7 @@ void close_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void **pPassthru, uint32_t con
     }
     return;
 }
-
+//ATA PT since UDK 2010
 int get_ATA_Passthru_Protocol_Ptr(EFI_ATA_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
 {
     EFI_GUID ataPtGUID = EFI_ATA_PASS_THRU_PROTOCOL_GUID;
@@ -133,6 +133,7 @@ void close_Ext_SCSI_Passthru_Protocol_Ptr(EFI_EXT_SCSI_PASS_THRU_PROTOCOL **pPas
 }
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
+//NVMe since UDK 2015
 int get_NVMe_Passthru_Protocol_Ptr(EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
 {
     EFI_GUID nvmePtGUID = EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL_GUID;
@@ -180,6 +181,7 @@ int get_Device(const char *filename, tDevice *device)
                         //If the driver is running in IDE mode, it will set the pmport value to non-zero for device 1. Because of this, and some sample EDK2 code, we need to make sure we set the device 1 bit when issuing commands!
                         device->drive_info.ata_Options.isDevice1 = true;
                     }
+                    device->os_info.minimumAlignment = pPassthru->Mode->IoAlign;
                     #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
                     set_Console_Colors(true, GREEN);
                     printf("Protocol Mode = %d\n", instance->Mode);//0 means IDE, 1 means AHCI, 2 means RAID, but we shouldn't see RAID here ever.
@@ -232,6 +234,7 @@ int get_Device(const char *filename, tDevice *device)
                 if(buildPath == EFI_SUCCESS)
                 {
                     memcpy(&device->os_info.devicePath, devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
+                    device->os_info.minimumAlignment = pPassthru->Mode->IoAlign;
                 }
                 else
                 {
@@ -264,6 +267,7 @@ int get_Device(const char *filename, tDevice *device)
                 if(buildPath == EFI_SUCCESS)
                 {
                     memcpy(&device->os_info.devicePath, devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
+                    device->os_info.minimumAlignment = pPassthru->Mode->IoAlign;
                 }
                 else
                 {
@@ -300,6 +304,7 @@ int get_Device(const char *filename, tDevice *device)
                 if(buildPath == EFI_SUCCESS)
                 {
                     memcpy(&device->os_info.devicePath, devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
+                    device->os_info.minimumAlignment = pPassthru->Mode->IoAlign;
                 }
                 else
                 {

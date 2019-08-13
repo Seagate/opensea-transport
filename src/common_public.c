@@ -1999,3 +1999,18 @@ bool is_CSMI_Device(tDevice *device)
 #endif
     return csmiDevice;
 }
+
+#if defined (_DEBUG)
+//This function is more for debugging than anything else!
+void print_tDevice_Size()
+{
+    printf("tDevice = %zu\n", sizeof(tDevice));
+    printf("\tversionBlock = %zu\n", sizeof(versionBlock));
+    printf("\tOSDriveInfo = %zu\n", sizeof(OSDriveInfo));
+    printf("\tdriveInfo = %zu\n", sizeof(driveInfo));
+    printf("\tvoid* raid_device = %zu\n", sizeof(void*));
+    printf("\tissue_io_func = %zu\n", sizeof(issue_io_func));
+    printf("\teDiscoveryOptions = %zu\n", sizeof(eDiscoveryOptions));
+    printf("\teVerbosityLevels = %zu\n", sizeof(eVerbosityLevels));
+}
+#endif //_DEBUG

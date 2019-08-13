@@ -55,6 +55,9 @@ int get_Device(const char *filename, tDevice *device)
         ret = FAILURE;
     }
 
+    device->os_info.osType = OS_SOLARIS;
+    device->os_info.minimumAlignment = sizeof(void *);//setting to be compatible with certain aligned memory allocation functions.
+
     //Adding support for different device discovery options. 
     if (device->dFlags == OPEN_HANDLE_ONLY)
     {

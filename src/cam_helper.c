@@ -54,6 +54,7 @@ int get_Device( const char *filename, tDevice *device )
 
             //set the OS Type
             device->os_info.osType = OS_FREEBSD;
+            device->os_info.minimumAlignment = sizeof(void *);
             
             if (device->dFlags == OPEN_HANDLE_ONLY)
             {

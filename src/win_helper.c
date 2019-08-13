@@ -583,6 +583,24 @@ int get_Device(const char *filename, tDevice *device )
                     {
                         device->os_info.srbtype = SRB_TYPE_SCSI_REQUEST_BLOCK;
                     }
+                    switch (adapter_desc->AlignmentMask)
+                    {
+                    case 0://byte
+                        device->os_info.minimumAlignment = 1;
+                        break;
+                    case 1://word
+                        device->os_info.minimumAlignment = 2;
+                        break;
+                    case 3://dword
+                        device->os_info.minimumAlignment = 4;
+                        break;
+                    case 7://qword
+                        device->os_info.minimumAlignment = 8;
+                        break;
+                    default:
+                        device->os_info.minimumAlignment = 0;
+                        break;
+                    }
                     device->os_info.alignmentMask = adapter_desc->AlignmentMask;//may be needed later....currently unused
                     // Now lets get device stuff
                     query.PropertyId = StorageDeviceProperty;
@@ -613,6 +631,8 @@ int get_Device(const char *filename, tDevice *device )
                             {
 #if WINVER >= SEA_WIN32_WINNT_WIN10
                                 get_Windows_FWDL_IO_Support(device, device_desc->BusType);
+#else
+                                device->os_info.fwdlIOsupport.fwdlIOSupported = false;//this API is not available before Windows 10
 #endif
                                 //#if defined (_DEBUG)
                                 //printf("Drive BusType: ");
