@@ -573,6 +573,12 @@ int fill_Drive_Info_USB(tDevice *device)
             }
             //TODO: add in additional bits to skip SAT check as we find them useful
         }
+
+        if (strcmp(device->drive_info.T10_vendor_ident, "NVMe") == 0)
+        {
+            checkForSAT = false;//DO NOT try SAT passthrough if we find an NVMe device. Some USB adapters reused the opcode for vendor unique passthrough functionality and when an ATA identify is issued, can hang the bridge.
+        }
+
         //do we want to check the version descriptors here too? There are a lot of those...I have a table that parses them to human readable, but not setting anything yet...may need to use that later
 
         if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE)
@@ -581,7 +587,7 @@ int fill_Drive_Info_USB(tDevice *device)
             printf("Quiting device discovery early per DO_NOT_WAKE_DRIVE\n");
 #endif
             //We actually need to try issuing an ATA/ATAPI identify to the drive to set the drive type...but I'm going to try and ONLY do it for ATA drives with the if statement below...it should catch almost all cases (which is good enough for now)
-            if (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != LEGACY_TAPE_DRIVE)
+            if (checkForSAT && device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != LEGACY_TAPE_DRIVE)
             {
                 ret = fill_In_ATA_Drive_Info(device);
             }
