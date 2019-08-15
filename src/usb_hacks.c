@@ -361,7 +361,7 @@ int fill_Drive_Info_USB(tDevice *device)
     uint8_t *inq_buf = (uint8_t*)calloc_aligned(255, sizeof(uint8_t), device->os_info.minimumAlignment);
     if (!inq_buf)
     {
-        perror("Error allocating memory for standard inquiry data");
+        perror("Error allocating memory for standard inquiry data (usb)");
         return MEMORY_FAILURE;
     }
     memset(device->drive_info.serialNumber, 0, sizeof(device->drive_info.serialNumber));

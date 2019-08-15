@@ -8754,7 +8754,7 @@ int fill_In_Device_Info(tDevice *device)
     uint8_t *inq_buf = (uint8_t*)calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment);
     if (!inq_buf)
     {
-        perror("Error allocating memory for standard inquiry data");
+        perror("Error allocating memory for standard inquiry data (scsi)");
         return MEMORY_FAILURE;
     }
     memset(device->drive_info.serialNumber, 0, sizeof(device->drive_info.serialNumber));
