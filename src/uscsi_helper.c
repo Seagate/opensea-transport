@@ -341,10 +341,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         devs[i] = (char *)malloc((strlen("/dev/rdsk/") + strlen(namelist[i]->d_name) + 1) * sizeof(char));
         strcpy(devs[i], "/dev/rdsk/");
         strcat(devs[i], namelist[i]->d_name);
-        free(namelist[i]);
+        safe_Free(namelist[i]);
     }
     devs[i] = NULL;
-    free(namelist);
+    safe_Free(namelist);
 
     //TODO: Check if sizeInBytes is a multiple of 
     if (!(ptrToDeviceList) || (!sizeInBytes))

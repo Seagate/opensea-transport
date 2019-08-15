@@ -954,7 +954,7 @@ int nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegisters * ctrlRegs)
     int ret = UNKNOWN;
     //For now lets first get the page aligned one & then copy the 
     int dataSize = getpagesize();
-    uint8_t * barRegs = calloc(dataSize,sizeof(uint8_t));
+    uint8_t * barRegs = calloc_aligned(dataSize,sizeof(uint8_t), dataSize);
     if (!barRegs)
     {
         return MEMORY_FAILURE;
@@ -969,7 +969,7 @@ int nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegisters * ctrlRegs)
         memcpy(ctrlRegs,barRegs,sizeof(nvmeBarCtrlRegisters));
     }
     
-    free(barRegs);
+    safe_Free_aligned(barRegs);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {

@@ -903,7 +903,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     if (eui64nonZero)//this must be non-zero to be supported.
     {
         naaDesignatorLength = 20 /*ext*/ + 12 /*locally assigned*/;
-        naaDesignator = (uint8_t*)calloc(naaDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        naaDesignator = (uint8_t*)calloc(naaDesignatorLength, sizeof(uint8_t));
         //NAA extended format (6 + OUI + 64bitsEUI64 + 32bits of zeros)
         naaDesignator[0] = 1;//codes set 1
         naaDesignator[1] = 3;//designator type 3, associated with logical unit
@@ -942,7 +942,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     else if (!eui64nonZero && !nguidnonZero) //NVMe 1.0 devices won't support EUI or NGUID, so we should be able to detect them like this
     {
         naaDesignatorLength = 20 /*ext*/ + 12 /*locally assigned*/;
-        naaDesignator = (uint8_t*)calloc(naaDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        naaDesignator = (uint8_t*)calloc(naaDesignatorLength, sizeof(uint8_t));
         //NAA extended format (6 + OUI + 64bitsEUI64 + 32bits of zeros)
         naaDesignator[0] = 1;//codes set 1
         naaDesignator[1] = 3;//designator type 3, associated with logical unit
@@ -992,7 +992,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         {
             t10VendorIdDesignatorLength += 16;//16 characters to hold the EUI64 as a string
         }
-        t10VendorIdDesignator = (uint8_t*)calloc(t10VendorIdDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        t10VendorIdDesignator = (uint8_t*)calloc(t10VendorIdDesignatorLength, sizeof(uint8_t));
         t10VendorIdDesignator[0] = 2;//codes set 2
         t10VendorIdDesignator[1] = 1;//designator type 1, associated with logical unit
         t10VendorIdDesignator[2] = RESERVED;
@@ -1039,7 +1039,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     {
         uint8_t offset = 12;
         t10VendorIdDesignatorLength = 44;
-        t10VendorIdDesignator = (uint8_t*)calloc(t10VendorIdDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        t10VendorIdDesignator = (uint8_t*)calloc(t10VendorIdDesignatorLength, sizeof(uint8_t));
         t10VendorIdDesignator[0] = 2;//codes set 2 (ASCII)
         t10VendorIdDesignator[1] = 1;//designator type 1, associated with logical unit
         t10VendorIdDesignator[2] = RESERVED;
@@ -1089,7 +1089,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         uint8_t offset = 8;
         //1 descriptor for eui64 and 1 for nguid
         SCSINameStringDesignatorLength = 64;
-        SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength, sizeof(uint8_t));
         //NGUID first!
         SCSINameStringDesignator[0] = 3;//codes set 3 (UTF-8)
         SCSINameStringDesignator[1] = 1;//designator type 1, associated with logical unit
@@ -1136,7 +1136,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         uint8_t offset = 8;
         //eui. + 32 hex digits from nguid (msb to lsb) 36Bytes total length
         SCSINameStringDesignatorLength = 40;
-        SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength, sizeof(uint8_t));
         SCSINameStringDesignator[0] = 3;//codes set 3 (UTF-8)
         SCSINameStringDesignator[1] = 1;//designator type 1, associated with logical unit
         SCSINameStringDesignator[2] = RESERVED;
@@ -1161,7 +1161,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         uint8_t offset = 8;
         //eui. + 32 hex digits from nguid (msb to lsb) 36Bytes total length
         SCSINameStringDesignatorLength = 24;
-        SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength, sizeof(uint8_t));
         SCSINameStringDesignator[0] = 3;//codes set 3 (UTF-8)
         SCSINameStringDesignator[1] = 1;//designator type 1, associated with logical unit
         SCSINameStringDesignator[2] = RESERVED;
@@ -1184,7 +1184,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     {
         uint8_t offset = 8;
         SCSINameStringDesignatorLength = 72;
-        SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength, sizeof(uint8_t));
         SCSINameStringDesignator[0] = 3;//codes set 3 (UTF-8)
         SCSINameStringDesignator[1] = 1;//designator type 1, associated with logical unit
         SCSINameStringDesignator[2] = RESERVED;
@@ -1218,7 +1218,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         //1 descriptor for eui64 and 1 for nguid
         uint8_t offset = 4;
         eui64DesignatorLength = 32;
-        eui64Designator = (uint8_t*)calloc(eui64DesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        eui64Designator = (uint8_t*)calloc(eui64DesignatorLength, sizeof(uint8_t));
         //NGUID first
         eui64Designator[0] = 1;//codes set 1 (binary)
         eui64Designator[1] = 2;//designator type 2, associated with logical unit
@@ -1243,7 +1243,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     {
         uint8_t offset = 4;
         eui64DesignatorLength = 20;
-        eui64Designator = (uint8_t*)calloc(eui64DesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        eui64Designator = (uint8_t*)calloc(eui64DesignatorLength, sizeof(uint8_t));
         eui64Designator[0] = 1;//codes set 1 (binary)
         eui64Designator[1] = 2;//designator type 2, associated with logical unit
         eui64Designator[2] = RESERVED;
@@ -1257,7 +1257,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     {
         uint8_t offset = 4;
         eui64DesignatorLength = 12;
-        eui64Designator = (uint8_t*)calloc(eui64DesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        eui64Designator = (uint8_t*)calloc(eui64DesignatorLength, sizeof(uint8_t));
         eui64Designator[0] = 1;//codes set 1 (binary)
         eui64Designator[1] = 2;//designator type 2, associated with logical unit
         eui64Designator[2] = RESERVED;
@@ -1270,7 +1270,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     //else NVMe 1.0 will not support this designator!
     
     //now setup the device identification page
-    deviceIdentificationPage = (uint8_t*)calloc(4U + eui64DesignatorLength + t10VendorIdDesignatorLength + naaDesignatorLength + SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+    deviceIdentificationPage = (uint8_t*)calloc(4U + eui64DesignatorLength + t10VendorIdDesignatorLength + naaDesignatorLength + SCSINameStringDesignatorLength, sizeof(uint8_t));
     if (!deviceIdentificationPage)
     {
         return MEMORY_FAILURE;
@@ -2622,7 +2622,7 @@ int sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(tDevice *device, Scs
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    readWriteErrorRecovery = (uint8_t*)calloc(pageLength * sizeof(uint8_t), sizeof(uint8_t));
+    readWriteErrorRecovery = (uint8_t*)calloc(pageLength, sizeof(uint8_t));
     if (!readWriteErrorRecovery)
     {
         //TODO: set an error in the sense data
@@ -2758,7 +2758,7 @@ int sntl_Translate_Mode_Sense_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx,
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    caching = (uint8_t*)calloc(pageLength * sizeof(uint8_t), sizeof(uint8_t));
+    caching = (uint8_t*)calloc(pageLength, sizeof(uint8_t));
     if (!caching)
     {
         //TODO: set an error in the sense data
@@ -2909,7 +2909,7 @@ int sntl_Translate_Mode_Sense_Control_0Ah(tDevice *device, ScsiIoCtx *scsiIoCtx,
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    controlPage = (uint8_t*)calloc(pageLength * sizeof(uint8_t), sizeof(uint8_t));
+    controlPage = (uint8_t*)calloc(pageLength, sizeof(uint8_t));
     if (!controlPage)
     {
         //TODO: set an error in the sense data
@@ -3011,7 +3011,7 @@ int sntl_Translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *scs
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    powerConditionPage = (uint8_t*)calloc(pageLength * sizeof(uint8_t), sizeof(uint8_t));
+    powerConditionPage = (uint8_t*)calloc(pageLength, sizeof(uint8_t));
     if (!powerConditionPage)
     {
         //TODO: set an error in the sense data
@@ -3087,7 +3087,7 @@ int sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(tDevice *device, ScsiIoC
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    controlExtPage = (uint8_t*)calloc(pageLength * sizeof(uint8_t), sizeof(uint8_t));
+    controlExtPage = (uint8_t*)calloc(pageLength, sizeof(uint8_t));
     if (!controlExtPage)
     {
         //TODO: set an error in the sense data
@@ -3195,7 +3195,7 @@ int sntl_Translate_Mode_Sense_Informational_Exceptions_Control_1Ch(tDevice *devi
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    informationalExceptions = (uint8_t*)calloc(pageLength * sizeof(uint8_t), sizeof(uint8_t));
+    informationalExceptions = (uint8_t*)calloc(pageLength, sizeof(uint8_t));
     if (!informationalExceptions)
     {
         //TODO: set an error in the sense data
@@ -4722,7 +4722,7 @@ int sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *scsiIoCt
         //read the identify active namespace list
     {
         bool singleLun = false;
-        uint8_t* activeNamespaces = (uint8_t*)calloc(4096, sizeof(uint8_t));
+        uint8_t* activeNamespaces = (uint8_t*)calloc_aligned(4096, sizeof(uint8_t), device->os_info.minimumAlignment);
         if (activeNamespaces)
         {
             if (SUCCESS == nvme_Identify(device, activeNamespaces, 0, 2))
@@ -4771,7 +4771,7 @@ int sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *scsiIoCt
             //dummy up a single lun
             singleLun = true;
         }
-        safe_Free(activeNamespaces);
+        safe_Free_aligned(activeNamespaces);
         if (singleLun)
         {
             reportLunsDataLength += 8;
@@ -5707,7 +5707,7 @@ int sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         uint16_t unmapBlockDescriptorLength = (M_BytesTo2ByteValue(scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]) / 16) * 16;//this can be set to zero, which is NOT an error. Also, I'm making sure this is a multiple of 16 to avoid partial block descriptors-TJE
         if (unmapBlockDescriptorLength > 0)
         {
-            uint8_t *dsmBuffer = (uint8_t*)calloc(4096, sizeof(uint8_t));//allocate the max size the device supports...we'll fill in as much as we need to
+            uint8_t *dsmBuffer = (uint8_t*)calloc_aligned(4096, sizeof(uint8_t), device->os_info.minimumAlignment);//allocate the max size the device supports...we'll fill in as much as we need to
             //need to check to make sure there weren't any truncated block descriptors before we begin
             uint16_t minBlockDescriptorLength = M_Min(unmapBlockDescriptorLength + 8, parameterListLength);
             uint16_t unmapBlockDescriptorIter = 8;
@@ -5832,7 +5832,7 @@ int sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 }
             }
-            safe_Free(dsmBuffer);
+            safe_Free_aligned(dsmBuffer);
         }
     }
     return ret;
@@ -6702,7 +6702,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case INQUIRY_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6717,7 +6717,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case READ_CAPACITY_10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6737,7 +6737,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case LOG_SENSE_CMD:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6756,7 +6756,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case MODE_SENSE_6_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6771,7 +6771,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case MODE_SENSE10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6790,7 +6790,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case MODE_SELECT_6_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6805,7 +6805,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case MODE_SELECT10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6824,7 +6824,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case READ6:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6840,7 +6840,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case READ10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6859,7 +6859,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case READ12:
         cdbLength = 12;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6880,7 +6880,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case READ16:
         cdbLength = 16;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6905,7 +6905,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case REPORT_LUNS_CMD:
         cdbLength = 12;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6926,7 +6926,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case REQUEST_SENSE_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6944,7 +6944,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
         {
             cdbLength = 12;
             *dataLength += cdbLength;
-            *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+            *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -6970,7 +6970,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case SEND_DIAGNOSTIC_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6985,7 +6985,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case START_STOP_UNIT_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7000,7 +7000,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case SYNCHRONIZE_CACHE_10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7019,7 +7019,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case SYNCHRONIZE_CACHE_16_CMD:
         cdbLength = 16;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7044,7 +7044,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case TEST_UNIT_READY_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7061,7 +7061,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
         {
             cdbLength = 10;
             *dataLength += cdbLength;
-            *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+            *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -7085,7 +7085,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case VERIFY10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7104,7 +7104,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case VERIFY12:
         cdbLength = 12;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7125,7 +7125,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case VERIFY16:
         cdbLength = 16;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7150,7 +7150,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case WRITE6:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7166,7 +7166,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case WRITE10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7185,7 +7185,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case WRITE12:
         cdbLength = 12;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7206,7 +7206,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case WRITE16:
         cdbLength = 16;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7231,7 +7231,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     //case WRITE_AND_VERIFY_10:
     //    cdbLength = 10;
     //    *dataLength += cdbLength;
-    //    *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+    //    *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
     //    if (!*pdata)
     //    {
     //        return MEMORY_FAILURE;
@@ -7250,7 +7250,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     //case WRITE_AND_VERIFY_12:
     //    cdbLength = 12;
     //    *dataLength += cdbLength;
-    //    *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+    //    *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
     //    if (!*pdata)
     //    {
     //        return MEMORY_FAILURE;
@@ -7271,7 +7271,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     //case WRITE_AND_VERIFY_16:
     //    cdbLength = 16;
     //    *dataLength += cdbLength;
-    //    *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+    //    *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
     //    if (!*pdata)
     //    {
     //        return MEMORY_FAILURE;
@@ -7298,7 +7298,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
         {
             cdbLength = 10;
             *dataLength += cdbLength;
-            *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+            *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -7322,7 +7322,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     //case SCSI_FORMAT_UNIT_CMD:
     //    cdbLength = 6;
     //    *dataLength += cdbLength;
-    //    *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+    //    *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
     //    if (!*pdata)
     //    {
     //        return MEMORY_FAILURE;
@@ -7344,7 +7344,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     {
         //allocate memory
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7397,7 +7397,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
         case 0x10://read capacity 16
             cdbLength = 16;
             *dataLength += cdbLength;
-            *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+            *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -7430,7 +7430,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
         case 0x0C://report supported op codes
             cdbLength = 12;
             *dataLength += cdbLength;
-            *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+            *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -7463,7 +7463,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
     //        case 1://overwrite
     //            cdbLength = 10;
     //            *dataLength += cdbLength;
-    //            *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+    //            *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
     //            if (!*pdata)
     //            {
     //                return MEMORY_FAILURE;
@@ -7486,7 +7486,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
     //        case 0x1F://exit failure mode
     //            cdbLength = 10;
     //            *dataLength += cdbLength;
-    //            *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+    //            *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
     //            if (!*pdata)
     //            {
     //                return MEMORY_FAILURE;
@@ -7522,7 +7522,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
             case 0x05://download
                 cdbLength = 10;
                 *dataLength += cdbLength;
-                *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+                *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -7542,7 +7542,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
                 //case 0x07://download offsets
                 //        cdbLength = 10;
                 //        *dataLength += cdbLength;
-                //        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+                //        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
                 //        if (!*pdata)
                 //        {
                 //            return MEMORY_FAILURE;
@@ -7562,7 +7562,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
             case 0x0D://download offsets defer
                 cdbLength = 10;
                 *dataLength += cdbLength;
-                *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+                *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -7582,7 +7582,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
             case 0x0E://download offsets defer
                 cdbLength = 10;
                 *dataLength += cdbLength;
-                *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+                *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -7601,7 +7601,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
             case 0x0F://activate deferred code
                 cdbLength = 10;
                 *dataLength += cdbLength;
-                *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+                *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -7637,7 +7637,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
     //    case 0x03://descriptor
     //        cdbLength = 10;
     //        *dataLength += cdbLength;
-    //        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+    //        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
     //        if (!*pdata)
     //        {
     //            return MEMORY_FAILURE;
@@ -7658,7 +7658,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
         //    {
         //        cdbLength = 10;
         //        *dataLength += cdbLength;
-        //        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        //        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         //        if (!*pdata)
         //        {
         //            return MEMORY_FAILURE;
@@ -7693,7 +7693,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
             {
                 cdbLength = 16;
                 *dataLength += cdbLength;
-                *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+                *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -7733,7 +7733,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
     {
         //allocate memory
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7769,7 +7769,7 @@ int sntl_Create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint8_
     int ret = SUCCESS;
     uint32_t reportAllMaxLength = 4 * LEGACY_DRIVE_SEC_SIZE;
     uint32_t offset = 4;
-    *pdata = (uint8_t*)calloc(reportAllMaxLength * sizeof(uint8_t), sizeof(uint8_t));
+    *pdata = (uint8_t*)calloc(reportAllMaxLength, sizeof(uint8_t));
     if (!*pdata)
     {
         return MEMORY_FAILURE;
