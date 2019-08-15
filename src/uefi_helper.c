@@ -181,7 +181,7 @@ int get_Device(const char *filename, tDevice *device)
                         //If the driver is running in IDE mode, it will set the pmport value to non-zero for device 1. Because of this, and some sample EDK2 code, we need to make sure we set the device 1 bit when issuing commands!
                         device->drive_info.ata_Options.isDevice1 = true;
                     }
-                    device->os_info.minimumAlignment = pPassthru->Mode->IoAlign;
+                    device->os_info.minimumAlignment = pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1;
                     #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
                     set_Console_Colors(true, GREEN);
                     printf("Protocol Mode = %d\n", instance->Mode);//0 means IDE, 1 means AHCI, 2 means RAID, but we shouldn't see RAID here ever.
@@ -234,7 +234,7 @@ int get_Device(const char *filename, tDevice *device)
                 if(buildPath == EFI_SUCCESS)
                 {
                     memcpy(&device->os_info.devicePath, devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
-                    device->os_info.minimumAlignment = pPassthru->Mode->IoAlign;
+                    device->os_info.minimumAlignment = pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1;
                 }
                 else
                 {
@@ -267,7 +267,7 @@ int get_Device(const char *filename, tDevice *device)
                 if(buildPath == EFI_SUCCESS)
                 {
                     memcpy(&device->os_info.devicePath, devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
-                    device->os_info.minimumAlignment = pPassthru->Mode->IoAlign;
+                    device->os_info.minimumAlignment = pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1;
                 }
                 else
                 {
@@ -304,7 +304,7 @@ int get_Device(const char *filename, tDevice *device)
                 if(buildPath == EFI_SUCCESS)
                 {
                     memcpy(&device->os_info.devicePath, devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
-                    device->os_info.minimumAlignment = pPassthru->Mode->IoAlign;
+                    device->os_info.minimumAlignment = pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1;
                 }
                 else
                 {
