@@ -6839,7 +6839,7 @@ int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
     memset(&verifyCmd, 0, sizeof(VERIFY_INFORMATION));
     seatimer_t verifyTimer;
     memset(&verifyTimer, 0, sizeof(seatimer_t));
-    verifyCmd.StartingOffset.QuadPart = lba;
+    verifyCmd.StartingOffset.QuadPart = lba * device->drive_info.deviceBlockSize;//LBA needs to be converted to a byte offset
     verifyCmd.Length = range * device->drive_info.deviceBlockSize;//needs to be a range in bytes!
     uint64_t timeoutInSeconds = 0;
     if (device->drive_info.defaultTimeoutSeconds == 0)
