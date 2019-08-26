@@ -6870,7 +6870,7 @@ int translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     {
                         //in progress, setup a progress descriptor
                         uint16_t dstProgress = 656 * M_Nibble0(smartData[363]);//This comes out very close to the actual percent...close enough anyways. There is probably a way to scale it to more even round numbers but this will do fine.
-                        sntl_Set_Sense_Key_Specific_Descriptor_Progress_Indicator(senseKeySpecificDescriptor, dstProgress);
+                        set_Sense_Key_Specific_Descriptor_Progress_Indicator(senseKeySpecificDescriptor, dstProgress);
                         set_Sense_Data_For_Translation(&senseData[0], SPC3_SENSE_LEN, SENSE_KEY_NOT_READY, 0x04, 0x09, descriptorFormat, senseKeySpecificDescriptor, 1);
                     }
                 }
