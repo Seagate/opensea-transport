@@ -54,6 +54,7 @@ int get_Device( const char *filename, tDevice *device )
 
             //set the OS Type
             device->os_info.osType = OS_FREEBSD;
+            device->os_info.minimumAlignment = sizeof(void *);
             
             if (device->dFlags == OPEN_HANDLE_ONLY)
             {
@@ -826,18 +827,18 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         devs[i] = (char *)malloc((strlen("/dev/") + strlen(danamelist[i]->d_name) + 1) * sizeof(char));
         strcpy(devs[i], "/dev/");
         strcat(devs[i], danamelist[i]->d_name);
-        free(danamelist[i]);
+        safe_Free(danamelist[i]);
     }
     for (j = 0; i < (num_da_devs + num_ada_devs); ++i, j++)
     {
         devs[i] = (char *)malloc((strlen("/dev/") + strlen(adanamelist[j]->d_name) + 1) * sizeof(char));
         strcpy(devs[i], "/dev/");
         strcat(devs[i], adanamelist[j]->d_name);
-        free(adanamelist[j]);
+        safe_Free(adanamelist[j]);
     }
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
-    free(danamelist);
-    free(adanamelist);
+    safe_Free(danamelist);
+    safe_Free(adanamelist);
 
     //TODO: Check if sizeInBytes is a multiple of 
     if (!(ptrToDeviceList) || (!sizeInBytes))

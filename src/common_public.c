@@ -11,15 +11,7 @@
 // 
 #include "common_public.h"
 
-#if defined (__linux__)
-#if defined (VMK_CROSS_COMP)
-#include "vm_helper.h"
-#else
-//including sg_helper.h here to for the map sg to sd function
-#include "sg_helper.h"
-//extern int map_sg_to_sd(char* filename, char *sgName, char *sdName);
-#endif
-#endif
+#include "platform_helper.h"
 
 #if defined (ENABLE_CSMI)
 #include "csmi_helper_func.h"
@@ -198,11 +190,13 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
     {
         if (deviceCount > 0)
         {
-            tDevice * deviceList = (tDevice*)calloc(deviceCount * sizeof(tDevice), sizeof(tDevice));
+            tDevice * deviceList = (tDevice*)calloc_aligned(deviceCount * sizeof(tDevice), sizeof(tDevice), 8);
             versionBlock version;
             if (!deviceList)
             {
-                perror("calloc failure!");
+                char errorMessage[50] = { 0 };
+                snprintf(errorMessage, 50, "calloc failure in scan to get %" PRIu32 " devices!", deviceCount);
+                perror(errorMessage);
                 return;
             }
             memset(&version, 0, sizeof(versionBlock));
@@ -339,7 +333,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
 #else
                         strcpy(displayHandle, deviceList[devIter].os_info.name);
 #endif
-#if defined (__linux__) && !defined(VMK_CROSS_COMP)
+#if defined (__linux__) && !defined(VMK_CROSS_COMP) && !defined(UEFI_C_SOURCE)
                         if ((flags & SG_TO_SD) > 0)
                         {
                             char *genName = NULL;
@@ -419,7 +413,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                     }
                 }
             }
-            safe_Free(deviceList);
+            safe_Free_aligned(deviceList);
         }
         else
         {
@@ -2005,3 +1999,18 @@ bool is_CSMI_Device(tDevice *device)
 #endif
     return csmiDevice;
 }
+
+#if defined (_DEBUG)
+//This function is more for debugging than anything else!
+void print_tDevice_Size()
+{
+    printf("tDevice = %zu\n", sizeof(tDevice));
+    printf("\tversionBlock = %zu\n", sizeof(versionBlock));
+    printf("\tOSDriveInfo = %zu\n", sizeof(OSDriveInfo));
+    printf("\tdriveInfo = %zu\n", sizeof(driveInfo));
+    printf("\tvoid* raid_device = %zu\n", sizeof(void*));
+    printf("\tissue_io_func = %zu\n", sizeof(issue_io_func));
+    printf("\teDiscoveryOptions = %zu\n", sizeof(eDiscoveryOptions));
+    printf("\teVerbosityLevels = %zu\n", sizeof(eVerbosityLevels));
+}
+#endif //_DEBUG

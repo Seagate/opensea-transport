@@ -8674,7 +8674,7 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
         //DO NOT try a SAT identify on these devices if we already know what they are. These should be treated as SCSI since they are either SCSI or ATA packet devices
         return NOT_SUPPORTED;
     }
-    uint8_t *ataInformation = (uint8_t *)calloc(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t));
+    uint8_t *ataInformation = (uint8_t *)calloc_aligned(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
     if (!ataInformation)
     {
         perror("Error allocating memory to read the ATA Information VPD page");
@@ -8724,7 +8724,7 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
     {
         return NOT_SUPPORTED;
     }
-    safe_Free(ataInformation);
+    safe_Free_aligned(ataInformation);
     if (issueSATIdentify)
     {
         if (SUCCESS == fill_In_ATA_Drive_Info(device))
@@ -8751,10 +8751,10 @@ int fill_In_Device_Info(tDevice *device)
     #ifdef _DEBUG
     printf("%s: -->\n",__FUNCTION__);
     #endif
-    uint8_t *inq_buf = (uint8_t*)calloc(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t));
+    uint8_t *inq_buf = (uint8_t*)calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment);
     if (!inq_buf)
     {
-        perror("Error allocating memory for standard inquiry data");
+        perror("Error allocating memory for standard inquiry data (scsi)");
         return MEMORY_FAILURE;
     }
     memset(device->drive_info.serialNumber, 0, sizeof(device->drive_info.serialNumber));
@@ -9019,6 +9019,7 @@ int fill_In_Device_Info(tDevice *device)
             //DO NOT set the drive type to NVMe here. We need to treat it as a SCSI device since we can only issue SCSI translatable commands!!!
             //device->drive_info.drive_type  = NVME_DRIVE;
             device->drive_info.media_type = MEDIA_NVM;
+            checkForSAT = false;
         }
 
         if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE)
@@ -9050,7 +9051,7 @@ int fill_In_Device_Info(tDevice *device)
                 }
             }
             //We actually need to try issuing an ATA/ATAPI identify to the drive to set the drive type...but I'm going to try and ONLY do it for ATA drives with the if statement below...it should catch almost all cases (which is good enough for now)
-            if ((satVersionDescriptorFound || strncmp(device->drive_info.T10_vendor_ident, "ATA", 3) == 0 || device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE || device->drive_info.interface_type == IDE_INTERFACE)
+            if (checkForSAT && (satVersionDescriptorFound || strncmp(device->drive_info.T10_vendor_ident, "ATA", 3) == 0 || device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE || device->drive_info.interface_type == IDE_INTERFACE)
                 &&
                 (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != LEGACY_TAPE_DRIVE)
                )
@@ -9066,7 +9067,7 @@ int fill_In_Device_Info(tDevice *device)
             {
                 //I'm reading only the unit serial number page here for a quick scan and the device information page for WWN - TJE
                 uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
-                uint8_t *unitSerialNumber = (uint8_t*)calloc(unitSerialNumberPageLength, sizeof(uint8_t));
+                uint8_t *unitSerialNumber = (uint8_t*)calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment);
                 if (!unitSerialNumber)
                 {
                     perror("Error allocating memory to read the unit serial number");
@@ -9085,7 +9086,7 @@ int fill_In_Device_Info(tDevice *device)
                         }
                     }
                 }
-                safe_Free(unitSerialNumber);
+                safe_Free_aligned(unitSerialNumber);
             }
             else
             {
@@ -9103,7 +9104,7 @@ int fill_In_Device_Info(tDevice *device)
             }
             if (version >= 3)//device identification added in SPC
             {
-                uint8_t *deviceIdentification = (uint8_t*)calloc(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t));
+                uint8_t *deviceIdentification = (uint8_t*)calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment);
                 if (!deviceIdentification)
                 {
                     perror("Error allocating memory to read device identification VPD page");
@@ -9118,7 +9119,7 @@ int fill_In_Device_Info(tDevice *device)
                         byte_Swap_64(&device->drive_info.worldWideName);
                     }
                 }
-                safe_Free(deviceIdentification);
+                safe_Free_aligned(deviceIdentification);
             }
             //One last thing...Need to do a SAT scan...
             if (checkForSAT)
@@ -9215,7 +9216,7 @@ int fill_In_Device_Info(tDevice *device)
                 case UNIT_SERIAL_NUMBER://Device serial number (only grab 20 characters worth since that's what we need for the device struct)
                 {
                     uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
-                    uint8_t *unitSerialNumber = (uint8_t*)calloc(unitSerialNumberPageLength, sizeof(uint8_t));
+                    uint8_t *unitSerialNumber = (uint8_t*)calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment);
                     if (!unitSerialNumber)
                     {
                         perror("Error allocating memory to read the unit serial number");
@@ -9239,12 +9240,12 @@ int fill_In_Device_Info(tDevice *device)
                         //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
                         scsi_Test_Unit_Ready(device, NULL);
                     }
-                    safe_Free(unitSerialNumber);
+                    safe_Free_aligned(unitSerialNumber);
                     break;
                 }
                 case DEVICE_IDENTIFICATION://World wide name
                 {
-                    uint8_t *deviceIdentification = (uint8_t*)calloc(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t));
+                    uint8_t *deviceIdentification = (uint8_t*)calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment);
                     if (!deviceIdentification)
                     {
                         perror("Error allocating memory to read device identification VPD page");
@@ -9264,7 +9265,7 @@ int fill_In_Device_Info(tDevice *device)
                         //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
                         scsi_Test_Unit_Ready(device, NULL);
                     }
-                    safe_Free(deviceIdentification);
+                    safe_Free_aligned(deviceIdentification);
                     break;
                 }
                 case ATA_INFORMATION: //use this to determine if it's SAT compliant
@@ -9284,7 +9285,7 @@ int fill_In_Device_Info(tDevice *device)
                 }
                 case BLOCK_DEVICE_CHARACTERISTICS: //use this to determine if it's SSD or HDD and whether it's a HDD or not
                 {
-                    uint8_t *blockDeviceCharacteristics = (uint8_t*)calloc(VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, sizeof(uint8_t));
+                    uint8_t *blockDeviceCharacteristics = (uint8_t*)calloc_aligned(VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
                     if (!blockDeviceCharacteristics)
                     {
                         perror("Error allocating memory to read block device characteistics VPD page");
@@ -9362,7 +9363,7 @@ int fill_In_Device_Info(tDevice *device)
                         //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
                         scsi_Test_Unit_Ready(device, NULL);
                     }
-                    safe_Free(blockDeviceCharacteristics);
+                    safe_Free_aligned(blockDeviceCharacteristics);
                     break;
                 }
                 default:
@@ -9393,10 +9394,10 @@ int fill_In_Device_Info(tDevice *device)
             //Anything else can have read capacity 16 command available
 
             //send a read capacity command to get the device's logical block size...read capacity 10 should be enough for this
-            uint8_t *readCapBuf = (uint8_t*)calloc(READ_CAPACITY_10_LEN, sizeof(uint8_t));
+            uint8_t *readCapBuf = (uint8_t*)calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
             if (!readCapBuf)
             {
-                safe_Free(inq_buf);
+                safe_Free_aligned(inq_buf);
                 return MEMORY_FAILURE;
             }
             if (SUCCESS == scsi_Read_Capacity_10(device, readCapBuf, READ_CAPACITY_10_LEN))
@@ -9405,10 +9406,11 @@ int fill_In_Device_Info(tDevice *device)
                 if (version > 3)//SPC2 and higher can reference SBC2 and higher which introduced read capacity 16
                 {
                     //try a read capacity 16 anyways and see if the data from that was valid or not since that will give us a physical sector size whereas readcap10 data will not
-                    uint8_t* temp = (uint8_t*)realloc(readCapBuf, READ_CAPACITY_16_LEN * sizeof(uint8_t));
+                    uint8_t* temp = (uint8_t*)realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment);
                     if (!temp)
                     {
-                        safe_Free(inq_buf);
+                        safe_Free_aligned(readCapBuf);
+                        safe_Free_aligned(inq_buf);
                         return MEMORY_FAILURE;
                     }
                     readCapBuf = temp;
@@ -9445,10 +9447,11 @@ int fill_In_Device_Info(tDevice *device)
             else
             {
                 //try read capacity 16, if that fails we are done trying
-                uint8_t* temp = (uint8_t*)realloc(readCapBuf, READ_CAPACITY_16_LEN * sizeof(uint8_t));
+                uint8_t* temp = (uint8_t*)realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment);
                 if (temp == NULL)
                 {
-                    safe_Free(inq_buf);
+                    safe_Free_aligned(readCapBuf);
+                    safe_Free_aligned(inq_buf);
                     return MEMORY_FAILURE;
                 }
                 readCapBuf = temp;
@@ -9474,7 +9477,7 @@ int fill_In_Device_Info(tDevice *device)
                     scsi_Test_Unit_Ready(device, NULL);
                 }
             }
-            safe_Free(readCapBuf);
+            safe_Free_aligned(readCapBuf);
             if (device->drive_info.devicePhyBlockSize == 0)
             {
                 //If we did not get a physical blocksize, we need to set it to the blocksize (logical).
@@ -9499,7 +9502,7 @@ int fill_In_Device_Info(tDevice *device)
         }
         ret = COMMAND_FAILURE;
     }
-    safe_Free(inq_buf);
+    safe_Free_aligned(inq_buf);
 
     #ifdef _DEBUG
     printf("\nscsi helper\n");

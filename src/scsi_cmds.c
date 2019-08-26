@@ -302,7 +302,7 @@ int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit,
     {
         return BAD_PARAMETER;
     }
-    uint8_t *overwriteBuffer = calloc(patternLengthBytes + 4, sizeof(uint8_t));
+    uint8_t *overwriteBuffer = calloc_aligned(patternLengthBytes + 4, sizeof(uint8_t), device->os_info.minimumAlignment);
     if (!overwriteBuffer)
     {
         return MEMORY_FAILURE;
@@ -321,7 +321,7 @@ int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit,
         memcpy(&overwriteBuffer[4], pattern, patternLengthBytes);
     }
     ret = scsi_Sanitize_Cmd(device, SCSI_SANITIZE_OVERWRITE, immediate, znr, allowUnrestrictedSanitizeExit, patternLengthBytes + 4, overwriteBuffer);
-    safe_Free(overwriteBuffer);
+    safe_Free_aligned(overwriteBuffer);
     return ret;
 }
 

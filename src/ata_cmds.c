@@ -1594,7 +1594,7 @@ int ata_SCT_Read_Write_Long(tDevice *device, bool useGPL, bool useDMA, eSCTRWLMo
 int ata_SCT_Write_Same(tDevice *device, bool useGPL, bool useDMA, eSCTWriteSameFunctions functionCode, uint64_t startLBA, uint64_t fillCount, uint8_t *pattern, uint64_t patternLength)
 {
     int ret = UNKNOWN;
-    uint8_t *writeSameBuffer = (uint8_t*)calloc(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t));
+    uint8_t *writeSameBuffer = (uint8_t*)calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment);
     if (!writeSameBuffer)
     {
         perror("Calloc failure!\n");
@@ -1666,14 +1666,14 @@ int ata_SCT_Write_Same(tDevice *device, bool useGPL, bool useDMA, eSCTWriteSameF
         ret = ata_SCT_Data_Transfer(device, useGPL, useDMA, XFER_DATA_OUT, pattern, (uint32_t)(patternLength * device->drive_info.deviceBlockSize));
     }
 
-    safe_Free(writeSameBuffer);
+    safe_Free_aligned(writeSameBuffer);
     return ret;
 }
 
 int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit)
 {
     int ret = UNKNOWN;
-    uint8_t *errorRecoveryBuffer = (uint8_t*)calloc(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t));
+    uint8_t *errorRecoveryBuffer = (uint8_t*)calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment);
     if (!errorRecoveryBuffer)
     {
         perror("Calloc failure!\n");
@@ -1682,7 +1682,7 @@ int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, ui
     //if we are retrieving the current values, then we better have a good pointer...no point in sending the command if we don't
     if (functionCode == 0x0002 && !currentValue)
     {
-        safe_Free(errorRecoveryBuffer);
+        safe_Free_aligned(errorRecoveryBuffer);
         return BAD_PARAMETER;
     }
 
@@ -1705,14 +1705,14 @@ int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, ui
     {
         *currentValue = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
     }
-    safe_Free(errorRecoveryBuffer);
+    safe_Free_aligned(errorRecoveryBuffer);
     return ret;
 }
 
 int ata_SCT_Feature_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags)
 {
     int ret = UNKNOWN;
-    uint8_t *featureControlBuffer = (uint8_t*)calloc(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t));
+    uint8_t *featureControlBuffer = (uint8_t*)calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment);
     if (!featureControlBuffer)
     {
         perror("Calloc Failure!\n");
@@ -1721,7 +1721,7 @@ int ata_SCT_Feature_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t 
     //make sure we have valid pointers for state and optionFlags
     if (!state || !optionFlags)
     {
-        safe_Free(featureControlBuffer);
+        safe_Free_aligned(featureControlBuffer);
         return BAD_PARAMETER;
     }
     //clear the state and option flags out, unless we are setting something
@@ -1761,7 +1761,7 @@ int ata_SCT_Feature_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t 
             *optionFlags = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
         }
     }
-    safe_Free(featureControlBuffer);
+    safe_Free_aligned(featureControlBuffer);
     return ret; 
 }
 

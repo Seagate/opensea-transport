@@ -1290,7 +1290,8 @@ int get_CSMI_Device(const char *filename, tDevice *device)
     if ((device->os_info.fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
 #endif
     {
-        device->raid_device = (ptrCSMIDevice)calloc(1 * sizeof(csmiDevice), sizeof(csmiDevice));
+        device->os_info.minimumAlignment = sizeof(void *);//setting alignment this way to be compatible across OSs since CSMI doesn't really dictate an alignment, but we should set something. - TJE
+        device->raid_device = (ptrCSMIDevice)calloc(1, sizeof(csmiDevice));
         device->issue_io = (issue_io_func)send_CSMI_IO;
         ptrCSMIDevice csmiDevice = (ptrCSMIDevice)device->raid_device;
         if (!csmiDevice)

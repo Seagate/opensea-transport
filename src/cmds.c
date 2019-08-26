@@ -487,7 +487,7 @@ int security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityPr
             {
                 //round up to nearest 512byte sector
                 size_t newBufferSize = (((dataSize + LEGACY_DRIVE_SEC_SIZE) - 1) / LEGACY_DRIVE_SEC_SIZE) * LEGACY_DRIVE_SEC_SIZE;
-                tcgBufPtr = (uint8_t*)calloc(newBufferSize, sizeof(uint8_t));
+                tcgBufPtr = (uint8_t*)calloc_aligned(newBufferSize, sizeof(uint8_t), device->os_info.minimumAlignment);
                 if (tcgBufPtr == NULL)
                 {
                     return MEMORY_FAILURE;
@@ -500,7 +500,7 @@ int security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityPr
             ret = send_ATA_Trusted_Send_Cmd(device, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
             if (useLocalMemory)
             {
-                safe_Free(tcgBufPtr);
+                safe_Free_aligned(tcgBufPtr);
             }
         }
         else
@@ -550,7 +550,7 @@ int security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securit
             {
                 //round up to nearest 512byte sector
                 tcgDataSize = (((dataSize + LEGACY_DRIVE_SEC_SIZE) - 1) / LEGACY_DRIVE_SEC_SIZE) * LEGACY_DRIVE_SEC_SIZE;
-                tcgBufPtr = (uint8_t*)calloc(tcgDataSize, sizeof(uint8_t));
+                tcgBufPtr = (uint8_t*)calloc_aligned(tcgDataSize, sizeof(uint8_t), device->os_info.minimumAlignment);
                 if (!tcgBufPtr)
                 {
                     return MEMORY_FAILURE;
@@ -564,7 +564,7 @@ int security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securit
             if (useLocalMemory)
             {
                 memcpy(ptrData, tcgBufPtr, M_Min(dataSize, tcgDataSize));
-                safe_Free(tcgBufPtr);
+                safe_Free_aligned(tcgBufPtr);
             }
         }
         else
@@ -631,7 +631,7 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
             uint8_t feature = LEGACY_WRITE_SAME_INITIALIZE_SPECIFIED_SECTORS;
             if (noDataTransfer)
             {
-                pattern = (uint8_t*)calloc(device->drive_info.deviceBlockSize, sizeof(uint8_t));
+                pattern = (uint8_t*)calloc_aligned(device->drive_info.deviceBlockSize, sizeof(uint8_t), device->os_info.minimumAlignment);
                 localPattern = true;
             }
             //Check range to see which feature to use
@@ -671,7 +671,7 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
             }
             if (localPattern)
             {
-                safe_Free(pattern);
+                safe_Free_aligned(pattern);
             }
         }
         else
@@ -1687,7 +1687,7 @@ int nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
     //NVME doesn't have a verify command like ATA or SCSI, so we're going to substitute by doing a read with FUA set....should be the same minus doing a data transfer.
     int ret = SUCCESS;
     uint32_t dataLength = device->drive_info.deviceBlockSize * range;
-    uint8_t *data = (uint8_t*)calloc(dataLength, sizeof(uint8_t));
+    uint8_t *data = (uint8_t*)calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment);
     if (data)
     {
         ret = nvme_Read(device, lba, range - 1, false, true, 0, data, dataLength);
@@ -1696,7 +1696,7 @@ int nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
     {
         ret = MEMORY_FAILURE;
     }
-    safe_Free(data);
+    safe_Free_aligned(data);
     return ret;
 }
 #endif

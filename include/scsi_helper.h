@@ -307,21 +307,21 @@ extern "C"
 
     typedef enum _eWriteBufferMode
     {
-        SCSI_WB_OBSOLETE1                                           = 0x00,
-        SCSI_WB_VENDOR_SPECIFIC                                     = 0x01,
-        SCSI_WB_DATA                                                = 0x02,
-        SCSI_WB_RESERVED                                            = 0x03,
-        SCSI_WB_DL_MICROCODE_TEMP_ACTIVATE                          = 0x04,
-        SCSI_WB_DL_MICROCODE_SAVE_ACTIVATE                          = 0x05,
-        SCSI_WB_DL_MICROCODE_OFFSETS_ACTIVATE                       = 0x06,
-        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_ACTIVATE                  = 0x07,
-        SCSI_WB_WRITE_DATA_TO_ECHO_BUFFER                           = 0x0A,
-        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_SELECT_ACTIVATE_DEFER     = 0x0D,
-        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER                     = 0x0E,
-        SCSI_WB_ACTIVATE_DEFERRED_MICROCODE                         = 0x0F,
-        SCSI_WB_OBSOLETE2                                           = 0x1A,
-        SCSI_WB_OBSOLETE3                                           = 0x1B,
-        SCSI_WB_DOWNLOAD_APPLICATION_CLIENT_ERROR_HISTORY           = 0x1C,
+        SCSI_WB_COMBINED_HEADER_AND_DATA                                = 0x00,//obsolete (see SPC or SCSI2)
+        SCSI_WB_VENDOR_SPECIFIC                                         = 0x01,
+        SCSI_WB_DATA                                                    = 0x02,
+        SCSI_WB_RESERVED                                                = 0x03,
+        SCSI_WB_DL_MICROCODE_TEMP_ACTIVATE                              = 0x04,
+        SCSI_WB_DL_MICROCODE_SAVE_ACTIVATE                              = 0x05,
+        SCSI_WB_DL_MICROCODE_OFFSETS_ACTIVATE                           = 0x06,
+        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_ACTIVATE                      = 0x07,
+        SCSI_WB_WRITE_DATA_TO_ECHO_BUFFER                               = 0x0A,
+        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_SELECT_ACTIVATE_DEFER         = 0x0D,
+        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER                         = 0x0E,
+        SCSI_WB_ACTIVATE_DEFERRED_MICROCODE                             = 0x0F,
+        SCSI_WB_ENABLE_EXPANDER_COMMUNICATIONS_PROTOCOL_AND_ECHO_BUFFER = 0x1A,//obsolete (see SPC2)
+        SCSI_WB_DISABLE_EXPANDER_COMMUNICATIONS_PROTOCOL                = 0x1B,//obsolete (see SPC2)
+        SCSI_WB_DOWNLOAD_APPLICATION_CLIENT_ERROR_HISTORY               = 0x1C,
     }eWriteBufferMode;
 
 

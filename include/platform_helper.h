@@ -14,8 +14,9 @@
 
 //This file just helps with platform specific stuff.
 
-
-#if defined (__linux__) || defined (__DragonFly__)
+#if defined (UEFI_C_SOURCE)
+#include "uefi_helper.h"
+#elif defined (__linux__) || defined (__DragonFly__)
 #if defined (VMK_CROSS_COMP)
 #include "vm_helper.h"
 #else

@@ -181,7 +181,7 @@ int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
     bufferSize += firmwareStructureOffset;
     bufferSize += FIELD_OFFSET(STORAGE_FIRMWARE_DOWNLOAD, ImageBuffer);
 
-    buffer = (PUCHAR)calloc(bufferSize,1);
+    buffer = (PUCHAR)calloc_aligned(bufferSize, sizeof(UCHAR), nvmeIoCtx->device->os_info.minimumAlignment);
     if (!buffer)
     {
         return MEMORY_FAILURE;
@@ -269,6 +269,7 @@ int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
             break;
         }
     }
+    safe_Free_aligned(buffer);
 #if defined (_DEBUG)
     printf("%s: <-- (ret=%d)\n", __FUNCTION__, ret);
 #endif
@@ -583,6 +584,24 @@ int get_Device(const char *filename, tDevice *device )
                     {
                         device->os_info.srbtype = SRB_TYPE_SCSI_REQUEST_BLOCK;
                     }
+                    switch (adapter_desc->AlignmentMask)
+                    {
+                    case 0://byte
+                        device->os_info.minimumAlignment = 1;
+                        break;
+                    case 1://word
+                        device->os_info.minimumAlignment = 2;
+                        break;
+                    case 3://dword
+                        device->os_info.minimumAlignment = 4;
+                        break;
+                    case 7://qword
+                        device->os_info.minimumAlignment = 8;
+                        break;
+                    default:
+                        device->os_info.minimumAlignment = 0;
+                        break;
+                    }
                     device->os_info.alignmentMask = adapter_desc->AlignmentMask;//may be needed later....currently unused
                     // Now lets get device stuff
                     query.PropertyId = StorageDeviceProperty;
@@ -613,6 +632,8 @@ int get_Device(const char *filename, tDevice *device )
                             {
 #if WINVER >= SEA_WIN32_WINNT_WIN10
                                 get_Windows_FWDL_IO_Support(device, device_desc->BusType);
+#else
+                                device->os_info.fwdlIOsupport.fwdlIOSupported = false;//this API is not available before Windows 10
 #endif
                                 //#if defined (_DEBUG)
                                 //printf("Drive BusType: ");
@@ -5201,7 +5222,7 @@ int win10_Translate_Set_Error_Recovery_Time_Limit(nvmeCmdCtx *nvmeIoCtx)
     if (!dulbe && !(nvmeIoCtx->cmd.adminCmd.cdw11 >> 16))//make sure unsupported fields aren't set!!!
     {
         //use read-write error recovery MP - recovery time limit field
-        uint8_t *errorRecoveryMP = (uint8_t*)calloc(MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN, sizeof(uint8_t));
+        uint8_t *errorRecoveryMP = (uint8_t*)calloc_aligned(MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
         if (errorRecoveryMP)
         {
             //first, read the page into memory
@@ -5213,7 +5234,7 @@ int win10_Translate_Set_Error_Recovery_Time_Limit(nvmeCmdCtx *nvmeIoCtx)
                 //send it back to the drive
                 ret = scsi_Mode_Select_10(nvmeIoCtx->device, MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN, true, false, false, errorRecoveryMP, MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN);
             }
-            safe_Free(errorRecoveryMP);
+            safe_Free_aligned(errorRecoveryMP);
         }
         else
         {
@@ -5233,7 +5254,7 @@ int win10_Translate_Set_Volatile_Write_Cache(nvmeCmdCtx *nvmeIoCtx)
     if (!(nvmeIoCtx->cmd.adminCmd.cdw11 >> 31))//make sure unsupported fields aren't set!!!
     {
         //use caching MP - write back cache enabled field
-        uint8_t *cachingMP = (uint8_t*)calloc(MODE_HEADER_LENGTH10 + MP_CACHING_LEN, sizeof(uint8_t));
+        uint8_t *cachingMP = (uint8_t*)calloc_aligned(MODE_HEADER_LENGTH10 + MP_CACHING_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
         if (cachingMP)
         {
             //first, read the page into memory
@@ -5254,7 +5275,7 @@ int win10_Translate_Set_Volatile_Write_Cache(nvmeCmdCtx *nvmeIoCtx)
                 //send it back to the drive
                 ret = scsi_Mode_Select_10(nvmeIoCtx->device, MODE_HEADER_LENGTH10 + MP_CACHING_LEN, true, false, false, cachingMP, MODE_HEADER_LENGTH10 + MP_CACHING_LEN);
             }
-            safe_Free(cachingMP);
+            safe_Free_aligned(cachingMP);
         }
         else
         {
@@ -5828,7 +5849,7 @@ int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
         bool atLeastOneContextAttributeSet = false;
         //first, allocate enough memory for the Unmap command
         uint32_t unmapDataLength = 8 + (16 * numberOfRanges);
-        uint8_t *unmapParameterData = (uint8_t*)calloc(unmapDataLength, sizeof(uint8_t));//each range is 16 bytes plus an 8 byte header
+        uint8_t *unmapParameterData = (uint8_t*)calloc_aligned(unmapDataLength, sizeof(uint8_t), device->os_info.minimumAlignment);//each range is 16 bytes plus an 8 byte header
         if (unmapParameterData)
         {
             //in a loop, set the unmap descriptors
@@ -5887,7 +5908,7 @@ int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
         {
             ret = MEMORY_FAILURE;
         }
-        safe_Free(unmapParameterData);
+        safe_Free_aligned(unmapParameterData);
     }
     nvmeIoCtx->device->deviceVerbosity = inVerbosity;
     return ret;
