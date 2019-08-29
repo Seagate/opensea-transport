@@ -1755,6 +1755,7 @@ extern "C"
     OPENSEA_TRANSPORT_API int remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint32_t * numberOfDevices);
 
     OPENSEA_TRANSPORT_API bool is_CSMI_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_Removable_Media(tDevice *device);
 
     #if defined (_DEBUG)
     //This function is more for debugging than anything else!

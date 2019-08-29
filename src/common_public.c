@@ -5,7 +5,7 @@
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// file, You can obtain one at https://urldefense.proofpoint.com/v2/url?u=http-3A__mozilla.org_MPL_2.0_&d=DwIGAg&c=IGDlg0lD0b-nebmJJ0Kp8A&r=57G6zc3onntjgzg7foSF7GC8HanSAN_KSacx5Jxblq4&m=inFDTtXZCWJQO2tiRNqXcfEsvaGXTsM7WsOHlsHAAY4&s=WIhSObqstO-YuUmZMRu0eL5PxfSm16hGH87Eb7MT1RY&e= .
 //
 // ******************************************************************************************
 // 
@@ -2014,3 +2014,62 @@ void print_tDevice_Size()
     printf("\teVerbosityLevels = %zu\n", sizeof(eVerbosityLevels));
 }
 #endif //_DEBUG
+
+bool is_Removable_Media(tDevice *device)
+{
+    bool result = false;
+    uint8_t scsiDevType;
+
+    if(device->drive_info.interface_type == IDE_INTERFACE) 
+    {
+        if(device->drive_info.drive_type == UNKNOWN_DRIVE || 
+           device->drive_info.drive_type == FLASH_DRIVE ||
+           device->drive_info.drive_type == ATAPI_DRIVE || 
+           device->drive_info.media_type == MEDIA_OPTICAL || 
+           device->drive_info.media_type == MEDIA_SSM_FLASH || 
+           device->drive_info.media_type == MEDIA_TAPE || 
+           device->drive_info.media_type == MEDIA_UNKNOWN ||
+           (device->drive_info.IdentifyData.ata.Word000 & BIT7) )
+        {
+            result = true;
+        }
+    }
+    else if(device->drive_info.interface_type == SCSI_INTERFACE) 
+    {
+        scsiDevType = device->drive_info.scsiVpdData.inquiryData[0] & 0x1F;
+
+        if (scsiDevType == PERIPHERAL_DIRECT_ACCESS_BLOCK_DEVICE ||
+            scsiDevType == PERIPHERAL_HOST_MANAGED_ZONED_BLOCK_DEVICE ||
+            scsiDevType == PERIPHERAL_SEQUENTIAL_ACCESS_BLOCK_DEVICE ||
+            scsiDevType == PERIPHERAL_STORAGE_ARRAY_CONTROLLER_DEVICE)
+        {
+            if (device->drive_info.scsiVpdData.inquiryData[1] & BIT7)
+            {
+                result = true;
+            }
+            else
+            {
+                result = false;
+            }
+        }
+        else
+        {
+            result = true;
+        }
+        
+
+    }
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES )
+    {
+        printf("Calling from file : %s function : %s line : %d \n", __FILE__, __FUNCTION__, __LINE__);
+        if (result)
+        {
+            printf("This is a Removable Media");
+        }
+        else
+        {
+            printf("This is not a Removable Media");
+        }
+    }
+    return result;
+}
