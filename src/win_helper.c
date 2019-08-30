@@ -87,6 +87,10 @@
 #define BusTypeNvme 17
 #endif
 
+#if WINVER < SEA_WIN32_WINNT_WINBLUE && !defined (BusTypeNvme)
+#define BusTypeNvme 17
+#endif
+
 extern bool validate_Device_Struct(versionBlock);
 
 int get_Windows_SMART_IO_Support(tDevice *device);
