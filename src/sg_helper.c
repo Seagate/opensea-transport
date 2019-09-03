@@ -253,6 +253,45 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             printf("USB interface!\n");
                             #endif
                             device->drive_info.interface_type = USB_INTERFACE;
+                            //set the USB VID and PID. NOTE: There may be a better way to do this, but this seems to work for now.
+                            char linkCopy[PATH_MAX] = { 0 };
+                            memcpy(linkCopy, inHandleLink, PATH_MAX);
+                            char *usbPath = dirname(dirname(dirname(dirname(dirname(dirname(linkCopy))))));
+                            //printf("shortened USB Path = %s\n", usbPath);
+                            //path should now almost point to where we want it, but we need to change the ../../devices/<rest of path> to /sys/devices/<rest of path>
+                            usbPath[0] = '/';
+                            usbPath[1] = 's';
+                            usbPath[2] = 'y';
+                            usbPath[3] = 's';
+                            usbPath[4] = '/';
+                            memmove(&usbPath[5], &usbPath[6], strlen(usbPath));
+                            strcat(usbPath, "/");
+                            //printf("full USB Path = %s\n", usbPath);
+                            //now that the path is correct, we need to read the files idVendor and idProduct
+                            strcat(usbPath, "idVendor");
+                            //printf("idVendor USB Path = %s\n", usbPath);
+                            FILE *temp = NULL;
+                            temp = fopen(usbPath, "r");
+                            if (temp)
+                            {
+                                fscanf(temp, "%" SCNx16, &device->drive_info.bridge_info.vendorID);
+                                fclose(temp);
+                                temp = NULL;
+                                //printf("Got vendor ID as %" PRIX16 "h\n", device->drive_info.bridge_info.vendorID);
+                            }
+                            usbPath = dirname(usbPath);//remove idVendor from the end
+                            //printf("full USB Path = %s\n", usbPath);
+                            strcat(usbPath, "/idProduct");
+                            //printf("idProduct USB Path = %s\n", usbPath);
+                            temp = fopen(usbPath, "r");
+                            if (temp)
+                            {
+                                fscanf(temp, "%" SCNx16, &device->drive_info.bridge_info.productID);
+                                fclose(temp);
+                                temp = NULL;
+                                //printf("Got product ID as %" PRIX16 "h\n", device->drive_info.bridge_info.productID);
+                            }
+                            //TODO: Store revision data? This seems to be in the bcdDevice file.
                         }
                         else if (strstr(inHandleLink,"fw") != 0)
                         {
