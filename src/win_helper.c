@@ -19,6 +19,7 @@
 #include <wchar.h>
 #include <string.h>
 #include <windows.h>                // added for forced PnP rescan
+#include <tchar.h>
 //NOTE: ARM requires 10.0.16299.0 API to get this library!
 #include <cfgmgr32.h>               // added for forced PnP rescan
 #include <winbase.h>
@@ -155,6 +156,300 @@ void print_bus_type( BYTE type )
     }
 }
 #endif
+
+//This function is only used in get_Adapter_IDs which is why it's here. If this is useful for something else in the future, move it to opensea-common.
+void convert_String_Spaces_To_Underscores(char *stringToChange)
+{
+    size_t stringLen = 0, iter = 0;
+    if (stringToChange == NULL)
+    {
+        return;
+    }
+    stringLen = strlen(stringToChange);
+    if (stringLen == 0)
+    {
+        return;
+    }
+    while (iter <= stringLen)
+    {
+        if (isspace(stringToChange[iter]))
+        {
+            stringToChange[iter] = '_';
+        }
+        iter++;
+    }
+}
+
+//This function uses cfgmgr32 for figuring out the adapter information. 
+//It is possible to do this with setupapi as well. cfgmgr32 is supposedly available in some form for universal apps, whereas setupapi is not.
+int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor, ULONG deviceDescriptorLength)
+{
+    int ret = BAD_PARAMETER;
+    if (deviceDescriptor && deviceDescriptorLength > sizeof(STORAGE_DEVICE_DESCRIPTOR))//make sure we have a device descriptor bigger than the header so we can access the raw data
+    {
+        //First, get the list of disk device IDs, then locate a matching one...then find the parent and parse the IDs out.
+        TCHAR *listBuffer = NULL;
+        ULONG deviceIdListLen = 0;
+        CONFIGRET cmRet = CR_SUCCESS;
+#if WINVER > SEA_WIN32_WINNT_VISTA
+        TCHAR *filter = TEXT("{4d36e967-e325-11ce-bfc1-08002be10318}");
+        ULONG deviceIdListFlags = CM_GETIDLIST_FILTER_PRESENT | CM_GETIDLIST_FILTER_CLASS;//Both of these flags require Windows 7 and later. The else case below will handle older OSs
+        cmRet = CM_Get_Device_ID_List_Size(&deviceIdListLen, filter, deviceIdListFlags);
+        if (cmRet == CR_SUCCESS)
+        {
+            if (deviceIdListLen > 0)
+            {
+                listBuffer = (TCHAR*)calloc(deviceIdListLen, sizeof(TCHAR));
+                if (listBuffer)
+                {
+                    cmRet = CM_Get_Device_ID_List(filter, listBuffer, deviceIdListLen, deviceIdListFlags);
+                }
+                else
+                {
+                    return MEMORY_FAILURE;
+                }
+            }
+        }
+        else if (cmRet == CR_INVALID_FLAG)
+#else 
+        if(cmRet == CR_SUCCESS)
+#endif //WINVER > SEA_WIN32_WINNT_VISTA
+        {
+            //older OS? Try the legacy method which should work for Win2000+
+            //This requires knowing if we are searching for USB vs SCSI device IDs
+            //TODO: We may need to add other things for firewire or other attachment types that existed back in Vista or XP if they aren't handled under USB or SCSI
+            TCHAR *scsiFilter = TEXT("SCSI"), *usbFilter = TEXT("USBSTOR");//Need to use USBSTOR in order to find a match. Using USB returns a list of VID/PID but we don't have a way to match that.
+            ULONG scsiIdListLen = 0, usbIdListLen = 0;
+            ULONG filterFlags = CM_GETIDLIST_FILTER_ENUMERATOR;
+            TCHAR *scsiListBuff = NULL, *usbListBuff = NULL;
+            CONFIGRET scsicmRet = CR_SUCCESS, usbcmRet = CR_SUCCESS;
+            //First get the SCSI list, then the USB list/ TODO: add more things to the list as we need them.
+            scsicmRet = CM_Get_Device_ID_List_Size(&scsiIdListLen, scsiFilter, filterFlags);
+            if (scsicmRet == CR_SUCCESS)
+            {
+                if (scsiIdListLen > 0)
+                {
+                    scsiListBuff = (TCHAR*)calloc(scsiIdListLen, sizeof(TCHAR));
+                    if (scsiListBuff)
+                    {
+                        scsicmRet = CM_Get_Device_ID_List(scsiFilter, scsiListBuff, scsiIdListLen, filterFlags);
+                    }
+                    else
+                    {
+                        ret = MEMORY_FAILURE;
+                    }                    
+                }
+            }
+            usbcmRet = CM_Get_Device_ID_List_Size(&usbIdListLen, usbFilter, filterFlags);
+            if (usbcmRet == CR_SUCCESS)
+            {
+                if (usbIdListLen > 0)
+                {
+                    usbListBuff = (TCHAR*)calloc(usbIdListLen, sizeof(TCHAR));
+                    if (usbListBuff)
+                    {
+                        usbcmRet = CM_Get_Device_ID_List(usbFilter, usbListBuff, usbIdListLen, filterFlags);
+                    }
+                    else
+                    {
+                        ret = MEMORY_FAILURE;
+                    }
+                }
+            }
+            //now that we got USB and SCSI, we need to merge them together into a common list
+            deviceIdListLen = scsiIdListLen + usbIdListLen;
+            listBuffer = (TCHAR*)calloc(deviceIdListLen, sizeof(TCHAR));
+            if (listBuffer)
+            {
+                ULONG copyOffset = 0;
+                if (scsicmRet == CR_SUCCESS && scsiIdListLen > 0 && scsiListBuff)
+                {
+                    memcpy(&listBuffer[copyOffset], scsiListBuff, scsiIdListLen);
+                    copyOffset += scsiIdListLen - 1;
+                }
+                if (usbcmRet == CR_SUCCESS && usbIdListLen > 0 && usbListBuff)
+                {
+                    memcpy(&listBuffer[copyOffset], usbListBuff, usbIdListLen);
+                    copyOffset += usbIdListLen - 1;
+                }
+                //add other lists here and offset them as needed
+            }
+            else
+            {
+                ret = MEMORY_FAILURE;
+            }
+            safe_Free(scsiListBuff);
+            safe_Free(usbListBuff);
+        }
+        else
+        {
+            return FAILURE;
+        }
+        //If we are here, we should have a list of device IDs to check
+        //First, reduce the list to something that seems like it is the drive we are looking for...we could have more than 1 match, but we're filtering out all the extras that definitely aren't the correct device.
+        if (ret != MEMORY_FAILURE && cmRet == CR_SUCCESS && deviceIdListLen > 0)
+        {
+            //Now we have a list of device IDs.
+            //Each device ID is structured with a EmumeratorName\Disk&Ven_<vendor ID>&Prod_<Product ID>&Rev_<Revision number>\<some random numbers and characters>
+            //Since we have a device descriptor, we have the vendor ID, product ID, and revision number, so we can match those.
+            ULONG matchStringLen = 76 * sizeof(TCHAR);// 19 bytes for format + 8 for vendor id + 40 for product ID + 8 for revision; add 1 for NULL
+            TCHAR *matchString = (TCHAR*)calloc(matchStringLen, sizeof(TCHAR));
+            TCHAR tvendorID[9 * sizeof(TCHAR)] = { 0 };
+            TCHAR tproductID[41 * sizeof(TCHAR)] = { 0 };
+            TCHAR trevisionNum[9 * sizeof(TCHAR)] = { 0 };
+            char vendorID[9] = { 0 };
+            char productID[41] = { 0 };
+            char revisionNum[9] = { 0 };
+            bool foundMatch = false;
+            if (deviceDescriptor->VendorIdOffset > 0)
+            {
+                strcpy(vendorID, &deviceDescriptor->RawDeviceProperties[deviceDescriptor->VendorIdOffset - offsetof(STORAGE_DEVICE_DESCRIPTOR, RawDeviceProperties)]);
+                remove_Trailing_Whitespace(&vendorID[0]);
+                convert_String_Spaces_To_Underscores(&vendorID[0]);
+            }
+            if (deviceDescriptor->ProductIdOffset > 0)
+            {
+                strcpy(productID, &deviceDescriptor->RawDeviceProperties[deviceDescriptor->ProductIdOffset - offsetof(STORAGE_DEVICE_DESCRIPTOR, RawDeviceProperties)]);
+                remove_Trailing_Whitespace(&productID[0]);
+                convert_String_Spaces_To_Underscores(&productID[0]);
+            }
+            if (deviceDescriptor->ProductRevisionOffset > 0)
+            {
+                strcpy(revisionNum, &deviceDescriptor->RawDeviceProperties[deviceDescriptor->ProductRevisionOffset - offsetof(STORAGE_DEVICE_DESCRIPTOR, RawDeviceProperties)]);
+                remove_Trailing_Whitespace(&revisionNum[0]);
+                convert_String_Spaces_To_Underscores(&revisionNum[0]);
+            }
+            //Unfortunately there is no function to handle this in tchar.h, so we have to ifdef for unicode.
+#if defined (_UNICODE)
+            size_t convertCount = 0;
+            if (deviceDescriptor->VendorIdOffset > 0)
+            {
+                mbstowcs_s(&convertCount, tvendorID, 9 * sizeof(TCHAR), vendorID, 8);
+            }
+            if (deviceDescriptor->ProductIdOffset > 0)
+            {
+                mbstowcs_s(&convertCount, tproductID, 41 * sizeof(TCHAR), productID, 40);
+            }
+            if (deviceDescriptor->ProductRevisionOffset > 0)
+            {
+                mbstowcs_s(&convertCount, trevisionNum, 9 * sizeof(TCHAR), revisionNum, 8);
+            }
+#else
+            if (deviceDescriptor->VendorIdOffset > 0)
+            {
+                strcpy_s(tvendorID, 9 * sizeof(TCHAR), vendorID);
+            }
+            if (deviceDescriptor->ProductIdOffset > 0)
+            {
+                strcpy_s(tproductID, 41 * sizeof(TCHAR), productID);
+            }
+            if (deviceDescriptor->ProductRevisionOffset > 0)
+            {
+                strcpy_s(trevisionNum, 9 * sizeof(TCHAR), revisionNum);
+            }
+#endif
+            _stprintf_s(matchString, matchStringLen, TEXT("Disk&Ven_%s&Prod_%s&Rev_%s"), tvendorID, tproductID, trevisionNum);
+            _tcsupr(matchString);
+            //loop through the device IDs and see if we find anything that matches.
+            for (LPTSTR deviceID = listBuffer; *deviceID && !foundMatch; deviceID += _tcslen(deviceID) + 1)
+            {
+                //convert the deviceID to uppercase to make matching easier
+                _tcsupr(deviceID);
+                if (_tcsstr(deviceID, matchString))
+                {
+                    DEVINST deviceInstance = 0;
+                    //if a match is found, call locate devnode. If this is not present, it will fail and we need to continue through the loop
+                    cmRet = CM_Locate_DevNode(&deviceInstance, deviceID, CM_LOCATE_DEVNODE_NORMAL);
+                    if (CR_SUCCESS == cmRet)
+                    {
+                        //with the device node, get the interface list for this device (disk class GUID is used). This SHOULD only return one idem which is the full device path. TODO: save this device path
+                        ULONG interfaceListSize = 0;
+                        GUID classGUID = GUID_DEVINTERFACE_DISK;//TODO: If the tDevice handle that was opened was a tape, changer or something else, change this GUID.
+                        cmRet = CM_Get_Device_Interface_List_Size(&interfaceListSize, &classGUID, deviceID, CM_GET_DEVICE_INTERFACE_LIST_PRESENT);
+                        if (CR_SUCCESS == cmRet && interfaceListSize > 0)
+                        {
+                            TCHAR *interfaceList = (TCHAR*)calloc(interfaceListSize, sizeof(TCHAR));
+                            cmRet = CM_Get_Device_Interface_List(&classGUID, deviceID, interfaceList, interfaceListSize * sizeof(TCHAR), CM_GET_DEVICE_INTERFACE_LIST_PRESENT);
+                            if (CR_SUCCESS == cmRet)
+                            {
+                                //Loop through this list, just in case more than one thing comes through
+                                for (LPTSTR deviceID = interfaceList; *deviceID && !foundMatch; deviceID += _tcslen(deviceID) + 1)
+                                {
+                                    //With this device path, open a handle and get the storage device number. This is a match for the PhysicalDriveX number and we can check that for a match
+                                    HANDLE deviceHandle = CreateFile(deviceID,
+                                        GENERIC_WRITE | GENERIC_READ,
+                                        FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                        NULL,
+                                        OPEN_EXISTING,
+                                        0,
+                                        NULL);
+                                    if (deviceHandle != INVALID_HANDLE_VALUE)
+                                    {
+                                        //If the storage device number matches, get the parent device instance, then the parent device ID. This will contain the USB VID/PID and PCI Vendor, product, and revision numbers.
+                                        STORAGE_DEVICE_NUMBER deviceNumber;
+                                        memset(&deviceNumber, 0, sizeof(STORAGE_DEVICE_NUMBER));
+                                        DWORD returnedDataSize = 0;
+                                        if (DeviceIoControl(deviceHandle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &deviceNumber, sizeof(STORAGE_DEVICE_NUMBER), &returnedDataSize, NULL))
+                                        {
+                                            if (deviceNumber.DeviceNumber == device->os_info.os_drive_number)
+                                            {
+                                                DEVINST parentInst = 0;
+                                                foundMatch = true;
+                                                //Now that we have a matching handle, get the parent information, then parse the values from that string
+                                                cmRet = CM_Get_Parent(&parentInst, deviceInstance, 0);
+                                                if (CR_SUCCESS == cmRet)
+                                                {
+                                                    ULONG parentLen = 0;
+                                                    cmRet = CM_Get_Device_ID_Size(&parentLen, parentInst, 0);
+                                                    parentLen += 1;
+                                                    if (CR_SUCCESS == cmRet)
+                                                    {
+                                                        TCHAR *parentBuffer = (TCHAR*)calloc(parentLen, sizeof(TCHAR));
+                                                        cmRet = CM_Get_Device_ID(parentInst, parentBuffer, parentLen, 0);
+                                                        if (CR_SUCCESS == cmRet)
+                                                        {
+                                                            //here is where we need to parse the USB VID/PID or TODO: PCI Vendor, Product, and Revision numbers
+                                                            if (_tcsncmp(TEXT("USB"), parentBuffer, _tcsclen(TEXT("USB"))) == 0)
+                                                            {
+                                                                int scannedVals =_sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%" SCNx16 "&PID_%" SCNx16 "\\%*s"), &device->drive_info.bridge_info.vendorID, &device->drive_info.bridge_info.productID);
+                                                                if (scannedVals < 2)
+                                                                {
+#if (_DEBUG)
+                                                                    printf("Could not scan all values. Scanned %d values\n", scannedVals);
+#endif
+                                                                }
+                                                            }
+                                                            //ELSE handle PCI for scsi/sata attachments. Also add other interfaces as necessary.
+                                                        }
+                                                        safe_Free(parentBuffer);
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    //for some reason, we matched, but didn't find a matching drive number. Keep going through the list and trying to figure it out!
+                                                    foundMatch = false;
+                                                }
+                                            }
+                                        }
+                                        CloseHandle(deviceHandle);
+                                    }
+                                }
+                            }
+                            safe_Free(interfaceList);
+                        }
+                    }//else node is not available most likely...possibly not attached to the system.
+                }
+            }
+            safe_Free(matchString);
+            if (foundMatch)
+            {
+                ret = SUCCESS;
+            }
+        }
+        safe_Free(listBuffer);
+    }
+    return ret;
+}
 
 #if !defined (DISABLE_NVME_PASSTHROUGH)
 #if WINVER >= SEA_WIN32_WINNT_WINBLUE
@@ -630,6 +925,9 @@ int get_Device(const char *filename, tDevice *device )
                                                   FALSE);
                             if (win_ret > 0)
                             {
+
+                                get_Adapter_IDs(device, device_desc, header.Size);
+
 #if WINVER >= SEA_WIN32_WINNT_WIN10
                                 get_Windows_FWDL_IO_Support(device, device_desc->BusType);
 #else

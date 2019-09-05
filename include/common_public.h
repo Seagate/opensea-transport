@@ -1047,6 +1047,7 @@ extern "C"
             //TODO: expand this struct if we need other data when we check for firmware download support on a device.
         }fwdlIOsupport;
         uint32_t adapterMaxTransferSize;//Bytes. Returned by querying for adapter properties. Can be used to know when trying to request more than the adapter or driver supports.
+        //TODO: Store the device path! This may occasionally be useful to have. Longest one will probably be no more that MAX_DEVICE_ID_LEN characters. (This is defined as 200)
         //padding to keep same size as other OSs. This is to keep things similar across OSs.
         //Variable sizes based on 32 vs 64bit since handle is a void*
         #if defined (_WIN64)
