@@ -711,10 +711,8 @@ extern "C"
     typedef struct _bridgeInfo
     {
         bool isValid;
-        uint16_t productID;
-        uint16_t vendorID;
         uint16_t childSectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
-        uint8_t padd0[2];
+        uint8_t padd0[5];
         char childDriveMN[MODEL_NUM_LEN + 1];
         uint8_t padd1[7];
         char childDriveSN[SERIAL_NUM_LEN + 1];
@@ -737,6 +735,28 @@ extern "C"
     #else
     }__attribute__((packed,aligned(1))) bridgeInfo;
     #endif
+
+#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+#pragma pack(push,1)
+#endif
+    //this structure may or may not be populated with some low-level device adapter info. This will hold USB or PCI/PCIe vendor, product, and revision codes which may help filter capabilities.
+    typedef struct _adapterInfo
+    {
+        bool vendorIDValid;
+        bool productIDValid;
+        bool revisionValid;
+        uint8_t padd[5];
+        //These may change sizes if we encounter other interfaces that report these are larger than uint16_t's
+        uint16_t vendorID;
+        uint16_t productID;
+        uint16_t revision;
+        uint16_t reserved;
+#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    }adapterInfo;
+#pragma pack(pop)
+#else
+    }__attribute__((packed, aligned(1))) bridgeInfo;
+#endif
 
 
     typedef enum _eATASynchronousDMAMode
@@ -883,6 +903,7 @@ extern "C"
         }lastNVMeResult;
         //TODO: a union or something so that we don't need to keep adding more bytes for drive types that won't use the ATA stuff or NVMe stuff in this struct.
         bridgeInfo      bridge_info;
+        adapterInfo     adapter_info;
         ataOptions      ata_Options;
         uint64_t        lastCommandTimeNanoSeconds;//The time the last command took in nanoseconds
         softwareSATFlags softSATFlags;//This is used by the software SAT translation layer. DO NOT Update this directly. This should only be updated by the lower layers of opensea-transport.

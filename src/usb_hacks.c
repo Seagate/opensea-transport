@@ -208,11 +208,11 @@ bool set_ATA_Passthrough_Type_By_PID_and_VID(tDevice *device)
     if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
     {
         //Most USB bridges are SAT so they'll probably fall into the default cases and issue an identify command for SAT
-        switch (device->drive_info.bridge_info.vendorID)
+        switch (device->drive_info.adapter_info.vendorID)
         {
         case evVendorSeagate:
         case evVendorUSeagate:
-            switch (device->drive_info.bridge_info.productID)
+            switch (device->drive_info.adapter_info.productID)
             {
             case 0x0501://rev 0002
             case 0x0503:
@@ -232,7 +232,7 @@ bool set_ATA_Passthrough_Type_By_PID_and_VID(tDevice *device)
             }
             break;
         case evVendorOxford:
-            switch (device->drive_info.bridge_info.productID)
+            switch (device->drive_info.adapter_info.productID)
             {
             case 0x0008:
                 device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_SAT;
@@ -243,7 +243,7 @@ bool set_ATA_Passthrough_Type_By_PID_and_VID(tDevice *device)
             }
             break;
         case evVendorJMicron:
-            switch (device->drive_info.bridge_info.productID)
+            switch (device->drive_info.adapter_info.productID)
             {
             case 0x2339://MiniD2
                 device->drive_info.ata_Options.passthroughType = ATA_PASSTHROUGH_SAT;
@@ -255,21 +255,21 @@ bool set_ATA_Passthrough_Type_By_PID_and_VID(tDevice *device)
             }
             break;
         case evVendorDell:
-            switch (device->drive_info.bridge_info.productID)
+            switch (device->drive_info.adapter_info.productID)
             {
             default: //unknown
                 break;
             }
             break;
         case evVendorSamsung:
-            switch (device->drive_info.bridge_info.productID)
+            switch (device->drive_info.adapter_info.productID)
             {
             default: //unknown
                 break;
             }
             break;
         case 0x090C://Silicon Motion
-            switch (device->drive_info.bridge_info.productID)
+            switch (device->drive_info.adapter_info.productID)
             {
             case 0x1000://Flash Drive - Rev1100
                 //Don't set a passthrough type! This is a USB flash memory, that responds to one of the legacy command requests and it will break it!
@@ -282,7 +282,7 @@ bool set_ATA_Passthrough_Type_By_PID_and_VID(tDevice *device)
             }
             break;
         case 0x058F://Alcor Micro Corp
-            switch (device->drive_info.bridge_info.productID)
+            switch (device->drive_info.adapter_info.productID)
             {
             case 0x1234://flash drive
             case 0x6387://flash drive - Rev 0103
@@ -298,7 +298,7 @@ bool set_ATA_Passthrough_Type_By_PID_and_VID(tDevice *device)
             }
             break;
         case 0x48D://Integrated Technology Express, Inc.
-            switch (device->drive_info.bridge_info.productID)
+            switch (device->drive_info.adapter_info.productID)
             {
             case 0x1172://flash drive
             case 0x1176://flash drive - rev 0100
@@ -323,10 +323,10 @@ bool bridge_Does_Report_Unit_Serial_Number(tDevice *device)
     bool checkInqData = true;
     //Add bridge product & vendor IDs to this switch statement.
     //ALSO add comparing for reported inquiry data as well to catch the same device on a system where we don't have this low-level USB HID information
-    switch (device->drive_info.bridge_info.vendorID)
+    switch (device->drive_info.adapter_info.vendorID)
     {
     case evVendorUSeagate:
-        switch (device->drive_info.bridge_info.productID)
+        switch (device->drive_info.adapter_info.productID)
         {
         case 0x2700:
             unitSN = true;
@@ -1072,7 +1072,7 @@ bool sct_With_SMART_Commands(tDevice *device)
     {
         bool setSupported = false;
         //TODO: add in setting via VID/PID
-        switch (device->drive_info.bridge_info.vendorID)
+        switch (device->drive_info.adapter_info.vendorID)
         {
         default:
             break;
@@ -1096,7 +1096,7 @@ bool supports_ATA_Return_SMART_Status_Command(tDevice *device)
     {
         bool setSupported = false;
         //TODO: add in setting via VID/PID
-        switch (device->drive_info.bridge_info.vendorID)
+        switch (device->drive_info.adapter_info.vendorID)
         {
         default:
             break;

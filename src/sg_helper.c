@@ -274,10 +274,11 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             temp = fopen(usbPath, "r");
                             if (temp)
                             {
-                                fscanf(temp, "%" SCNx16, &device->drive_info.bridge_info.vendorID);
+                                fscanf(temp, "%" SCNx16, &device->drive_info.adapter_info.vendorID);
                                 fclose(temp);
                                 temp = NULL;
-                                //printf("Got vendor ID as %" PRIX16 "h\n", device->drive_info.bridge_info.vendorID);
+                                device->drive_info.adapter_info.vendorIDValid = true;
+                                //printf("Got vendor ID as %" PRIX16 "h\n", device->drive_info.adapter_info.vendorID);
                             }
                             usbPath = dirname(usbPath);//remove idVendor from the end
                             //printf("full USB Path = %s\n", usbPath);
@@ -286,10 +287,11 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             temp = fopen(usbPath, "r");
                             if (temp)
                             {
-                                fscanf(temp, "%" SCNx16, &device->drive_info.bridge_info.productID);
+                                fscanf(temp, "%" SCNx16, &device->drive_info.adapter_info.productID);
                                 fclose(temp);
                                 temp = NULL;
-                                //printf("Got product ID as %" PRIX16 "h\n", device->drive_info.bridge_info.productID);
+                                device->drive_info.adapter_info.productIDValid = true;
+                                //printf("Got product ID as %" PRIX16 "h\n", device->drive_info.adapter_info.productID);
                             }
                             //TODO: Store revision data? This seems to be in the bcdDevice file.
                         }

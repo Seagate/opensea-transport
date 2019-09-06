@@ -622,7 +622,7 @@ bool is_Seagate(tDevice *device, bool USBchildDrive)
 
     //This check should work well enough, but we do support checking the IEEE OUI as well now. It must be set in the WWN correctly with the NAA field set to 5h or 6h - TJE
     if ((device->drive_info.interface_type == NVME_INTERFACE) &&
-        (device->drive_info.bridge_info.vendorID == SEAGATE_VENDOR_ID))
+        (device->drive_info.adapter_info.vendorID == SEAGATE_VENDOR_ID))
     {
         return true;
     }

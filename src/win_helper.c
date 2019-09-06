@@ -22,6 +22,9 @@
 #include <tchar.h>
 //NOTE: ARM requires 10.0.16299.0 API to get this library!
 #include <cfgmgr32.h>               // added for forced PnP rescan
+#include <initguid.h>
+#include <devpropdef.h>
+#include <devpkey.h>
 #include <winbase.h>
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 #include <ntddstor.h>
@@ -411,12 +414,43 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                             //here is where we need to parse the USB VID/PID or TODO: PCI Vendor, Product, and Revision numbers
                                                             if (_tcsncmp(TEXT("USB"), parentBuffer, _tcsclen(TEXT("USB"))) == 0)
                                                             {
-                                                                int scannedVals =_sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%" SCNx16 "&PID_%" SCNx16 "\\%*s"), &device->drive_info.bridge_info.vendorID, &device->drive_info.bridge_info.productID);
+                                                                ULONG propertyBufLen = 0;
+                                                                DEVPROPTYPE propertyType = 0;
+                                                                int scannedVals =_sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%" SCNx16 "&PID_%" SCNx16 "\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
+                                                                device->drive_info.adapter_info.vendorIDValid = true;
+                                                                device->drive_info.adapter_info.productIDValid = true;
                                                                 if (scannedVals < 2)
                                                                 {
 #if (_DEBUG)
                                                                     printf("Could not scan all values. Scanned %d values\n", scannedVals);
 #endif
+                                                                }
+                                                                //unfortunately, this device ID doesn't have a revision in it for USB.
+                                                                //We can do this other property request to read it, but it's wide characters only. No TCHARs allowed.
+                                                                cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_HardwareIds, &propertyType, NULL, &propertyBufLen, 0);
+                                                                if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
+                                                                {
+                                                                    PBYTE propertyBuf = (PBYTE)calloc(propertyBufLen + 1, sizeof(BYTE));
+                                                                    if (propertyBuf)
+                                                                    {
+                                                                        propertyBufLen += 1;
+                                                                        if (CR_SUCCESS == CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_HardwareIds, &propertyType, propertyBuf, &propertyBufLen, 0))
+                                                                        {
+                                                                            //multiple strings can be returned.
+                                                                            for (LPWSTR property = (LPWSTR)propertyBuf; *property; property += wcslen(property) + 1)
+                                                                            {
+                                                                                LPWSTR revisionStr = wcsstr(property, L"REV_");
+                                                                                if (revisionStr)
+                                                                                {
+                                                                                    if (1 == swscanf(revisionStr, L"REV_%hx", &device->drive_info.adapter_info.revision))
+                                                                                    {
+                                                                                        device->drive_info.adapter_info.revisionValid = true;
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    safe_Free(propertyBuf);
                                                                 }
                                                             }
                                                             //ELSE handle PCI for scsi/sata attachments. Also add other interfaces as necessary.
