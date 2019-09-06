@@ -292,18 +292,25 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
         //First, reduce the list to something that seems like it is the drive we are looking for...we could have more than 1 match, but we're filtering out all the extras that definitely aren't the correct device.
         if (ret != MEMORY_FAILURE && cmRet == CR_SUCCESS && deviceIdListLen > 0)
         {
+            bool foundMatch = false;
             //Now we have a list of device IDs.
             //Each device ID is structured with a EmumeratorName\Disk&Ven_<vendor ID>&Prod_<Product ID>&Rev_<Revision number>\<some random numbers and characters>
             //Since we have a device descriptor, we have the vendor ID, product ID, and revision number, so we can match those.
+
+            //NOTE: String matching is only active for USB due to this being formatted differently depending on the interface.
+            //      The USB string matching works, and it may have some success with other matching, but there are issues (below)
+            //      NVMe devices, or SATA on some RAID drivers format the handle differently and more work needs to be done to clean this up and make it more intelligent for these cases.
+            //      The match string code helps reduce opening a bunch of other handles, but it isn't entirely necessary. The code to get these IDs works otherwise. - TJE
+
+            bool performStringMatch = false;
             ULONG matchStringLen = 76 * sizeof(TCHAR);// 19 bytes for format + 8 for vendor id + 40 for product ID + 8 for revision; add 1 for NULL
-            TCHAR *matchString = (TCHAR*)calloc(matchStringLen, sizeof(TCHAR));
+            TCHAR *usbMatchString = (TCHAR*)calloc(matchStringLen, sizeof(TCHAR));
             TCHAR tvendorID[9 * sizeof(TCHAR)] = { 0 };
             TCHAR tproductID[41 * sizeof(TCHAR)] = { 0 };
             TCHAR trevisionNum[9 * sizeof(TCHAR)] = { 0 };
             char vendorID[9] = { 0 };
             char productID[41] = { 0 };
             char revisionNum[9] = { 0 };
-            bool foundMatch = false;
             if (deviceDescriptor->VendorIdOffset > 0)
             {
                 strcpy(vendorID, &deviceDescriptor->RawDeviceProperties[deviceDescriptor->VendorIdOffset - offsetof(STORAGE_DEVICE_DESCRIPTOR, RawDeviceProperties)]);
@@ -327,15 +334,15 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
             size_t convertCount = 0;
             if (deviceDescriptor->VendorIdOffset > 0)
             {
-                mbstowcs_s(&convertCount, tvendorID, 9 * sizeof(TCHAR), vendorID, 8);
+                mbstowcs_s(&convertCount, tvendorID, 9 * sizeof(TCHAR) / 2, vendorID, 8);
             }
             if (deviceDescriptor->ProductIdOffset > 0)
             {
-                mbstowcs_s(&convertCount, tproductID, 41 * sizeof(TCHAR), productID, 40);
+                mbstowcs_s(&convertCount, tproductID, 41 * sizeof(TCHAR) / 2, productID, 16);
             }
             if (deviceDescriptor->ProductRevisionOffset > 0)
             {
-                mbstowcs_s(&convertCount, trevisionNum, 9 * sizeof(TCHAR), revisionNum, 8);
+                mbstowcs_s(&convertCount, trevisionNum, 9 * sizeof(TCHAR) / 2, revisionNum, 8);
             }
 #else
             if (deviceDescriptor->VendorIdOffset > 0)
@@ -344,21 +351,36 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
             }
             if (deviceDescriptor->ProductIdOffset > 0)
             {
-                strcpy_s(tproductID, 41 * sizeof(TCHAR), productID);
+                strncpy_s(tproductID, 41 * sizeof(TCHAR), productID, 16);
             }
             if (deviceDescriptor->ProductRevisionOffset > 0)
             {
                 strcpy_s(trevisionNum, 9 * sizeof(TCHAR), revisionNum);
             }
 #endif
-            _stprintf_s(matchString, matchStringLen, TEXT("Disk&Ven_%s&Prod_%s&Rev_%s"), tvendorID, tproductID, trevisionNum);
-            _tcsupr(matchString);
+            //USBSTOR device IDs use vendor, product, and revision. (and USB attached device)
+            //SCSI device IDs only use vendor and product (SAS, SATA, NVMe devices)
+            //NOTE: NVMe and SATA will not match trying to format a string like this due to differences in reporting based on driver and interface...matching will only be done for USB for now.
+            //
+            _stprintf_s(usbMatchString, matchStringLen, TEXT("Disk&Ven_%s&Prod_%s&Rev_%s"), tvendorID, tproductID, trevisionNum);
+            _tcsupr(usbMatchString);
+
+            if (deviceDescriptor->BusType == BusTypeUsb)
+            {
+                performStringMatch = true;
+            }
+
             //loop through the device IDs and see if we find anything that matches.
             for (LPTSTR deviceID = listBuffer; *deviceID && !foundMatch; deviceID += _tcslen(deviceID) + 1)
             {
                 //convert the deviceID to uppercase to make matching easier
+                bool checkDevice = true;//default to true for compatibility unless we have a formatted string to use to reduce the times we go through this loop and all the other work.
                 _tcsupr(deviceID);
-                if (_tcsstr(deviceID, matchString))
+                if (performStringMatch && !_tcsstr(deviceID, usbMatchString))
+                {
+                    checkDevice = false;
+                }
+                if(checkDevice)
                 {
                     DEVINST deviceInstance = 0;
                     //if a match is found, call locate devnode. If this is not present, it will fail and we need to continue through the loop
@@ -453,7 +475,22 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                                     safe_Free(propertyBuf);
                                                                 }
                                                             }
-                                                            //ELSE handle PCI for scsi/sata attachments. Also add other interfaces as necessary.
+                                                            else if (_tcsncmp(TEXT("PCI"), parentBuffer, _tcsclen(TEXT("PCI"))) == 0)
+                                                            {
+                                                                uint32_t subsystem = 0;
+                                                                uint8_t revision = 0;
+                                                                int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("PCI\\VEN_%" SCNx16 "&DEV_%" SCNx16 "&SUBSYS_%" SCNx32 "&REV_%" SCNx8 "\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
+                                                                device->drive_info.adapter_info.vendorIDValid = true;
+                                                                device->drive_info.adapter_info.productIDValid = true;
+                                                                device->drive_info.adapter_info.revision = revision;
+                                                                device->drive_info.adapter_info.revisionValid = true;
+                                                                if (scannedVals < 4)
+                                                                {
+#if (_DEBUG)
+                                                                    printf("Could not scan all values. Scanned %d values\n", scannedVals);
+#endif
+                                                                }
+                                                            }
                                                         }
                                                         safe_Free(parentBuffer);
                                                     }
@@ -474,7 +511,7 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                     }//else node is not available most likely...possibly not attached to the system.
                 }
             }
-            safe_Free(matchString);
+            safe_Free(usbMatchString);
             if (foundMatch)
             {
                 ret = SUCCESS;
