@@ -452,38 +452,38 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 
                         //printf("getting SCSI address\n");
                         //set the scsi address field
-                        char *scsiAddress = basename(dirname(dirname(inHandleLink)));//SCSI address should be 2nd from the end of the link
-                        if (scsiAddress)
-                        {
-                            char *token = strtok(scsiAddress, ":");
-                            uint8_t counter = 0;
-                            while (token)
-                            {
-                                switch (counter)
-                                {
-                                case 0://host
-                                    device->os_info.scsiAddress.host = (uint8_t)atoi(token);
-                                    break;
-                                case 1://bus
-                                    device->os_info.scsiAddress.channel = (uint8_t)atoi(token);
-                                    break;
-                                case 2://target
-                                    device->os_info.scsiAddress.target = (uint8_t)atoi(token);
-                                    break;
-                                case 3://lun
-                                    device->os_info.scsiAddress.lun = (uint8_t)atoi(token);
-                                    break;
-                                default:
-                                    break;
-                                }
-                                token = strtok(NULL, ":");
-                                ++counter;
-                            }
-                            if (counter >= 4)
-                            {
-                                device->os_info.scsiAddressValid = true;
-                            }
-                        }
+                        //char *scsiAddress = basename(dirname(dirname(inHandleLink)));//SCSI address should be 2nd from the end of the link
+                        //if (scsiAddress)
+                        //{
+                        //    char *token = strtok(scsiAddress, ":");
+                        //    uint8_t counter = 0;
+                        //    while (token)
+                        //    {
+                        //        switch (counter)
+                        //        {
+                        //        case 0://host
+                        //            device->os_info.scsiAddress.host = (uint8_t)atoi(token);
+                        //            break;
+                        //        case 1://bus
+                        //            device->os_info.scsiAddress.channel = (uint8_t)atoi(token);
+                        //            break;
+                        //        case 2://target
+                        //            device->os_info.scsiAddress.target = (uint8_t)atoi(token);
+                        //            break;
+                        //        case 3://lun
+                        //            device->os_info.scsiAddress.lun = (uint8_t)atoi(token);
+                        //            break;
+                        //        default:
+                        //            break;
+                        //        }
+                        //        token = strtok(NULL, ":");
+                        //        ++counter;
+                        //    }
+                        //    if (counter >= 4)
+                        //    {
+                        //        device->os_info.scsiAddressValid = true;
+                        //    }
+                        //}
                         //printf("attempting to map the handle\n");
                         //Lastly, call the mapping function to get the matching block handle and check what we got to set ATAPI, TAPE or leave as-is. Setting these is necessary to prevent talking to ATAPI as HDD due to overlapping A1h opcode
                         char *block = NULL;
@@ -856,6 +856,20 @@ int get_Device(const char *filename, tDevice *device)
         }
         else //not NVMe
         {
+#if defined (_DEBUG)
+            printf("Getting SG SCSI address\n");
+#endif
+            sg_scsi_id_t hctlInfo;
+            memset(&hctlInfo, 0, sizeof(sg_scsi_id_t));
+
+            if (ioctl(device->os_info.fd, SG_GET_SCSI_ID, &hctlInfo))
+            {
+                device->os_info.scsiAddress.host = (uint8_t)hctlInfo.host_no;
+                device->os_info.scsiAddress.channel = (uint8_t)hctlInfo.channel;
+                device->os_info.scsiAddress.target = (uint8_t)hctlInfo.scsi_id;
+                device->os_info.scsiAddress.lun = (uint8_t)hctlInfo.lun;
+                //also reported are per lun and per device Q-depth which might be nice to store.
+            }
 
             #if defined (_DEBUG)
             printf("Getting SG driver version\n");
