@@ -1189,30 +1189,70 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
         get_Sense_Key_ASC_ASCQ_FRU(io_hdr.sbp, io_hdr.mx_sb_len, &scsiIoCtx->returnStatus.senseKey, &scsiIoCtx->returnStatus.asc, &scsiIoCtx->returnStatus.ascq, &scsiIoCtx->returnStatus.fru);
     }
 
-    // \todo shouldn't this be done at a higher level?
-    if (((io_hdr.info & SG_INFO_OK_MASK) != SG_INFO_OK) || // check info
-        (io_hdr.masked_status != 0x00) ||                  // check status(0 if ioctl success)
-        (io_hdr.msg_status != 0x00) ||                     // check message status
-        (io_hdr.host_status != 0x00) ||                    // check host status
-        (io_hdr.driver_status != 0x00))                   // check driver status
+    if ((io_hdr.info & SG_INFO_OK_MASK) != SG_INFO_OK)
     {
-        if (scsiIoCtx->verbose)
+        //something has gone wrong. Sense data may or may not have been returned.
+        //Check the masked status, host status and driver status to see what happened.
+        if (io_hdr.masked_status != 0) //SAM_STAT_GOOD???
         {
-            printf(" info 0x%x\n maskedStatus 0x%x\n msg_status 0x%x\n host_status 0x%x\n driver_status 0x%x\n",\
-                       io_hdr.info, io_hdr.masked_status, io_hdr.msg_status, io_hdr.host_status,\
-                       io_hdr.driver_status);
-
-
-            decipher_maskedStatus(io_hdr.masked_status);
-
-            //if (io_hdr.driver_status & SG_ERR_DRIVER_SENSE)
-            if ((io_hdr.driver_status & 0x08) && (io_hdr.sb_len_wr))
+            //TODO: Treat some of these are errors? Or handle differently?
+            //TODO: Verbose mode print
+            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
             {
-                print_Data_Buffer( (uint8_t *)io_hdr.sbp, io_hdr.sb_len_wr, true );
+                printf("SG Masked Status = %02" PRIX8 "h\n", io_hdr.masked_status);
+            }
+            if (io_hdr.sb_len_wr == 0)
+            {
+                //No sense data back. We need to set an error since the layers above are going to look for sense data and we don't have any.
+                ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        ret = OS_PASSTHROUGH_FAILURE;
+        if (io_hdr.host_status != 0)
+        {
+            //TODO: translate and printout host status
+            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+            {
+                printf("SG Host Status = %02" PRIX8 "h\n", io_hdr.host_status);
+            }
+            ret = OS_PASSTHROUGH_FAILURE;
+        }
+        if (io_hdr.driver_status != 0)
+        {
+            //TODO: translate and printout driver status
+            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+            {
+                printf("SG Driver Status = %02" PRIX8 "h\n", io_hdr.driver_status);
+            }
+            ret = OS_PASSTHROUGH_FAILURE;
+        }
+
     }
+
+    //Old code below. ret = OS_PAssthrough_FAILURE for all of these may be too aggresive, which is why it's in progress of being replaced above.
+    //// \todo shouldn't this be done at a higher level?
+    //if (((io_hdr.info & SG_INFO_OK_MASK) != SG_INFO_OK) || // check info
+    //    (io_hdr.masked_status != 0x00) ||                  // check status(0 if ioctl success)
+    //    (io_hdr.msg_status != 0x00) ||                     // check message status
+    //    (io_hdr.host_status != 0x00) ||                    // check host status
+    //    (io_hdr.driver_status != 0x00))                   // check driver status
+    //{
+    //    if (scsiIoCtx->verbose)
+    //    {
+    //        printf(" info 0x%x\n maskedStatus 0x%x\n msg_status 0x%x\n host_status 0x%x\n driver_status 0x%x\n",\
+    //                   io_hdr.info, io_hdr.masked_status, io_hdr.msg_status, io_hdr.host_status,\
+    //                   io_hdr.driver_status);
+
+
+    //        decipher_maskedStatus(io_hdr.masked_status);
+
+    //        //if (io_hdr.driver_status & SG_ERR_DRIVER_SENSE)
+    //        if ((io_hdr.driver_status & 0x08) && (io_hdr.sb_len_wr))
+    //        {
+    //            print_Data_Buffer( (uint8_t *)io_hdr.sbp, io_hdr.sb_len_wr, true );
+    //        }
+    //    }
+    //    ret = OS_PASSTHROUGH_FAILURE;
+    //}
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 #ifdef _DEBUG
     printf("<--%s (%d)\n",__FUNCTION__, ret);
