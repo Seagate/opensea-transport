@@ -9058,6 +9058,7 @@ int fill_In_Device_Info(tDevice *device)
             {
                 ret = fill_In_ATA_Drive_Info(device);
             }
+            safe_Free_aligned(inq_buf);
             return ret;
         }
         
@@ -9071,6 +9072,7 @@ int fill_In_Device_Info(tDevice *device)
                 if (!unitSerialNumber)
                 {
                     perror("Error allocating memory to read the unit serial number");
+                    safe_Free_aligned(inq_buf);
                     return MEMORY_FAILURE;
                 }
                 if (SUCCESS == scsi_Inquiry(device, unitSerialNumber, unitSerialNumberPageLength, UNIT_SERIAL_NUMBER, true, false))
@@ -9108,6 +9110,7 @@ int fill_In_Device_Info(tDevice *device)
                 if (!deviceIdentification)
                 {
                     perror("Error allocating memory to read device identification VPD page");
+                    safe_Free_aligned(inq_buf);
                     return MEMORY_FAILURE;
                 }
                 if (SUCCESS == scsi_Inquiry(device, deviceIdentification, INQ_RETURN_DATA_LENGTH, DEVICE_IDENTIFICATION, true, false))
@@ -9126,6 +9129,7 @@ int fill_In_Device_Info(tDevice *device)
             {
                 check_SAT_Compliance_And_Set_Drive_Type(device);
             }
+            safe_Free_aligned(inq_buf);
             return ret;
         }
 
@@ -9204,12 +9208,13 @@ int fill_In_Device_Info(tDevice *device)
             if (!supportedVPDPages)
             {
                 perror("Error allocating memory for supported VPD pages!\n");
+                safe_Free_aligned(inq_buf);
                 return MEMORY_FAILURE;
             }
             memcpy(supportedVPDPages, &inq_buf[4], supportedVPDPagesLength);
             //now loop through and read pages as we need to, only reading the pages that we care about
             uint16_t vpdIter = 0;
-            for (vpdIter = 0; vpdIter < supportedVPDPagesLength; vpdIter++)
+            for (vpdIter = 0; vpdIter < supportedVPDPagesLength && vpdIter < INQ_RETURN_DATA_LENGTH; vpdIter++)
             {
                 switch (supportedVPDPages[vpdIter])
                 {
