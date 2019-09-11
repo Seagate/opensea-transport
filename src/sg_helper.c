@@ -1211,6 +1211,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
                 print_Data_Buffer( (uint8_t *)io_hdr.sbp, io_hdr.sb_len_wr, true );
             }
         }
+        ret = OS_PASSTHROUGH_FAILURE;
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 #ifdef _DEBUG
