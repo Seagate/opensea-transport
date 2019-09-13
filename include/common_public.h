@@ -755,7 +755,7 @@ extern "C"
     }adapterInfo;
 #pragma pack(pop)
 #else
-    }__attribute__((packed, aligned(1))) bridgeInfo;
+    }__attribute__((packed, aligned(1))) adapterInfo;
 #endif
 
 
