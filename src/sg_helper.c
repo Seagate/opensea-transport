@@ -844,19 +844,21 @@ int get_Device(const char *filename, tDevice *device)
         }
         else //not NVMe
         {
-#if defined (_DEBUG)
+            #if defined (_DEBUG)
             printf("Getting SG SCSI address\n");
-#endif
+            #endif
             struct sg_scsi_id hctlInfo;
             memset(&hctlInfo, 0, sizeof(struct sg_scsi_id));
-
-            if (ioctl(device->os_info.fd, SG_GET_SCSI_ID, &hctlInfo))
+            int getHctl = ioctl(device->os_info.fd, SG_GET_SCSI_ID, &hctlInfo);
+            if (getHctl == 0 && errno == 0)//when this succeeds, both of these will be zeros
             {
+                //printf("Got hctlInfo\n");
                 device->os_info.scsiAddress.host = (uint8_t)hctlInfo.host_no;
                 device->os_info.scsiAddress.channel = (uint8_t)hctlInfo.channel;
                 device->os_info.scsiAddress.target = (uint8_t)hctlInfo.scsi_id;
                 device->os_info.scsiAddress.lun = (uint8_t)hctlInfo.lun;
                 //also reported are per lun and per device Q-depth which might be nice to store.
+                //printf("H:C:T:L = %" PRIu8 ":%" PRIu8 ":%" PRIu8 ":%" PRIu8 "\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel, device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
             }
 
             #if defined (_DEBUG)
