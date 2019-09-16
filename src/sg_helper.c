@@ -36,18 +36,6 @@
 
 extern bool validate_Device_Struct(versionBlock);
 
-void decipher_maskedStatus( unsigned char maskedStatus )
-{
-    if (CHECK_CONDITION == maskedStatus)
-        printf("CHECK CONDITION\n");
-    else if (BUSY == maskedStatus)
-        printf("BUSY\n");
-    else if (COMMAND_TERMINATED == maskedStatus)
-        printf("COMMAND TERMINATED\n");
-    else if (QUEUE_FULL == maskedStatus)
-        printf("QUEUE FULL\n");
-}
-
 // Local helper functions for debugging
 void print_io_hdr( sg_io_hdr_t *pIo )
 {
@@ -859,8 +847,8 @@ int get_Device(const char *filename, tDevice *device)
 #if defined (_DEBUG)
             printf("Getting SG SCSI address\n");
 #endif
-            sg_scsi_id_t hctlInfo;
-            memset(&hctlInfo, 0, sizeof(sg_scsi_id_t));
+            struct sg_scsi_id hctlInfo;
+            memset(&hctlInfo, 0, sizeof(struct sg_scsi_id));
 
             if (ioctl(device->os_info.fd, SG_GET_SCSI_ID, &hctlInfo))
             {
@@ -1078,7 +1066,7 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
 int send_sg_io( ScsiIoCtx *scsiIoCtx )
 {
     sg_io_hdr_t io_hdr;
-    uint8_t     sense_buffer[SPC3_SENSE_LEN] = { 0 };
+    uint8_t     *localSenseBuffer = NULL;
     int         ret          = SUCCESS;
     seatimer_t  commandTimer;
 #ifdef _DEBUG
@@ -1088,7 +1076,6 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
 
     memset(&commandTimer,0,sizeof(seatimer_t));
     //int idx = 0;
-    memset(sense_buffer, 0, SPC3_SENSE_LEN);
     // Start with zapping the io_hdr
     memset(&io_hdr, 0, sizeof(sg_io_hdr_t));
 
@@ -1108,8 +1095,13 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     }
     else
     {
-        io_hdr.mx_sb_len = sizeof(sense_buffer);
-        io_hdr.sbp = (unsigned char *)&sense_buffer;
+        localSenseBuffer = (uint8_t *)calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment);
+        if (!localSenseBuffer)
+        {
+            return MEMORY_FAILURE;
+        }
+        io_hdr.mx_sb_len = SPC3_SENSE_LEN;
+        io_hdr.sbp = localSenseBuffer;
     }
 
     switch (scsiIoCtx->direction)
@@ -1137,6 +1129,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
         {
             printf("%s Didn't understand direction\n", __FUNCTION__);
         }
+        safe_Free_aligned(localSenseBuffer);
         return BAD_PARAMETER;
     }
 
@@ -1151,10 +1144,14 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
         {
             io_hdr.timeout *= 1000;//convert to milliseconds
         }
+        else
+        {
+            io_hdr.timeout = UINT32_MAX;//no timeout or maximum timeout
+        }
     }
     else
     {
-        io_hdr.timeout = 15 * 1000;
+        io_hdr.timeout = 15 * 1000;//default to 15 second timeout
     }
     
     // \revisit: should this be FF or something invalid than 0?
@@ -1189,74 +1186,208 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
         get_Sense_Key_ASC_ASCQ_FRU(io_hdr.sbp, io_hdr.mx_sb_len, &scsiIoCtx->returnStatus.senseKey, &scsiIoCtx->returnStatus.asc, &scsiIoCtx->returnStatus.ascq, &scsiIoCtx->returnStatus.fru);
     }
 
+    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+    {
+        switch(io_hdr.info & SG_INFO_DIRECT_IO_MASK)
+        {
+        case SG_INFO_INDIRECT_IO:
+            printf("SG IO Issued as Indirect IO\n");
+            break;
+        case SG_INFO_DIRECT_IO:
+            printf("SG IO Issued as Direct IO\n");
+            break;
+        case SG_INFO_MIXED_IO:
+            printf("SG IO Issued as Mixed IO\n");
+            break;
+        default:
+            printf("SG IO Issued as Unknown IO type\n");
+            break;
+        }
+    }
+
     if ((io_hdr.info & SG_INFO_OK_MASK) != SG_INFO_OK)
     {
         //something has gone wrong. Sense data may or may not have been returned.
         //Check the masked status, host status and driver status to see what happened.
         if (io_hdr.masked_status != 0) //SAM_STAT_GOOD???
         {
-            //TODO: Treat some of these are errors? Or handle differently?
-            //TODO: Verbose mode print
             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
             {
-                printf("SG Masked Status = %02" PRIX8 "h\n", io_hdr.masked_status);
+                printf("SG Masked Status = %02" PRIX8 "h", io_hdr.masked_status);
+                switch (io_hdr.masked_status)
+                {
+                case GOOD:
+                    printf(" - Good\n");
+                    break;
+                case CHECK_CONDITION:
+                    printf(" - Check Condition\n");
+                    break;
+                case CONDITION_GOOD:
+                    printf(" - Condition Good\n");
+                    break;
+                case BUSY:
+                    printf(" - Busy\n");
+                    break;
+                case INTERMEDIATE_GOOD:
+                    printf(" - Intermediate Good\n");
+                    break;
+                case INTERMEDIATE_C_GOOD:
+                    printf(" - Intermediate C Good\n");
+                    break;
+                case RESERVATION_CONFLICT:
+                    printf(" - Reservation Conflict\n");
+                    break;
+                case COMMAND_TERMINATED:
+                    printf(" - Command Terminated\n");
+                    break;
+                case QUEUE_FULL:
+                    printf(" - Queue Full\n");
+                    break;
+                default:
+                    printf(" - Unknown Masked Status\n");
+                    break;
+                }
             }
             if (io_hdr.sb_len_wr == 0)
             {
+                printf("\t(Masked Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
                 //No sense data back. We need to set an error since the layers above are going to look for sense data and we don't have any.
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
         if (io_hdr.host_status != 0)
         {
-            //TODO: translate and printout host status
             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
             {
-                printf("SG Host Status = %02" PRIX8 "h\n", io_hdr.host_status);
+                printf("SG Host Status = %02" PRIX16 "h", io_hdr.host_status);
+                switch (io_hdr.host_status)
+                {
+                case OPENSEA_SG_ERR_DID_OK:
+                    printf(" - No Error\n");
+                    break;
+                case OPENSEA_SG_ERR_DID_NO_CONNECT:
+                    printf(" - Could Not Connect\n");
+                    break;
+                case OPENSEA_SG_ERR_DID_BUS_BUSY:
+                    printf(" - Bus Busy\n");
+                    break;
+                case OPENSEA_SG_ERR_DID_TIME_OUT:
+                    printf(" - Timed Out\n");
+                    break;
+                case OPENSEA_SG_ERR_DID_BAD_TARGET:
+                    printf(" - Bad Target Device\n");
+                    break;
+                case OPENSEA_SG_ERR_DID_ABORT:
+                    printf(" - Abort\n");
+                    break;
+                case OPENSEA_SG_ERR_DID_PARITY:
+                    printf(" - Parity Error\n");
+                    break;
+                case OPENSEA_SG_ERR_DID_ERROR:
+                    printf(" - Internal Adapter Error\n");
+                    break;
+                case OPENSEA_SG_ERR_DID_RESET:
+                    printf(" - SCSI Bus/Device Has Been Reset\n");
+                    break;
+                case OPENSEA_SG_ERR_DID_BAD_INTR:
+                    printf(" - Bad Interrupt\n");
+                    break;
+                case OPENSEA_SG_ERR_DID_PASSTHROUGH:
+                    printf(" - Forced Passthrough Past Mid-Layer\n");
+                    break;
+                case OPENSEA_SG_ERR_DID_SOFT_ERROR:
+                    printf(" - Soft Error, Retry?\n");
+                    break;
+                default:
+                    printf(" - Unknown Host Status\n");
+                    break;
+                }
             }
-            ret = OS_PASSTHROUGH_FAILURE;
+            if (io_hdr.sb_len_wr == 0)//Doing this because some drivers may set an error even if the command otherwise went through and sense data was available.
+            {
+                printf("\t(Host Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                ret = OS_PASSTHROUGH_FAILURE;
+            }
         }
         if (io_hdr.driver_status != 0)
         {
-            //TODO: translate and printout driver status
             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
             {
-                printf("SG Driver Status = %02" PRIX8 "h\n", io_hdr.driver_status);
+                printf("SG Driver Status = %02" PRIX16 "h", io_hdr.driver_status);
+                switch (io_hdr.driver_status & OPENSEA_SG_ERR_DRIVER_MASK)
+                {
+                case OPENSEA_SG_ERR_DRIVER_OK:
+                    printf(" - Driver OK");
+                    break;
+                case OPENSEA_SG_ERR_DRIVER_BUSY:
+                    printf(" - Driver Busy");
+                    break;
+                case OPENSEA_SG_ERR_DRIVER_SOFT:
+                    printf(" - Driver Soft Error");
+                    break;
+                case OPENSEA_SG_ERR_DRIVER_MEDIA:
+                    printf(" - Driver Media Error");
+                    break;
+                case OPENSEA_SG_ERR_DRIVER_ERROR:
+                    printf(" - Driver Error");
+                    break;
+                case OPENSEA_SG_ERR_DRIVER_INVALID:
+                    printf(" - Driver Invalid");
+                    break;
+                case OPENSEA_SG_ERR_DRIVER_TIMEOUT:
+                    printf(" - Driver Timeout");
+                    break;
+                case OPENSEA_SG_ERR_DRIVER_HARD:
+                    printf(" - Driver Hard Error");
+                    break;
+                case OPENSEA_SG_ERR_DRIVER_SENSE:
+                    printf(" - Driver Sense Data Available");
+                    break;
+                default:
+                    printf(" - Unknown Driver Error");
+                    break;
+                }
+                //now error suggestions
+                switch (io_hdr.driver_status & OPENSEA_SG_ERR_SUGGEST_MASK)
+                {
+                case OPENSEA_SG_ERR_SUGGEST_NONE:
+                    break;//no suggestions, nothing necessary to print
+                case OPENSEA_SG_ERR_SUGGEST_RETRY:
+                    printf(" - Suggest Retry");
+                    break;
+                case OPENSEA_SG_ERR_SUGGEST_ABORT:
+                    printf(" - Suggest Abort");
+                    break;
+                case OPENSEA_SG_ERR_SUGGEST_REMAP:
+                    printf(" - Suggest Remap");
+                    break;
+                case OPENSEA_SG_ERR_SUGGEST_DIE:
+                    printf(" - Suggest Die");
+                    break;
+                case OPENSEA_SG_ERR_SUGGEST_SENSE:
+                    printf(" - Suggest Sense");
+                    break;
+                default:
+                    printf(" - Unknown suggestion");
+                    break;
+                }
+                printf("\n");
             }
-            ret = OS_PASSTHROUGH_FAILURE;
+            if (io_hdr.sb_len_wr == 0)
+            {
+                printf("\t(Driver Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                //No sense data back. We need to set an error since the layers above are going to look for sense data and we don't have any.
+                ret = OS_PASSTHROUGH_FAILURE;
+            }
         }
 
     }
 
-    //Old code below. ret = OS_PAssthrough_FAILURE for all of these may be too aggresive, which is why it's in progress of being replaced above.
-    //// \todo shouldn't this be done at a higher level?
-    //if (((io_hdr.info & SG_INFO_OK_MASK) != SG_INFO_OK) || // check info
-    //    (io_hdr.masked_status != 0x00) ||                  // check status(0 if ioctl success)
-    //    (io_hdr.msg_status != 0x00) ||                     // check message status
-    //    (io_hdr.host_status != 0x00) ||                    // check host status
-    //    (io_hdr.driver_status != 0x00))                   // check driver status
-    //{
-    //    if (scsiIoCtx->verbose)
-    //    {
-    //        printf(" info 0x%x\n maskedStatus 0x%x\n msg_status 0x%x\n host_status 0x%x\n driver_status 0x%x\n",\
-    //                   io_hdr.info, io_hdr.masked_status, io_hdr.msg_status, io_hdr.host_status,\
-    //                   io_hdr.driver_status);
-
-
-    //        decipher_maskedStatus(io_hdr.masked_status);
-
-    //        //if (io_hdr.driver_status & SG_ERR_DRIVER_SENSE)
-    //        if ((io_hdr.driver_status & 0x08) && (io_hdr.sb_len_wr))
-    //        {
-    //            print_Data_Buffer( (uint8_t *)io_hdr.sbp, io_hdr.sb_len_wr, true );
-    //        }
-    //    }
-    //    ret = OS_PASSTHROUGH_FAILURE;
-    //}
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 #ifdef _DEBUG
     printf("<--%s (%d)\n",__FUNCTION__, ret);
 #endif
+    safe_Free_aligned(localSenseBuffer);
     return ret;
 }
 
