@@ -1653,9 +1653,20 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         printf("\t->TransferLength = %" PRIu32 "\n", nrp->TransferLength);
         set_Console_Colors(true, DEFAULT);
         #endif
-        start_Timer(&commandTimer);
-        nvmeIoCtx->device->os_info.last_error = Status = pPassthru->PassThru(pPassthru, nvmeIoCtx->device->os_info.address.nvme.namespaceID, nrp, NULL);
-        stop_Timer(&commandTimer);
+        if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
+        {
+            printf("Sending ADMIN with NSID = %" PRIX32 "h\n", nvmeIoCtx->cmd.adminCmd.nsid);
+            start_Timer(&commandTimer);
+            nvmeIoCtx->device->os_info.last_error = Status = pPassthru->PassThru(pPassthru, nvmeIoCtx->cmd.adminCmd.nsid, nrp, NULL);
+            stop_Timer(&commandTimer);
+            printf("\tAdmin command returned %d\n", Status);
+        }
+        else
+        {
+            start_Timer(&commandTimer);
+            nvmeIoCtx->device->os_info.last_error = Status = pPassthru->PassThru(pPassthru, nvmeIoCtx->device->os_info.address.nvme.namespaceID, nrp, NULL);
+            stop_Timer(&commandTimer);
+        }
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
         printf("NVMe Passthru command returned ");
