@@ -9920,7 +9920,11 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
             sprintf(versionString, "ACS-2");
             break;
         case 0x1765: //ACS-3
+        case 0x1766: //ACS-3 INCITS 522-2014
             sprintf(versionString, "ACS-3");
+            break;
+        case 0x1767: //ACS-4 INCITS 529-2018
+            sprintf(versionString, "ACS-4");
             break;
         default:
             sprintf(versionString, "ACS-x");

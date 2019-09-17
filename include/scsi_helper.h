@@ -437,9 +437,9 @@ extern "C"
         SUPPORTED_VPD_PAGES                             = 0x00,
         STANDARD_INQUIRY                                = 0x00,
         //01h - 7Fh - ASCII Information
+        UNIT_SERIAL_NUMBER                              = 0x80,
         IMPLEMENTED_OPERATING_DEFINITIONS               = 0x81,//Obsolete. Used to tell what can be sent with the change definition command (scsi 2 vs scsi 3, etc)
         ASCII_IMPLEMENTED_OPERATING_DEFINITION          = 0x82,//Obsolete
-        UNIT_SERIAL_NUMBER                              = 0x80,
         DEVICE_IDENTIFICATION                           = 0x83,
         SOFTWARE_INTERFACE_IDENTIFICATION               = 0x84,
         MANAGEMENT_NETWORK_ADDRESSES                    = 0x85,
@@ -454,6 +454,7 @@ extern "C"
         THIRD_PARTY_COPY                                = 0x8F,
         PROTOCOL_SPECIFIC_LU_INFO                       = 0x90,
         PROTOCOL_SPECIFIC_PORT_INFO                     = 0x91,
+        SCSI_FEATURE_SETS                               = 0x92,
         BLOCK_LIMITS                                    = 0xB0,
         BLOCK_DEVICE_CHARACTERISTICS                    = 0xB1,
         LOGICAL_BLOCK_PROVISIONING                      = 0xB2,
