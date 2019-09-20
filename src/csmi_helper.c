@@ -720,7 +720,22 @@ int send_SSP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
         //setup the IOCTL header
         ptrSSPPassthrough->IoctlHeader.HeaderLength = sizeof(IOCTL_HEADER);
         ptrSSPPassthrough->IoctlHeader.Length = (ULONG)(allocatedSize - sizeof(IOCTL_HEADER));
-        ptrSSPPassthrough->IoctlHeader.Timeout = CSMI_ALL_TIMEOUT;
+        ptrSSPPassthrough->IoctlHeader.Timeout = scsiIoCtx->timeout;
+        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+        {
+            ptrSSPPassthrough->IoctlHeader.Timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        }
+        else
+        {
+            if (scsiIoCtx->timeout != 0)
+            {
+                ptrSSPPassthrough->IoctlHeader.Timeout = scsiIoCtx->timeout;
+            }
+            else
+            {
+                ptrSSPPassthrough->IoctlHeader.Timeout = 15;
+            }
+        }
         ptrSSPPassthrough->IoctlHeader.ControlCode = CC_CSMI_SAS_SSP_PASSTHRU;
         memcpy(ptrSSPPassthrough->IoctlHeader.Signature, CSMI_SAS_SIGNATURE, sizeof(CSMI_SAS_SIGNATURE));
         //setup the parameters
@@ -913,6 +928,21 @@ int send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
         pSTPPassthrough->IoctlHeader.HeaderLength = sizeof(IOCTL_HEADER);
         pSTPPassthrough->IoctlHeader.Length = (ULONG)(allocatedSize - sizeof(IOCTL_HEADER));
         pSTPPassthrough->IoctlHeader.Timeout = scsiIoCtx->timeout;
+        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+        {
+            pSTPPassthrough->IoctlHeader.Timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        }
+        else
+        {
+            if (scsiIoCtx->timeout != 0)
+            {
+                pSTPPassthrough->IoctlHeader.Timeout = scsiIoCtx->timeout;
+            }
+            else
+            {
+                pSTPPassthrough->IoctlHeader.Timeout = 15;
+            }
+        }
         pSTPPassthrough->IoctlHeader.ControlCode = CC_CSMI_SAS_STP_PASSTHRU;
         memcpy(pSTPPassthrough->IoctlHeader.Signature, CSMI_SAS_SIGNATURE, sizeof(CSMI_SAS_SIGNATURE));
         //set up the parameters

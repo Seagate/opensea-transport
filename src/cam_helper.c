@@ -274,14 +274,38 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
         }
 
         uint32_t camTimeout = scsiIoCtx->timeout;
-        if (camTimeout == 0)
+        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
         {
-            camTimeout = 15;
+            camTimeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+            //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
+            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < 4294966)
+            {
+                camTimeout *= 1000;//convert to milliseconds
+            }
+            else
+            {
+                camTimeout = UINT32_MAX;//no timeout or maximum timeout
+            }
         }
-        //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-        if (camTimeout < 4294966)
+        else
         {
-            camTimeout *= 1000;//convert to milliseconds.
+            if (scsiIoCtx->timeout != 0)
+            {
+                camTimeout = scsiIoCtx->timeout;
+                //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
+                if (scsiIoCtx->timeout < 4294966)
+                {
+                    camTimeout *= 1000;//convert to milliseconds
+                }
+                else
+                {
+                    camTimeout = UINT32_MAX;//no timeout or maximum timeout
+                }
+            }
+            else
+            {
+                camTimeout = 15 * 1000;//default to 15 second timeout
+            }
         }
 
         cam_fill_ataio(&ccb->ataio,
@@ -515,14 +539,38 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
         csio->ccb_h.retry_count = 0; // should we change it to 1?
         csio->ccb_h.cbfcnp = NULL;
         uint32_t camTimeout = scsiIoCtx->timeout;
-        if (camTimeout == 0)
+        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
         {
-            camTimeout = 15;
+            camTimeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+            //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
+            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < 4294966)
+            {
+                camTimeout *= 1000;//convert to milliseconds
+            }
+            else
+            {
+                camTimeout = UINT32_MAX;//no timeout or maximum timeout
+            }
         }
-        //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-        if (camTimeout < 4294966)
+        else
         {
-            camTimeout *= 1000;//convert to milliseconds.
+            if (scsiIoCtx->timeout != 0)
+            {
+                camTimeout = scsiIoCtx->timeout;
+                //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
+                if (scsiIoCtx->timeout < 4294966)
+                {
+                    camTimeout *= 1000;//convert to milliseconds
+                }
+                else
+                {
+                    camTimeout = UINT32_MAX;//no timeout or maximum timeout
+                }
+            }
+            else
+            {
+                camTimeout = 15 * 1000;//default to 15 second timeout
+            }
         }
         csio->ccb_h.timeout = camTimeout;
         csio->cdb_len = scsiIoCtx->cdbLength;

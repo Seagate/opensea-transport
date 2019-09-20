@@ -1171,11 +1171,11 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     io_hdr.dxfer_len = scsiIoCtx->dataLength;
     io_hdr.dxferp = scsiIoCtx->pdata;
     io_hdr.cmdp = scsiIoCtx->cdb;
-    if (scsiIoCtx->timeout != 0)
+    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
     {
-        io_hdr.timeout = scsiIoCtx->timeout;
+        io_hdr.timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
         //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-        if (scsiIoCtx->timeout < 4294966)
+        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < 4294966)
         {
             io_hdr.timeout *= 1000;//convert to milliseconds
         }
@@ -1186,7 +1186,23 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     }
     else
     {
-        io_hdr.timeout = 15 * 1000;//default to 15 second timeout
+        if (scsiIoCtx->timeout != 0)
+        {
+            io_hdr.timeout = scsiIoCtx->timeout;
+            //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
+            if (scsiIoCtx->timeout < 4294966)
+            {
+                io_hdr.timeout *= 1000;//convert to milliseconds
+            }
+            else
+            {
+                io_hdr.timeout = UINT32_MAX;//no timeout or maximum timeout
+            }
+        }
+        else
+        {
+            io_hdr.timeout = 15 * 1000;//default to 15 second timeout
+        }
     }
     
     // \revisit: should this be FF or something invalid than 0?
