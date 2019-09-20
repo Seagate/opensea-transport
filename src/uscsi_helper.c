@@ -174,6 +174,21 @@ int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
     }
 
     uscsi_io.uscsi_timeout = scsiIoCtx->timeout;
+    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    {
+        uscsi_io.uscsi_timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+    }
+    else
+    {
+        if (scsiIoCtx->timeout != 0)
+        {
+            uscsi_io.uscsi_timeout = scsiIoCtx->timeout;
+        }
+        else
+        {
+            uscsi_io.uscsi_timeout = 15;//default to 15 second timeout
+        }
+    }
     uscsi_io.uscsi_cdb = (caddr_t)scsiIoCtx->cdb;
     uscsi_io.uscsi_cdblen = scsiIoCtx->cdbLength;
     uscsi_io.uscsi_rqbuf = (caddr_t)scsiIoCtx->psense;

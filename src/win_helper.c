@@ -1480,13 +1480,20 @@ int convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx, ptrSCSIPassTh
         ret = FAILURE;
         break;
     }
-    if (scsiIoCtx->timeout != 0)
+    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
     {
-        psptd->scsiPassThroughEXDirect.TimeOutValue = scsiIoCtx->timeout;
+        psptd->scsiPassThroughEX.TimeOutValue = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
     }
     else
     {
-        psptd->scsiPassThroughEXDirect.TimeOutValue = 15;
+        if (scsiIoCtx->timeout != 0)
+        {
+            psptd->scsiPassThroughEX.TimeOutValue = scsiIoCtx->timeout;
+        }
+        else
+        {
+            psptd->scsiPassThroughEX.TimeOutValue = 15;
+        }
     }
     psptd->scsiPassThroughEX.SenseInfoOffset = offsetof(scsiPassThroughEXIOStruct, senseBuffer);
     memcpy(psptd->scsiPassThroughEX.Cdb, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
@@ -1676,13 +1683,20 @@ int convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx, ptrSCS
         ret = FAILURE;
         break;
     }
-    if (scsiIoCtx->timeout != 0)
+    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
     {
-        psptd->scsiPassThroughEXDirect.TimeOutValue = scsiIoCtx->timeout;
+        psptd->scsiPassThroughEXDirect.TimeOutValue = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
     }
     else
     {
-        psptd->scsiPassThroughEXDirect.TimeOutValue = 15;
+        if (scsiIoCtx->timeout != 0)
+        {
+            psptd->scsiPassThroughEXDirect.TimeOutValue = scsiIoCtx->timeout;
+        }
+        else
+        {
+            psptd->scsiPassThroughEXDirect.TimeOutValue = 15;
+        }
     }
     psptd->scsiPassThroughEXDirect.SenseInfoOffset = offsetof(scsiPassThroughEXIOStruct, senseBuffer);
     memcpy(psptd->scsiPassThroughEXDirect.Cdb, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
@@ -1880,13 +1894,20 @@ int convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx, ptrSCSIPa
         ret = FAILURE;
         break;
     }
-    if (scsiIoCtx->timeout != 0)
+    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
     {
-        psptd->scsiPassthroughDirect.TimeOutValue = scsiIoCtx->timeout;
+        psptd->scsiPassthroughDirect.TimeOutValue = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
     }
     else
     {
-        psptd->scsiPassthroughDirect.TimeOutValue = 15;
+        if (scsiIoCtx->timeout != 0)
+        {
+            psptd->scsiPassthroughDirect.TimeOutValue = scsiIoCtx->timeout;
+        }
+        else
+        {
+            psptd->scsiPassthroughDirect.TimeOutValue = 15;
+        }
     }
     //Use offsetof macro to set where to place the sense data. Old code, for whatever reason, didn't always work right...see comments below-TJE
     psptd->scsiPassthroughDirect.SenseInfoOffset = offsetof(scsiPassThroughIOStruct, senseBuffer);
@@ -1932,19 +1953,26 @@ int convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(ScsiIoCtx *scsiIoCtx, 
         ret = FAILURE;
         break;
     }
-    if (scsiIoCtx->timeout != 0)
+    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
     {
-        psptd->scsiPassthroughDirect.TimeOutValue = scsiIoCtx->timeout;
+        psptd->scsiPassthrough.TimeOutValue = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
     }
     else
     {
-        psptd->scsiPassthroughDirect.TimeOutValue = 15;
+        if (scsiIoCtx->timeout != 0)
+        {
+            psptd->scsiPassthrough.TimeOutValue = scsiIoCtx->timeout;
+        }
+        else
+        {
+            psptd->scsiPassthrough.TimeOutValue = 15;
+        }
     }
     //Use offsetof macro to set where to place the sense data. Old code, for whatever reason, didn't always work right...see comments below-TJE
-    psptd->scsiPassthroughDirect.SenseInfoOffset = offsetof(scsiPassThroughIOStruct, senseBuffer);
+    psptd->scsiPassthrough.SenseInfoOffset = offsetof(scsiPassThroughIOStruct, senseBuffer);
     //sets the offset to the beginning of the sense buffer-TJE
-    //psptd->scsiPassthroughDirect.SenseInfoOffset = (ULONG)((&psptd->senseBuffer[0] - (uint8_t*)&psptd->scsiPassthroughDirect));
-    memcpy(psptd->scsiPassthroughDirect.Cdb, scsiIoCtx->cdb, sizeof(psptd->scsiPassthroughDirect.Cdb));
+    //psptd->scsiPassthrough.SenseInfoOffset = (ULONG)((&psptd->senseBuffer[0] - (uint8_t*)&psptd->scsiPassthrough));
+    memcpy(psptd->scsiPassthrough.Cdb, scsiIoCtx->cdb, sizeof(psptd->scsiPassthrough.Cdb));
     return ret;
 }
 
@@ -2340,13 +2368,20 @@ int convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx *p_scsiIoCtx, PATA_PASS_THROUGH_
         ret = NOT_SUPPORTED;
         break;
     }
-    if (p_scsiIoCtx->timeout != 0)
+    if (p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > p_scsiIoCtx->timeout)
     {
-        ptrATAPassThroughDirect->TimeOutValue = p_scsiIoCtx->timeout;
+        ptrATAPassThroughDirect->TimeOutValue = p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
     }
     else
     {
-        ptrATAPassThroughDirect->TimeOutValue = 15;
+        if (p_scsiIoCtx->timeout != 0)
+        {
+            ptrATAPassThroughDirect->TimeOutValue = p_scsiIoCtx->timeout;
+        }
+        else
+        {
+            ptrATAPassThroughDirect->TimeOutValue = 15;
+        }
     }
     ptrATAPassThroughDirect->PathId = p_scsiIoCtx->device->os_info.scsi_addr.PathId;
     ptrATAPassThroughDirect->TargetId = p_scsiIoCtx->device->os_info.scsi_addr.TargetId;
@@ -2641,13 +2676,20 @@ int convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx *p_scsiIoCtx, ptrATADoubleBufferedIO
         ret = NOT_SUPPORTED;
         break;
     }
-    if (p_scsiIoCtx->timeout != 0)
+    if (p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > p_scsiIoCtx->timeout)
     {
-        p_t_ata_pt->ataPTCommand.TimeOutValue = p_scsiIoCtx->timeout;
+        p_t_ata_pt->ataPTCommand.TimeOutValue = p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
     }
     else
     {
-        p_t_ata_pt->ataPTCommand.TimeOutValue = 15;
+        if (p_scsiIoCtx->timeout != 0)
+        {
+            p_t_ata_pt->ataPTCommand.TimeOutValue = p_scsiIoCtx->timeout;
+        }
+        else
+        {
+            p_t_ata_pt->ataPTCommand.TimeOutValue = 15;
+        }
     }
     p_t_ata_pt->ataPTCommand.PathId = p_scsiIoCtx->device->os_info.scsi_addr.PathId;
     p_t_ata_pt->ataPTCommand.TargetId = p_scsiIoCtx->device->os_info.scsi_addr.TargetId;
