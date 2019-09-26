@@ -8741,6 +8741,146 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
     return ret;
 }
 
+bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
+{
+    bool passthroughTypeSet = false;
+    char vendorID[9] = { 0 };
+    char productID[17] = { 0 };
+    char revision[5] = { 0 };
+    uint8_t responseFormat = M_Nibble0(device->drive_info.scsiVpdData.inquiryData[3]);
+    if (responseFormat == 2)
+    {
+        memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], 8);
+        memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], 16);
+        memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], 4);
+        remove_Leading_And_Trailing_Whitespace(vendorID);
+        remove_Leading_And_Trailing_Whitespace(productID);
+        remove_Leading_And_Trailing_Whitespace(revision);
+        if (strcmp(vendorID, "ATA") == 0)
+        {
+            passthroughTypeSet = true;
+            device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+        }
+        else if (strcmp(vendorID, "SMI") == 0)
+        {
+            if (strcmp(productID, "USB DISK") == 0)
+            {
+                passthroughTypeSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_UNKNOWN;
+                device->drive_info.media_type = MEDIA_SSM_FLASH;
+                //this should prevent sending it bad commands!
+            }
+        }
+        else if (strcmp(vendorID, "") == 0 && strcmp(revision, "8.07") == 0)
+        {
+            passthroughTypeSet = true;
+            device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_UNKNOWN;
+            device->drive_info.media_type = MEDIA_SSM_FLASH;
+            //this should prevent sending it bad commands!
+        }
+        else if (strcmp(vendorID, "SEAGATE") == 0)//Newer Seagate USB's will set "Seagate" so this can help filter based on case-sensitive comparison
+        {
+            if (strcmp(productID, "ST650211USB") == 0 || //Rev 4.02
+                strcmp(productID, "ST660211USB") == 0 || //rev 4.06
+                strcmp(productID, "ST760211USB") == 0)   //rev 3.03
+            {
+                passthroughTypeSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_NEC;
+            }
+        }
+        else if (strcmp(vendorID, "Seagate") == 0)
+        {
+            //Current Seagate USBs will report the vendor ID like this, so this will match ALL of them.
+            //If we are in this function, then the low-level was unable to get PID/VID, so we need to set some generic hacks to make sure things work, then do device specific things.
+            device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+
+            //known device specific hacks
+            if (strcmp(productID, "BlackArmorDAS25") == 0)
+            {
+                device->drive_info.passThroughHacks.unitSNAvailable = true;
+            }
+            else if (strcmp(productID, "S2 Portable") == 0)
+            {
+                device->drive_info.passThroughHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
+                //TODO: this device previously had a hack that SMART check isn't supported, so need to migrate that too.
+            }
+        }
+        else
+        {
+            //Don't set anything! We don't know!
+        }
+    }
+    //else response format of 1 or 0 means we have to check all vendor unique fields on case by case basis.
+    else
+    {
+        //This is code that works on one old drive I have. Probably needs adjustment to work on everything!
+        //Returned inq example:
+        /*
+        00 00 00 00 1f 00 00 00 53 54 39 31 32 30 38 32  ........ST912082
+        36 41 20 20 20 20 20 20 20 20 20 20 20 20 20 20  6A              
+        30 30 30 30 00 00 00 00 00 00 00 00 04 00 41 41  0000..........AA
+        33 41 30 35 20 20 54 53 31 39 30 32 32 38 41 36  3A05  TS190228A6
+        20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20                  
+        20 20 20 20 20 20 20 20 20 20 20 20 20 20 01 80                .�
+        00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+        //Example 2:
+        00 00 00 00 1f 00 00 00 53 65 61 67 61 74 65 20  ........Seagate
+        45 78 74 65 72 6e 61 6c 20 44 72 69 76 65 00 00  External Drive..
+        00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+        00 00 00 00 20 20 54 53 31 33 30 32 32 30 41 32  ....  TS130220A2
+        20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20
+        20 20 20 20 20 20 20 20 20 20 20 20 20 20 10 80                .�
+        00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+        //Example 3:
+        00 00 02 01 1f 00 00 00 53 61 6d 73 75 6e 67 20  ........Samsung
+        53 32 20 50 6f 72 74 61 62 6c 65 00 08 12 00 00  S2 Portable.....
+        00 00 00 00 6a 33 33 39 cd cd cd cd cd cd cd cd  ....j339��������
+        cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ����������������
+        cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ����������������
+        cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ����������������
+        */
+        memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], 8);
+        remove_Leading_And_Trailing_Whitespace(vendorID);
+        if (strcmp(vendorID, "Seagate") == 0)
+        {
+            char internalModel[41] = { 0 };//this may or may not be useful...
+            memcpy(internalModel, &device->drive_info.scsiVpdData.inquiryData[54], 40);
+            remove_Leading_And_Trailing_Whitespace(internalModel);
+            //this looks like format 2 data, but doesn't report that way...
+            memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], 16);
+            memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], 4);
+            remove_Leading_And_Trailing_Whitespace(vendorID);
+            remove_Leading_And_Trailing_Whitespace(productID);
+            if (strcmp(productID, "External Drive") == 0 && strlen(internalModel))//doing strlen of internal model number to catch others of this type with something set here
+            {
+                passthroughTypeSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
+            }
+        }
+        else if (strcmp(vendorID, "Samsung") == 0)
+        {
+            memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], 16);
+            memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[36], 4);
+            remove_Leading_And_Trailing_Whitespace(vendorID);
+            remove_Leading_And_Trailing_Whitespace(productID);
+        }
+        else
+        {
+            memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[8], 16);
+            memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], 4);
+            remove_Leading_And_Trailing_Whitespace(productID);
+            remove_Leading_And_Trailing_Whitespace(revision);
+            if (strcmp(productID, "ST9120826A") == 0)
+            {
+                memset(vendorID, 0, 8);
+                passthroughTypeSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
+            }
+        }
+    }
+    return passthroughTypeSet;
+}
+
 // \fn fill_In_Device_Info(device device)
 // \brief Sends a set of INQUIRY commands & fills in the device information
 // \param device device struture
@@ -8814,6 +8954,14 @@ int fill_In_Device_Info(tDevice *device)
         ret = SUCCESS;
         memcpy(device->drive_info.scsiVpdData.inquiryData, inq_buf, 96);//store this in the device structure to make sure it is available elsewhere in the library as well.
         copy_Inquiry_Data(inq_buf, &device->drive_info);
+
+        if (!device->drive_info.passThroughHacks.hacksSetByReportedID)
+        {
+            //This function will check known inquiry data to set passthrough hacks for devices that are known to report a certain way.
+            //TODO: can running this be used to prevent checking for SAT if this is already set? This could help with certain scenarios
+            set_Passthrough_Hacks_By_Inquiry_Data(device);
+        }
+
         uint8_t responseFormat = M_GETBITRANGE(inq_buf[3], 3, 0);
         if (responseFormat < 2)
         {
@@ -8847,12 +8995,18 @@ int fill_In_Device_Info(tDevice *device)
         switch (version) //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
         {
         case 0:
-            checkForSAT = false;//NOTE: some cheap USB to SATA/PATA adapters will set this version or no version. The only way to work around this, is to make sure the low level for the OS detects it on USB interface and it can be run through the usb_hacks file instead.
             version = SCSI_VERSION_NO_STANDARD;
+            if (device->drive_info.interface_type != USB_INTERFACE)
+            {
+                checkForSAT = false; //NOTE: some cheap USB to SATA/PATA adapters will set this version or no version. The only way to work around this, is to make sure the low level for the OS detects it on USB interface and it can be run through the usb_hacks file instead.
+            }
             break;
         case 0x81:
             version = SCSI_VERSION_SCSI;//changing to 1 for SCSI
-            checkForSAT = false;//NOTE: some cheap USB to SATA/PATA adapters will set this version or no version. The only way to work around this, is to make sure the low level for the OS detects it on USB interface and it can be run through the usb_hacks file instead.
+            if (device->drive_info.interface_type != USB_INTERFACE)
+            {
+                checkForSAT = false;//NOTE: some cheap USB to SATA/PATA adapters will set this version or no version. The only way to work around this, is to make sure the low level for the OS detects it on USB interface and it can be run through the usb_hacks file instead.
+            }
             break;
         case 0x80:
         case 0x82:
@@ -8893,7 +9047,7 @@ int fill_In_Device_Info(tDevice *device)
         case PERIPHERAL_SEQUENTIAL_ACCESS_BLOCK_DEVICE:
             device->drive_info.media_type = MEDIA_TAPE;
             checkForSAT = false;
-            break;        
+            break;
         case PERIPHERAL_WRITE_ONCE_DEVICE:
         case PERIPHERAL_CD_DVD_DEVICE:
         case PERIPHERAL_OPTICAL_MEMORY_DEVICE:
@@ -8932,7 +9086,7 @@ int fill_In_Device_Info(tDevice *device)
         case PERIPHERAL_RESERVED11:
         case PERIPHERAL_WELL_KNOWN_LOGICAL_UNIT:
         case PERIPHERAL_UNKNOWN_OR_NO_DEVICE_TYPE:
-        default:    
+        default:
             readCapacity = false;
             checkForSAT = false;
             device->drive_info.media_type = MEDIA_UNKNOWN;
@@ -8942,7 +9096,8 @@ int fill_In_Device_Info(tDevice *device)
         if (checkForSAT)
         {
             //check that response format is 2 (or higher). SAT spec says the response format should be set to 2
-            if (M_Nibble0(inq_buf[3]) < 2)
+            //Not checking this on USB since some adapters set this purposely to avoid certain commands, BUT DO support SAT
+            if (M_Nibble0(inq_buf[3]) < 2 && device->drive_info.interface_type != USB_INTERFACE)
             {
                 checkForSAT = false;
             }
@@ -9024,9 +9179,9 @@ int fill_In_Device_Info(tDevice *device)
 
         if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE)
         {
-            #if defined (_DEBUG)
+#if defined (_DEBUG)
             printf("Quiting device discovery early per DO_NOT_WAKE_DRIVE\n");
-            #endif
+#endif
             bool satVersionDescriptorFound = false;
             if (version >= 4)
             {
@@ -9061,10 +9216,10 @@ int fill_In_Device_Info(tDevice *device)
             safe_Free_aligned(inq_buf);
             return ret;
         }
-        
+
         if (M_Word0(device->dFlags) == FAST_SCAN)
         {
-            if (version >= 2)//unit serial number added in SCSI2
+            if (version >= 2 || device->drive_info.passThroughHacks.unitSNAvailable)//unit serial number added in SCSI2
             {
                 //I'm reading only the unit serial number page here for a quick scan and the device information page for WWN - TJE
                 uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
@@ -9072,12 +9227,11 @@ int fill_In_Device_Info(tDevice *device)
                 if (!unitSerialNumber)
                 {
                     perror("Error allocating memory to read the unit serial number");
-                    safe_Free_aligned(inq_buf);
                     return MEMORY_FAILURE;
                 }
                 if (SUCCESS == scsi_Inquiry(device, unitSerialNumber, unitSerialNumberPageLength, UNIT_SERIAL_NUMBER, true, false))
                 {
-                    if (unitSerialNumber[1] == UNIT_SERIAL_NUMBER)
+                    if (unitSerialNumber[1] == UNIT_SERIAL_NUMBER)//make sure we actually got the right page and not bogus data.
                     {
                         uint16_t serialNumberLength = M_BytesTo2ByteValue(unitSerialNumber[2], unitSerialNumber[3]);
                         if (serialNumberLength > 0)
@@ -9085,7 +9239,22 @@ int fill_In_Device_Info(tDevice *device)
                             memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
                             device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
                             remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
+                            for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
+                            {
+                                if (!isprint(device->drive_info.serialNumber[iter]))
+                                {
+                                    device->drive_info.serialNumber[iter] = ' ';
+                                }
+                            }
                         }
+                        else
+                        {
+                            memset(device->drive_info.serialNumber, 0, SERIAL_NUM_LEN);
+                        }
+                    }
+                    else
+                    {
+                        memset(device->drive_info.serialNumber, 0, SERIAL_NUM_LEN);
                     }
                 }
                 safe_Free_aligned(unitSerialNumber);
@@ -9115,7 +9284,7 @@ int fill_In_Device_Info(tDevice *device)
                 }
                 if (SUCCESS == scsi_Inquiry(device, deviceIdentification, INQ_RETURN_DATA_LENGTH, DEVICE_IDENTIFICATION, true, false))
                 {
-                    if (deviceIdentification[1] == DEVICE_IDENTIFICATION)
+                    if (deviceIdentification[1] == DEVICE_IDENTIFICATION)//check the page number
                     {
                         //this SHOULD work for getting a WWN 90% of the time, but if it doesn't, then we will need to go through the descriptors from the device and set it from the correct one. See the SATChecker util code for how to do this
                         memcpy(&device->drive_info.worldWideName, &deviceIdentification[8], 8);
@@ -9135,12 +9304,12 @@ int fill_In_Device_Info(tDevice *device)
 
         bool satVPDPageRead = false;
         bool satComplianceChecked = false;
-        if (version >= 2)//SCSI 2 added VPD pages
+        if (version >= 2 || device->drive_info.passThroughHacks.unitSNAvailable) //SCSI 2 added VPD pages
         {
             //from here on we need to check if a VPD page is supported and read it if there is anything in it that we care about to store info in the device struct
             memset(inq_buf, 0, INQ_RETURN_DATA_LENGTH);
             bool dummyUpVPDSupport = false;
-            if (SUCCESS != scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, 0, true, false))
+            if (SUCCESS != scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, SUPPORTED_VPD_PAGES, true, false))
             {
                 //for whatever reason, this device didn't return support for the list of supported pages, so set a flag telling us to dummy up a list so that we can still attempt to issue commands to pages we do need to try and get (this is a workaround for some really stupid USB bridges)
                 dummyUpVPDSupport = true;
@@ -9150,10 +9319,11 @@ int fill_In_Device_Info(tDevice *device)
                     scsi_Test_Unit_Ready(device, NULL);
                 }
             }
-            else if (inq_buf[1] != 0)
+            else if (inq_buf[1] != SUPPORTED_VPD_PAGES)
             {
                 //did not get the list of supported pages! Checking this since occasionally we get back garbage
                 memset(inq_buf, 0, INQ_RETURN_DATA_LENGTH);
+                dummyUpVPDSupport = true;
             }
             if (dummyUpVPDSupport == false)
             {
@@ -9172,32 +9342,42 @@ int fill_In_Device_Info(tDevice *device)
                 inq_buf[0] |= peripheralDeviceType;
                 //set page code
                 inq_buf[1] = 0x00;
-                
-                //now each byte will reference a supported VPD page we want to dummy up. These should be in ascending order
-                inq_buf[offset] = SUPPORTED_VPD_PAGES;
-                ++offset;
-                inq_buf[offset] = UNIT_SERIAL_NUMBER;
-                ++offset;
-                if (version >= 3)//SPC
+                if (device->drive_info.passThroughHacks.unitSNAvailable)
                 {
-                    inq_buf[offset] = DEVICE_IDENTIFICATION;
+                    //If this is set, then this means that the device ONLY supports the unit SN page, but not other. Only add unit serial number to this dummied data.
+                    //This is a workaround for some USB devices.
+                    //TODO: if these devices support a limited number of other pages, we will need to change this hack a little bit to work with them better.
+                    inq_buf[offset] = UNIT_SERIAL_NUMBER;
                     ++offset;
                 }
-                if (checkForSAT)
+                else
                 {
-                    inq_buf[offset] = ATA_INFORMATION;
+                    //now each byte will reference a supported VPD page we want to dummy up. These should be in ascending order
+                    inq_buf[offset] = SUPPORTED_VPD_PAGES;
                     ++offset;
-                }
-                if (version >= 3)//SPC
-                {
-                    if (peripheralDeviceType == PERIPHERAL_DIRECT_ACCESS_BLOCK_DEVICE || peripheralDeviceType == PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE || peripheralDeviceType == PERIPHERAL_HOST_MANAGED_ZONED_BLOCK_DEVICE)
+                    inq_buf[offset] = UNIT_SERIAL_NUMBER;
+                    ++offset;
+                    if (version >= 3)//SPC
                     {
-                        inq_buf[offset] = BLOCK_DEVICE_CHARACTERISTICS;
+                        inq_buf[offset] = DEVICE_IDENTIFICATION;
                         ++offset;
                     }
-                }
-                //TODO: Add more pages to the dummy information as we need to. This may be useful to do in the future in case a device decides not to support a MANDATORY page or another page we care about
+                    if (checkForSAT)
+                    {
+                        inq_buf[offset] = ATA_INFORMATION;
+                        ++offset;
+                    }
+                    if (version >= 3)//SPC
+                    {
+                        if (peripheralDeviceType == PERIPHERAL_DIRECT_ACCESS_BLOCK_DEVICE || peripheralDeviceType == PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE || peripheralDeviceType == PERIPHERAL_HOST_MANAGED_ZONED_BLOCK_DEVICE)
+                        {
+                            inq_buf[offset] = BLOCK_DEVICE_CHARACTERISTICS;
+                            ++offset;
+                        }
+                    }
+                    //TODO: Add more pages to the dummy information as we need to. This may be useful to do in the future in case a device decides not to support a MANDATORY page or another page we care about
 
+                }
                 //set page length (n-3)
                 inq_buf[2] = M_Byte1(offset - 4);//msb
                 inq_buf[3] = M_Byte0(offset - 4);//lsb
@@ -9229,7 +9409,7 @@ int fill_In_Device_Info(tDevice *device)
                     }
                     if (SUCCESS == scsi_Inquiry(device, unitSerialNumber, unitSerialNumberPageLength, supportedVPDPages[vpdIter], true, false))
                     {
-                        if (unitSerialNumber[1] == UNIT_SERIAL_NUMBER)
+                        if (unitSerialNumber[1] == UNIT_SERIAL_NUMBER)//check the page code to make sure we got the right thing
                         {
                             uint16_t serialNumberLength = M_BytesTo2ByteValue(unitSerialNumber[2], unitSerialNumber[3]);
                             if (serialNumberLength > 0)
@@ -9237,6 +9417,17 @@ int fill_In_Device_Info(tDevice *device)
                                 memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
                                 device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
                                 remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
+                                for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
+                                {
+                                    if (!isprint(device->drive_info.serialNumber[iter]))
+                                    {
+                                        device->drive_info.serialNumber[iter] = ' ';
+                                    }
+                                }
+                            }
+                            else
+                            {
+
                             }
                         }
                     }
@@ -9386,14 +9577,14 @@ int fill_In_Device_Info(tDevice *device)
             //make sure the SN is printable if it's coming from here since it's non-standardized
             for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
             {
-                if (!isprint(device->drive_info.serialNumber[iter]))
+                if (!is_ASCII(device->drive_info.serialNumber[iter]) || !isprint(device->drive_info.serialNumber[iter]))
                 {
                     device->drive_info.serialNumber[iter] = ' ';
                 }
             }
         }
 
-        if(readCapacity)
+        if (readCapacity)
         {
             //if inquiry says SPC or lower (3), then only do read capacity 10
             //Anything else can have read capacity 16 command available
@@ -9492,12 +9683,11 @@ int fill_In_Device_Info(tDevice *device)
         }
 
         //if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just issue a SAT identify in here to set things up...might reduce multiple commands later
-        if (checkForSAT && (device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE) 
-            && satVPDPageRead == false && device->drive_info.media_type != MEDIA_UNKNOWN && satComplianceChecked == false)
+        if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE) 
+             && device->drive_info.media_type != MEDIA_UNKNOWN )
         {
             check_SAT_Compliance_And_Set_Drive_Type(device);
         }
-        device->drive_info.dataTransferSize = LEGACY_DRIVE_SEC_SIZE;
     }
     else
     {

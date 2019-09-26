@@ -29,7 +29,7 @@ char   *currentTime_ptr = currentTimeString;
 int ata_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCommandOptions)
 {
     int ret = UNKNOWN;
-    switch (device->drive_info.ata_Options.passthroughType)
+    switch (device->drive_info.passThroughHacks.passthroughType)
     {
     case ATA_PASSTHROUGH_UNKNOWN://catch this case and return BAD_PARAMETER
         ret = BAD_PARAMETER;
@@ -1397,7 +1397,12 @@ int ata_SCT(tDevice *device, bool useGPL, bool useDMA, eDataTransferDirection di
     {
         return BAD_PARAMETER;
     }
-    if (useGPL) 
+    //This is a hack for some USB drives. While a caller somewhere above this should handle this, this needs to be here to ensure we don't hang these devices.
+    if (device->drive_info.passThroughHacks.smartCommandTransportWithSMARTLogCommandsOnly)
+    {
+        useGPL = false;
+    }
+    if (useGPL)
     {
         if (direction == XFER_DATA_IN)
         {

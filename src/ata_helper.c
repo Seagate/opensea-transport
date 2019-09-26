@@ -753,7 +753,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     {
         //we didn't get anything...yet.
         //We are probably using 16byte cdbs already, if we aren't, then we are done, otherwise we need to try changing to 12byte CDBs for compatibility with some SATLs
-        if (!device->drive_info.ata_Options.use12ByteSATCDBs && device->drive_info.ata_Options.passthroughType == ATA_PASSTHROUGH_SAT)
+        if (!device->drive_info.passThroughHacks.a1NeverSupported && !device->drive_info.passThroughHacks.useA1SATPassthroughWheneverPossible && device->drive_info.passThroughHacks.passthroughType == ATA_PASSTHROUGH_SAT)
         {
             //we aren't trying 12 byte...we should try it...BUT if we suspect that this is an ATAPI drive, we should NOT. This is because ATAPI uses the same opcode for the "blank"
             //command. Since these are the same, the SATL may not filter it properly and we may issue this command instead. Since I don't know what this does, let's avoid that if possible. - TJE
@@ -761,7 +761,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             if (!(device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE
                 || device->drive_info.media_type == MEDIA_OPTICAL || device->drive_info.media_type == MEDIA_TAPE))
             {
-                device->drive_info.ata_Options.use12ByteSATCDBs = true;
+                device->drive_info.passThroughHacks.useA1SATPassthroughWheneverPossible = true;
                 memset(identifyData, 0, 512);
                 if (device->drive_info.interface_type == IDE_INTERFACE)
                 {
@@ -772,22 +772,14 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 else
                 {
                     //SCSI/USB interfaces will do a test unit ready command first, then check power mode as passthrough, then one last test unit ready to get everything refreshed
-                    uint8_t mode = 0;
-                    scsi_Test_Unit_Ready(device, NULL);
-                    ata_Check_Power_Mode(device, &mode);
                     scsi_Test_Unit_Ready(device, NULL);
                 }
-                if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
+                if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
                 {
                     retrievedIdentifyData = true;
                 }
-
             }
         }
-        /*else
-        {
-            printf("Already using 12byte\n");
-        }*/
     }
     if (retrievedIdentifyData)
     {
@@ -1103,6 +1095,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 device->drive_info.ata_Options.writeBufferDMASupported = false;
             }
         }
+
     }
     else
     {
@@ -1120,6 +1113,12 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         printf("%s <--\n",__FUNCTION__);
 #endif
         return ret;
+    }
+
+    if (device->drive_info.passThroughHacks.alwaysUseDMAInsteadOfUDMA)
+    {
+        //forcing using DMA mode instead of UDMA since the translator doesn't like UDMA mode set
+        device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
     }
 
     //Check if we were given any force flags regarding how we talk to ATA drives.

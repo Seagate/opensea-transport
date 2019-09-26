@@ -447,6 +447,7 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                                     printf("Could not scan all values. Scanned %d values\n", scannedVals);
 #endif
                                                                 }
+                                                                device->drive_info.adapter_info.infoType = ADAPTER_INFO_USB;
                                                                 //unfortunately, this device ID doesn't have a revision in it for USB.
                                                                 //We can do this other property request to read it, but it's wide characters only. No TCHARs allowed.
                                                                 cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_HardwareIds, &propertyType, NULL, &propertyBufLen, 0);
@@ -484,6 +485,7 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                                 device->drive_info.adapter_info.productIDValid = true;
                                                                 device->drive_info.adapter_info.revision = revision;
                                                                 device->drive_info.adapter_info.revisionValid = true;
+                                                                device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
                                                                 if (scannedVals < 4)
                                                                 {
 #if (_DEBUG)
@@ -1088,8 +1090,7 @@ int get_Device(const char *filename, tDevice *device )
 
                                 if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
                                 {
-                                    //TODO: Actually get the VID and PID set before calling this.
-                                    set_ATA_Passthrough_Type(device);
+                                    setup_Passthrough_Hacks_By_ID(device);
                                 }
 
                                 //For now force direct IO all the time to match previous functionality.

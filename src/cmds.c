@@ -278,8 +278,9 @@ int fill_Drive_Info_Data(tDevice *device)
             break;
         case IEEE_1394_INTERFACE:
         case USB_INTERFACE:
-            //On USB and firewire, call this instead since this includes various hacks/workarounds for some USB devices.
-            status = fill_Drive_Info_USB(device);
+            //Previously there was separate function to fill in drive info for USB, but has now been combined with the SCSI fill device info.
+            //Low-level code capable of figuring out hacks for working with these devices is now able to preconfigure most flags
+            status = fill_In_Device_Info(device);
             break;
         case NVME_INTERFACE:
 #if !defined(DISABLE_NVME_PASSTHROUGH)

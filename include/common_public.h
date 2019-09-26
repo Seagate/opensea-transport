@@ -736,6 +736,14 @@ extern "C"
     }__attribute__((packed,aligned(1))) bridgeInfo;
     #endif
 
+    typedef enum _eAdapterInfoType
+    {
+        ADAPTER_INFO_UNKNOWN, //unknown generally means it is not valid or present and was not discovred by low-level OS code
+        ADAPTER_INFO_USB,
+        ADAPTER_INFO_PCI,
+        ADAPTER_INFO_IEEE1394, //not supported yet...
+    }eAdapterInfoType;
+
 #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
 #pragma pack(push,1)
 #endif
@@ -745,7 +753,8 @@ extern "C"
         bool vendorIDValid;
         bool productIDValid;
         bool revisionValid;
-        uint8_t padd[5];
+        uint8_t padd[1];
+        eAdapterInfoType infoType;
         //These may change sizes if we encounter other interfaces that report these are larger than uint16_t's
         uint16_t vendorID;
         uint16_t productID;
@@ -784,9 +793,7 @@ extern "C"
     #endif
     typedef struct _ataOptions
     {
-        ePassthroughType passthroughType;//This should be left alone unless you know for a fact which passthrough to use. SAT is the default and should be used unless you know you need a legacy (pre-SAT) passthrough type.
         eATASynchronousDMAMode dmaMode;
-        bool use12ByteSATCDBs;
         bool dmaSupported;
         bool readLogWriteLogDMASupported;
         bool readBufferDMASupported;
@@ -802,11 +809,10 @@ extern "C"
         bool writeUncorrectableExtSupported;
         bool fourtyEightBitAddressFeatureSetSupported;
         bool generalPurposeLoggingSupported;
-        bool followUpRequestRTFRcommandSupported;//Some devices may support this command, but not all. Some USB device reset when issued this, which is why this boolean flag exists
         bool alwaysSetCheckConditionBit;//this will cause all commands to set the check condition bit. This means any ATA Passthrough command should always get back an ATA status which may help with sense data and judging what went wrong better. Be aware that this may not be liked on some devices and some may just ignore it.
         bool enableLegacyPassthroughDetectionThroughTrialAndError;//This must be set to true in order to work on legacy (ancient) passthrough if the VID/PID is not in the list and not read from the system.
         bool senseDataReportingEnabled;//this is to track when the RTFRs may contain a sense data bit so it can be read automatically.
-        uint8_t padd[4];//padding to keep this structure 8 byte aligned
+        uint8_t padd[1];
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataOptions;
     #pragma pack(pop)
@@ -853,6 +859,34 @@ extern "C"
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) softwareSATFlags;
+    #endif
+
+    //The passthroughHacks structure is to hold information to help with passthrough on OSs, USB adapters, SCSI adapters, etc. Most of this is related to USB adapters though.
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    #pragma pack(push,1)
+    #endif
+    typedef struct _passthroughHacks
+    {
+        bool hacksSetByReportedID;//This is true if the code was able to read and set hacks based on reported vendor and product IDs from lower levels. If this is NOT set, then the information below is set either by trial and error or by known product identification matches.
+        ePassthroughType passthroughType;//This should be left alone unless you know for a fact which passthrough to use. SAT is the default and should be used unless you know you need a legacy (pre-SAT) passthrough type.
+        bool testUnitReadyAfterAnyCommandFailure;//This should be done whenever we have a device that is known to increase time to return response to bad commands. Many USB bridges need this.
+        bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
+        bool useA1SATPassthroughWheneverPossible;//For USB adapters that will only process 28bit commands with A1 and will NOT issue them with 85h
+        bool a1NeverSupported;//prevent retrying with 12B command since it isn't supported anyways.
+        bool returnResponseInfoSupported;//can send the SAT command to get response information for RTFRs
+        bool returnResponseInfoNeedsTDIR;//supports return response info, but must have T_DIR bit set for it to work properly
+        bool returnResponseIgnoreExtendBit;//Some devices support returning response info, but don't properly set the extend bit, so this basically means copy extended RTFRs anyways.
+        bool alwaysUseTPSIUForSATPassthrough;//some USBs do this better than others.
+        bool alwaysSetCheckCondition;//Not supported by all SAT translators. Don't set unless you know for sure!!!
+        bool alwaysUseDMAInsteadOfUDMA;//send commands with DMA mode instead of UDMA since the device doesn't support UDMA passthrough modes.
+        bool unitSNAvailable;//This means we can request this page even if other VPD pages don't work.
+        //TODO: Add more hacks and padd this structure
+        //uint8_t padd[3];
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    }passthroughHacks;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) passthroughHacks;
     #endif
 
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
@@ -917,6 +951,7 @@ extern "C"
         uint8_t piExponent;//Only valid for protection types 2 & 3 I believe...-TJE
         uint8_t scsiVersion;//from STD Inquiry. Can be used elsewhere to help filter capabilities. NOTE: not an exact copy for old products where there was also EMCA and ISO versions. Set to ANSI version number in those cases.
         uint8_t padd7[4];//padd to 9304 bytes to make divisible by 8
+        passthroughHacks passThroughHacks;
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }driveInfo;
     #pragma pack(pop)
@@ -1209,6 +1244,32 @@ extern "C"
         IEEE_VENDOR_A                 = 0x00242F,
         IEEE_VENDOR_A_TECHNOLOGY      = 0x00A075,
     }eIEEE_OUIs;
+
+    //http://www.linux-usb.org/usb.ids
+    typedef enum _eUSBVendorIDs
+    {
+        USB_Vendor_Unknown                              = 0,
+        USB_Vendor_Adaptec                              = 0x03F3,
+        USB_Vendor_Buffalo                              = 0x0411,
+        USB_Vendor_Seagate                              = 0x0477,
+        USB_Vendor_Integrated_Techonology_Express_Inc   = 0x048D,
+        USB_Vendor_Samsung                              = 0x04E8,
+        USB_Vendor_Sunplus                              = 0x04FC,
+        USB_Vendor_Alcor_Micro_Corp                     = 0x058F,
+        USB_Vendor_LaCie                                = 0x059F,
+        USB_Vendor_GenesysLogic                         = 0x05E3,
+        USB_Vendor_Prolific                             = 0x067B,
+        USB_Vendor_Silicon_Motion                       = 0x090C,
+        USB_Vendor_Oxford                               = 0x0928,
+        USB_Vendor_Seagate_RSS                          = 0x0BC2,
+        USB_Vendor_Maxtor                               = 0x0D49,
+        USB_Vendor_JMicron                              = 0x152D,
+        USB_Vendor_ASMedia                              = 0x174C,
+        USB_Vendor_SeagateBranded                       = 0x1A2A,
+        USB_Vendor_Dell                                 = 0x413C,
+        // Add new enumerations above this line!
+        USB_Vendor_MaxValue                             = 0xFFFF
+    } eUSBVendorIDs;
 
     typedef enum _eSeagateFamily
     {

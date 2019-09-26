@@ -80,7 +80,7 @@ int get_Device(const char *filename, tDevice *device)
         if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
         {
             //TODO: Actually get the VID and PID set before calling this.
-            set_ATA_Passthrough_Type(device);
+            setup_Passthrough_Hacks_By_ID(device);
         }
         //fill in the device info
         ret = fill_Drive_Info_Data(device);

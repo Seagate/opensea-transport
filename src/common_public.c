@@ -2073,3 +2073,149 @@ bool is_Removable_Media(tDevice *device)
     }
     return result;
 }
+//https://usb-ids.gowdy.us/
+//http://www.linux-usb.org/usb.ids
+bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
+{
+    bool passthroughHacksSet = false;
+    //only change the ATA Passthrough type for USB (for legacy USB bridges)
+    if (device->drive_info.interface_type == USB_INTERFACE)
+    {
+        //Most USB bridges are SAT so they'll probably fall into the default cases and issue an identify command for SAT
+        switch (device->drive_info.adapter_info.vendorID)
+        {
+        case USB_Vendor_Seagate:
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x0501://rev 0002
+            case 0x0503:
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
+                passthroughHacksSet = true;
+                break;
+            case 0x0502:
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_TI;
+                passthroughHacksSet = true;
+                break;
+            default: //unknown
+                break;
+            }
+            break;
+        case USB_Vendor_Seagate_RSS:
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x0888://0BC2 VID
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_NEC;
+                passthroughHacksSet = true;
+                break;
+            case 0x2700:
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.unitSNAvailable = true;
+                passthroughHacksSet = true;
+                break;
+            default: //unknown
+                break;
+            }
+            break;
+        case USB_Vendor_Oxford:
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x0008:
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                passthroughHacksSet = true;
+                break;
+            default: //unknown
+                break;
+            }
+            break;
+        case USB_Vendor_JMicron:
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x2339://MiniD2
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.alwaysSetCheckCondition = true; //This device supports the check condition bit on all commands
+                passthroughHacksSet = true;
+                break;
+            default: //unknown
+                break;
+            }
+            break;
+        case USB_Vendor_Samsung:
+            switch (device->drive_info.adapter_info.productID)
+            {
+            default: //unknown
+                break;
+            }
+            break;
+        case USB_Vendor_Silicon_Motion:
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x1000://Flash Drive - Rev1100
+                //Don't set a passthrough type! This is a USB flash memory, that responds to one of the legacy command requests and it will break it!
+                device->drive_info.media_type = MEDIA_SSM_FLASH;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_UNKNOWN;
+                passthroughHacksSet = true;
+                break;
+            default:
+                break;
+            }
+            break;
+        case USB_Vendor_Alcor_Micro_Corp:
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x1234://flash drive
+            case 0x6387://flash drive - Rev 0103
+            case 0x9380://flash drive
+            case 0x9381://flash drive
+            case 0x9382://flash drive
+                device->drive_info.media_type = MEDIA_SSM_FLASH;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_UNKNOWN;
+                passthroughHacksSet = true;
+                break;
+            default:
+                break;
+            }
+            break;
+        case USB_Vendor_Integrated_Techonology_Express_Inc:
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x1172://flash drive
+            case 0x1176://flash drive - rev 0100
+                device->drive_info.media_type = MEDIA_SSM_FLASH;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_UNKNOWN;
+                passthroughHacksSet = true;
+                break;
+            default:
+                break;
+            }
+            break;
+        default: //unknown
+            break;
+        }
+    }
+    return passthroughHacksSet;
+}
+
+bool setup_Passthrough_Hacks_By_ID(tDevice *device)
+{
+    bool success = false;
+    //need to do things different for USB vs PCI vs IEEE1394, etc
+    switch (device->drive_info.adapter_info.infoType)
+    {
+    case ADAPTER_INFO_USB:
+        success = set_USB_Passthrough_Hacks_By_PID_and_VID(device);
+        break;
+    case ADAPTER_INFO_PCI://TODO: PCI device hacks based on known controllers with workarounds or other changes we can make.
+    case ADAPTER_INFO_IEEE1394://TODO: Firewire devices that have different hacks for passthrough commands.
+    default:
+        break;
+    }
+    if (success)
+    {
+        device->drive_info.passThroughHacks.hacksSetByReportedID = true;
+    }
+    else
+    {
+        //The OS didn't report the vendor and product identifiers needed to set hacks this way. Anything else will be done based on known Product matches or trial and error
+    }
+    return success;
+}

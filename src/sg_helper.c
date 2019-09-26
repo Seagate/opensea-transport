@@ -289,6 +289,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 fclose(temp);
                                 temp = NULL;
                             }
+                            device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
                         }
                         else if (strstr(inHandleLink,"usb") != 0)
                         {
@@ -354,6 +355,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 fclose(temp);
                                 temp = NULL;
                             }
+                            device->drive_info.adapter_info.infoType = ADAPTER_INFO_USB;
                         }
                         else if (strstr(inHandleLink,"fw") != 0)
                         {
@@ -425,6 +427,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 fclose(temp);
                                 temp = NULL;
                             }
+                            device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
                         }
                         char *baseLink = basename(inHandleLink);
                         //Now we will set up the device name, etc fields in the os_info structure.
