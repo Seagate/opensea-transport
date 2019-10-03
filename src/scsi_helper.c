@@ -8969,7 +8969,7 @@ int fill_In_Device_Info(tDevice *device)
             //vendor ID
             for (uint8_t iter = 0; iter < T10_VENDOR_ID_LEN; ++iter)
             {
-                if (!isprint(device->drive_info.T10_vendor_ident[iter]))
+                if (!is_ASCII(device->drive_info.T10_vendor_ident[iter]) || !isprint(device->drive_info.T10_vendor_ident[iter]))
                 {
                     device->drive_info.T10_vendor_ident[iter] = ' ';
                 }
@@ -8977,7 +8977,7 @@ int fill_In_Device_Info(tDevice *device)
             //product ID
             for (uint8_t iter = 0; iter < MODEL_NUM_LEN && iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
             {
-                if (!isprint(device->drive_info.product_identification[iter]))
+                if (!is_ASCII(device->drive_info.product_identification[iter]) ||!isprint(device->drive_info.product_identification[iter]))
                 {
                     device->drive_info.product_identification[iter] = ' ';
                 }
@@ -8985,7 +8985,7 @@ int fill_In_Device_Info(tDevice *device)
             //FWRev
             for (uint8_t iter = 0; iter < FW_REV_LEN && iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
             {
-                if (!isprint(device->drive_info.product_revision[iter]))
+                if (!is_ASCII(device->drive_info.product_revision[iter]) ||!isprint(device->drive_info.product_revision[iter]))
                 {
                     device->drive_info.product_revision[iter] = ' ';
                 }
@@ -9071,8 +9071,8 @@ int fill_In_Device_Info(tDevice *device)
         case PERIPHERAL_SCANNER_DEVICE:
         case PERIPHERAL_MEDIUM_CHANGER_DEVICE:
         case PERIPHERAL_COMMUNICATIONS_DEVICE:
-        case PERIPHERAL_OBSOLETE1:
-        case PERIPHERAL_OBSOLETE2:
+        case PERIPHERAL_ASC_IT8_1:
+        case PERIPHERAL_ASC_IT8_2:
         case PERIPHERAL_AUTOMATION_DRIVE_INTERFACE:
         case PERIPHERAL_SECURITY_MANAGER_DEVICE:
         case PERIPHERAL_RESERVED3:
