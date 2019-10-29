@@ -2121,4 +2121,4 @@ void print_CSMI_Device_Info(tDevice * device)
     }
 }
 
-#endif
+#endif //ENABLE_CSMI

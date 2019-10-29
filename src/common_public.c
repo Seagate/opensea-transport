@@ -181,6 +181,10 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
     uint32_t csmiDeviceCount = 0;
     bool csmiDeviceCountValid = false;
 #endif
+#if defined (ENABLE_OFNVME)
+    uint32_t ofNDeviceCount = 0;
+    bool ofNDeviceCountValid = false;
+#endif
     uint32_t getCountFlags = 0;
     if (flags & AGRESSIVE_SCAN)
     {

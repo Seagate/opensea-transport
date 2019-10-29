@@ -87,7 +87,6 @@ printf("fill NVMe info ret = %d\n", ret);
             device->drive_info.adapter_info.vendorID = ctrlData->vid;
             device->drive_info.adapter_info.vendorIDValid = true;
         }
-
         //set the IEEE OUI into the WWN since we use the WWN for detecting if the drive is a Seagate drive.
         //TODO: currently we set NAA to 5, but we should probably at least follow the SCSI-NVMe translation specification!
         *fillWWN = M_BytesTo8ByteValue(0x05, ctrlData->ieee[2], ctrlData->ieee[1], ctrlData->ieee[0], 0, 0, 0, 0) << 4;
