@@ -47,6 +47,10 @@
 #include "csmi_helper_func.h"
 #endif
 
+#if defined (ENABLE_OFNVME)
+#include "of_nvme_helper_func.h"
+#endif
+
 //MinGW may or may not have some of these, so there is a need to define these here to build properly when they are otherwise not available.
 //TODO: as mingw changes versions, some of these below may be available. Need to have a way to check mingw preprocessor defines for versions to work around these.
 //NOTE: The device property keys are incomplete in mingw. Need to add similar code using setupapi and some sort of ifdef to switch between for VS and mingw to resolve this better.
@@ -2258,6 +2262,15 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     }
 #endif
 
+#if defined (ENABLE_OFNVME)
+    uint32_t ofNvmeDeviceCount = 0;
+    int ofnvmeRet = get_OFNVME_Device_Count(&ofNvmeDeviceCount, flags);
+    if (ofnvmeRet == SUCCESS)
+    {
+        *numberOfDevices += ofNvmeDeviceCount;
+    }
+#endif
+
     return SUCCESS;
 }
 
@@ -2307,6 +2320,14 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         }
     }
 #endif
+#if defined(ENABLE_OFNVME)
+    uint32_t ofNvmeDeviceCount = 0;
+    int ofnvmeRet = get_OFNVME_Device_Count(&ofNvmeDeviceCount, flags);
+    if (ofnvmeRet != SUCCESS)
+    {
+        ofNvmeDeviceCount = 0;
+    }
+#endif
 
     //TODO: Check if sizeInBytes is a multiple of
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -2322,6 +2343,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         numberOfDevices = sizeInBytes / sizeof(tDevice);
 #if defined (ENABLE_CSMI)
         numberOfDevices -= csmiDeviceCount;
+#endif
+#if defined(ENABLE_OFNVME)
+        numberOfDevices -= ofNvmeDeviceCount;
 #endif
         d = ptrToDeviceList;
         for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN) && (found < numberOfDevices)); driveNumber++)
@@ -2374,6 +2398,16 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             {
                 //this will override the normal ret if it is already set to success with the CSMI return value
                 returnValue = csmiRet;
+            }
+        }
+#endif
+#if defined (ENABLE_OFNVME)
+        if (ofNvmeDeviceCount > 0)
+        {
+            ofnvmeRet = get_OFNVME_Device_List(&ptrToDeviceList[numberOfDevices], ofNvmeDeviceCount * sizeof(tDevice), ver, flags);
+            if (returnValue == SUCCESS && ofnvmeRet != SUCCESS)
+            {
+                returnValue = ofnvmeRet;
             }
         }
 #endif
@@ -5450,6 +5484,20 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
         case SCSI_INTERFACE:
             ret = send_SCSI_Pass_Through_IO(scsiIoCtx);
             break;
+        case CUSTOM_INTERFACE:
+            if (scsiIoCtx->device->issue_io != NULL)
+            {
+                ret = scsiIoCtx->device->issue_io(scsiIoCtx);
+            }
+            else
+            {
+                if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
+                {
+                    printf("Custom PassThrough Interface is not supported for this device \n");
+                }
+                ret = NOT_SUPPORTED;
+            }
+            break;
         case RAID_INTERFACE:
             if (scsiIoCtx->device->issue_io != NULL)
             {
@@ -7755,7 +7803,7 @@ int send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx)
 #endif //WINVER >= SEA_WIN32_WINNT_WIN10
 
 //MS NVMe requirements are listed here: https://msdn.microsoft.com/en-us/library/jj134356(v=vs.85).aspx
-int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
+int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = OS_COMMAND_NOT_AVAILABLE;
     //TODO: Should we be checking the nsid in each command before issuing it? This should happen at some point, at least to filter out "all namespaces" for certain commands since MS won't let us issue some of them through their API - TJE
@@ -7870,6 +7918,53 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             ret = send_NVMe_Vendor_Unique_IO(nvmeIoCtx);
         }
 #endif
+    }
+    return ret;
+}
+
+int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
+{
+    int ret = OS_PASSTHROUGH_FAILURE;
+    switch (nvmeIoCtx->device->drive_info.interface_type)
+    {
+    case NVME_INTERFACE:
+        ret = send_Win_NVMe_IO(nvmeIoCtx);
+        break;
+    case CUSTOM_INTERFACE:
+        if (nvmeIoCtx->device->issue_nvme_io != NULL)
+        {
+            ret = nvmeIoCtx->device->issue_nvme_io(nvmeIoCtx);
+        }
+        else
+        {
+            if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
+            {
+                printf("Custom PassThrough Interface is not supported for this device \n");
+            }
+            ret = NOT_SUPPORTED;
+        }
+        break;
+    case RAID_INTERFACE:
+        if (nvmeIoCtx->device->issue_nvme_io != NULL)
+        {
+            ret = nvmeIoCtx->device->issue_nvme_io(nvmeIoCtx);
+        }
+        else
+        {
+            if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
+            {
+                printf("Raid PassThrough Interface is not supported for this device \n");
+            }
+            ret = NOT_SUPPORTED;
+        }
+        break;
+    default:
+        if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
+        {
+            printf("Target Device does not have a valid interface\n");
+        }
+        ret = BAD_PARAMETER;
+        break;
     }
     return ret;
 }

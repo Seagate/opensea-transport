@@ -701,7 +701,8 @@ extern "C"
         USB_INTERFACE,
         MMC_INTERFACE,
         SD_INTERFACE,
-        IEEE_1394_INTERFACE
+        IEEE_1394_INTERFACE,
+        CUSTOM_INTERFACE //Driver or some other way to issue commands that is not matched by anything above.
     } eInterfaceType;
 
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
@@ -1274,7 +1275,8 @@ extern "C"
         OSDriveInfo         os_info;
         driveInfo           drive_info;
         void                *raid_device;
-        issue_io_func       issue_io;
+        issue_io_func       issue_io;//scsi IO function pointer for raid or other driver/custom interface to send commands
+        issue_io_func       issue_nvme_io;//nvme IO function pointer for raid or other driver/custom interface to send commands
         eDiscoveryOptions   dFlags;
         eVerbosityLevels    deviceVerbosity;
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
