@@ -1398,7 +1398,7 @@ int ata_SCT(tDevice *device, bool useGPL, bool useDMA, eDataTransferDirection di
         return BAD_PARAMETER;
     }
     //This is a hack for some USB drives. While a caller somewhere above this should handle this, this needs to be here to ensure we don't hang these devices.
-    if (device->drive_info.passThroughHacks.smartCommandTransportWithSMARTLogCommandsOnly)
+    if (device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly)
     {
         useGPL = false;
     }

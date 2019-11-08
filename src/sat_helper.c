@@ -251,7 +251,7 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
                 //rtfrs from passthrough results log
                 ret = get_Return_TFRs_From_Passthrough_Results_Log(device, rtfr, (ptrSenseData[8] & 0x0F) - 1);
             }
-            if (device->drive_info.passThroughHacks.returnResponseInfoSupported && ret != SUCCESS)
+            if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported && ret != SUCCESS)
             {
                 //follow up command for rtfrs
                 ret = request_Return_TFRs_From_Device(device, rtfr);
@@ -302,7 +302,7 @@ bool get_Return_TFRs_From_Sense_Data(tDevice *device, ataPassthroughCommand *ata
         {
             ret = get_RTFRs_From_Fixed_Format_Sense_Data(device, ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, &ataCommandOptions->rtfr);
             //if the RTFRs are incomplete, but the device supports the request command, send the request command to get the RTFRs
-            if (ret == WARN_INCOMPLETE_RFTRS && device->drive_info.passThroughHacks.returnResponseInfoSupported)
+            if (ret == WARN_INCOMPLETE_RFTRS && device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported)
             {
                 ret = request_Return_TFRs_From_Device(device, &ataCommandOptions->rtfr);
                 if (ret == SUCCESS)
@@ -315,7 +315,7 @@ bool get_Return_TFRs_From_Sense_Data(tDevice *device, ataPassthroughCommand *ata
                 gotRTFRsFromSenseData = true;
             }
         }
-        else if (device->drive_info.passThroughHacks.returnResponseInfoSupported)
+        else if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported)
         {
             ret = request_Return_TFRs_From_Device(device, &ataCommandOptions->rtfr);
             if (ret == SUCCESS)
@@ -622,7 +622,7 @@ int request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rtfr)
     uint8_t *rtfr_senseData = (uint8_t*)calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
     uint8_t *requestRTFRs = NULL;
     uint8_t cdbLen = CDB_LEN_16;
-    if (device->drive_info.passThroughHacks.useA1SATPassthroughWheneverPossible)
+    if (device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible)
     {
         cdbLen = CDB_LEN_12;
     }
@@ -647,7 +647,7 @@ int request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rtfr)
     //set the protocol to Fh (15) to request the return TFRs be returned in that data in buffer.
     set_Protocol_Field(requestRTFRs, ATA_PROTOCOL_RET_INFO, XFER_DATA_IN);
     //Set the TDIR bit to in. The SAT spec says the SATL should ignore this with this protocol, but I have found that this may not be the case in some firmware implementations, so set this to help out the SATL incase it is just skipping to checking this. - TJE
-    if (device->drive_info.passThroughHacks.returnResponseInfoNeedsTDIR)
+    if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR)
     {
         requestRTFRs[SAT_TRANSFER_BITS_OFFSET] |= SAT_T_DIR_DATA_IN;
         requestRTFRs[SAT_TRANSFER_BITS_OFFSET] |= ATA_PT_LEN_TPSIU;
@@ -666,7 +666,7 @@ int request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rtfr)
             rtfr->device = rtfrBuffer[12];
             rtfr->status = rtfrBuffer[13];
             //check for the extend bit
-            if (rtfrBuffer[2] & BIT0 || device->drive_info.passThroughHacks.returnResponseIgnoreExtendBit)
+            if (rtfrBuffer[2] & BIT0 || device->drive_info.passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit)
             {
                 //copy back the extended registers
                 rtfr->secCntExt = rtfrBuffer[4];
@@ -694,13 +694,13 @@ int request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rtfr)
 int build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, ataPassthroughCommand *ataCommandOptions)
 {
     int ret = SUCCESS;
-    if (device->drive_info.passThroughHacks.alwaysUseTPSIUForSATPassthrough)
+    if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough)
     {
         //override whatever came in here so that commands go through successfully....mostly for USB
         ataCommandOptions->ataCommandLengthLocation = ATA_PT_LEN_TPSIU;
     }
     //determine if we are allocating for a 16 byte or a 12 byte command
-    if (!device->drive_info.passThroughHacks.a1NeverSupported && device->drive_info.passThroughHacks.useA1SATPassthroughWheneverPossible && ataCommandOptions->commandType == ATA_CMD_TYPE_TASKFILE)
+    if (!device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported && device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible && ataCommandOptions->commandType == ATA_CMD_TYPE_TASKFILE)
     {
         //allocate 12 bytes
         *satCDB = (uint8_t*)calloc_aligned(CDB_LEN_12, sizeof(uint8_t), device->os_info.minimumAlignment);
@@ -758,7 +758,7 @@ int build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, ataPassthr
             break;
         default:
             //don't set the bit...unless we're being forced to do so
-            if (ataCommandOptions->forceCheckConditionBit || device->drive_info.passThroughHacks.alwaysSetCheckCondition)
+            if (ataCommandOptions->forceCheckConditionBit || device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable)
             {
                 set_Check_Condition_Bit(*satCDB);
             }
@@ -792,7 +792,7 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
     {
         ataCommandOptions->timeout = M_Max(15, device->drive_info.defaultTimeoutSeconds);
     }
-    if (device->drive_info.ata_Options.alwaysSetCheckConditionBit)//we want to always set this bit. May not work on all commands or all hbas/bridge chips. We typically only set this for Non-Data commands
+    if (device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable) //we want to always set this bit. May not work on all commands or all hbas/bridge chips. We typically only set this for Non-Data commands
     {
         ataCommandOptions->forceCheckConditionBit = true;
     }

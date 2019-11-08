@@ -753,7 +753,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     {
         //we didn't get anything...yet.
         //We are probably using 16byte cdbs already, if we aren't, then we are done, otherwise we need to try changing to 12byte CDBs for compatibility with some SATLs
-        if (!device->drive_info.passThroughHacks.a1NeverSupported && !device->drive_info.passThroughHacks.useA1SATPassthroughWheneverPossible && device->drive_info.passThroughHacks.passthroughType == ATA_PASSTHROUGH_SAT)
+        if (!device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported && !device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible && device->drive_info.passThroughHacks.passthroughType == ATA_PASSTHROUGH_SAT)
         {
             //we aren't trying 12 byte...we should try it...BUT if we suspect that this is an ATAPI drive, we should NOT. This is because ATAPI uses the same opcode for the "blank"
             //command. Since these are the same, the SATL may not filter it properly and we may issue this command instead. Since I don't know what this does, let's avoid that if possible. - TJE
@@ -761,7 +761,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             if (!(device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE
                 || device->drive_info.media_type == MEDIA_OPTICAL || device->drive_info.media_type == MEDIA_TAPE))
             {
-                device->drive_info.passThroughHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
                 memset(identifyData, 0, 512);
                 if (device->drive_info.interface_type == IDE_INTERFACE)
                 {
@@ -880,7 +880,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             }
             if ((ident_word[106] & BIT13) == 0)
             {
-                *fillPhysicalSectorSize = device->drive_info.deviceBlockSize;
+                *fillPhysicalSectorSize = *fillLogicalSectorSize;
             }
             else //multiple logical sectors per physical sector
             {
@@ -1115,7 +1115,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         return ret;
     }
 
-    if (device->drive_info.passThroughHacks.alwaysUseDMAInsteadOfUDMA)
+    if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA)
     {
         //forcing using DMA mode instead of UDMA since the translator doesn't like UDMA mode set
         device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;

@@ -1456,7 +1456,7 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
             NULL);
         if (fd != INVALID_HANDLE_VALUE)
 #else
-        if (fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
+        if ((fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
 #endif
         {
             CSMI_SAS_PHY_INFO_BUFFER phyInfo;
@@ -1576,7 +1576,7 @@ int get_CSMI_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, 
                 NULL);
             if (fd != INVALID_HANDLE_VALUE)
 #else
-            if (fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
+            if ((fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
 #endif
             {
                 //get some controller/driver into then start checking for connected ports and increment the counter.

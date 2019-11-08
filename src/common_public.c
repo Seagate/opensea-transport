@@ -2109,7 +2109,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 break;
             case 0x2700:
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
-                device->drive_info.passThroughHacks.unitSNAvailable = true;
+                device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable = true;
                 passthroughHacksSet = true;
                 break;
             default: //unknown
@@ -2132,7 +2132,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
             {
             case 0x2339://MiniD2
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
-                device->drive_info.passThroughHacks.alwaysSetCheckCondition = true; //This device supports the check condition bit on all commands
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true; //This device supports the check condition bit on all commands
                 passthroughHacksSet = true;
                 break;
             default: //unknown

@@ -8797,11 +8797,11 @@ bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
             //known device specific hacks
             if (strcmp(productID, "BlackArmorDAS25") == 0)
             {
-                device->drive_info.passThroughHacks.unitSNAvailable = true;
+                device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable = true;
             }
             else if (strcmp(productID, "S2 Portable") == 0)
             {
-                device->drive_info.passThroughHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
+                device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
                 //TODO: this device previously had a hack that SMART check isn't supported, so need to migrate that too.
             }
         }
@@ -9219,7 +9219,7 @@ int fill_In_Device_Info(tDevice *device)
 
         if (M_Word0(device->dFlags) == FAST_SCAN)
         {
-            if (version >= 2 || device->drive_info.passThroughHacks.unitSNAvailable)//unit serial number added in SCSI2
+            if (version >= 2 || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable)//unit serial number added in SCSI2
             {
                 //I'm reading only the unit serial number page here for a quick scan and the device information page for WWN - TJE
                 uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
@@ -9304,7 +9304,7 @@ int fill_In_Device_Info(tDevice *device)
 
         bool satVPDPageRead = false;
         bool satComplianceChecked = false;
-        if (version >= 2 || device->drive_info.passThroughHacks.unitSNAvailable) //SCSI 2 added VPD pages
+        if (version >= 2 || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable) //SCSI 2 added VPD pages
         {
             //from here on we need to check if a VPD page is supported and read it if there is anything in it that we care about to store info in the device struct
             memset(inq_buf, 0, INQ_RETURN_DATA_LENGTH);
@@ -9342,7 +9342,7 @@ int fill_In_Device_Info(tDevice *device)
                 inq_buf[0] |= peripheralDeviceType;
                 //set page code
                 inq_buf[1] = 0x00;
-                if (device->drive_info.passThroughHacks.unitSNAvailable)
+                if (device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable)
                 {
                     //If this is set, then this means that the device ONLY supports the unit SN page, but not other. Only add unit serial number to this dummied data.
                     //This is a workaround for some USB devices.

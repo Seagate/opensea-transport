@@ -784,7 +784,7 @@ extern "C"
         ATA_PASSTHROUGH_PROLIFIC,
         ATA_PASSTHROUGH_TI,
         ATA_PASSTHROUGH_NEC,
-        ATA_PASSTHROUGH_PSP, //Some PSP drives use this passthrough and others use SAT...
+        ATA_PASSTHROUGH_PSP, //Some PSP drives use this passthrough and others use SAT...it's not clear if this was ever even used. If testing for it, test it last.
         ATA_PASSTHROUGH_UNKNOWN
     }ePassthroughType;
 
@@ -809,7 +809,7 @@ extern "C"
         bool writeUncorrectableExtSupported;
         bool fourtyEightBitAddressFeatureSetSupported;
         bool generalPurposeLoggingSupported;
-        bool alwaysSetCheckConditionBit;//this will cause all commands to set the check condition bit. This means any ATA Passthrough command should always get back an ATA status which may help with sense data and judging what went wrong better. Be aware that this may not be liked on some devices and some may just ignore it.
+        bool alwaysCheckConditionAvailableBit;//this will cause all commands to set the check condition bit. This means any ATA Passthrough command should always get back an ATA status which may help with sense data and judging what went wrong better. Be aware that this may not be liked on some devices and some may just ignore it.
         bool enableLegacyPassthroughDetectionThroughTrialAndError;//This must be set to true in order to work on legacy (ancient) passthrough if the VID/PID is not in the list and not read from the system.
         bool senseDataReportingEnabled;//this is to track when the RTFRs may contain a sense data bit so it can be read automatically.
         uint8_t padd[1];
@@ -867,21 +867,50 @@ extern "C"
     #endif
     typedef struct _passthroughHacks
     {
+        //generic information up top.
         bool hacksSetByReportedID;//This is true if the code was able to read and set hacks based on reported vendor and product IDs from lower levels. If this is NOT set, then the information below is set either by trial and error or by known product identification matches.
+        bool someHacksSetByOSDiscovery;//Will be set if any of the below are set by default by the OS level code. This may happen in Windows for ATA/SCSI passthrough to ATA devices
         ePassthroughType passthroughType;//This should be left alone unless you know for a fact which passthrough to use. SAT is the default and should be used unless you know you need a legacy (pre-SAT) passthrough type.
         bool testUnitReadyAfterAnyCommandFailure;//This should be done whenever we have a device that is known to increase time to return response to bad commands. Many USB bridges need this.
-        bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
-        bool useA1SATPassthroughWheneverPossible;//For USB adapters that will only process 28bit commands with A1 and will NOT issue them with 85h
-        bool a1NeverSupported;//prevent retrying with 12B command since it isn't supported anyways.
-        bool returnResponseInfoSupported;//can send the SAT command to get response information for RTFRs
-        bool returnResponseInfoNeedsTDIR;//supports return response info, but must have T_DIR bit set for it to work properly
-        bool returnResponseIgnoreExtendBit;//Some devices support returning response info, but don't properly set the extend bit, so this basically means copy extended RTFRs anyways.
-        bool alwaysUseTPSIUForSATPassthrough;//some USBs do this better than others.
-        bool alwaysSetCheckCondition;//Not supported by all SAT translators. Don't set unless you know for sure!!!
-        bool alwaysUseDMAInsteadOfUDMA;//send commands with DMA mode instead of UDMA since the device doesn't support UDMA passthrough modes.
-        bool unitSNAvailable;//This means we can request this page even if other VPD pages don't work.
+        //SCSI hacks are those that relate to things to handle when issuing SCSI commands that may be translated improperly in some cases.
+        struct
+        {
+            bool unitSNAvailable;//This means we can request this page even if other VPD pages don't work.
+            struct {
+                bool available;//means that the bools below have been set. If not, need to use default read/write settings in the library.
+                bool rw6;
+                bool rw10;
+                bool rw12;
+                bool rw16;
+            }readWrite;
+            bool noModePages;//no mode pages are supported
+            bool noLogPages;//no mode pages are supported
+            bool mode6bytes;//mode sense/select 6 byte commands only
+            bool noModeSubPages;//Subpages are not supported, don't try sending these commands
+            bool noReportSupportedOperations;//report supported operation codes command is not supported.
+            bool reportSingleOpCodes;//reporting supported operation codes specifying a specific operation code is supported by the device.
+            bool reportAllOpCodes;//reporting all operation codes is supported by the device.
+            bool securityProtocolSupported;//SCSI security protocol commands are supported
+            bool securityProtocolWithInc512;//SCSI security protocol commands are ONLY supported with the INC512 bit set.
+        }scsiHacks;
+        //ATA Hacks refer to SAT translation issues or workarounds.
+        struct {
+            bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
+            bool useA1SATPassthroughWheneverPossible;//For USB adapters that will only process 28bit commands with A1 and will NOT issue them with 85h
+            bool a1NeverSupported;//prevent retrying with 12B command since it isn't supported anyways.
+            bool returnResponseInfoSupported;//can send the SAT command to get response information for RTFRs
+            bool returnResponseInfoNeedsTDIR;//supports return response info, but must have T_DIR bit set for it to work properly
+            bool returnResponseIgnoreExtendBit;//Some devices support returning response info, but don't properly set the extend bit, so this basically means copy extended RTFRs anyways.
+            bool alwaysUseTPSIUForSATPassthrough;//some USBs do this better than others.
+            bool alwaysCheckConditionAvailable;//Not supported by all SAT translators. Don't set unless you know for sure!!!
+            bool alwaysUseDMAInsteadOfUDMA;//send commands with DMA mode instead of UDMA since the device doesn't support UDMA passthrough modes.
+            bool partialRTFRs;//This means only 28bit RTFRs will be able to be retrived by the device. This hack is more helpful for code trying different commands to filter capabilities than for trying to talk to the device.
+            bool noRTFRsPossible;//This means on command responses, we cannot get any return task file registers back from the device, so avoid commands that rely on this behavior
+            bool multiSectorPIOWithMultipleMode;//This means that multisector PIO works, BUT only when a set multiple mode command has been sent first and it is limited to the multiple mode.
+            bool singleSectorPIOOnly;//This means that the adapter only supports single sector PIO transfers
+        }ataPTHacks;
         //TODO: Add more hacks and padd this structure
-        //uint8_t padd[3];
+        uint8_t padd[3];
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }passthroughHacks;
     #pragma pack(pop)

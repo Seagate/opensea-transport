@@ -539,6 +539,7 @@ extern "C"
         MP_INFORMATION_EXCEPTIONS_LEN    = 12,
         MP_READ_WRITE_ERROR_RECOVERY_LEN = 12,
         MP_VERIFY_ERROR_RECOVERY_LEN     = 12,
+        MP_RIGID_DISK_GEOMETRY_LEN       = 24,
     }eScsiModeParameterLengths;
 
     typedef enum _eScsiPowerConditionValues
