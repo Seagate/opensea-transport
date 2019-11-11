@@ -20,15 +20,16 @@
 #include <string.h>
 #include <windows.h>                // added for forced PnP rescan
 #include <tchar.h>
-//NOTE: ARM requires 10.0.16299.0 API to get this library!
-#include <cfgmgr32.h>               // added for forced PnP rescan
 #include <initguid.h>
-#include <devpropdef.h>
-#include <devpkey.h>
-#include <winbase.h>
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 #include <ntddstor.h>
 #endif
+//NOTE: ARM requires 10.0.16299.0 API to get this library!
+#include <cfgmgr32.h>               // added for forced PnP rescan
+//#include <setupapi.h> //NOTE: Not available for ARM
+#include <devpropdef.h>
+#include <devpkey.h>
+#include <winbase.h>
 #include "common.h"
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
@@ -45,17 +46,41 @@
 #include "csmi_helper_func.h"
 #endif
 
-//TODO: There are ifdefs now wrapping where these definitions could be used, so these defines for MinGW may not be necessary now.
+//MinGW may or may not have some of these, so there is a need to define these here to build properly when they are otherwise not available.
+//TODO: as mingw changes versions, some of these below may be available. Need to have a way to check mingw preprocessor defines for versions to work around these.
 #if defined (__MINGW32__)
-  #if !defined (ATA_FLAGS_NO_MULTIPLE)
-    #define ATA_FLAGS_NO_MULTIPLE (1 << 5)
-  #endif
-  #if !defined (BusTypeSpaces)
-    #define BusTypeSpaces 16
-  #endif
-  #if !defined (BusTypeNvme)
-    #define BusTypeNvme 17
-  #endif
+    #if !defined (ATA_FLAGS_NO_MULTIPLE)
+        #define ATA_FLAGS_NO_MULTIPLE (1 << 5)
+    #endif
+    #if !defined (BusTypeSpaces)
+        #define BusTypeSpaces 16
+    #endif
+    #if !defined (BusTypeNvme)
+        #define BusTypeNvme 17
+    #endif
+
+    //This is for looking up hardware IDs of devices for PCIe/USB, etc
+    #if !defined (DEVPKEY_Device_HardwareIds)
+        DEFINE_DEVPROPKEY(DEVPKEY_Device_HardwareIds,            0xa45c254e, 0xdf1c, 0x4efd, 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0, 3); 
+    #endif
+
+    //Making this extern since it's missing from current MinGW headers. - TJE
+    extern CMAPI CONFIGRET CM_Get_DevNode_PropertyW(
+          DEVINST          dnDevInst,
+          const DEVPROPKEY *PropertyKey,
+          DEVPROPTYPE      *PropertyType,
+          PBYTE            PropertyBuffer,
+          PULONG           PropertyBufferSize,
+          ULONG            ulFlags
+        );
+
+    #if !defined (CM_GETIDLIST_FILTER_PRESENT)
+        #define CM_GETIDLIST_FILTER_PRESENT             (0x00000100)
+    #endif
+    #if !defined (CM_GETIDLIST_FILTER_CLASS)
+        #define CM_GETIDLIST_FILTER_CLASS               (0x00000200)
+    #endif
+
 #endif
 
 extern bool validate_Device_Struct(versionBlock);
