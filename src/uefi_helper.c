@@ -1655,11 +1655,11 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         #endif
         if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
         {
-            printf("Sending ADMIN with NSID = %" PRIX32 "h\n", nvmeIoCtx->cmd.adminCmd.nsid);
+            //printf("Sending ADMIN with NSID = %" PRIX32 "h\n", nvmeIoCtx->cmd.adminCmd.nsid);
             start_Timer(&commandTimer);
             nvmeIoCtx->device->os_info.last_error = Status = pPassthru->PassThru(pPassthru, nvmeIoCtx->cmd.adminCmd.nsid, nrp, NULL);
             stop_Timer(&commandTimer);
-            printf("\tAdmin command returned %d\n", Status);
+            //printf("\tAdmin command returned %d\n", Status);
         }
         else
         {
