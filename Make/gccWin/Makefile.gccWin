@@ -53,6 +53,7 @@ ifneq (,$(findstring MINGW64,$(UNAME)))
 	LDFLAGS += -L/msys64/mingw64/x86_64-w64-mingw32/lib
 	LDLIBS += -lversion
 	LDLIBS += -lcfgmgr32
+	LDLIBS += -lsetupapi
 endif
 
 LIB_SRC_FILES = \
@@ -87,7 +88,7 @@ else
 endif
 
 ifneq (,$(findstring MINGW64,$(UNAME)))
-	PROJECT_DEFINES += -D__MINGW64__
+	#PROJECT_DEFINES += -D__MINGW64__
 	# PROJECT_DEFINES += -D__MINGW32__
 	#BR note: trying different stuff during debugging
 	# PROJECT_DEFINES += -D_CRT_NONSTDC_NO_DEPRECATE
