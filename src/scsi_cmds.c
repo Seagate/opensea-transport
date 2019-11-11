@@ -134,7 +134,7 @@ int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata,
     {
         ret = sendIOret;
     }
-    if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= scsiIoCtx.timeout)
+    if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > scsiIoCtx.timeout)
     {
         ret = COMMAND_TIMEOUT;
     }

@@ -984,7 +984,7 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
         }
     }
     safe_Free_aligned(satCDB);
-    if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= ataCommandOptions->timeout)
+    if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)
     {
         ret = COMMAND_TIMEOUT;
     }
