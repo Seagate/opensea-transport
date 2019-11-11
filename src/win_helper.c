@@ -21,9 +21,9 @@
 #include <windows.h>                // added for forced PnP rescan
 #include <tchar.h>
 #include <initguid.h>
-#if !defined(DISABLE_NVME_PASSTHROUGH)
+//#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include <ntddstor.h>
-#endif
+//#endif
 //NOTE: ARM requires 10.0.16299.0 API to get this library!
 #include <cfgmgr32.h>               // added for forced PnP rescan
 //#include <setupapi.h> //NOTE: Not available for ARM
@@ -64,21 +64,15 @@
         DEFINE_DEVPROPKEY(DEVPKEY_Device_HardwareIds,            0xa45c254e, 0xdf1c, 0x4efd, 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0, 3); 
     #endif
 
-    //Making this extern since it's missing from current MinGW headers. - TJE
-    extern CMAPI CONFIGRET CM_Get_DevNode_PropertyW(
-          DEVINST          dnDevInst,
-          const DEVPROPKEY *PropertyKey,
-          DEVPROPTYPE      *PropertyType,
-          PBYTE            PropertyBuffer,
-          PULONG           PropertyBufferSize,
-          ULONG            ulFlags
-        );
-
     #if !defined (CM_GETIDLIST_FILTER_PRESENT)
         #define CM_GETIDLIST_FILTER_PRESENT             (0x00000100)
     #endif
     #if !defined (CM_GETIDLIST_FILTER_CLASS)
         #define CM_GETIDLIST_FILTER_CLASS               (0x00000200)
+    #endif
+
+    #if !defined (GUID_DEVINTERFACE_DISK)
+        DEFINE_GUID(GUID_DEVINTERFACE_DISK,                   0x53f56307L, 0xb6bf, 0x11d0, 0x94, 0xf2, 0x00, 0xa0, 0xc9, 0x1e, 0xfb, 0x8b);
     #endif
 
 #endif
