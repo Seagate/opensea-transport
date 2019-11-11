@@ -4186,7 +4186,7 @@ int scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t 
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Persistent Reserve In - %" PRIu8 "\n", M_GETBITRANGE(serviceAction, 4, 0));
+        printf("Sending SCSI Persistent Reserve In - %" PRIu8 "\n", (uint8_t)M_GETBITRANGE(serviceAction, 4, 0));
     }
     //send the command
     if (ptrData && allocationLength)
@@ -4226,7 +4226,7 @@ int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t 
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Persistent Reserve Out - %" PRIu8 "\n", M_GETBITRANGE(serviceAction, 4, 0));
+        printf("Sending SCSI Persistent Reserve Out - %" PRIu8 "\n", (uint8_t)M_GETBITRANGE(serviceAction, 4, 0));
     }
     //send the command
     if (ptrData && parameterListLength)
