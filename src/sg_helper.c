@@ -1301,7 +1301,10 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
             }
             if (io_hdr.sb_len_wr == 0)
             {
-                printf("\t(Masked Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                {
+                    printf("\t(Masked Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                }
                 //No sense data back. We need to set an error since the layers above are going to look for sense data and we don't have any.
                 ret = OS_PASSTHROUGH_FAILURE;
             }
@@ -1356,7 +1359,10 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
             }
             if (io_hdr.sb_len_wr == 0)//Doing this because some drivers may set an error even if the command otherwise went through and sense data was available.
             {
-                printf("\t(Host Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                {
+                    printf("\t(Host Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                }
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
@@ -1426,7 +1432,10 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
             }
             if (io_hdr.sb_len_wr == 0)
             {
-                printf("\t(Driver Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                {
+                    printf("\t(Driver Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                }
                 //No sense data back. We need to set an error since the layers above are going to look for sense data and we don't have any.
                 ret = OS_PASSTHROUGH_FAILURE;
             }
