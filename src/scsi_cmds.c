@@ -16,12 +16,82 @@
 #include "common_public.h"
 #include "platform_helper.h"
 
+//This is the private function so that it can be called by the ATA layer as well and make everything follow one single code path instead of multiple.
+//This will enhance debug output since it will consistently be in one place for SCSI passthrough commands.
+static int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx)
+{
+    int ret = UNKNOWN;
+    senseDataFields senseFields;
+    memset(&senseFields, 0, sizeof(senseDataFields));
+    //clear the last command sense data every single time before we issue any commands
+    memset(scsiIoCtx->device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);
+    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+    {
+        printf("\n  CDB:\n");
+        print_Data_Buffer(scsiIoCtx->cdb, scsiIoCtx->cdbLength, false);
+    }
+#if defined (_DEBUG)
+    //This is different for debug because sometimes we need to see if the data buffer actually changed after issuing a command.
+    //This was very important for debugging windows issues, which is why I have this ifdef in place for debug builds. - TJE
+    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity && scsiIoCtx->pdata != NULL)
+#else
+    //Only print the data buffer being sent when it is a data transfer to the drive (data out command)
+    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity && scsiIoCtx->pdata != NULL && scsiIoCtx->direction == XFER_DATA_OUT)
+#endif
+    {
+        printf("\t  Data Buffer being sent:\n");
+        print_Data_Buffer(scsiIoCtx->pdata, scsiIoCtx->dataLength, true);
+        printf("\n");
+    }
+    //send the command
+    int sendIOret = send_IO(scsiIoCtx);
+    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity && scsiIoCtx->psense)
+    {
+        printf("\n  Sense Data Buffer:\n");
+        print_Data_Buffer(scsiIoCtx->psense, get_Returned_Sense_Data_Length(scsiIoCtx->psense), false);
+        printf("\n");
+    }
+    //get_Sense_Key_ASC_ASCQ_FRU(scsiIoCtx.psense, senseDataLen, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.asc, &scsiIoCtx.returnStatus.ascq, &scsiIoCtx.returnStatus.fru);
+    get_Sense_Data_Fields(scsiIoCtx->psense, scsiIoCtx->senseDataSize, &senseFields);
+    ret = check_Sense_Key_ASC_ASCQ_And_FRU(scsiIoCtx->device, senseFields.scsiStatusCodes.senseKey, senseFields.scsiStatusCodes.asc, senseFields.scsiStatusCodes.ascq, senseFields.scsiStatusCodes.fru);
+    //if verbose mode and sense data is non-NULL, we should try to print out all the relavent information we can
+    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity && scsiIoCtx->psense)
+    {
+        print_Sense_Fields(&senseFields);
+    }
+    if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+    {
+        //print command timing information
+        print_Command_Time(scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds);
+    }
+#if defined (_DEBUG)
+    //This is different for debug because sometimes we need to see if the data buffer actually changed after issuing a command.
+    //This was very important for debugging windows issues, which is why I have this ifdef in place for debug builds. - TJE
+    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity && scsiIoCtx->pdata != NULL)
+#else
+    //Only print the data buffer being sent when it is a data transfer to the drive (data out command)
+    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity && scsiIoCtx->pdata != NULL && scsiIoCtx->direction == XFER_DATA_IN)
+#endif
+    {
+        printf("\t  Data Buffer being returned:\n");
+        print_Data_Buffer(scsiIoCtx->pdata, scsiIoCtx->dataLength, true);
+        printf("\n");
+    }
+    if (ret == SUCCESS && sendIOret != SUCCESS)
+    {
+        ret = sendIOret;
+    }
+    if ((scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > scsiIoCtx->timeout)
+    {
+        ret = COMMAND_TIMEOUT;
+    }
+    return ret;
+}
+
 int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata, uint32_t dataLen, eDataTransferDirection dataDirection, uint8_t *senseData, uint32_t senseDataLen, uint32_t timeoutSeconds)
 {
     int ret = UNKNOWN;
     ScsiIoCtx scsiIoCtx;
-    senseDataFields senseFields;
-    memset(&senseFields, 0, sizeof(senseDataFields));
     memset(&scsiIoCtx, 0, sizeof(ScsiIoCtx));
     uint8_t *senseBuffer = senseData;
     //if we were not given a sense buffer, assume we want to use the last command sense data that is part of the device struct
@@ -72,72 +142,13 @@ int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata,
         scsiIoCtx.timeout = M_Max(15, device->drive_info.defaultTimeoutSeconds);
     }
 
-    //clear the last command sense data every single time before we issue any commands
-    memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);
-    if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-    {
-        printf("\n  CDB:\n");
-        print_Data_Buffer(scsiIoCtx.cdb, scsiIoCtx.cdbLength, false);
-    }
-    #if defined (_DEBUG)
-    //This is different for debug because sometimes we need to see if the data buffer actually changed after issuing a command.
-    //This was very important for debugging windows issues, which is why I have this ifdef in place for debug builds. - TJE
-    if (VERBOSITY_BUFFERS <= device->deviceVerbosity && pdata != NULL)
-    #else
-    //Only print the data buffer being sent when it is a data transfer to the drive (data out command)
-    if (VERBOSITY_BUFFERS <= device->deviceVerbosity && pdata != NULL && dataDirection == XFER_DATA_OUT)
-    #endif
-    {
-        printf("\t  Data Buffer being sent:\n");
-        print_Data_Buffer(pdata, dataLen, true);
-        printf("\n");
-    }
-    //send the command
-    int sendIOret = send_IO(&scsiIoCtx);
-    if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity && scsiIoCtx.psense)
-    {
-        printf("\n  Sense Data Buffer:\n");
-        print_Data_Buffer(scsiIoCtx.psense, get_Returned_Sense_Data_Length(scsiIoCtx.psense), false);
-        printf("\n");
-    }
-    //get_Sense_Key_ASC_ASCQ_FRU(scsiIoCtx.psense, senseDataLen, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.asc, &scsiIoCtx.returnStatus.ascq, &scsiIoCtx.returnStatus.fru);
-    get_Sense_Data_Fields(scsiIoCtx.psense, scsiIoCtx.senseDataSize, &senseFields);
-    ret = check_Sense_Key_ASC_ASCQ_And_FRU(device, senseFields.scsiStatusCodes.senseKey, senseFields.scsiStatusCodes.asc, senseFields.scsiStatusCodes.ascq, senseFields.scsiStatusCodes.fru);
-    //if verbose mode and sense data is non-NULL, we should try to print out all the relavent information we can
-    if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity && scsiIoCtx.psense)
-    {
-        print_Sense_Fields(&senseFields);
-    }
-    if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-    {
-        //print command timing information
-        print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
-    }
-    #if defined (_DEBUG)
-    //This is different for debug because sometimes we need to see if the data buffer actually changed after issuing a command.
-    //This was very important for debugging windows issues, which is why I have this ifdef in place for debug builds. - TJE
-    if (VERBOSITY_BUFFERS <= device->deviceVerbosity && pdata != NULL)
-    #else
-    //Only print the data buffer being sent when it is a data transfer to the drive (data out command)
-    if (VERBOSITY_BUFFERS <= device->deviceVerbosity && pdata != NULL && dataDirection == XFER_DATA_IN)
-    #endif
-    {
-        printf("\t  Data Buffer being returned:\n");
-        print_Data_Buffer(pdata, dataLen, true);
-        printf("\n");
-    }
+    ret = private_SCSI_Send_CDB(&scsiIoCtx);
+
     if (senseData && senseDataLen > 0 && senseData != device->drive_info.lastCommandSenseData)
     {
         memcpy(device->drive_info.lastCommandSenseData, senseBuffer, M_Min(SPC3_SENSE_LEN, senseDataLen));
     }
-    if (ret == SUCCESS && sendIOret != SUCCESS)
-    {
-        ret = sendIOret;
-    }
-    if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > scsiIoCtx.timeout)
-    {
-        ret = COMMAND_TIMEOUT;
-    }
+
     return ret;
 }
 
