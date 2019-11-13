@@ -2045,6 +2045,7 @@ int translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx *scs
         SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
         if (!SCSINameStringDesignator)
         {
+            safe_Free(naaDesignator);
             return MEMORY_FAILURE;
         }
         //now set this into the buffer
@@ -2074,6 +2075,8 @@ int translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx *scs
     deviceIdentificationPage = (uint8_t*)calloc(4U + 72U + naaDesignatorLength + SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
     if (!deviceIdentificationPage)
     {
+        safe_Free(SCSINameStringDesignator);
+        safe_Free(naaDesignator);
         return MEMORY_FAILURE;
     }
     uint8_t peripheralDevice = 0;

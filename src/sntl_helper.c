@@ -1272,6 +1272,9 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     deviceIdentificationPage = (uint8_t*)calloc(4U + eui64DesignatorLength + t10VendorIdDesignatorLength + naaDesignatorLength + SCSINameStringDesignatorLength, sizeof(uint8_t));
     if (!deviceIdentificationPage)
     {
+        safe_Free(naaDesignator);
+        safe_Free(SCSINameStringDesignator);
+        safe_Free(t10VendorIdDesignator);
         return MEMORY_FAILURE;
     }
     deviceIdentificationPage[0] = 0;

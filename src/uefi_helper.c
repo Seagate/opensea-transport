@@ -261,7 +261,6 @@ int get_Device(const char *filename, tDevice *device)
             EFI_SCSI_PASS_THRU_PROTOCOL *pPassthru;
             if (SUCCESS == get_SCSI_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum))
             {
-                EFI_SCSI_PASS_THRU_PROTOCOL *pPassthru;
                 EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
                 EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, device->os_info.address.scsi.target, device->os_info.address.scsi.lun, &devicePath);
                 if(buildPath == EFI_SUCCESS)

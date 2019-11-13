@@ -3694,6 +3694,7 @@ int win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     }
     else
     {
+        safe_Free(downloadIO);
         return BAD_PARAMETER;
     }
     //set the size of the buffer

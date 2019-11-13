@@ -1681,6 +1681,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             }
             else if (errno == EACCES) //quick fix for opening drives without sudo
             {
+                safe_Free(devs);
                 return PERMISSION_DENIED;
             }
         }
