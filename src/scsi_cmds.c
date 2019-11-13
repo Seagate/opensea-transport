@@ -18,11 +18,21 @@
 
 //This is the private function so that it can be called by the ATA layer as well and make everything follow one single code path instead of multiple.
 //This will enhance debug output since it will consistently be in one place for SCSI passthrough commands.
-static int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx)
+int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields)
 {
     int ret = UNKNOWN;
-    senseDataFields senseFields;
-    memset(&senseFields, 0, sizeof(senseDataFields));
+    bool localSenseFieldsAllocated = false;
+    ptrSenseDataFields localSenseFields = NULL;
+    if (!pSenseFields)
+    {
+        localSenseFields = (ptrSenseDataFields)calloc(1, sizeof(senseDataFields));
+        if (!localSenseFields)
+        {
+            return MEMORY_FAILURE;
+        }
+        localSenseFieldsAllocated = true;
+        pSenseFields = localSenseFields;
+    }
     //clear the last command sense data every single time before we issue any commands
     memset(scsiIoCtx->device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);
     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
@@ -51,13 +61,12 @@ static int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx)
         print_Data_Buffer(scsiIoCtx->psense, get_Returned_Sense_Data_Length(scsiIoCtx->psense), false);
         printf("\n");
     }
-    //get_Sense_Key_ASC_ASCQ_FRU(scsiIoCtx.psense, senseDataLen, &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.asc, &scsiIoCtx.returnStatus.ascq, &scsiIoCtx.returnStatus.fru);
-    get_Sense_Data_Fields(scsiIoCtx->psense, scsiIoCtx->senseDataSize, &senseFields);
-    ret = check_Sense_Key_ASC_ASCQ_And_FRU(scsiIoCtx->device, senseFields.scsiStatusCodes.senseKey, senseFields.scsiStatusCodes.asc, senseFields.scsiStatusCodes.ascq, senseFields.scsiStatusCodes.fru);
+    get_Sense_Data_Fields(scsiIoCtx->psense, scsiIoCtx->senseDataSize, pSenseFields);
+    ret = check_Sense_Key_ASC_ASCQ_And_FRU(scsiIoCtx->device, pSenseFields->scsiStatusCodes.senseKey, pSenseFields->scsiStatusCodes.asc, pSenseFields->scsiStatusCodes.ascq, pSenseFields->scsiStatusCodes.fru);
     //if verbose mode and sense data is non-NULL, we should try to print out all the relavent information we can
     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity && scsiIoCtx->psense)
     {
-        print_Sense_Fields(&senseFields);
+        print_Sense_Fields(pSenseFields);
     }
     if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
@@ -81,9 +90,15 @@ static int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx)
     {
         ret = sendIOret;
     }
+
     if ((scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > scsiIoCtx->timeout)
     {
         ret = COMMAND_TIMEOUT;
+    }
+
+    if (localSenseFieldsAllocated)
+    {
+        safe_Free(localSenseFields);
     }
     return ret;
 }
@@ -142,7 +157,7 @@ int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata,
         scsiIoCtx.timeout = M_Max(15, device->drive_info.defaultTimeoutSeconds);
     }
 
-    ret = private_SCSI_Send_CDB(&scsiIoCtx);
+    ret = private_SCSI_Send_CDB(&scsiIoCtx, NULL);
 
     if (senseData && senseDataLen > 0 && senseData != device->drive_info.lastCommandSenseData)
     {
