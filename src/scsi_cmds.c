@@ -96,6 +96,34 @@ int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields)
         ret = COMMAND_TIMEOUT;
     }
 
+    //Send a test unit ready command if a problem was found to keep the device performing optimally
+    if (scsiIoCtx->device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure && scsiIoCtx->cdb[0] != TEST_UNIT_READY_CMD)
+    {
+        switch (ret)
+        {
+        case SUCCESS:
+        case FAILURE:
+            break;
+        case OS_PASSTHROUGH_FAILURE:
+        case OS_COMMAND_BLOCKED:
+        case OS_COMMAND_NOT_AVAILABLE:
+            break;
+        default:
+            //send a test unit ready
+            //backup last sense data and time before we issue the TUR
+            {
+                uint64_t lastCommandTime = scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds;
+                uint8_t lastSenseData[SPC3_SENSE_LEN] = { 0 };
+                memcpy(lastSenseData, scsiIoCtx->device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN);
+                //issue test unit ready //TODO: Do this multiple times if the first one doesn't work??? - TJE
+                scsi_Test_Unit_Ready(scsiIoCtx->device, NULL);
+                //copy everything back now.
+                scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = lastCommandTime;
+                memcpy(scsiIoCtx->device->drive_info.lastCommandSenseData, lastSenseData, SPC3_SENSE_LEN);
+            }
+        }
+    }
+
     if (localSenseFieldsAllocated)
     {
         safe_Free(localSenseFields);

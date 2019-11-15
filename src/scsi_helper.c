@@ -8903,49 +8903,49 @@ int fill_In_Device_Info(tDevice *device)
     memset(device->drive_info.product_revision, 0, sizeof(device->drive_info.product_revision));
     //By default, we need to set up some information about drive type based on what is known so far from the OS level code telling us the interface the device is attached on. We can change it later if need be
     //Remember, these are assumptions ONLY based off what interface the OS level code is reporting. It should default to something, then get changed later when we know more about it.
-    switch (device->drive_info.interface_type)
-    {
-    case IDE_INTERFACE:
-        if (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != LEGACY_TAPE_DRIVE)
-        {
-            device->drive_info.drive_type = ATA_DRIVE;
-            device->drive_info.media_type = MEDIA_HDD;
-        }
-        break;
-    case RAID_INTERFACE:
-        //This has already been set by the RAID level, don't change it.
-        if(device->drive_info.drive_type == UNKNOWN_DRIVE)
-        {
-            device->drive_info.drive_type = RAID_DRIVE;
-        }
-        if(device->drive_info.media_type == MEDIA_UNKNOWN)
-        {
-            device->drive_info.media_type = MEDIA_HDD;
-        }
-        break;
-    case NVME_INTERFACE:
-        device->drive_info.drive_type = NVME_DRIVE;
-        device->drive_info.media_type = MEDIA_NVM;
-        break;
-    case SCSI_INTERFACE:
-    case USB_INTERFACE:
-    case IEEE_1394_INTERFACE:
-        if (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != LEGACY_TAPE_DRIVE)
-        {
-            device->drive_info.drive_type = SCSI_DRIVE;
-            device->drive_info.media_type = MEDIA_HDD;
-        }
-        break;
-    case MMC_INTERFACE:
-    case SD_INTERFACE:
-        device->drive_info.drive_type = FLASH_DRIVE;
-        device->drive_info.media_type = MEDIA_SSM_FLASH;
-        break;
-    case UNKNOWN_INTERFACE:
-    default:
-        device->drive_info.media_type = MEDIA_UNKNOWN;
-        break;
-    }
+//  switch (device->drive_info.interface_type)
+//  {
+//  case IDE_INTERFACE:
+//      if (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != LEGACY_TAPE_DRIVE)
+//      {
+//          device->drive_info.drive_type = ATA_DRIVE;
+//          device->drive_info.media_type = MEDIA_HDD;
+//      }
+//      break;
+//  case RAID_INTERFACE:
+//      //This has already been set by the RAID level, don't change it.
+//      if(device->drive_info.drive_type == UNKNOWN_DRIVE)
+//      {
+//          device->drive_info.drive_type = RAID_DRIVE;
+//      }
+//      if(device->drive_info.media_type == MEDIA_UNKNOWN)
+//      {
+//          device->drive_info.media_type = MEDIA_HDD;
+//      }
+//      break;
+//  case NVME_INTERFACE:
+//      device->drive_info.drive_type = NVME_DRIVE;
+//      device->drive_info.media_type = MEDIA_NVM;
+//      break;
+//  case SCSI_INTERFACE:
+//  case USB_INTERFACE:
+//  case IEEE_1394_INTERFACE:
+//      if (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != LEGACY_TAPE_DRIVE)
+//      {
+//          device->drive_info.drive_type = SCSI_DRIVE;
+//          device->drive_info.media_type = MEDIA_HDD;
+//      }
+//      break;
+//  case MMC_INTERFACE:
+//  case SD_INTERFACE:
+//      device->drive_info.drive_type = FLASH_DRIVE;
+//      device->drive_info.media_type = MEDIA_SSM_FLASH;
+//      break;
+//  case UNKNOWN_INTERFACE:
+//  default:
+//      device->drive_info.media_type = MEDIA_UNKNOWN;
+//      break;
+//  }
     //now start getting data from the device itself
     if (SUCCESS == scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, 0, false, false))
     {
@@ -9176,6 +9176,11 @@ int fill_In_Device_Info(tDevice *device)
             device->drive_info.media_type = MEDIA_NVM;
             checkForSAT = false;
         }
+        else if (device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON)
+        {
+            device->drive_info.media_type = MEDIA_NVM;
+            checkForSAT = false;
+        }
 
         if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE)
         {
@@ -9206,7 +9211,7 @@ int fill_In_Device_Info(tDevice *device)
                 }
             }
             //We actually need to try issuing an ATA/ATAPI identify to the drive to set the drive type...but I'm going to try and ONLY do it for ATA drives with the if statement below...it should catch almost all cases (which is good enough for now)
-            if (checkForSAT && (satVersionDescriptorFound || strncmp(device->drive_info.T10_vendor_ident, "ATA", 3) == 0 || device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE || device->drive_info.interface_type == IDE_INTERFACE)
+            if (checkForSAT && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON && (satVersionDescriptorFound || strncmp(device->drive_info.T10_vendor_ident, "ATA", 3) == 0 || device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE || device->drive_info.interface_type == IDE_INTERFACE)
                 &&
                 (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != LEGACY_TAPE_DRIVE)
                )
@@ -9296,6 +9301,7 @@ int fill_In_Device_Info(tDevice *device)
             //One last thing...Need to do a SAT scan...
             if (checkForSAT)
             {
+                printf("Fast scan check SAT\n");
                 check_SAT_Compliance_And_Set_Drive_Type(device);
             }
             safe_Free_aligned(inq_buf);
@@ -9466,17 +9472,21 @@ int fill_In_Device_Info(tDevice *device)
                 }
                 case ATA_INFORMATION: //use this to determine if it's SAT compliant
                 {
-                    //do not check the checkForSAT bool here. If we get here, then the device most likely reported support for it so it should be readable.
-                    if (SUCCESS == check_SAT_Compliance_And_Set_Drive_Type(device))
+                    if(device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
                     {
-                        satVPDPageRead = true;
+                        printf("VPD pages, check SAT info\n");
+                        //do not check the checkForSAT bool here. If we get here, then the device most likely reported support for it so it should be readable.
+                        if (SUCCESS == check_SAT_Compliance_And_Set_Drive_Type(device))
+                        {
+                            satVPDPageRead = true;
+                        }
+                        else
+                        {
+                            //send test unit ready to get the device responding again (For better performance on some USB devices that don't support this page)
+                            scsi_Test_Unit_Ready(device, NULL);
+                        }
+                        satComplianceChecked = true;
                     }
-                    else
-                    {
-                        //send test unit ready to get the device responding again (For better performance on some USB devices that don't support this page)
-                        scsi_Test_Unit_Ready(device, NULL);
-                    }
-                    satComplianceChecked = true;
                     break;
                 }
                 case BLOCK_DEVICE_CHARACTERISTICS: //use this to determine if it's SSD or HDD and whether it's a HDD or not
@@ -9682,10 +9692,13 @@ int fill_In_Device_Info(tDevice *device)
             }
         }
 
+        //printf("passthrough type set to %d\n", device->drive_info.passThroughHacks.passthroughType);
+
         //if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just issue a SAT identify in here to set things up...might reduce multiple commands later
         if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE) 
-             && device->drive_info.media_type != MEDIA_UNKNOWN )
+            && device->drive_info.media_type != MEDIA_UNKNOWN && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
         {
+            printf("Final SAT check\n");
             check_SAT_Compliance_And_Set_Drive_Type(device);
         }
     }

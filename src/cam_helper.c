@@ -966,12 +966,12 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
     return NOT_SUPPORTED;
 }
 
-int nvme_Reset(tDevice *device)
+int os_nvme_Reset(tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int nvme_Subsystem_Reset(tDevice *device)
+int os_nvme_Subsystem_Reset(tDevice *device)
 {
     return NOT_SUPPORTED;
 }

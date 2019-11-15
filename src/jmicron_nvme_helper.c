@@ -64,47 +64,47 @@ int build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirection *cdbData
                         cdb[1] |= BIT7;
                         //Now setup the remaining command fields.
                         //CDW0 is bytes 11:8
-                        cdb[8] = nvmCmd->cmd.adminCmd.opcode;
+                        dataPtr[8] = nvmCmd->cmd.adminCmd.opcode;
                         //TODO: bytes 9, 10, 11 hold fused bits, prp vs sgl, and CID. None of these are filled in for now...-TJE
                         //NSID is 15:12
-                        cdb[12] = M_Byte0(nvmCmd->cmd.adminCmd.nsid);
-                        cdb[13] = M_Byte1(nvmCmd->cmd.adminCmd.nsid);
-                        cdb[14] = M_Byte2(nvmCmd->cmd.adminCmd.nsid);
-                        cdb[15] = M_Byte3(nvmCmd->cmd.adminCmd.nsid);
+                        dataPtr[12] = M_Byte0(nvmCmd->cmd.adminCmd.nsid);
+                        dataPtr[13] = M_Byte1(nvmCmd->cmd.adminCmd.nsid);
+                        dataPtr[14] = M_Byte2(nvmCmd->cmd.adminCmd.nsid);
+                        dataPtr[15] = M_Byte3(nvmCmd->cmd.adminCmd.nsid);
                         //metadata ptr is 31:24
                         //TODO: Set metadata ptr value...not sure this is really needed - TJE
                         //data ptr is 47:32
                         //TODO: Set something for the data pointer value? not sure if this is needed today
                         //CDW10 is 51:48
-                        cdb[48] = M_Byte0(nvmCmd->cmd.adminCmd.cdw10);
-                        cdb[49] = M_Byte1(nvmCmd->cmd.adminCmd.cdw10);
-                        cdb[50] = M_Byte2(nvmCmd->cmd.adminCmd.cdw10);
-                        cdb[51] = M_Byte3(nvmCmd->cmd.adminCmd.cdw10);
+                        dataPtr[48] = M_Byte0(nvmCmd->cmd.adminCmd.cdw10);
+                        dataPtr[49] = M_Byte1(nvmCmd->cmd.adminCmd.cdw10);
+                        dataPtr[50] = M_Byte2(nvmCmd->cmd.adminCmd.cdw10);
+                        dataPtr[51] = M_Byte3(nvmCmd->cmd.adminCmd.cdw10);
                         //CDW11 is 55:52
-                        cdb[52] = M_Byte0(nvmCmd->cmd.adminCmd.cdw11);
-                        cdb[53] = M_Byte1(nvmCmd->cmd.adminCmd.cdw11);
-                        cdb[54] = M_Byte2(nvmCmd->cmd.adminCmd.cdw11);
-                        cdb[55] = M_Byte3(nvmCmd->cmd.adminCmd.cdw11);
+                        dataPtr[52] = M_Byte0(nvmCmd->cmd.adminCmd.cdw11);
+                        dataPtr[53] = M_Byte1(nvmCmd->cmd.adminCmd.cdw11);
+                        dataPtr[54] = M_Byte2(nvmCmd->cmd.adminCmd.cdw11);
+                        dataPtr[55] = M_Byte3(nvmCmd->cmd.adminCmd.cdw11);
                         //CDW12 is 59:56
-                        cdb[56] = M_Byte0(nvmCmd->cmd.adminCmd.cdw12);
-                        cdb[57] = M_Byte1(nvmCmd->cmd.adminCmd.cdw12);
-                        cdb[58] = M_Byte2(nvmCmd->cmd.adminCmd.cdw12);
-                        cdb[59] = M_Byte3(nvmCmd->cmd.adminCmd.cdw12);
+                        dataPtr[56] = M_Byte0(nvmCmd->cmd.adminCmd.cdw12);
+                        dataPtr[57] = M_Byte1(nvmCmd->cmd.adminCmd.cdw12);
+                        dataPtr[58] = M_Byte2(nvmCmd->cmd.adminCmd.cdw12);
+                        dataPtr[59] = M_Byte3(nvmCmd->cmd.adminCmd.cdw12);
                         //CDW13 is 63:60
-                        cdb[60] = M_Byte0(nvmCmd->cmd.adminCmd.cdw13);
-                        cdb[61] = M_Byte1(nvmCmd->cmd.adminCmd.cdw13);
-                        cdb[62] = M_Byte2(nvmCmd->cmd.adminCmd.cdw13);
-                        cdb[63] = M_Byte3(nvmCmd->cmd.adminCmd.cdw13);
+                        dataPtr[60] = M_Byte0(nvmCmd->cmd.adminCmd.cdw13);
+                        dataPtr[61] = M_Byte1(nvmCmd->cmd.adminCmd.cdw13);
+                        dataPtr[62] = M_Byte2(nvmCmd->cmd.adminCmd.cdw13);
+                        dataPtr[63] = M_Byte3(nvmCmd->cmd.adminCmd.cdw13);
                         //CDW14 is 67:64
-                        cdb[64] = M_Byte0(nvmCmd->cmd.adminCmd.cdw14);
-                        cdb[65] = M_Byte1(nvmCmd->cmd.adminCmd.cdw14);
-                        cdb[66] = M_Byte2(nvmCmd->cmd.adminCmd.cdw14);
-                        cdb[67] = M_Byte3(nvmCmd->cmd.adminCmd.cdw14);
+                        dataPtr[64] = M_Byte0(nvmCmd->cmd.adminCmd.cdw14);
+                        dataPtr[65] = M_Byte1(nvmCmd->cmd.adminCmd.cdw14);
+                        dataPtr[66] = M_Byte2(nvmCmd->cmd.adminCmd.cdw14);
+                        dataPtr[67] = M_Byte3(nvmCmd->cmd.adminCmd.cdw14);
                         //CDW15 is 71:68
-                        cdb[68] = M_Byte0(nvmCmd->cmd.adminCmd.cdw15);
-                        cdb[69] = M_Byte1(nvmCmd->cmd.adminCmd.cdw15);
-                        cdb[70] = M_Byte2(nvmCmd->cmd.adminCmd.cdw15);
-                        cdb[71] = M_Byte3(nvmCmd->cmd.adminCmd.cdw15);
+                        dataPtr[68] = M_Byte0(nvmCmd->cmd.adminCmd.cdw15);
+                        dataPtr[69] = M_Byte1(nvmCmd->cmd.adminCmd.cdw15);
+                        dataPtr[70] = M_Byte2(nvmCmd->cmd.adminCmd.cdw15);
+                        dataPtr[71] = M_Byte3(nvmCmd->cmd.adminCmd.cdw15);
                     }
                     else
                     {
@@ -112,44 +112,44 @@ int build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirection *cdbData
                         cdb[8] = nvmCmd->cmd.nvmCmd.opcode;
                         //TODO: bytes 9, 10, 11 hold fused bits, prp vs sgl, and CID. None of these are filled in for now...-TJE
                         //NSID is 15:12
-                        cdb[12] = M_Byte0(nvmCmd->cmd.nvmCmd.nsid);
-                        cdb[13] = M_Byte1(nvmCmd->cmd.nvmCmd.nsid);
-                        cdb[14] = M_Byte2(nvmCmd->cmd.nvmCmd.nsid);
-                        cdb[15] = M_Byte3(nvmCmd->cmd.nvmCmd.nsid);
+                        dataPtr[12] = M_Byte0(nvmCmd->cmd.nvmCmd.nsid);
+                        dataPtr[13] = M_Byte1(nvmCmd->cmd.nvmCmd.nsid);
+                        dataPtr[14] = M_Byte2(nvmCmd->cmd.nvmCmd.nsid);
+                        dataPtr[15] = M_Byte3(nvmCmd->cmd.nvmCmd.nsid);
                         //metadata ptr is 31:24
                         //TODO: Set metadata ptr value...not sure this is really needed - TJE
                         //data ptr is 47:32
                         //TODO: Set something for the data pointer value? not sure if this is needed today
                         //CDW10 is 51:48
-                        cdb[48] = M_Byte0(nvmCmd->cmd.nvmCmd.cdw10);
-                        cdb[49] = M_Byte1(nvmCmd->cmd.nvmCmd.cdw10);
-                        cdb[50] = M_Byte2(nvmCmd->cmd.nvmCmd.cdw10);
-                        cdb[51] = M_Byte3(nvmCmd->cmd.nvmCmd.cdw10);
+                        dataPtr[48] = M_Byte0(nvmCmd->cmd.nvmCmd.cdw10);
+                        dataPtr[49] = M_Byte1(nvmCmd->cmd.nvmCmd.cdw10);
+                        dataPtr[50] = M_Byte2(nvmCmd->cmd.nvmCmd.cdw10);
+                        dataPtr[51] = M_Byte3(nvmCmd->cmd.nvmCmd.cdw10);
                         //CDW11 is 55:52
-                        cdb[52] = M_Byte0(nvmCmd->cmd.nvmCmd.cdw11);
-                        cdb[53] = M_Byte1(nvmCmd->cmd.nvmCmd.cdw11);
-                        cdb[54] = M_Byte2(nvmCmd->cmd.nvmCmd.cdw11);
-                        cdb[55] = M_Byte3(nvmCmd->cmd.nvmCmd.cdw11);
+                        dataPtr[52] = M_Byte0(nvmCmd->cmd.nvmCmd.cdw11);
+                        dataPtr[53] = M_Byte1(nvmCmd->cmd.nvmCmd.cdw11);
+                        dataPtr[54] = M_Byte2(nvmCmd->cmd.nvmCmd.cdw11);
+                        dataPtr[55] = M_Byte3(nvmCmd->cmd.nvmCmd.cdw11);
                         //CDW12 is 59:56
-                        cdb[56] = M_Byte0(nvmCmd->cmd.nvmCmd.cdw12);
-                        cdb[57] = M_Byte1(nvmCmd->cmd.nvmCmd.cdw12);
-                        cdb[58] = M_Byte2(nvmCmd->cmd.nvmCmd.cdw12);
-                        cdb[59] = M_Byte3(nvmCmd->cmd.nvmCmd.cdw12);
+                        dataPtr[56] = M_Byte0(nvmCmd->cmd.nvmCmd.cdw12);
+                        dataPtr[57] = M_Byte1(nvmCmd->cmd.nvmCmd.cdw12);
+                        dataPtr[58] = M_Byte2(nvmCmd->cmd.nvmCmd.cdw12);
+                        dataPtr[59] = M_Byte3(nvmCmd->cmd.nvmCmd.cdw12);
                         //CDW13 is 63:60
-                        cdb[60] = M_Byte0(nvmCmd->cmd.nvmCmd.cdw13);
-                        cdb[61] = M_Byte1(nvmCmd->cmd.nvmCmd.cdw13);
-                        cdb[62] = M_Byte2(nvmCmd->cmd.nvmCmd.cdw13);
-                        cdb[63] = M_Byte3(nvmCmd->cmd.nvmCmd.cdw13);
+                        dataPtr[60] = M_Byte0(nvmCmd->cmd.nvmCmd.cdw13);
+                        dataPtr[61] = M_Byte1(nvmCmd->cmd.nvmCmd.cdw13);
+                        dataPtr[62] = M_Byte2(nvmCmd->cmd.nvmCmd.cdw13);
+                        dataPtr[63] = M_Byte3(nvmCmd->cmd.nvmCmd.cdw13);
                         //CDW14 is 67:64
-                        cdb[64] = M_Byte0(nvmCmd->cmd.nvmCmd.cdw14);
-                        cdb[65] = M_Byte1(nvmCmd->cmd.nvmCmd.cdw14);
-                        cdb[66] = M_Byte2(nvmCmd->cmd.nvmCmd.cdw14);
-                        cdb[67] = M_Byte3(nvmCmd->cmd.nvmCmd.cdw14);
+                        dataPtr[64] = M_Byte0(nvmCmd->cmd.nvmCmd.cdw14);
+                        dataPtr[65] = M_Byte1(nvmCmd->cmd.nvmCmd.cdw14);
+                        dataPtr[66] = M_Byte2(nvmCmd->cmd.nvmCmd.cdw14);
+                        dataPtr[67] = M_Byte3(nvmCmd->cmd.nvmCmd.cdw14);
                         //CDW15 is 71:68
-                        cdb[68] = M_Byte0(nvmCmd->cmd.nvmCmd.cdw15);
-                        cdb[69] = M_Byte1(nvmCmd->cmd.nvmCmd.cdw15);
-                        cdb[70] = M_Byte2(nvmCmd->cmd.nvmCmd.cdw15);
-                        cdb[71] = M_Byte3(nvmCmd->cmd.nvmCmd.cdw15);
+                        dataPtr[68] = M_Byte0(nvmCmd->cmd.nvmCmd.cdw15);
+                        dataPtr[69] = M_Byte1(nvmCmd->cmd.nvmCmd.cdw15);
+                        dataPtr[70] = M_Byte2(nvmCmd->cmd.nvmCmd.cdw15);
+                        dataPtr[71] = M_Byte3(nvmCmd->cmd.nvmCmd.cdw15);
                     }
                 }
                 else
@@ -299,7 +299,7 @@ int send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
     memset(jmPayload, 0, JMICRON_NVME_CMD_PAYLOAD_SIZE);
     ret = build_JM_NVMe_CDB_And_Payload(jmCDB, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_RETURN_RESPONSE_INFO, JM_VENDOR_CTRL_SERVICE_PROTOCOL_FIELD, nvmCmd);
     bool senseDataIsAllWeGot = true;
-    if (SUCCESS == scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, nvmCmd->ptrData, nvmCmd->dataSize, jmCDBDir, NULL, 0, 15))
+    if (SUCCESS == scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, NULL, 0, 15))
     {
         //first, check for the NVMe signature to make sure the correct response is here.
         if (0 == memcmp(jmPayload, JMICRON_NVME_NAMESTRING, strlen(JMICRON_NVME_NAMESTRING)))
@@ -324,6 +324,38 @@ int send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
         nvmCmd->commandCompletionData.statusAndCID = 0;
         //Didn't get NVMe response, so no judgements beyond sense data translation can be made.
         ret = sendRet;
+    }
+    return ret;
+}
+
+//TODO: Figure out how to make this happen on this bridge chip. PCIe power off, then back on???
+int jm_nvme_Reset(tDevice *device)
+{
+    int ret = OS_COMMAND_NOT_AVAILABLE;
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        printf("Sending JMicron NVMe Reset\n");
+    }
+    //TODO: insert something here to do a reset
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        print_Return_Enum("Jmicron NVMe Reset", ret);
+    }
+    return ret;
+}
+
+//TODO: Figure out how to make this happen on this bridge chip. PCIe power off, then back on???
+int jm_nvme_Subsystem_Reset(tDevice *device)
+{
+    int ret = OS_COMMAND_NOT_AVAILABLE;
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        printf("Sending JMicron NVMe Subsystem Reset\n");
+    }
+    //TODO: insert something here to do a reset
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+    {
+        print_Return_Enum("JMicron NVMe Subsystem Reset", ret);
     }
     return ret;
 }

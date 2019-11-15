@@ -6942,7 +6942,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
-int nvme_Reset(tDevice *device)
+int os_nvme_Reset(tDevice *device)
 {
     //This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code otherwise compile without ifdefs
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
@@ -6957,7 +6957,7 @@ int nvme_Reset(tDevice *device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-int nvme_Subsystem_Reset(tDevice *device)
+int os_nvme_Subsystem_Reset(tDevice *device)
 {
     //This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code otherwise compile without ifdefs
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)

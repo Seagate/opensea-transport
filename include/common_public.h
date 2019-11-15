@@ -785,7 +785,12 @@ extern "C"
         ATA_PASSTHROUGH_TI,
         ATA_PASSTHROUGH_NEC,
         ATA_PASSTHROUGH_PSP, //Some PSP drives use this passthrough and others use SAT...it's not clear if this was ever even used. If testing for it, test it last.
-        ATA_PASSTHROUGH_UNKNOWN
+        ATA_PASSTHROUGH_UNKNOWN = 99,//final value to be used by ATA passthrough types
+        //NVMe stuff defined here. All NVMe stuff should be 100 or higher with the exception of the default system passthrough
+        NVME_PASSTHROUGH_SYSTEM = 0,//This is for NVMe devices to use the system passthrough. This is the default since this is most NVMe devices.
+        NVME_PASSTHROUGH_JMICRON = 100,
+        //TODO: Other vendor unique SCSI to NVMe passthrough here
+        NVME_PASSTHROUGH_UNKNOWN
     }ePassthroughType;
 
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)

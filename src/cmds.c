@@ -519,7 +519,11 @@ int security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityPr
     {
         //The inc512 bit is not allowed on NVMe drives when sent this command....we may want to remove setting it, but for now we'll leave it here.
         bool inc512 = false;
-        if (dataSize >= LEGACY_DRIVE_SEC_SIZE && (dataSize % LEGACY_DRIVE_SEC_SIZE) == 0 && device->drive_info.drive_type != NVME_DRIVE && strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0)
+        if ((dataSize >= LEGACY_DRIVE_SEC_SIZE && (dataSize % LEGACY_DRIVE_SEC_SIZE) == 0)
+            && ((device->drive_info.drive_type != NVME_DRIVE 
+            && strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0)
+            || device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512)
+            )
         {
             inc512 = true;
             dataSize /= LEGACY_DRIVE_SEC_SIZE;
@@ -583,7 +587,11 @@ int security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securit
     {
         //The inc512 bit is not allowed on NVMe drives when sent this command....we may want to remove setting it, but for now we'll leave it here.
         bool inc512 = false;
-        if (dataSize >= LEGACY_DRIVE_SEC_SIZE && dataSize % LEGACY_DRIVE_SEC_SIZE == 0 && device->drive_info.drive_type != NVME_DRIVE && strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0)
+        if ((dataSize >= LEGACY_DRIVE_SEC_SIZE && (dataSize % LEGACY_DRIVE_SEC_SIZE) == 0)
+            && ((device->drive_info.drive_type != NVME_DRIVE 
+            && strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0)
+            || device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512)
+            )
         {
             inc512 = true;
             dataSize /= LEGACY_DRIVE_SEC_SIZE;

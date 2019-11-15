@@ -833,6 +833,7 @@ int get_Device(const char *filename, tDevice *device)
         device->drive_info.interface_type = SCSI_INTERFACE;
         device->drive_info.media_type = MEDIA_HDD;
         set_Device_Fields_From_Handle(deviceHandle, device);
+        set_USB_Passthrough_Hacks_By_PID_and_VID(device);
         safe_Free(deviceHandle);
         return ret;
     }
@@ -925,6 +926,7 @@ int get_Device(const char *filename, tDevice *device)
                 printf("Setting interface, drive type, secondary handles\n");
                 #endif
                 set_Device_Fields_From_Handle(deviceHandle, device);
+                set_USB_Passthrough_Hacks_By_PID_and_VID(device);
 
                 #if defined (_DEBUG)
                 printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n",
@@ -1977,7 +1979,7 @@ int linux_NVMe_Reset(tDevice *device, bool subsystemReset)
     return ret;
 }
 
-int nvme_Reset(tDevice *device)
+int os_nvme_Reset(tDevice *device)
 {
     int ret = SUCCESS;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
@@ -1992,7 +1994,7 @@ int nvme_Reset(tDevice *device)
     return ret;
 }
 
-int nvme_Subsystem_Reset(tDevice *device)
+int os_nvme_Subsystem_Reset(tDevice *device)
 {
     int ret = SUCCESS;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)

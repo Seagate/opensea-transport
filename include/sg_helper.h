@@ -242,6 +242,10 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
 //to be used with a deep scan???
 //int nvme_Namespace_Rescan(int fd);//rescans a controller for namespaces. This must be a file descriptor without a namespace. EX: /dev/nvme0 and NOT /dev/nvme0n1
 
+int os_nvme_Reset(tDevice *device);
+
+int os_nvme_Subsystem_Reset(tDevice *device);
+
 
 #endif
 

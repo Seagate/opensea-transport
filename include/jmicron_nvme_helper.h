@@ -59,3 +59,7 @@ typedef enum _eJMNvmeVendorControl
 int build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirection *cdbDataDirection, uint8_t * dataPtr, uint32_t dataSize, eJMNvmeProtocol jmProtocol, eJMNvmeVendorControl jmCtrl, nvmeCmdCtx * nvmCmd);
 
 int send_JM_NVMe_Cmd(nvmeCmdCtx *nvmCmd);
+
+int jm_nvme_Reset(tDevice *device);
+
+int jm_nvme_Subsystem_Reset(tDevice *device);

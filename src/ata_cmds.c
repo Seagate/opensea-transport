@@ -31,9 +31,6 @@ int ata_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCommandO
     int ret = UNKNOWN;
     switch (device->drive_info.passThroughHacks.passthroughType)
     {
-    case ATA_PASSTHROUGH_UNKNOWN://catch this case and return BAD_PARAMETER
-        ret = BAD_PARAMETER;
-        break;
     case ATA_PASSTHROUGH_PSP:
         ret = send_PSP_Legacy_Passthrough_Command(device, ataCommandOptions);
         break;
@@ -50,8 +47,9 @@ int ata_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCommandO
         ret = send_NEC_Legacy_Passthrough_Command(device, ataCommandOptions);
         break;
     case ATA_PASSTHROUGH_SAT:
-    default://SAT pass through by default since it's the standard
         ret = send_SAT_Passthrough_Command(device, ataCommandOptions);
+    default:
+        ret = BAD_PARAMETER;
         break;
     }
     return ret;
