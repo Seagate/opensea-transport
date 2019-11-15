@@ -48,6 +48,7 @@ int ata_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCommandO
         break;
     case ATA_PASSTHROUGH_SAT:
         ret = send_SAT_Passthrough_Command(device, ataCommandOptions);
+        break;
     default:
         ret = BAD_PARAMETER;
         break;
