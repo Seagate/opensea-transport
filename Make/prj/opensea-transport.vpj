@@ -95,6 +95,7 @@
             <F N="../../include/csmi_helper_func.h"/>
             <F N="../../include/csmisas.h"/>
             <F N="../../include/cypress_legacy_helper.h"/>
+            <F N="../../include/jmicron_nvme_helper.h"/>
             <F N="../../include/nec_legacy_helper.h"/>
             <F N="../../include/nvme_helper.h"/>
             <F N="../../include/nvme_helper_func.h"/>
@@ -128,6 +129,7 @@
             <F N="../../src/common_public.c"/>
             <F N="../../src/csmi_helper.c"/>
             <F N="../../src/cypress_legacy_helper.c"/>
+            <F N="../../src/jmicron_nvme_helper.c"/>
             <F N="../../src/nec_legacy_helper.c"/>
             <F N="../../src/nvme_cmds.c"/>
             <F N="../../src/nvme_helper.c"/>
