@@ -652,6 +652,12 @@ int request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rtfr)
         requestRTFRs[SAT_TRANSFER_BITS_OFFSET] |= SAT_T_DIR_DATA_IN;
         requestRTFRs[SAT_TRANSFER_BITS_OFFSET] |= ATA_PT_LEN_TPSIU;
     }
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending SAT Return Response Information\n");
+    }
+
     if (SUCCESS == scsi_Send_Cdb(device, requestRTFRs, cdbLen, rtfrBuffer, 14, XFER_DATA_IN, rtfr_senseData, SPC3_SENSE_LEN, 15))
     {
         //check the descriptor code
@@ -688,6 +694,10 @@ int request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rtfr)
     safe_Free_aligned(rtfrBuffer);
     safe_Free_aligned(rtfr_senseData);
     safe_Free_aligned(requestRTFRs);
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("SAT Return Response Information", rtfrRet);
+    }
     return rtfrRet;
 }
 
