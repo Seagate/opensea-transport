@@ -97,7 +97,7 @@ int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields)
     }
 
     //Send a test unit ready command if a problem was found to keep the device performing optimally
-    if (scsiIoCtx->device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure && scsiIoCtx->cdb[0] != TEST_UNIT_READY_CMD)
+    if (scsiIoCtx->device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure && scsiIoCtx->device->drive_info.passThroughHacks.turfValue >= TURF_LIMIT && scsiIoCtx->cdb[0] != TEST_UNIT_READY_CMD)
     {
         switch (ret)
         {

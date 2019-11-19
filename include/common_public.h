@@ -866,6 +866,9 @@ extern "C"
     }__attribute__((packed,aligned(1))) softwareSATFlags;
     #endif
 
+    //This is for test unit ready after failures to keep up performance on devices that slow down a LOT durring error processing (USB mostly)
+    #define TURF_LIMIT 3
+
     //The passthroughHacks structure is to hold information to help with passthrough on OSs, USB adapters, SCSI adapters, etc. Most of this is related to USB adapters though.
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
@@ -877,6 +880,7 @@ extern "C"
         bool someHacksSetByOSDiscovery;//Will be set if any of the below are set by default by the OS level code. This may happen in Windows for ATA/SCSI passthrough to ATA devices
         ePassthroughType passthroughType;//This should be left alone unless you know for a fact which passthrough to use. SAT is the default and should be used unless you know you need a legacy (pre-SAT) passthrough type.
         bool testUnitReadyAfterAnyCommandFailure;//This should be done whenever we have a device that is known to increase time to return response to bad commands. Many USB bridges need this.
+        uint8_t turfValue;//This holds the number of times longer it takes a device to respond without test unit ready. This is held here to make it easier to change library wide without retesting a device.
         //SCSI hacks are those that relate to things to handle when issuing SCSI commands that may be translated improperly in some cases.
         struct
         {

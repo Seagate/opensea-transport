@@ -8793,6 +8793,7 @@ bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
             //Current Seagate USBs will report the vendor ID like this, so this will match ALL of them.
             //If we are in this function, then the low-level was unable to get PID/VID, so we need to set some generic hacks to make sure things work, then do device specific things.
             device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+            device->drive_info.passThroughHacks.turfValue = TURF_LIMIT + 1;//Doing this generically here for now to force this!
 
             //known device specific hacks
             if (strcmp(productID, "BlackArmorDAS25") == 0)
@@ -8805,6 +8806,16 @@ bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
                 //TODO: this device previously had a hack that SMART check isn't supported, so need to migrate that too.
             }
         }
+        else if (strcmp(vendorID, "Samsung") == 0)
+        {
+            device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+            device->drive_info.passThroughHacks.turfValue = TURF_LIMIT + 1;//Doing this generically here for now to force this!
+            if (strcmp(productID, "S2 Portable") == 0)
+            {
+                device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
+                //TODO: this device previously had a hack that SMART check isn't supported, so need to migrate that too.
+            }
+        } 
         else
         {
             //Don't set anything! We don't know!
@@ -9698,7 +9709,6 @@ int fill_In_Device_Info(tDevice *device)
         if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE) 
             && device->drive_info.media_type != MEDIA_UNKNOWN && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
         {
-            printf("Final SAT check\n");
             check_SAT_Compliance_And_Set_Drive_Type(device);
         }
     }
