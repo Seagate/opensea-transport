@@ -156,7 +156,7 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
     uint8_t senseDataFormat = ptrSenseData[0] & 0x7F;
     if ((senseDataFormat == SCSI_SENSE_CUR_INFO_FIXED || senseDataFormat == SCSI_SENSE_DEFER_ERR_FIXED) && ptrSenseData[12] == 0x00 && ptrSenseData[13] == 0x1D)
     {
-        ret = SUCCESS;//assume everthing works right now...
+        ret = SUCCESS;//assume everything works right now...
         //first check if the returned RTFRs have nonzero ext registers and if a log page is available to read to get them
         bool extendBitSet = (ptrSenseData[8] & BIT7) != 0;
         bool secCntExtNonZero = (ptrSenseData[8] & BIT6) != 0;
@@ -272,6 +272,11 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
                 safe_Free_aligned(descriptorFormatSenseData);
             }
         }
+        //Some devices say passthrough info available, but populate nothing...so need to set this error!
+        if (rtfr->error == 0 && rtfr->status == 0 && rtfr->device == 0 && rtfr->secCnt == 0 && rtfr->lbaHi == 0 && rtfr->lbaMid == 0 && rtfr->lbaLow == 0)
+        {
+            ret = FAILURE;
+        }
     }
     else
     {
@@ -302,7 +307,7 @@ bool get_Return_TFRs_From_Sense_Data(tDevice *device, ataPassthroughCommand *ata
         {
             ret = get_RTFRs_From_Fixed_Format_Sense_Data(device, ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, &ataCommandOptions->rtfr);
             //if the RTFRs are incomplete, but the device supports the request command, send the request command to get the RTFRs
-            if (ret == WARN_INCOMPLETE_RFTRS && device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported)
+            if ((ret == WARN_INCOMPLETE_RFTRS || ret == FAILURE) && device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported)
             {
                 ret = request_Return_TFRs_From_Device(device, &ataCommandOptions->rtfr);
                 if (ret == SUCCESS)
