@@ -901,7 +901,7 @@ extern "C"
             bool reportAllOpCodes;//reporting all operation codes is supported by the device.
             bool securityProtocolSupported;//SCSI security protocol commands are supported
             bool securityProtocolWithInc512;//SCSI security protocol commands are ONLY supported with the INC512 bit set.
-            uint32_t maxTransferLength;//Maximum SCSI command transfer length. Mostly here for USB where translations aren't accurate or don't show this properly.
+            uint32_t maxTransferLength;//Maximum SCSI command transfer length in bytes. Mostly here for USB where translations aren't accurate or don't show this properly.
         }scsiHacks;
         //ATA Hacks refer to SAT translation issues or workarounds.
         struct {
@@ -918,7 +918,8 @@ extern "C"
             bool noRTFRsPossible;//This means on command responses, we cannot get any return task file registers back from the device, so avoid commands that rely on this behavior
             bool multiSectorPIOWithMultipleMode;//This means that multisector PIO works, BUT only when a set multiple mode command has been sent first and it is limited to the multiple mode.
             bool singleSectorPIOOnly;//This means that the adapter only supports single sector PIO transfers
-            uint32_t maxTransferLength;//ATA Passthrough max transfer length. This may be different than the scsi translation max.
+            bool ata28BitOnly;//This is for some devices where the passthrough only allows a 28bit command through, even if the target drive is 48bit
+            uint32_t maxTransferLength;//ATA Passthrough max transfer length in bytes. This may be different than the scsi translation max.
         }ataPTHacks;
         //TODO: Add more hacks and padd this structure
         uint8_t padd[3];
@@ -1879,6 +1880,8 @@ extern "C"
 
     OPENSEA_TRANSPORT_API bool is_CSMI_Device(tDevice *device);
     OPENSEA_TRANSPORT_API bool is_Removable_Media(tDevice *device);
+
+    bool setup_Passthrough_Hacks_By_ID(tDevice *device);
 
     #if defined (_DEBUG)
     //This function is more for debugging than anything else!

@@ -36,6 +36,7 @@
 #include "win_helper.h"
 #include "sat_helper_func.h"
 #include "usb_hacks.h"
+#include "common_public.h"
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper.h"
