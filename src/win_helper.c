@@ -1035,8 +1035,13 @@ int get_Device(const char *filename, tDevice *device )
 
                                 //For now force direct IO all the time to match previous functionality.
                                 //TODO: Investigate how to decide using double buffered vs direct vs mixed.
-                                //Note: On a couple systems here, when using double buffered IO with ATA Passthrough, invalid checksums are retunred for identify commands, but direct is fine...
+                                //Note: On a couple systems here, when using double buffered IO with ATA Pass-through, invalid checksums are returned for identify commands, but direct is fine...
                                 device->os_info.ioMethod = WIN_IOCTL_FORCE_ALWAYS_DIRECT;
+
+                                if (device->dFlags & OPEN_HANDLE_ONLY)//This is this far down because there is a lot of other things that need to be saved in order for windows pass-through to work correctly.
+                                {
+                                    return SUCCESS;
+                                }
 
                                 // Lets fill out rest of info
                                 //TODO: This doesn't work for ATAPI on Windows right now. Will need to debug it more to figure out what other parts are wrong to get it fully functional.
