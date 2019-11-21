@@ -914,6 +914,7 @@ extern "C"
             bool alwaysUseTPSIUForSATPassthrough;//some USBs do this better than others.
             bool alwaysCheckConditionAvailable;//Not supported by all SAT translators. Don't set unless you know for sure!!!
             bool alwaysUseDMAInsteadOfUDMA;//send commands with DMA mode instead of UDMA since the device doesn't support UDMA passthrough modes.
+            bool dmaNotSupported;//DMA passthrough is not available of any kind.
             bool partialRTFRs;//This means only 28bit RTFRs will be able to be retrived by the device. This hack is more helpful for code trying different commands to filter capabilities than for trying to talk to the device.
             bool noRTFRsPossible;//This means on command responses, we cannot get any return task file registers back from the device, so avoid commands that rely on this behavior
             bool multiSectorPIOWithMultipleMode;//This means that multisector PIO works, BUT only when a set multiple mode command has been sent first and it is limited to the multiple mode.
