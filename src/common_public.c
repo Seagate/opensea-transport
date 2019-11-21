@@ -2084,7 +2084,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
         //Most USB bridges are SAT so they'll probably fall into the default cases and issue an identify command for SAT
         switch (device->drive_info.adapter_info.vendorID)
         {
-        case USB_Vendor_Seagate:
+        case USB_Vendor_Seagate://0477
             switch (device->drive_info.adapter_info.productID)
             {
             case 0x0501://rev 0002
@@ -2100,12 +2100,30 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 break;
             }
             break;
-        case USB_Vendor_Seagate_RSS:
+        case USB_Vendor_Seagate_RSS://0BC2
             switch (device->drive_info.adapter_info.productID)
             {
             case 0x0888://0BC2 VID
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_NEC;
                 passthroughHacksSet = true;
+                break;
+            case 0x1000://FreeAgentGoSmall
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 9;
+                device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65536;
+                device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly = true;
+                device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
                 break;
             case 0x2700:
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
@@ -2116,7 +2134,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 break;
             }
             break;
-        case USB_Vendor_LaCie:
+        case USB_Vendor_LaCie://059F
             switch (device->drive_info.adapter_info.productID)
             {
             case 0x10CD://Rugged SSD
@@ -2131,7 +2149,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
             default:
                 break;
             }
-        case USB_Vendor_Oxford:
+        case USB_Vendor_Oxford://0928
             switch (device->drive_info.adapter_info.productID)
             {
             case 0x0008:
@@ -2142,7 +2160,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 break;
             }
             break;
-        case USB_Vendor_JMicron:
+        case USB_Vendor_JMicron://152D
             switch (device->drive_info.adapter_info.productID)
             {
             case 0x2339://MiniD2
@@ -2154,14 +2172,62 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 break;
             }
             break;
-        case USB_Vendor_Samsung:
+        case USB_Vendor_Samsung://04E8
             switch (device->drive_info.adapter_info.productID)
             {
+            case 0x5F12://Story Station
+                passthroughHacksSet = true;
+                //hacks based on revision 1302h. Not sure if revision level filter is needed right now
+                //Set ATA passthrough hacks
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;//Bytes
+                //set SCSI hacks
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;//bytes
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 33;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = false;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = true;
+                break;
+            case 0x6093://S2 portable 3
+                passthroughHacksSet = true;
+                //based on revision 0100h
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 524288;//Bytes
+                //set SCSI hacks
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;//bytes
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 14;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = false;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = false;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                break;
             default: //unknown
                 break;
             }
             break;
-        case USB_Vendor_Silicon_Motion:
+        case USB_Vendor_Silicon_Motion://090C
             switch (device->drive_info.adapter_info.productID)
             {
             case 0x1000://Flash Drive - Rev1100
@@ -2174,7 +2240,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 break;
             }
             break;
-        case USB_Vendor_Alcor_Micro_Corp:
+        case USB_Vendor_Alcor_Micro_Corp://058F
             switch (device->drive_info.adapter_info.productID)
             {
             case 0x1234://flash drive
@@ -2190,7 +2256,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 break;
             }
             break;
-        case USB_Vendor_Integrated_Techonology_Express_Inc:
+        case USB_Vendor_Integrated_Techonology_Express_Inc://048D
             switch (device->drive_info.adapter_info.productID)
             {
             case 0x1172://flash drive
