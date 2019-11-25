@@ -790,7 +790,9 @@ extern "C"
         NVME_PASSTHROUGH_SYSTEM = 0,//This is for NVMe devices to use the system passthrough. This is the default since this is most NVMe devices.
         NVME_PASSTHROUGH_JMICRON = 100,
         //TODO: Other vendor unique SCSI to NVMe passthrough here
-        NVME_PASSTHROUGH_UNKNOWN
+        NVME_PASSTHROUGH_UNKNOWN,
+        //No passthrough
+        PASSTHROUGH_NONE = UINT32_MAX
     }ePassthroughType;
 
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
@@ -892,8 +894,10 @@ extern "C"
                 bool rw12;
                 bool rw16;
             }readWrite;
+            bool noVPDPages;//no VPD pages are supported. The ONLY excetion to this is the unitSNAvailable bit above. Numerous USBs tested will only support that page...not even the list of pages will be supported by them.
             bool noModePages;//no mode pages are supported
             bool noLogPages;//no mode pages are supported
+            bool noLogSupPages;
             bool mode6bytes;//mode sense/select 6 byte commands only
             bool noModeSubPages;//Subpages are not supported, don't try sending these commands
             bool noReportSupportedOperations;//report supported operation codes command is not supported.
@@ -902,6 +906,17 @@ extern "C"
             bool securityProtocolSupported;//SCSI security protocol commands are supported
             bool securityProtocolWithInc512;//SCSI security protocol commands are ONLY supported with the INC512 bit set.
             uint32_t maxTransferLength;//Maximum SCSI command transfer length in bytes. Mostly here for USB where translations aren't accurate or don't show this properly.
+            bool preSCSI2InqData;//If this is true, then the struct below is intended to specify where, and how long, the fields are for product ID, vendorID, revision, etc. This structure will likely need multiple changes as these old devices are encountered and work is done to support them - TJE
+            struct {
+                uint8_t productIDOffset;//If 0, not valid or reported
+                uint8_t productIDLength;//If 0, not valid or reported
+                uint8_t productRevOffset;
+                uint8_t productRevLength;
+                uint8_t vendorIDOffset;
+                uint8_t vendorIDLength;
+                uint8_t serialNumberOffset;
+                uint8_t serialNumberLength;
+            }scsiInq;
         }scsiHacks;
         //ATA Hacks refer to SAT translation issues or workarounds.
         struct {
@@ -1301,6 +1316,7 @@ extern "C"
         USB_Vendor_LaCie                                = 0x059F,
         USB_Vendor_GenesysLogic                         = 0x05E3,
         USB_Vendor_Prolific                             = 0x067B,
+        USB_Vendor_SanDisk_Corp                         = 0x0781,
         USB_Vendor_Silicon_Motion                       = 0x090C,
         USB_Vendor_Oxford                               = 0x0928,
         USB_Vendor_Seagate_RSS                          = 0x0BC2,
