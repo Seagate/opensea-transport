@@ -1388,31 +1388,67 @@ int scsi_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
     }
     else //synchronous reads
     {
-        if (device->drive_info.scsiVersion >= SCSI_VERSION_SPC_3)//SBC2 introduced read 16 command, so checking for SPC3
+        if (device->drive_info.passThroughHacks.scsiHacks.readWrite.available)
         {
-            //there's no real way to tell when scsi drive supports read 10 vs read 16 (which are all we will care about in here), so just based on transfer length and the maxLBA
-            if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && sectors <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
+            //This device is in the database or the command support has been determined some other way to allow us to issue a correct command without any other issues.
+            if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16)
             {
-                //use read 10
-                ret = scsi_Read_10(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
-            }
-            else
-            {
-                //use read 16
                 ret = scsi_Read_16(device, 0, false, false, false, lba, 0, sectors, ptrData, dataSize);
             }
-        }
-        else
-        {
-            //Read 6 and read 10 should be supported on these devices...checking the LBA to make sure it will work though
-            if (device->drive_info.deviceMaxLba <= SCSI_MAX_21_LBA && sectors <= UINT8_MAX && lba <= SCSI_MAX_21_LBA)
+            else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12)
+            {
+                ret = scsi_Read_12(device, 0, false, false, false, lba, 0, sectors, ptrData, dataSize);
+            }
+            else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10)
+            {
+                ret = scsi_Read_10(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+            }
+            else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6)
             {
                 ret = scsi_Read_6(device, (uint32_t)lba, sectors, ptrData, dataSize);
             }
             else
             {
-                //use read 10
+                //This shouldn't happen...
+                ret = BAD_PARAMETER;
+            }
+        }
+        else //Use the generic rules below to issue what will most likely be the correct commands...-TJE
+        {
+            if (device->drive_info.scsiVersion >= SCSI_VERSION_SPC_3)//SBC2 introduced read 16 command, so checking for SPC3
+            {
+                //there's no real way to tell when scsi drive supports read 10 vs read 16 (which are all we will care about in here), so just based on transfer length and the maxLBA
+                if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && sectors <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
+                {
+                    //use read 10
+                    ret = scsi_Read_10(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                }
+                else
+                {
+                    //use read 16
+                    ret = scsi_Read_16(device, 0, false, false, false, lba, 0, sectors, ptrData, dataSize);
+                }
+            }
+            else
+            {
+                //try a read10. If it fails for invalid op-code, then try read 6
                 ret = scsi_Read_10(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                if (SUCCESS != ret)
+                {
+                    senseDataFields readSense;
+                    memset(&readSense, 0, sizeof(senseDataFields));
+                    get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &readSense);
+                    if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x20 && readSense.scsiStatusCodes.ascq == 0x00)
+                    {
+                        ret = scsi_Read_6(device, lba, sectors, ptrData, dataSize);
+                        if (SUCCESS == ret)
+                        {
+                            //setup the hacks like this so prevent future retries
+                            device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                            device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                        }
+                    }
+                }
             }
         }
     }
@@ -1436,31 +1472,67 @@ int scsi_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint
     }
     else //synchronous reads
     {
-        if (device->drive_info.scsiVersion >= SCSI_VERSION_SPC_3)//SBC2 introduced write 16 command, so checking for SPC3
+        if (device->drive_info.passThroughHacks.scsiHacks.readWrite.available)
         {
-            //there's no real way to tell when scsi drive supports write 10 vs write 16 (which are all we will care about in here), so just based on transfer length and the maxLBA
-            if (device->drive_info.deviceMaxLba <= UINT32_MAX && sectors <= UINT16_MAX && lba <= UINT32_MAX)
+            //This device is in the database or the command support has been determined some other way to allow us to issue a correct command without any other issues.
+            if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16)
             {
-                //use write 10
-                ret = scsi_Write_10(device, 0, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                ret = scsi_Write_16(device, 0, false, false, false, lba, 0, sectors, ptrData, dataSize);
             }
-            else
+            else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12)
             {
-                //use write 16
-                ret = scsi_Write_16(device, 0, false, false, lba, 0, sectors, ptrData, dataSize);
+                ret = scsi_Write_12(device, 0, false, false, false, lba, 0, sectors, ptrData, dataSize);
             }
-        }
-        else
-        {
-            //Write 6 and write 10 should be supported on these devices...checking the LBA to make sure it will work though
-            if (device->drive_info.deviceMaxLba <= SCSI_MAX_21_LBA && sectors <= UINT8_MAX && lba <= SCSI_MAX_21_LBA)
+            else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10)
+            {
+                ret = scsi_Write_10(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+            }
+            else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6)
             {
                 ret = scsi_Write_6(device, (uint32_t)lba, sectors, ptrData, dataSize);
             }
             else
             {
-                //use write 10
-                ret = scsi_Write_10(device, 0, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                //This shouldn't happen...
+                ret = BAD_PARAMETER;
+            }
+        }
+        else //Use the generic rules below to issue what will most likely be the correct commands...-TJE
+        {
+            if (device->drive_info.scsiVersion >= SCSI_VERSION_SPC_3)//SBC2 introduced write 16 command, so checking for SPC3
+            {
+                //there's no real way to tell when scsi drive supports write 10 vs write 16 (which are all we will care about in here), so just based on transfer length and the maxLBA
+                if (device->drive_info.deviceMaxLba <= UINT32_MAX && sectors <= UINT16_MAX && lba <= UINT32_MAX)
+                {
+                    //use write 10
+                    ret = scsi_Write_10(device, 0, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                }
+                else
+                {
+                    //use write 16
+                    ret = scsi_Write_16(device, 0, false, false, lba, 0, sectors, ptrData, dataSize);
+                }
+            }
+            else
+            {
+                //try a write10. If it fails for invalid op-code, then try read 6
+                ret = scsi_Write_10(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                if (SUCCESS != ret)
+                {
+                    senseDataFields readSense;
+                    memset(&readSense, 0, sizeof(senseDataFields));
+                    get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &readSense);
+                    if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x20 && readSense.scsiStatusCodes.ascq == 0x00)
+                    {
+                        ret = scsi_Write_6(device, lba, sectors, ptrData, dataSize);
+                        if (SUCCESS == ret)
+                        {
+                            //setup the hacks like this so prevent future retries
+                            device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                            device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                        }
+                    }
+                }
             }
         }
     }
