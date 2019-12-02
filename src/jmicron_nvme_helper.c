@@ -244,12 +244,10 @@ int send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
     uint8_t jmCDB[JMICRON_NVME_CDB_SIZE] = { 0 };
     uint8_t jmPayload[JMICRON_NVME_CMD_PAYLOAD_SIZE] = { 0 };
     eDataTransferDirection jmCDBDir = 0;
-    seatimer_t commandTimer;
     if (!nvmCmd)
     {
         return BAD_PARAMETER;
     }
-    memset(&commandTimer, 0, sizeof(seatimer_t));
     //1. build CDB & data for command to send
     //Send CDB to set the command values that will be used to issue a command.
     ret = build_JM_NVMe_CDB_And_Payload(jmCDB, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_SET_PAYLOAD, JM_VENDOR_CTRL_SERVICE_PROTOCOL_FIELD, nvmCmd);
@@ -270,9 +268,17 @@ int send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
     {
     case XFER_DATA_IN:
         transferProtocol = JM_PROTOCOL_DMA_IN;
+        if (nvmCmd->dataSize == 0)
+        {
+            transferProtocol = JM_PROTOCOL_NON_DATA;
+        }
         break;
     case XFER_DATA_OUT:
         transferProtocol = JM_PROTOCOL_DMA_OUT;
+        if (nvmCmd->dataSize == 0)
+        {
+            transferProtocol = JM_PROTOCOL_NON_DATA;
+        }
         break;
     case XFER_NO_DATA:
         transferProtocol = JM_PROTOCOL_NON_DATA;
@@ -286,30 +292,30 @@ int send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
     {
         return ret;
     }
-    start_Timer(&commandTimer);
     int sendRet = scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, nvmCmd->ptrData, nvmCmd->dataSize, jmCDBDir, NULL, 0, nvmCmd->timeout);
-    stop_Timer(&commandTimer);
     //NOTE: do not fail the command or anything else YET.
     //Need to request the response information from the command.
     //TODO: There may be some sense data outputs where the return response info won't work or isn't necessary, but they don't seem documented today. Most likely only for illegal requests.
-    
-    //3. build CDB for response info
-    //send CDB for response info
-    memset(jmCDB, 0, JMICRON_NVME_CDB_SIZE);
-    memset(jmPayload, 0, JMICRON_NVME_CMD_PAYLOAD_SIZE);
-    ret = build_JM_NVMe_CDB_And_Payload(jmCDB, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_RETURN_RESPONSE_INFO, JM_VENDOR_CTRL_SERVICE_PROTOCOL_FIELD, nvmCmd);
     bool senseDataIsAllWeGot = true;
-    if (SUCCESS == scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, NULL, 0, 15))
+    if (sendRet != COMMAND_TIMEOUT)
     {
-        //first, check for the NVMe signature to make sure the correct response is here.
-        if (0 == memcmp(jmPayload, JMICRON_NVME_NAMESTRING, strlen(JMICRON_NVME_NAMESTRING)))
+        //3. build CDB for response info
+        //send CDB for response info
+        memset(jmCDB, 0, JMICRON_NVME_CDB_SIZE);
+        memset(jmPayload, 0, JMICRON_NVME_CMD_PAYLOAD_SIZE);
+        ret = build_JM_NVMe_CDB_And_Payload(jmCDB, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_RETURN_RESPONSE_INFO, JM_VENDOR_CTRL_SERVICE_PROTOCOL_FIELD, nvmCmd);
+        if (SUCCESS == scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, NULL, 0, 15))
         {
-            senseDataIsAllWeGot = false;
-            nvmCmd->commandCompletionData.dw0Valid = true;
-            nvmCmd->commandCompletionData.dw3Valid = true;
-            nvmCmd->commandCompletionData.commandSpecific = M_BytesTo4ByteValue(jmPayload[11], jmPayload[10], jmPayload[9], jmPayload[8]);
-            nvmCmd->commandCompletionData.statusAndCID = M_BytesTo2ByteValue(jmPayload[23], jmPayload[22]) << 17;//only the status field is returned so shift it into the place it's expected to be.
-            //All other fields are reserved in the documentation.
+            //first, check for the NVMe signature to make sure the correct response is here.
+            if (0 == memcmp(jmPayload, JMICRON_NVME_NAMESTRING, strlen(JMICRON_NVME_NAMESTRING)))
+            {
+                senseDataIsAllWeGot = false;
+                nvmCmd->commandCompletionData.dw0Valid = true;
+                nvmCmd->commandCompletionData.dw3Valid = true;
+                nvmCmd->commandCompletionData.commandSpecific = M_BytesTo4ByteValue(jmPayload[11], jmPayload[10], jmPayload[9], jmPayload[8]);
+                nvmCmd->commandCompletionData.statusAndCID = M_BytesTo2ByteValue(jmPayload[23], jmPayload[22]) << 17;//only the status field is returned so shift it into the place it's expected to be.
+                //All other fields are reserved in the documentation.
+            }
         }
     }
     if (senseDataIsAllWeGot)
