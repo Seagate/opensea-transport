@@ -2185,7 +2185,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
-                device->drive_info.passThroughHacks.scsiHacks.noLogSupPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65536;
@@ -2204,7 +2204,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
-                device->drive_info.passThroughHacks.scsiHacks.noLogSupPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65536;
@@ -2301,7 +2301,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
                 device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
-                device->drive_info.passThroughHacks.scsiHacks.noLogSupPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65536;
                 device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
@@ -2338,7 +2338,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.turfValue = 11;
                 device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable = true;
                 device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
-                device->drive_info.passThroughHacks.scsiHacks.noLogSupPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
@@ -2364,7 +2364,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
                 device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable = true;
                 device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
-                device->drive_info.passThroughHacks.scsiHacks.noLogSupPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
                 device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
@@ -2426,7 +2426,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
                 //device->drive_info.passThroughHacks.scsiHacks.noVPDPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
-                device->drive_info.passThroughHacks.scsiHacks.noLogSupPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65536;
                 device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
@@ -2470,7 +2470,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
                 device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
-                device->drive_info.passThroughHacks.scsiHacks.noLogSupPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.reportAllOpCodes = true;
                 device->drive_info.passThroughHacks.scsiHacks.reportSingleOpCodes = true;
                 device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
@@ -2642,7 +2642,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
-                device->drive_info.passThroughHacks.scsiHacks.noLogSupPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
@@ -2724,6 +2724,15 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.drive_type = NVME_DRIVE;
                 device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
                 device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = false;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //NOTE: Add max passthrough transfer length hack set to 65536
                 break;
             default:
                 break;
@@ -2741,7 +2750,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
                 device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
-                device->drive_info.passThroughHacks.scsiHacks.noLogSupPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65536;
                 device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;

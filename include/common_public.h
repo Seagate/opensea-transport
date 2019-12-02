@@ -897,7 +897,7 @@ extern "C"
             bool noVPDPages;//no VPD pages are supported. The ONLY excetion to this is the unitSNAvailable bit above. Numerous USBs tested will only support that page...not even the list of pages will be supported by them.
             bool noModePages;//no mode pages are supported
             bool noLogPages;//no mode pages are supported
-            bool noLogSupPages;
+            bool noLogSubPages;
             bool mode6bytes;//mode sense/select 6 byte commands only
             bool noModeSubPages;//Subpages are not supported, don't try sending these commands
             bool noReportSupportedOperations;//report supported operation codes command is not supported.
