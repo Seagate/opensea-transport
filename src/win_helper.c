@@ -1007,7 +1007,7 @@ int get_Device(const char *filename, tDevice *device )
 #if WINVER >= SEA_WIN32_WINNT_WIN10 && !defined(DISABLE_NVME_PASSTHROUGH)
                                     device->drive_info.drive_type = NVME_DRIVE;
                                     device->drive_info.interface_type = NVME_INTERFACE;
-                                    set_Namespace_ID_For_Device(device);
+                                    //set_Namespace_ID_For_Device(device);
                                     device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
 #else
                                     device->drive_info.drive_type = SCSI_DRIVE;
@@ -1027,6 +1027,9 @@ int get_Device(const char *filename, tDevice *device )
                                     device->drive_info.drive_type = SCSI_DRIVE;
                                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                                 }
+
+                                //Doing this here because the NSID may be needed for NVMe over USB interfaces too
+                                device->drive_info.namespaceID = device->os_info.scsi_addr.Lun + 1;
 
                                 if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
                                 {
