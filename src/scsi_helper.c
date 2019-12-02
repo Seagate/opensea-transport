@@ -9193,34 +9193,44 @@ int fill_In_Device_Info(tDevice *device)
             checkForSAT = false;
         }
 
+        //Need to check version descriptors here since they may be useful below, but also because it can be used to help rule-out some USB to NVMe devices.
+        bool satVersionDescriptorFound = false;
+        if (version >= 4 && (inq_buf[4] + 4 > 57))//if less than this length, then there definitely won't be a reason to check version descriptors
+        {
+            uint16_t versionDescriptor = 0;
+            for (uint16_t versionIter = 0, offset = 58; versionIter < 7 && offset < (inq_buf[4] + 4); ++versionIter, offset += 2)
+            {
+                versionDescriptor = M_BytesTo2ByteValue(device->drive_info.scsiVpdData.inquiryData[offset + 0], device->drive_info.scsiVpdData.inquiryData[offset + 1]);
+                if (is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT)
+                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT2)
+                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT3)
+                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT4)
+                    //Next version descriptors aren't sat but should only appear on a SAT interface...at least we know they are ATA/ATAPI so it won't hurt to try issuing a command to the drive.
+                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI6)
+                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI7)
+                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI8)
+                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ACSx)
+                    )
+                {
+                    //This is a workaround for some USB to NVMe adapters that list a SAT descriptor, which makes no sense.
+                    if (strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0)
+                    {
+                        satVersionDescriptorFound = true;
+                    }
+                    else
+                    {
+                        checkForSAT = false;
+                    }
+                    break;
+                }
+            }
+        }
+
         if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE)
         {
 #if defined (_DEBUG)
             printf("Quiting device discovery early per DO_NOT_WAKE_DRIVE\n");
 #endif
-            bool satVersionDescriptorFound = false;
-            if (version >= 4)
-            {
-                uint16_t versionDescriptor = 0;
-                for (uint16_t versionIter = 0, offset = 58; versionIter < 7; ++versionIter, offset += 2)
-                {
-                    versionDescriptor = M_BytesTo2ByteValue(device->drive_info.scsiVpdData.inquiryData[offset + 0], device->drive_info.scsiVpdData.inquiryData[offset + 1]);
-                    if (is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT2)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT3)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT4)
-                        //Next version descriptors aren't sat but should only appear on a SAT interface...at least we know they are ATA/ATAPI so it won't hurt to try issuing a command to the drive.
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI6)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI7)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI8)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ACSx)
-                        )
-                    {
-                        satVersionDescriptorFound = true;
-                        break;
-                    }
-                }
-            }
             //We actually need to try issuing an ATA/ATAPI identify to the drive to set the drive type...but I'm going to try and ONLY do it for ATA drives with the if statement below...it should catch almost all cases (which is good enough for now)
             if (checkForSAT && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON && (satVersionDescriptorFound || strncmp(device->drive_info.T10_vendor_ident, "ATA", 3) == 0 || device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE || device->drive_info.interface_type == IDE_INTERFACE)
                 &&
@@ -9312,7 +9322,6 @@ int fill_In_Device_Info(tDevice *device)
             //One last thing...Need to do a SAT scan...
             if (checkForSAT)
             {
-                printf("Fast scan check SAT\n");
                 check_SAT_Compliance_And_Set_Drive_Type(device);
             }
             safe_Free_aligned(inq_buf);
@@ -9326,15 +9335,14 @@ int fill_In_Device_Info(tDevice *device)
             //from here on we need to check if a VPD page is supported and read it if there is anything in it that we care about to store info in the device struct
             memset(inq_buf, 0, INQ_RETURN_DATA_LENGTH);
             bool dummyUpVPDSupport = false;
-            if (SUCCESS != scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, SUPPORTED_VPD_PAGES, true, false))
+            if (!device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable && SUCCESS != scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, SUPPORTED_VPD_PAGES, true, false))
             {
                 //for whatever reason, this device didn't return support for the list of supported pages, so set a flag telling us to dummy up a list so that we can still attempt to issue commands to pages we do need to try and get (this is a workaround for some really stupid USB bridges)
                 dummyUpVPDSupport = true;
-                if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
-                {
-                    //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
-                    scsi_Test_Unit_Ready(device, NULL);
-                }
+            }
+            else if (device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable)
+            {
+                dummyUpVPDSupport = true;
             }
             else if (inq_buf[1] != SUPPORTED_VPD_PAGES)
             {
@@ -9364,6 +9372,7 @@ int fill_In_Device_Info(tDevice *device)
                     //If this is set, then this means that the device ONLY supports the unit SN page, but not other. Only add unit serial number to this dummied data.
                     //This is a workaround for some USB devices.
                     //TODO: if these devices support a limited number of other pages, we will need to change this hack a little bit to work with them better.
+                    //      Some of the devices only support the unit serial number page and the device identification page.
                     inq_buf[offset] = UNIT_SERIAL_NUMBER;
                     ++offset;
                 }
@@ -9442,16 +9451,7 @@ int fill_In_Device_Info(tDevice *device)
                                     }
                                 }
                             }
-                            else
-                            {
-
-                            }
                         }
-                    }
-                    else if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
-                    {
-                        //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
-                        scsi_Test_Unit_Ready(device, NULL);
                     }
                     safe_Free_aligned(unitSerialNumber);
                     break;
@@ -9472,11 +9472,6 @@ int fill_In_Device_Info(tDevice *device)
                             memcpy(&device->drive_info.worldWideName, &deviceIdentification[8], 8);
                             byte_Swap_64(&device->drive_info.worldWideName);
                         }
-                    }
-                    else if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
-                    {
-                        //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
-                        scsi_Test_Unit_Ready(device, NULL);
                     }
                     safe_Free_aligned(deviceIdentification);
                     break;
@@ -9575,11 +9570,6 @@ int fill_In_Device_Info(tDevice *device)
                             }
                         }
                     }
-                    else if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
-                    {
-                        //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
-                        scsi_Test_Unit_Ready(device, NULL);
-                    }
                     safe_Free_aligned(blockDeviceCharacteristics);
                     break;
                 }
@@ -9654,11 +9644,6 @@ int fill_In_Device_Info(tDevice *device)
                             device->drive_info.currentProtectionType = M_GETBITRANGE(readCapBuf[12], 3, 1) + 1;
                         }
                     }
-                    else if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
-                    {
-                        //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
-                        scsi_Test_Unit_Ready(device, NULL);
-                    }
                 }
             }
             else
@@ -9673,11 +9658,6 @@ int fill_In_Device_Info(tDevice *device)
                 }
                 readCapBuf = temp;
                 memset(readCapBuf, 0, READ_CAPACITY_16_LEN);
-                if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
-                {
-                    //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
-                    scsi_Test_Unit_Ready(device, NULL);
-                }
                 if (SUCCESS == scsi_Read_Capacity_16(device, readCapBuf, READ_CAPACITY_16_LEN))
                 {
                     copy_Read_Capacity_Info(&device->drive_info.deviceBlockSize, &device->drive_info.devicePhyBlockSize, &device->drive_info.deviceMaxLba, &device->drive_info.sectorAlignment, readCapBuf, true);
@@ -9687,11 +9667,6 @@ int fill_In_Device_Info(tDevice *device)
                     {
                         device->drive_info.currentProtectionType = M_GETBITRANGE(readCapBuf[12], 3, 1) + 1;
                     }
-                }
-                else if (device->drive_info.interface_type != SCSI_INTERFACE && device->drive_info.interface_type != IDE_INTERFACE) //TODO: add other interfaces here to filter out when we send a TUR
-                {
-                    //Send a test unit ready to clear the error from failure to read this page. This is done mostly for USB interfaces that don't handle errors from commands well.
-                    scsi_Test_Unit_Ready(device, NULL);
                 }
             }
             safe_Free_aligned(readCapBuf);
