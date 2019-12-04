@@ -819,7 +819,7 @@ extern "C"
         bool alwaysCheckConditionAvailableBit;//this will cause all commands to set the check condition bit. This means any ATA Passthrough command should always get back an ATA status which may help with sense data and judging what went wrong better. Be aware that this may not be liked on some devices and some may just ignore it.
         bool enableLegacyPassthroughDetectionThroughTrialAndError;//This must be set to true in order to work on legacy (ancient) passthrough if the VID/PID is not in the list and not read from the system.
         bool senseDataReportingEnabled;//this is to track when the RTFRs may contain a sense data bit so it can be read automatically.
-        uint8_t padd[1];
+        uint8_t forceSATCDBLength;//set this to 12, 16, or 32 to force a specific CDB length to use. If you set 12, but send an extended command 16B will be used if any extended registers are set. Same with 32B will be used if ICC or AUX are set.
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataOptions;
     #pragma pack(pop)
@@ -921,8 +921,9 @@ extern "C"
         //ATA Hacks refer to SAT translation issues or workarounds.
         struct {
             bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
-            bool useA1SATPassthroughWheneverPossible;//For USB adapters that will only process 28bit commands with A1 and will NOT issue them with 85h
+            //bool useA1SATPassthroughWheneverPossible;//For USB adapters that will only process 28bit commands with A1 and will NOT issue them with 85h
             bool a1NeverSupported;//prevent retrying with 12B command since it isn't supported anyways.
+            bool a1ExtCommandWhenPossible;//If this is set, when issuing an EXT (48bit) command, use the A1 opcode as long as there are not ext registers that MUST be set to issue the command properly. This is a major hack for devices that don't support the 85h opcode.
             bool returnResponseInfoSupported;//can send the SAT command to get response information for RTFRs
             bool returnResponseInfoNeedsTDIR;//supports return response info, but must have T_DIR bit set for it to work properly
             bool returnResponseIgnoreExtendBit;//Some devices support returning response info, but don't properly set the extend bit, so this basically means copy extended RTFRs anyways.
@@ -1382,7 +1383,7 @@ extern "C"
     #define RAID_INTERFACE_DRIVES BIT12
     #define SD_HANDLES BIT16 //this is a Linux specific flag to show SDX handles instead of SGX handles
     #define SG_TO_SD BIT17
-    #define SAT_12_BYTE BIT18
+    //#define SAT_12_BYTE BIT18
     #define SCAN_SEAGATE_ONLY BIT19
     #define AGRESSIVE_SCAN BIT20 //this can wake a drive up because a bus rescan may be issued. (currently only implemented in Windows)
 #if defined (ENABLE_CSMI)

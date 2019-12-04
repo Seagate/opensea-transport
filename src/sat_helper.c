@@ -421,7 +421,7 @@ bool get_Return_TFRs_From_Sense_Data(tDevice *device, ataPassthroughCommand *ata
     return gotRTFRsFromSenseData;
 }
 
-int set_Protocol_Field(uint8_t *satCDB, eAtaProtocol commadProtocol, eDataTransferDirection dataDirection)
+int set_Protocol_Field(uint8_t *satCDB, eAtaProtocol commadProtocol, eDataTransferDirection dataDirection, uint8_t protocolOffset)
 {
     int ret = SUCCESS;
     switch (commadProtocol)
@@ -429,11 +429,11 @@ int set_Protocol_Field(uint8_t *satCDB, eAtaProtocol commadProtocol, eDataTransf
     case ATA_PROTOCOL_PIO:
         if (dataDirection == XFER_DATA_IN)
         {
-            satCDB[SAT_PROTOCOL_OFFSET] |= SAT_PIO_DATA_IN;
+            satCDB[protocolOffset] |= SAT_PIO_DATA_IN;
         }
         else if (dataDirection == XFER_DATA_OUT)
         {
-            satCDB[SAT_PROTOCOL_OFFSET] |= SAT_PIO_DATA_OUT;
+            satCDB[protocolOffset] |= SAT_PIO_DATA_OUT;
         }
         else
         {
@@ -441,40 +441,40 @@ int set_Protocol_Field(uint8_t *satCDB, eAtaProtocol commadProtocol, eDataTransf
         }
         break;
     case ATA_PROTOCOL_DMA:
-        satCDB[SAT_PROTOCOL_OFFSET] |= SAT_DMA;
+        satCDB[protocolOffset] |= SAT_DMA;
         break;
     case ATA_PROTOCOL_NO_DATA:
-        satCDB[SAT_PROTOCOL_OFFSET] |= SAT_NON_DATA;
+        satCDB[protocolOffset] |= SAT_NON_DATA;
         break;
     case ATA_PROTOCOL_DEV_RESET:
-        satCDB[SAT_PROTOCOL_OFFSET] |= SAT_NODATA_RESET;
+        satCDB[protocolOffset] |= SAT_NODATA_RESET;
         break;
     case ATA_PROTOCOL_DEV_DIAG:
-        satCDB[SAT_PROTOCOL_OFFSET] |= SAT_EXE_DEV_DIAG;
+        satCDB[protocolOffset] |= SAT_EXE_DEV_DIAG;
         break;
     case ATA_PROTOCOL_DMA_QUE:
-        satCDB[SAT_PROTOCOL_OFFSET] |= SAT_DMA_QUEUED;
+        satCDB[protocolOffset] |= SAT_DMA_QUEUED;
         break;
     case ATA_PROTOCOL_DMA_FPDMA:
-        satCDB[SAT_PROTOCOL_OFFSET] |= SAT_FPDMA;
+        satCDB[protocolOffset] |= SAT_FPDMA;
         break;
     case ATA_PROTOCOL_SOFT_RESET:
-        satCDB[SAT_PROTOCOL_OFFSET] |= SAT_ATA_SW_RESET;
+        satCDB[protocolOffset] |= SAT_ATA_SW_RESET;
         break;
     case ATA_PROTOCOL_HARD_RESET:
-        satCDB[SAT_PROTOCOL_OFFSET] |= SAT_ATA_HW_RESET;
+        satCDB[protocolOffset] |= SAT_ATA_HW_RESET;
         break;
     case ATA_PROTOCOL_RET_INFO:
-        satCDB[SAT_PROTOCOL_OFFSET] |= SAT_RET_RESP_INFO;
+        satCDB[protocolOffset] |= SAT_RET_RESP_INFO;
         break;
     case ATA_PROTOCOL_UDMA:
         if (dataDirection == XFER_DATA_IN)
         {
-            satCDB[SAT_PROTOCOL_OFFSET] |= SAT_UDMA_DATA_IN;
+            satCDB[protocolOffset] |= SAT_UDMA_DATA_IN;
         }
         else if (dataDirection == XFER_DATA_OUT)
         {
-            satCDB[SAT_PROTOCOL_OFFSET] |= SAT_UDMA_DATA_OUT;
+            satCDB[protocolOffset] |= SAT_UDMA_DATA_OUT;
         }
         else
         {
@@ -490,11 +490,11 @@ int set_Protocol_Field(uint8_t *satCDB, eAtaProtocol commadProtocol, eDataTransf
     return ret;
 }
 
-int set_Transfer_Bits(uint8_t *satCDB, eATAPassthroughLength tLength, eATAPassthroughTransferBlocks ttype, eDataTransferDirection dataDirection)
+int set_Transfer_Bits(uint8_t *satCDB, eATAPassthroughLength tLength, eATAPassthroughTransferBlocks ttype, eDataTransferDirection dataDirection, uint8_t transferBitsOffset)
 {
     int ret = SUCCESS;
     //set tLength First
-    satCDB[SAT_TRANSFER_BITS_OFFSET] |= (tLength & 0x03);
+    satCDB[transferBitsOffset] |= (tLength & 0x03);
     switch (tLength)
     {
     case ATA_PT_LEN_NO_DATA:
@@ -506,20 +506,20 @@ int set_Transfer_Bits(uint8_t *satCDB, eATAPassthroughLength tLength, eATAPassth
         //set t_dir flag (only needs to be set for DATAIN)
         if (dataDirection == XFER_DATA_IN)
         {
-            satCDB[SAT_TRANSFER_BITS_OFFSET] |= SAT_T_DIR_DATA_IN;
+            satCDB[transferBitsOffset] |= SAT_T_DIR_DATA_IN;
         }
         //now check the t_type and set byte_block flag as necessary
         switch (ttype)
         {
         case ATA_PT_512B_BLOCKS:
             //set byte-block bit
-            satCDB[SAT_TRANSFER_BITS_OFFSET] |= SAT_BYTE_BLOCK_BIT_SET;
+            satCDB[transferBitsOffset] |= SAT_BYTE_BLOCK_BIT_SET;
             break;
         case ATA_PT_LOGICAL_SECTOR_SIZE:
             //set byte-block bit
-            satCDB[SAT_TRANSFER_BITS_OFFSET] |= SAT_BYTE_BLOCK_BIT_SET;
+            satCDB[transferBitsOffset] |= SAT_BYTE_BLOCK_BIT_SET;
             //set the t-type bit
-            satCDB[SAT_TRANSFER_BITS_OFFSET] |= SAT_T_TYPE_BIT_SET;
+            satCDB[transferBitsOffset] |= SAT_T_TYPE_BIT_SET;
             break;
         case ATA_PT_NUMBER_OF_BYTES:
             //no additional bits required to be set.
@@ -538,13 +538,13 @@ int set_Transfer_Bits(uint8_t *satCDB, eATAPassthroughLength tLength, eATAPassth
     return ret;
 }
 
-int set_Multiple_Count(uint8_t *satCDB, uint8_t multipleCount)
+int set_Multiple_Count(uint8_t *satCDB, uint8_t multipleCount, uint8_t protocolOffset)
 {
-    satCDB[1] |= (multipleCount & (BIT0 | BIT1 | BIT2)) << 5;
+    satCDB[protocolOffset] |= (multipleCount & (BIT0 | BIT1 | BIT2)) << 5;
     return SUCCESS;
 }
 
-int set_Offline_Bits(uint8_t *satCDB, uint32_t timeout)
+int set_Offline_Bits(uint8_t *satCDB, uint32_t timeout, uint8_t transferBitsOffset)
 {
     uint8_t satTimeout = 0;
     uint8_t satTotalTime = 1;
@@ -553,13 +553,13 @@ int set_Offline_Bits(uint8_t *satCDB, uint32_t timeout)
         satTotalTime = satTotalTime << 1;
         satTimeout++;
     }
-    satCDB[2] |= (satTimeout & (BIT0 | BIT1));
+    satCDB[transferBitsOffset] |= (satTimeout & (BIT0 | BIT1));
     return SUCCESS;
 }
 
-int set_Check_Condition_Bit(uint8_t *satCDB)
+int set_Check_Condition_Bit(uint8_t *satCDB, uint8_t transferBitsOffset)
 {
-    satCDB[2] |= BIT5;
+    satCDB[transferBitsOffset] |= BIT5;
     return SUCCESS;
 }
 
@@ -597,6 +597,7 @@ int set_Registers(uint8_t *satCDB, ataPassthroughCommand *ataCommandOptions)
             break;
         default:
             ret = BAD_PARAMETER;
+            break;
         }
 
     }
@@ -612,6 +613,41 @@ int set_Registers(uint8_t *satCDB, ataPassthroughCommand *ataCommandOptions)
         satCDB[10] = RESERVED;
         satCDB[11] = 0;//control
     }
+    else if (satCDB[OPERATION_CODE] == 0x7F)//32B SAT CDB
+    {
+        switch (ataCommandOptions->commandType)
+        {
+        case ATA_CMD_TYPE_COMPLETE_TASKFILE:
+            //set ICC and AUX
+            satCDB[27] = ataCommandOptions->tfr.icc;
+            satCDB[28] = ataCommandOptions->tfr.aux4;
+            satCDB[29] = ataCommandOptions->tfr.aux3;
+            satCDB[30] = ataCommandOptions->tfr.aux2;
+            satCDB[31] = ataCommandOptions->tfr.aux1;
+        case ATA_CMD_TYPE_EXTENDED_TASKFILE:
+            //first set the extend bit
+            satCDB[10] |= BIT0;
+            //now set the LBA ext registers
+            satCDB[20] = ataCommandOptions->tfr.Feature48;
+            satCDB[22] = ataCommandOptions->tfr.SectorCount48;
+            satCDB[16] = ataCommandOptions->tfr.LbaLow48;
+            satCDB[15] = ataCommandOptions->tfr.LbaMid48;
+            satCDB[14] = ataCommandOptions->tfr.LbaHi48;
+            //fall through to set the remaining registers
+        case ATA_CMD_TYPE_TASKFILE:
+            satCDB[21] = ataCommandOptions->tfr.ErrorFeature;
+            satCDB[23] = ataCommandOptions->tfr.SectorCount;
+            satCDB[19] = ataCommandOptions->tfr.LbaLow;
+            satCDB[18] = ataCommandOptions->tfr.LbaMid;
+            satCDB[17] = ataCommandOptions->tfr.LbaHi;
+            satCDB[24] = ataCommandOptions->tfr.DeviceHead;
+            satCDB[25] = ataCommandOptions->tfr.CommandStatus;
+            break;
+        default:
+            ret = BAD_PARAMETER;
+            break;
+        }
+    }
     else
     {
         ret = BAD_PARAMETER;
@@ -623,18 +659,21 @@ int request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rtfr)
 {
     //try and issue a request for the RTFRs...we'll see if this actually works
     int rtfrRet = NOT_SUPPORTED;//by default, most devices don't actually support this SAT command
-    uint8_t *rtfrBuffer = (uint8_t*)calloc_aligned(14, sizeof(uint8_t), device->os_info.minimumAlignment);//this size is the size of the ATA pass through descriptor which is all that should be returned from the HBA with this command
+    uint8_t *rtfrBuffer = (uint8_t*)calloc_aligned(14, sizeof(uint8_t), device->os_info.minimumAlignment);//this size is the size of the ATA pass through descriptor which is all that should be returned from the SATL with this command
     uint8_t *rtfr_senseData = (uint8_t*)calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
     uint8_t *requestRTFRs = NULL;
-    uint8_t cdbLen = CDB_LEN_16;
-    if (device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible)
+    uint8_t cdbLen = CDB_LEN_12;
+    uint8_t protocolOffset = SAT_PROTOCOL_OFFSET;
+    uint8_t transferBitsOffset = SAT_TRANSFER_BITS_OFFSET;
+    if (device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported)
     {
-        cdbLen = CDB_LEN_12;
+        cdbLen = CDB_LEN_16;
     }
+    //TODO: Not sure if there should be a "force" CDB size for this request or not at this time. With the other hacks, this should just work when a given SATL supports this request...-TJE
     requestRTFRs = (uint8_t*)calloc_aligned(cdbLen, sizeof(uint8_t), device->os_info.minimumAlignment);
     if (!rtfrBuffer || !rtfr_senseData || !requestRTFRs)
     {
-        perror("Calloc Failure!\n");
+        perror("Calloc aligned Failure!\n");
         safe_Free_aligned(rtfrBuffer);
         safe_Free_aligned(rtfr_senseData);
         safe_Free_aligned(requestRTFRs);
@@ -645,17 +684,40 @@ int request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rtfr)
     {
         requestRTFRs[OPERATION_CODE] = ATA_PASS_THROUGH_12;
     }
-    else
+    else if(cdbLen == CDB_LEN_16)
     {
         requestRTFRs[OPERATION_CODE] = ATA_PASS_THROUGH_16;
     }
+    else if (cdbLen == CDB_LEN_32)
+    {
+        requestRTFRs[OPERATION_CODE] = 0x7F;
+        requestRTFRs[1] = 0;//Control field
+        requestRTFRs[2] = RESERVED;
+        requestRTFRs[3] = RESERVED;
+        requestRTFRs[4] = RESERVED;
+        requestRTFRs[5] = RESERVED;
+        requestRTFRs[6] = RESERVED;
+        requestRTFRs[7] = 0x18;//Additional length
+        //Set the service action
+        requestRTFRs[8] = 0x1F;
+        requestRTFRs[9] = 0xF0;
+        protocolOffset = 10;
+        transferBitsOffset = 11;
+    }
+    else
+    {
+        safe_Free_aligned(rtfrBuffer);
+        safe_Free_aligned(rtfr_senseData);
+        safe_Free_aligned(requestRTFRs);
+        return BAD_PARAMETER;
+    }
     //set the protocol to Fh (15) to request the return TFRs be returned in that data in buffer.
-    set_Protocol_Field(requestRTFRs, ATA_PROTOCOL_RET_INFO, XFER_DATA_IN);
+    set_Protocol_Field(requestRTFRs, ATA_PROTOCOL_RET_INFO, XFER_DATA_IN, protocolOffset);
     //Set the TDIR bit to in. The SAT spec says the SATL should ignore this with this protocol, but I have found that this may not be the case in some firmware implementations, so set this to help out the SATL incase it is just skipping to checking this. - TJE
     if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR)
     {
-        requestRTFRs[SAT_TRANSFER_BITS_OFFSET] |= SAT_T_DIR_DATA_IN;
-        requestRTFRs[SAT_TRANSFER_BITS_OFFSET] |= ATA_PT_LEN_TPSIU;
+        requestRTFRs[protocolOffset] |= SAT_T_DIR_DATA_IN;
+        requestRTFRs[transferBitsOffset] |= ATA_PT_LEN_TPSIU;
     }
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -709,59 +771,208 @@ int request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rtfr)
 int build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, ataPassthroughCommand *ataCommandOptions)
 {
     int ret = SUCCESS;
+    uint8_t protocolOffset = SAT_PROTOCOL_OFFSET;
+    uint8_t transferBitsOffset = SAT_TRANSFER_BITS_OFFSET;
     if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough)
     {
         //override whatever came in here so that commands go through successfully....mostly for USB
         ataCommandOptions->ataCommandLengthLocation = ATA_PT_LEN_TPSIU;
     }
-    //determine if we are allocating for a 16 byte or a 12 byte command
-    if (!device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported && device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible && ataCommandOptions->commandType == ATA_CMD_TYPE_TASKFILE)
+    if (ataCommandOptions->forceCDBSize > 0)
     {
-        //allocate 12 bytes
-        *satCDB = (uint8_t*)calloc_aligned(CDB_LEN_12, sizeof(uint8_t), device->os_info.minimumAlignment);
-        if (!satCDB)
+        //before proceeding to allocate memory, need to place some checks on some commands or things won't work exactly right. 
+        //This force is rarely useful other than troubleshooting devices or support for certain features of a given translator.
+        switch (ataCommandOptions->forceCDBSize)
         {
-            return MEMORY_FAILURE;
+        case 12:
+            //if any ext registers are set, then the command cannot be issued.
+            if (ataCommandOptions->tfr.SectorCount48 || ataCommandOptions->tfr.LbaLow48
+                || ataCommandOptions->tfr.LbaMid48 || ataCommandOptions->tfr.LbaHi48
+                || ataCommandOptions->tfr.Feature48 || ataCommandOptions->tfr.aux1
+                || ataCommandOptions->tfr.aux2 || ataCommandOptions->tfr.aux3
+                || ataCommandOptions->tfr.aux4 || ataCommandOptions->tfr.icc)
+            {
+                return BAD_PARAMETER;
+            }
+            else
+            {
+                *satCDB = (uint8_t*)calloc_aligned(ataCommandOptions->forceCDBSize, sizeof(uint8_t), device->os_info.minimumAlignment);
+                if (!*satCDB)
+                {
+                    return MEMORY_FAILURE;
+                }
+                *cdbLen = ataCommandOptions->forceCDBSize;
+                //set the OP Code
+                (*satCDB)[OPERATION_CODE] = ATA_PASS_THROUGH_12;
+            }
+            break;
+        case 16:
+            //If aux or ICC are set with this force flag, then it needs to be rejected since it is not possible to issue in 16B CDBs
+            if (ataCommandOptions->tfr.aux1 || ataCommandOptions->tfr.aux2 || ataCommandOptions->tfr.aux3
+                || ataCommandOptions->tfr.aux4 || ataCommandOptions->tfr.icc)
+            {
+                return BAD_PARAMETER;
+            }
+            else
+            {
+                *satCDB = (uint8_t*)calloc_aligned(ataCommandOptions->forceCDBSize, sizeof(uint8_t), device->os_info.minimumAlignment);
+                if (!*satCDB)
+                {
+                    return MEMORY_FAILURE;
+                }
+                *cdbLen = ataCommandOptions->forceCDBSize;
+                //set the OP Code
+                (*satCDB)[OPERATION_CODE] = ATA_PASS_THROUGH_16;
+            }
+            break;
+        case 32:
+            *satCDB = (uint8_t*)calloc_aligned(ataCommandOptions->forceCDBSize, sizeof(uint8_t), device->os_info.minimumAlignment);
+            if (!*satCDB)
+            {
+                return MEMORY_FAILURE;
+            }
+            *cdbLen = ataCommandOptions->forceCDBSize;
+            //Set the OP Code
+            *satCDB[OPERATION_CODE] = 0x7F;//variable length CDB
+            (*satCDB)[1] = 0;//Control field
+            (*satCDB)[2] = RESERVED;
+            (*satCDB)[3] = RESERVED;
+            (*satCDB)[4] = RESERVED;
+            (*satCDB)[5] = RESERVED;
+            (*satCDB)[6] = RESERVED;
+            (*satCDB)[7] = 0x18;//Additional length
+            //Set the service action
+            (*satCDB)[8] = 0x1F;
+            (*satCDB)[9] = 0xF0;
+            protocolOffset = 10;
+            transferBitsOffset = 11;
+            (*satCDB)[12] = RESERVED;
+            (*satCDB)[13] = RESERVED;
+            (*satCDB)[26] = RESERVED;
+            break;
+        default:
+            //Do nothing as this is not a valid value and let the rest of the code figure out what to do
+            break;
         }
-        *cdbLen = CDB_LEN_12;
-        //set the OP Code
-        *satCDB[OPERATION_CODE] = ATA_PASS_THROUGH_12;
     }
-    else
+    if (!*satCDB)
     {
-        //allocate 16 bytes
-        *satCDB = (uint8_t*)calloc_aligned(CDB_LEN_16, sizeof(uint8_t), device->os_info.minimumAlignment);
-        if (!satCDB)
+        switch (ataCommandOptions->commandType)
         {
-            return MEMORY_FAILURE;
+        case ATA_CMD_TYPE_TASKFILE:
+            if (!device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported)
+            {
+                //12B CDB
+                *satCDB = (uint8_t*)calloc_aligned(CDB_LEN_12, sizeof(uint8_t), device->os_info.minimumAlignment);
+                if (!*satCDB)
+                {
+                    return MEMORY_FAILURE;
+                }
+                *cdbLen = CDB_LEN_12;
+                //set the OP Code
+                (*satCDB)[OPERATION_CODE] = ATA_PASS_THROUGH_12;
+            }
+            else
+            {
+                //16B CDB
+                *satCDB = (uint8_t*)calloc_aligned(CDB_LEN_16, sizeof(uint8_t), device->os_info.minimumAlignment);
+                if (!*satCDB)
+                {
+                    return MEMORY_FAILURE;
+                }
+                *cdbLen = CDB_LEN_16;
+                //Set the OP Code
+                (*satCDB)[OPERATION_CODE] = ATA_PASS_THROUGH_16;
+            }
+            break;
+        case ATA_CMD_TYPE_EXTENDED_TASKFILE:
+            if (device->drive_info.passThroughHacks.ataPTHacks.a1ExtCommandWhenPossible)
+            {
+                //validate that there are no ext registers to set. If there are, then do nothing, otherwise allocate the memory to build the CDB
+                if (!(ataCommandOptions->tfr.SectorCount48 || ataCommandOptions->tfr.LbaLow48
+                    || ataCommandOptions->tfr.LbaMid48 || ataCommandOptions->tfr.LbaHi48
+                    || ataCommandOptions->tfr.Feature48))
+                {
+                    //No ext registers are set, so we will issue the command with a 12B CDB. This is a major hack, but might help some devices get some more support.
+                    //12B CDB
+                    *satCDB = (uint8_t*)calloc_aligned(CDB_LEN_12, sizeof(uint8_t), device->os_info.minimumAlignment);
+                    if (!*satCDB)
+                    {
+                        return MEMORY_FAILURE;
+                    }
+                    *cdbLen = CDB_LEN_12;
+                    //Set the OP Code
+                    (*satCDB)[OPERATION_CODE] = ATA_PASS_THROUGH_12;
+                }
+            }
+            if (!*satCDB) //should fall into here if the above check did not work and allocate the satCDB memory.
+            {
+                //16B CDB
+                *satCDB = (uint8_t*)calloc_aligned(CDB_LEN_16, sizeof(uint8_t), device->os_info.minimumAlignment);
+                if (!*satCDB)
+                {
+                    return MEMORY_FAILURE;
+                }
+                *cdbLen = CDB_LEN_16;
+                //Set the OP Code
+                (*satCDB)[OPERATION_CODE] = ATA_PASS_THROUGH_16;
+            }
+            break;
+        case ATA_CMD_TYPE_COMPLETE_TASKFILE:
+            //32B CDB
+            *satCDB = (uint8_t*)calloc_aligned(CDB_LEN_32, sizeof(uint8_t), device->os_info.minimumAlignment);
+            if (!*satCDB)
+            {
+                return MEMORY_FAILURE;
+            }
+            *cdbLen = CDB_LEN_32;
+            //Set the OP Code
+            (*satCDB)[OPERATION_CODE] = 0x7F;//variable length CDB
+            (*satCDB)[1] = 0;//Control field
+            (*satCDB)[2] = RESERVED;
+            (*satCDB)[3] = RESERVED;
+            (*satCDB)[4] = RESERVED;
+            (*satCDB)[5] = RESERVED;
+            (*satCDB)[6] = RESERVED;
+            (*satCDB)[7] = 0x18;//Additional length
+            //Set the service action
+            (*satCDB)[8] = 0x1F;
+            (*satCDB)[9] = 0xF0;
+            protocolOffset = 10;
+            transferBitsOffset = 11;
+            (*satCDB)[12] = RESERVED;
+            (*satCDB)[13] = RESERVED;
+            (*satCDB)[26] = RESERVED;
+            break;
+            //TODO: handle hard/soft reset here to generate those CDBs properly as well. For now, they are not supported. - TJE
+        default:
+            return BAD_PARAMETER;
+            break;
         }
-        *cdbLen = CDB_LEN_16;
-        //Set the OP Code
-        *satCDB[OPERATION_CODE] = ATA_PASS_THROUGH_16;
     }
     //set protocol
-    ret = set_Protocol_Field(*satCDB, ataCommandOptions->commadProtocol, ataCommandOptions->commandDirection);
+    ret = set_Protocol_Field(*satCDB, ataCommandOptions->commadProtocol, ataCommandOptions->commandDirection, protocolOffset);
     if (ret != SUCCESS)
     {
         return ret;
     }
     //set multiple count
-    set_Multiple_Count(*satCDB, ataCommandOptions->multipleCount);
+    set_Multiple_Count(*satCDB, ataCommandOptions->multipleCount, protocolOffset);
     //set transfer bits
-    ret = set_Transfer_Bits(*satCDB, ataCommandOptions->ataCommandLengthLocation, ataCommandOptions->ataTransferBlocks, ataCommandOptions->commandDirection);
+    ret = set_Transfer_Bits(*satCDB, ataCommandOptions->ataCommandLengthLocation, ataCommandOptions->ataTransferBlocks, ataCommandOptions->commandDirection, transferBitsOffset);
     if (ret != SUCCESS)
     {
         return ret;
     }
     //set offline bits
-    set_Offline_Bits(*satCDB, ataCommandOptions->timeout);
+    set_Offline_Bits(*satCDB, ataCommandOptions->timeout, transferBitsOffset);
     //set registers
     ret = set_Registers(*satCDB, ataCommandOptions);
     //set the check condition bit as we need it
     if (device->os_info.osType == OS_WINDOWS && device->drive_info.interface_type == IDE_INTERFACE)
     {
         //always set the check condition bit since in this case we won't get RTFRs even if there is an error...Windows low level driver workaround
-        set_Check_Condition_Bit(*satCDB);
+        set_Check_Condition_Bit(*satCDB, transferBitsOffset);
     }
     else
     {
@@ -769,13 +980,13 @@ int build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, ataPassthr
         switch (ataCommandOptions->commandDirection)
         {
         case XFER_NO_DATA:
-            set_Check_Condition_Bit(*satCDB);
+            set_Check_Condition_Bit(*satCDB, transferBitsOffset);
             break;
         default:
             //don't set the bit...unless we're being forced to do so
             if (ataCommandOptions->forceCheckConditionBit || device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable)
             {
-                set_Check_Condition_Bit(*satCDB);
+                set_Check_Condition_Bit(*satCDB, transferBitsOffset);
             }
             break;
         }

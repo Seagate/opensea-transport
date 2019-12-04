@@ -1397,7 +1397,7 @@ int scsi_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
             }
             else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12)
             {
-                ret = scsi_Read_12(device, 0, false, false, false, lba, 0, sectors, ptrData, dataSize);
+                ret = scsi_Read_12(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
             }
             else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10)
             {
@@ -1440,7 +1440,7 @@ int scsi_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                     get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &readSense);
                     if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x20 && readSense.scsiStatusCodes.ascq == 0x00)
                     {
-                        ret = scsi_Read_6(device, lba, sectors, ptrData, dataSize);
+                        ret = scsi_Read_6(device, (uint32_t)lba, sectors, ptrData, dataSize);
                         if (SUCCESS == ret)
                         {
                             //setup the hacks like this so prevent future retries
@@ -1477,15 +1477,15 @@ int scsi_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint
             //This device is in the database or the command support has been determined some other way to allow us to issue a correct command without any other issues.
             if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16)
             {
-                ret = scsi_Write_16(device, 0, false, false, false, lba, 0, sectors, ptrData, dataSize);
+                ret = scsi_Write_16(device, 0, false, false, lba, 0, sectors, ptrData, dataSize);
             }
             else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12)
             {
-                ret = scsi_Write_12(device, 0, false, false, false, lba, 0, sectors, ptrData, dataSize);
+                ret = scsi_Write_12(device, 0, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
             }
             else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10)
             {
-                ret = scsi_Write_10(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                ret = scsi_Write_10(device, 0, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
             }
             else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6)
             {
@@ -1516,7 +1516,7 @@ int scsi_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint
             else
             {
                 //try a write10. If it fails for invalid op-code, then try read 6
-                ret = scsi_Write_10(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                ret = scsi_Write_10(device, 0, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
                 if (SUCCESS != ret)
                 {
                     senseDataFields readSense;
@@ -1524,7 +1524,7 @@ int scsi_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint
                     get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &readSense);
                     if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x20 && readSense.scsiStatusCodes.ascq == 0x00)
                     {
-                        ret = scsi_Write_6(device, lba, sectors, ptrData, dataSize);
+                        ret = scsi_Write_6(device, (uint32_t)lba, sectors, ptrData, dataSize);
                         if (SUCCESS == ret)
                         {
                             //setup the hacks like this so prevent future retries

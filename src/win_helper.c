@@ -967,6 +967,8 @@ int get_Device(const char *filename, tDevice *device )
                                 {
                                     device->drive_info.drive_type = ATAPI_DRIVE;
                                     device->drive_info.interface_type = IDE_INTERFACE;
+                                    device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
+                                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//This is GENERALLY true because almost all times the CDB is passed through instead of translated for a passthrough command, so just block it no matter what.
                                     //TODO: These devices use the SCSI MMC command set in packet commands over ATA...other than for a few other commands.
                                     //If we care to properly support this, we should investigate either how to send a packet command, or we should try issuing only SCSI commands
                                     device->os_info.ioType = WIN_IOCTL_ATA_PASSTHROUGH;
@@ -977,6 +979,8 @@ int get_Device(const char *filename, tDevice *device )
                                     if (strncmp(WIN_CDROM_DRIVE, filename, strlen(WIN_CDROM_DRIVE)) == 0)
                                     {
                                         device->drive_info.drive_type = ATAPI_DRIVE;
+                                        device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
+                                        device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//This is GENERALLY true because almost all times the CDB is passed through instead of translated for a passthrough command, so just block it no matter what.
                                     }
                                     else
                                     {
