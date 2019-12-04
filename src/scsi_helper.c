@@ -9686,6 +9686,13 @@ int fill_In_Device_Info(tDevice *device)
         {
             check_SAT_Compliance_And_Set_Drive_Type(device);
         }
+
+        //Because we may find an NVMe over USB device, if we find one of these, perform a little more discovery...
+        if (device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < PASSTHROUGH_NONE)
+        {
+            //NOTE: It is OK if this fails since it will fall back to treating as SCSI
+            fill_In_NVMe_Device_Info(device);
+        }
     }
     else
     {
