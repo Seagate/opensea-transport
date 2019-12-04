@@ -876,7 +876,7 @@ int get_Device(const char *filename, tDevice *device)
             return NOT_SUPPORTED;//return not supported since NVMe-passthrough is disabled
             #endif //DISABLE_NVME_PASSTHROUGH
         }
-        else //not NVMe
+        else //not an NVMe handle
         {
             #if defined (_DEBUG)
             printf("Getting SG SCSI address\n");
@@ -891,6 +891,7 @@ int get_Device(const char *filename, tDevice *device)
                 device->os_info.scsiAddress.channel = (uint8_t)hctlInfo.channel;
                 device->os_info.scsiAddress.target = (uint8_t)hctlInfo.scsi_id;
                 device->os_info.scsiAddress.lun = (uint8_t)hctlInfo.lun;
+                device->drive_info.namespaceID = device->os_info.scsiAddress.lun + 1;//Doing this to help with USB to NVMe adapters. Luns start at zero, whereas namespaces start with 1, hence the plus 1.
                 //also reported are per lun and per device Q-depth which might be nice to store.
                 //printf("H:C:T:L = %" PRIu8 ":%" PRIu8 ":%" PRIu8 ":%" PRIu8 "\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel, device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
             }
