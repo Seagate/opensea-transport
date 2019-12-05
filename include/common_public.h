@@ -1323,6 +1323,7 @@ extern "C"
         USB_Vendor_Seagate_RSS                          = 0x0BC2,
         USB_Vendor_Maxtor                               = 0x0D49,
         USB_Vendor_Phison                               = 0x0D7D,
+        USB_Vendor_Initio                               = 0x13FD,
         USB_Vendor_Kingston                             = 0x13FE, //Some online databases show patriot memory, and one also shows Phison. Most recognize this as Kingston.
         USB_Vendor_JMicron                              = 0x152D,
         USB_Vendor_ASMedia                              = 0x174C,

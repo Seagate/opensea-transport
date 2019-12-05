@@ -2792,6 +2792,73 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 break;
             }
             break;
+        case USB_Vendor_Initio://13FD
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x1340://Seen in ThermalTake BlackX
+                //Results are for revision 0210h
+                //NOTE: This device doesn't allow for large LBAs, so it is limited on the SCSI read/write commands to a 32bit LBA.
+                //      Using a 12TB drive, this reports 483.72GB....so may need an additional hack at some point to force passthrough read/write commands on a device like this.
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 12;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noVPDPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65536;
+                if (device->drive_info.adapter_info.revision == 0x0202)
+                {
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                    device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                    device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                }
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
+                break;
+            default: //unknown
+                break;
+            }
+            break;
+        case USB_Vendor_ASMedia://174C
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x5106://Seen in ThermalTake BlackX 5G
+                //Results are for revision 0001h
+                //Does not seem to handle drives with a 4k logical sector size well.
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 15;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.reportAllOpCodes = true;
+                device->drive_info.passThroughHacks.scsiHacks.reportSingleOpCodes = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 122880;//This seems to vary with each time this device is tested
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 36864;//This seems to vary with each time this device is tested.
+                break;
+            default: //unknown
+                break;
+            }
+            break;
         case USB_Vendor_JMicron://152D
             switch (device->drive_info.adapter_info.productID)
             {
