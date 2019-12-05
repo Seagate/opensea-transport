@@ -941,43 +941,47 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             *fillMaxLba = lba;
         }
 
-        //Now determine if the drive supports DMA and which DMA modes it supports
-        if (ident_word[49] & BIT8)
+        if (!device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
         {
-            device->drive_info.ata_Options.dmaSupported = true;
-            device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
-        }
-        //obsolete since ATA3, holds single word DMA support
-        if (ident_word[62])
-        {
-            device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
-        }
-        //check for multiword dma support
-        if (ident_word[63] & (BIT0 | BIT1 | BIT2))
-        {
-            device->drive_info.ata_Options.dmaSupported = true;
-            device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_MWDMA;
-        }
-        //check for UDMA support
-        if (ident_word[88] & 0x007F)
-        {
-            device->drive_info.ata_Options.dmaSupported = true;
-            device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_UDMA;
-        }
 
-        //set read/write buffer DMA
-        if (ident_word[69] & BIT11)
-        {
-            device->drive_info.ata_Options.readBufferDMASupported = true;
-        }
-        if (ident_word[69] & BIT10)
-        {
-            device->drive_info.ata_Options.writeBufferDMASupported = true;
-        }
-        //set download microcode DMA support
-        if (ident_word[69] & BIT8)
-        {
-            device->drive_info.ata_Options.downloadMicrocodeDMASupported = true;
+            //Now determine if the drive supports DMA and which DMA modes it supports
+            if (ident_word[49] & BIT8)
+            {
+                device->drive_info.ata_Options.dmaSupported = true;
+                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
+            }
+            //obsolete since ATA3, holds single word DMA support
+            if (ident_word[62])
+            {
+                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
+            }
+            //check for multiword dma support
+            if (ident_word[63] & (BIT0 | BIT1 | BIT2))
+            {
+                device->drive_info.ata_Options.dmaSupported = true;
+                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_MWDMA;
+            }
+            //check for UDMA support
+            if (ident_word[88] & 0x007F)
+            {
+                device->drive_info.ata_Options.dmaSupported = true;
+                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_UDMA;
+            }
+
+            //set read/write buffer DMA
+            if (ident_word[69] & BIT11)
+            {
+                device->drive_info.ata_Options.readBufferDMASupported = true;
+            }
+            if (ident_word[69] & BIT10)
+            {
+                device->drive_info.ata_Options.writeBufferDMASupported = true;
+            }
+            //set download microcode DMA support
+            if (ident_word[69] & BIT8)
+            {
+                device->drive_info.ata_Options.downloadMicrocodeDMASupported = true;
+            }
         }
         //set zoned device type
         if (device->drive_info.zonedType != ZONED_TYPE_HOST_MANAGED)
@@ -1000,10 +1004,13 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 break;
             }
         }
-        //Determine if read/write log ext DMA commands are supported
-        if (ident_word[119] & BIT3 || ident_word[120] & BIT3)
+        if (!device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
         {
-            device->drive_info.ata_Options.readLogWriteLogDMASupported = true;
+            //Determine if read/write log ext DMA commands are supported
+            if (ident_word[119] & BIT3 || ident_word[120] & BIT3)
+            {
+                device->drive_info.ata_Options.readLogWriteLogDMASupported = true;
+            }
         }
         if (ident_word[47] != UINT16_MAX && ident_word[47] != 0)
         {
@@ -1105,10 +1112,13 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         return ret;
     }
 
-    if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA)
+    if (!device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
     {
-        //forcing using DMA mode instead of UDMA since the translator doesn't like UDMA mode set
-        device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
+        if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA)
+        {
+            //forcing using DMA mode instead of UDMA since the translator doesn't like UDMA mode set
+            device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
+        }
     }
 
     //Check if we were given any force flags regarding how we talk to ATA drives.
