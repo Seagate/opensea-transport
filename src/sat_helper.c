@@ -603,6 +603,14 @@ int set_Registers(uint8_t *satCDB, ataPassthroughCommand *ataCommandOptions)
     }
     else if (satCDB[OPERATION_CODE] == ATA_PASS_THROUGH_12)
     {
+        /*
+        //This is a hack that MAY help some devices that only support A1h op code.
+        //Currently removed since it isn't working on one device I am able to test and poke around with.
+        if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
+        {
+            satCDB[1] |= BIT0;
+        }
+        */
         satCDB[3] = ataCommandOptions->tfr.ErrorFeature;
         satCDB[4] = ataCommandOptions->tfr.SectorCount;
         satCDB[5] = ataCommandOptions->tfr.LbaLow;
