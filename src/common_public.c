@@ -2831,6 +2831,26 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
         case USB_Vendor_ASMedia://174C
             switch (device->drive_info.adapter_info.productID)
             {
+            case 0x2362://USB to NVMe adapter
+                //Tested 3 adapters. All report the exact same USB level information, but do in fact work differently (slightly)
+                //The  difference seems to be only noticable in Inquiry Data
+                //1. PID: "ASM236X NVME" could use mode sense 6 and read 6 commands
+                //2. PID: "USB3.1 TO NVME" could NOT do these commands. So setting the lowest common set of rules.
+                //If there are other ASMedia chips that vary in capabilities, then may need to adjust what is done in here, or add a hack to check INQ data to finish setting up remaining hacks
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_UNKNOWN;//At the time of entry, no documentation would be provided by ASMedia, so there is not a way to support passing through NVMe commands. - TJE
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 33;
+                device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in the case an ATA passthrough command is attempted, it won't try this opcode since it can cause performance problems or crash the bridge
+                //device->drive_info.drive_type = NVME_DRIVE; //Uncomment this line when it is possible to issue NVMe passthrough commands behind ASMedia chips.
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                break;
             case 0x5106://Seen in ThermalTake BlackX 5G
                 //Results are for revision 0001h
                 //Does not seem to handle drives with a 4k logical sector size well.
@@ -2862,6 +2882,46 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
         case USB_Vendor_JMicron://152D
             switch (device->drive_info.adapter_info.productID)
             {
+            case 0x0562://USB to NVMe adapter
+                //Rev 204h
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 33;
+                device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in the case an ATA passthrough command is attempted, it won't try this opcode since it can cause performance problems or crash the bridge
+                device->drive_info.drive_type = NVME_DRIVE;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = false;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //NOTE: Add max passthrough transfer length hack set to 65536
+                break;
+            case 0x0583://USB to NVMe adapter
+                //Rev 205h
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 33;
+                device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in the case an ATA passthrough command is attempted, it won't try this opcode since it can cause performance problems or crash the bridge
+                device->drive_info.drive_type = NVME_DRIVE;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = false;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //NOTE: Add max passthrough transfer length hack set to 65536
+                break;
             case 0x2339://MiniD2 - NOTE: This has custom firmware. If other things use this chip, additional product verification will be necessary.
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
                 passthroughHacksSet = true;
