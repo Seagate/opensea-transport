@@ -911,7 +911,7 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                         //use PIO commands
                         //check if read multiple is supported (current # logical sectors per DRQ data block)
                         //Also, only bother with read multiple if it's a PATA drive. There isn't really an advantage to this on SATA other than backwards compatibility.
-                        if (device->drive_info.ata_Options.readWriteMultipleSupported && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock > 0 && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock <= ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS && device->drive_info.ata_Options.isParallelTransport)
+                        if (!device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands && device->drive_info.ata_Options.readWriteMultipleSupported && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock > 0 && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock <= ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS && device->drive_info.ata_Options.isParallelTransport)
                         {
                             //read multiple supported and drive is currently configured in a mode that will work.
                             if (device->drive_info.ata_Options.chsModeOnly)
@@ -1026,7 +1026,7 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                         //use PIO commands
                         //check if read multiple is supported (current # logical sectors per DRQ data block)
                         //Also, only bother with read multiple if it's a PATA drive. There isn't really an advantage to this on SATA other than backwards compatibility.
-                        if (device->drive_info.ata_Options.readWriteMultipleSupported && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock > 0 && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock <= ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS && device->drive_info.ata_Options.isParallelTransport)
+                        if (!device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands && device->drive_info.ata_Options.readWriteMultipleSupported && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock > 0 && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock <= ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS && device->drive_info.ata_Options.isParallelTransport)
                         {
                             //read multiple supported and drive is currently configured in a mode that will work.
                             if (device->drive_info.ata_Options.chsModeOnly)
@@ -1162,7 +1162,7 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                         //use PIO commands
                         //check if read multiple is supported (current # logical sectors per DRQ data block)
                         //Also, only bother with write multiple if it's a PATA drive. There isn't really an advantage to this on SATA other than backwards compatibility.
-                        if (device->drive_info.ata_Options.readWriteMultipleSupported && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock > 0 && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock <= ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS && device->drive_info.ata_Options.isParallelTransport)
+                        if (!device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands && device->drive_info.ata_Options.readWriteMultipleSupported && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock > 0 && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock <= ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS && device->drive_info.ata_Options.isParallelTransport)
                         {
                             //read multiple supported and drive is currently configured in a mode that will work.
                             if (device->drive_info.ata_Options.chsModeOnly)
@@ -1277,7 +1277,7 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                         //use PIO commands
                         //check if read multiple is supported (current # logical sectors per DRQ data block)
                         //Also, only bother with write multiple if it's a PATA drive. There isn't really an advantage to this on SATA other than backwards compatibility.
-                        if (device->drive_info.ata_Options.readWriteMultipleSupported && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock > 0 && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock <= ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS && device->drive_info.ata_Options.isParallelTransport)
+                        if (!device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands && device->drive_info.ata_Options.readWriteMultipleSupported && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock > 0 && device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock <= ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS && device->drive_info.ata_Options.isParallelTransport)
                         {
                             //read multiple supported and drive is currently configured in a mode that will work.
                             if (device->drive_info.ata_Options.chsModeOnly)

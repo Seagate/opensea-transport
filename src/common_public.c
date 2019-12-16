@@ -2087,10 +2087,6 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
         case USB_Vendor_Seagate://0477
             switch (device->drive_info.adapter_info.productID)
             {
-            case 0x0502:
-                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_TI;
-                passthroughHacksSet = true;
-                break;
             default: //unknown
                 break;
             }
@@ -2116,6 +2112,22 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65536;
                 device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly = true;
                 device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;//TODO: Cypress passthrough has a bit for UDMA mode, but didn't appear to work in testing.
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
+                break;
+            case 0x0502:
+                //revision 0200h
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_TI;
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 14;
+                device->drive_info.passThroughHacks.scsiHacks.noVPDPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65536;
+                device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly = true;
+                device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands = true;//mutliple mode commands don't work in passthrough.
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
                 break;
             case 0x0503://Seagate External Drive

@@ -941,7 +941,8 @@ extern "C"
                 bool multiSectorPIOWithMultipleMode;//This means that multisector PIO works, BUT only when a set multiple mode command has been sent first and it is limited to the multiple mode.
                 bool singleSectorPIOOnly;//This means that the adapter only supports single sector PIO transfers
                 bool ata28BitOnly;//This is for some devices where the passthrough only allows a 28bit command through, even if the target drive is 48bit
-                uint8_t reserved[1];//padd byte for 8 byte boundary with above bools.
+                bool noMultipleModeCommands;//This is to disable use read/write multiple commands if a bridge chip doesn't handle them correctly.
+                //uint8_t reserved[1];//padd byte for 8 byte boundary with above bools.
                 uint32_t maxTransferLength;//ATA Passthrough max transfer length in bytes. This may be different than the scsi translation max.
                 uint32_t atapadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
             }ataPTHacks;
