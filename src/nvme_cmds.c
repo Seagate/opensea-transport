@@ -19,6 +19,7 @@
 #include "nvme_helper_func.h"
 #include "common_public.h"
 #include "jmicron_nvme_helper.h"
+#include "asmedia_nvme_helper.h"
 
 int nvme_Reset(tDevice *device)
 {
@@ -29,6 +30,12 @@ int nvme_Reset(tDevice *device)
         break;
     case NVME_PASSTHROUGH_JMICRON:
         return jm_nvme_Reset(device);
+        break;
+    case NVME_PASSTHROUGH_ASMEDIA:
+        return asm_nvme_Reset(device);
+        break;
+    case NVME_PASSTHROUGH_ASMEDIA_BASIC:
+        return OS_COMMAND_NOT_AVAILABLE;
         break;
     default:
         return BAD_PARAMETER;
@@ -45,6 +52,12 @@ int nvme_Subsystem_Reset(tDevice *device)
         break;
     case NVME_PASSTHROUGH_JMICRON:
         return jm_nvme_Subsystem_Reset(device);
+        break;
+    case NVME_PASSTHROUGH_ASMEDIA:
+        return asm_nvme_Subsystem_Reset(device);
+        break;
+    case NVME_PASSTHROUGH_ASMEDIA_BASIC:
+        return OS_COMMAND_NOT_AVAILABLE;
         break;
     default:
         return BAD_PARAMETER;
@@ -123,6 +136,12 @@ int nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
         break;
     case NVME_PASSTHROUGH_JMICRON:
         ret = send_JM_NVMe_Cmd(cmdCtx);
+        break;
+    case NVME_PASSTHROUGH_ASMEDIA_BASIC:
+        ret = send_ASMedia_Basic_NVMe_Passthrough_Cmd(cmdCtx);
+        break;
+    case NVME_PASSTHROUGH_ASMEDIA:
+        ret = send_ASM_NVMe_Cmd(cmdCtx);
         break;
     default:
         return BAD_PARAMETER;

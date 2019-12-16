@@ -597,6 +597,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\..\include\asmedia_nvme_helper.h" />
     <ClInclude Include="..\..\..\..\include\ata_helper.h" />
     <ClInclude Include="..\..\..\..\include\ata_helper_func.h" />
     <ClInclude Include="..\..\..\..\include\cam_helper.h">
@@ -729,6 +730,7 @@
     <ClInclude Include="..\..\..\..\include\win_helper.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\..\src\asmedia_nvme_helper.c" />
     <ClCompile Include="..\..\..\..\src\ata_cmds.c" />
     <ClCompile Include="..\..\..\..\src\ata_helper.c" />
     <ClCompile Include="..\..\..\..\src\ata_legacy_cmds.c" />

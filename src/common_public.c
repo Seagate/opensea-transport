@@ -2838,7 +2838,8 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 //2. PID: "USB3.1 TO NVME" could NOT do these commands. So setting the lowest common set of rules.
                 //If there are other ASMedia chips that vary in capabilities, then may need to adjust what is done in here, or add a hack to check INQ data to finish setting up remaining hacks
                 passthroughHacksSet = true;
-                device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_UNKNOWN;//At the time of entry, no documentation would be provided by ASMedia, so there is not a way to support passing through NVMe commands. - TJE
+                device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_ASMEDIA_BASIC;
+                device->drive_info.drive_type = NVME_DRIVE;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                 device->drive_info.passThroughHacks.turfValue = 33;
                 device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in the case an ATA passthrough command is attempted, it won't try this opcode since it can cause performance problems or crash the bridge
@@ -2850,6 +2851,9 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
+                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
+                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric = true;
                 break;
             case 0x5106://Seen in ThermalTake BlackX 5G
                 //Results are for revision 0001h

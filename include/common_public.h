@@ -789,6 +789,8 @@ extern "C"
         //NVMe stuff defined here. All NVMe stuff should be 100 or higher with the exception of the default system passthrough
         NVME_PASSTHROUGH_SYSTEM = 0,//This is for NVMe devices to use the system passthrough. This is the default since this is most NVMe devices.
         NVME_PASSTHROUGH_JMICRON = 100,
+        NVME_PASSTHROUGH_ASMEDIA = 101,//ASMedia packet command, which is capable of passing any command
+        NVME_PASSTHROUGH_ASMEDIA_BASIC = 102,//ASMedia command that is capable of only select commands. Must be after full passthrough that way when trying one passthrough after another it can properly find full capabilities before basic capabilities.
         //TODO: Other vendor unique SCSI to NVMe passthrough here
         NVME_PASSTHROUGH_UNKNOWN,
         //No passthrough
@@ -869,7 +871,7 @@ extern "C"
     #endif
 
     //This is for test unit ready after failures to keep up performance on devices that slow down a LOT durring error processing (USB mostly)
-    #define TURF_LIMIT 3
+    #define TURF_LIMIT 10
 
     //The passthroughHacks structure is to hold information to help with passthrough on OSs, USB adapters, SCSI adapters, etc. Most of this is related to USB adapters though.
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
@@ -905,7 +907,6 @@ extern "C"
             bool reportAllOpCodes;//reporting all operation codes is supported by the device.
             bool securityProtocolSupported;//SCSI security protocol commands are supported
             bool securityProtocolWithInc512;//SCSI security protocol commands are ONLY supported with the INC512 bit set.
-            uint32_t maxTransferLength;//Maximum SCSI command transfer length in bytes. Mostly here for USB where translations aren't accurate or don't show this properly.
             bool preSCSI2InqData;//If this is true, then the struct below is intended to specify where, and how long, the fields are for product ID, vendorID, revision, etc. This structure will likely need multiple changes as these old devices are encountered and work is done to support them - TJE
             struct {
                 uint8_t productIDOffset;//If 0, not valid or reported
@@ -917,29 +918,56 @@ extern "C"
                 uint8_t serialNumberOffset;
                 uint8_t serialNumberLength;
             }scsiInq;
+            uint8_t reserved[6];//padd out above to 8 byte boundaries
+            uint32_t maxTransferLength;//Maximum SCSI command transfer length in bytes. Mostly here for USB where translations aren't accurate or don't show this properly.
+            uint32_t scsipadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
         }scsiHacks;
-        //ATA Hacks refer to SAT translation issues or workarounds.
-        struct {
-            bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
-            //bool useA1SATPassthroughWheneverPossible;//For USB adapters that will only process 28bit commands with A1 and will NOT issue them with 85h
-            bool a1NeverSupported;//prevent retrying with 12B command since it isn't supported anyways.
-            bool a1ExtCommandWhenPossible;//If this is set, when issuing an EXT (48bit) command, use the A1 opcode as long as there are not ext registers that MUST be set to issue the command properly. This is a major hack for devices that don't support the 85h opcode.
-            bool returnResponseInfoSupported;//can send the SAT command to get response information for RTFRs
-            bool returnResponseInfoNeedsTDIR;//supports return response info, but must have T_DIR bit set for it to work properly
-            bool returnResponseIgnoreExtendBit;//Some devices support returning response info, but don't properly set the extend bit, so this basically means copy extended RTFRs anyways.
-            bool alwaysUseTPSIUForSATPassthrough;//some USBs do this better than others.
-            bool alwaysCheckConditionAvailable;//Not supported by all SAT translators. Don't set unless you know for sure!!!
-            bool alwaysUseDMAInsteadOfUDMA;//send commands with DMA mode instead of UDMA since the device doesn't support UDMA passthrough modes.
-            bool dmaNotSupported;//DMA passthrough is not available of any kind.
-            bool partialRTFRs;//This means only 28bit RTFRs will be able to be retrived by the device. This hack is more helpful for code trying different commands to filter capabilities than for trying to talk to the device.
-            bool noRTFRsPossible;//This means on command responses, we cannot get any return task file registers back from the device, so avoid commands that rely on this behavior
-            bool multiSectorPIOWithMultipleMode;//This means that multisector PIO works, BUT only when a set multiple mode command has been sent first and it is limited to the multiple mode.
-            bool singleSectorPIOOnly;//This means that the adapter only supports single sector PIO transfers
-            bool ata28BitOnly;//This is for some devices where the passthrough only allows a 28bit command through, even if the target drive is 48bit
-            uint32_t maxTransferLength;//ATA Passthrough max transfer length in bytes. This may be different than the scsi translation max.
-        }ataPTHacks;
+        union {
+            //ATA Hacks refer to SAT translation issues or workarounds.
+            struct {
+                bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
+                //bool useA1SATPassthroughWheneverPossible;//For USB adapters that will only process 28bit commands with A1 and will NOT issue them with 85h
+                bool a1NeverSupported;//prevent retrying with 12B command since it isn't supported anyways.
+                bool a1ExtCommandWhenPossible;//If this is set, when issuing an EXT (48bit) command, use the A1 opcode as long as there are not ext registers that MUST be set to issue the command properly. This is a major hack for devices that don't support the 85h opcode.
+                bool returnResponseInfoSupported;//can send the SAT command to get response information for RTFRs
+                bool returnResponseInfoNeedsTDIR;//supports return response info, but must have T_DIR bit set for it to work properly
+                bool returnResponseIgnoreExtendBit;//Some devices support returning response info, but don't properly set the extend bit, so this basically means copy extended RTFRs anyways.
+                bool alwaysUseTPSIUForSATPassthrough;//some USBs do this better than others.
+                bool alwaysCheckConditionAvailable;//Not supported by all SAT translators. Don't set unless you know for sure!!!
+                bool alwaysUseDMAInsteadOfUDMA;//send commands with DMA mode instead of UDMA since the device doesn't support UDMA passthrough modes.
+                bool dmaNotSupported;//DMA passthrough is not available of any kind.
+                bool partialRTFRs;//This means only 28bit RTFRs will be able to be retrived by the device. This hack is more helpful for code trying different commands to filter capabilities than for trying to talk to the device.
+                bool noRTFRsPossible;//This means on command responses, we cannot get any return task file registers back from the device, so avoid commands that rely on this behavior
+                bool multiSectorPIOWithMultipleMode;//This means that multisector PIO works, BUT only when a set multiple mode command has been sent first and it is limited to the multiple mode.
+                bool singleSectorPIOOnly;//This means that the adapter only supports single sector PIO transfers
+                bool ata28BitOnly;//This is for some devices where the passthrough only allows a 28bit command through, even if the target drive is 48bit
+                uint8_t reserved[1];//padd byte for 8 byte boundary with above bools.
+                uint32_t maxTransferLength;//ATA Passthrough max transfer length in bytes. This may be different than the scsi translation max.
+                uint32_t atapadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
+            }ataPTHacks;
+            //NVMe Hacks
+            struct {
+                //This is here mostly for vendor unique NVMe passthrough capabilities.
+                //This structure may also be useful for OSs that have limited capabilities
+                bool limitedPassthroughCapabilities;//If this is set to true, this means only certain commands can be passed through to the device.
+                struct { //This structure will hold which commands are available to passthrough if the above "limitedPassthroughCapabilities" boolean is true, otherwise this structure should be ignored.
+                    bool identifyGeneric;//can "generically" send any identify command with any cns value. This typically means any identify can be sent, not just controller and namespace. Basically CNS field is available.
+                    bool identifyController;
+                    bool identifyNamespace;
+                    bool getLogPage;
+                    bool format;
+                    bool getFeatures;
+                    bool firmwareDownload;
+                    bool firmwareCommit;
+                    bool vendorUnique;
+                    //TODO: As other passthroughs are learned with different capabilities, add other commands that ARE supported by them here so that other layers of code can know what capabilities a given device has.
+                }limitedCommandsSupported;
+                uint8_t reserved[6];//padd out above bools to 8 byte boundaries
+                uint32_t maxTransferLength;
+                uint32_t nvmepadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
+            }nvmePTHacks;
+        };//This is an annonymous union for nvme/ata passthrough hacks since a device will only ever have one or the other. This should be accessed based on passthrough type
         //TODO: Add more hacks and padd this structure
-        uint8_t padd[3];
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }passthroughHacks;
     #pragma pack(pop)

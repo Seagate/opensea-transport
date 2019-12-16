@@ -1013,6 +1013,14 @@ int get_Device(const char *filename, tDevice *device )
                                     device->drive_info.interface_type = NVME_INTERFACE;
                                     //set_Namespace_ID_For_Device(device);
                                     device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
 #else
                                     device->drive_info.drive_type = SCSI_DRIVE;
                                     device->drive_info.interface_type = SCSI_INTERFACE;

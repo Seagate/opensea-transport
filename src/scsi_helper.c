@@ -9187,10 +9187,46 @@ int fill_In_Device_Info(tDevice *device)
             device->drive_info.media_type = MEDIA_NVM;
             checkForSAT = false;
         }
-        else if (device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON)
+        else if (device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
         {
             device->drive_info.media_type = MEDIA_NVM;
             checkForSAT = false;
+        }
+
+        //If this is a suspected NVMe device, specifically ASMedia 236X chip, need to do an inquiry with EXACTLY 38bytes to check for a specific signature
+        //This will check for some known outputs to know when to do the additional inquiry command for ASMedia detection. This may not catch everything. - TJE
+        if (!(device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
+            &&
+            (strncmp(device->drive_info.T10_vendor_ident, "ASMT", 4) == 0 || strncmp(device->drive_info.T10_vendor_ident, "ASMedia", 7) == 0 
+            || strstr(device->drive_info.product_identification, "ASM236X") || strstr(device->drive_info.product_identification, "NVME"))
+            )
+        {
+            //This is likely a ASMedia 236X device. Need to do another inquiry command in order to confirm.
+            uint8_t asmtInq[38] = { 0 };
+            if (SUCCESS == scsi_Inquiry(device, asmtInq, 38, 0, false, false))
+            {
+                if (asmtInq[36] == 0x60 && asmtInq[37] == 0x23)//todo: add checking length ahead of this for improved backwards compatibility with SCSI 2 devices.
+                {
+                    //This is an ASMedia device with the 236X chip which supports USB to NVMe passthrough
+                    //This code will setup known hacks for these devices since it wasn't already detected by lower layers based on VID/PID reported over the USB interface
+                    checkForSAT = false;
+                    device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_ASMEDIA_BASIC;
+                    device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                    device->drive_info.passThroughHacks.turfValue = 33;
+                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in the case an ATA passthrough command is attempted, it won't try this opcode since it can cause performance problems or crash the bridge
+                    device->drive_info.drive_type = NVME_DRIVE;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                    device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
+                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
+                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric = true;
+                }
+            }
         }
 
         //Need to check version descriptors here since they may be useful below, but also because it can be used to help rule-out some USB to NVMe devices.
@@ -9688,7 +9724,7 @@ int fill_In_Device_Info(tDevice *device)
         }
 
         //Because we may find an NVMe over USB device, if we find one of these, perform a little more discovery...
-        if (device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < PASSTHROUGH_NONE)
+        if (device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
         {
             //NOTE: It is OK if this fails since it will fall back to treating as SCSI
             fill_In_NVMe_Device_Info(device);

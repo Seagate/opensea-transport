@@ -123,6 +123,9 @@
     <ClInclude Include="..\..\..\..\include\jmicron_nvme_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\include\asmedia_nvme_helper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\src\ata_cmds.c">
@@ -201,6 +204,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\src\jmicron_nvme_helper.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\asmedia_nvme_helper.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
