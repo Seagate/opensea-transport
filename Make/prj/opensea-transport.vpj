@@ -86,6 +86,7 @@
                     <F N="../../include/vendor/seagate/seagate_ata_types.h"/>
                 </Folder>
             </Folder>
+            <F N="../../include/asmedia_nvme_helper.h"/>
             <F N="../../include/ata_helper.h"/>
             <F N="../../include/ata_helper_func.h"/>
             <F N="../../include/cam_helper.h"/>
@@ -121,6 +122,7 @@
             <F N="../../include/win_helper.h"/>
         </Folder>
         <Folder Name="../../src">
+            <F N="../../src/asmedia_nvme_helper.c"/>
             <F N="../../src/ata_cmds.c"/>
             <F N="../../src/ata_helper.c"/>
             <F N="../../src/ata_legacy_cmds.c"/>

@@ -65,7 +65,8 @@ LIB_SRC_FILES = \
 	$(SRC_DIR)prolific_legacy_helper.c\
 	$(SRC_DIR)usb_hacks.c\
 	$(SRC_DIR)sntl_helper.c\
-	$(SRC_DIR)jmicron_nvme_helper.c
+	$(SRC_DIR)jmicron_nvme_helper.c\
+	$(SRC_DIR)asmedia_nvme_helper.c
 
 UNAME := $(shell uname)
 ifeq ($(UNAME),Linux)
