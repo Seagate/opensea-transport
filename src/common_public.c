@@ -2998,7 +2998,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
-                device->drive_info.passThroughHacks.scsiHacks.noModeSubPages true;
+                device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
