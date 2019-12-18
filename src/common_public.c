@@ -2098,6 +2098,22 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_NEC;
                 passthroughHacksSet = true;
                 break;
+            case 0x0500://ST3750640A
+                device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 5;
+                device->drive_info.passThroughHacks.scsiHacks.preSCSI2InqData = true;
+                device->drive_info.passThroughHacks.scsiHacks.scsiInq.productIDOffset = 8;
+                device->drive_info.passThroughHacks.scsiHacks.scsiInq.productIDLength = 24;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noVPDPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 122880;
+                break;
             case 0x0501://
                 //revision 0002h
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
@@ -3176,6 +3192,24 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
         case USB_Vendor_Maxtor://0D49
             switch (device->drive_info.adapter_info.productID)
             {
+            case 0x5020://5000DV
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 13;
+                device->drive_info.passThroughHacks.scsiHacks.preSCSI2InqData = true;
+                device->drive_info.passThroughHacks.scsiHacks.scsiInq.vendorIDOffset = 8;
+                device->drive_info.passThroughHacks.scsiHacks.scsiInq.vendorIDLength = 8;
+                device->drive_info.passThroughHacks.scsiHacks.scsiInq.productIDOffset = 16;
+                device->drive_info.passThroughHacks.scsiHacks.scsiInq.productIDLength = 16;
+                device->drive_info.passThroughHacks.scsiHacks.scsiInq.productRevOffset = 32;
+                device->drive_info.passThroughHacks.scsiHacks.scsiInq.productRevLength = 3;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                //device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65536; //Unable to get a good test result on this, so this is currently commented out. - TJE
+                break;
             case 0x7310://OneTouch
                 //rev 0122h
                 passthroughHacksSet = true;
@@ -3754,6 +3788,95 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
     return passthroughHacksSet;
 }
 
+//Vendor ID's, or OUI's, can be found here: https://regauth.standards.ieee.org/standards-ra-web/pub/view.html#registries
+bool set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
+{
+    bool passthroughHacksSet = false;
+    if (device->drive_info.interface_type == IEEE_1394_INTERFACE)
+    {
+        //It is unknown if any IEEE 1394 devices support any ATA passthrough.
+        //Some devices had both USB and IEEE1394 interfaces and one may have passthrough while the other does not. They may even be different.
+        switch (device->drive_info.adapter_info.vendorID)
+        {
+        case IEEE1394_Vendor_Maxtor://0010B9
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x005000://5000DV
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                //device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 6;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                //device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65536; //Unable to get a good test result on this, so this is currently commented out. - TJE
+                break;
+            default:
+                break;
+            }
+            break;
+        case IEEE1394_Vendor_Seagate://002037
+            switch (device->drive_info.adapter_info.productID)
+            {
+            default:
+                break;
+            }
+            break;
+        case IEEE1394_Vendor_Quantum://00E09E
+            switch (device->drive_info.adapter_info.productID)
+            {
+            default:
+                break;
+            }
+            break;
+        case 0x000BC2://This vendor ID doesn't make sense for the product that was tested!!!
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x000000://Seagate external drive with USB and 1394. USB mode has passthrough, but that doesn't work in 1394. Likely 2 different chips
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                //device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 5;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288; //Unable to get a good test result on this, so this is currently commented out. - TJE
+                break;
+            default:
+                break;
+            }
+            break;
+        case 0x000500://This vendor ID doesn't make sense for the product that was tested!!!
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x000001://Seagate external drive with USB and 1394. USB mode has passthrough, but that doesn't work in 1394. Likely 2 different chips
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                //device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 4;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288; //Unable to get a good test result on this, so this is currently commented out. - TJE
+                break;
+            default:
+                break;
+            }
+            break;
+        default:
+            break;
+        }
+    }
+    return passthroughHacksSet;
+}
+
 bool setup_Passthrough_Hacks_By_ID(tDevice *device)
 {
     bool success = false;
@@ -3764,7 +3887,10 @@ bool setup_Passthrough_Hacks_By_ID(tDevice *device)
         success = set_USB_Passthrough_Hacks_By_PID_and_VID(device);
         break;
     case ADAPTER_INFO_PCI://TODO: PCI device hacks based on known controllers with workarounds or other changes we can make.
-    case ADAPTER_INFO_IEEE1394://TODO: Firewire devices that have different hacks for passthrough commands.
+        break;
+    case ADAPTER_INFO_IEEE1394:
+        success = set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(device);
+        break;
     default:
         break;
     }

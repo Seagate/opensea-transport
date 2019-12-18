@@ -378,6 +378,49 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             #endif
                             device->drive_info.interface_type = IEEE_1394_INTERFACE;
                             //TODO: investigate some way of saving vendor/product like information for firewire.
+                            char fullFWPath[PATH_MAX] = { 0 };
+                            strcpy(fullFWPath, inHandleLink);
+
+                            fullFWPath[0] = '/';
+                            fullFWPath[1] = 's';
+                            fullFWPath[2] = 'y';
+                            fullFWPath[3] = 's';
+                            fullFWPath[4] = '/';
+                            memmove(&fullFWPath[5], &fullFWPath[6], strlen(fullFWPath));
+
+                            //now we need to go up a few directories to get the modalias file to parse
+                            uint64_t newStrLen = strstr(fullFWPath, "/host") - fullFWPath + 1;
+                            char *fwPath = (char*)calloc(PATH_MAX, sizeof(char));
+                            if (fwPath)
+                            {
+                                strncpy(fwPath, fullFWPath, newStrLen - 1);
+                                strcat(fwPath, "/");
+                                //printf("full FW Path = %s\n", fwPath);
+                                strcat(fwPath, "modalias");
+                                //printf("modalias FW Path = %s\n", fwPath);
+                                FILE *temp = NULL;
+                                temp = fopen(fwPath, "r");
+                                if (temp)
+                                {
+                                    //This file contains everything in one place. Otherwise we would need to parse multiple files at slightly different paths to get everything - TJE
+                                    if (4 == fscanf(temp, "ieee1394:ven%8" SCNx32 "mo%8" SCNx32 "sp%8" SCNx32 "ver%8" SCNx32, &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &device->drive_info.adapter_info.specifierID, &device->drive_info.adapter_info.revision))
+                                    {
+                                        device->drive_info.adapter_info.vendorIDValid = true;
+                                        device->drive_info.adapter_info.productIDValid = true;
+                                        device->drive_info.adapter_info.specifierIDValid = true;
+                                        device->drive_info.adapter_info.revisionValid = true;
+                                        //printf("Got vendor ID as %" PRIX16 "h\n", device->drive_info.adapter_info.vendorID);
+                                        //printf("Got product ID as %" PRIX16 "h\n", device->drive_info.adapter_info.productID);
+                                        //printf("Got specifier ID as %" PRIX16 "h\n", device->drive_info.adapter_info.specifierID);
+                                        //printf("Got revision ID as %" PRIX16 "h\n", device->drive_info.adapter_info.revision);
+                                    }
+                                    fclose(temp);
+                                    temp = NULL;
+                                }
+                                device->drive_info.adapter_info.infoType = ADAPTER_INFO_IEEE1394;
+                                safe_Free(fwPath);
+                            }
+
                         }
                         //if the link doesn't conatin ata or usb in it, then we are assuming it's scsi since scsi doesn't have a nice simple string to check
                         else

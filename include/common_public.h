@@ -741,7 +741,7 @@ extern "C"
         ADAPTER_INFO_UNKNOWN, //unknown generally means it is not valid or present and was not discovred by low-level OS code
         ADAPTER_INFO_USB,
         ADAPTER_INFO_PCI,
-        ADAPTER_INFO_IEEE1394, //not supported yet...
+        ADAPTER_INFO_IEEE1394, //supported under linux today
     }eAdapterInfoType;
 
 #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
@@ -753,13 +753,14 @@ extern "C"
         bool vendorIDValid;
         bool productIDValid;
         bool revisionValid;
-        uint8_t padd[1];
+        bool specifierIDValid;
         eAdapterInfoType infoType;
-        //These may change sizes if we encounter other interfaces that report these are larger than uint16_t's
-        uint16_t vendorID;
-        uint16_t productID;
-        uint16_t revision;
-        uint16_t reserved;
+        //USB and PCI devices use uint16's for vendor product and revision. IEEE1394 uses uint32's since most of these are 24bit numbers
+        //TODO: Annonymous union for different types??? USB  vs PCI vs IEEE1394???
+        uint32_t vendorID;
+        uint32_t productID;
+        uint32_t revision;
+        uint32_t specifierID;//Used on IEEE1394 only
 #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }adapterInfo;
 #pragma pack(pop)
@@ -1363,6 +1364,17 @@ extern "C"
         // Add new enumerations above this line!
         USB_Vendor_MaxValue                             = 0xFFFF
     } eUSBVendorIDs;
+
+    typedef enum _e1394OUIs //a.k.a. vendor IDs
+    {
+        IEEE1394_Vendor_Unknown = 0,
+        //IEEE1394_Vendor_Maxtor  = 0x001075,//This is a second Maxtor VID, but it is not listed as used, which is why it is commented out
+        IEEE1394_Vendor_Maxtor  = 0x0010B9,
+        IEEE1394_Vendor_Seagate = 0x002037,
+        IEEE1394_Vendor_Quantum = 0x00E09E,
+        // Add new enumerations above this line!
+        IEEE1394_Vendor_MaxValue    = 0xFFFFFF //this should be the the highest possible value for an IEEE OUI as they are 24bits in size.
+    }e1394OUIs; //a.k.a. vendor IDs
 
     typedef enum _eSeagateFamily
     {
