@@ -2652,6 +2652,28 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
                 break;
+            case 0x5071://GoFlex Desk
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 16;
+                device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noVPDPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65536;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
+                break;
             case 0x50A5://GoFlex Desk
                 passthroughHacksSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
@@ -2815,7 +2837,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.singleSectorPIOOnly = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 512;
                 break;
-            case 0xA013://USB
+            case 0xA013://Backup+ RD
                 passthroughHacksSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
                 device->drive_info.passThroughHacks.turfValue = 14;
@@ -2826,13 +2848,13 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
-                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65536;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65536;//some testing shows 524288
                 //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
-                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;//some testing shows 524288
                 break;
             case 0xA014://Slim BK
                 passthroughHacksSet = true;
@@ -3425,6 +3447,26 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
         case USB_Vendor_JMicron://152D
             switch (device->drive_info.adapter_info.productID)
             {
+            case 0x0551://USB 3.0 to SATA/PATA adapter
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 14;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noVPDPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 512512;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
+                break;
             case 0x0562://USB to NVMe adapter
                 //Rev 204h
                 passthroughHacksSet = true;
@@ -3465,7 +3507,8 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
                 //NOTE: Add max passthrough transfer length hack set to 65536
                 break;
-            case 0x2338://Sabrent USB 2.0 to SATA/PATA. Only tested PATA
+            case 0x2338://Sabrent USB 2.0 to SATA/PATA. Only tested SATA.
+                //NOTE: Some versions of this chip will NOT do SAT passthrough.
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
                 passthroughHacksSet = true;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
