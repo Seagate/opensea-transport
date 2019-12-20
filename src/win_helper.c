@@ -375,12 +375,952 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                     cmRet = CM_Get_Device_ID(parentInst, parentBuffer, parentLen, 0);
                                                     if (CR_SUCCESS == cmRet)
                                                     {
+                                                        //uncomment this else case to view all the possible device or parent properties when figuring out what else is necessary to store for a new device.
+                                                        /*  //This is a comment switch. two slashes means uncomment the below, 1 means comment it out
+                                                        {
+                                                            ULONG propertyBufLen = 0;
+                                                            DEVPROPTYPE propertyType = 0;
+                                                            DEVINST propInst = deviceInstance;
+                                                            const DEVPROPKEY *devproperty = &DEVPKEY_NAME;
+                                                            uint16_t counter = 0, instanceCounter = 0;
+                                                            //device instance first!
+                                                            while (instanceCounter < 2)
+                                                            {
+                                                                if (instanceCounter > 0)
+                                                                {
+                                                                    printf("\n==========================\n");
+                                                                    printf("Parent instance properties\n");
+                                                                    printf("==========================\n\n");
+                                                                }
+                                                                else
+                                                                {
+                                                                    printf("\n==========================\n");
+                                                                    printf("Device instance properties\n");
+                                                                    printf("==========================\n\n");
+                                                                }
+                                                                while (devproperty)
+                                                                {
+                                                                    //print out name of property being checked.
+                                                                    printf("========================================================================\n");
+                                                                    switch (counter)
+                                                                    {
+                                                                    case 0:
+                                                                        devproperty = &DEVPKEY_Device_DeviceDesc;
+                                                                        printf("DEVPKEY_Device_DeviceDesc: \n");
+                                                                        break;
+                                                                    case 1:
+                                                                        devproperty = &DEVPKEY_Device_HardwareIds;
+                                                                        printf("DEVPKEY_Device_HardwareIds: \n");
+                                                                        break;
+                                                                    case 2:
+                                                                        devproperty = &DEVPKEY_Device_CompatibleIds;
+                                                                        printf("DEVPKEY_Device_CompatibleIds: \n");
+                                                                        break;
+                                                                    case 3:
+                                                                        devproperty = &DEVPKEY_Device_Service;
+                                                                        printf("DEVPKEY_Device_Service: \n");
+                                                                        break;
+                                                                    case 4:
+                                                                        devproperty = &DEVPKEY_Device_Class;
+                                                                        printf("DEVPKEY_Device_Class: \n");
+                                                                        break;
+                                                                    case 5:
+                                                                        devproperty = &DEVPKEY_Device_ClassGuid;
+                                                                        printf("DEVPKEY_Device_ClassGuid: \n");
+                                                                        break;
+                                                                    case 6:
+                                                                        devproperty = &DEVPKEY_Device_Driver;
+                                                                        printf("DEVPKEY_Device_Driver: \n");
+                                                                        break;
+                                                                    case 7:
+                                                                        devproperty = &DEVPKEY_Device_ConfigFlags;
+                                                                        printf("DEVPKEY_Device_ConfigFlags: \n");
+                                                                        break;
+                                                                    case 8:
+                                                                        devproperty = &DEVPKEY_Device_Manufacturer;
+                                                                        printf("DEVPKEY_Device_Manufacturer: \n");
+                                                                        break;
+                                                                    case 9:
+                                                                        devproperty = &DEVPKEY_Device_FriendlyName;
+                                                                        printf("DEVPKEY_Device_FriendlyName: \n");
+                                                                        break;
+                                                                    case 10:
+                                                                        devproperty = &DEVPKEY_Device_LocationInfo;
+                                                                        printf("DEVPKEY_Device_LocationInfo: \n");
+                                                                        break;
+                                                                    case 11:
+                                                                        devproperty = &DEVPKEY_Device_PDOName;
+                                                                        printf("DEVPKEY_Device_PDOName: \n");
+                                                                        break;
+                                                                    case 12:
+                                                                        devproperty = &DEVPKEY_Device_Capabilities;
+                                                                        printf("DEVPKEY_Device_Capabilities: \n");
+                                                                        break;
+                                                                    case 13:
+                                                                        devproperty = &DEVPKEY_Device_UINumber;
+                                                                        printf("DEVPKEY_Device_UINumber: \n");
+                                                                        break;
+                                                                    case 14:
+                                                                        devproperty = &DEVPKEY_Device_UpperFilters;
+                                                                        printf("DEVPKEY_Device_UpperFilters: \n");
+                                                                        break;
+                                                                    case 15:
+                                                                        devproperty = &DEVPKEY_Device_LowerFilters;
+                                                                        printf("DEVPKEY_Device_LowerFilters: \n");
+                                                                        break;
+                                                                    case 16:
+                                                                        devproperty = &DEVPKEY_Device_BusTypeGuid;
+                                                                        printf("DEVPKEY_Device_BusTypeGuid: \n");
+                                                                        break;
+                                                                    case 17:
+                                                                        devproperty = &DEVPKEY_Device_LegacyBusType;
+                                                                        printf("DEVPKEY_Device_LegacyBusType: \n");
+                                                                        break;
+                                                                    case 18:
+                                                                        devproperty = &DEVPKEY_Device_BusNumber;
+                                                                        printf("DEVPKEY_Device_BusNumber: \n");
+                                                                        break;
+                                                                    case 19:
+                                                                        devproperty = &DEVPKEY_Device_EnumeratorName;
+                                                                        printf("DEVPKEY_Device_EnumeratorName: \n");
+                                                                        break;
+                                                                    case 20:
+                                                                        devproperty = &DEVPKEY_Device_Security;
+                                                                        printf("DEVPKEY_Device_Security: \n");
+                                                                        break;
+                                                                    case 21:
+                                                                        devproperty = &DEVPKEY_Device_SecuritySDS;
+                                                                        printf("DEVPKEY_Device_SecuritySDS: \n");
+                                                                        break;
+                                                                    case 22:
+                                                                        devproperty = &DEVPKEY_Device_DevType;
+                                                                        printf("DEVPKEY_Device_DevType: \n");
+                                                                        break;
+                                                                    case 23:
+                                                                        devproperty = &DEVPKEY_Device_Exclusive;
+                                                                        printf("DEVPKEY_Device_Exclusive: \n");
+                                                                        break;
+                                                                    case 24:
+                                                                        devproperty = &DEVPKEY_Device_Characteristics;
+                                                                        printf("DEVPKEY_Device_Characteristics: \n");
+                                                                        break;
+                                                                    case 25:
+                                                                        devproperty = &DEVPKEY_Device_Address;
+                                                                        printf("DEVPKEY_Device_Address: \n");
+                                                                        break;
+                                                                    case 26:
+                                                                        devproperty = &DEVPKEY_Device_UINumberDescFormat;
+                                                                        printf("DEVPKEY_Device_UINumberDescFormat: \n");
+                                                                        break;
+                                                                    case 27:
+                                                                        devproperty = &DEVPKEY_Device_PowerData;
+                                                                        printf("DEVPKEY_Device_PowerData: \n");
+                                                                        break;
+                                                                    case 28:
+                                                                        devproperty = &DEVPKEY_Device_RemovalPolicy;
+                                                                        printf("DEVPKEY_Device_RemovalPolicy: \n");
+                                                                        break;
+                                                                    case 29:
+                                                                        devproperty = &DEVPKEY_Device_RemovalPolicyDefault;
+                                                                        printf("DEVPKEY_Device_RemovalPolicyDefault: \n");
+                                                                        break;
+                                                                    case 30:
+                                                                        devproperty = &DEVPKEY_Device_RemovalPolicyOverride;
+                                                                        printf("DEVPKEY_Device_RemovalPolicyOverride: \n");
+                                                                        break;
+                                                                    case 31:
+                                                                        devproperty = &DEVPKEY_Device_InstallState;
+                                                                        printf("DEVPKEY_Device_InstallState: \n");
+                                                                        break;
+                                                                    case 32:
+                                                                        devproperty = &DEVPKEY_Device_LocationPaths;
+                                                                        printf("DEVPKEY_Device_LocationPaths: \n");
+                                                                        break;
+                                                                    case 33:
+                                                                        devproperty = &DEVPKEY_Device_BaseContainerId;
+                                                                        printf("DEVPKEY_Device_BaseContainerId: \n");
+                                                                        break;
+                                                                    case 34:
+                                                                        devproperty = &DEVPKEY_Device_InstanceId;
+                                                                        printf("DEVPKEY_Device_InstanceId: \n");
+                                                                        break;
+                                                                    case 35:
+                                                                        devproperty = &DEVPKEY_Device_DevNodeStatus;
+                                                                        printf("DEVPKEY_Device_DevNodeStatus: \n");
+                                                                        break;
+                                                                    case 36:
+                                                                        devproperty = &DEVPKEY_Device_ProblemCode;
+                                                                        printf("DEVPKEY_Device_ProblemCode: \n");
+                                                                        break;
+                                                                    case 37:
+                                                                        devproperty = &DEVPKEY_Device_EjectionRelations;
+                                                                        printf("DEVPKEY_Device_EjectionRelations: \n");
+                                                                        break;
+                                                                    case 38:
+                                                                        devproperty = &DEVPKEY_Device_RemovalRelations;
+                                                                        printf("DEVPKEY_Device_RemovalRelations: \n");
+                                                                        break;
+                                                                    case 39:
+                                                                        devproperty = &DEVPKEY_Device_PowerRelations;
+                                                                        printf("DEVPKEY_Device_PowerRelations: \n");
+                                                                        break;
+                                                                    case 40:
+                                                                        devproperty = &DEVPKEY_Device_BusRelations;
+                                                                        printf("DEVPKEY_Device_BusRelations: \n");
+                                                                        break;
+                                                                    case 41:
+                                                                        devproperty = &DEVPKEY_Device_Parent;
+                                                                        printf("DEVPKEY_Device_Parent: \n");
+                                                                        break;
+                                                                    case 42:
+                                                                        devproperty = &DEVPKEY_Device_Children;
+                                                                        printf("DEVPKEY_Device_Children: \n");
+                                                                        break;
+                                                                    case 43:
+                                                                        devproperty = &DEVPKEY_Device_Siblings;
+                                                                        printf("DEVPKEY_Device_Siblings: \n");
+                                                                        break;
+                                                                    case 44:
+                                                                        devproperty = &DEVPKEY_Device_TransportRelations;
+                                                                        printf("DEVPKEY_Device_TransportRelations: \n");
+                                                                        break;
+                                                                    case 45:
+                                                                        devproperty = &DEVPKEY_Device_ProblemStatus;
+                                                                        printf("DEVPKEY_Device_ProblemStatus: \n");
+                                                                        break;
+                                                                    case 46:
+                                                                        devproperty = &DEVPKEY_Device_Reported;
+                                                                        printf("DEVPKEY_Device_Reported: \n");
+                                                                        break;
+                                                                    case 47:
+                                                                        devproperty = &DEVPKEY_Device_Legacy;
+                                                                        printf("DEVPKEY_Device_Legacy: \n");
+                                                                        break;
+                                                                    case 48:
+                                                                        devproperty = &DEVPKEY_Device_ContainerId;
+                                                                        printf("DEVPKEY_Device_ContainerId: \n");
+                                                                        break;
+                                                                    case 49:
+                                                                        devproperty = &DEVPKEY_Device_InLocalMachineContainer;
+                                                                        printf("DEVPKEY_Device_InLocalMachineContainer: \n");
+                                                                        break;
+                                                                    case 50:
+                                                                        devproperty = &DEVPKEY_Device_Model;
+                                                                        printf("DEVPKEY_Device_Model: \n");
+                                                                        break;
+                                                                    case 51:
+                                                                        devproperty = &DEVPKEY_Device_ModelId;
+                                                                        printf("DEVPKEY_Device_ModelId: \n");
+                                                                        break;
+                                                                    case 52:
+                                                                        devproperty = &DEVPKEY_Device_FriendlyNameAttributes;
+                                                                        printf("DEVPKEY_Device_FriendlyNameAttributes: \n");
+                                                                        break;
+                                                                    case 53:
+                                                                        devproperty = &DEVPKEY_Device_ManufacturerAttributes;
+                                                                        printf("DEVPKEY_Device_ManufacturerAttributes: \n");
+                                                                        break;
+                                                                    case 54:
+                                                                        devproperty = &DEVPKEY_Device_PresenceNotForDevice;
+                                                                        printf("DEVPKEY_Device_PresenceNotForDevice: \n");
+                                                                        break;
+                                                                    case 55:
+                                                                        devproperty = &DEVPKEY_Device_SignalStrength;
+                                                                        printf("DEVPKEY_Device_SignalStrength: \n");
+                                                                        break;
+                                                                    case 56:
+                                                                        devproperty = &DEVPKEY_Device_IsAssociateableByUserAction;
+                                                                        printf("DEVPKEY_Device_IsAssociateableByUserAction: \n");
+                                                                        break;
+                                                                    case 57:
+                                                                        devproperty = &DEVPKEY_Device_ShowInUninstallUI;
+                                                                        printf("DEVPKEY_Device_ShowInUninstallUI: \n");
+                                                                        break;
+                                                                    case 58:
+                                                                        devproperty = &DEVPKEY_Device_Numa_Proximity_Domain;
+                                                                        printf("DEVPKEY_Device_Numa_Proximity_Domain: \n");
+                                                                        break;
+                                                                    case 59:
+                                                                        devproperty = &DEVPKEY_Device_DHP_Rebalance_Policy;
+                                                                        printf("DEVPKEY_Device_DHP_Rebalance_Policy: \n");
+                                                                        break;
+                                                                    case 60:
+                                                                        devproperty = &DEVPKEY_Device_Numa_Node;
+                                                                        printf("DEVPKEY_Device_Numa_Node: \n");
+                                                                        break;
+                                                                    case 61:
+                                                                        devproperty = &DEVPKEY_Device_BusReportedDeviceDesc;
+                                                                        printf("DEVPKEY_Device_BusReportedDeviceDesc: \n");
+                                                                        break;
+                                                                    case 62:
+                                                                        devproperty = &DEVPKEY_Device_IsPresent;
+                                                                        printf("DEVPKEY_Device_IsPresent: \n");
+                                                                        break;
+                                                                    case 63:
+                                                                        devproperty = &DEVPKEY_Device_HasProblem;
+                                                                        printf("DEVPKEY_Device_HasProblem: \n");
+                                                                        break;
+                                                                    case 64:
+                                                                        devproperty = &DEVPKEY_Device_ConfigurationId;
+                                                                        printf("DEVPKEY_Device_ConfigurationId: \n");
+                                                                        break;
+                                                                    case 65:
+                                                                        devproperty = &DEVPKEY_Device_ReportedDeviceIdsHash;
+                                                                        printf("DEVPKEY_Device_ReportedDeviceIdsHash: \n");
+                                                                        break;
+                                                                    case 66:
+                                                                        devproperty = &DEVPKEY_Device_PhysicalDeviceLocation;
+                                                                        printf("DEVPKEY_Device_PhysicalDeviceLocation: \n");
+                                                                        break;
+                                                                    case 67:
+                                                                        devproperty = &DEVPKEY_Device_BiosDeviceName;
+                                                                        printf("DEVPKEY_Device_BiosDeviceName: \n");
+                                                                        break;
+                                                                    case 68:
+                                                                        devproperty = &DEVPKEY_Device_DriverProblemDesc;
+                                                                        printf("DEVPKEY_Device_DriverProblemDesc: \n");
+                                                                        break;
+                                                                    case 69:
+                                                                        devproperty = &DEVPKEY_Device_DebuggerSafe;
+                                                                        printf("DEVPKEY_Device_DebuggerSafe: \n");
+                                                                        break;
+                                                                    case 70:
+                                                                        devproperty = &DEVPKEY_Device_PostInstallInProgress;
+                                                                        printf("DEVPKEY_Device_PostInstallInProgress: \n");
+                                                                        break;
+                                                                    case 71:
+                                                                        devproperty = &DEVPKEY_Device_Stack;
+                                                                        printf("DEVPKEY_Device_Stack: \n");
+                                                                        break;
+                                                                    case 72:
+                                                                        devproperty = &DEVPKEY_Device_ExtendedConfigurationIds;
+                                                                        printf("DEVPKEY_Device_ExtendedConfigurationIds: \n");
+                                                                        break;
+                                                                    case 73:
+                                                                        devproperty = &DEVPKEY_Device_IsRebootRequired;
+                                                                        printf("DEVPKEY_Device_IsRebootRequired: \n");
+                                                                        break;
+                                                                    case 74:
+                                                                        devproperty = &DEVPKEY_Device_FirmwareDate;
+                                                                        printf("DEVPKEY_Device_FirmwareDate: \n");
+                                                                        break;
+                                                                    case 75:
+                                                                        devproperty = &DEVPKEY_Device_FirmwareVersion;
+                                                                        printf("DEVPKEY_Device_FirmwareVersion: \n");
+                                                                        break;
+                                                                    case 76:
+                                                                        devproperty = &DEVPKEY_Device_FirmwareRevision;
+                                                                        printf("DEVPKEY_Device_FirmwareRevision: \n");
+                                                                        break;
+                                                                    case 77:
+                                                                        devproperty = &DEVPKEY_Device_DependencyProviders;
+                                                                        printf("DEVPKEY_Device_DependencyProviders: \n");
+                                                                        break;
+                                                                    case 78:
+                                                                        devproperty = &DEVPKEY_Device_DependencyDependents;
+                                                                        printf("DEVPKEY_Device_DependencyDependents: \n");
+                                                                        break;
+                                                                    case 79:
+                                                                        devproperty = &DEVPKEY_Device_SoftRestartSupported;
+                                                                        printf("DEVPKEY_Device_SoftRestartSupported: \n");
+                                                                        break;
+                                                                    case 80:
+                                                                        devproperty = &DEVPKEY_Device_ExtendedAddress;
+                                                                        printf("DEVPKEY_Device_ExtendedAddress: \n");
+                                                                        break;
+                                                                    case 81:
+                                                                        devproperty = &DEVPKEY_Device_SessionId;
+                                                                        printf("DEVPKEY_Device_SessionId: \n");
+                                                                        break;
+                                                                    case 82:
+                                                                        devproperty = &DEVPKEY_Device_InstallDate;
+                                                                        printf("DEVPKEY_Device_InstallDate: \n");
+                                                                        break;
+                                                                    case 83:
+                                                                        devproperty = &DEVPKEY_Device_FirstInstallDate;
+                                                                        printf("DEVPKEY_Device_FirstInstallDate: \n");
+                                                                        break;
+                                                                    case 84:
+                                                                        devproperty = &DEVPKEY_Device_LastArrivalDate;
+                                                                        printf("DEVPKEY_Device_LastArrivalDate: \n");
+                                                                        break;
+                                                                    case 85:
+                                                                        devproperty = &DEVPKEY_Device_LastRemovalDate;
+                                                                        printf("DEVPKEY_Device_LastRemovalDate: \n");
+                                                                        break;
+                                                                    case 86:
+                                                                        devproperty = &DEVPKEY_Device_DriverDate;
+                                                                        printf("DEVPKEY_Device_DriverDate: \n");
+                                                                        break;
+                                                                    case 87:
+                                                                        devproperty = &DEVPKEY_Device_DriverVersion;
+                                                                        printf("DEVPKEY_Device_DriverVersion: \n");
+                                                                        break;
+                                                                    case 88:
+                                                                        devproperty = &DEVPKEY_Device_DriverDesc;
+                                                                        printf("DEVPKEY_Device_DriverDesc: \n");
+                                                                        break;
+                                                                    case 89:
+                                                                        devproperty = &DEVPKEY_Device_DriverInfPath;
+                                                                        printf("DEVPKEY_Device_DriverInfPath: \n");
+                                                                        break;
+                                                                    case 90:
+                                                                        devproperty = &DEVPKEY_Device_DriverInfSection;
+                                                                        printf("DEVPKEY_Device_DriverInfSection: \n");
+                                                                        break;
+                                                                    case 91:
+                                                                        devproperty = &DEVPKEY_Device_DriverInfSectionExt;
+                                                                        printf("DEVPKEY_Device_DriverInfSectionExt: \n");
+                                                                        break;
+                                                                    case 92:
+                                                                        devproperty = &DEVPKEY_Device_MatchingDeviceId;
+                                                                        printf("DEVPKEY_Device_MatchingDeviceId: \n");
+                                                                        break;
+                                                                    case 93:
+                                                                        devproperty = &DEVPKEY_Device_DriverProvider;
+                                                                        printf("DEVPKEY_Device_DriverProvider: \n");
+                                                                        break;
+                                                                    case 94:
+                                                                        devproperty = &DEVPKEY_Device_DriverPropPageProvider;
+                                                                        printf("DEVPKEY_Device_DriverPropPageProvider: \n");
+                                                                        break;
+                                                                    case 95:
+                                                                        devproperty = &DEVPKEY_Device_DriverCoInstallers;
+                                                                        printf("DEVPKEY_Device_DriverCoInstallers: \n");
+                                                                        break;
+                                                                    case 96:
+                                                                        devproperty = &DEVPKEY_Device_ResourcePickerTags;
+                                                                        printf("DEVPKEY_Device_ResourcePickerTags: \n");
+                                                                        break;
+                                                                    case 97:
+                                                                        devproperty = &DEVPKEY_Device_ResourcePickerExceptions;
+                                                                        printf("DEVPKEY_Device_ResourcePickerExceptions: \n");
+                                                                        break;
+                                                                    case 98:
+                                                                        devproperty = &DEVPKEY_Device_DriverRank;
+                                                                        printf("DEVPKEY_Device_DriverRank: \n");
+                                                                        break;
+                                                                    case 99:
+                                                                        devproperty = &DEVPKEY_Device_DriverLogoLevel;
+                                                                        printf("DEVPKEY_Device_DriverLogoLevel: \n");
+                                                                        break;
+                                                                    case 100:
+                                                                        devproperty = &DEVPKEY_Device_NoConnectSound;
+                                                                        printf("DEVPKEY_Device_NoConnectSound: \n");
+                                                                        break;
+                                                                    case 101:
+                                                                        devproperty = &DEVPKEY_Device_GenericDriverInstalled;
+                                                                        printf("DEVPKEY_Device_GenericDriverInstalled: \n");
+                                                                        break;
+                                                                    case 102:
+                                                                        devproperty = &DEVPKEY_Device_AdditionalSoftwareRequested;
+                                                                        printf("DEVPKEY_Device_AdditionalSoftwareRequested: \n");
+                                                                        break;
+                                                                    case 103:
+                                                                        devproperty = &DEVPKEY_Device_SafeRemovalRequired;
+                                                                        printf("DEVPKEY_Device_SafeRemovalRequired: \n");
+                                                                        break;
+                                                                    case 104:
+                                                                        devproperty = &DEVPKEY_Device_SafeRemovalRequiredOverride;
+                                                                        printf("DEVPKEY_Device_SafeRemovalRequiredOverride: \n");
+                                                                        break;
+                                                                    case 105:
+                                                                        devproperty = &DEVPKEY_DrvPkg_Model;
+                                                                        printf("DEVPKEY_DrvPkg_Model: \n");
+                                                                        break;
+                                                                    case 106:
+                                                                        devproperty = &DEVPKEY_DrvPkg_VendorWebSite;
+                                                                        printf("DEVPKEY_DrvPkg_VendorWebSite: \n");
+                                                                        break;
+                                                                    case 107:
+                                                                        devproperty = &DEVPKEY_DrvPkg_DetailedDescription;
+                                                                        printf("DEVPKEY_DrvPkg_DetailedDescription: \n");
+                                                                        break;
+                                                                    case 108:
+                                                                        devproperty = &DEVPKEY_DrvPkg_DocumentationLink;
+                                                                        printf("DEVPKEY_DrvPkg_DocumentationLink: \n");
+                                                                        break;
+                                                                    case 109:
+                                                                        devproperty = &DEVPKEY_DrvPkg_Icon;
+                                                                        printf("DEVPKEY_DrvPkg_Icon: \n");
+                                                                        break;
+                                                                    case 110:
+                                                                        devproperty = &DEVPKEY_DrvPkg_BrandingIcon;
+                                                                        printf("DEVPKEY_DrvPkg_BrandingIcon: \n");
+                                                                        break;
+                                                                    case 111:
+                                                                        devproperty = &DEVPKEY_DeviceClass_UpperFilters;
+                                                                        printf("DEVPKEY_DeviceClass_UpperFilters: \n");
+                                                                        break;
+                                                                    case 112:
+                                                                        devproperty = &DEVPKEY_DeviceClass_LowerFilters;
+                                                                        printf("DEVPKEY_DeviceClass_LowerFilters: \n");
+                                                                        break;
+                                                                    case 113:
+                                                                        devproperty = &DEVPKEY_DeviceClass_Security;
+                                                                        printf("DEVPKEY_DeviceClass_Security: \n");
+                                                                        break;
+                                                                    case 114:
+                                                                        devproperty = &DEVPKEY_DeviceClass_SecuritySDS;
+                                                                        printf("DEVPKEY_DeviceClass_SecuritySDS: \n");
+                                                                        break;
+                                                                    case 115:
+                                                                        devproperty = &DEVPKEY_DeviceClass_DevType;
+                                                                        printf("DEVPKEY_DeviceClass_DevType: \n");
+                                                                        break;
+                                                                    case 116:
+                                                                        devproperty = &DEVPKEY_DeviceClass_Exclusive;
+                                                                        printf("DEVPKEY_DeviceClass_Exclusive: \n");
+                                                                        break;
+                                                                    case 117:
+                                                                        devproperty = &DEVPKEY_DeviceClass_Characteristics;
+                                                                        printf("DEVPKEY_DeviceClass_Characteristics: \n");
+                                                                        break;
+                                                                    case 118:
+                                                                        devproperty = &DEVPKEY_DeviceClass_Name;
+                                                                        printf("DEVPKEY_DeviceClass_Name: \n");
+                                                                        break;
+                                                                    case 119:
+                                                                        devproperty = &DEVPKEY_DeviceClass_ClassName;
+                                                                        printf("DEVPKEY_DeviceClass_ClassName: \n");
+                                                                        break;
+                                                                    case 120:
+                                                                        devproperty = &DEVPKEY_DeviceClass_Icon;
+                                                                        printf("DEVPKEY_DeviceClass_Icon: \n");
+                                                                        break;
+                                                                    case 121:
+                                                                        devproperty = &DEVPKEY_DeviceClass_ClassInstaller;
+                                                                        printf("DEVPKEY_DeviceClass_ClassInstaller: \n");
+                                                                        break;
+                                                                    case 122:
+                                                                        devproperty = &DEVPKEY_DeviceClass_PropPageProvider;
+                                                                        printf("DEVPKEY_DeviceClass_PropPageProvider: \n");
+                                                                        break;
+                                                                    case 123:
+                                                                        devproperty = &DEVPKEY_DeviceClass_NoInstallClass;
+                                                                        printf("DEVPKEY_DeviceClass_NoInstallClass: \n");
+                                                                        break;
+                                                                    case 124:
+                                                                        devproperty = &DEVPKEY_DeviceClass_NoDisplayClass;
+                                                                        printf("DEVPKEY_DeviceClass_NoDisplayClass: \n");
+                                                                        break;
+                                                                    case 125:
+                                                                        devproperty = &DEVPKEY_DeviceClass_SilentInstall;
+                                                                        printf("DEVPKEY_DeviceClass_SilentInstall: \n");
+                                                                        break;
+                                                                    case 126:
+                                                                        devproperty = &DEVPKEY_DeviceClass_NoUseClass;
+                                                                        printf("DEVPKEY_DeviceClass_NoUseClass: \n");
+                                                                        break;
+                                                                    case 127:
+                                                                        devproperty = &DEVPKEY_DeviceClass_DefaultService;
+                                                                        printf("DEVPKEY_DeviceClass_DefaultService: \n");
+                                                                        break;
+                                                                    case 128:
+                                                                        devproperty = &DEVPKEY_DeviceClass_IconPath;
+                                                                        printf("DEVPKEY_DeviceClass_IconPath: \n");
+                                                                        break;
+                                                                    case 129:
+                                                                        devproperty = &DEVPKEY_DeviceClass_DHPRebalanceOptOut;
+                                                                        printf("DEVPKEY_DeviceClass_DHPRebalanceOptOut: \n");
+                                                                        break;
+                                                                    case 130:
+                                                                        devproperty = &DEVPKEY_DeviceClass_ClassCoInstallers;
+                                                                        printf("DEVPKEY_DeviceClass_ClassCoInstallers: \n");
+                                                                        break;
+                                                                    case 131:
+                                                                        devproperty = &DEVPKEY_DeviceInterface_FriendlyName;
+                                                                        printf("DEVPKEY_DeviceInterface_FriendlyName: \n");
+                                                                        break;
+                                                                    case 132:
+                                                                        devproperty = &DEVPKEY_DeviceInterface_Enabled;
+                                                                        printf("DEVPKEY_DeviceInterface_Enabled: \n");
+                                                                        break;
+                                                                    case 133:
+                                                                        devproperty = &DEVPKEY_DeviceInterface_ClassGuid;
+                                                                        printf("DEVPKEY_DeviceInterface_ClassGuid: \n");
+                                                                        break;
+                                                                    case 134:
+                                                                        devproperty = &DEVPKEY_DeviceInterface_ReferenceString;
+                                                                        printf("DEVPKEY_DeviceInterface_ReferenceString: \n");
+                                                                        break;
+                                                                    case 135:
+                                                                        devproperty = &DEVPKEY_DeviceInterface_Restricted;
+                                                                        printf("DEVPKEY_DeviceInterface_Restricted: \n");
+                                                                        break;
+                                                                    case 136:
+                                                                        devproperty = &DEVPKEY_DeviceInterface_UnrestrictedAppCapabilities;
+                                                                        printf("DEVPKEY_DeviceInterface_UnrestrictedAppCapabilities: \n");
+                                                                        break;
+                                                                    case 137:
+                                                                        devproperty = &DEVPKEY_DeviceInterface_SchematicName;
+                                                                        printf("DEVPKEY_DeviceInterface_SchematicName: \n");
+                                                                        break;
+                                                                    case 138:
+                                                                        devproperty = &DEVPKEY_DeviceInterfaceClass_DefaultInterface;
+                                                                        printf("DEVPKEY_DeviceInterfaceClass_DefaultInterface: \n");
+                                                                        break;
+                                                                    case 139:
+                                                                        devproperty = &DEVPKEY_DeviceInterfaceClass_Name;
+                                                                        printf("DEVPKEY_DeviceInterfaceClass_Name: \n");
+                                                                        break;
+                                                                    case 140:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Address;
+                                                                        printf("DEVPKEY_DeviceContainer_Address: \n");
+                                                                        break;
+                                                                    case 141:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_DiscoveryMethod;
+                                                                        printf("DEVPKEY_DeviceContainer_DiscoveryMethod: \n");
+                                                                        break;
+                                                                    case 142:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsEncrypted;
+                                                                        printf("DEVPKEY_DeviceContainer_IsEncrypted: \n");
+                                                                        break;
+                                                                    case 143:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsAuthenticated;
+                                                                        printf("DEVPKEY_DeviceContainer_IsAuthenticated: \n");
+                                                                        break;
+                                                                    case 144:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsConnected;
+                                                                        printf("DEVPKEY_DeviceContainer_IsConnected: \n");
+                                                                        break;
+                                                                    case 145:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsPaired;
+                                                                        printf("DEVPKEY_DeviceContainer_IsPaired: \n");
+                                                                        break;
+                                                                    case 146:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Icon;
+                                                                        printf("DEVPKEY_DeviceContainer_Icon: \n");
+                                                                        break;
+                                                                    case 147:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Version;
+                                                                        printf("DEVPKEY_DeviceContainer_Version: \n");
+                                                                        break;
+                                                                    case 148:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Last_Seen;
+                                                                        printf("DEVPKEY_DeviceContainer_Last_Seen: \n");
+                                                                        break;
+                                                                    case 149:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Last_Connected;
+                                                                        printf("DEVPKEY_DeviceContainer_Last_Connected: \n");
+                                                                        break;
+                                                                    case 150:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsShowInDisconnectedState;
+                                                                        printf("DEVPKEY_DeviceContainer_IsShowInDisconnectedState: \n");
+                                                                        break;
+                                                                    case 151:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsLocalMachine;
+                                                                        printf("DEVPKEY_DeviceContainer_IsLocalMachine: \n");
+                                                                        break;
+                                                                    case 152:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_MetadataPath;
+                                                                        printf("DEVPKEY_DeviceContainer_MetadataPath: \n");
+                                                                        break;
+                                                                    case 153:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsMetadataSearchInProgress;
+                                                                        printf("DEVPKEY_DeviceContainer_IsMetadataSearchInProgress: \n");
+                                                                        break;
+                                                                    case 154:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_MetadataChecksum;
+                                                                        printf("DEVPKEY_DeviceContainer_MetadataChecksum: \n");
+                                                                        break;
+                                                                    case 155:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsNotInterestingForDisplay;
+                                                                        printf("DEVPKEY_DeviceContainer_IsNotInterestingForDisplay: \n");
+                                                                        break;
+                                                                    case 156:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_LaunchDeviceStageOnDeviceConnect;
+                                                                        printf("DEVPKEY_DeviceContainer_LaunchDeviceStageOnDeviceConnect: \n");
+                                                                        break;
+                                                                    case 157:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_LaunchDeviceStageFromExplorer;
+                                                                        printf("DEVPKEY_DeviceContainer_LaunchDeviceStageFromExplorer: \n");
+                                                                        break;
+                                                                    case 158:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_BaselineExperienceId;
+                                                                        printf("DEVPKEY_DeviceContainer_BaselineExperienceId: \n");
+                                                                        break;
+                                                                    case 159:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsDeviceUniquelyIdentifiable;
+                                                                        printf("DEVPKEY_DeviceContainer_IsDeviceUniquelyIdentifiable: \n");
+                                                                        break;
+                                                                    case 160:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_AssociationArray;
+                                                                        printf("DEVPKEY_DeviceContainer_AssociationArray: \n");
+                                                                        break;
+                                                                    case 161:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_DeviceDescription1;
+                                                                        printf("DEVPKEY_DeviceContainer_DeviceDescription1: \n");
+                                                                        break;
+                                                                    case 162:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_DeviceDescription2;
+                                                                        printf("DEVPKEY_DeviceContainer_DeviceDescription2: \n");
+                                                                        break;
+                                                                    case 163:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_HasProblem;
+                                                                        printf("DEVPKEY_DeviceContainer_HasProblem: \n");
+                                                                        break;
+                                                                    case 164:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsSharedDevice;
+                                                                        printf("DEVPKEY_DeviceContainer_IsSharedDevice: \n");
+                                                                        break;
+                                                                    case 165:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsNetworkDevice;
+                                                                        printf("DEVPKEY_DeviceContainer_IsNetworkDevice: \n");
+                                                                        break;
+                                                                    case 166:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsDefaultDevice;
+                                                                        printf("DEVPKEY_DeviceContainer_IsDefaultDevice: \n");
+                                                                        break;
+                                                                    case 167:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_MetadataCabinet;
+                                                                        printf("DEVPKEY_DeviceContainer_MetadataCabinet: \n");
+                                                                        break;
+                                                                    case 168:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_RequiresPairingElevation;
+                                                                        printf("DEVPKEY_DeviceContainer_RequiresPairingElevation: \n");
+                                                                        break;
+                                                                    case 169:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_ExperienceId;
+                                                                        printf("DEVPKEY_DeviceContainer_ExperienceId: \n");
+                                                                        break;
+                                                                    case 170:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Category;
+                                                                        printf("DEVPKEY_DeviceContainer_Category: \n");
+                                                                        break;
+                                                                    case 171:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Category_Desc_Singular;
+                                                                        printf("DEVPKEY_DeviceContainer_Category_Desc_Singular: \n");
+                                                                        break;
+                                                                    case 172:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Category_Desc_Plural;
+                                                                        printf("DEVPKEY_DeviceContainer_Category_Desc_Plural: \n");
+                                                                        break;
+                                                                    case 173:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Category_Icon;
+                                                                        printf("DEVPKEY_DeviceContainer_Category_Icon: \n");
+                                                                        break;
+                                                                    case 174:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_CategoryGroup_Desc;
+                                                                        printf("DEVPKEY_DeviceContainer_CategoryGroup_Desc: \n");
+                                                                        break;
+                                                                    case 175:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_CategoryGroup_Icon;
+                                                                        printf("DEVPKEY_DeviceContainer_CategoryGroup_Icon: \n");
+                                                                        break;
+                                                                    case 176:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_PrimaryCategory;
+                                                                        printf("DEVPKEY_DeviceContainer_PrimaryCategory: \n");
+                                                                        break;
+                                                                    case 178:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_UnpairUninstall;
+                                                                        printf("DEVPKEY_DeviceContainer_UnpairUninstall: \n");
+                                                                        break;
+                                                                    case 179:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_RequiresUninstallElevation;
+                                                                        printf("DEVPKEY_DeviceContainer_RequiresUninstallElevation: \n");
+                                                                        break;
+                                                                    case 180:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_DeviceFunctionSubRank;
+                                                                        printf("DEVPKEY_DeviceContainer_DeviceFunctionSubRank: \n");
+                                                                        break;
+                                                                    case 181:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_AlwaysShowDeviceAsConnected;
+                                                                        printf("DEVPKEY_DeviceContainer_AlwaysShowDeviceAsConnected: \n");
+                                                                        break;
+                                                                    case 182:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_ConfigFlags;
+                                                                        printf("DEVPKEY_DeviceContainer_ConfigFlags: \n");
+                                                                        break;
+                                                                    case 183:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_PrivilegedPackageFamilyNames;
+                                                                        printf("DEVPKEY_DeviceContainer_PrivilegedPackageFamilyNames: \n");
+                                                                        break;
+                                                                    case 184:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_CustomPrivilegedPackageFamilyNames;
+                                                                        printf("DEVPKEY_DeviceContainer_CustomPrivilegedPackageFamilyNames: \n");
+                                                                        break;
+                                                                    case 185:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsRebootRequired;
+                                                                        printf("DEVPKEY_DeviceContainer_IsRebootRequired: \n");
+                                                                        break;
+                                                                    case 186:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_FriendlyName;
+                                                                        printf("DEVPKEY_DeviceContainer_FriendlyName: \n");
+                                                                        break;
+                                                                    case 187:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Manufacturer;
+                                                                        printf("DEVPKEY_DeviceContainer_Manufacturer: \n");
+                                                                        break;
+                                                                    case 188:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_ModelName;
+                                                                        printf("DEVPKEY_DeviceContainer_ModelName: \n");
+                                                                        break;
+                                                                    case 189:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_ModelNumber;
+                                                                        printf("DEVPKEY_DeviceContainer_ModelNumber: \n");
+                                                                        break;
+                                                                    case 190:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_InstallInProgress;
+                                                                        printf("DEVPKEY_DeviceContainer_InstallInProgress: \n");
+                                                                        break;
+                                                                    case 191:
+                                                                        devproperty = &DEVPKEY_DevQuery_ObjectType;
+                                                                        printf("DEVPKEY_DevQuery_ObjectType: \n");
+                                                                        break;
+                                                                    default:
+                                                                        devproperty = NULL;
+                                                                        break;
+                                                                    }
+                                                                    propertyBufLen = 0;
+                                                                    cmRet = CM_Get_DevNode_PropertyW(propInst, devproperty, &propertyType, NULL, &propertyBufLen, 0);
+                                                                    if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
+                                                                    {
+                                                                        PBYTE propertyBuf = (PBYTE)calloc(propertyBufLen + 1, sizeof(BYTE));
+                                                                        if (propertyBuf)
+                                                                        {
+                                                                            propertyBufLen += 1;
+                                                                            cmRet = CM_Get_DevNode_PropertyW(propInst, devproperty, &propertyType, propertyBuf, &propertyBufLen, 0);
+                                                                            if (CR_SUCCESS == cmRet)
+                                                                            {
+                                                                                switch (propertyType)
+                                                                                {
+                                                                                case DEVPROP_TYPE_STRING:
+                                                                                    // Fall-through //
+                                                                                case DEVPROP_TYPE_STRING_LIST:
+                                                                                    //setup to handle multiple strings
+                                                                                    for (LPWSTR property = (LPWSTR)propertyBuf; *property; property += wcslen(property) + 1)
+                                                                                    {
+                                                                                        if (property && ((uintptr_t)property - (uintptr_t)propertyBuf) < propertyBufLen && wcslen(property))
+                                                                                        {
+                                                                                            wprintf(L"\t%s\n", property);
+                                                                                        }
+                                                                                    }
+                                                                                    break;
+                                                                                case DEVPROP_TYPE_SBYTE://8bit signed byte
+                                                                                {
+                                                                                    char *signedByte = (char*)propertyBuf;
+                                                                                    printf("\t%" PRId8 "\n", *signedByte);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_BYTE:
+                                                                                {
+                                                                                    BYTE *unsignedByte = (BYTE*)propertyBuf;
+                                                                                    printf("\t%" PRIu8 "\n", *unsignedByte);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_INT16:
+                                                                                {
+                                                                                    INT16 *signed16 = (INT16*)propertyBuf;
+                                                                                    printf("\t%" PRId16 "\n", *signed16);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_UINT16:
+                                                                                {
+                                                                                    UINT16 *unsigned16 = (UINT16*)propertyBuf;
+                                                                                    printf("\t%" PRIu16 "\n", *unsigned16);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_INT32:
+                                                                                {
+                                                                                    INT32 *signed32 = (INT32*)propertyBuf;
+                                                                                    printf("\t%" PRId32 "\n", *signed32);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_UINT32:
+                                                                                {
+                                                                                    UINT32 *unsigned32 = (UINT32*)propertyBuf;
+                                                                                    printf("\t%" PRIu32 "\n", *unsigned32);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_INT64:
+                                                                                {
+                                                                                    INT64 *signed64 = (INT64*)propertyBuf;
+                                                                                    printf("\t%" PRId64 "\n", *signed64);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_UINT64:
+                                                                                {
+                                                                                    UINT64 *unsigned64 = (UINT64*)propertyBuf;
+                                                                                    printf("\t%" PRIu64 "\n", *unsigned64);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_FLOAT:
+                                                                                {
+                                                                                    FLOAT *theFloat = (FLOAT*)propertyBuf;
+                                                                                    printf("\t%f\n", *theFloat);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_DOUBLE:
+                                                                                {
+                                                                                    DOUBLE *theFloat = (DOUBLE*)propertyBuf;
+                                                                                    printf("\t%f\n", *theFloat);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_BOOLEAN:
+                                                                                {
+                                                                                    BOOLEAN *theBool = (BOOLEAN*)propertyBuf;
+                                                                                    if (*theBool == DEVPROP_FALSE)
+                                                                                    {
+                                                                                        printf("\tFALSE\n");
+                                                                                    }
+                                                                                    else //if (*theBool == DEVPROP_TRUE)
+                                                                                    {
+                                                                                        printf("\tTRUE\n");
+                                                                                    }
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_ERROR://win32 error code
+                                                                                {
+                                                                                    DWORD *win32Error = (DWORD*)propertyBuf;
+                                                                                    print_Windows_Error_To_Screen(*win32Error);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_DECIMAL://128bit decimal
+                                                                                case DEVPROP_TYPE_GUID://128bit guid
+                                                                                case DEVPROP_TYPE_CURRENCY:
+                                                                                case DEVPROP_TYPE_DATE:
+                                                                                case DEVPROP_TYPE_FILETIME:
+                                                                                case DEVPROP_TYPE_SECURITY_DESCRIPTOR:
+                                                                                case DEVPROP_TYPE_SECURITY_DESCRIPTOR_STRING:
+                                                                                case DEVPROP_TYPE_DEVPROPKEY:
+                                                                                case DEVPROP_TYPE_DEVPROPTYPE:
+                                                                                case DEVPROP_TYPE_BINARY://custom binary data
+                                                                                case DEVPROP_TYPE_NTSTATUS://NTSTATUS code
+                                                                                case DEVPROP_TYPE_STRING_INDIRECT:
+                                                                                default:
+                                                                                    print_Data_Buffer(propertyBuf, propertyBufLen, true);
+                                                                                    break;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                        safe_Free(propertyBuf);
+                                                                    }
+                                                                    //else
+                                                                    //{
+                                                                    //    printf("\tUnable to find requested property\n");
+                                                                    //}
+                                                                    ++counter;
+                                                                }
+                                                                ++instanceCounter;
+                                                                counter = 0;
+                                                                //change to parent instance
+                                                                propInst = parentInst;
+                                                                //reset to beginning of properties
+                                                                devproperty = &DEVPKEY_NAME;
+                                                                propertyType = 0;
+                                                                propertyBufLen = 0;
+                                                            }
+                                                        }
+                                                        /*/
+                                                        //*/
+
                                                         //here is where we need to parse the USB VID/PID or TODO: PCI Vendor, Product, and Revision numbers
                                                         if (_tcsncmp(TEXT("USB"), parentBuffer, _tcsclen(TEXT("USB"))) == 0)
                                                         {
                                                             ULONG propertyBufLen = 0;
                                                             DEVPROPTYPE propertyType = 0;
-                                                            int scannedVals =_sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%" SCNx16 "&PID_%" SCNx16 "\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
+                                                            int scannedVals =_sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%" SCNx32 "&PID_%" SCNx32 "\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
                                                             device->drive_info.adapter_info.vendorIDValid = true;
                                                             device->drive_info.adapter_info.productIDValid = true;
                                                             if (scannedVals < 2)
@@ -399,17 +1339,22 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                                 if (propertyBuf)
                                                                 {
                                                                     propertyBufLen += 1;
+                                                                    //NOTE: This key contains all 3 parts, VID, PID, and REV from the "parentInst": Example: USB\VID_174C&PID_2362&REV_0100
                                                                     if (CR_SUCCESS == CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_HardwareIds, &propertyType, propertyBuf, &propertyBufLen, 0))
                                                                     {
                                                                         //multiple strings can be returned.
                                                                         for (LPWSTR property = (LPWSTR)propertyBuf; *property; property += wcslen(property) + 1)
                                                                         {
-                                                                            LPWSTR revisionStr = wcsstr(property, L"REV_");
-                                                                            if (revisionStr)
+                                                                            if (property && ((uintptr_t)property - (uintptr_t)propertyBuf) < propertyBufLen && wcslen(property))
                                                                             {
-                                                                                if (1 == swscanf(revisionStr, L"REV_%hx", &device->drive_info.adapter_info.revision))
+                                                                                LPWSTR revisionStr = wcsstr(property, L"REV_");
+                                                                                if (revisionStr)
                                                                                 {
-                                                                                    device->drive_info.adapter_info.revisionValid = true;
+                                                                                    if (1 == swscanf(revisionStr, L"REV_%x", &device->drive_info.adapter_info.revision))
+                                                                                    {
+                                                                                        device->drive_info.adapter_info.revisionValid = true;
+                                                                                        break;
+                                                                                    }
                                                                                 }
                                                                             }
                                                                         }
@@ -422,7 +1367,7 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                         {
                                                             uint32_t subsystem = 0;
                                                             uint8_t revision = 0;
-                                                            int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("PCI\\VEN_%" SCNx16 "&DEV_%" SCNx16 "&SUBSYS_%" SCNx32 "&REV_%" SCNx8 "\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
+                                                            int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("PCI\\VEN_%" SCNx32 "&DEV_%" SCNx32 "&SUBSYS_%" SCNx32 "&REV_%" SCNx8 "\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
                                                             device->drive_info.adapter_info.vendorIDValid = true;
                                                             device->drive_info.adapter_info.productIDValid = true;
                                                             device->drive_info.adapter_info.revision = revision;
@@ -433,6 +1378,73 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
 #if (_DEBUG)
                                                                 printf("Could not scan all values. Scanned %d values\n", scannedVals);
 #endif
+                                                            }
+                                                            //can also read DEVPKEY_Device_HardwareIds for parentInst to get all this data
+                                                        }
+                                                        else if (_tcsncmp(TEXT("1394"), parentBuffer, _tcsclen(TEXT("1394"))) == 0)
+                                                        {
+                                                            //Parent buffer already contains the vendor ID as part of the buffer where a full WWN is reported...we just need first 6 bytes. example, brackets added for clarity: 1394\Maxtor&5000DV__v1.00.00\[0010B9]20003D9D6E
+                                                            //DEVPKEY_Device_CompatibleIds gets use 1394 specifier ID for the device instance
+                                                            //DEVPKEY_Device_CompatibleIds gets revision and specifier ID for the parent instance: 1394\<specifier>&<revision>
+                                                            //DEVPKEY_Device_ConfigurationId gets revision and specifier ID for parent instance: sbp2.inf:1394\609E&10483,sbp2_install
+                                                            //NOTE: There is no currently known way to get the product ID for this interface
+                                                            ULONG propertyBufLen = 0;
+                                                            DEVPROPTYPE propertyType = 0;
+                                                            const DEVPROPKEY *propertyKey = &DEVPKEY_Device_CompatibleIds;
+                                                            //scan parentBuffer to get vendor
+                                                            TCHAR *nextToken = NULL;
+                                                            TCHAR *token = _tcstok_s(parentBuffer, TEXT("\\"), &nextToken);
+                                                            while (token && nextToken &&  _tcsclen(nextToken) > 0)
+                                                            {
+                                                                token = _tcstok_s(NULL, TEXT("\\"), &nextToken);
+                                                            }
+                                                            if (token)
+                                                            {
+                                                                //at this point, the token contains only the part we care about reading
+                                                                //We need the first 6 characters to convert into hex for the vendor ID
+                                                                TCHAR vendorIDString[7] = { 0 };
+                                                                _tcsncpy_s(vendorIDString, 7 * sizeof(TCHAR), token, 6);
+                                                                _tprintf(TEXT("%s\n"), vendorIDString);
+                                                                int result = _stscanf(token, TEXT("%06" SCNx32), &device->drive_info.adapter_info.vendorID);
+                                                                if (result == 1)
+                                                                {
+                                                                    device->drive_info.adapter_info.vendorIDValid = true;
+                                                                }
+                                                            }
+
+                                                            device->drive_info.adapter_info.infoType = ADAPTER_INFO_IEEE1394;
+                                                            cmRet = CM_Get_DevNode_PropertyW(parentInst, propertyKey, &propertyType, NULL, &propertyBufLen, 0);
+                                                            if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
+                                                            {
+                                                                PBYTE propertyBuf = (PBYTE)calloc(propertyBufLen + 1, sizeof(BYTE));
+                                                                if (propertyBuf)
+                                                                {
+                                                                    propertyBufLen += 1;
+                                                                    if (CR_SUCCESS == CM_Get_DevNode_PropertyW(parentInst, propertyKey, &propertyType, propertyBuf, &propertyBufLen, 0))
+                                                                    {
+                                                                        //multiple strings can be returned for some properties. This one will most likely only return one.
+                                                                        for (LPWSTR property = (LPWSTR)propertyBuf; *property; property += wcslen(property) + 1)
+                                                                        {
+                                                                            if (property && ((uintptr_t)property - (uintptr_t)propertyBuf) < propertyBufLen && wcslen(property))
+                                                                            {
+                                                                                int scannedVals = _snwscanf_s((const wchar_t*)propertyBuf, propertyBufLen, L"1394\\%x&%x", &device->drive_info.adapter_info.specifierID, &device->drive_info.adapter_info.revision);
+                                                                                if (scannedVals < 2)
+                                                                                {
+#if (_DEBUG)
+                                                                                    printf("Could not scan all values. Scanned %d values\n", scannedVals);
+#endif
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    device->drive_info.adapter_info.specifierIDValid = true;
+                                                                                    device->drive_info.adapter_info.revisionValid = true;
+                                                                                    break;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                                safe_Free(propertyBuf);
                                                             }
                                                         }
                                                     }
