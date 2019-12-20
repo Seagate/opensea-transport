@@ -14,6 +14,10 @@
 #include "ata_helper_func.h"
 #include <ctype.h>//for checking for printable characters
 
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+#include "nvme_helper_func.h"
+#endif
+
 uint16_t calculate_Logical_Block_Guard(uint8_t *buffer, uint32_t userDataLength, uint32_t totalDataLength)
 {
     uint16_t crc = 0;//Can also be all F's to invert it. TODO: should invert be a boolean option to this function? - TJE
@@ -9723,12 +9727,14 @@ int fill_In_Device_Info(tDevice *device)
             check_SAT_Compliance_And_Set_Drive_Type(device);
         }
 
+#if !defined (DISABLE_NVME_PASSTHROUGH)
         //Because we may find an NVMe over USB device, if we find one of these, perform a little more discovery...
         if (device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
         {
             //NOTE: It is OK if this fails since it will fall back to treating as SCSI
             fill_In_NVMe_Device_Info(device);
         }
+#endif
     }
     else
     {

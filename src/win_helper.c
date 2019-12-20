@@ -1489,7 +1489,7 @@ int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
     PSTORAGE_FIRMWARE_ACTIVATE  firmwareActivate;
 #if defined (_DEBUG)
     printf("%s: -->\n", __FUNCTION__);
-    printf("%s: Slot %d\n", __FUNCTION__, M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0));
+    printf("%s: Slot %d\n", __FUNCTION__, (uint8_t)M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0));
 #endif
 
     //
