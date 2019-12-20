@@ -459,6 +459,9 @@ int build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransferDirection *cdbDa
     return ret;
 }
 
+
+//NOTE: There is currently a bug in this code on the data phase command being rejected for invalid field in CDB.
+//      This will debugged once I get a device in hand to figure out what is going wrong.
 int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
 {
     int ret = SUCCESS;
