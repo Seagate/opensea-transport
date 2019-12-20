@@ -98,6 +98,10 @@ int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize );
 
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
 
+int os_nvme_Reset(tDevice *device);
+
+int os_nvme_Subsystem_Reset(tDevice *device);
+
 #endif
 
 //int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **blockHandle);

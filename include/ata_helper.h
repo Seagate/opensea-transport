@@ -318,9 +318,9 @@ extern "C"
 
     typedef enum _eAtaCmdType {
         ATA_CMD_TYPE_UNKNOWN,
-        ATA_CMD_TYPE_TASKFILE,
-        ATA_CMD_TYPE_EXTENDED_TASKFILE,
-        ATA_CMD_TYPE_NON_TASKFILE,
+        ATA_CMD_TYPE_TASKFILE, //28bit command
+        ATA_CMD_TYPE_EXTENDED_TASKFILE, //48bit command, minus AUX and ICC registers (which usually cannot be passed through anyways)
+        ATA_CMD_TYPE_COMPLETE_TASKFILE, // Used for commands trying to set ICC or AUX registers as this will create a 32B CDB. This is LIKELY not supported as it has yet to be seen "in the wild". Avoid trying these commands since 90% of HBAs tested won't allow FPDMA protocol to passthrough anyways - TJE
         ATA_CMD_TYPE_SOFT_RESET,
         ATA_CMD_TYPE_HARD_RESET,
         ATA_CMD_TYPE_PACKET
@@ -382,10 +382,10 @@ extern "C"
         uint8_t                icc;
         uint8_t                DeviceControl;
         // Pad it out to 16 bytes
-        uint8_t                aux1;
-        uint8_t                aux2;
-        uint8_t                aux3;
-        uint8_t                aux4;
+        uint8_t                aux1;//bits 7:0
+        uint8_t                aux2;//bits 15:8
+        uint8_t                aux3;//bits 23:16
+        uint8_t                aux4;//bits 31:24
     } ataTFRBlock;
 
     //This is really for sending a SAT command so that it gets built properly.
@@ -423,6 +423,7 @@ extern "C"
         eATAPassthroughLength           ataCommandLengthLocation;//this is in here for building the SAT command to set the T_Length field properly. This is important for asynchronous commands
         uint8_t                         multipleCount;//This is the exponent value specifying the number of sectors used in a read/write multiple command transfer. All other commands should leave this at zero. This ONLY matters on read/write multiple commands, if this is nonzero on any other command, it will fail. Only bits 0:2 are valid (SAT limitation)
         bool                            forceCheckConditionBit;//Set this to force setting the check condition bit on a command. This is here because by default,only non-data gets this bit due to some weird chipsets. This is an override that can be used in certain commands.
+        uint8_t                         forceCDBSize;//only set this if you want to force a specific SAT passthrough CDB size (12B, 16B, or 32B). Bad parameter may be returned if setting registers in a command that cannot be set in the specified SAT CDB
     } ataPassthroughCommand;
 
     //added these packs to make sure this structure gets interpreted correctly

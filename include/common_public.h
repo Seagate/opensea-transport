@@ -736,6 +736,14 @@ extern "C"
     }__attribute__((packed,aligned(1))) bridgeInfo;
     #endif
 
+    typedef enum _eAdapterInfoType
+    {
+        ADAPTER_INFO_UNKNOWN, //unknown generally means it is not valid or present and was not discovred by low-level OS code
+        ADAPTER_INFO_USB,
+        ADAPTER_INFO_PCI,
+        ADAPTER_INFO_IEEE1394, //supported under linux today
+    }eAdapterInfoType;
+
 #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
 #pragma pack(push,1)
 #endif
@@ -745,12 +753,14 @@ extern "C"
         bool vendorIDValid;
         bool productIDValid;
         bool revisionValid;
-        uint8_t padd[5];
-        //These may change sizes if we encounter other interfaces that report these are larger than uint16_t's
-        uint16_t vendorID;
-        uint16_t productID;
-        uint16_t revision;
-        uint16_t reserved;
+        bool specifierIDValid;
+        eAdapterInfoType infoType;
+        //USB and PCI devices use uint16's for vendor product and revision. IEEE1394 uses uint32's since most of these are 24bit numbers
+        //TODO: Annonymous union for different types??? USB  vs PCI vs IEEE1394???
+        uint32_t vendorID;
+        uint32_t productID;
+        uint32_t revision;
+        uint32_t specifierID;//Used on IEEE1394 only
 #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }adapterInfo;
 #pragma pack(pop)
@@ -775,8 +785,17 @@ extern "C"
         ATA_PASSTHROUGH_PROLIFIC,
         ATA_PASSTHROUGH_TI,
         ATA_PASSTHROUGH_NEC,
-        ATA_PASSTHROUGH_PSP, //Some PSP drives use this passthrough and others use SAT...
-        ATA_PASSTHROUGH_UNKNOWN
+        ATA_PASSTHROUGH_PSP, //Some PSP drives use this passthrough and others use SAT...it's not clear if this was ever even used. If testing for it, test it last.
+        ATA_PASSTHROUGH_UNKNOWN = 99,//final value to be used by ATA passthrough types
+        //NVMe stuff defined here. All NVMe stuff should be 100 or higher with the exception of the default system passthrough
+        NVME_PASSTHROUGH_SYSTEM = 0,//This is for NVMe devices to use the system passthrough. This is the default since this is most NVMe devices.
+        NVME_PASSTHROUGH_JMICRON = 100,
+        NVME_PASSTHROUGH_ASMEDIA = 101,//ASMedia packet command, which is capable of passing any command
+        NVME_PASSTHROUGH_ASMEDIA_BASIC = 102,//ASMedia command that is capable of only select commands. Must be after full passthrough that way when trying one passthrough after another it can properly find full capabilities before basic capabilities.
+        //TODO: Other vendor unique SCSI to NVMe passthrough here
+        NVME_PASSTHROUGH_UNKNOWN,
+        //No passthrough
+        PASSTHROUGH_NONE = UINT32_MAX
     }ePassthroughType;
 
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
@@ -784,9 +803,7 @@ extern "C"
     #endif
     typedef struct _ataOptions
     {
-        ePassthroughType passthroughType;//This should be left alone unless you know for a fact which passthrough to use. SAT is the default and should be used unless you know you need a legacy (pre-SAT) passthrough type.
         eATASynchronousDMAMode dmaMode;
-        bool use12ByteSATCDBs;
         bool dmaSupported;
         bool readLogWriteLogDMASupported;
         bool readBufferDMASupported;
@@ -802,11 +819,10 @@ extern "C"
         bool writeUncorrectableExtSupported;
         bool fourtyEightBitAddressFeatureSetSupported;
         bool generalPurposeLoggingSupported;
-        bool followUpRequestRTFRcommandSupported;//Some devices may support this command, but not all. Some USB device reset when issued this, which is why this boolean flag exists
-        bool alwaysSetCheckConditionBit;//this will cause all commands to set the check condition bit. This means any ATA Passthrough command should always get back an ATA status which may help with sense data and judging what went wrong better. Be aware that this may not be liked on some devices and some may just ignore it.
+        bool alwaysCheckConditionAvailableBit;//this will cause all commands to set the check condition bit. This means any ATA Passthrough command should always get back an ATA status which may help with sense data and judging what went wrong better. Be aware that this may not be liked on some devices and some may just ignore it.
         bool enableLegacyPassthroughDetectionThroughTrialAndError;//This must be set to true in order to work on legacy (ancient) passthrough if the VID/PID is not in the list and not read from the system.
         bool senseDataReportingEnabled;//this is to track when the RTFRs may contain a sense data bit so it can be read automatically.
-        uint8_t padd[4];//padding to keep this structure 8 byte aligned
+        uint8_t forceSATCDBLength;//set this to 12, 16, or 32 to force a specific CDB length to use. If you set 12, but send an extended command 16B will be used if any extended registers are set. Same with 32B will be used if ICC or AUX are set.
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataOptions;
     #pragma pack(pop)
@@ -853,6 +869,112 @@ extern "C"
     #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) softwareSATFlags;
+    #endif
+
+    //This is for test unit ready after failures to keep up performance on devices that slow down a LOT durring error processing (USB mostly)
+    #define TURF_LIMIT 10
+
+    //The passthroughHacks structure is to hold information to help with passthrough on OSs, USB adapters, SCSI adapters, etc. Most of this is related to USB adapters though.
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    #pragma pack(push,1)
+    #endif
+    typedef struct _passthroughHacks
+    {
+        //generic information up top.
+        bool hacksSetByReportedID;//This is true if the code was able to read and set hacks based on reported vendor and product IDs from lower levels. If this is NOT set, then the information below is set either by trial and error or by known product identification matches.
+        bool someHacksSetByOSDiscovery;//Will be set if any of the below are set by default by the OS level code. This may happen in Windows for ATA/SCSI passthrough to ATA devices
+        ePassthroughType passthroughType;//This should be left alone unless you know for a fact which passthrough to use. SAT is the default and should be used unless you know you need a legacy (pre-SAT) passthrough type.
+        bool testUnitReadyAfterAnyCommandFailure;//This should be done whenever we have a device that is known to increase time to return response to bad commands. Many USB bridges need this.
+        uint8_t turfValue;//This holds the number of times longer it takes a device to respond without test unit ready. This is held here to make it easier to change library wide without retesting a device.
+        //SCSI hacks are those that relate to things to handle when issuing SCSI commands that may be translated improperly in some cases.
+        struct
+        {
+            bool unitSNAvailable;//This means we can request this page even if other VPD pages don't work.
+            struct {
+                bool available;//means that the bools below have been set. If not, need to use default read/write settings in the library.
+                bool rw6;
+                bool rw10;
+                bool rw12;
+                bool rw16;
+            }readWrite;
+            bool noVPDPages;//no VPD pages are supported. The ONLY excetion to this is the unitSNAvailable bit above. Numerous USBs tested will only support that page...not even the list of pages will be supported by them.
+            bool noModePages;//no mode pages are supported
+            bool noLogPages;//no mode pages are supported
+            bool noLogSubPages;
+            bool mode6bytes;//mode sense/select 6 byte commands only
+            bool noModeSubPages;//Subpages are not supported, don't try sending these commands
+            bool noReportSupportedOperations;//report supported operation codes command is not supported.
+            bool reportSingleOpCodes;//reporting supported operation codes specifying a specific operation code is supported by the device.
+            bool reportAllOpCodes;//reporting all operation codes is supported by the device.
+            bool securityProtocolSupported;//SCSI security protocol commands are supported
+            bool securityProtocolWithInc512;//SCSI security protocol commands are ONLY supported with the INC512 bit set.
+            bool preSCSI2InqData;//If this is true, then the struct below is intended to specify where, and how long, the fields are for product ID, vendorID, revision, etc. This structure will likely need multiple changes as these old devices are encountered and work is done to support them - TJE
+            struct {
+                uint8_t productIDOffset;//If 0, not valid or reported
+                uint8_t productIDLength;//If 0, not valid or reported
+                uint8_t productRevOffset;
+                uint8_t productRevLength;
+                uint8_t vendorIDOffset;
+                uint8_t vendorIDLength;
+                uint8_t serialNumberOffset;
+                uint8_t serialNumberLength;
+            }scsiInq;
+            uint8_t reserved[6];//padd out above to 8 byte boundaries
+            uint32_t maxTransferLength;//Maximum SCSI command transfer length in bytes. Mostly here for USB where translations aren't accurate or don't show this properly.
+            uint32_t scsipadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
+        }scsiHacks;
+        union {
+            //ATA Hacks refer to SAT translation issues or workarounds.
+            struct {
+                bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
+                //bool useA1SATPassthroughWheneverPossible;//For USB adapters that will only process 28bit commands with A1 and will NOT issue them with 85h
+                bool a1NeverSupported;//prevent retrying with 12B command since it isn't supported anyways.
+                bool a1ExtCommandWhenPossible;//If this is set, when issuing an EXT (48bit) command, use the A1 opcode as long as there are not ext registers that MUST be set to issue the command properly. This is a major hack for devices that don't support the 85h opcode.
+                bool returnResponseInfoSupported;//can send the SAT command to get response information for RTFRs
+                bool returnResponseInfoNeedsTDIR;//supports return response info, but must have T_DIR bit set for it to work properly
+                bool returnResponseIgnoreExtendBit;//Some devices support returning response info, but don't properly set the extend bit, so this basically means copy extended RTFRs anyways.
+                bool alwaysUseTPSIUForSATPassthrough;//some USBs do this better than others.
+                bool alwaysCheckConditionAvailable;//Not supported by all SAT translators. Don't set unless you know for sure!!!
+                bool alwaysUseDMAInsteadOfUDMA;//send commands with DMA mode instead of UDMA since the device doesn't support UDMA passthrough modes.
+                bool dmaNotSupported;//DMA passthrough is not available of any kind.
+                bool partialRTFRs;//This means only 28bit RTFRs will be able to be retrived by the device. This hack is more helpful for code trying different commands to filter capabilities than for trying to talk to the device.
+                bool noRTFRsPossible;//This means on command responses, we cannot get any return task file registers back from the device, so avoid commands that rely on this behavior
+                bool multiSectorPIOWithMultipleMode;//This means that multisector PIO works, BUT only when a set multiple mode command has been sent first and it is limited to the multiple mode.
+                bool singleSectorPIOOnly;//This means that the adapter only supports single sector PIO transfers
+                bool ata28BitOnly;//This is for some devices where the passthrough only allows a 28bit command through, even if the target drive is 48bit
+                bool noMultipleModeCommands;//This is to disable use read/write multiple commands if a bridge chip doesn't handle them correctly.
+                //uint8_t reserved[1];//padd byte for 8 byte boundary with above bools.
+                uint32_t maxTransferLength;//ATA Passthrough max transfer length in bytes. This may be different than the scsi translation max.
+                uint32_t atapadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
+            }ataPTHacks;
+            //NVMe Hacks
+            struct {
+                //This is here mostly for vendor unique NVMe passthrough capabilities.
+                //This structure may also be useful for OSs that have limited capabilities
+                bool limitedPassthroughCapabilities;//If this is set to true, this means only certain commands can be passed through to the device.
+                struct { //This structure will hold which commands are available to passthrough if the above "limitedPassthroughCapabilities" boolean is true, otherwise this structure should be ignored.
+                    bool identifyGeneric;//can "generically" send any identify command with any cns value. This typically means any identify can be sent, not just controller and namespace. Basically CNS field is available.
+                    bool identifyController;
+                    bool identifyNamespace;
+                    bool getLogPage;
+                    bool format;
+                    bool getFeatures;
+                    bool firmwareDownload;
+                    bool firmwareCommit;
+                    bool vendorUnique;
+                    //TODO: As other passthroughs are learned with different capabilities, add other commands that ARE supported by them here so that other layers of code can know what capabilities a given device has.
+                }limitedCommandsSupported;
+                uint8_t reserved[6];//padd out above bools to 8 byte boundaries
+                uint32_t maxTransferLength;
+                uint32_t nvmepadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
+            }nvmePTHacks;
+        };//This is an annonymous union for nvme/ata passthrough hacks since a device will only ever have one or the other. This should be accessed based on passthrough type
+        //TODO: Add more hacks and padd this structure
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    }passthroughHacks;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) passthroughHacks;
     #endif
 
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
@@ -917,6 +1039,7 @@ extern "C"
         uint8_t piExponent;//Only valid for protection types 2 & 3 I believe...-TJE
         uint8_t scsiVersion;//from STD Inquiry. Can be used elsewhere to help filter capabilities. NOTE: not an exact copy for old products where there was also EMCA and ISO versions. Set to ANSI version number in those cases.
         uint8_t padd7[4];//padd to 9304 bytes to make divisible by 8
+        passthroughHacks passThroughHacks;
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }driveInfo;
     #pragma pack(pop)
@@ -1210,6 +1333,49 @@ extern "C"
         IEEE_VENDOR_A_TECHNOLOGY      = 0x00A075,
     }eIEEE_OUIs;
 
+    //http://www.linux-usb.org/usb.ids
+    typedef enum _eUSBVendorIDs
+    {
+        USB_Vendor_Unknown                              = 0,
+        USB_Vendor_Adaptec                              = 0x03F3,
+        USB_Vendor_Buffalo                              = 0x0411,
+        USB_Vendor_Seagate                              = 0x0477,
+        USB_Vendor_Integrated_Techonology_Express_Inc   = 0x048D,
+        USB_Vendor_Samsung                              = 0x04E8,
+        USB_Vendor_Sunplus                              = 0x04FC,
+        USB_Vendor_Alcor_Micro_Corp                     = 0x058F,
+        USB_Vendor_LaCie                                = 0x059F,
+        USB_Vendor_GenesysLogic                         = 0x05E3,
+        USB_Vendor_Prolific                             = 0x067B,
+        USB_Vendor_SanDisk_Corp                         = 0x0781,
+        USB_Vendor_Silicon_Motion                       = 0x090C,
+        USB_Vendor_Oxford                               = 0x0928,
+        USB_Vendor_Seagate_RSS                          = 0x0BC2,
+        USB_Vendor_Maxtor                               = 0x0D49,
+        USB_Vendor_Phison                               = 0x0D7D,
+        USB_Vendor_Initio                               = 0x13FD,
+        USB_Vendor_Kingston                             = 0x13FE, //Some online databases show patriot memory, and one also shows Phison. Most recognize this as Kingston.
+        USB_Vendor_JMicron                              = 0x152D,
+        USB_Vendor_ASMedia                              = 0x174C,
+        USB_Vendor_4G_Systems_GmbH                      = 0x1955,
+        USB_Vendor_SeagateBranded                       = 0x1A2A,
+        USB_Vendor_ChipsBank                            = 0x1E3D,
+        USB_Vendor_Dell                                 = 0x413C,
+        // Add new enumerations above this line!
+        USB_Vendor_MaxValue                             = 0xFFFF
+    } eUSBVendorIDs;
+
+    typedef enum _e1394OUIs //a.k.a. vendor IDs
+    {
+        IEEE1394_Vendor_Unknown = 0,
+        //IEEE1394_Vendor_Maxtor  = 0x001075,//This is a second Maxtor VID, but it is not listed as used, which is why it is commented out
+        IEEE1394_Vendor_Maxtor  = 0x0010B9,
+        IEEE1394_Vendor_Seagate = 0x002037,
+        IEEE1394_Vendor_Quantum = 0x00E09E,
+        // Add new enumerations above this line!
+        IEEE1394_Vendor_MaxValue    = 0xFFFFFF //this should be the the highest possible value for an IEEE OUI as they are 24bits in size.
+    }e1394OUIs; //a.k.a. vendor IDs
+
     typedef enum _eSeagateFamily
     {
         NON_SEAGATE = 0,
@@ -1260,7 +1426,7 @@ extern "C"
     #define RAID_INTERFACE_DRIVES BIT12
     #define SD_HANDLES BIT16 //this is a Linux specific flag to show SDX handles instead of SGX handles
     #define SG_TO_SD BIT17
-    #define SAT_12_BYTE BIT18
+    //#define SAT_12_BYTE BIT18
     #define SCAN_SEAGATE_ONLY BIT19
     #define AGRESSIVE_SCAN BIT20 //this can wake a drive up because a bus rescan may be issued. (currently only implemented in Windows)
 #if defined (ENABLE_CSMI)
@@ -1778,6 +1944,8 @@ extern "C"
 
     OPENSEA_TRANSPORT_API bool is_CSMI_Device(tDevice *device);
     OPENSEA_TRANSPORT_API bool is_Removable_Media(tDevice *device);
+
+    bool setup_Passthrough_Hacks_By_ID(tDevice *device);
 
     #if defined (_DEBUG)
     //This function is more for debugging than anything else!

@@ -1575,13 +1575,13 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     return ret;
 }
 
-int nvme_Reset(tDevice *device)
+int os_nvme_Reset(tDevice *device)
 {
     //This is a stub. If this is possible, this should perform an nvme reset;
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-int nvme_Subsystem_Reset(tDevice *device)
+int os_nvme_Subsystem_Reset(tDevice *device)
 {
     //This is a stub. If this is possible, this should perform an nvme subsystem reset;
     return OS_COMMAND_NOT_AVAILABLE;

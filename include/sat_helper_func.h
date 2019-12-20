@@ -106,7 +106,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int set_Protocol_Field(uint8_t *satCDB, eAtaProtocol commadProtocol, eDataTransferDirection dataDirection);
+    int set_Protocol_Field(uint8_t *satCDB, eAtaProtocol commadProtocol, eDataTransferDirection dataDirection, uint8_t protocolOffset);
 
     //-----------------------------------------------------------------------------
     //
@@ -124,7 +124,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int set_Transfer_Bits(uint8_t *satCDB, eATAPassthroughLength tLength, eATAPassthroughTransferBlocks ttype,eDataTransferDirection dataDirection);
+    int set_Transfer_Bits(uint8_t *satCDB, eATAPassthroughLength tLength, eATAPassthroughTransferBlocks ttype, eDataTransferDirection dataDirection, uint8_t transferBitsOffset);
 
     //-----------------------------------------------------------------------------
     //
@@ -140,7 +140,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int set_Multiple_Count(uint8_t *satCDB, uint8_t multipleCount);
+    int set_Multiple_Count(uint8_t *satCDB, uint8_t multipleCount, uint8_t protocolOffset);
 
     //-----------------------------------------------------------------------------
     //
@@ -156,7 +156,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int set_Offline_Bits(uint8_t *satCDB, uint32_t timeout);
+    int set_Offline_Bits(uint8_t *satCDB, uint32_t timeout, uint8_t transferBitsOffset);
 
     //-----------------------------------------------------------------------------
     //
@@ -171,7 +171,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int set_Check_Condition_Bit(uint8_t *satCDB);
+    int set_Check_Condition_Bit(uint8_t *satCDB, uint8_t transferBitsOffset);
 
     //-----------------------------------------------------------------------------
     //

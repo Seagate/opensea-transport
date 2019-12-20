@@ -235,59 +235,67 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             #endif
                             device->drive_info.interface_type = IDE_INTERFACE;
                             //get vendor and product IDs of the controller attached to this device.
-                            char linkCopy[PATH_MAX] = { 0 };
-                            memcpy(linkCopy, inHandleLink, PATH_MAX);
-                            char *pciPath = dirname(dirname(dirname(dirname(dirname(dirname(linkCopy))))));
-                            //printf("shortened USB Path = %s\n", usbPath);
-                            //path should now almost point to where we want it, but we need to change the ../../devices/<rest of path> to /sys/devices/<rest of path>
-                            pciPath[0] = '/';
-                            pciPath[1] = 's';
-                            pciPath[2] = 'y';
-                            pciPath[3] = 's';
-                            pciPath[4] = '/';
-                            memmove(&pciPath[5], &pciPath[6], strlen(pciPath));
-                            strcat(pciPath, "/");
-                            strcat(pciPath, "vendor");
-                            FILE *temp = NULL;
-                            temp = fopen(pciPath, "r");
-                            if (temp)
+                            char fullPciPath[PATH_MAX] = { 0 };
+                            strcpy(fullPciPath, inHandleLink);
+
+                            fullPciPath[0] = '/';
+                            fullPciPath[1] = 's';
+                            fullPciPath[2] = 'y';
+                            fullPciPath[3] = 's';
+                            fullPciPath[4] = '/';
+                            memmove(&fullPciPath[5], &fullPciPath[6], strlen(fullPciPath));
+
+                            uint64_t newStrLen = strstr(fullPciPath, "/ata") - fullPciPath + 1;
+                            char *pciPath = (char*)calloc(PATH_MAX, sizeof(char));
+                            if (pciPath)
                             {
-                                if(1 == fscanf(temp, "0x%" SCNx16, &device->drive_info.adapter_info.vendorID))
+                                strncpy(pciPath, fullPciPath, newStrLen - 1);
+                                //printf("shortened Path = %s\n", pciPath);
+                                strcat(pciPath, "/");
+                                strcat(pciPath, "vendor");
+                                FILE *temp = NULL;
+                                temp = fopen(pciPath, "r");
+                                if (temp)
                                 {
-                                    device->drive_info.adapter_info.vendorIDValid = true;
-                                    //printf("Got vendor as %" PRIX16 "h\n", device->drive_info.adapter_info.vendorID);
+                                    if(1 == fscanf(temp, "0x%" SCNx16, &device->drive_info.adapter_info.vendorID))
+                                    {
+                                        device->drive_info.adapter_info.vendorIDValid = true;
+                                        //printf("Got vendor as %" PRIX16 "h\n", device->drive_info.adapter_info.vendorID);
+                                    }
+                                    fclose(temp);
+                                    temp = NULL;
                                 }
-                                fclose(temp);
-                                temp = NULL;
-                            }
-                            pciPath = dirname(pciPath);//remove vendor from the end
-                            strcat(pciPath, "/device");
-                            temp = fopen(pciPath, "r");
-                            if (temp)
-                            {
-                                if(1 == fscanf(temp, "0x%" SCNx16, &device->drive_info.adapter_info.productID))
+                                pciPath = dirname(pciPath);//remove vendor from the end
+                                strcat(pciPath, "/device");
+                                temp = fopen(pciPath, "r");
+                                if (temp)
                                 {
-                                    device->drive_info.adapter_info.productIDValid = true;
-                                    //printf("Got product as %" PRIX16 "h\n", device->drive_info.adapter_info.productID);
+                                    if(1 == fscanf(temp, "0x%" SCNx16, &device->drive_info.adapter_info.productID))
+                                    {
+                                        device->drive_info.adapter_info.productIDValid = true;
+                                        //printf("Got product as %" PRIX16 "h\n", device->drive_info.adapter_info.productID);
+                                    }
+                                    fclose(temp);
+                                    temp = NULL;
                                 }
-                                fclose(temp);
-                                temp = NULL;
-                            }
-                            //Store revision data. This seems to be in the bcdDevice file.
-                            pciPath = dirname(pciPath);//remove device from the end
-                            strcat(pciPath, "/revision");
-                            temp = fopen(pciPath, "r");
-                            if (temp)
-                            {
-                                uint8_t pciRev = 0;
-                                if (1 == fscanf(temp, "0x%" SCNx8, &pciRev))
+                                //Store revision data. This seems to be in the bcdDevice file.
+                                pciPath = dirname(pciPath);//remove device from the end
+                                strcat(pciPath, "/revision");
+                                temp = fopen(pciPath, "r");
+                                if (temp)
                                 {
-                                    device->drive_info.adapter_info.revision = pciRev;
-                                    device->drive_info.adapter_info.revisionValid = true;
-                                    //printf("Got revision as %" PRIX16 "h\n", device->drive_info.adapter_info.revision);
+                                    uint8_t pciRev = 0;
+                                    if (1 == fscanf(temp, "0x%" SCNx8, &pciRev))
+                                    {
+                                        device->drive_info.adapter_info.revision = pciRev;
+                                        device->drive_info.adapter_info.revisionValid = true;
+                                        //printf("Got revision as %" PRIX16 "h\n", device->drive_info.adapter_info.revision);
+                                    }
+                                    fclose(temp);
+                                    temp = NULL;
                                 }
-                                fclose(temp);
-                                temp = NULL;
+                                safe_Free(pciPath);
+                                device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
                             }
                         }
                         else if (strstr(inHandleLink,"usb") != 0)
@@ -297,62 +305,70 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             #endif
                             device->drive_info.interface_type = USB_INTERFACE;
                             //set the USB VID and PID. NOTE: There may be a better way to do this, but this seems to work for now.
-                            char linkCopy[PATH_MAX] = { 0 };
-                            memcpy(linkCopy, inHandleLink, PATH_MAX);
-                            char *usbPath = dirname(dirname(dirname(dirname(dirname(dirname(linkCopy))))));
-                            //printf("shortened USB Path = %s\n", usbPath);
-                            //path should now almost point to where we want it, but we need to change the ../../devices/<rest of path> to /sys/devices/<rest of path>
-                            usbPath[0] = '/';
-                            usbPath[1] = 's';
-                            usbPath[2] = 'y';
-                            usbPath[3] = 's';
-                            usbPath[4] = '/';
-                            memmove(&usbPath[5], &usbPath[6], strlen(usbPath));
-                            strcat(usbPath, "/");
-                            //printf("full USB Path = %s\n", usbPath);
-                            //now that the path is correct, we need to read the files idVendor and idProduct
-                            strcat(usbPath, "idVendor");
-                            //printf("idVendor USB Path = %s\n", usbPath);
-                            FILE *temp = NULL;
-                            temp = fopen(usbPath, "r");
-                            if (temp)
+                            char fullPciPath[PATH_MAX] = { 0 };
+                            strcpy(fullPciPath, inHandleLink);
+
+                            fullPciPath[0] = '/';
+                            fullPciPath[1] = 's';
+                            fullPciPath[2] = 'y';
+                            fullPciPath[3] = 's';
+                            fullPciPath[4] = '/';
+                            memmove(&fullPciPath[5], &fullPciPath[6], strlen(fullPciPath));
+
+                            uint64_t newStrLen = strstr(fullPciPath, "/host") - fullPciPath + 1;
+                            char *usbPath = (char*)calloc(PATH_MAX, sizeof(char));
+                            if (usbPath)
                             {
-                                if(1 == fscanf(temp, "%" SCNx16, &device->drive_info.adapter_info.vendorID))
+                                strncpy(usbPath, fullPciPath, newStrLen - 1);
+                                usbPath = dirname(usbPath);
+                                strcat(usbPath, "/");
+                                //printf("full USB Path = %s\n", usbPath);
+                                //now that the path is correct, we need to read the files idVendor and idProduct
+                                strcat(usbPath, "idVendor");
+                                //printf("idVendor USB Path = %s\n", usbPath);
+                                FILE *temp = NULL;
+                                temp = fopen(usbPath, "r");
+                                if (temp)
                                 {
-                                    device->drive_info.adapter_info.vendorIDValid = true;
-                                    //printf("Got vendor ID as %" PRIX16 "h\n", device->drive_info.adapter_info.vendorID);
+                                    if(1 == fscanf(temp, "%" SCNx16, &device->drive_info.adapter_info.vendorID))
+                                    {
+                                        device->drive_info.adapter_info.vendorIDValid = true;
+                                        //printf("Got vendor ID as %" PRIX16 "h\n", device->drive_info.adapter_info.vendorID);
+                                    }
+                                    fclose(temp);
+                                    temp = NULL;
                                 }
-                                fclose(temp);
-                                temp = NULL;
-                            }
-                            usbPath = dirname(usbPath);//remove idVendor from the end
-                            //printf("full USB Path = %s\n", usbPath);
-                            strcat(usbPath, "/idProduct");
-                            //printf("idProduct USB Path = %s\n", usbPath);
-                            temp = fopen(usbPath, "r");
-                            if (temp)
-                            {
-                                if(1 == fscanf(temp, "%" SCNx16, &device->drive_info.adapter_info.productID))
+                                usbPath = dirname(usbPath);//remove idVendor from the end
+                                //printf("full USB Path = %s\n", usbPath);
+                                strcat(usbPath, "/idProduct");
+                                //printf("idProduct USB Path = %s\n", usbPath);
+                                temp = fopen(usbPath, "r");
+                                if (temp)
                                 {
-                                    device->drive_info.adapter_info.productIDValid = true;
-                                    //printf("Got product ID as %" PRIX16 "h\n", device->drive_info.adapter_info.productID);
+                                    if(1 == fscanf(temp, "%" SCNx16, &device->drive_info.adapter_info.productID))
+                                    {
+                                        device->drive_info.adapter_info.productIDValid = true;
+                                        //printf("Got product ID as %" PRIX16 "h\n", device->drive_info.adapter_info.productID);
+                                    }
+                                    fclose(temp);
+                                    temp = NULL;
                                 }
-                                fclose(temp);
-                                temp = NULL;
-                            }
-                            //Store revision data. This seems to be in the bcdDevice file.
-                            usbPath = dirname(usbPath);//remove idProduct from the end
-                            strcat(usbPath, "/bcdDevice");
-                            temp = fopen(usbPath, "r");
-                            if (temp)
-                            {
-                                if(1 == fscanf(temp, "%" SCNx16, &device->drive_info.adapter_info.revision))
+                                //Store revision data. This seems to be in the bcdDevice file.
+                                usbPath = dirname(usbPath);//remove idProduct from the end
+                                strcat(usbPath, "/bcdDevice");
+                                temp = fopen(usbPath, "r");
+                                if (temp)
                                 {
-                                    device->drive_info.adapter_info.revisionValid = true;
-                                    //printf("Got revision as %" PRIX16 "h\n", device->drive_info.adapter_info.revision);
+                                    if(1 == fscanf(temp, "%" SCNx16, &device->drive_info.adapter_info.revision))
+                                    {
+                                        device->drive_info.adapter_info.revisionValid = true;
+                                        //printf("Got revision as %" PRIX16 "h\n", device->drive_info.adapter_info.revision);
+                                    }
+                                    fclose(temp);
+                                    temp = NULL;
                                 }
-                                fclose(temp);
-                                temp = NULL;
+                                safe_Free(usbPath);
+                                device->drive_info.adapter_info.infoType = ADAPTER_INFO_USB;
                             }
                         }
                         else if (strstr(inHandleLink,"fw") != 0)
@@ -362,6 +378,49 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             #endif
                             device->drive_info.interface_type = IEEE_1394_INTERFACE;
                             //TODO: investigate some way of saving vendor/product like information for firewire.
+                            char fullFWPath[PATH_MAX] = { 0 };
+                            strcpy(fullFWPath, inHandleLink);
+
+                            fullFWPath[0] = '/';
+                            fullFWPath[1] = 's';
+                            fullFWPath[2] = 'y';
+                            fullFWPath[3] = 's';
+                            fullFWPath[4] = '/';
+                            memmove(&fullFWPath[5], &fullFWPath[6], strlen(fullFWPath));
+
+                            //now we need to go up a few directories to get the modalias file to parse
+                            uint64_t newStrLen = strstr(fullFWPath, "/host") - fullFWPath + 1;
+                            char *fwPath = (char*)calloc(PATH_MAX, sizeof(char));
+                            if (fwPath)
+                            {
+                                strncpy(fwPath, fullFWPath, newStrLen - 1);
+                                strcat(fwPath, "/");
+                                //printf("full FW Path = %s\n", fwPath);
+                                strcat(fwPath, "modalias");
+                                //printf("modalias FW Path = %s\n", fwPath);
+                                FILE *temp = NULL;
+                                temp = fopen(fwPath, "r");
+                                if (temp)
+                                {
+                                    //This file contains everything in one place. Otherwise we would need to parse multiple files at slightly different paths to get everything - TJE
+                                    if (4 == fscanf(temp, "ieee1394:ven%8" SCNx32 "mo%8" SCNx32 "sp%8" SCNx32 "ver%8" SCNx32, &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &device->drive_info.adapter_info.specifierID, &device->drive_info.adapter_info.revision))
+                                    {
+                                        device->drive_info.adapter_info.vendorIDValid = true;
+                                        device->drive_info.adapter_info.productIDValid = true;
+                                        device->drive_info.adapter_info.specifierIDValid = true;
+                                        device->drive_info.adapter_info.revisionValid = true;
+                                        //printf("Got vendor ID as %" PRIX16 "h\n", device->drive_info.adapter_info.vendorID);
+                                        //printf("Got product ID as %" PRIX16 "h\n", device->drive_info.adapter_info.productID);
+                                        //printf("Got specifier ID as %" PRIX16 "h\n", device->drive_info.adapter_info.specifierID);
+                                        //printf("Got revision ID as %" PRIX16 "h\n", device->drive_info.adapter_info.revision);
+                                    }
+                                    fclose(temp);
+                                    temp = NULL;
+                                }
+                                device->drive_info.adapter_info.infoType = ADAPTER_INFO_IEEE1394;
+                                safe_Free(fwPath);
+                            }
+
                         }
                         //if the link doesn't conatin ata or usb in it, then we are assuming it's scsi since scsi doesn't have a nice simple string to check
                         else
@@ -371,59 +430,76 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             #endif
                             device->drive_info.interface_type = SCSI_INTERFACE;
                             //get vendor and product IDs of the controller attached to this device.
-                            char linkCopy[PATH_MAX] = { 0 };
-                            memcpy(linkCopy, inHandleLink, PATH_MAX);
-                            char *pciPath = dirname(dirname(dirname(dirname(dirname(linkCopy)))));
-                            //printf("shortened USB Path = %s\n", usbPath);
-                            //path should now almost point to where we want it, but we need to change the ../../devices/<rest of path> to /sys/devices/<rest of path>
-                            pciPath[0] = '/';
-                            pciPath[1] = 's';
-                            pciPath[2] = 'y';
-                            pciPath[3] = 's';
-                            pciPath[4] = '/';
-                            memmove(&pciPath[5], &pciPath[6], strlen(pciPath));
-                            strcat(pciPath, "/");
-                            strcat(pciPath, "vendor");
-                            FILE *temp = NULL;
-                            temp = fopen(pciPath, "r");
-                            if (temp)
+
+                            char fullPciPath[PATH_MAX] = { 0 };
+                            strcpy(fullPciPath, inHandleLink);
+
+                            fullPciPath[0] = '/';
+                            fullPciPath[1] = 's';
+                            fullPciPath[2] = 'y';
+                            fullPciPath[3] = 's';
+                            fullPciPath[4] = '/';
+                            memmove(&fullPciPath[5], &fullPciPath[6], strlen(fullPciPath));
+                            //need to trim the path down now since it can vary by controller:
+                            //adaptec: /sys/devices/pci0000:00/0000:00:02.0/0000:02:00.0/host0/target0:1:0/0:1:0:0/scsi_generic/sg2
+                            //lsi: /sys/devices/pci0000:00/0000:00:02.0/0000:02:00.0/host0/port-0:16/end_device-0:16/target0:0:16/0:0:16:0/scsi_generic/sg4
+                            //The best way seems to break by the word "host" at this time.
+                            //printf("Full pci path: %s\n", fullPciPath);
+                            //printf("/host location string: %s\n", strstr(fullPciPath, "/host"));
+                            //printf("FULL: %" PRIXPTR "\t/HOST: %" PRIXPTR "\n", (uintptr_t)fullPciPath, (uintptr_t)strstr(fullPciPath, "/host"));
+                            uint64_t newStrLen = strstr(fullPciPath, "/host") - fullPciPath + 1;
+                            char *pciPath = (char*)calloc(PATH_MAX, sizeof(char));
+                            if (pciPath)
                             {
-                                if(1 == fscanf(temp, "0x%" SCNx16, &device->drive_info.adapter_info.vendorID))
+                                strncpy(pciPath, fullPciPath, newStrLen - 1);
+
+                                //printf("Shortened PCI Path: %s\n", pciPath);
+
+                                strcat(pciPath, "/");
+                                strcat(pciPath, "vendor");
+                                FILE *temp = NULL;
+                                temp = fopen(pciPath, "r");
+                                if (temp)
                                 {
-                                    device->drive_info.adapter_info.vendorIDValid = true;
-                                    //printf("Got vendor as %" PRIX16 "h\n", device->drive_info.adapter_info.vendorID);
+                                    if(1 == fscanf(temp, "0x%" SCNx16, &device->drive_info.adapter_info.vendorID))
+                                    {
+                                        device->drive_info.adapter_info.vendorIDValid = true;
+                                        //printf("Got vendor as %" PRIX16 "h\n", device->drive_info.adapter_info.vendorID);
+                                    }
+                                    fclose(temp);
+                                    temp = NULL;
                                 }
-                                fclose(temp);
-                                temp = NULL;
-                            }
-                            pciPath = dirname(pciPath);//remove vendor from the end
-                            strcat(pciPath, "/device");
-                            temp = fopen(pciPath, "r");
-                            if (temp)
-                            {
-                                if (1 == fscanf(temp, "0x%" SCNx16, &device->drive_info.adapter_info.productID))
+                                pciPath = dirname(pciPath);//remove vendor from the end
+                                strcat(pciPath, "/device");
+                                temp = fopen(pciPath, "r");
+                                if (temp)
                                 {
-                                    device->drive_info.adapter_info.productIDValid = true;
-                                    //printf("Got product as %" PRIX16 "h\n", device->drive_info.adapter_info.productID);
+                                    if (1 == fscanf(temp, "0x%" SCNx16, &device->drive_info.adapter_info.productID))
+                                    {
+                                        device->drive_info.adapter_info.productIDValid = true;
+                                        //printf("Got product as %" PRIX16 "h\n", device->drive_info.adapter_info.productID);
+                                    }
+                                    fclose(temp);
+                                    temp = NULL;
                                 }
-                                fclose(temp);
-                                temp = NULL;
-                            }
-                            //Store revision data. This seems to be in the bcdDevice file.
-                            pciPath = dirname(pciPath);//remove device from the end
-                            strcat(pciPath, "/revision");
-                            temp = fopen(pciPath, "r");
-                            if (temp)
-                            {
-                                uint8_t pciRev = 0;
-                                if (1 == fscanf(temp, "0x%" SCNx8, &pciRev))
-                                {   
-                                    device->drive_info.adapter_info.revision = pciRev;
-                                    device->drive_info.adapter_info.revisionValid = true;
-                                    //printf("Got revision as %" PRIX16 "h\n", device->drive_info.adapter_info.revision);
+                                //Store revision data. This seems to be in the bcdDevice file.
+                                pciPath = dirname(pciPath);//remove device from the end
+                                strcat(pciPath, "/revision");
+                                temp = fopen(pciPath, "r");
+                                if (temp)
+                                {
+                                    uint8_t pciRev = 0;
+                                    if (1 == fscanf(temp, "0x%" SCNx8, &pciRev))
+                                    {   
+                                        device->drive_info.adapter_info.revision = pciRev;
+                                        device->drive_info.adapter_info.revisionValid = true;
+                                        //printf("Got revision as %" PRIX16 "h\n", device->drive_info.adapter_info.revision);
+                                    }
+                                    fclose(temp);
+                                    temp = NULL;
                                 }
-                                fclose(temp);
-                                temp = NULL;
+                                device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
+                                safe_Free(pciPath);
                             }
                         }
                         char *baseLink = basename(inHandleLink);
@@ -800,6 +876,7 @@ int get_Device(const char *filename, tDevice *device)
         device->drive_info.interface_type = SCSI_INTERFACE;
         device->drive_info.media_type = MEDIA_HDD;
         set_Device_Fields_From_Handle(deviceHandle, device);
+        set_USB_Passthrough_Hacks_By_PID_and_VID(device);
         safe_Free(deviceHandle);
         return ret;
     }
@@ -842,7 +919,7 @@ int get_Device(const char *filename, tDevice *device)
             return NOT_SUPPORTED;//return not supported since NVMe-passthrough is disabled
             #endif //DISABLE_NVME_PASSTHROUGH
         }
-        else //not NVMe
+        else //not an NVMe handle
         {
             #if defined (_DEBUG)
             printf("Getting SG SCSI address\n");
@@ -857,6 +934,7 @@ int get_Device(const char *filename, tDevice *device)
                 device->os_info.scsiAddress.channel = (uint8_t)hctlInfo.channel;
                 device->os_info.scsiAddress.target = (uint8_t)hctlInfo.scsi_id;
                 device->os_info.scsiAddress.lun = (uint8_t)hctlInfo.lun;
+                device->drive_info.namespaceID = device->os_info.scsiAddress.lun + 1;//Doing this to help with USB to NVMe adapters. Luns start at zero, whereas namespaces start with 1, hence the plus 1.
                 //also reported are per lun and per device Q-depth which might be nice to store.
                 //printf("H:C:T:L = %" PRIu8 ":%" PRIu8 ":%" PRIu8 ":%" PRIu8 "\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel, device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
             }
@@ -892,6 +970,7 @@ int get_Device(const char *filename, tDevice *device)
                 printf("Setting interface, drive type, secondary handles\n");
                 #endif
                 set_Device_Fields_From_Handle(deviceHandle, device);
+                set_USB_Passthrough_Hacks_By_PID_and_VID(device);
 
                 #if defined (_DEBUG)
                 printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n",
@@ -1268,7 +1347,10 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
             }
             if (io_hdr.sb_len_wr == 0)
             {
-                printf("\t(Masked Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                {
+                    printf("\t(Masked Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                }
                 //No sense data back. We need to set an error since the layers above are going to look for sense data and we don't have any.
                 ret = OS_PASSTHROUGH_FAILURE;
             }
@@ -1323,7 +1405,10 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
             }
             if (io_hdr.sb_len_wr == 0)//Doing this because some drivers may set an error even if the command otherwise went through and sense data was available.
             {
-                printf("\t(Host Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                {
+                    printf("\t(Host Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                }
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
@@ -1393,7 +1478,10 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
             }
             if (io_hdr.sb_len_wr == 0)
             {
-                printf("\t(Driver Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                {
+                    printf("\t(Driver Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                }
                 //No sense data back. We need to set an error since the layers above are going to look for sense data and we don't have any.
                 ret = OS_PASSTHROUGH_FAILURE;
             }
@@ -1639,6 +1727,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             }
             else if (errno == EACCES) //quick fix for opening drives without sudo
             {
+                safe_Free(devs);
                 return PERMISSION_DENIED;
             }
         }
@@ -1934,7 +2023,7 @@ int linux_NVMe_Reset(tDevice *device, bool subsystemReset)
     return ret;
 }
 
-int nvme_Reset(tDevice *device)
+int os_nvme_Reset(tDevice *device)
 {
     int ret = SUCCESS;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
@@ -1949,7 +2038,7 @@ int nvme_Reset(tDevice *device)
     return ret;
 }
 
-int nvme_Subsystem_Reset(tDevice *device)
+int os_nvme_Subsystem_Reset(tDevice *device)
 {
     int ret = SUCCESS;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)

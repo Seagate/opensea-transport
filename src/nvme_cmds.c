@@ -18,6 +18,52 @@
 #include "nvme_helper.h"
 #include "nvme_helper_func.h"
 #include "common_public.h"
+#include "jmicron_nvme_helper.h"
+#include "asmedia_nvme_helper.h"
+
+int nvme_Reset(tDevice *device)
+{
+    switch (device->drive_info.passThroughHacks.passthroughType)
+    {
+    case NVME_PASSTHROUGH_SYSTEM:
+        return os_nvme_Reset(device);
+        break;
+    case NVME_PASSTHROUGH_JMICRON:
+        return jm_nvme_Reset(device);
+        break;
+    case NVME_PASSTHROUGH_ASMEDIA:
+        return asm_nvme_Reset(device);
+        break;
+    case NVME_PASSTHROUGH_ASMEDIA_BASIC:
+        return OS_COMMAND_NOT_AVAILABLE;
+        break;
+    default:
+        return BAD_PARAMETER;
+    }
+    return BAD_PARAMETER;
+}
+
+int nvme_Subsystem_Reset(tDevice *device)
+{
+    switch (device->drive_info.passThroughHacks.passthroughType)
+    {
+    case NVME_PASSTHROUGH_SYSTEM:
+        return os_nvme_Subsystem_Reset(device);
+        break;
+    case NVME_PASSTHROUGH_JMICRON:
+        return jm_nvme_Subsystem_Reset(device);
+        break;
+    case NVME_PASSTHROUGH_ASMEDIA:
+        return asm_nvme_Subsystem_Reset(device);
+        break;
+    case NVME_PASSTHROUGH_ASMEDIA_BASIC:
+        return OS_COMMAND_NOT_AVAILABLE;
+        break;
+    default:
+        return BAD_PARAMETER;
+    }
+    return BAD_PARAMETER;
+}
 
 int nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
 {
@@ -67,20 +113,39 @@ int nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
     {
         print_NVMe_Cmd_Verbose(cmdCtx);
     }
-#if defined (_DEBUG)
-    //This is different for debug because sometimes we need to see if the data buffer actually changed after issuing a command.
-    //This was very important for debugging windows issues, which is why I have this ifdef in place for debug builds. - TJE
-    if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != NULL)
-#else
-    //Only print the data buffer being sent when it is a data transfer to the drive (data out command)
-    if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != NULL && cmdCtx->commandDirection == XFER_DATA_OUT)
-#endif
+    if (device->drive_info.passThroughHacks.passthroughType == NVME_PASSTHROUGH_SYSTEM)
     {
-        printf("\t  Data Buffer being sent:\n");
-        print_Data_Buffer(cmdCtx->ptrData, cmdCtx->dataSize, true);
-        printf("\n");
+    #if defined (_DEBUG)
+        //This is different for debug because sometimes we need to see if the data buffer actually changed after issuing a command.
+        //This was very important for debugging windows issues, which is why I have this ifdef in place for debug builds. - TJE
+        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != NULL)
+    #else
+        //Only print the data buffer being sent when it is a data transfer to the drive (data out command)
+        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != NULL && cmdCtx->commandDirection == XFER_DATA_OUT)
+    #endif
+        {
+            printf("\t  Data Buffer being sent:\n");
+            print_Data_Buffer(cmdCtx->ptrData, cmdCtx->dataSize, true);
+            printf("\n");
+        }
     }
-    ret = send_NVMe_IO(cmdCtx);
+    switch (device->drive_info.passThroughHacks.passthroughType)
+    {
+    case NVME_PASSTHROUGH_SYSTEM:
+        ret = send_NVMe_IO(cmdCtx);
+        break;
+    case NVME_PASSTHROUGH_JMICRON:
+        ret = send_JM_NVMe_Cmd(cmdCtx);
+        break;
+    case NVME_PASSTHROUGH_ASMEDIA_BASIC:
+        ret = send_ASMedia_Basic_NVMe_Passthrough_Cmd(cmdCtx);
+        break;
+    case NVME_PASSTHROUGH_ASMEDIA:
+        ret = send_ASM_NVMe_Cmd(cmdCtx);
+        break;
+    default:
+        return BAD_PARAMETER;
+    }
     if (cmdCtx->commandCompletionData.dw3Valid)
     {
         device->drive_info.lastNVMeResult.lastNVMeStatus = cmdCtx->commandCompletionData.statusAndCID;
@@ -107,22 +172,25 @@ int nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
     {
         print_NVMe_Cmd_Result_Verbose(cmdCtx);
     }
-    if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+    if (device->drive_info.passThroughHacks.passthroughType == NVME_PASSTHROUGH_SYSTEM)
     {
-        print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
-    }
-#if defined (_DEBUG)
-    //This is different for debug because sometimes we need to see if the data buffer actually changed after issuing a command.
-    //This was very important for debugging windows issues, which is why I have this ifdef in place for debug builds. - TJE
-    if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != NULL)
-#else
-    //Only print the data buffer being sent when it is a data transfer to the drive (data out command)
-    if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != NULL && cmdCtx->commandDirection == XFER_DATA_IN)
-#endif
-    {
-        printf("\t  Data Buffer being returned:\n");
-        print_Data_Buffer(cmdCtx->ptrData, cmdCtx->dataSize, true);
-        printf("\n");
+        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
+        }
+    #if defined (_DEBUG)
+        //This is different for debug because sometimes we need to see if the data buffer actually changed after issuing a command.
+        //This was very important for debugging windows issues, which is why I have this ifdef in place for debug builds. - TJE
+        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != NULL)
+    #else
+        //Only print the data buffer being sent when it is a data transfer to the drive (data out command)
+        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != NULL && cmdCtx->commandDirection == XFER_DATA_IN)
+    #endif
+        {
+            printf("\t  Data Buffer being returned:\n");
+            print_Data_Buffer(cmdCtx->ptrData, cmdCtx->dataSize, true);
+            printf("\n");
+        }
     }
     return ret;
 }

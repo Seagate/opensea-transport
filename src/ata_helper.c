@@ -740,54 +740,36 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     uint16_t *ident_word = &device->drive_info.IdentifyData.ata.Word000;
     uint8_t *identifyData = (uint8_t *)&device->drive_info.IdentifyData.ata.Word000;
 #ifdef _DEBUG
-    printf("%s -->\n",__FUNCTION__);
+    printf("%s -->\n", __FUNCTION__);
 #endif
 
     bool retrievedIdentifyData = false;
     //try an identify command, then also try an identify packet device command. The data we care about parsing will be in the same location so everything inside this if should work as expected
+    //Note: if this is NOT an ATA HDD or SSD, then this code will only try one command: 85h SAT CDB since most ATAPI devices do not properly validate all fields of A1h and often receive it as a packet passthrough command for "blank"
+    if ((device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE || device->drive_info.media_type == MEDIA_OPTICAL || device->drive_info.media_type == MEDIA_TAPE)
+        && !(device->drive_info.passThroughHacks.hacksSetByReportedID || device->drive_info.passThroughHacks.someHacksSetByOSDiscovery))
+    {
+        //make sure we disable sending the A1h SAT CDB or we could accidentally send a "blank" command due to how most of these devices receive commands under different OSs or through translators.
+        device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
+    }
     if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
     {
         retrievedIdentifyData = true;
     }
     else
     {
-        //we didn't get anything...yet.
-        //We are probably using 16byte cdbs already, if we aren't, then we are done, otherwise we need to try changing to 12byte CDBs for compatibility with some SATLs
-        if (!device->drive_info.ata_Options.use12ByteSATCDBs && device->drive_info.ata_Options.passthroughType == ATA_PASSTHROUGH_SAT)
+        //TODO: Check the sense data to see if it was invalid operation code. If so, then the device does not support the A1h command.
+        //If this failed, issue a test unit ready command, followed by switching to 16B sat commands. Most devices tested will support A1h and very few will not if they support SAT at all.
+        if (device->drive_info.passThroughHacks.passthroughType == ATA_PASSTHROUGH_SAT)
         {
-            //we aren't trying 12 byte...we should try it...BUT if we suspect that this is an ATAPI drive, we should NOT. This is because ATAPI uses the same opcode for the "blank"
-            //command. Since these are the same, the SATL may not filter it properly and we may issue this command instead. Since I don't know what this does, let's avoid that if possible. - TJE
-            //Filter out ATAPI_DRIVE, LEGACY_TAPE_DRIVE, MEDIA_OPTICAL, & MEDIA_TAPE to be safe...this should be pretty good. -TJE
-            if (!(device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE
-                || device->drive_info.media_type == MEDIA_OPTICAL || device->drive_info.media_type == MEDIA_TAPE))
+            scsi_Test_Unit_Ready(device, NULL);
+            memset(identifyData, 0, 512);
+            device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
+            if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
             {
-                device->drive_info.ata_Options.use12ByteSATCDBs = true;
-                memset(identifyData, 0, 512);
-                if (device->drive_info.interface_type == IDE_INTERFACE)
-                {
-                    //send check power mode to help clear out any stale RTFRs or sense data from the drive...needed by some devices. Won't hurt other devices.
-                    uint8_t mode = 0;
-                    ata_Check_Power_Mode(device, &mode);
-                }
-                else
-                {
-                    //SCSI/USB interfaces will do a test unit ready command first, then check power mode as passthrough, then one last test unit ready to get everything refreshed
-                    uint8_t mode = 0;
-                    scsi_Test_Unit_Ready(device, NULL);
-                    ata_Check_Power_Mode(device, &mode);
-                    scsi_Test_Unit_Ready(device, NULL);
-                }
-                if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
-                {
-                    retrievedIdentifyData = true;
-                }
-
+                retrievedIdentifyData = true;
             }
         }
-        /*else
-        {
-            printf("Already using 12byte\n");
-        }*/
     }
     if (retrievedIdentifyData)
     {
@@ -888,7 +870,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             }
             if ((ident_word[106] & BIT13) == 0)
             {
-                *fillPhysicalSectorSize = device->drive_info.deviceBlockSize;
+                *fillPhysicalSectorSize = *fillLogicalSectorSize;
             }
             else //multiple logical sectors per physical sector
             {
@@ -959,43 +941,47 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             *fillMaxLba = lba;
         }
 
-        //Now determine if the drive supports DMA and which DMA modes it supports
-        if (ident_word[49] & BIT8)
+        if (!device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
         {
-            device->drive_info.ata_Options.dmaSupported = true;
-            device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
-        }
-        //obsolete since ATA3, holds single word DMA support
-        if (ident_word[62])
-        {
-            device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
-        }
-        //check for multiword dma support
-        if (ident_word[63] & (BIT0 | BIT1 | BIT2))
-        {
-            device->drive_info.ata_Options.dmaSupported = true;
-            device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_MWDMA;
-        }
-        //check for UDMA support
-        if (ident_word[88] & 0x007F)
-        {
-            device->drive_info.ata_Options.dmaSupported = true;
-            device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_UDMA;
-        }
 
-        //set read/write buffer DMA
-        if (ident_word[69] & BIT11)
-        {
-            device->drive_info.ata_Options.readBufferDMASupported = true;
-        }
-        if (ident_word[69] & BIT10)
-        {
-            device->drive_info.ata_Options.writeBufferDMASupported = true;
-        }
-        //set download microcode DMA support
-        if (ident_word[69] & BIT8)
-        {
-            device->drive_info.ata_Options.downloadMicrocodeDMASupported = true;
+            //Now determine if the drive supports DMA and which DMA modes it supports
+            if (ident_word[49] & BIT8)
+            {
+                device->drive_info.ata_Options.dmaSupported = true;
+                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
+            }
+            //obsolete since ATA3, holds single word DMA support
+            if (ident_word[62])
+            {
+                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
+            }
+            //check for multiword dma support
+            if (ident_word[63] & (BIT0 | BIT1 | BIT2))
+            {
+                device->drive_info.ata_Options.dmaSupported = true;
+                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_MWDMA;
+            }
+            //check for UDMA support
+            if (ident_word[88] & 0x007F)
+            {
+                device->drive_info.ata_Options.dmaSupported = true;
+                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_UDMA;
+            }
+
+            //set read/write buffer DMA
+            if (ident_word[69] & BIT11)
+            {
+                device->drive_info.ata_Options.readBufferDMASupported = true;
+            }
+            if (ident_word[69] & BIT10)
+            {
+                device->drive_info.ata_Options.writeBufferDMASupported = true;
+            }
+            //set download microcode DMA support
+            if (ident_word[69] & BIT8)
+            {
+                device->drive_info.ata_Options.downloadMicrocodeDMASupported = true;
+            }
         }
         //set zoned device type
         if (device->drive_info.zonedType != ZONED_TYPE_HOST_MANAGED)
@@ -1018,10 +1004,13 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 break;
             }
         }
-        //Determine if read/write log ext DMA commands are supported
-        if (ident_word[119] & BIT3 || ident_word[120] & BIT3)
+        if (!device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
         {
-            device->drive_info.ata_Options.readLogWriteLogDMASupported = true;
+            //Determine if read/write log ext DMA commands are supported
+            if (ident_word[119] & BIT3 || ident_word[120] & BIT3)
+            {
+                device->drive_info.ata_Options.readLogWriteLogDMASupported = true;
+            }
         }
         if (ident_word[47] != UINT16_MAX && ident_word[47] != 0)
         {
@@ -1103,6 +1092,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 device->drive_info.ata_Options.writeBufferDMASupported = false;
             }
         }
+
     }
     else
     {
@@ -1120,6 +1110,15 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         printf("%s <--\n",__FUNCTION__);
 #endif
         return ret;
+    }
+
+    if (!device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
+    {
+        if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA)
+        {
+            //forcing using DMA mode instead of UDMA since the translator doesn't like UDMA mode set
+            device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
+        }
     }
 
     //Check if we were given any force flags regarding how we talk to ATA drives.

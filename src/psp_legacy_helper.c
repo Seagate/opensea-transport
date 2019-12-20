@@ -221,5 +221,9 @@ int send_PSP_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *
         ataCommandOptions->ptrSenseData = NULL;
         ataCommandOptions->senseDataSize = 0;
     }
+    if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)
+    {
+        ret = COMMAND_TIMEOUT;
+    }
     return ret;
 }

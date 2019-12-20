@@ -80,7 +80,7 @@ int get_Device(const char *filename, tDevice *device)
         if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
         {
             //TODO: Actually get the VID and PID set before calling this.
-            set_ATA_Passthrough_Type(device);
+            setup_Passthrough_Hacks_By_ID(device);
         }
         //fill in the device info
         ret = fill_Drive_Info_Data(device);
@@ -440,12 +440,12 @@ int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize)
     return NOT_SUPPORTED;
 }
 
-int nvme_Reset(tDevice *device)
+int os_nvme_Reset(tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int nvme_Subsystem_Reset(tDevice *device)
+int os_nvme_Subsystem_Reset(tDevice *device)
 {
     return NOT_SUPPORTED;
 }
