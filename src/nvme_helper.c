@@ -81,7 +81,7 @@ printf("fill NVMe info ret = %d\n", ret);
         fillModelNumber[40] = '\0';
         remove_Leading_And_Trailing_Whitespace(fillModelNumber);
         //Do not overwrite this with non-NVMe interfaces. This is used by USB to figure out and track bridge chip specific things that are stored in this location
-        if (device->drive_info.interface_type != NVME_INTERFACE)
+        if (device->drive_info.interface_type == NVME_INTERFACE && !device->drive_info.adapter_info.vendorIDValid)
         {
             device->drive_info.adapter_info.vendorID = ctrlData->vid;
             device->drive_info.adapter_info.vendorIDValid = true;

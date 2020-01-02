@@ -3124,9 +3124,6 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
-                device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
-                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
-                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric = true;
                 break;
             default: //unknown
                 break;

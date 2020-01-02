@@ -203,7 +203,7 @@ int build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransferDirection *cdbDa
             cdb[13] = M_Byte0(ASM_NVMP_DWORDS_DATA_PACKET_SIZE);
 
             //set param 1 for command type
-            if (nvmCmd->commandType = NVM_ADMIN_CMD)
+            if (nvmCmd->commandType == NVM_ADMIN_CMD)
             {
                 cdb[ASMEDIA_NVME_PACKET_PARAMETER_1_OFFSET] = ASM_NVMP_SEND_CMD_ADMIN;
             }
@@ -351,13 +351,13 @@ int build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransferDirection *cdbDa
         break;
     case ASMEDIA_NVMP_OP_DATA_PHASE:
     {
-        uint32_t allocationLength = nvmCmd->dataSize;
-        cdb[OPERATION_CODE] = ASMEDIA_NVME_PACKET_WRITE_OP;
+        uint32_t allocationLength = dataSize;
+        cdb[OPERATION_CODE] = ASMEDIA_NVME_PACKET_READ_OP;
         cdb[1] = ASMEDIA_NVME_PACKET_SIGNATURE;
         cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET] = (uint8_t)asmOperation;
 
         //set param 1 for command type
-        if (nvmCmd->commandType = NVM_ADMIN_CMD)
+        if (nvmCmd->commandType == NVM_ADMIN_CMD)
         {
             cdb[ASMEDIA_NVME_PACKET_PARAMETER_1_OFFSET] = ASM_NVMP_SEND_CMD_ADMIN;
         }
@@ -380,6 +380,7 @@ int build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransferDirection *cdbDa
             }
             break;
         case XFER_DATA_OUT:
+            cdb[OPERATION_CODE] = ASMEDIA_NVME_PACKET_WRITE_OP;//change to a write opcode if sending data to the device.
             *cdbDataDirection = XFER_DATA_OUT;
             cdb[ASMEDIA_NVME_PACKET_PARAMETER_2_OFFSET] = ASM_NVMP_DATA_OUT;
             if (nvmCmd->dataSize == 0)
@@ -406,7 +407,7 @@ int build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransferDirection *cdbDa
     }
         break;
     case ASMEDIA_NVMP_OP_GET_NVM_COMPLETION:
-        cdb[OPERATION_CODE] = ASMEDIA_NVME_PACKET_WRITE_OP;
+        cdb[OPERATION_CODE] = ASMEDIA_NVME_PACKET_READ_OP;
         cdb[1] = ASMEDIA_NVME_PACKET_SIGNATURE;
         cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET] = (uint8_t)asmOperation;
 
@@ -417,7 +418,7 @@ int build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransferDirection *cdbDa
         cdb[13] = M_Byte0(ASM_NVMP_RESPONSE_DATA_SIZE);
 
         //set param 1 for command type
-        if (nvmCmd->commandType = NVM_ADMIN_CMD)
+        if (nvmCmd->commandType == NVM_ADMIN_CMD)
         {
             cdb[ASMEDIA_NVME_PACKET_PARAMETER_1_OFFSET] = ASM_NVMP_SEND_CMD_ADMIN;
         }
@@ -468,30 +469,73 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     uint8_t asmCDB[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
     uint8_t asmPayload[ASM_NVMP_DWORDS_DATA_PACKET_SIZE] = { 0 };
     eDataTransferDirection asmCDBDir = 0;
+    //if the NVMe command is not doing a multiple of 512B data transfer, we need to allocate local memory, rounded up to 512B boundaries before the command.
+    //Then we can copy that back to the smaller buffer after command is complete.
+    uint8_t *dataPhasePtr = nvmCmd->ptrData;
+    uint32_t dataPhaseSize = nvmCmd->dataSize;
+    bool localMemory = false;
     if (!nvmCmd)
     {
         return BAD_PARAMETER;
+    }
+    if (nvmCmd->ptrData && nvmCmd->dataSize > 0 && nvmCmd->dataSize % 512)
+    {
+        dataPhaseSize = ((nvmCmd->dataSize + 511) / 512) * 512;//round up to nearest 512B boundary
+        dataPhasePtr = (uint8_t*)calloc_aligned(dataPhaseSize, sizeof(uint8_t), nvmCmd->device->os_info.minimumAlignment);
+        if (!dataPhasePtr)
+        {
+            return MEMORY_FAILURE;
+        }
+        //if a data-out command, need to copy what is intended to go to the device to the new buffer
+        if (nvmCmd->ptrData && nvmCmd->commandDirection == XFER_DATA_OUT && nvmCmd->dataSize > 0)
+        {
+            memcpy(dataPhasePtr, nvmCmd->ptrData, nvmCmd->dataSize);
+        }
+        localMemory = true;
     }
 
     //1. Build and send CDB/data for the pass-through packet command
     ret = build_ASMedia_Packet_Command_CDB(asmCDB, &asmCDBDir, ASMEDIA_NVMP_OP_SEND_ADMIN_IO_NVM_CMD, 0, nvmCmd, asmPayload, ASM_NVMP_DWORDS_DATA_PACKET_SIZE);
     if (SUCCESS != ret)
     {
+        if (localMemory)
+        {
+            safe_Free_aligned(dataPhasePtr);
+        }
         return ret;
     }
     ret = scsi_Send_Cdb(nvmCmd->device, asmCDB, ASMEDIA_NVME_PACKET_CDB_SIZE, asmPayload, ASM_NVMP_DWORDS_DATA_PACKET_SIZE, asmCDBDir, NULL, 0, 15);
     if (SUCCESS != ret)
     {
+        if (localMemory)
+        {
+            safe_Free_aligned(dataPhasePtr);
+        }
         return ret;
     }
 
     //2. Perform the data phase (this triggers the command to be sent)
-    ret = build_ASMedia_Packet_Command_CDB(asmCDB, &asmCDBDir, ASMEDIA_NVMP_OP_DATA_PHASE, 0, nvmCmd, NULL, 0);
+    ret = build_ASMedia_Packet_Command_CDB(asmCDB, &asmCDBDir, ASMEDIA_NVMP_OP_DATA_PHASE, 0, nvmCmd, dataPhasePtr, dataPhaseSize);
     if (SUCCESS != ret)
     {
+        if (localMemory)
+        {
+            safe_Free_aligned(dataPhasePtr);
+        }
         return ret;
     }
-    int sendRet = scsi_Send_Cdb(nvmCmd->device, asmCDB, ASMEDIA_NVME_PACKET_CDB_SIZE, nvmCmd->ptrData, nvmCmd->dataSize, asmCDBDir, NULL, 0, 15);
+    int sendRet = scsi_Send_Cdb(nvmCmd->device, asmCDB, ASMEDIA_NVME_PACKET_CDB_SIZE, dataPhasePtr, dataPhaseSize, asmCDBDir, NULL, 0, 15);
+
+    if (localMemory)
+    {
+        //copy back to original smaller buffer from the oversized padded buffer if read command
+        if (nvmCmd->ptrData && nvmCmd->commandDirection == XFER_DATA_IN && nvmCmd->dataSize > 0)
+        {
+            memcpy(nvmCmd->ptrData, dataPhasePtr, nvmCmd->dataSize);
+        }
+        safe_Free_aligned(dataPhasePtr);
+    }
+
     bool senseDataIsAllWeGot = true;
     if (sendRet != COMMAND_TIMEOUT)
     {
@@ -507,6 +551,7 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
             }
             else
             {
+                senseDataIsAllWeGot = false;
                 //convert to what needs to be passed back up the stack
                 nvmCmd->commandCompletionData.commandSpecific = M_BytesTo4ByteValue(completionData[3], completionData[2], completionData[1], completionData[0]);
                 nvmCmd->commandCompletionData.dw1Reserved = M_BytesTo4ByteValue(completionData[7], completionData[6], completionData[5], completionData[4]);
