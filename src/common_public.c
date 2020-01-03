@@ -2417,6 +2417,25 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
                 break;
+            case 0x3010://FreeAgent Pro
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 16;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 122880;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 122880;
+                break;
             case 0x3300://Desktop
                 passthroughHacksSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
