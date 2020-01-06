@@ -447,16 +447,16 @@ int ata_Write_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, 
 
     if (!ptrData)
     {
-        return FAILURE;
+        return BAD_PARAMETER;
     }
     else if (dataSize < LEGACY_DRIVE_SEC_SIZE)
     {
-        return FAILURE;
+        return BAD_PARAMETER;
     }
     // Must be at 512 boundry
     else if (dataSize % LEGACY_DRIVE_SEC_SIZE)
     {
-        return FAILURE;
+        return BAD_PARAMETER;
     }
 
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
