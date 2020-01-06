@@ -78,6 +78,10 @@
 
 #endif
 
+#if WINVER < SEA_WIN32_WINNT_WINBLUE && !defined (BusTypeNvme)
+#define BusTypeNvme 17
+#endif
+
 extern bool validate_Device_Struct(versionBlock);
 
 int get_Windows_SMART_IO_Support(tDevice *device);
@@ -2017,8 +2021,8 @@ int get_Device(const char *filename, tDevice *device )
                                     device->drive_info.interface_type = IEEE_1394_INTERFACE;
                                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                                 }
-#if WINVER >= SEA_WIN32_WINNT_WINBLUE//win 8.1 added NVME
-                                else if (device_desc->BusType == BusTypeNvme)
+                                //NVMe bustype can be defined for Win7 with openfabrics nvme driver, so make sure we can handle it...it shows as a SCSI device on this interface unless you use a SCSI?: handle with the IOCTL directly to the driver.
+                                else if (device_desc->BusType == BusTypeNvme && device_desc->VendorIdOffset == 0)//Open fabrics will set a vendorIDoffset, MSFT driver will not.
                                 {
 #if WINVER >= SEA_WIN32_WINNT_WIN10 && !defined(DISABLE_NVME_PASSTHROUGH)
                                     device->drive_info.drive_type = NVME_DRIVE;
@@ -2037,14 +2041,9 @@ int get_Device(const char *filename, tDevice *device )
                                     device->drive_info.drive_type = SCSI_DRIVE;
                                     device->drive_info.interface_type = SCSI_INTERFACE;
                                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
-                                    //Because out of box driver fails if STORAGE_BLOCK flag is used.
-                                    device->os_info.srbtype = SRB_TYPE_SCSI_REQUEST_BLOCK;
 #endif
                                 }
-#endif //WINVER >= Win8.1 for bustype NVMe
-                                // This else essentially eliminates the RAID support from this layer.
-                                // Please check the history of the file for more info.
-                                else
+                                else //treat anything else as a SCSI device.
                                 {
                                     device->drive_info.interface_type = SCSI_INTERFACE;
                                     //This does NOT mean that drive_type is SCSI, but set SCSI drive for now
