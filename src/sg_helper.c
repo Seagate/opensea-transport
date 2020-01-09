@@ -257,7 +257,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 temp = fopen(pciPath, "r");
                                 if (temp)
                                 {
-                                    if(1 == fscanf(temp, "0x%" SCNx16, &device->drive_info.adapter_info.vendorID))
+                                    if(1 == fscanf(temp, "0x%" SCNx32, &device->drive_info.adapter_info.vendorID))
                                     {
                                         device->drive_info.adapter_info.vendorIDValid = true;
                                         //printf("Got vendor as %" PRIX16 "h\n", device->drive_info.adapter_info.vendorID);
@@ -270,7 +270,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 temp = fopen(pciPath, "r");
                                 if (temp)
                                 {
-                                    if(1 == fscanf(temp, "0x%" SCNx16, &device->drive_info.adapter_info.productID))
+                                    if(1 == fscanf(temp, "0x%" SCNx32, &device->drive_info.adapter_info.productID))
                                     {
                                         device->drive_info.adapter_info.productIDValid = true;
                                         //printf("Got product as %" PRIX16 "h\n", device->drive_info.adapter_info.productID);
@@ -330,7 +330,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 temp = fopen(usbPath, "r");
                                 if (temp)
                                 {
-                                    if(1 == fscanf(temp, "%" SCNx16, &device->drive_info.adapter_info.vendorID))
+                                    if(1 == fscanf(temp, "%" SCNx32, &device->drive_info.adapter_info.vendorID))
                                     {
                                         device->drive_info.adapter_info.vendorIDValid = true;
                                         //printf("Got vendor ID as %" PRIX16 "h\n", device->drive_info.adapter_info.vendorID);
@@ -345,7 +345,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 temp = fopen(usbPath, "r");
                                 if (temp)
                                 {
-                                    if(1 == fscanf(temp, "%" SCNx16, &device->drive_info.adapter_info.productID))
+                                    if(1 == fscanf(temp, "%" SCNx32, &device->drive_info.adapter_info.productID))
                                     {
                                         device->drive_info.adapter_info.productIDValid = true;
                                         //printf("Got product ID as %" PRIX16 "h\n", device->drive_info.adapter_info.productID);
@@ -359,7 +359,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 temp = fopen(usbPath, "r");
                                 if (temp)
                                 {
-                                    if(1 == fscanf(temp, "%" SCNx16, &device->drive_info.adapter_info.revision))
+                                    if(1 == fscanf(temp, "%" SCNx32, &device->drive_info.adapter_info.revision))
                                     {
                                         device->drive_info.adapter_info.revisionValid = true;
                                         //printf("Got revision as %" PRIX16 "h\n", device->drive_info.adapter_info.revision);
@@ -461,7 +461,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 temp = fopen(pciPath, "r");
                                 if (temp)
                                 {
-                                    if(1 == fscanf(temp, "0x%" SCNx16, &device->drive_info.adapter_info.vendorID))
+                                    if(1 == fscanf(temp, "0x%" SCNx32, &device->drive_info.adapter_info.vendorID))
                                     {
                                         device->drive_info.adapter_info.vendorIDValid = true;
                                         //printf("Got vendor as %" PRIX16 "h\n", device->drive_info.adapter_info.vendorID);
@@ -474,7 +474,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 temp = fopen(pciPath, "r");
                                 if (temp)
                                 {
-                                    if (1 == fscanf(temp, "0x%" SCNx16, &device->drive_info.adapter_info.productID))
+                                    if (1 == fscanf(temp, "0x%" SCNx32, &device->drive_info.adapter_info.productID))
                                     {
                                         device->drive_info.adapter_info.productIDValid = true;
                                         //printf("Got product as %" PRIX16 "h\n", device->drive_info.adapter_info.productID);
@@ -876,7 +876,7 @@ int get_Device(const char *filename, tDevice *device)
         device->drive_info.interface_type = SCSI_INTERFACE;
         device->drive_info.media_type = MEDIA_HDD;
         set_Device_Fields_From_Handle(deviceHandle, device);
-        set_USB_Passthrough_Hacks_By_PID_and_VID(device);
+        setup_Passthrough_Hacks_By_ID(device);
         safe_Free(deviceHandle);
         return ret;
     }
@@ -970,7 +970,7 @@ int get_Device(const char *filename, tDevice *device)
                 printf("Setting interface, drive type, secondary handles\n");
                 #endif
                 set_Device_Fields_From_Handle(deviceHandle, device);
-                set_USB_Passthrough_Hacks_By_PID_and_VID(device);
+                setup_Passthrough_Hacks_By_ID(device);
 
                 #if defined (_DEBUG)
                 printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n",
