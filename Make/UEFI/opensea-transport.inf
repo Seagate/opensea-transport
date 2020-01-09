@@ -38,6 +38,8 @@
   include/usb_hacks.h
   include/version.h
   include/vendor/seagate/seagate_ata_types.h
+  include/asmedia_nvme_helper.h
+  include/jmicron_nvme_helper.h
   src/ata_cmds.c
   src/ata_helper.c
   src/ata_legacy_cmds.c
@@ -56,6 +58,8 @@
   src/ti_legacy_helper.c
   src/uefi_helper.c
   src/usb_hacks.c
+  src/asmedia_nvme_helper.c
+  src/jmicron_nvme_helper.c
 
 [Packages]
   StdLib/StdLib.dec
