@@ -9266,6 +9266,19 @@ int fill_In_Device_Info(tDevice *device)
             }
         }
 
+        //Issue report LUNs to figure out how many logical units are present.
+        uint8_t reportLuns[8] = { 0 };//only really need first 4 bytes, but this will make sure we get the length, hopefully without error
+        if (SUCCESS == scsi_Report_Luns(device, 0, 8, reportLuns))
+        {
+            uint32_t lunListLength = M_BytesTo4ByteValue(reportLuns[0], reportLuns[1], reportLuns[2], reportLuns[3]);
+            device->drive_info.numberOfLUs = lunListLength / 8;//each LUN is 8 bytes long
+        }
+        else
+        {
+            //some other crappy device that doesn't respond properly
+            device->drive_info.numberOfLUs = 1;
+        }
+
         if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE)
         {
 #if defined (_DEBUG)

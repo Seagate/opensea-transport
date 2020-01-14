@@ -835,6 +835,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             device->drive_info.T10_vendor_ident[6] = 0;
             device->drive_info.T10_vendor_ident[7] = 0;
         }
+        device->drive_info.numberOfLUs = 1;
         memcpy(fillModelNumber, &ident_word[27], MODEL_NUM_LEN);
         fillModelNumber[MODEL_NUM_LEN] = '\0';
         memcpy(fillSerialNumber, &ident_word[10], SERIAL_NUM_LEN);

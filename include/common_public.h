@@ -1038,7 +1038,11 @@ extern "C"
         uint8_t currentProtectionType;//Useful for certain operations. Read in readCapacityOnSCSI. TODO: NVMe
         uint8_t piExponent;//Only valid for protection types 2 & 3 I believe...-TJE
         uint8_t scsiVersion;//from STD Inquiry. Can be used elsewhere to help filter capabilities. NOTE: not an exact copy for old products where there was also EMCA and ISO versions. Set to ANSI version number in those cases.
-        uint8_t padd7[4];//padd to 9304 bytes to make divisible by 8
+        union {
+            uint32_t numberOfLUs;//number of logical units on the device
+            uint32_t numberOfNamespaces;//number of namespaces on the controller
+        };
+        //9304 bytes to make divisible by 8
         passthroughHacks passThroughHacks;
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }driveInfo;
@@ -1210,7 +1214,7 @@ extern "C"
             bool hasFileSystem;//This will only be true for filesystems the current OS can detect. Ex: Windows will only set this for mounted volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem types since it can handle more than Windows by default
             bool isSystemDisk;//This will be set if the drive has a file system and the OS is running off of it. Ex: Windows' C:\Windows\System32, Linux's / & /boot, etc
         }fileSystemInfo;
-        uint8_t paddEnd[4];//padd to 400 byte on UEFI. TODO: Make all OS's keep this structure the same size!!!
+        uint8_t padd[4];//padd to 400 byte on UEFI. TODO: Make all OS's keep this structure the same size!!!
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }OSDriveInfo;
     #pragma pack(pop)
