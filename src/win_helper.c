@@ -1324,7 +1324,7 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                         {
                                                             ULONG propertyBufLen = 0;
                                                             DEVPROPTYPE propertyType = 0;
-                                                            int scannedVals =_sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%" SCNx32 "&PID_%" SCNx32 "\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
+                                                            int scannedVals =_sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%") TEXT(SCNx32) TEXT("&PID_%") TEXT(SCNx32) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
                                                             device->drive_info.adapter_info.vendorIDValid = true;
                                                             device->drive_info.adapter_info.productIDValid = true;
                                                             if (scannedVals < 2)
@@ -1371,7 +1371,7 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                         {
                                                             uint32_t subsystem = 0;
                                                             uint8_t revision = 0;
-                                                            int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("PCI\\VEN_%" SCNx32 "&DEV_%" SCNx32 "&SUBSYS_%" SCNx32 "&REV_%" SCNx8 "\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
+                                                            int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("PCI\\VEN_%") TEXT(SCNx32) TEXT("&DEV_%") TEXT(SCNx32) TEXT("&SUBSYS_%") TEXT(SCNx32) TEXT("&REV_%") TEXT(SCNx8) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
                                                             device->drive_info.adapter_info.vendorIDValid = true;
                                                             device->drive_info.adapter_info.productIDValid = true;
                                                             device->drive_info.adapter_info.revision = revision;
@@ -1409,7 +1409,7 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                                 TCHAR vendorIDString[7] = { 0 };
                                                                 _tcsncpy_s(vendorIDString, 7 * sizeof(TCHAR), token, 6);
                                                                 _tprintf(TEXT("%s\n"), vendorIDString);
-                                                                int result = _stscanf(token, TEXT("%06" SCNx32), &device->drive_info.adapter_info.vendorID);
+                                                                int result = _stscanf(token, TEXT("%06") TEXT(SCNx32), &device->drive_info.adapter_info.vendorID);
                                                                 if (result == 1)
                                                                 {
                                                                     device->drive_info.adapter_info.vendorIDValid = true;
