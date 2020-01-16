@@ -37,7 +37,9 @@
   include/uefi_helper.h
   include/usb_hacks.h
   include/version.h
+  include/vendor/seagate/seagate_common_types.h
   include/vendor/seagate/seagate_ata_types.h
+  include/vendor/seagate/seagate_scsi_types.h
   include/asmedia_nvme_helper.h
   include/jmicron_nvme_helper.h
   src/ata_cmds.c

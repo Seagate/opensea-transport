@@ -16,6 +16,7 @@
 
 #include "common_public.h"
 #include "ata_helper.h"
+#include "vendor/seagate/seagate_common_types.h"
 
 #if defined(__cplusplus)
 extern "C"
@@ -52,16 +53,49 @@ extern "C"
     typedef enum _eSeagateSetFeaturesSubcommands
     {
         SEAGATE_SF_LOW_CURRENT_SPINUP = 0x5B,
+        SEAGATE_FEATURE_POWER_BALANCE = 0x5C, //TODO: definitions of enable/disable specific to this feature
+        //TODO: other Seagate unique set features codes.
     }eSeagateSetFeaturesSubcommands;
 
     #define LOW_CURRENT_SPINUP_LBA_MID_SIG  (0xED)
     #define LOW_CURRENT_SPINUP_LBA_HI_SIG   (0xB5)
+
+    #define POWER_BALANCE_LBA_LOW_ENABLE UINT8_C(0x01)
+    #define POWER_BALANCE_LBA_LOW_DISABLE UINT8_C(0x02)
 
     typedef enum _eSeagateLowCurrentSpinupSetFeaturesValues
     {
         SEAGATE_SF_LCS_DISABLE = 0x00,
         SEAGATE_SF_LCS_ENABLE = 0x01,
     }eSeagateLowCurrentSpinupSetFeaturesValues;
+
+    typedef enum _eSeagateLogs
+    {
+        SEAGATE_ATA_LOG_FIELD_ACCESSIBLE_RELIABILITY_METRICS    = 0xA6,//a.k.a. FARM
+        SEAGATE_ATA_LOG_POWER_TELEMETRY                         = 0xE3,
+        //Define other Seagate log pages here as necessary
+    }eSeagateLogs;
+
+    //sublogs are the features register in this case
+    typedef enum _eSeagateFARMSublogs
+    {
+        SEAGATE_FARM_CURRENT                = 0x00,
+        SEAGATE_FARM_GENERATE_NEW_AND_SAVE  = 0x01,
+        SEAGATE_FARM_REPORT_SAVED           = 0x02,
+        SEAGATE_FARM_REPORT_FACTORY_DATA    = 0x03,
+    }eSeagateFARMSublogs;
+
+    typedef enum _eSeagateSelfTests
+    {
+        SEAGATE_ST_IDD_SHORT_OFFLINE   = 0x70,
+        SEAGATE_ST_IDD_LONG_OFFLINE    = 0x71,
+        SEAGATE_ST_IDD_SHORT_CAPTIVE   = 0xD0,
+        SEAGATE_ST_IDD_LONG_CAPTIVE    = 0xD1,
+    }eSeagateSelfTests;
+
+    //TODO: Any other SMART read data fields that are parsed for certain bits
+
+    //TODO: Any Seagate unique identify data bits that are parsed for certain bits
 
 #if defined(__cplusplus)
 }

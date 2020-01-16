@@ -84,6 +84,8 @@
             <Folder Name="vendor">
                 <Folder Name="seagate">
                     <F N="../../include/vendor/seagate/seagate_ata_types.h"/>
+                    <F N="../../include/vendor/seagate/seagate_common_types.h"/>
+                    <F N="../../include/vendor/seagate/seagate_scsi_types.h"/>
                 </Folder>
             </Folder>
             <F N="../../include/asmedia_nvme_helper.h"/>
