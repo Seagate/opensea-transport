@@ -5262,18 +5262,20 @@ int send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int device_Reset(ScsiIoCtx *scsiIoCtx)
+int os_Device_Reset(tDevice *device)
 {
     int ret = FAILURE;
     //this IOCTL is only supported for non-scsi devices, which includes anything (ata or scsi) attached to a USB or SCSI or SAS interface
+    //TODO: Remove ATA filter and allow this to try anyways
     if (scsiIoCtx->device->drive_info.drive_type == ATA_DRIVE)
     {
         //This does not seem to work since it is obsolete and likely not implemented in modern drivers
         //use the Windows API call - http://msdn.microsoft.com/en-us/library/windows/hardware/ff560603%28v=vs.85%29.aspx
         //ULONG returned_data = 0;
         BOOL success = 0;
-        scsiIoCtx->device->os_info.last_error = 0;
-        success = DeviceIoControl(scsiIoCtx->device->os_info.fd,
+        SetLastError(NO_ERROR);
+        device->os_info.last_error = NO_ERROR;
+        success = DeviceIoControl(device->os_info.fd,
             OBSOLETE_IOCTL_STORAGE_RESET_DEVICE,
             NULL,
             0,
@@ -5281,40 +5283,25 @@ int device_Reset(ScsiIoCtx *scsiIoCtx)
             0,
             NULL,
             FALSE);
-        scsiIoCtx->device->os_info.last_error = GetLastError();
-        if (success && scsiIoCtx->device->os_info.last_error == 0)
+        device->os_info.last_error = GetLastError();
+        if (success && device->os_info.last_error == NO_ERROR)
         {
             ret = SUCCESS;
         }
         else
         {
-            ret = NOT_SUPPORTED;
-            scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_FIXED;
-            scsiIoCtx->returnStatus.senseKey = 0x05;
-            scsiIoCtx->returnStatus.asc = 0x20;
-            scsiIoCtx->returnStatus.ascq = 0x00;
-            //dummy up sense data
-            if (scsiIoCtx->psense != NULL)
-            {
-                memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-                //fill in not supported
-                scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
-                scsiIoCtx->psense[2] = 0x05;
-                //acq
-                scsiIoCtx->psense[12] = 0x20;//invalid operation code
-                //acsq
-                scsiIoCtx->psense[13] = 0x00;
-            }
+            ret = OS_COMMAND_NOT_AVAILABLE;
         }
     }
     else
     {
-        ret = NOT_SUPPORTED;
+        ret = OS_COMMAND_NOT_AVAILABLE;
     }
+    //TODO: catch not supported versus an error
     return ret;
 }
 
-int bus_Reset(ScsiIoCtx *scsiIoCtx)
+int os_Bus_Reset(tDevice *device)
 {
     int ret = FAILURE;
     //This does not seem to work since it is obsolete and likely not implemented in modern drivers
@@ -5322,8 +5309,9 @@ int bus_Reset(ScsiIoCtx *scsiIoCtx)
     ULONG returned_data = 0;
     BOOL success = 0;
     STORAGE_BUS_RESET_REQUEST reset = { 0 };
-    scsiIoCtx->device->os_info.last_error = 0;
-    success = DeviceIoControl(scsiIoCtx->device->os_info.fd,
+    SetLastError(NO_ERROR);
+    device->os_info.last_error = NO_ERROR;
+    success = DeviceIoControl(device->os_info.fd,
         OBSOLETE_IOCTL_STORAGE_RESET_BUS,
         &reset,
         sizeof(reset),
@@ -5331,32 +5319,22 @@ int bus_Reset(ScsiIoCtx *scsiIoCtx)
         sizeof(reset),
         &returned_data,
         FALSE);
-    scsiIoCtx->device->os_info.last_error = GetLastError();
-    if (success && scsiIoCtx->device->os_info.last_error == 0)
+    device->os_info.last_error = GetLastError();
+    if (success && device->os_info.last_error == NO_ERROR)
     {
         ret = SUCCESS;
     }
     else
     {
-        ret = NOT_SUPPORTED;
-        scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_FIXED;
-        scsiIoCtx->returnStatus.senseKey = 0x05;
-        scsiIoCtx->returnStatus.asc = 0x20;
-        scsiIoCtx->returnStatus.ascq = 0x00;
-        //dummy up sense data
-        if (scsiIoCtx->psense != NULL)
-        {
-            memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-            //fill in not supported
-            scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
-            scsiIoCtx->psense[2] = 0x05;
-            //acq
-            scsiIoCtx->psense[12] = 0x20;//invalid operation code
-            //acsq
-            scsiIoCtx->psense[13] = 0x00;
-        }
+        ret = OS_COMMAND_NOT_AVAILABLE;
     }
+    //TODO: catch not supported versus an error
     return ret;
+}
+
+int os_Controller_Reset(tDevice *device)
+{
+    return OS_COMMAND_NOT_AVAILABLE;
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong

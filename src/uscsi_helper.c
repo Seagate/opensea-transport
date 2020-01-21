@@ -114,15 +114,43 @@ int get_Device(const char *filename, tDevice *device)
     return ret;
 }
 
-int device_Reset(ScsiIoCtx *scsiIoCtx)
+int uscsi_Reset(int fd, int resetFlag)
 {
-    //need to investigate if there is a way to do this in solaris
-    return NOT_SUPPORTED;
+    struct uscsi_cmd uscsi_io;
+    int ret = SUCCESS;
+
+    memset(&uscsi_io, 0, sizeof(uscsi_io));
+
+    uscsi_io.uscsi_flags |= resetFlag;
+    ret = ioctl(fd, USCSICMD, &uscsi_io);
+    if (ret < 0)
+    {
+        //TODO: check errno to figure out failure versus not supported???
+        ret = OS_COMMAND_NOT_AVAILABLE;
+    }
+    else
+    {
+        ret = SUCCESS;
+    }
+    return ret;
 }
-int bus_Reset(ScsiIoCtx *scsiIoCtx)
+
+int os_Device_Reset(tDevice *device)
 {
-    //need to investigate if there is a way to do this in solaris
-    return NOT_SUPPORTED;
+    //NOTE: USCSI_RESET is the same thing, but for legacy versions
+    //TODO: is USCSI_RESET_LUN better???
+    return uscsi_Reset(device->os_info.fd, USCSI_RESET_TARGET);
+}
+    
+int os_Bus_Reset(tDevice *device)
+{
+    //USCSI_RESET_ALL seems to imply a bus reset
+    return uscsi_Reset(device->os_info.fd, USCSI_RESET_ALL);
+}
+
+int os_Controller_Reset(tDevice *device)
+{
+    return OS_COMMAND_NOT_AVAILABLE;
 }
 
 int send_IO (ScsiIoCtx *scsiIoCtx)
@@ -429,6 +457,7 @@ int os_Flush(tDevice *device)
 {
     return NOT_SUPPORTED;
 }
+
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
