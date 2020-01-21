@@ -5309,6 +5309,7 @@ int os_Bus_Reset(tDevice *device)
     ULONG returned_data = 0;
     BOOL success = 0;
     STORAGE_BUS_RESET_REQUEST reset = { 0 };
+    reset.PathId = device->os_info.scsi_addr.PathId;
     SetLastError(NO_ERROR);
     device->os_info.last_error = NO_ERROR;
     success = DeviceIoControl(device->os_info.fd,
