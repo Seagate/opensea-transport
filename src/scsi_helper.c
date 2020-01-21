@@ -9520,7 +9520,7 @@ int fill_In_Device_Info(tDevice *device)
                 {
                     if(device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
                     {
-                        printf("VPD pages, check SAT info\n");
+                        //printf("VPD pages, check SAT info\n");
                         //do not check the checkForSAT bool here. If we get here, then the device most likely reported support for it so it should be readable.
                         if (SUCCESS == check_SAT_Compliance_And_Set_Drive_Type(device))
                         {
