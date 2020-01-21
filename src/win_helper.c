@@ -5266,32 +5266,24 @@ int os_Device_Reset(tDevice *device)
 {
     int ret = FAILURE;
     //this IOCTL is only supported for non-scsi devices, which includes anything (ata or scsi) attached to a USB or SCSI or SAS interface
-    //TODO: Remove ATA filter and allow this to try anyways
-    if (scsiIoCtx->device->drive_info.drive_type == ATA_DRIVE)
+    //This does not seem to work since it is obsolete and likely not implemented in modern drivers
+    //use the Windows API call - http://msdn.microsoft.com/en-us/library/windows/hardware/ff560603%28v=vs.85%29.aspx
+    //ULONG returned_data = 0;
+    BOOL success = 0;
+    SetLastError(NO_ERROR);
+    device->os_info.last_error = NO_ERROR;
+    success = DeviceIoControl(device->os_info.fd,
+        OBSOLETE_IOCTL_STORAGE_RESET_DEVICE,
+        NULL,
+        0,
+        NULL,
+        0,
+        NULL,
+        FALSE);
+    device->os_info.last_error = GetLastError();
+    if (success && device->os_info.last_error == NO_ERROR)
     {
-        //This does not seem to work since it is obsolete and likely not implemented in modern drivers
-        //use the Windows API call - http://msdn.microsoft.com/en-us/library/windows/hardware/ff560603%28v=vs.85%29.aspx
-        //ULONG returned_data = 0;
-        BOOL success = 0;
-        SetLastError(NO_ERROR);
-        device->os_info.last_error = NO_ERROR;
-        success = DeviceIoControl(device->os_info.fd,
-            OBSOLETE_IOCTL_STORAGE_RESET_DEVICE,
-            NULL,
-            0,
-            NULL,
-            0,
-            NULL,
-            FALSE);
-        device->os_info.last_error = GetLastError();
-        if (success && device->os_info.last_error == NO_ERROR)
-        {
-            ret = SUCCESS;
-        }
-        else
-        {
-            ret = OS_COMMAND_NOT_AVAILABLE;
-        }
+        ret = SUCCESS;
     }
     else
     {
