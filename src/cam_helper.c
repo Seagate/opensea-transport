@@ -960,6 +960,22 @@ int os_Flush(tDevice *device)
     return NOT_SUPPORTED;
 }
 
+//TODO: Add code for CAM resets. There should be XPT function codes to do some amount of resetting
+int os_Device_Reset(tDevice *device)
+{
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+    
+int os_Bus_Reset(tDevice *device)
+{
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+
+int os_Controller_Reset(tDevice *device)
+{
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
