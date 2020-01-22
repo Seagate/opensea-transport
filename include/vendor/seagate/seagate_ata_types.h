@@ -72,7 +72,7 @@ extern "C"
     typedef enum _eSeagateLogs
     {
         SEAGATE_ATA_LOG_FIELD_ACCESSIBLE_RELIABILITY_METRICS    = 0xA6,//a.k.a. FARM
-        SEAGATE_ATA_LOG_POWER_TELEMETRY                         = 0xE3,
+        SEAGATE_ATA_LOG_POWER_TELEMETRY                         = 0xB4,
         //Define other Seagate log pages here as necessary
     }eSeagateLogs;
 

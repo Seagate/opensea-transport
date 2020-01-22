@@ -65,8 +65,8 @@ extern "C"
 
     typedef enum _eSeagateFARMSP
     {
-        SEAGATE_FARM_SP_DEFAULT = 0x03,
-        SEAGATE_FARM_SP_CURRENT = 0x04,
+        SEAGATE_FARM_SP_CURRENT = 0x03,
+        SEAGATE_FARM_SP_FACTORY = 0x04,
     }eSeagateFARMSP;
 
     typedef enum _eSeagateDiagnosticPages
