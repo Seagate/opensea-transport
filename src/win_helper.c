@@ -49,7 +49,8 @@
 
 //MinGW may or may not have some of these, so there is a need to define these here to build properly when they are otherwise not available.
 //TODO: as mingw changes versions, some of these below may be available. Need to have a way to check mingw preprocessor defines for versions to work around these.
-#if defined (__MINGW32__)
+//NOTE: The device property keys are incomplete in mingw. Need to add similar code using setupapi and some sort of ifdef to switch between for VS and mingw to resolve this better.
+#if defined (__MINGW32__) || defined (__MINGW64__)
     #if !defined (ATA_FLAGS_NO_MULTIPLE)
         #define ATA_FLAGS_NO_MULTIPLE (1 << 5)
     #endif
@@ -63,6 +64,10 @@
     //This is for looking up hardware IDs of devices for PCIe/USB, etc
     #if !defined (DEVPKEY_Device_HardwareIds)
         DEFINE_DEVPROPKEY(DEVPKEY_Device_HardwareIds,            0xa45c254e, 0xdf1c, 0x4efd, 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0, 3); 
+    #endif
+
+    #if !defined (DEVPKEY_Device_CompatibleIds)
+        DEFINE_DEVPROPKEY(DEVPKEY_Device_CompatibleIds, 0xa45c254e, 0xdf1c, 0x4efd, 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0, 4);
     #endif
 
     #if !defined (CM_GETIDLIST_FILTER_PRESENT)
