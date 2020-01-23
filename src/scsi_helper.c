@@ -9196,6 +9196,12 @@ int fill_In_Device_Info(tDevice *device)
             device->drive_info.media_type = MEDIA_NVM;
             checkForSAT = false;
         }
+        else if (device->drive_info.passThroughHacks.hacksSetByReportedID && device->drive_info.passThroughHacks.passthroughType == PASSTHROUGH_NONE)
+        {
+            //Disable checking for SAT when the low-level device information says it is not available.
+            //This prevents unnecessary discovery and slow-down on devices that are already confirmed to not support SAT or other ATA passthrough
+            checkForSAT = false;
+        }
 
         //If this is a suspected NVMe device, specifically ASMedia 236X chip, need to do an inquiry with EXACTLY 38bytes to check for a specific signature
         //This will check for some known outputs to know when to do the additional inquiry command for ASMedia detection. This may not catch everything. - TJE
