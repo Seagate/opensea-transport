@@ -96,6 +96,12 @@
     <ClCompile Include="..\..\..\..\src\vm_nvme_mgmt_common.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\src\asmedia_nvme_helper.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\jmicron_nvme_helper.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\ata_helper.h">
@@ -193,6 +199,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\vendor\seagate\seagate_ata_types.h">
       <Filter>Header Files\vendor\seagate</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\asmedia_nvme_helper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\jmicron_nvme_helper.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
