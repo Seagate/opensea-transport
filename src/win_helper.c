@@ -2200,14 +2200,17 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 
     //Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
 #if !defined (_M_ARM) && !defined (_M_ARM_ARMV7VE) && !defined (_M_ARM_FP ) && !defined (_M_ARM64)
-    //try forcing a system rescan before opening the list. This should help with crappy drivers or bad hotplug support - TJE
-    DEVINST deviceInstance;
-    DEVINSTID tree = NULL;//set to null for root of device tree
-    ULONG locateNodeFlags = 0;//add flags here if we end up needing them
-    if (CR_SUCCESS == CM_Locate_DevNode(&deviceInstance, tree, locateNodeFlags))
+    if (flags & BUS_RESCAN_ALLOWED)
     {
-        ULONG reenumerateFlags = 0;
-        CM_Reenumerate_DevNode(deviceInstance, reenumerateFlags);
+        //try forcing a system rescan before opening the list. This should help with crappy drivers or bad hotplug support - TJE
+        DEVINST deviceInstance;
+        DEVINSTID tree = NULL;//set to null for root of device tree
+        ULONG locateNodeFlags = 0;//add flags here if we end up needing them
+        if (CR_SUCCESS == CM_Locate_DevNode(&deviceInstance, tree, locateNodeFlags))
+        {
+            ULONG reenumerateFlags = 0;
+            CM_Reenumerate_DevNode(deviceInstance, reenumerateFlags);
+        }
     }
 #endif
 
