@@ -1363,6 +1363,7 @@ extern "C"
         USB_Vendor_ASMedia                              = 0x174C,
         USB_Vendor_4G_Systems_GmbH                      = 0x1955,
         USB_Vendor_SeagateBranded                       = 0x1A2A,
+        USB_Vendor_Symwave                              = 0x1CA1,
         USB_Vendor_ChipsBank                            = 0x1E3D,
         USB_Vendor_Dell                                 = 0x413C,
         // Add new enumerations above this line!

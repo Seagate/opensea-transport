@@ -3883,6 +3883,25 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 break;
             }
             break;
+        case USB_Vendor_Symwave://1CA1
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x18AE://rev 0852
+                //This is a USB to SAS adapter. Not everything works as it is targetted at read/write and other basic informatio only.
+                //If sent commands it doesn't understand, this struggles.
+                //Very basic information is set here in order to keep this simple. The main reason is because most capabilties will depend on the
+                //Attached SAS device more than the USB adapter itself.
+                //The exception to that rule is transfer size. Disabling ATA passthrough test also helps
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;//This disabled ATA passthrough which this devices doesn't support anyways
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 1048576;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;//This may not actually help this device. This hack is usually used to clear error conditions by sending a well known, easy command to clear previous SAT translation issues, but in this case, this may not be helpful
+                device->drive_info.passThroughHacks.turfValue = 17;
+                break;
+            default:
+                break;
+            }
+            break;
         default: //unknown
             break;
         }

@@ -105,6 +105,54 @@ extern "C"
     //-----------------------------------------------------------------------------
     int send_IO( ScsiIoCtx *scsiIoCtx );
 
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Device_Reset(tDevice *device)
+    //
+    //! \brief   Description:  Attempts a device reset through OS functions available. NOTE: This won't work on every device
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!   
+    //! 
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    int os_Device_Reset(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Bus_Reset(tDevice *device)
+    //
+    //! \brief   Description:  Attempts a bus reset through OS functions available. NOTE: This won't work on every device
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!   
+    //! 
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    int os_Bus_Reset(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Controller_Reset(tDevice *device)
+    //
+    //! \brief   Description:  Attempts a controller reset through OS functions available. NOTE: This won't work on every device
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!   
+    //! 
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    int os_Controller_Reset(tDevice *device);
+
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     //-----------------------------------------------------------------------------
     //

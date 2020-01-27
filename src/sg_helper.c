@@ -1023,47 +1023,11 @@ int sg_reset(int fd, int resetType)
         #endif
         if (errno == EAFNOSUPPORT)
         {
-            ret = NOT_SUPPORTED;
-            /*
-            scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_FIXED;
-            scsiIoCtx->returnStatus.senseKey = 0x05;
-            scsiIoCtx->returnStatus.asc = 0x20;
-            scsiIoCtx->returnStatus.ascq = 0x00;
-            //dummy up sense data
-            if (scsiIoCtx->psense != NULL)
-            {
-                memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-                //fill in not supported
-                scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
-                scsiIoCtx->psense[2] = 0x05;
-                //acq
-                scsiIoCtx->psense[12] = 0x20;//invalid operation code
-                //acsq
-                scsiIoCtx->psense[13] = 0x00;
-            }
-            */
+            ret = OS_COMMAND_NOT_AVAILABLE;
         }
         else
         {
-            ret = FAILURE;
-            /*
-            scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_FIXED;
-            scsiIoCtx->returnStatus.senseKey = 0x05;
-            scsiIoCtx->returnStatus.asc = 0x24;
-            scsiIoCtx->returnStatus.ascq = 0x00;
-            //dummy up sense data
-            if (scsiIoCtx->psense != NULL)
-            {
-                memset(scsiIoCtx->psense,0,scsiIoCtx->senseDataSize);
-                //fill in not supported
-                scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
-                scsiIoCtx->psense[2] = 0x05;
-                //acq
-                scsiIoCtx->psense[12] = 0x24;//invalid field in CDB
-                //acsq
-                scsiIoCtx->psense[13] = 0x00;
-            }
-            */
+            ret = OS_COMMAND_BLOCKED;
         }
     }
     else
@@ -1083,19 +1047,19 @@ int sg_reset(int fd, int resetType)
     return ret;
 }
 
-int device_Reset(int fd)
+int os_Device_Reset(tDevice *device)
 {
-    return sg_reset(fd, SG_SCSI_RESET_DEVICE);
+    return sg_reset(device->os_info.fd, SG_SCSI_RESET_DEVICE);
 }
 
-int bus_Reset(int fd)
+int os_Bus_Reset(tDevice *device)
 {
-    return sg_reset(fd, SG_SCSI_RESET_BUS);
+    return sg_reset(device->os_info.fd, SG_SCSI_RESET_BUS);
 }
 
-int host_Reset(int fd)
+int os_Controller_Reset(tDevice *device)
 {
-    return sg_reset(fd, SG_SCSI_RESET_HOST);
+    return sg_reset(device->os_info.fd, SG_SCSI_RESET_HOST);
 }
 
 int send_IO( ScsiIoCtx *scsiIoCtx )

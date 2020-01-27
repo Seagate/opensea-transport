@@ -49,7 +49,8 @@
 
 //MinGW may or may not have some of these, so there is a need to define these here to build properly when they are otherwise not available.
 //TODO: as mingw changes versions, some of these below may be available. Need to have a way to check mingw preprocessor defines for versions to work around these.
-#if defined (__MINGW32__)
+//NOTE: The device property keys are incomplete in mingw. Need to add similar code using setupapi and some sort of ifdef to switch between for VS and mingw to resolve this better.
+#if defined (__MINGW32__) || defined (__MINGW64__)
     #if !defined (ATA_FLAGS_NO_MULTIPLE)
         #define ATA_FLAGS_NO_MULTIPLE (1 << 5)
     #endif
@@ -63,6 +64,10 @@
     //This is for looking up hardware IDs of devices for PCIe/USB, etc
     #if !defined (DEVPKEY_Device_HardwareIds)
         DEFINE_DEVPROPKEY(DEVPKEY_Device_HardwareIds,            0xa45c254e, 0xdf1c, 0x4efd, 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0, 3); 
+    #endif
+
+    #if !defined (DEVPKEY_Device_CompatibleIds)
+        DEFINE_DEVPROPKEY(DEVPKEY_Device_CompatibleIds, 0xa45c254e, 0xdf1c, 0x4efd, 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0, 4);
     #endif
 
     #if !defined (CM_GETIDLIST_FILTER_PRESENT)
@@ -1324,7 +1329,7 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                         {
                                                             ULONG propertyBufLen = 0;
                                                             DEVPROPTYPE propertyType = 0;
-                                                            int scannedVals =_sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%" SCNx32 "&PID_%" SCNx32 "\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
+                                                            int scannedVals =_sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%") TEXT(SCNx32) TEXT("&PID_%") TEXT(SCNx32) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
                                                             device->drive_info.adapter_info.vendorIDValid = true;
                                                             device->drive_info.adapter_info.productIDValid = true;
                                                             if (scannedVals < 2)
@@ -1371,7 +1376,7 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                         {
                                                             uint32_t subsystem = 0;
                                                             uint8_t revision = 0;
-                                                            int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("PCI\\VEN_%" SCNx32 "&DEV_%" SCNx32 "&SUBSYS_%" SCNx32 "&REV_%" SCNx8 "\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
+                                                            int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("PCI\\VEN_%") TEXT(SCNx32) TEXT("&DEV_%") TEXT(SCNx32) TEXT("&SUBSYS_%") TEXT(SCNx32) TEXT("&REV_%") TEXT(SCNx8) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
                                                             device->drive_info.adapter_info.vendorIDValid = true;
                                                             device->drive_info.adapter_info.productIDValid = true;
                                                             device->drive_info.adapter_info.revision = revision;
@@ -1409,7 +1414,7 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                                 TCHAR vendorIDString[7] = { 0 };
                                                                 _tcsncpy_s(vendorIDString, 7 * sizeof(TCHAR), token, 6);
                                                                 _tprintf(TEXT("%s\n"), vendorIDString);
-                                                                int result = _stscanf(token, TEXT("%06" SCNx32), &device->drive_info.adapter_info.vendorID);
+                                                                int result = _stscanf(token, TEXT("%06") TEXT(SCNx32), &device->drive_info.adapter_info.vendorID);
                                                                 if (result == 1)
                                                                 {
                                                                     device->drive_info.adapter_info.vendorIDValid = true;
@@ -5262,59 +5267,38 @@ int send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int device_Reset(ScsiIoCtx *scsiIoCtx)
+int os_Device_Reset(tDevice *device)
 {
     int ret = FAILURE;
     //this IOCTL is only supported for non-scsi devices, which includes anything (ata or scsi) attached to a USB or SCSI or SAS interface
-    if (scsiIoCtx->device->drive_info.drive_type == ATA_DRIVE)
+    //This does not seem to work since it is obsolete and likely not implemented in modern drivers
+    //use the Windows API call - http://msdn.microsoft.com/en-us/library/windows/hardware/ff560603%28v=vs.85%29.aspx
+    //ULONG returned_data = 0;
+    BOOL success = 0;
+    SetLastError(NO_ERROR);
+    device->os_info.last_error = NO_ERROR;
+    success = DeviceIoControl(device->os_info.fd,
+        OBSOLETE_IOCTL_STORAGE_RESET_DEVICE,
+        NULL,
+        0,
+        NULL,
+        0,
+        NULL,
+        FALSE);
+    device->os_info.last_error = GetLastError();
+    if (success && device->os_info.last_error == NO_ERROR)
     {
-        //This does not seem to work since it is obsolete and likely not implemented in modern drivers
-        //use the Windows API call - http://msdn.microsoft.com/en-us/library/windows/hardware/ff560603%28v=vs.85%29.aspx
-        //ULONG returned_data = 0;
-        BOOL success = 0;
-        scsiIoCtx->device->os_info.last_error = 0;
-        success = DeviceIoControl(scsiIoCtx->device->os_info.fd,
-            OBSOLETE_IOCTL_STORAGE_RESET_DEVICE,
-            NULL,
-            0,
-            NULL,
-            0,
-            NULL,
-            FALSE);
-        scsiIoCtx->device->os_info.last_error = GetLastError();
-        if (success && scsiIoCtx->device->os_info.last_error == 0)
-        {
-            ret = SUCCESS;
-        }
-        else
-        {
-            ret = NOT_SUPPORTED;
-            scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_FIXED;
-            scsiIoCtx->returnStatus.senseKey = 0x05;
-            scsiIoCtx->returnStatus.asc = 0x20;
-            scsiIoCtx->returnStatus.ascq = 0x00;
-            //dummy up sense data
-            if (scsiIoCtx->psense != NULL)
-            {
-                memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-                //fill in not supported
-                scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
-                scsiIoCtx->psense[2] = 0x05;
-                //acq
-                scsiIoCtx->psense[12] = 0x20;//invalid operation code
-                //acsq
-                scsiIoCtx->psense[13] = 0x00;
-            }
-        }
+        ret = SUCCESS;
     }
     else
     {
-        ret = NOT_SUPPORTED;
+        ret = OS_COMMAND_NOT_AVAILABLE;
     }
+    //TODO: catch not supported versus an error
     return ret;
 }
 
-int bus_Reset(ScsiIoCtx *scsiIoCtx)
+int os_Bus_Reset(tDevice *device)
 {
     int ret = FAILURE;
     //This does not seem to work since it is obsolete and likely not implemented in modern drivers
@@ -5322,8 +5306,10 @@ int bus_Reset(ScsiIoCtx *scsiIoCtx)
     ULONG returned_data = 0;
     BOOL success = 0;
     STORAGE_BUS_RESET_REQUEST reset = { 0 };
-    scsiIoCtx->device->os_info.last_error = 0;
-    success = DeviceIoControl(scsiIoCtx->device->os_info.fd,
+    reset.PathId = device->os_info.scsi_addr.PathId;
+    SetLastError(NO_ERROR);
+    device->os_info.last_error = NO_ERROR;
+    success = DeviceIoControl(device->os_info.fd,
         OBSOLETE_IOCTL_STORAGE_RESET_BUS,
         &reset,
         sizeof(reset),
@@ -5331,32 +5317,22 @@ int bus_Reset(ScsiIoCtx *scsiIoCtx)
         sizeof(reset),
         &returned_data,
         FALSE);
-    scsiIoCtx->device->os_info.last_error = GetLastError();
-    if (success && scsiIoCtx->device->os_info.last_error == 0)
+    device->os_info.last_error = GetLastError();
+    if (success && device->os_info.last_error == NO_ERROR)
     {
         ret = SUCCESS;
     }
     else
     {
-        ret = NOT_SUPPORTED;
-        scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_FIXED;
-        scsiIoCtx->returnStatus.senseKey = 0x05;
-        scsiIoCtx->returnStatus.asc = 0x20;
-        scsiIoCtx->returnStatus.ascq = 0x00;
-        //dummy up sense data
-        if (scsiIoCtx->psense != NULL)
-        {
-            memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-            //fill in not supported
-            scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
-            scsiIoCtx->psense[2] = 0x05;
-            //acq
-            scsiIoCtx->psense[12] = 0x20;//invalid operation code
-            //acsq
-            scsiIoCtx->psense[13] = 0x00;
-        }
+        ret = OS_COMMAND_NOT_AVAILABLE;
     }
+    //TODO: catch not supported versus an error
     return ret;
+}
+
+int os_Controller_Reset(tDevice *device)
+{
+    return OS_COMMAND_NOT_AVAILABLE;
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong

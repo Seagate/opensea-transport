@@ -9011,14 +9011,14 @@ int fill_In_Device_Info(tDevice *device)
         {
         case 0:
             version = SCSI_VERSION_NO_STANDARD;
-            if (device->drive_info.interface_type != USB_INTERFACE)
+            if (device->drive_info.interface_type != USB_INTERFACE && !device->drive_info.passThroughHacks.hacksSetByReportedID)
             {
                 checkForSAT = false; //NOTE: some cheap USB to SATA/PATA adapters will set this version or no version. The only way to work around this, is to make sure the low level for the OS detects it on USB interface and it can be run through the usb_hacks file instead.
             }
             break;
         case 0x81:
             version = SCSI_VERSION_SCSI;//changing to 1 for SCSI
-            if (device->drive_info.interface_type != USB_INTERFACE)
+            if (device->drive_info.interface_type != USB_INTERFACE && !device->drive_info.passThroughHacks.hacksSetByReportedID)
             {
                 checkForSAT = false;//NOTE: some cheap USB to SATA/PATA adapters will set this version or no version. The only way to work around this, is to make sure the low level for the OS detects it on USB interface and it can be run through the usb_hacks file instead.
             }
@@ -9076,7 +9076,10 @@ int fill_In_Device_Info(tDevice *device)
             break;
         case PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE://some USB flash drives show up as this according to the USB mass storage specification...but unfortunately all the ones I've tested show up as Direct Access Block Device just like an HDD :(
             device->drive_info.media_type = MEDIA_SSM_FLASH;
-            checkForSAT = false;
+            if (!device->drive_info.passThroughHacks.hacksSetByReportedID)
+            {
+                checkForSAT = false;
+            }
             break;
         case PERIPHERAL_ENCLOSURE_SERVICES_DEVICE:
         case PERIPHERAL_BRIDGE_CONTROLLER_COMMANDS:
@@ -9108,7 +9111,7 @@ int fill_In_Device_Info(tDevice *device)
             break;
         }
         //check for additional bits to try and filter out when to check for SAT
-        if (checkForSAT)
+        if (checkForSAT && !device->drive_info.passThroughHacks.hacksSetByReportedID)
         {
             //check that response format is 2 (or higher). SAT spec says the response format should be set to 2
             //Not checking this on USB since some adapters set this purposely to avoid certain commands, BUT DO support SAT
@@ -9196,6 +9199,12 @@ int fill_In_Device_Info(tDevice *device)
             device->drive_info.media_type = MEDIA_NVM;
             checkForSAT = false;
         }
+        else if (device->drive_info.passThroughHacks.hacksSetByReportedID && device->drive_info.passThroughHacks.passthroughType == PASSTHROUGH_NONE)
+        {
+            //Disable checking for SAT when the low-level device information says it is not available.
+            //This prevents unnecessary discovery and slow-down on devices that are already confirmed to not support SAT or other ATA passthrough
+            checkForSAT = false;
+        }
 
         //If this is a suspected NVMe device, specifically ASMedia 236X chip, need to do an inquiry with EXACTLY 38bytes to check for a specific signature
         //This will check for some known outputs to know when to do the additional inquiry command for ASMedia detection. This may not catch everything. - TJE
@@ -9235,7 +9244,7 @@ int fill_In_Device_Info(tDevice *device)
 
         //Need to check version descriptors here since they may be useful below, but also because it can be used to help rule-out some USB to NVMe devices.
         bool satVersionDescriptorFound = false;
-        if (version >= 4 && (inq_buf[4] + 4 > 57))//if less than this length, then there definitely won't be a reason to check version descriptors
+        if (!device->drive_info.passThroughHacks.hacksSetByReportedID && version >= 4 && (inq_buf[4] + 4 > 57))//if less than this length, then there definitely won't be a reason to check version descriptors
         {
             uint16_t versionDescriptor = 0;
             for (uint16_t versionIter = 0, offset = 58; versionIter < 7 && offset < (inq_buf[4] + 4); ++versionIter, offset += 2)
@@ -9533,7 +9542,7 @@ int fill_In_Device_Info(tDevice *device)
                 {
                     if(device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
                     {
-                        printf("VPD pages, check SAT info\n");
+                        //printf("VPD pages, check SAT info\n");
                         //do not check the checkForSAT bool here. If we get here, then the device most likely reported support for it so it should be readable.
                         if (SUCCESS == check_SAT_Compliance_And_Set_Drive_Type(device))
                         {

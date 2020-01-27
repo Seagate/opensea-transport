@@ -12,6 +12,8 @@
 // \file asmedia_nvme_helper.h
 // \brief Defines the functions for ASMedia NVMe-USB pass-through
 
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+
 //All code in this file is from a ASMedia USB to NVMe product specification for pass-through NVMe commands.
 //This code should only be used on products that are known to use this pass-through interface.
 
@@ -589,3 +591,4 @@ int asm_nvme_Subsystem_Reset(tDevice *device)
 {
     return NOT_SUPPORTED;
 }
+#endif //DISABLE_NVME_PASSTHROUGH

@@ -15,6 +15,8 @@
 //All code in this file is from a JMicron USB to NVMe product specification for pass-through nvme commands.
 //This code should only be used on products that are known to use this pass-through interface.
 
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+
 #include "jmicron_nvme_helper.h"
 #include "scsi_helper_func.h" //for ability to send a SCSI IO
 
@@ -365,3 +367,5 @@ int jm_nvme_Subsystem_Reset(tDevice *device)
     }
     return ret;
 }
+
+#endif //DISABLE_NVME_PASSTHROUGH
