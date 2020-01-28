@@ -1305,8 +1305,12 @@ extern "C"
         PWR_CND_IDLE_A    = 0x81, //value according to ATA spec.
         PWR_CND_IDLE_B    = 0x82, //value according to ATA spec.
         PWR_CND_IDLE_C    = 0x83, //value according to ATA spec.
-        PWR_CND_ACTIVE    = 0x84, //value is just for continuation (not ATA spec SCSI has 0)
-        PWR_CND_ALL       = 0xFF,
+        PWR_CND_ALL       = 0xFF, //value according to ATA spec.
+        PWR_CND_ACTIVE,           //Not defined in ATA, but another power mode that may be specified, so it is placed after the defined ATA values.
+        PWR_CND_IDLE,             //Legacy idle mode. Basically the same as idle_a, but defined separately since a different command may be used to transition to this mode.
+        PWR_CND_IDLE_UNLOAD,      //sending the idle immediate - unload option
+        PWR_CND_STANDBY,          //Legacy Standby mode. Basically the same as standby_z, but defined separately since a different command may be used to transition to this mode.
+        PWR_CND_SLEEP,            //Sleep mode. WARNING: This require a reset to wake up from, but it is included here for those that want to do this
         PWR_CND_RESERVED
     } ePowerConditionID;
 
