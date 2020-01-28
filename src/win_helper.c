@@ -2199,20 +2199,17 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 #endif
 
     //Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
-#if !defined (_M_ARM) && !defined (_M_ARM_ARMV7VE) && !defined (_M_ARM_FP ) && !defined (_M_ARM64)
-    if (flags & BUS_RESCAN_ALLOWED)
+    //ARM requires 10.0.16299.0 API to get cfgmgr32 library!
+    //TODO: add better check for API version and ARM to turn this on and off.
+    //try forcing a system rescan before opening the list. This should help with crappy drivers or bad hotplug support - TJE
+    DEVINST deviceInstance;
+    DEVINSTID tree = NULL;//set to null for root of device tree
+    ULONG locateNodeFlags = 0;//add flags here if we end up needing them
+    if (CR_SUCCESS == CM_Locate_DevNode(&deviceInstance, tree, locateNodeFlags))
     {
-        //try forcing a system rescan before opening the list. This should help with crappy drivers or bad hotplug support - TJE
-        DEVINST deviceInstance;
-        DEVINSTID tree = NULL;//set to null for root of device tree
-        ULONG locateNodeFlags = 0;//add flags here if we end up needing them
-        if (CR_SUCCESS == CM_Locate_DevNode(&deviceInstance, tree, locateNodeFlags))
-        {
-            ULONG reenumerateFlags = 0;
-            CM_Reenumerate_DevNode(deviceInstance, reenumerateFlags);
-        }
+        ULONG reenumerateFlags = 0;
+        CM_Reenumerate_DevNode(deviceInstance, reenumerateFlags);
     }
-#endif
 
     int  driveNumber = 0, found = 0;
     for (driveNumber = 0; driveNumber < MAX_DEVICES_TO_SCAN; driveNumber++)
