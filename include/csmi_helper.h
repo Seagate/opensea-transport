@@ -36,6 +36,8 @@ extern "C"
 
     #define CSMI_DEBUG_LEVEL 0 //set to values 1 - 4 to debug different verbosity levels...this is a define because I thought it was easier to use for the conversion than another variable..this shouldn't be on in released code anyways
 
+    #define CSMI_WIN_MAX_DEVICE_NAME_LENGTH UINT8_C(40)
+
     typedef enum
     {
         FIS_TYPE_REG_H2D    = 0x27, // Register FIS - host to device
