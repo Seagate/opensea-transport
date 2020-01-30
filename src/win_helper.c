@@ -1682,15 +1682,9 @@ int get_Device(const char *filename, tDevice *device )
     STORAGE_PROPERTY_QUERY      query;
     STORAGE_DESCRIPTOR_HEADER   header;
 
-#if defined UNICODE
-    WCHAR device_name[80] = { 0 };
-    LPCWSTR ptrDeviceName = &device_name[0];
-    mbstowcs_s(NULL, device_name, strlen(filename) + 1, filename, _TRUNCATE); //Plus null
-#else
-    char device_name[40] = { 0 };
-    LPCSTR ptrDeviceName = &device_name[0];
-    strcpy(&device_name[0], filename);
-#endif
+    TCHAR device_name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+    TCHAR *ptrDeviceName = &device_name[0];
+    _stprintf_s(device_name, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), filename);
 
     //printf("%s -->\n Opening Device %s\n",__FUNCTION__, filename);
     if (!(validate_Device_Struct(device->sanity)))
@@ -1761,7 +1755,7 @@ int get_Device(const char *filename, tDevice *device )
 
         //map the drive to a volume letter
         DWORD driveLetters = 0;
-        char currentLetter = 'A';
+        TCHAR currentLetter = 'A';
         driveLetters = GetLogicalDrives();
         device->os_info.fileSystemInfo.fileSystemInfoValid = true;//Setting this since we have code here to detect the volumes in the OS
         bool foundVolumeLetter = false;
@@ -1770,17 +1764,10 @@ int get_Device(const char *filename, tDevice *device )
             if (driveLetters & BIT0)
             {
                 //a volume with this letter exists...check it's physical device number
-#if defined UNICODE
-                WCHAR device_name[80] = { 0 };
-                LPWSTR ptrLetterName = &device_name[0];
-                swprintf(ptrLetterName, 80, L"\\\\.\\%c:", currentLetter);
-                HANDLE letterHandle = CreateFile((LPCWSTR)ptrLetterName,
-#else
-                char device_name[40] = { 0 };
-                LPSTR ptrLetterName = &device_name[0];
-                snprintf(ptrLetterName, 40, "\\\\.\\%c:", currentLetter);
-                HANDLE letterHandle = CreateFile((LPCSTR)ptrLetterName,
-#endif
+                TCHAR device_name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+                TCHAR *ptrLetterName = &device_name[0];
+                _stprintf_s(ptrLetterName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\%c:"), currentLetter);
+                HANDLE letterHandle = CreateFile(ptrLetterName,
                     GENERIC_WRITE | GENERIC_READ,
                     FILE_SHARE_READ | FILE_SHARE_WRITE,
                     NULL,
@@ -2192,12 +2179,8 @@ int get_Device(const char *filename, tDevice *device )
 int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
     HANDLE fd = NULL;
-#if defined (UNICODE)
-    wchar_t deviceName[40] = { 0 };
-#else
-    char deviceName[40] = { 0 };
-#endif
-
+    TCHAR deviceName[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+    
     //Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
     //ARM requires 10.0.16299.0 API to get cfgmgr32 library!
     //TODO: add better check for API version and ARM to turn this on and off.
@@ -2212,13 +2195,9 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     }
 
     int  driveNumber = 0, found = 0;
-    for (driveNumber = 0; driveNumber < MAX_DEVICES_TO_SCAN; driveNumber++)
+    for (driveNumber = 0; driveNumber < MAX_DEVICES_TO_SCAN; ++driveNumber)
     {
-#if defined (UNICODE)
-    wsprintf(deviceName, L"\\\\.\\PHYSICALDRIVE%d", driveNumber);
-#else
-     snprintf(deviceName, sizeof(deviceName), "\\\\.\\PhysicalDrive%d", driveNumber);
-#endif
+        _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\%s%d"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
         //lets try to open the device.
         fd = CreateFile(deviceName,
                         GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
@@ -2285,12 +2264,8 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     int returnValue = SUCCESS;
     int numberOfDevices = 0;
     int driveNumber = 0, found = 0, failedGetDeviceCount = 0;
-#if defined (UNICODE)
-    wchar_t deviceName[40] = { 0 };
-#else
-    char deviceName[40] = { 0 };
-#endif
-    char    name[80] = { 0 }; //Because get device needs char
+    TCHAR deviceName[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+    char    name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 }; //Because get device needs char
     HANDLE fd = INVALID_HANDLE_VALUE;
     tDevice * d = NULL;
 #if defined (ENABLE_CSMI)
@@ -2324,12 +2299,8 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         d = ptrToDeviceList;
         for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN) && (found < numberOfDevices)); driveNumber++)
         {
-#if defined (UNICODE)
-            wsprintf(deviceName, L"\\\\.\\%hs%d", WIN_PHYSICAL_DRIVE, driveNumber);
-#else
-            snprintf(deviceName, sizeof(deviceName), "%s%d", WIN_PHYSICAL_DRIVE, driveNumber);
-#endif
-      //lets try to open the device.
+            _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\%s%d"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
+            //lets try to open the device.
             fd = CreateFile((LPCTSTR)deviceName,
                 GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
                 FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -2344,7 +2315,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             if (fd != INVALID_HANDLE_VALUE)
             {
                 CloseHandle(fd);
-                snprintf(name, 80, "%s%d", WIN_PHYSICAL_DRIVE, driveNumber);
+                snprintf(name, WIN_MAX_DEVICE_NAME_LENGTH, "%s%d", WIN_PHYSICAL_DRIVE, driveNumber);
                 eVerbosityLevels temp = d->deviceVerbosity;
                 memset(d, 0, sizeof(tDevice));
                 d->deviceVerbosity = temp;

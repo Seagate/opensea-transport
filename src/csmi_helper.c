@@ -19,6 +19,7 @@
 #include <string.h>
 #if defined(_WIN32)
 #include <windows.h>
+#include <tchar.h>
 #else
 #include <sys/ioctl.h>
 #endif
@@ -1292,15 +1293,9 @@ int get_CSMI_Device(const char *filename, tDevice *device)
     }
 
 #if defined(_WIN32)
-#if defined UNICODE
-    WCHAR device_name[80] = { 0 };
-    LPCWSTR ptrDeviceName = &device_name[0];
-    mbstowcs_s(NULL, device_name, strlen(handle) + 1, handle, _TRUNCATE); //Plus null
-#else
-    char device_name[40] = { 0 };
-    LPCSTR ptrDeviceName = &device_name[0];
-    strcpy(&device_name[0], handle);
-#endif
+    TCHAR device_name[40] = { 0 };
+    CONST TCHAR *ptrDeviceName = &device_name[0];
+    _stprintf_s(device_name, 40, TEXT("%hs"), handle);
 
     //lets try to open the device.
     device->os_info.fd = CreateFile(ptrDeviceName,
