@@ -1329,7 +1329,12 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                         {
                                                             ULONG propertyBufLen = 0;
                                                             DEVPROPTYPE propertyType = 0;
-                                                            int scannedVals =_sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%") TEXT(SCNx32) TEXT("&PID_%") TEXT(SCNx32) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
+#if defined (_MSC_VER) && _MSC_VER < SEA_MSC_VER_VS2015
+                                                            //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
+                                                            int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%x&PID_%x\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
+#else
+                                                            int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%") TEXT(SCNx32) TEXT("&PID_%") TEXT(SCNx32) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
+#endif
                                                             device->drive_info.adapter_info.vendorIDValid = true;
                                                             device->drive_info.adapter_info.productIDValid = true;
                                                             if (scannedVals < 2)
@@ -1376,7 +1381,12 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                         {
                                                             uint32_t subsystem = 0;
                                                             uint8_t revision = 0;
+#if defined (_MSC_VER) && _MSC_VER  < SEA_MSC_VER_VS2015
+                                                            //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
+                                                            int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("PCI\\VEN_%lx&DEV_%lx&SUBSYS_%lx&REV_%hhx\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
+#else
                                                             int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("PCI\\VEN_%") TEXT(SCNx32) TEXT("&DEV_%") TEXT(SCNx32) TEXT("&SUBSYS_%") TEXT(SCNx32) TEXT("&REV_%") TEXT(SCNx8) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
+#endif
                                                             device->drive_info.adapter_info.vendorIDValid = true;
                                                             device->drive_info.adapter_info.productIDValid = true;
                                                             device->drive_info.adapter_info.revision = revision;
@@ -1414,7 +1424,13 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                                 TCHAR vendorIDString[7] = { 0 };
                                                                 _tcsncpy_s(vendorIDString, 7 * sizeof(TCHAR), token, 6);
                                                                 _tprintf(TEXT("%s\n"), vendorIDString);
+#if defined (_MSC_VER) && _MSC_VER  < SEA_MSC_VER_VS2015
+                                                                //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
+                                                                int result = _stscanf(token, TEXT("%06lx"), &device->drive_info.adapter_info.vendorID);
+#else
                                                                 int result = _stscanf(token, TEXT("%06") TEXT(SCNx32), &device->drive_info.adapter_info.vendorID);
+#endif
+                                                                
                                                                 if (result == 1)
                                                                 {
                                                                     device->drive_info.adapter_info.vendorIDValid = true;
