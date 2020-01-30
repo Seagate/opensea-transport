@@ -1724,31 +1724,35 @@ int get_Device(const char *filename, tDevice *device )
         //set the handle name
         strncpy_s(device->os_info.name, 30, filename, 30);
 
-        if (strstr(device->os_info.name, "Physical"))
+        if (strstr(device->os_info.name, WIN_PHYSICAL_DRIVE))
         {
             uint32_t drive = UINT32_MAX;
-            sscanf_s(device->os_info.name, "\\\\.\\PhysicalDrive%" SCNu32, &drive);
+            const char *scanFormatString = WIN_PHYSICAL_DRIVE "%" SCNu32;
+            sscanf_s(device->os_info.name, scanFormatString, &drive);
             sprintf(device->os_info.friendlyName, "PD%" PRIu32, drive);
             device->os_info.os_drive_number = drive;
         }
-        else if (strstr(device->os_info.name, "CDROM"))
+        else if (strstr(device->os_info.name, WIN_CDROM_DRIVE))
         {
             uint32_t drive = UINT32_MAX;
-            sscanf_s(device->os_info.name, "\\\\.\\CDROM%" SCNu32, &drive);
+            const char *scanFormatString = WIN_CDROM_DRIVE "%" SCNu32;
+            sscanf_s(device->os_info.name, scanFormatString, &drive);
             sprintf(device->os_info.friendlyName, "CDROM%" PRIu32, drive);
             device->os_info.os_drive_number = drive;
         }
-        else if (strstr(device->os_info.name, "Tape"))
+        else if (strstr(device->os_info.name, WIN_TAPE_DRIVE))
         {
             uint32_t drive = UINT32_MAX;
-            sscanf_s(device->os_info.name, "\\\\.\\Tape%" SCNu32, &drive);
+            const char *scanFormatString = WIN_TAPE_DRIVE "%" SCNu32;
+            sscanf_s(device->os_info.name, scanFormatString, &drive);
             sprintf(device->os_info.friendlyName, "TAPE%" PRIu32, drive);
             device->os_info.os_drive_number = drive;
         }
-        else if (strstr(device->os_info.name, "Changer"))
+        else if (strstr(device->os_info.name, WIN_CHANGER_DEVICE))
         {
             uint32_t drive = UINT32_MAX;
-            sscanf_s(device->os_info.name, "\\\\.\\Changer%" SCNu32, &drive);
+            const char *scanFormatString = WIN_CHANGER_DEVICE "%" SCNu32;
+            sscanf_s(device->os_info.name, scanFormatString, &drive);
             sprintf(device->os_info.friendlyName, "CHGR%" PRIu32, drive);
             device->os_info.os_drive_number = drive;
         }

@@ -1458,7 +1458,7 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     for (controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS; ++controllerNumber)
     {
 #if defined (_WIN32)
-        _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d:"), WIN_CSMI_DRIVE, controllerNumber);
+        _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d:"), TEXT(WIN_CSMI_DRIVE), controllerNumber);
         //lets try to open the controller.
         fd = CreateFile(deviceName,
             GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
@@ -1570,7 +1570,7 @@ int get_CSMI_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, 
         {
             //TODO: get controller info and only try to go further when we have a phy/port with an attached device.
 #if defined(_WIN32)
-            _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d:"), WIN_CSMI_DRIVE, controllerNumber);
+            _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d:"), TEXT(WIN_CSMI_DRIVE), controllerNumber);
             //lets try to open the device.
             fd = CreateFile((LPCTSTR)deviceName,
                 GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
