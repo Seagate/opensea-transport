@@ -301,6 +301,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\..\include\asmedia_nvme_helper.h" />
     <ClInclude Include="..\..\..\..\include\ata_helper.h" />
     <ClInclude Include="..\..\..\..\include\ata_helper_func.h" />
     <ClInclude Include="..\..\..\..\include\cam_helper.h">
@@ -319,6 +320,7 @@
     <ClInclude Include="..\..\..\..\include\csmi_helper.h" />
     <ClInclude Include="..\..\..\..\include\csmi_helper_func.h" />
     <ClInclude Include="..\..\..\..\include\cypress_legacy_helper.h" />
+    <ClInclude Include="..\..\..\..\include\jmicron_nvme_helper.h" />
     <ClInclude Include="..\..\..\..\include\nec_legacy_helper.h" />
     <ClInclude Include="..\..\..\..\include\nvme_helper.h" />
     <ClInclude Include="..\..\..\..\include\nvme_helper_func.h" />
@@ -341,6 +343,16 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\sntl_helper.h" />
     <ClInclude Include="..\..\..\..\include\ti_legacy_helper.h" />
+    <ClInclude Include="..\..\..\..\include\uefi_helper.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="..\..\..\..\include\usb_hacks.h" />
     <ClInclude Include="..\..\..\..\include\uscsi_helper.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -407,6 +419,7 @@
     <ClInclude Include="..\..\..\..\include\win_helper.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\..\src\asmedia_nvme_helper.c" />
     <ClCompile Include="..\..\..\..\src\ata_cmds.c" />
     <ClCompile Include="..\..\..\..\src\ata_helper.c" />
     <ClCompile Include="..\..\..\..\src\ata_legacy_cmds.c" />
@@ -424,6 +437,7 @@
     <ClCompile Include="..\..\..\..\src\common_public.c" />
     <ClCompile Include="..\..\..\..\src\csmi_helper.c" />
     <ClCompile Include="..\..\..\..\src\cypress_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\jmicron_nvme_helper.c" />
     <ClCompile Include="..\..\..\..\src\nec_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\nvme_cmds.c" />
     <ClCompile Include="..\..\..\..\src\nvme_helper.c" />
@@ -444,6 +458,16 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\src\sntl_helper.c" />
     <ClCompile Include="..\..\..\..\src\ti_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\uefi_helper.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\src\usb_hacks.c" />
     <ClCompile Include="..\..\..\..\src\uscsi_helper.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
