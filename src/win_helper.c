@@ -1987,8 +1987,6 @@ int get_Device(const char *filename, tDevice *device )
                                     if (strncmp(WIN_CDROM_DRIVE, filename, strlen(WIN_CDROM_DRIVE)) == 0)
                                     {
                                         device->drive_info.drive_type = ATAPI_DRIVE;
-                                        device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
-                                        device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//This is GENERALLY true because almost all times the CDB is passed through instead of translated for a passthrough command, so just block it no matter what.
                                     }
                                     else
                                     {
@@ -1997,6 +1995,8 @@ int get_Device(const char *filename, tDevice *device )
                                     //we are assuming, for now, that SAT translation is being done below, and so far through testing on a few chipsets this appears to be correct.
                                     device->drive_info.interface_type = IDE_INTERFACE;
                                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
+                                    device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
+                                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
                                     get_Windows_SMART_IO_Support(device);//might be used later
                                 }
                                 else if (device_desc->BusType == BusTypeUsb)
@@ -2197,7 +2197,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     int  driveNumber = 0, found = 0;
     for (driveNumber = 0; driveNumber < MAX_DEVICES_TO_SCAN; ++driveNumber)
     {
-        _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\%s%d"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
+        _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
         //lets try to open the device.
         fd = CreateFile(deviceName,
                         GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
@@ -2299,7 +2299,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         d = ptrToDeviceList;
         for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN) && (found < numberOfDevices)); driveNumber++)
         {
-            _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\%s%d"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
+            _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
             //lets try to open the device.
             fd = CreateFile((LPCTSTR)deviceName,
                 GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
