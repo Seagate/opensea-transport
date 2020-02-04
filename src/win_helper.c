@@ -2205,13 +2205,16 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //ARM requires 10.0.16299.0 API to get cfgmgr32 library!
     //TODO: add better check for API version and ARM to turn this on and off.
     //try forcing a system rescan before opening the list. This should help with crappy drivers or bad hotplug support - TJE
-    DEVINST deviceInstance;
-    DEVINSTID tree = NULL;//set to null for root of device tree
-    ULONG locateNodeFlags = 0;//add flags here if we end up needing them
-    if (CR_SUCCESS == CM_Locate_DevNode(&deviceInstance, tree, locateNodeFlags))
+    if (flags & BUS_RESCAN_ALLOWED)
     {
-        ULONG reenumerateFlags = 0;
-        CM_Reenumerate_DevNode(deviceInstance, reenumerateFlags);
+        DEVINST deviceInstance;
+        DEVINSTID tree = NULL;//set to null for root of device tree
+        ULONG locateNodeFlags = 0;//add flags here if we end up needing them
+        if (CR_SUCCESS == CM_Locate_DevNode(&deviceInstance, tree, locateNodeFlags))
+        {
+            ULONG reenumerateFlags = 0;
+            CM_Reenumerate_DevNode(deviceInstance, reenumerateFlags);
+        }
     }
 
     int  driveNumber = 0, found = 0;
