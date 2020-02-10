@@ -45,25 +45,126 @@ extern "C"
     #include "nvme_helper.h"
 #endif
 
-#if 0
-#define SG_PHYSICAL_DRIVE   "/dev/sg" //followed by a number
-#define SD_PHYSICAL_DRIVE   "/dev/sd" //followed by a letter
-#define BSG_PHYSICAL_DRIVE  "/dev/bsg/" //remaining part of the handle is h:c:t:l
+
+//SG Driver status's since they are not available through standard includes we're using
+
+#ifndef OPENSEA_SG_ERR_DRIVER_MASK
+#define OPENSEA_SG_ERR_DRIVER_MASK 0x0F
 #endif
 
-// \fn get_Device(char * filename)
-// \brief Given a device name (e.g. /dev/sg0) returns the device descriptor
-// \details Function opens the device & then sends a SG_GET_VERSION_NUM
-//          if everything goes well, it returns a sg file descriptor & fills out other info.
-// \todo Add a flags param to allow user to open with O_RDWR, O_RDONLY etc.
-// \param filename name of the device to open
-// \returns device device structure
-//int get_Device(char * filename, device);
+#ifndef OPENSEA_SG_ERR_DRIVER_OK
+#define OPENSEA_SG_ERR_DRIVER_OK 0x00
+#endif
 
-// \fn decipher_maskedStatus
-// \brief Function to figure out what the maskedStatus means
-// \param maskedStatus from the sg structure
-    void decipher_maskedStatus( unsigned char maskedStatus );
+#ifndef OPENSEA_SG_ERR_DRIVER_BUSY
+#define OPENSEA_SG_ERR_DRIVER_BUSY 0x01
+#endif
+
+#ifndef OPENSEA_SG_ERR_DRIVER_SOFT
+#define OPENSEA_SG_ERR_DRIVER_SOFT 0x02
+#endif
+
+#ifndef OPENSEA_SG_ERR_DRIVER_MEDIA
+#define OPENSEA_SG_ERR_DRIVER_MEDIA 0x03
+#endif
+
+#ifndef OPENSEA_SG_ERR_DRIVER_ERROR
+#define OPENSEA_SG_ERR_DRIVER_ERROR 0x04
+#endif
+
+#ifndef OPENSEA_SG_ERR_DRIVER_INVALID
+#define OPENSEA_SG_ERR_DRIVER_INVALID 0x05
+#endif
+
+#ifndef OPENSEA_SG_ERR_DRIVER_TIMEOUT
+#define OPENSEA_SG_ERR_DRIVER_TIMEOUT 0x06
+#endif
+
+#ifndef OPENSEA_SG_ERR_DRIVER_HARD
+#define OPENSEA_SG_ERR_DRIVER_HARD 0x07
+#endif
+
+#ifndef OPENSEA_SG_ERR_DRIVER_SENSE
+#define OPENSEA_SG_ERR_DRIVER_SENSE 0x08
+#endif
+
+//Driver error suggestions
+#ifndef OPENSEA_SG_ERR_SUGGEST_MASK
+#define OPENSEA_SG_ERR_SUGGEST_MASK 0xF0
+#endif
+
+#ifndef OPENSEA_SG_ERR_SUGGEST_NONE
+#define OPENSEA_SG_ERR_SUGGEST_NONE 0x00
+#endif
+
+#ifndef OPENSEA_SG_ERR_SUGGEST_RETRY
+#define OPENSEA_SG_ERR_SUGGEST_RETRY 0x10
+#endif
+
+#ifndef OPENSEA_SG_ERR_SUGGEST_ABORT
+#define OPENSEA_SG_ERR_SUGGEST_ABORT 0x20
+#endif
+
+#ifndef OPENSEA_SG_ERR_SUGGEST_REMAP
+#define OPENSEA_SG_ERR_SUGGEST_REMAP 0x30
+#endif
+
+#ifndef OPENSEA_SG_ERR_SUGGEST_DIE
+#define OPENSEA_SG_ERR_SUGGEST_DIE 0x40
+#endif
+
+#ifndef OPENSEA_SG_ERR_SUGGEST_SENSE
+#define OPENSEA_SG_ERR_SUGGEST_SENSE 0x80
+#endif
+
+//Host errors
+#ifndef OPENSEA_SG_ERR_DID_OK
+#define OPENSEA_SG_ERR_DID_OK 0x0000
+#endif
+
+#ifndef OPENSEA_SG_ERR_DID_NO_CONNECT
+#define OPENSEA_SG_ERR_DID_NO_CONNECT 0x0001
+#endif
+
+#ifndef OPENSEA_SG_ERR_DID_BUS_BUSY
+#define OPENSEA_SG_ERR_DID_BUS_BUSY 0x0002
+#endif
+
+#ifndef OPENSEA_SG_ERR_DID_TIME_OUT
+#define OPENSEA_SG_ERR_DID_TIME_OUT 0x0003
+#endif
+
+#ifndef OPENSEA_SG_ERR_DID_BAD_TARGET
+#define OPENSEA_SG_ERR_DID_BAD_TARGET 0x0004
+#endif
+
+#ifndef OPENSEA_SG_ERR_DID_ABORT
+#define OPENSEA_SG_ERR_DID_ABORT 0x0005
+#endif
+
+#ifndef OPENSEA_SG_ERR_DID_PARITY
+#define OPENSEA_SG_ERR_DID_PARITY 0x0006
+#endif
+
+#ifndef OPENSEA_SG_ERR_DID_ERROR
+#define OPENSEA_SG_ERR_DID_ERROR 0x0007
+#endif
+
+#ifndef OPENSEA_SG_ERR_DID_RESET
+#define OPENSEA_SG_ERR_DID_RESET 0x0008
+#endif
+
+#ifndef OPENSEA_SG_ERR_DID_BAD_INTR
+#define OPENSEA_SG_ERR_DID_BAD_INTR 0x0009
+#endif
+
+#ifndef OPENSEA_SG_ERR_DID_PASSTHROUGH
+#define OPENSEA_SG_ERR_DID_PASSTHROUGH 0x000A
+#endif
+
+#ifndef OPENSEA_SG_ERR_DID_SOFT_ERROR
+#define OPENSEA_SG_ERR_DID_SOFT_ERROR 0x000B
+#endif
 
 // \fn send_sg_io(scsiIoCtx * scsiIoCtx)
 // \brief Function to send a SG_IO ioctl
@@ -75,53 +176,54 @@ extern "C"
 // \param scsiIoCtx
     int send_IO( ScsiIoCtx *scsiIoCtx );
 
-    //-----------------------------------------------------------------------------
-    //
-    //  os_Device_Reset(tDevice *device)
-    //
-    //! \brief   Description:  Attempts a device reset through OS functions available. NOTE: This won't work on every device
-    //
-    //  Entry:
-    //!   \param[in]  device = pointer to device context!   
-    //! 
-    //!
-    //  Exit:
-    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
-    //
-    //-----------------------------------------------------------------------------
-    int os_Device_Reset(tDevice *device);
+//-----------------------------------------------------------------------------
+//
+//  os_Device_Reset(tDevice *device)
+//
+//! \brief   Description:  Attempts a device reset through OS functions available. NOTE: This won't work on every device
+//
+//  Entry:
+//!   \param[in]  device = pointer to device context!   
+//! 
+//!
+//  Exit:
+//!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+//
+//-----------------------------------------------------------------------------
+int os_Device_Reset(tDevice *device);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  os_Bus_Reset(tDevice *device)
-    //
-    //! \brief   Description:  Attempts a bus reset through OS functions available. NOTE: This won't work on every device
-    //
-    //  Entry:
-    //!   \param[in]  device = pointer to device context!   
-    //! 
-    //!
-    //  Exit:
-    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
-    //
-    //-----------------------------------------------------------------------------
-    int os_Bus_Reset(tDevice *device);
+//-----------------------------------------------------------------------------
+//
+//  os_Bus_Reset(tDevice *device)
+//
+//! \brief   Description:  Attempts a bus reset through OS functions available. NOTE: This won't work on every device
+//
+//  Entry:
+//!   \param[in]  device = pointer to device context!   
+//! 
+//!
+//  Exit:
+//!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+//
+//-----------------------------------------------------------------------------
+int os_Bus_Reset(tDevice *device);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  os_Controller_Reset(tDevice *device)
-    //
-    //! \brief   Description:  Attempts a controller reset through OS functions available. NOTE: This won't work on every device
-    //
-    //  Entry:
-    //!   \param[in]  device = pointer to device context!   
-    //! 
-    //!
-    //  Exit:
-    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
-    //
-    //-----------------------------------------------------------------------------
-    int os_Controller_Reset(tDevice *device);
+//-----------------------------------------------------------------------------
+//
+//  os_Controller_Reset(tDevice *device)
+//
+//! \brief   Description:  Attempts a controller reset through OS functions available. NOTE: This won't work on every device
+//
+//  Entry:
+//!   \param[in]  device = pointer to device context!   
+//! 
+//!
+//  Exit:
+//!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+//
+//-----------------------------------------------------------------------------
+int os_Controller_Reset(tDevice *device);
+
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 //-----------------------------------------------------------------------------
