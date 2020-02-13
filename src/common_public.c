@@ -1286,7 +1286,13 @@ bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
                 && (strstr(device->drive_info.bridge_info.childDriveMN, "401") != NULL))                                                                                    //newer models
             ||
             ((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
-                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CM") == 7))
+                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CM") == 7))		// BC120
+			||
+			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
+				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CV") == 7))		// Q1
+			||
+			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
+				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "MC") == 7))		// BC125
             ||
             ((strstr(device->drive_info.bridge_info.childDriveMN, "YA") != NULL)
                 && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CM") == 7))
@@ -1305,7 +1311,13 @@ bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
                 && (strstr(device->drive_info.product_identification, "401") != NULL))                                                                                  //newer models
             ||
             ((strstr(device->drive_info.product_identification, "ZA") != NULL)
-                && (find_last_occurrence_in_string(device->drive_info.product_identification, "CM") == 7))
+                && (find_last_occurrence_in_string(device->drive_info.product_identification, "CM") == 7))					// BC120
+			||
+			((strstr(device->drive_info.product_identification, "ZA") != NULL)
+				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "CV") == 7))					// Q1
+			||
+			((strstr(device->drive_info.product_identification, "ZA") != NULL)
+				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "MC") == 7))					// BC125
             ||
             ((strstr(device->drive_info.product_identification, "YA") != NULL)
                 && (find_last_occurrence_in_string(device->drive_info.product_identification, "CM") == 7))
