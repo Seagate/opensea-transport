@@ -7980,7 +7980,6 @@ int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&commandTimer);
-    device->os_info.last_error = GetLastError();
     CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
     overlappedStruct.hEvent = NULL;
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
