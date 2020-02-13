@@ -9247,30 +9247,38 @@ int fill_In_Device_Info(tDevice *device)
         if (!device->drive_info.passThroughHacks.hacksSetByReportedID && version >= 4 && (inq_buf[4] + 4 > 57))//if less than this length, then there definitely won't be a reason to check version descriptors
         {
             uint16_t versionDescriptor = 0;
-            for (uint16_t versionIter = 0, offset = 58; versionIter < 7 && offset < (inq_buf[4] + 4); ++versionIter, offset += 2)
+            if(strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0 || strstr(device->drive_info.product_identification, "NVME"))
             {
-                versionDescriptor = M_BytesTo2ByteValue(device->drive_info.scsiVpdData.inquiryData[offset + 0], device->drive_info.scsiVpdData.inquiryData[offset + 1]);
-                if (is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT)
-                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT2)
-                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT3)
-                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT4)
-                    //Next version descriptors aren't sat but should only appear on a SAT interface...at least we know they are ATA/ATAPI so it won't hurt to try issuing a command to the drive.
-                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI6)
-                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI7)
-                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI8)
-                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ACSx)
-                    )
+                //This means we most likely have some sort of NVMe device, so SAT (ATA passthrough) makes no sense to check for.
+                checkForSAT = false;
+            }
+            else
+            {
+                for (uint16_t versionIter = 0, offset = 58; versionIter < 7 && offset < (inq_buf[4] + 4); ++versionIter, offset += 2)
                 {
-                    //This is a workaround for some USB to NVMe adapters that list a SAT descriptor, which makes no sense.
-                    if (strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0)
+                    versionDescriptor = M_BytesTo2ByteValue(device->drive_info.scsiVpdData.inquiryData[offset + 0], device->drive_info.scsiVpdData.inquiryData[offset + 1]);
+                    if (is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT)
+                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT2)
+                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT3)
+                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT4)
+                        //Next version descriptors aren't sat but should only appear on a SAT interface...at least we know they are ATA/ATAPI so it won't hurt to try issuing a command to the drive.
+                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI6)
+                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI7)
+                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI8)
+                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ACSx)
+                        )
                     {
-                        satVersionDescriptorFound = true;
+                        //This is a workaround for some USB to NVMe adapters that list a SAT descriptor, which makes no sense.
+                        if (strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0 || strstr(device->drive_info.product_identification, "NVME") == NULL)
+                        {
+                            satVersionDescriptorFound = true;
+                        }
+                        else
+                        {
+                            checkForSAT = false;
+                        }
+                        break;
                     }
-                    else
-                    {
-                        checkForSAT = false;
-                    }
-                    break;
                 }
             }
         }
