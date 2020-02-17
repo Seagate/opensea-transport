@@ -16,6 +16,8 @@
 #if defined (ENABLE_OFNVME) && !defined (DISABLE_NVME_PASSTHROUGH)
 
 #include "common.h"
+#include "common_public.h"
+#include "nvme_helper.h"
 #include <stdint.h>
 #include "of_nvmeIoctl.h"
 

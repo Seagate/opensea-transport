@@ -66,9 +66,6 @@
     <ClInclude Include="..\..\..\..\include\nvme_helper_func.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\include\tcg_helper.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\include\platform_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -124,6 +121,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\asmedia_nvme_helper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\of_nvme_helper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\of_nvme_helper_func.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\of_nvmeIoctl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\uefi_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -207,6 +216,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\src\asmedia_nvme_helper.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\of_nvme_helper.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\uefi_helper.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
