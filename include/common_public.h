@@ -702,7 +702,6 @@ extern "C"
         MMC_INTERFACE,
         SD_INTERFACE,
         IEEE_1394_INTERFACE,
-        CUSTOM_INTERFACE //Driver or some other way to issue commands that is not matched by anything above.
     } eInterfaceType;
 
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
@@ -1173,6 +1172,7 @@ extern "C"
         #endif
         #elif defined (_WIN32)
         HANDLE              fd;
+        HANDLE              scsiSRBHandle;//To support for SCSI SRB IOCTLs (miniport) that use this same handle type (\\.\SCSI<pathId>:)
         SCSI_ADDRESS        scsi_addr;
         int                 os_drive_number;
         int                 srbtype; //this will be used to filter when a controller supports the new SCSI PassThrough EX IOCTLs
@@ -1196,13 +1196,18 @@ extern "C"
             //TODO: expand this struct if we need other data when we check for firmware download support on a device.
         }fwdlIOsupport;
         uint32_t adapterMaxTransferSize;//Bytes. Returned by querying for adapter properties. Can be used to know when trying to request more than the adapter or driver supports.
+#if defined (ENABLE_OFNVME) && !defined (DISABLE_NVME_PASSTHROUGH)
+        bool openFabricsNVMePassthroughSupported;//If true, then nvme commands can be issued using the open fabrics NVMe passthrough IOCTL
+#else
+        bool ofReservedUnusedPadding;
+#endif
         //TODO: Store the device path! This may occasionally be useful to have. Longest one will probably be no more that MAX_DEVICE_ID_LEN characters. (This is defined as 200)
         //padding to keep same size as other OSs. This is to keep things similar across OSs.
         //Variable sizes based on 32 vs 64bit since handle is a void*
         #if defined (_WIN64)
-            uint8_t paddWin[57];
+            uint8_t paddWin[48];
         #else
-            uint8_t paddWin[61];
+            uint8_t paddWin[56];
         #endif //Win64 for padding
         #else
         int                 fd;//some other nix system that only needs a integer file handle

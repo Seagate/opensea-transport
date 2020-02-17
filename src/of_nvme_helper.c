@@ -23,33 +23,9 @@
 #include "scsi_helper_func.h"
 #include "nvme_helper_func.h"
 
-extern bool validate_Device_Struct(versionBlock);
-
-int close_OFNVME_Device(tDevice *device)
-{
-    if (device)
-    {
-        device->os_info.last_error = ERROR_SUCCESS;
-        if (CloseHandle(device->os_info.fd))
-        {
-            device->os_info.fd = INVALID_HANDLE_VALUE;
-            return SUCCESS;
-        }
-        else
-        {
-            device->os_info.last_error = GetLastError();
-            return FAILURE;
-        }
-    }
-    else
-    {
-        return MEMORY_FAILURE;
-    }
-}
-
 //Need to setup an admin identify and try sending it. If this device doesn't support this IOCTL, it should fail, otherwise it will work.
 //This is the same way the sample app works. Would be better if there was some other buffer to just return and validate that reported the driver name, version, etc
-bool supports_NVME_IO(HANDLE deviceHandle)
+bool supports_OFNVME_IO(HANDLE deviceHandle)
 {
     bool supported = false;
     uint32_t bufferSize = sizeof(NVME_PASS_THROUGH_IOCTL) + 4096;
@@ -120,169 +96,6 @@ bool supports_NVME_IO(HANDLE deviceHandle)
     return supported;
 }
 
-//This seems to return IO device error...but I'm not sure why
-int get_OFNVME_SCSI_Address(tDevice * device)
-{
-    int ret = SUCCESS;
-    uint32_t bufferSize = sizeof(SCSI_ADDRESS) + sizeof(SRB_IO_CONTROL);
-    uint8_t *passthroughBuffer = (uint8_t*)calloc_aligned(bufferSize, sizeof(uint8_t), device->os_info.minimumAlignment);
-    if (passthroughBuffer)
-    {
-        PSRB_IO_CONTROL ioctl = (PSRB_IO_CONTROL)passthroughBuffer;
-        ioctl->HeaderLength = sizeof(SRB_IO_CONTROL);
-        ioctl->ControlCode = (ULONG)IOCTL_SCSI_GET_ADDRESS;
-        memcpy(ioctl->Signature, SCSI_SIG_STR, SCSI_SIG_STR_LEN);
-        ioctl->Length = bufferSize - sizeof(SRB_IO_CONTROL);
-        ioctl->Timeout = 15;//seconds
-
-        DWORD last_error = ERROR_SUCCESS;
-        SetLastError(ERROR_SUCCESS);
-        DWORD returned_data = 0;
-        BOOL success = DeviceIoControl(device->os_info.fd,
-            IOCTL_SCSI_MINIPORT,
-            ioctl,
-            sizeof(SRB_IO_CONTROL),
-            ioctl,
-            bufferSize,
-            &returned_data,
-            NULL);
-        if (success)
-        {
-            PSCSI_ADDRESS pScsiAddress = passthroughBuffer + sizeof(SRB_IO_CONTROL);
-            memcpy(&device->os_info.scsi_addr, pScsiAddress, sizeof(SCSI_ADDRESS));
-        }
-        else
-        {
-            last_error = GetLastError();
-            ret = FAILURE;
-        }
-        safe_Free_aligned(passthroughBuffer);
-    }
-    else
-    {
-        ret = MEMORY_FAILURE;
-    }
-    return ret;
-}
-
-int get_OFNVME_Physical_Drive_Number(tDevice * device)
-{
-    int ret = SUCCESS;
-    uint32_t bufferSize = sizeof(STORAGE_DEVICE_NUMBER) + sizeof(SRB_IO_CONTROL);
-    uint8_t *passthroughBuffer = (uint8_t*)calloc_aligned(bufferSize, sizeof(uint8_t), device->os_info.minimumAlignment);
-    if (passthroughBuffer)
-    {
-        PSRB_IO_CONTROL ioctl = (PSRB_IO_CONTROL)passthroughBuffer;
-        ioctl->HeaderLength = sizeof(SRB_IO_CONTROL);
-        ioctl->ControlCode = (ULONG)IOCTL_STORAGE_GET_DEVICE_NUMBER;
-        memcpy(ioctl->Signature, SCSI_SIG_STR, SCSI_SIG_STR_LEN);
-        ioctl->Length = bufferSize - sizeof(SRB_IO_CONTROL);
-        ioctl->Timeout = 15;//seconds
-        SetLastError(ERROR_SUCCESS);
-        DWORD last_error = ERROR_SUCCESS;
-        DWORD returned_data = 0;
-        BOOL success = DeviceIoControl(device->os_info.fd,
-            IOCTL_SCSI_MINIPORT,
-            ioctl,
-            sizeof(SRB_IO_CONTROL),
-            ioctl,
-            bufferSize,
-            &returned_data,
-            NULL);
-        if (success)
-        {
-            PSTORAGE_DEVICE_NUMBER pDevNum = passthroughBuffer + sizeof(SRB_IO_CONTROL);
-            if (pDevNum)
-            {
-                device->os_info.os_drive_number = pDevNum->DeviceNumber;
-            }
-        }
-        else
-        {
-            last_error = GetLastError();
-            ret = FAILURE;
-        }
-        safe_Free_aligned(passthroughBuffer);
-    }
-    else
-    {
-        ret = MEMORY_FAILURE;
-    }
-    return ret;
-}
-
-
-int get_OFNVME_Device(const char * filename, tDevice * device)
-{
-    int ret = FAILURE;
-    if (!(validate_Device_Struct(device->sanity)))
-    {
-        return LIBRARY_MISMATCH;
-    }
-    memcpy(device->os_info.name, filename, strlen(filename));
-    uint64_t devNum = 0;
-    int sscanfret = sscanf(filename, "\\\\.\\SCSI%"SCNu64":", &devNum);
-    if (sscanfret != 0 && sscanfret != EOF)
-    {
-        sprintf(device->os_info.friendlyName, "NVME%" PRIu64 ":", devNum);
-    }
-    else
-    {
-        return BAD_PARAMETER;
-    }
-#if defined UNICODE
-    WCHAR device_name[80] = { 0 };
-    LPCWSTR ptrDeviceName = &device_name[0];
-    mbstowcs_s(NULL, device_name, strlen(handle) + 1, filename, _TRUNCATE); //Plus null
-#else
-    char device_name[40] = { 0 };
-    LPCSTR ptrDeviceName = &device_name[0];
-    strcpy(&device_name[0], filename);
-#endif
-
-    //lets try to open the device.
-    device->os_info.fd = CreateFile(ptrDeviceName,
-        GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
-        FILE_SHARE_READ | FILE_SHARE_WRITE,
-        NULL,
-        OPEN_EXISTING,
-#if !defined(WINDOWS_DISABLE_OVERLAPPED)
-        FILE_FLAG_OVERLAPPED,
-#else
-        0,
-#endif
-        NULL);
-    //DWORD lastError = GetLastError();
-    if (device->os_info.fd != INVALID_HANDLE_VALUE)
-    {
-        //before getting too far, we need to check that this device will actually respond to passthrough requests we expect since this is a generic scsi handle with a custom driver interface
-        if (supports_NVME_IO(device->os_info.fd))
-        {
-            device->os_info.minimumAlignment = sizeof(void *);//setting alignment this way to be compatible across OSs since CSMI doesn't really dictate an alignment, but we should set something. - TJE
-            device->issue_io = (issue_io_func)send_OFNVME_SCSI_IO;//to handle SCSI translation when necessary (software translation)
-            device->issue_nvme_io = (issue_io_func)send_OFNVME_IO;//nvme commands
-            device->drive_info.drive_type = NVME_DRIVE;
-            device->drive_info.interface_type = CUSTOM_INTERFACE;
-            get_OFNVME_Physical_Drive_Number(device);
-            get_OFNVME_SCSI_Address(device);
-            device->drive_info.namespaceID = 1;//TODO: This is hardcoded for debugging. There needs to be some way of determining the actual NSID associated with this handle
-            ret = fill_In_NVMe_Device_Info(device);
-        }
-        else
-        {
-            CloseHandle(device->os_info.fd);
-            memset(device, 0, sizeof(tDevice));
-        }
-    }
-    return ret;
-}
-
-int send_OFNVME_SCSI_IO(ScsiIoCtx * scsiIoCtx)
-{
-    //TODO: We may be able to usb SRBs to issue SCSI CDBs and let the driver perform the translation instead. This may or may not be desired.
-    return sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
-}
-
 int send_OFNVME_Reset(tDevice * device)
 {
     int ret = OS_COMMAND_NOT_AVAILABLE;//Start with this since older drivers may or may not support this.
@@ -300,7 +113,7 @@ int send_OFNVME_Reset(tDevice * device)
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
     DWORD returned_data = 0;
-    BOOL success = DeviceIoControl(device->os_info.fd,
+    BOOL success = DeviceIoControl(device->os_info.scsiSRBHandle,
         IOCTL_SCSI_MINIPORT,
         &ofnvmeReset,
         sizeof(SRB_IO_CONTROL),
@@ -311,7 +124,7 @@ int send_OFNVME_Reset(tDevice * device)
     device->os_info.last_error = GetLastError();
     if (ERROR_IO_PENDING == device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
     {
-        success = GetOverlappedResult(device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
+        success = GetOverlappedResult(device->os_info.scsiSRBHandle, &overlappedStruct, &returned_data, TRUE);
         device->os_info.last_error = GetLastError();
     }
     else if (device->os_info.last_error != ERROR_SUCCESS)
@@ -356,7 +169,7 @@ int send_OFNVME_Add_Namespace(tDevice * device)
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
     DWORD returned_data = 0;
-    BOOL success = DeviceIoControl(device->os_info.fd,
+    BOOL success = DeviceIoControl(device->os_info.scsiSRBHandle,
         IOCTL_SCSI_MINIPORT,
         &ofnvmeReset,
         sizeof(SRB_IO_CONTROL),
@@ -367,7 +180,7 @@ int send_OFNVME_Add_Namespace(tDevice * device)
     device->os_info.last_error = GetLastError();
     if (ERROR_IO_PENDING == device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
     {
-        success = GetOverlappedResult(device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
+        success = GetOverlappedResult(device->os_info.scsiSRBHandle, &overlappedStruct, &returned_data, TRUE);
         device->os_info.last_error = GetLastError();
     }
     else if (device->os_info.last_error != ERROR_SUCCESS)
@@ -412,7 +225,7 @@ int send_OFNVME_Remove_Namespace(tDevice * device)
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
     DWORD returned_data = 0;
-    BOOL success = DeviceIoControl(device->os_info.fd,
+    BOOL success = DeviceIoControl(device->os_info.scsiSRBHandle,
         IOCTL_SCSI_MINIPORT,
         &ofnvmeReset,
         sizeof(SRB_IO_CONTROL),
@@ -423,7 +236,7 @@ int send_OFNVME_Remove_Namespace(tDevice * device)
     device->os_info.last_error = GetLastError();
     if (ERROR_IO_PENDING == device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
     {
-        success = GetOverlappedResult(device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
+        success = GetOverlappedResult(device->os_info.scsiSRBHandle, &overlappedStruct, &returned_data, TRUE);
         device->os_info.last_error = GetLastError();
     }
     else if (device->os_info.last_error != ERROR_SUCCESS)
@@ -556,7 +369,7 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
         overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
         DWORD returned_data = 0;
         start_Timer(&commandTimer);
-        success = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
+        success = DeviceIoControl(nvmeIoCtx->device->os_info.scsiSRBHandle,
             IOCTL_SCSI_MINIPORT,
             ioctl,
             bufferSize,
@@ -567,7 +380,7 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
         nvmeIoCtx->device->os_info.last_error = GetLastError();
         if (ERROR_IO_PENDING == nvmeIoCtx->device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
         {
-            success = GetOverlappedResult(nvmeIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
+            success = GetOverlappedResult(nvmeIoCtx->device->os_info.scsiSRBHandle, &overlappedStruct, &returned_data, TRUE);
             nvmeIoCtx->device->os_info.last_error = GetLastError();
         }
         else if (nvmeIoCtx->device->os_info.last_error != ERROR_SUCCESS)
@@ -634,129 +447,6 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
         ret = MEMORY_FAILURE;
     }
     return ret;
-}
-
-int get_OFNVME_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
-{
-    HANDLE fd = NULL;
-#if defined (UNICODE)
-    wchar_t deviceName[40] = { 0 };
-#else
-    char deviceName[40] = { 0 };
-#endif
-    int  found = 0;
-    for (int controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS; ++controllerNumber)
-    {
-#if defined (UNICODE)
-        wsprintf(deviceName, L"\\\\.\\SCSI%d:", controllerNumber);
-#else
-        snprintf(deviceName, sizeof(deviceName), "\\\\.\\SCSI%d:", controllerNumber);
-#endif
-        //lets try to open the controller.
-        fd = CreateFile(deviceName,
-            GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
-            FILE_SHARE_READ | FILE_SHARE_WRITE,
-            NULL,
-            OPEN_EXISTING,
-#if !defined(WINDOWS_DISABLE_OVERLAPPED)
-            FILE_FLAG_OVERLAPPED,
-#else
-            0,
-#endif
-            NULL);
-        if (fd != INVALID_HANDLE_VALUE)
-        {
-            if (supports_NVME_IO(fd))
-            {
-                ++found;
-            }
-            //close handle to the controller
-            CloseHandle(fd);
-        }
-    }
-    *numberOfDevices = found;
-
-    return SUCCESS;
-}
-
-int get_OFNVME_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
-{
-    int returnValue = SUCCESS;
-    int numberOfDevices = 0;
-    int controllerNumber = 0, found = 0, failedGetDeviceCount = 0;
-#if !defined (UNICODE)
-    char deviceName[40] = { 0 };
-#else
-    wchar_t deviceName[40] = { 0 };
-#endif
-    char    name[80] = { 0 }; //Because get device needs char
-    HANDLE fd = INVALID_HANDLE_VALUE;
-    tDevice * d = NULL;
-
-    //TODO: Check if sizeInBytes is a multiple of
-    if (!(ptrToDeviceList) || (!sizeInBytes))
-    {
-        returnValue = BAD_PARAMETER;
-    }
-    else if ((!(validate_Device_Struct(ver))))
-    {
-        returnValue = LIBRARY_MISMATCH;
-    }
-    else
-    {
-        numberOfDevices = sizeInBytes / sizeof(tDevice);
-        d = ptrToDeviceList;
-        for (controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS && (found < numberOfDevices); ++controllerNumber)
-        {
-            //TODO: get controller info and only try to go further when we have a phy/port with an attached device.
-#if !defined (UNICODE)
-            snprintf(deviceName, sizeof(deviceName), "\\\\.\\SCSI%d:", controllerNumber);
-#else
-            wsprintf(deviceName, L"\\\\.\\SCSI%d:", controllerNumber);
-#endif
-            //lets try to open the device.
-            fd = CreateFile((LPCTSTR)deviceName,
-                GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
-                FILE_SHARE_READ | FILE_SHARE_WRITE,
-                NULL,
-                OPEN_EXISTING,
-#if !defined(WINDOWS_DISABLE_OVERLAPPED)
-                FILE_FLAG_OVERLAPPED,
-#else
-                0,
-#endif
-                NULL);
-            if (fd != INVALID_HANDLE_VALUE)
-            {
-                if (supports_NVME_IO(fd))
-                {
-                    _snprintf(name, 80, "%s%d:", WIN_OFNVME_DRIVE, controllerNumber);
-                    memset(d, 0, sizeof(tDevice));
-                    d->sanity.size = ver.size;
-                    d->sanity.version = ver.version;
-                    d->dFlags = flags;
-                    returnValue = get_OFNVME_Device(name, d);
-                    if (returnValue != SUCCESS)
-                    {
-                        failedGetDeviceCount++;
-                    }
-                    found++;
-                    d++;
-                }
-                //close the handle to the controller once we're done since we will have opened the drive specific handle for each specific drive. (\\.\SCSI<controller>:<port>
-                CloseHandle(fd);
-            }
-        }
-        if (found == failedGetDeviceCount)
-        {
-            returnValue = FAILURE;
-        }
-        else if (failedGetDeviceCount)
-        {
-            returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
-        }
-    }
-    return returnValue;
 }
 
 #endif //ENABLE_OFNVME
