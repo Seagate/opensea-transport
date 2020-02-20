@@ -9505,7 +9505,7 @@ int fill_In_Device_Info(tDevice *device)
                                 memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
                                 device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
                                 remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
-                                for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
+                                for (uint8_t iter = 0; iter < SERIAL_NUM_LEN && iter < strlen(device->drive_info.serialNumber); ++iter)
                                 {
                                     if (!isprint(device->drive_info.serialNumber[iter]))
                                     {
