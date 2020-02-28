@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -29,11 +29,8 @@ char   *currentTime_ptr = currentTimeString;
 int ata_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCommandOptions)
 {
     int ret = UNKNOWN;
-    switch (device->drive_info.ata_Options.passthroughType)
+    switch (device->drive_info.passThroughHacks.passthroughType)
     {
-    case ATA_PASSTHROUGH_UNKNOWN://catch this case and return BAD_PARAMETER
-        ret = BAD_PARAMETER;
-        break;
     case ATA_PASSTHROUGH_PSP:
         ret = send_PSP_Legacy_Passthrough_Command(device, ataCommandOptions);
         break;
@@ -50,8 +47,10 @@ int ata_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCommandO
         ret = send_NEC_Legacy_Passthrough_Command(device, ataCommandOptions);
         break;
     case ATA_PASSTHROUGH_SAT:
-    default://SAT pass through by default since it's the standard
         ret = send_SAT_Passthrough_Command(device, ataCommandOptions);
+        break;
+    default:
+        ret = BAD_PARAMETER;
         break;
     }
     return ret;
@@ -327,16 +326,16 @@ int ata_Read_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, u
 
     if (!ptrData)
     {
-        return FAILURE;
+        return BAD_PARAMETER;
     }
     else if (dataSize < LEGACY_DRIVE_SEC_SIZE)
     {
-        return FAILURE;
+        return BAD_PARAMETER;
     }
     // Must be at 512 boundary
     else if (dataSize % LEGACY_DRIVE_SEC_SIZE)
     {
-        return FAILURE;
+        return BAD_PARAMETER;
     }
 
     ataCommandOptions.commandDirection = XFER_DATA_IN;
@@ -448,16 +447,16 @@ int ata_Write_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, 
 
     if (!ptrData)
     {
-        return FAILURE;
+        return BAD_PARAMETER;
     }
     else if (dataSize < LEGACY_DRIVE_SEC_SIZE)
     {
-        return FAILURE;
+        return BAD_PARAMETER;
     }
     // Must be at 512 boundry
     else if (dataSize % LEGACY_DRIVE_SEC_SIZE)
     {
-        return FAILURE;
+        return BAD_PARAMETER;
     }
 
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
@@ -1397,7 +1396,12 @@ int ata_SCT(tDevice *device, bool useGPL, bool useDMA, eDataTransferDirection di
     {
         return BAD_PARAMETER;
     }
-    if (useGPL) 
+    //This is a hack for some USB drives. While a caller somewhere above this should handle this, this needs to be here to ensure we don't hang these devices.
+    if (device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly)
+    {
+        useGPL = false;
+    }
+    if (useGPL)
     {
         if (direction == XFER_DATA_IN)
         {
@@ -1594,7 +1598,7 @@ int ata_SCT_Read_Write_Long(tDevice *device, bool useGPL, bool useDMA, eSCTRWLMo
 int ata_SCT_Write_Same(tDevice *device, bool useGPL, bool useDMA, eSCTWriteSameFunctions functionCode, uint64_t startLBA, uint64_t fillCount, uint8_t *pattern, uint64_t patternLength)
 {
     int ret = UNKNOWN;
-    uint8_t *writeSameBuffer = (uint8_t*)calloc(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t));
+    uint8_t *writeSameBuffer = (uint8_t*)calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment);
     if (!writeSameBuffer)
     {
         perror("Calloc failure!\n");
@@ -1666,14 +1670,14 @@ int ata_SCT_Write_Same(tDevice *device, bool useGPL, bool useDMA, eSCTWriteSameF
         ret = ata_SCT_Data_Transfer(device, useGPL, useDMA, XFER_DATA_OUT, pattern, (uint32_t)(patternLength * device->drive_info.deviceBlockSize));
     }
 
-    safe_Free(writeSameBuffer);
+    safe_Free_aligned(writeSameBuffer);
     return ret;
 }
 
 int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit)
 {
     int ret = UNKNOWN;
-    uint8_t *errorRecoveryBuffer = (uint8_t*)calloc(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t));
+    uint8_t *errorRecoveryBuffer = (uint8_t*)calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment);
     if (!errorRecoveryBuffer)
     {
         perror("Calloc failure!\n");
@@ -1682,7 +1686,7 @@ int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, ui
     //if we are retrieving the current values, then we better have a good pointer...no point in sending the command if we don't
     if (functionCode == 0x0002 && !currentValue)
     {
-        safe_Free(errorRecoveryBuffer);
+        safe_Free_aligned(errorRecoveryBuffer);
         return BAD_PARAMETER;
     }
 
@@ -1705,14 +1709,14 @@ int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, ui
     {
         *currentValue = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
     }
-    safe_Free(errorRecoveryBuffer);
+    safe_Free_aligned(errorRecoveryBuffer);
     return ret;
 }
 
 int ata_SCT_Feature_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags)
 {
     int ret = UNKNOWN;
-    uint8_t *featureControlBuffer = (uint8_t*)calloc(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t));
+    uint8_t *featureControlBuffer = (uint8_t*)calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment);
     if (!featureControlBuffer)
     {
         perror("Calloc Failure!\n");
@@ -1721,7 +1725,7 @@ int ata_SCT_Feature_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t 
     //make sure we have valid pointers for state and optionFlags
     if (!state || !optionFlags)
     {
-        safe_Free(featureControlBuffer);
+        safe_Free_aligned(featureControlBuffer);
         return BAD_PARAMETER;
     }
     //clear the state and option flags out, unless we are setting something
@@ -1761,7 +1765,7 @@ int ata_SCT_Feature_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t 
             *optionFlags = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
         }
     }
-    safe_Free(featureControlBuffer);
+    safe_Free_aligned(featureControlBuffer);
     return ret; 
 }
 

@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -19,6 +19,10 @@
 #if defined (VMK_CROSS_COMP)
 #include "vm_nvme_lib.h"
 #endif
+#if defined (UEFI_C_SOURCE)
+#include <Protocol/ScsiPassThruExt.h> //for TARGET_MAX_BYTES definition
+#include <Protocol/DevicePath.h> //for device path union/structures
+#endif
 
 #if defined (__cplusplus)
 #define __STDC_FORMAT_MACROS
@@ -30,7 +34,7 @@ extern "C"
     #if defined(OPENSEA_TRANSPORT_API)
         #undef(OPENSEA_TRANSPORT_API)
     #endif
-    
+
     #if defined(_WIN32) //DLL/LIB....be VERY careful making modifications to this unless you know what you are doing!
         #if defined (EXPORT_OPENSEA_TRANSPORT) && defined(STATIC_OPENSEA_TRANSPORT)
             #error "The preprocessor definitions EXPORT_OPENSEA_TRANSPORT and STATIC_OPENSEA_TRANSPORT cannot be combined!"
@@ -55,7 +59,7 @@ extern "C"
     #define OPENSEA_MAX_CONTROLLERS (8U)
     #define MAX_DEVICES_PER_CONTROLLER (256U)
     #define MAX_DEVICES_TO_SCAN (OPENSEA_MAX_CONTROLLERS * MAX_DEVICES_PER_CONTROLLER)
-    
+
     #define SERIAL_NUM_LEN          (20) //Going with ATA lengths
     #define MODEL_NUM_LEN           (40)
     #define FW_REV_LEN              (10)
@@ -449,7 +453,7 @@ extern "C"
     #else
     }__attribute__((packed,aligned(1))) tAtaIdentifyData, *ptAtaIdentifyData;
     #endif
-    
+
 
     #if !defined(DISABLE_NVME_PASSTHROUGH)
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
@@ -642,6 +646,7 @@ extern "C"
         uint8_t                lbaHi;
         uint8_t                device;
         uint8_t                status;
+        uint8_t                padding[5];//empty padding to make sure this structure endds on an 8byte aligned boundary
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataReturnTFRs;
     #pragma pack(pop)
@@ -672,7 +677,7 @@ extern "C"
         MEDIA_SSHD      = 3,    // Hybrid drive.
         MEDIA_OPTICAL   = 4,    // CD/DVD/etc drive media
         MEDIA_TAPE      = 5,    // Tape Drive media
-        MEDIA_NVM       = 6,    // All NVM drives 
+        MEDIA_NVM       = 6,    // All NVM drives
         MEDIA_UNKNOWN           // anything else we find should get this
     } eMediaType;
 
@@ -706,18 +711,23 @@ extern "C"
     typedef struct _bridgeInfo
     {
         bool isValid;
-        uint16_t productID;
-        uint16_t vendorID;
+        uint16_t childSectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
+        uint8_t padd0[5];
         char childDriveMN[MODEL_NUM_LEN + 1];
+        uint8_t padd1[7];
         char childDriveSN[SERIAL_NUM_LEN + 1];
+        uint8_t padd2[3];
         char childDriveFW[FW_REV_LEN + 1];
+        uint8_t padd3[5];
         uint64_t childWWN;
         char t10SATvendorID[9];//VPD page 89h
+        uint8_t padd4[7];
         char SATproductID[17];//VPD page 89h
+        uint8_t padd5[7];
         char SATfwRev[9];//VPD page 89h
+        uint8_t padd6[7];
         uint32_t childDeviceBlockSize; //This is the logical block size reported by the drive
-        uint32_t childDevicePhyBlockSize; // This is the physical block size reported by the drive. 
-        uint16_t childSectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
+        uint32_t childDevicePhyBlockSize; // This is the physical block size reported by the drive.
         uint64_t childDeviceMaxLba;
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }bridgeInfo;
@@ -725,6 +735,38 @@ extern "C"
     #else
     }__attribute__((packed,aligned(1))) bridgeInfo;
     #endif
+
+    typedef enum _eAdapterInfoType
+    {
+        ADAPTER_INFO_UNKNOWN, //unknown generally means it is not valid or present and was not discovred by low-level OS code
+        ADAPTER_INFO_USB,
+        ADAPTER_INFO_PCI,
+        ADAPTER_INFO_IEEE1394, //supported under linux today
+    }eAdapterInfoType;
+
+#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+#pragma pack(push,1)
+#endif
+    //this structure may or may not be populated with some low-level device adapter info. This will hold USB or PCI/PCIe vendor, product, and revision codes which may help filter capabilities.
+    typedef struct _adapterInfo
+    {
+        bool vendorIDValid;
+        bool productIDValid;
+        bool revisionValid;
+        bool specifierIDValid;
+        eAdapterInfoType infoType;
+        //USB and PCI devices use uint16's for vendor product and revision. IEEE1394 uses uint32's since most of these are 24bit numbers
+        //TODO: Annonymous union for different types??? USB  vs PCI vs IEEE1394???
+        uint32_t vendorID;
+        uint32_t productID;
+        uint32_t revision;
+        uint32_t specifierID;//Used on IEEE1394 only
+#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    }adapterInfo;
+#pragma pack(pop)
+#else
+    }__attribute__((packed, aligned(1))) adapterInfo;
+#endif
 
 
     typedef enum _eATASynchronousDMAMode
@@ -743,8 +785,17 @@ extern "C"
         ATA_PASSTHROUGH_PROLIFIC,
         ATA_PASSTHROUGH_TI,
         ATA_PASSTHROUGH_NEC,
-        ATA_PASSTHROUGH_PSP, //Some PSP drives use this passthrough and others use SAT...
-        ATA_PASSTHROUGH_UNKNOWN
+        ATA_PASSTHROUGH_PSP, //Some PSP drives use this passthrough and others use SAT...it's not clear if this was ever even used. If testing for it, test it last.
+        ATA_PASSTHROUGH_UNKNOWN = 99,//final value to be used by ATA passthrough types
+        //NVMe stuff defined here. All NVMe stuff should be 100 or higher with the exception of the default system passthrough
+        NVME_PASSTHROUGH_SYSTEM = 0,//This is for NVMe devices to use the system passthrough. This is the default since this is most NVMe devices.
+        NVME_PASSTHROUGH_JMICRON = 100,
+        NVME_PASSTHROUGH_ASMEDIA = 101,//ASMedia packet command, which is capable of passing any command
+        NVME_PASSTHROUGH_ASMEDIA_BASIC = 102,//ASMedia command that is capable of only select commands. Must be after full passthrough that way when trying one passthrough after another it can properly find full capabilities before basic capabilities.
+        //TODO: Other vendor unique SCSI to NVMe passthrough here
+        NVME_PASSTHROUGH_UNKNOWN,
+        //No passthrough
+        PASSTHROUGH_NONE = UINT32_MAX
     }ePassthroughType;
 
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
@@ -752,13 +803,12 @@ extern "C"
     #endif
     typedef struct _ataOptions
     {
-        bool use12ByteSATCDBs;
+        eATASynchronousDMAMode dmaMode;
         bool dmaSupported;
         bool readLogWriteLogDMASupported;
         bool readBufferDMASupported;
         bool writeBufferDMASupported;
         bool downloadMicrocodeDMASupported;
-        eATASynchronousDMAMode dmaMode;
         bool taggedCommandQueuingSupported;
         bool nativeCommandQueuingSupported;
         bool readWriteMultipleSupported;
@@ -769,11 +819,10 @@ extern "C"
         bool writeUncorrectableExtSupported;
         bool fourtyEightBitAddressFeatureSetSupported;
         bool generalPurposeLoggingSupported;
-        ePassthroughType passthroughType;//This should be left alone unless you know for a fact which passthrough to use. SAT is the default and should be used unless you know you need a legacy (pre-SAT) passthrough type.
-        bool followUpRequestRTFRcommandSupported;//Some devices may support this command, but not all. Some USB device reset when issued this, which is why this boolean flag exists
-        bool alwaysSetCheckConditionBit;//this will cause all commands to set the check condition bit. This means any ATA Passthrough command should always get back an ATA status which may help with sense data and judging what went wrong better. Be aware that this may not be liked on some devices and some may just ignore it.
+        bool alwaysCheckConditionAvailableBit;//this will cause all commands to set the check condition bit. This means any ATA Passthrough command should always get back an ATA status which may help with sense data and judging what went wrong better. Be aware that this may not be liked on some devices and some may just ignore it.
         bool enableLegacyPassthroughDetectionThroughTrialAndError;//This must be set to true in order to work on legacy (ancient) passthrough if the VID/PID is not in the list and not read from the system.
         bool senseDataReportingEnabled;//this is to track when the RTFRs may contain a sense data bit so it can be read automatically.
+        uint8_t forceSATCDBLength;//set this to 12, 16, or 32 to force a specific CDB length to use. If you set 12, but send an extended command 16B will be used if any extended registers are set. Same with 32B will be used if ICC or AUX are set.
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataOptions;
     #pragma pack(pop)
@@ -822,6 +871,112 @@ extern "C"
     }__attribute__((packed,aligned(1))) softwareSATFlags;
     #endif
 
+    //This is for test unit ready after failures to keep up performance on devices that slow down a LOT durring error processing (USB mostly)
+    #define TURF_LIMIT 10
+
+    //The passthroughHacks structure is to hold information to help with passthrough on OSs, USB adapters, SCSI adapters, etc. Most of this is related to USB adapters though.
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    #pragma pack(push,1)
+    #endif
+    typedef struct _passthroughHacks
+    {
+        //generic information up top.
+        bool hacksSetByReportedID;//This is true if the code was able to read and set hacks based on reported vendor and product IDs from lower levels. If this is NOT set, then the information below is set either by trial and error or by known product identification matches.
+        bool someHacksSetByOSDiscovery;//Will be set if any of the below are set by default by the OS level code. This may happen in Windows for ATA/SCSI passthrough to ATA devices
+        ePassthroughType passthroughType;//This should be left alone unless you know for a fact which passthrough to use. SAT is the default and should be used unless you know you need a legacy (pre-SAT) passthrough type.
+        bool testUnitReadyAfterAnyCommandFailure;//This should be done whenever we have a device that is known to increase time to return response to bad commands. Many USB bridges need this.
+        uint8_t turfValue;//This holds the number of times longer it takes a device to respond without test unit ready. This is held here to make it easier to change library wide without retesting a device.
+        //SCSI hacks are those that relate to things to handle when issuing SCSI commands that may be translated improperly in some cases.
+        struct
+        {
+            bool unitSNAvailable;//This means we can request this page even if other VPD pages don't work.
+            struct {
+                bool available;//means that the bools below have been set. If not, need to use default read/write settings in the library.
+                bool rw6;
+                bool rw10;
+                bool rw12;
+                bool rw16;
+            }readWrite;
+            bool noVPDPages;//no VPD pages are supported. The ONLY excetion to this is the unitSNAvailable bit above. Numerous USBs tested will only support that page...not even the list of pages will be supported by them.
+            bool noModePages;//no mode pages are supported
+            bool noLogPages;//no mode pages are supported
+            bool noLogSubPages;
+            bool mode6bytes;//mode sense/select 6 byte commands only
+            bool noModeSubPages;//Subpages are not supported, don't try sending these commands
+            bool noReportSupportedOperations;//report supported operation codes command is not supported.
+            bool reportSingleOpCodes;//reporting supported operation codes specifying a specific operation code is supported by the device.
+            bool reportAllOpCodes;//reporting all operation codes is supported by the device.
+            bool securityProtocolSupported;//SCSI security protocol commands are supported
+            bool securityProtocolWithInc512;//SCSI security protocol commands are ONLY supported with the INC512 bit set.
+            bool preSCSI2InqData;//If this is true, then the struct below is intended to specify where, and how long, the fields are for product ID, vendorID, revision, etc. This structure will likely need multiple changes as these old devices are encountered and work is done to support them - TJE
+            struct {
+                uint8_t productIDOffset;//If 0, not valid or reported
+                uint8_t productIDLength;//If 0, not valid or reported
+                uint8_t productRevOffset;
+                uint8_t productRevLength;
+                uint8_t vendorIDOffset;
+                uint8_t vendorIDLength;
+                uint8_t serialNumberOffset;
+                uint8_t serialNumberLength;
+            }scsiInq;
+            uint8_t reserved[6];//padd out above to 8 byte boundaries
+            uint32_t maxTransferLength;//Maximum SCSI command transfer length in bytes. Mostly here for USB where translations aren't accurate or don't show this properly.
+            uint32_t scsipadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
+        }scsiHacks;
+        union {
+            //ATA Hacks refer to SAT translation issues or workarounds.
+            struct {
+                bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
+                //bool useA1SATPassthroughWheneverPossible;//For USB adapters that will only process 28bit commands with A1 and will NOT issue them with 85h
+                bool a1NeverSupported;//prevent retrying with 12B command since it isn't supported anyways.
+                bool a1ExtCommandWhenPossible;//If this is set, when issuing an EXT (48bit) command, use the A1 opcode as long as there are not ext registers that MUST be set to issue the command properly. This is a major hack for devices that don't support the 85h opcode.
+                bool returnResponseInfoSupported;//can send the SAT command to get response information for RTFRs
+                bool returnResponseInfoNeedsTDIR;//supports return response info, but must have T_DIR bit set for it to work properly
+                bool returnResponseIgnoreExtendBit;//Some devices support returning response info, but don't properly set the extend bit, so this basically means copy extended RTFRs anyways.
+                bool alwaysUseTPSIUForSATPassthrough;//some USBs do this better than others.
+                bool alwaysCheckConditionAvailable;//Not supported by all SAT translators. Don't set unless you know for sure!!!
+                bool alwaysUseDMAInsteadOfUDMA;//send commands with DMA mode instead of UDMA since the device doesn't support UDMA passthrough modes.
+                bool dmaNotSupported;//DMA passthrough is not available of any kind.
+                bool partialRTFRs;//This means only 28bit RTFRs will be able to be retrived by the device. This hack is more helpful for code trying different commands to filter capabilities than for trying to talk to the device.
+                bool noRTFRsPossible;//This means on command responses, we cannot get any return task file registers back from the device, so avoid commands that rely on this behavior
+                bool multiSectorPIOWithMultipleMode;//This means that multisector PIO works, BUT only when a set multiple mode command has been sent first and it is limited to the multiple mode.
+                bool singleSectorPIOOnly;//This means that the adapter only supports single sector PIO transfers
+                bool ata28BitOnly;//This is for some devices where the passthrough only allows a 28bit command through, even if the target drive is 48bit
+                bool noMultipleModeCommands;//This is to disable use read/write multiple commands if a bridge chip doesn't handle them correctly.
+                //uint8_t reserved[1];//padd byte for 8 byte boundary with above bools.
+                uint32_t maxTransferLength;//ATA Passthrough max transfer length in bytes. This may be different than the scsi translation max.
+                uint32_t atapadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
+            }ataPTHacks;
+            //NVMe Hacks
+            struct {
+                //This is here mostly for vendor unique NVMe passthrough capabilities.
+                //This structure may also be useful for OSs that have limited capabilities
+                bool limitedPassthroughCapabilities;//If this is set to true, this means only certain commands can be passed through to the device.
+                struct { //This structure will hold which commands are available to passthrough if the above "limitedPassthroughCapabilities" boolean is true, otherwise this structure should be ignored.
+                    bool identifyGeneric;//can "generically" send any identify command with any cns value. This typically means any identify can be sent, not just controller and namespace. Basically CNS field is available.
+                    bool identifyController;
+                    bool identifyNamespace;
+                    bool getLogPage;
+                    bool format;
+                    bool getFeatures;
+                    bool firmwareDownload;
+                    bool firmwareCommit;
+                    bool vendorUnique;
+                    //TODO: As other passthroughs are learned with different capabilities, add other commands that ARE supported by them here so that other layers of code can know what capabilities a given device has.
+                }limitedCommandsSupported;
+                uint8_t reserved[6];//padd out above bools to 8 byte boundaries
+                uint32_t maxTransferLength;
+                uint32_t nvmepadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
+            }nvmePTHacks;
+        };//This is an annonymous union for nvme/ata passthrough hacks since a device will only ever have one or the other. This should be accessed based on passthrough type
+        //TODO: Add more hacks and padd this structure
+    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    }passthroughHacks;
+    #pragma pack(pop)
+    #else
+    }__attribute__((packed,aligned(1))) passthroughHacks;
+    #endif
+
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif
@@ -834,11 +989,16 @@ extern "C"
         uint32_t       devicePhyBlockSize; // This is the physical block size reported by the drive.
         uint32_t       dataTransferSize;//this the block size that will be transfered
         uint16_t       sectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
+        uint8_t padd0[2];
         uint64_t       deviceMaxLba;
         char           serialNumber[SERIAL_NUM_LEN + 1];
+        uint8_t padd1[7];
         char           T10_vendor_ident[T10_VENDOR_ID_LEN + 1];
+        uint8_t padd2[7];
         char           product_identification[MODEL_NUM_LEN + 1]; //not INQ
+        uint8_t padd3[7];
         char           product_revision[FW_REV_LEN + 1];
+        uint8_t padd4[5];
         uint64_t       worldWideName;
         union{
             tAtaIdentifyData ata;
@@ -848,25 +1008,29 @@ extern "C"
             //reserved field below is set to 8192 because nvmeIdentifyData structure holds both controller and namespace data which are 4k each
             uint8_t reserved[8192];//putting this here to allow some compatibility when NVMe passthrough is NOT enabled.
         }IdentifyData;
-        tVpdData         scsiVpdData; // Intentionally not part of the above IdentifyData union 
+        tVpdData         scsiVpdData; // Intentionally not part of the above IdentifyData union
         ataReturnTFRs lastCommandRTFRs;//This holds the RTFRs for the last command to be sent to the device. This is not necessarily the last function called as functions may send multiple commands to the device.
         struct {
             bool validData;//must be true for any other fields to be useful
             uint8_t senseKey;
             uint8_t additionalSenseCode;
             uint8_t additionalSenseCodeQualifier;
+            uint8_t padd[4];
         }ataSenseData;
         uint8_t lastCommandSenseData[SPC3_SENSE_LEN];//This holds the sense data for the last command to be sent to the device. This is not necessarily the last function called as functions may send multiple commands to the device.
+        uint8_t padd5[4];
         struct {
             uint32_t lastNVMeCommandSpecific;//DW0 of command completion. Not all OS's return this so it is not always valid...only really useful for SNTL when it is used. Linux, Solaris, FreeBSD, UEFI. Windows is the problem child here.
             uint32_t lastNVMeStatus;//DW3 of command completion. Not all OS's return this so it is not always valid...only really useful for SNTL when it is used. Linux, Solaris, FreeBSD, UEFI. Windows is the problem child here.
         }lastNVMeResult;
         //TODO: a union or something so that we don't need to keep adding more bytes for drive types that won't use the ATA stuff or NVMe stuff in this struct.
         bridgeInfo      bridge_info;
+        adapterInfo     adapter_info;
         ataOptions      ata_Options;
         uint64_t        lastCommandTimeNanoSeconds;//The time the last command took in nanoseconds
         softwareSATFlags softSATFlags;//This is used by the software SAT translation layer. DO NOT Update this directly. This should only be updated by the lower layers of opensea-transport.
         uint32_t defaultTimeoutSeconds;//If this is not set (set to zero), a default value of 15 seconds will be used.
+        uint8_t padd6[4];
         union {
             uint32_t namespaceID;//This is the current namespace you are talking with. If this is zero, then this value is invalid. This may not be available on all OS's or driver interfaces
             uint32_t lun;//Logical unit number for SCSI. Not currently populated.
@@ -874,6 +1038,12 @@ extern "C"
         uint8_t currentProtectionType;//Useful for certain operations. Read in readCapacityOnSCSI. TODO: NVMe
         uint8_t piExponent;//Only valid for protection types 2 & 3 I believe...-TJE
         uint8_t scsiVersion;//from STD Inquiry. Can be used elsewhere to help filter capabilities. NOTE: not an exact copy for old products where there was also EMCA and ISO versions. Set to ANSI version number in those cases.
+        union {
+            uint32_t numberOfLUs;//number of logical units on the device
+            uint32_t numberOfNamespaces;//number of namespaces on the controller
+        };
+        //9304 bytes to make divisible by 8
+        passthroughHacks passThroughHacks;
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }driveInfo;
     #pragma pack(pop)
@@ -881,8 +1051,20 @@ extern "C"
     }__attribute__((packed,aligned(1))) driveInfo;
     #endif
 
+#if defined(UEFI_C_SOURCE)
+    typedef enum _eUEFIPassthroughType
+    {
+        UEFI_PASSTHROUGH_UNKNOWN,
+        UEFI_PASSTHROUGH_SCSI,
+        UEFI_PASSTHROUGH_SCSI_EXT,
+        UEFI_PASSTHROUGH_ATA,
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+        UEFI_PASSTHROUGH_NVME,
+#endif
+    }eUEFIPassthroughType;
+#endif
 
-#if defined (_WIN32)
+#if defined (_WIN32) && !defined(UEFI_C_SOURCE)
     //TODO: see if we can move these WIndows specific enums out to the windows unique files.
     typedef enum _eWindowsIOCTLType
     {
@@ -911,9 +1093,37 @@ extern "C"
     typedef struct _OSDriveInfo
     {
         char                name[256];//handle name (string)
-        char                friendlyName[20];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
+        char                friendlyName[24];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
         eOSType             osType;//useful for lower layers to do OS specific things
-        #if defined (__linux__)
+        uint8_t             minimumAlignment;//This is a power of 2 value representing the byte alignment required. 0 - no requirement, 1 - single byte alignment, 2 - word, 4 - dword, 8 - qword, 16 - 128bit aligned
+        uint8_t padd0[3];
+        #if defined (UEFI_C_SOURCE)
+        EFI_HANDLE          fd;
+        EFI_DEV_PATH devicePath;//This type being used is a union of all the different possible device paths. - This is 48 bytes
+        eUEFIPassthroughType passthroughType;
+        union _uefiAddress {
+            struct _scsiAddress{
+                uint32_t target;
+                uint64_t lun;
+            }scsi;
+            struct _scsiExtAddress{
+                uint8_t target[TARGET_MAX_BYTES];
+                uint64_t lun;
+            }scsiEx;
+            struct _ataAddress{
+                uint16_t port;
+                uint16_t portMultiplierPort;
+            }ata;
+            #if !defined (DISABLE_NVME_PASSTHROUGH)
+            struct _nvmeAddress{
+                uint32_t namespaceID;
+            }nvme;
+            #endif
+            uint8_t raw[24];
+        }address;
+        uint16_t            controllerNum;//used to figure out which controller the above address applies to.
+        uint8_t paddUEFIAddr[2];
+        #elif defined (__linux__)
         #if defined(VMK_CROSS_COMP)
         /**
          * In VMWare we discover or send IOCTL to NVMe throught NDDK. 
@@ -955,7 +1165,11 @@ extern "C"
             uint8_t         minorVersion;
             uint8_t         revision;
         }sgDriverVersion;
-        long                pageSize;//A.K.A. alignment requirements for Linux.
+        #if defined(VMK_CROSS_COMP)
+        uint8_t paddSG[35];//TODO: need to change this based on size of NVMe handle for VMWare.
+        #else
+        uint8_t paddSG[35];
+        #endif
         #elif defined (_WIN32)
         HANDLE              fd;
         SCSI_ADDRESS        scsi_addr;
@@ -971,7 +1185,6 @@ extern "C"
             bool smartSupported;//B0 command can be sent through this IO
             uint8_t deviceBitmap;//This specifies which channel the drive is on (PATA)...might need this for sending this IO on some legacy systems. See bIDEDeviceMap here https://msdn.microsoft.com/en-us/library/windows/hardware/ff554977(v=vs.85).aspx
         }winSMARTCmdSupport;
-#if WINVER >= SEA_WIN32_WINNT_WIN10
         struct {
             bool fwdlIOSupported;
             bool allowFlexibleUseOfAPI;//Set this to true to allow using the Win10 API for FWDL for any compatible download commands. If this is false, the Win10 API will only be used on IDE_INTERFACE for an ATA download command and SCSI interface for a supported Write buffer command. If true, it will be used regardless of which command the caller is using. This is useful for pure FW updates versus testing a specific condition.
@@ -981,10 +1194,18 @@ extern "C"
             bool isFirstSegmentOfDownload;//This should be set only when we are issuing a download command...We should find a better place for this.
             //TODO: expand this struct if we need other data when we check for firmware download support on a device.
         }fwdlIOsupport;
-#endif
         uint32_t adapterMaxTransferSize;//Bytes. Returned by querying for adapter properties. Can be used to know when trying to request more than the adapter or driver supports.
+        //TODO: Store the device path! This may occasionally be useful to have. Longest one will probably be no more that MAX_DEVICE_ID_LEN characters. (This is defined as 200)
+        //padding to keep same size as other OSs. This is to keep things similar across OSs.
+        //Variable sizes based on 32 vs 64bit since handle is a void*
+        #if defined (_WIN64)
+            uint8_t paddWin[57];
+        #else
+            uint8_t paddWin[61];
+        #endif //Win64 for padding
         #else
         int                 fd;//some other nix system that only needs a integer file handle
+        uint8_t otherPadd[110];
         #endif
         bool                osReadWriteRecommended;//This will be set to true when it is recommended that OS read/write calls are used instead of IO read/write (typically when using SMART or IDE IOCTLs in Windows since they may not work right for read/write)
         unsigned int        last_error; // errno in Linux or GetLastError in Windows.
@@ -993,6 +1214,7 @@ extern "C"
             bool hasFileSystem;//This will only be true for filesystems the current OS can detect. Ex: Windows will only set this for mounted volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem types since it can handle more than Windows by default
             bool isSystemDisk;//This will be set if the drive has a file system and the OS is running off of it. Ex: Windows' C:\Windows\System32, Linux's / & /boot, etc
         }fileSystemInfo;
+        uint8_t padd[4];//padd to 400 byte on UEFI. TODO: Make all OS's keep this structure the same size!!!
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }OSDriveInfo;
     #pragma pack(pop)
@@ -1025,7 +1247,7 @@ extern "C"
 
     typedef int (*issue_io_func)( void * );
 
-    #define DEVICE_BLOCK_VERSION    (4)
+    #define DEVICE_BLOCK_VERSION    (5)
 
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
@@ -1062,8 +1284,8 @@ extern "C"
     }__attribute__((packed,aligned(1))) tDevice;
     #endif
 
-     //Common enum for getting/setting power states. 
-     //This enum encompasses Mode Sense/Select commands for SCSI, Set Features for ATA 
+     //Common enum for getting/setting power states.
+     //This enum encompasses Mode Sense/Select commands for SCSI, Set Features for ATA
      //And Get/Set Features for NVMe. Lower layers must translated bits according to interface.
     typedef enum _eFeatureModeSelect
     {
@@ -1078,13 +1300,17 @@ extern "C"
     typedef enum _ePowerConditionID
     {
         PWR_CND_NOT_SET = -1,
-        PWR_CND_STANDBY_Z = 0x00, //value according to ATA spec. 
-        PWR_CND_STANDBY_Y = 0x01, //value according to ATA spec. 
-        PWR_CND_IDLE_A    = 0x81, //value according to ATA spec. 
-        PWR_CND_IDLE_B    = 0x82, //value according to ATA spec. 
-        PWR_CND_IDLE_C    = 0x83, //value according to ATA spec. 
-        PWR_CND_ACTIVE    = 0x84, //value is just for continuation (not ATA spec SCSI has 0)
-        PWR_CND_ALL       = 0xFF,
+        PWR_CND_STANDBY_Z = 0x00, //value according to ATA spec.
+        PWR_CND_STANDBY_Y = 0x01, //value according to ATA spec.
+        PWR_CND_IDLE_A    = 0x81, //value according to ATA spec.
+        PWR_CND_IDLE_B    = 0x82, //value according to ATA spec.
+        PWR_CND_IDLE_C    = 0x83, //value according to ATA spec.
+        PWR_CND_ALL       = 0xFF, //value according to ATA spec.
+        PWR_CND_ACTIVE,           //Not defined in ATA, but another power mode that may be specified, so it is placed after the defined ATA values.
+        PWR_CND_IDLE,             //Legacy idle mode. Basically the same as idle_a, but defined separately since a different command may be used to transition to this mode.
+        PWR_CND_IDLE_UNLOAD,      //sending the idle immediate - unload option
+        PWR_CND_STANDBY,          //Legacy Standby mode. Basically the same as standby_z, but defined separately since a different command may be used to transition to this mode.
+        PWR_CND_SLEEP,            //Sleep mode. WARNING: This require a reset to wake up from, but it is included here for those that want to do this
         PWR_CND_RESERVED
     } ePowerConditionID;
 
@@ -1115,6 +1341,50 @@ extern "C"
         IEEE_VENDOR_A_TECHNOLOGY      = 0x00A075,
     }eIEEE_OUIs;
 
+    //http://www.linux-usb.org/usb.ids
+    typedef enum _eUSBVendorIDs
+    {
+        USB_Vendor_Unknown                              = 0,
+        USB_Vendor_Adaptec                              = 0x03F3,
+        USB_Vendor_Buffalo                              = 0x0411,
+        USB_Vendor_Seagate                              = 0x0477,
+        USB_Vendor_Integrated_Techonology_Express_Inc   = 0x048D,
+        USB_Vendor_Samsung                              = 0x04E8,
+        USB_Vendor_Sunplus                              = 0x04FC,
+        USB_Vendor_Alcor_Micro_Corp                     = 0x058F,
+        USB_Vendor_LaCie                                = 0x059F,
+        USB_Vendor_GenesysLogic                         = 0x05E3,
+        USB_Vendor_Prolific                             = 0x067B,
+        USB_Vendor_SanDisk_Corp                         = 0x0781,
+        USB_Vendor_Silicon_Motion                       = 0x090C,
+        USB_Vendor_Oxford                               = 0x0928,
+        USB_Vendor_Seagate_RSS                          = 0x0BC2,
+        USB_Vendor_Maxtor                               = 0x0D49,
+        USB_Vendor_Phison                               = 0x0D7D,
+        USB_Vendor_Initio                               = 0x13FD,
+        USB_Vendor_Kingston                             = 0x13FE, //Some online databases show patriot memory, and one also shows Phison. Most recognize this as Kingston.
+        USB_Vendor_JMicron                              = 0x152D,
+        USB_Vendor_ASMedia                              = 0x174C,
+        USB_Vendor_4G_Systems_GmbH                      = 0x1955,
+        USB_Vendor_SeagateBranded                       = 0x1A2A,
+        USB_Vendor_Symwave                              = 0x1CA1,
+        USB_Vendor_ChipsBank                            = 0x1E3D,
+        USB_Vendor_Dell                                 = 0x413C,
+        // Add new enumerations above this line!
+        USB_Vendor_MaxValue                             = 0xFFFF
+    } eUSBVendorIDs;
+
+    typedef enum _e1394OUIs //a.k.a. vendor IDs
+    {
+        IEEE1394_Vendor_Unknown = 0,
+        //IEEE1394_Vendor_Maxtor  = 0x001075,//This is a second Maxtor VID, but it is not listed as used, which is why it is commented out
+        IEEE1394_Vendor_Maxtor  = 0x0010B9,
+        IEEE1394_Vendor_Seagate = 0x002037,
+        IEEE1394_Vendor_Quantum = 0x00E09E,
+        // Add new enumerations above this line!
+        IEEE1394_Vendor_MaxValue    = 0xFFFFFF //this should be the the highest possible value for an IEEE OUI as they are 24bits in size.
+    }e1394OUIs; //a.k.a. vendor IDs
+
     typedef enum _eSeagateFamily
     {
         NON_SEAGATE = 0,
@@ -1127,7 +1397,7 @@ extern "C"
         SEAGATE_VENDOR_C = BIT7,
         SEAGATE_VENDOR_D = BIT8,
         SEAGATE_VENDOR_E = BIT9,
-        //Ancient history 
+        //Ancient history
         SEAGATE_QUANTUM = BIT10, //Quantum Corp. Vendor ID QUANTUM (SCSI)
         SEAGATE_CDC = BIT11, //Control Data Systems. Vendor ID CDC (SCSI)
         SEAGATE_CONNER = BIT12, //Conner Peripherals. Vendor ID CONNER (SCSI)
@@ -1145,11 +1415,11 @@ extern "C"
     //The scan flags should each be a bit in a 32bit unsigned integer.
     // bits 0:7 Will be used for drive type selection.
     // bits 8:15 will be used for interface selection. So this is slightly different because if you say SCSI interface you can get back both ATA and SCSI drives if they are connected to say a SAS card
-    // Linux - bit 16 will be used to change the handle that shows up from the scan. 
+    // Linux - bit 16 will be used to change the handle that shows up from the scan.
     // Linux - bit 17 will be used to show the SD to SG mapping in linux.
     // Windows - bit 16 will be used to show the long device handle name
     // RAID interfaces (including csmi) may use bits 31:26 (so far those are the only ones used by CSMI)
-    
+
     #define DEFAULT_SCAN 0
     #define ALL_DRIVES 0xFF
     #define ATA_DRIVES BIT0
@@ -1165,7 +1435,7 @@ extern "C"
     #define RAID_INTERFACE_DRIVES BIT12
     #define SD_HANDLES BIT16 //this is a Linux specific flag to show SDX handles instead of SGX handles
     #define SG_TO_SD BIT17
-    #define SAT_12_BYTE BIT18
+    //#define SAT_12_BYTE BIT18
     #define SCAN_SEAGATE_ONLY BIT19
     #define AGRESSIVE_SCAN BIT20 //this can wake a drive up because a bus rescan may be issued. (currently only implemented in Windows)
 #if defined (ENABLE_CSMI)
@@ -1517,7 +1787,7 @@ extern "C"
     //
     //  is_Seagate_Model_Vendor_A( tDevice * device )
     //
-    //! \brief   Checks if the device is a Seagate partnership product 
+    //! \brief   Checks if the device is a Seagate partnership product
     //
     //  Entry:
     //!   \param[in]  device - file descriptor
@@ -1582,19 +1852,19 @@ extern "C"
     //  calculate_Checksum( uint8_t buf,  ) (OBSOLETE)
     //
     //! \brief  Calculates the ATA Spec. version of the checksum & returns the data
-    //!         NOTE: 511th byte of the buffer will be changed. 
+    //!         NOTE: 511th byte of the buffer will be changed.
     //!         This function has been replaced with a couple others in ata_helper_func.h since this is specific to ATA.
-    //! 
+    //!
     //! A.14.7 Checksum
     //! The data structure checksum is the two?s complement of the sum of the first 511 bytes in the data structure. Each
     //! byte shall be added with eight-bit unsigned arithmetic and overflow shall be ignored. The sum of all 512 bytes of
     //! the data structure shall be zero.
     //
     //  Entry:
-    //!   \param[in, out] pBuf = uint8_t buffer to perform checksum on 
-    //!   \param[in] blockSize = uint32_t block size    
+    //!   \param[in, out] pBuf = uint8_t buffer to perform checksum on
+    //!   \param[in] blockSize = uint32_t block size
     //  Exit:
-    //!   \return int SUCCESS if passes !SUCCESS if fails for some reason. 
+    //!   \return int SUCCESS if passes !SUCCESS if fails for some reason.
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int calculate_Checksum(uint8_t *pBuf, uint32_t blockSize);
@@ -1682,6 +1952,14 @@ extern "C"
     OPENSEA_TRANSPORT_API int remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint32_t * numberOfDevices);
 
     OPENSEA_TRANSPORT_API bool is_CSMI_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_Removable_Media(tDevice *device);
+
+    bool setup_Passthrough_Hacks_By_ID(tDevice *device);
+
+    #if defined (_DEBUG)
+    //This function is more for debugging than anything else!
+    void print_tDevice_Size();
+    #endif//_DEBUG
 
 #if defined (__cplusplus)
 } //extern "C"

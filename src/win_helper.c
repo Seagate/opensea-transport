@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -19,18 +19,24 @@
 #include <wchar.h>
 #include <string.h>
 #include <windows.h>                // added for forced PnP rescan
+#include <tchar.h>
+#include <initguid.h>
+//#if !defined(DISABLE_NVME_PASSTHROUGH)
+#include <ntddstor.h>
+//#endif
 //NOTE: ARM requires 10.0.16299.0 API to get this library!
 #include <cfgmgr32.h>               // added for forced PnP rescan
+//#include <setupapi.h> //NOTE: Not available for ARM
+#include <devpropdef.h>
+#include <devpkey.h>
 #include <winbase.h>
-#if !defined(DISABLE_NVME_PASSTHROUGH)
-#include <ntddstor.h>
-#endif
 #include "common.h"
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
 #include "win_helper.h"
 #include "sat_helper_func.h"
 #include "usb_hacks.h"
+#include "common_public.h"
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper.h"
@@ -41,17 +47,44 @@
 #include "csmi_helper_func.h"
 #endif
 
-//TODO: There are ifdefs now wrapping where these definitions could be used, so these defines for MinGW may not be necessary now.
-#if defined (__MINGW32__)
-  #if !defined (ATA_FLAGS_NO_MULTIPLE)
-    #define ATA_FLAGS_NO_MULTIPLE (1 << 5)
-  #endif
-  #if !defined (BusTypeSpaces)
-    #define BusTypeSpaces 16
-  #endif
-  #if !defined (BusTypeNvme)
-    #define BusTypeNvme 17
-  #endif
+//MinGW may or may not have some of these, so there is a need to define these here to build properly when they are otherwise not available.
+//TODO: as mingw changes versions, some of these below may be available. Need to have a way to check mingw preprocessor defines for versions to work around these.
+//NOTE: The device property keys are incomplete in mingw. Need to add similar code using setupapi and some sort of ifdef to switch between for VS and mingw to resolve this better.
+#if defined (__MINGW32__) || defined (__MINGW64__)
+    #if !defined (ATA_FLAGS_NO_MULTIPLE)
+        #define ATA_FLAGS_NO_MULTIPLE (1 << 5)
+    #endif
+    #if !defined (BusTypeSpaces)
+        #define BusTypeSpaces 16
+    #endif
+    #if !defined (BusTypeNvme)
+        #define BusTypeNvme 17
+    #endif
+
+    //This is for looking up hardware IDs of devices for PCIe/USB, etc
+    #if !defined (DEVPKEY_Device_HardwareIds)
+        DEFINE_DEVPROPKEY(DEVPKEY_Device_HardwareIds,            0xa45c254e, 0xdf1c, 0x4efd, 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0, 3); 
+    #endif
+
+    #if !defined (DEVPKEY_Device_CompatibleIds)
+        DEFINE_DEVPROPKEY(DEVPKEY_Device_CompatibleIds, 0xa45c254e, 0xdf1c, 0x4efd, 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0, 4);
+    #endif
+
+    #if !defined (CM_GETIDLIST_FILTER_PRESENT)
+        #define CM_GETIDLIST_FILTER_PRESENT             (0x00000100)
+    #endif
+    #if !defined (CM_GETIDLIST_FILTER_CLASS)
+        #define CM_GETIDLIST_FILTER_CLASS               (0x00000200)
+    #endif
+
+    #if !defined (GUID_DEVINTERFACE_DISK)
+        DEFINE_GUID(GUID_DEVINTERFACE_DISK,                   0x53f56307L, 0xb6bf, 0x11d0, 0x94, 0xf2, 0x00, 0xa0, 0xc9, 0x1e, 0xfb, 0x8b);
+    #endif
+
+#endif
+
+#if WINVER < SEA_WIN32_WINNT_WINBLUE && !defined (BusTypeNvme)
+#define BusTypeNvme 17
 #endif
 
 extern bool validate_Device_Struct(versionBlock);
@@ -156,6 +189,1318 @@ void print_bus_type( BYTE type )
 }
 #endif
 
+//This function is only used in get_Adapter_IDs which is why it's here. If this is useful for something else in the future, move it to opensea-common.
+void convert_String_Spaces_To_Underscores(char *stringToChange)
+{
+    size_t stringLen = 0, iter = 0;
+    if (stringToChange == NULL)
+    {
+        return;
+    }
+    stringLen = strlen(stringToChange);
+    if (stringLen == 0)
+    {
+        return;
+    }
+    while (iter <= stringLen)
+    {
+        if (isspace(stringToChange[iter]))
+        {
+            stringToChange[iter] = '_';
+        }
+        iter++;
+    }
+}
+
+//This function uses cfgmgr32 for figuring out the adapter information. 
+//It is possible to do this with setupapi as well. cfgmgr32 is supposedly available in some form for universal apps, whereas setupapi is not.
+int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor, ULONG deviceDescriptorLength)
+{
+    int ret = BAD_PARAMETER;
+    if (deviceDescriptor && deviceDescriptorLength > sizeof(STORAGE_DEVICE_DESCRIPTOR))//make sure we have a device descriptor bigger than the header so we can access the raw data
+    {
+        //First, get the list of disk device IDs, then locate a matching one...then find the parent and parse the IDs out.
+        TCHAR *listBuffer = NULL;
+        ULONG deviceIdListLen = 0;
+        CONFIGRET cmRet = CR_SUCCESS;
+#if WINVER > SEA_WIN32_WINNT_VISTA
+        TCHAR *filter = TEXT("{4d36e967-e325-11ce-bfc1-08002be10318}");
+        ULONG deviceIdListFlags = CM_GETIDLIST_FILTER_PRESENT | CM_GETIDLIST_FILTER_CLASS;//Both of these flags require Windows 7 and later. The else case below will handle older OSs
+        cmRet = CM_Get_Device_ID_List_Size(&deviceIdListLen, filter, deviceIdListFlags);
+        if (cmRet == CR_SUCCESS)
+        {
+            if (deviceIdListLen > 0)
+            {
+                listBuffer = (TCHAR*)calloc(deviceIdListLen, sizeof(TCHAR));
+                if (listBuffer)
+                {
+                    cmRet = CM_Get_Device_ID_List(filter, listBuffer, deviceIdListLen, deviceIdListFlags);
+                }
+                else
+                {
+                    return MEMORY_FAILURE;
+                }
+            }
+        }
+        else if (cmRet == CR_INVALID_FLAG)
+#else 
+        if(cmRet == CR_SUCCESS)
+#endif //WINVER > SEA_WIN32_WINNT_VISTA
+        {
+            //older OS? Try the legacy method which should work for Win2000+
+            //This requires knowing if we are searching for USB vs SCSI device IDs
+            //TODO: We may need to add other things for firewire or other attachment types that existed back in Vista or XP if they aren't handled under USB or SCSI
+            TCHAR *scsiFilter = TEXT("SCSI"), *usbFilter = TEXT("USBSTOR");//Need to use USBSTOR in order to find a match. Using USB returns a list of VID/PID but we don't have a way to match that.
+            ULONG scsiIdListLen = 0, usbIdListLen = 0;
+            ULONG filterFlags = CM_GETIDLIST_FILTER_ENUMERATOR;
+            TCHAR *scsiListBuff = NULL, *usbListBuff = NULL;
+            CONFIGRET scsicmRet = CR_SUCCESS, usbcmRet = CR_SUCCESS;
+            //First get the SCSI list, then the USB list/ TODO: add more things to the list as we need them.
+            scsicmRet = CM_Get_Device_ID_List_Size(&scsiIdListLen, scsiFilter, filterFlags);
+            if (scsicmRet == CR_SUCCESS)
+            {
+                if (scsiIdListLen > 0)
+                {
+                    scsiListBuff = (TCHAR*)calloc(scsiIdListLen, sizeof(TCHAR));
+                    if (scsiListBuff)
+                    {
+                        scsicmRet = CM_Get_Device_ID_List(scsiFilter, scsiListBuff, scsiIdListLen, filterFlags);
+                    }
+                    else
+                    {
+                        ret = MEMORY_FAILURE;
+                    }                    
+                }
+            }
+            usbcmRet = CM_Get_Device_ID_List_Size(&usbIdListLen, usbFilter, filterFlags);
+            if (usbcmRet == CR_SUCCESS)
+            {
+                if (usbIdListLen > 0)
+                {
+                    usbListBuff = (TCHAR*)calloc(usbIdListLen, sizeof(TCHAR));
+                    if (usbListBuff)
+                    {
+                        usbcmRet = CM_Get_Device_ID_List(usbFilter, usbListBuff, usbIdListLen, filterFlags);
+                    }
+                    else
+                    {
+                        ret = MEMORY_FAILURE;
+                    }
+                }
+            }
+            //now that we got USB and SCSI, we need to merge them together into a common list
+            deviceIdListLen = scsiIdListLen + usbIdListLen;
+            listBuffer = (TCHAR*)calloc(deviceIdListLen, sizeof(TCHAR));
+            if (listBuffer)
+            {
+                ULONG copyOffset = 0;
+                if (scsicmRet == CR_SUCCESS && scsiIdListLen > 0 && scsiListBuff)
+                {
+                    memcpy(&listBuffer[copyOffset], scsiListBuff, scsiIdListLen);
+                    copyOffset += scsiIdListLen - 1;
+                }
+                if (usbcmRet == CR_SUCCESS && usbIdListLen > 0 && usbListBuff)
+                {
+                    memcpy(&listBuffer[copyOffset], usbListBuff, usbIdListLen);
+                    copyOffset += usbIdListLen - 1;
+                }
+                //add other lists here and offset them as needed
+            }
+            else
+            {
+                ret = MEMORY_FAILURE;
+            }
+            safe_Free(scsiListBuff);
+            safe_Free(usbListBuff);
+        }
+        else
+        {
+            return FAILURE;
+        }
+        //If we are here, we should have a list of device IDs to check
+        //First, reduce the list to something that seems like it is the drive we are looking for...we could have more than 1 match, but we're filtering out all the extras that definitely aren't the correct device.
+        if (ret != MEMORY_FAILURE && cmRet == CR_SUCCESS && deviceIdListLen > 0)
+        {
+            bool foundMatch = false;
+            //Now we have a list of device IDs.
+            //Each device ID is structured with a EmumeratorName\Disk&Ven_<vendor ID>&Prod_<Product ID>&Rev_<Revision number>\<some random numbers and characters>
+            //Since we have a device descriptor, we have the vendor ID, product ID, and revision number, so we can match those.
+            //NOTE: Some string matching is possible, but not reliable. All string matching was removed due to it not quite working as expected when it was needed the most.
+            //This is potentially slower without it, but it will be fine...-TJE
+
+            //loop through the device IDs and see if we find anything that matches.
+            for (LPTSTR deviceID = listBuffer; *deviceID && !foundMatch; deviceID += _tcslen(deviceID) + 1)
+            {
+                //convert the deviceID to uppercase to make matching easier
+                _tcsupr(deviceID);
+                DEVINST deviceInstance = 0;
+                //if a match is found, call locate devnode. If this is not present, it will fail and we need to continue through the loop
+                cmRet = CM_Locate_DevNode(&deviceInstance, deviceID, CM_LOCATE_DEVNODE_NORMAL);
+                if (CR_SUCCESS == cmRet)
+                {
+                    //with the device node, get the interface list for this device (disk class GUID is used). This SHOULD only return one idem which is the full device path. TODO: save this device path
+                    ULONG interfaceListSize = 0;
+                    GUID classGUID = GUID_DEVINTERFACE_DISK;//TODO: If the tDevice handle that was opened was a tape, changer or something else, change this GUID.
+                    cmRet = CM_Get_Device_Interface_List_Size(&interfaceListSize, &classGUID, deviceID, CM_GET_DEVICE_INTERFACE_LIST_PRESENT);
+                    if (CR_SUCCESS == cmRet && interfaceListSize > 0)
+                    {
+                        TCHAR *interfaceList = (TCHAR*)calloc(interfaceListSize, sizeof(TCHAR));
+                        cmRet = CM_Get_Device_Interface_List(&classGUID, deviceID, interfaceList, interfaceListSize * sizeof(TCHAR), CM_GET_DEVICE_INTERFACE_LIST_PRESENT);
+                        if (CR_SUCCESS == cmRet)
+                        {
+                            //Loop through this list, just in case more than one thing comes through
+                            for (LPTSTR deviceID = interfaceList; *deviceID && !foundMatch; deviceID += _tcslen(deviceID) + 1)
+                            {
+                                //With this device path, open a handle and get the storage device number. This is a match for the PhysicalDriveX number and we can check that for a match
+                                HANDLE deviceHandle = CreateFile(deviceID,
+                                    GENERIC_WRITE | GENERIC_READ,
+                                    FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                    NULL,
+                                    OPEN_EXISTING,
+                                    0,
+                                    NULL);
+                                if (deviceHandle != INVALID_HANDLE_VALUE)
+                                {
+                                    //If the storage device number matches, get the parent device instance, then the parent device ID. This will contain the USB VID/PID and PCI Vendor, product, and revision numbers.
+                                    STORAGE_DEVICE_NUMBER deviceNumber;
+                                    memset(&deviceNumber, 0, sizeof(STORAGE_DEVICE_NUMBER));
+                                    DWORD returnedDataSize = 0;
+                                    if (DeviceIoControl(deviceHandle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &deviceNumber, sizeof(STORAGE_DEVICE_NUMBER), &returnedDataSize, NULL))
+                                    {
+                                        if (deviceNumber.DeviceNumber == device->os_info.os_drive_number)
+                                        {
+                                            DEVINST parentInst = 0;
+                                            foundMatch = true;
+                                            //Now that we have a matching handle, get the parent information, then parse the values from that string
+                                            cmRet = CM_Get_Parent(&parentInst, deviceInstance, 0);
+                                            if (CR_SUCCESS == cmRet)
+                                            {
+                                                ULONG parentLen = 0;
+                                                cmRet = CM_Get_Device_ID_Size(&parentLen, parentInst, 0);
+                                                parentLen += 1;
+                                                if (CR_SUCCESS == cmRet)
+                                                {
+                                                    TCHAR *parentBuffer = (TCHAR*)calloc(parentLen, sizeof(TCHAR));
+                                                    cmRet = CM_Get_Device_ID(parentInst, parentBuffer, parentLen, 0);
+                                                    if (CR_SUCCESS == cmRet)
+                                                    {
+                                                        //uncomment this else case to view all the possible device or parent properties when figuring out what else is necessary to store for a new device.
+                                                        /*  //This is a comment switch. two slashes means uncomment the below, 1 means comment it out
+                                                        {
+                                                            ULONG propertyBufLen = 0;
+                                                            DEVPROPTYPE propertyType = 0;
+                                                            DEVINST propInst = deviceInstance;
+                                                            const DEVPROPKEY *devproperty = &DEVPKEY_NAME;
+                                                            uint16_t counter = 0, instanceCounter = 0;
+                                                            //device instance first!
+                                                            while (instanceCounter < 2)
+                                                            {
+                                                                if (instanceCounter > 0)
+                                                                {
+                                                                    printf("\n==========================\n");
+                                                                    printf("Parent instance properties\n");
+                                                                    printf("==========================\n\n");
+                                                                }
+                                                                else
+                                                                {
+                                                                    printf("\n==========================\n");
+                                                                    printf("Device instance properties\n");
+                                                                    printf("==========================\n\n");
+                                                                }
+                                                                while (devproperty)
+                                                                {
+                                                                    //print out name of property being checked.
+                                                                    printf("========================================================================\n");
+                                                                    switch (counter)
+                                                                    {
+                                                                    case 0:
+                                                                        devproperty = &DEVPKEY_Device_DeviceDesc;
+                                                                        printf("DEVPKEY_Device_DeviceDesc: \n");
+                                                                        break;
+                                                                    case 1:
+                                                                        devproperty = &DEVPKEY_Device_HardwareIds;
+                                                                        printf("DEVPKEY_Device_HardwareIds: \n");
+                                                                        break;
+                                                                    case 2:
+                                                                        devproperty = &DEVPKEY_Device_CompatibleIds;
+                                                                        printf("DEVPKEY_Device_CompatibleIds: \n");
+                                                                        break;
+                                                                    case 3:
+                                                                        devproperty = &DEVPKEY_Device_Service;
+                                                                        printf("DEVPKEY_Device_Service: \n");
+                                                                        break;
+                                                                    case 4:
+                                                                        devproperty = &DEVPKEY_Device_Class;
+                                                                        printf("DEVPKEY_Device_Class: \n");
+                                                                        break;
+                                                                    case 5:
+                                                                        devproperty = &DEVPKEY_Device_ClassGuid;
+                                                                        printf("DEVPKEY_Device_ClassGuid: \n");
+                                                                        break;
+                                                                    case 6:
+                                                                        devproperty = &DEVPKEY_Device_Driver;
+                                                                        printf("DEVPKEY_Device_Driver: \n");
+                                                                        break;
+                                                                    case 7:
+                                                                        devproperty = &DEVPKEY_Device_ConfigFlags;
+                                                                        printf("DEVPKEY_Device_ConfigFlags: \n");
+                                                                        break;
+                                                                    case 8:
+                                                                        devproperty = &DEVPKEY_Device_Manufacturer;
+                                                                        printf("DEVPKEY_Device_Manufacturer: \n");
+                                                                        break;
+                                                                    case 9:
+                                                                        devproperty = &DEVPKEY_Device_FriendlyName;
+                                                                        printf("DEVPKEY_Device_FriendlyName: \n");
+                                                                        break;
+                                                                    case 10:
+                                                                        devproperty = &DEVPKEY_Device_LocationInfo;
+                                                                        printf("DEVPKEY_Device_LocationInfo: \n");
+                                                                        break;
+                                                                    case 11:
+                                                                        devproperty = &DEVPKEY_Device_PDOName;
+                                                                        printf("DEVPKEY_Device_PDOName: \n");
+                                                                        break;
+                                                                    case 12:
+                                                                        devproperty = &DEVPKEY_Device_Capabilities;
+                                                                        printf("DEVPKEY_Device_Capabilities: \n");
+                                                                        break;
+                                                                    case 13:
+                                                                        devproperty = &DEVPKEY_Device_UINumber;
+                                                                        printf("DEVPKEY_Device_UINumber: \n");
+                                                                        break;
+                                                                    case 14:
+                                                                        devproperty = &DEVPKEY_Device_UpperFilters;
+                                                                        printf("DEVPKEY_Device_UpperFilters: \n");
+                                                                        break;
+                                                                    case 15:
+                                                                        devproperty = &DEVPKEY_Device_LowerFilters;
+                                                                        printf("DEVPKEY_Device_LowerFilters: \n");
+                                                                        break;
+                                                                    case 16:
+                                                                        devproperty = &DEVPKEY_Device_BusTypeGuid;
+                                                                        printf("DEVPKEY_Device_BusTypeGuid: \n");
+                                                                        break;
+                                                                    case 17:
+                                                                        devproperty = &DEVPKEY_Device_LegacyBusType;
+                                                                        printf("DEVPKEY_Device_LegacyBusType: \n");
+                                                                        break;
+                                                                    case 18:
+                                                                        devproperty = &DEVPKEY_Device_BusNumber;
+                                                                        printf("DEVPKEY_Device_BusNumber: \n");
+                                                                        break;
+                                                                    case 19:
+                                                                        devproperty = &DEVPKEY_Device_EnumeratorName;
+                                                                        printf("DEVPKEY_Device_EnumeratorName: \n");
+                                                                        break;
+                                                                    case 20:
+                                                                        devproperty = &DEVPKEY_Device_Security;
+                                                                        printf("DEVPKEY_Device_Security: \n");
+                                                                        break;
+                                                                    case 21:
+                                                                        devproperty = &DEVPKEY_Device_SecuritySDS;
+                                                                        printf("DEVPKEY_Device_SecuritySDS: \n");
+                                                                        break;
+                                                                    case 22:
+                                                                        devproperty = &DEVPKEY_Device_DevType;
+                                                                        printf("DEVPKEY_Device_DevType: \n");
+                                                                        break;
+                                                                    case 23:
+                                                                        devproperty = &DEVPKEY_Device_Exclusive;
+                                                                        printf("DEVPKEY_Device_Exclusive: \n");
+                                                                        break;
+                                                                    case 24:
+                                                                        devproperty = &DEVPKEY_Device_Characteristics;
+                                                                        printf("DEVPKEY_Device_Characteristics: \n");
+                                                                        break;
+                                                                    case 25:
+                                                                        devproperty = &DEVPKEY_Device_Address;
+                                                                        printf("DEVPKEY_Device_Address: \n");
+                                                                        break;
+                                                                    case 26:
+                                                                        devproperty = &DEVPKEY_Device_UINumberDescFormat;
+                                                                        printf("DEVPKEY_Device_UINumberDescFormat: \n");
+                                                                        break;
+                                                                    case 27:
+                                                                        devproperty = &DEVPKEY_Device_PowerData;
+                                                                        printf("DEVPKEY_Device_PowerData: \n");
+                                                                        break;
+                                                                    case 28:
+                                                                        devproperty = &DEVPKEY_Device_RemovalPolicy;
+                                                                        printf("DEVPKEY_Device_RemovalPolicy: \n");
+                                                                        break;
+                                                                    case 29:
+                                                                        devproperty = &DEVPKEY_Device_RemovalPolicyDefault;
+                                                                        printf("DEVPKEY_Device_RemovalPolicyDefault: \n");
+                                                                        break;
+                                                                    case 30:
+                                                                        devproperty = &DEVPKEY_Device_RemovalPolicyOverride;
+                                                                        printf("DEVPKEY_Device_RemovalPolicyOverride: \n");
+                                                                        break;
+                                                                    case 31:
+                                                                        devproperty = &DEVPKEY_Device_InstallState;
+                                                                        printf("DEVPKEY_Device_InstallState: \n");
+                                                                        break;
+                                                                    case 32:
+                                                                        devproperty = &DEVPKEY_Device_LocationPaths;
+                                                                        printf("DEVPKEY_Device_LocationPaths: \n");
+                                                                        break;
+                                                                    case 33:
+                                                                        devproperty = &DEVPKEY_Device_BaseContainerId;
+                                                                        printf("DEVPKEY_Device_BaseContainerId: \n");
+                                                                        break;
+                                                                    case 34:
+                                                                        devproperty = &DEVPKEY_Device_InstanceId;
+                                                                        printf("DEVPKEY_Device_InstanceId: \n");
+                                                                        break;
+                                                                    case 35:
+                                                                        devproperty = &DEVPKEY_Device_DevNodeStatus;
+                                                                        printf("DEVPKEY_Device_DevNodeStatus: \n");
+                                                                        break;
+                                                                    case 36:
+                                                                        devproperty = &DEVPKEY_Device_ProblemCode;
+                                                                        printf("DEVPKEY_Device_ProblemCode: \n");
+                                                                        break;
+                                                                    case 37:
+                                                                        devproperty = &DEVPKEY_Device_EjectionRelations;
+                                                                        printf("DEVPKEY_Device_EjectionRelations: \n");
+                                                                        break;
+                                                                    case 38:
+                                                                        devproperty = &DEVPKEY_Device_RemovalRelations;
+                                                                        printf("DEVPKEY_Device_RemovalRelations: \n");
+                                                                        break;
+                                                                    case 39:
+                                                                        devproperty = &DEVPKEY_Device_PowerRelations;
+                                                                        printf("DEVPKEY_Device_PowerRelations: \n");
+                                                                        break;
+                                                                    case 40:
+                                                                        devproperty = &DEVPKEY_Device_BusRelations;
+                                                                        printf("DEVPKEY_Device_BusRelations: \n");
+                                                                        break;
+                                                                    case 41:
+                                                                        devproperty = &DEVPKEY_Device_Parent;
+                                                                        printf("DEVPKEY_Device_Parent: \n");
+                                                                        break;
+                                                                    case 42:
+                                                                        devproperty = &DEVPKEY_Device_Children;
+                                                                        printf("DEVPKEY_Device_Children: \n");
+                                                                        break;
+                                                                    case 43:
+                                                                        devproperty = &DEVPKEY_Device_Siblings;
+                                                                        printf("DEVPKEY_Device_Siblings: \n");
+                                                                        break;
+                                                                    case 44:
+                                                                        devproperty = &DEVPKEY_Device_TransportRelations;
+                                                                        printf("DEVPKEY_Device_TransportRelations: \n");
+                                                                        break;
+                                                                    case 45:
+                                                                        devproperty = &DEVPKEY_Device_ProblemStatus;
+                                                                        printf("DEVPKEY_Device_ProblemStatus: \n");
+                                                                        break;
+                                                                    case 46:
+                                                                        devproperty = &DEVPKEY_Device_Reported;
+                                                                        printf("DEVPKEY_Device_Reported: \n");
+                                                                        break;
+                                                                    case 47:
+                                                                        devproperty = &DEVPKEY_Device_Legacy;
+                                                                        printf("DEVPKEY_Device_Legacy: \n");
+                                                                        break;
+                                                                    case 48:
+                                                                        devproperty = &DEVPKEY_Device_ContainerId;
+                                                                        printf("DEVPKEY_Device_ContainerId: \n");
+                                                                        break;
+                                                                    case 49:
+                                                                        devproperty = &DEVPKEY_Device_InLocalMachineContainer;
+                                                                        printf("DEVPKEY_Device_InLocalMachineContainer: \n");
+                                                                        break;
+                                                                    case 50:
+                                                                        devproperty = &DEVPKEY_Device_Model;
+                                                                        printf("DEVPKEY_Device_Model: \n");
+                                                                        break;
+                                                                    case 51:
+                                                                        devproperty = &DEVPKEY_Device_ModelId;
+                                                                        printf("DEVPKEY_Device_ModelId: \n");
+                                                                        break;
+                                                                    case 52:
+                                                                        devproperty = &DEVPKEY_Device_FriendlyNameAttributes;
+                                                                        printf("DEVPKEY_Device_FriendlyNameAttributes: \n");
+                                                                        break;
+                                                                    case 53:
+                                                                        devproperty = &DEVPKEY_Device_ManufacturerAttributes;
+                                                                        printf("DEVPKEY_Device_ManufacturerAttributes: \n");
+                                                                        break;
+                                                                    case 54:
+                                                                        devproperty = &DEVPKEY_Device_PresenceNotForDevice;
+                                                                        printf("DEVPKEY_Device_PresenceNotForDevice: \n");
+                                                                        break;
+                                                                    case 55:
+                                                                        devproperty = &DEVPKEY_Device_SignalStrength;
+                                                                        printf("DEVPKEY_Device_SignalStrength: \n");
+                                                                        break;
+                                                                    case 56:
+                                                                        devproperty = &DEVPKEY_Device_IsAssociateableByUserAction;
+                                                                        printf("DEVPKEY_Device_IsAssociateableByUserAction: \n");
+                                                                        break;
+                                                                    case 57:
+                                                                        devproperty = &DEVPKEY_Device_ShowInUninstallUI;
+                                                                        printf("DEVPKEY_Device_ShowInUninstallUI: \n");
+                                                                        break;
+                                                                    case 58:
+                                                                        devproperty = &DEVPKEY_Device_Numa_Proximity_Domain;
+                                                                        printf("DEVPKEY_Device_Numa_Proximity_Domain: \n");
+                                                                        break;
+                                                                    case 59:
+                                                                        devproperty = &DEVPKEY_Device_DHP_Rebalance_Policy;
+                                                                        printf("DEVPKEY_Device_DHP_Rebalance_Policy: \n");
+                                                                        break;
+                                                                    case 60:
+                                                                        devproperty = &DEVPKEY_Device_Numa_Node;
+                                                                        printf("DEVPKEY_Device_Numa_Node: \n");
+                                                                        break;
+                                                                    case 61:
+                                                                        devproperty = &DEVPKEY_Device_BusReportedDeviceDesc;
+                                                                        printf("DEVPKEY_Device_BusReportedDeviceDesc: \n");
+                                                                        break;
+                                                                    case 62:
+                                                                        devproperty = &DEVPKEY_Device_IsPresent;
+                                                                        printf("DEVPKEY_Device_IsPresent: \n");
+                                                                        break;
+                                                                    case 63:
+                                                                        devproperty = &DEVPKEY_Device_HasProblem;
+                                                                        printf("DEVPKEY_Device_HasProblem: \n");
+                                                                        break;
+                                                                    case 64:
+                                                                        devproperty = &DEVPKEY_Device_ConfigurationId;
+                                                                        printf("DEVPKEY_Device_ConfigurationId: \n");
+                                                                        break;
+                                                                    case 65:
+                                                                        devproperty = &DEVPKEY_Device_ReportedDeviceIdsHash;
+                                                                        printf("DEVPKEY_Device_ReportedDeviceIdsHash: \n");
+                                                                        break;
+                                                                    case 66:
+                                                                        devproperty = &DEVPKEY_Device_PhysicalDeviceLocation;
+                                                                        printf("DEVPKEY_Device_PhysicalDeviceLocation: \n");
+                                                                        break;
+                                                                    case 67:
+                                                                        devproperty = &DEVPKEY_Device_BiosDeviceName;
+                                                                        printf("DEVPKEY_Device_BiosDeviceName: \n");
+                                                                        break;
+                                                                    case 68:
+                                                                        devproperty = &DEVPKEY_Device_DriverProblemDesc;
+                                                                        printf("DEVPKEY_Device_DriverProblemDesc: \n");
+                                                                        break;
+                                                                    case 69:
+                                                                        devproperty = &DEVPKEY_Device_DebuggerSafe;
+                                                                        printf("DEVPKEY_Device_DebuggerSafe: \n");
+                                                                        break;
+                                                                    case 70:
+                                                                        devproperty = &DEVPKEY_Device_PostInstallInProgress;
+                                                                        printf("DEVPKEY_Device_PostInstallInProgress: \n");
+                                                                        break;
+                                                                    case 71:
+                                                                        devproperty = &DEVPKEY_Device_Stack;
+                                                                        printf("DEVPKEY_Device_Stack: \n");
+                                                                        break;
+                                                                    case 72:
+                                                                        devproperty = &DEVPKEY_Device_ExtendedConfigurationIds;
+                                                                        printf("DEVPKEY_Device_ExtendedConfigurationIds: \n");
+                                                                        break;
+                                                                    case 73:
+                                                                        devproperty = &DEVPKEY_Device_IsRebootRequired;
+                                                                        printf("DEVPKEY_Device_IsRebootRequired: \n");
+                                                                        break;
+                                                                    case 74:
+                                                                        devproperty = &DEVPKEY_Device_FirmwareDate;
+                                                                        printf("DEVPKEY_Device_FirmwareDate: \n");
+                                                                        break;
+                                                                    case 75:
+                                                                        devproperty = &DEVPKEY_Device_FirmwareVersion;
+                                                                        printf("DEVPKEY_Device_FirmwareVersion: \n");
+                                                                        break;
+                                                                    case 76:
+                                                                        devproperty = &DEVPKEY_Device_FirmwareRevision;
+                                                                        printf("DEVPKEY_Device_FirmwareRevision: \n");
+                                                                        break;
+                                                                    case 77:
+                                                                        devproperty = &DEVPKEY_Device_DependencyProviders;
+                                                                        printf("DEVPKEY_Device_DependencyProviders: \n");
+                                                                        break;
+                                                                    case 78:
+                                                                        devproperty = &DEVPKEY_Device_DependencyDependents;
+                                                                        printf("DEVPKEY_Device_DependencyDependents: \n");
+                                                                        break;
+                                                                    case 79:
+                                                                        devproperty = &DEVPKEY_Device_SoftRestartSupported;
+                                                                        printf("DEVPKEY_Device_SoftRestartSupported: \n");
+                                                                        break;
+                                                                    case 80:
+                                                                        devproperty = &DEVPKEY_Device_ExtendedAddress;
+                                                                        printf("DEVPKEY_Device_ExtendedAddress: \n");
+                                                                        break;
+                                                                    case 81:
+                                                                        devproperty = &DEVPKEY_Device_SessionId;
+                                                                        printf("DEVPKEY_Device_SessionId: \n");
+                                                                        break;
+                                                                    case 82:
+                                                                        devproperty = &DEVPKEY_Device_InstallDate;
+                                                                        printf("DEVPKEY_Device_InstallDate: \n");
+                                                                        break;
+                                                                    case 83:
+                                                                        devproperty = &DEVPKEY_Device_FirstInstallDate;
+                                                                        printf("DEVPKEY_Device_FirstInstallDate: \n");
+                                                                        break;
+                                                                    case 84:
+                                                                        devproperty = &DEVPKEY_Device_LastArrivalDate;
+                                                                        printf("DEVPKEY_Device_LastArrivalDate: \n");
+                                                                        break;
+                                                                    case 85:
+                                                                        devproperty = &DEVPKEY_Device_LastRemovalDate;
+                                                                        printf("DEVPKEY_Device_LastRemovalDate: \n");
+                                                                        break;
+                                                                    case 86:
+                                                                        devproperty = &DEVPKEY_Device_DriverDate;
+                                                                        printf("DEVPKEY_Device_DriverDate: \n");
+                                                                        break;
+                                                                    case 87:
+                                                                        devproperty = &DEVPKEY_Device_DriverVersion;
+                                                                        printf("DEVPKEY_Device_DriverVersion: \n");
+                                                                        break;
+                                                                    case 88:
+                                                                        devproperty = &DEVPKEY_Device_DriverDesc;
+                                                                        printf("DEVPKEY_Device_DriverDesc: \n");
+                                                                        break;
+                                                                    case 89:
+                                                                        devproperty = &DEVPKEY_Device_DriverInfPath;
+                                                                        printf("DEVPKEY_Device_DriverInfPath: \n");
+                                                                        break;
+                                                                    case 90:
+                                                                        devproperty = &DEVPKEY_Device_DriverInfSection;
+                                                                        printf("DEVPKEY_Device_DriverInfSection: \n");
+                                                                        break;
+                                                                    case 91:
+                                                                        devproperty = &DEVPKEY_Device_DriverInfSectionExt;
+                                                                        printf("DEVPKEY_Device_DriverInfSectionExt: \n");
+                                                                        break;
+                                                                    case 92:
+                                                                        devproperty = &DEVPKEY_Device_MatchingDeviceId;
+                                                                        printf("DEVPKEY_Device_MatchingDeviceId: \n");
+                                                                        break;
+                                                                    case 93:
+                                                                        devproperty = &DEVPKEY_Device_DriverProvider;
+                                                                        printf("DEVPKEY_Device_DriverProvider: \n");
+                                                                        break;
+                                                                    case 94:
+                                                                        devproperty = &DEVPKEY_Device_DriverPropPageProvider;
+                                                                        printf("DEVPKEY_Device_DriverPropPageProvider: \n");
+                                                                        break;
+                                                                    case 95:
+                                                                        devproperty = &DEVPKEY_Device_DriverCoInstallers;
+                                                                        printf("DEVPKEY_Device_DriverCoInstallers: \n");
+                                                                        break;
+                                                                    case 96:
+                                                                        devproperty = &DEVPKEY_Device_ResourcePickerTags;
+                                                                        printf("DEVPKEY_Device_ResourcePickerTags: \n");
+                                                                        break;
+                                                                    case 97:
+                                                                        devproperty = &DEVPKEY_Device_ResourcePickerExceptions;
+                                                                        printf("DEVPKEY_Device_ResourcePickerExceptions: \n");
+                                                                        break;
+                                                                    case 98:
+                                                                        devproperty = &DEVPKEY_Device_DriverRank;
+                                                                        printf("DEVPKEY_Device_DriverRank: \n");
+                                                                        break;
+                                                                    case 99:
+                                                                        devproperty = &DEVPKEY_Device_DriverLogoLevel;
+                                                                        printf("DEVPKEY_Device_DriverLogoLevel: \n");
+                                                                        break;
+                                                                    case 100:
+                                                                        devproperty = &DEVPKEY_Device_NoConnectSound;
+                                                                        printf("DEVPKEY_Device_NoConnectSound: \n");
+                                                                        break;
+                                                                    case 101:
+                                                                        devproperty = &DEVPKEY_Device_GenericDriverInstalled;
+                                                                        printf("DEVPKEY_Device_GenericDriverInstalled: \n");
+                                                                        break;
+                                                                    case 102:
+                                                                        devproperty = &DEVPKEY_Device_AdditionalSoftwareRequested;
+                                                                        printf("DEVPKEY_Device_AdditionalSoftwareRequested: \n");
+                                                                        break;
+                                                                    case 103:
+                                                                        devproperty = &DEVPKEY_Device_SafeRemovalRequired;
+                                                                        printf("DEVPKEY_Device_SafeRemovalRequired: \n");
+                                                                        break;
+                                                                    case 104:
+                                                                        devproperty = &DEVPKEY_Device_SafeRemovalRequiredOverride;
+                                                                        printf("DEVPKEY_Device_SafeRemovalRequiredOverride: \n");
+                                                                        break;
+                                                                    case 105:
+                                                                        devproperty = &DEVPKEY_DrvPkg_Model;
+                                                                        printf("DEVPKEY_DrvPkg_Model: \n");
+                                                                        break;
+                                                                    case 106:
+                                                                        devproperty = &DEVPKEY_DrvPkg_VendorWebSite;
+                                                                        printf("DEVPKEY_DrvPkg_VendorWebSite: \n");
+                                                                        break;
+                                                                    case 107:
+                                                                        devproperty = &DEVPKEY_DrvPkg_DetailedDescription;
+                                                                        printf("DEVPKEY_DrvPkg_DetailedDescription: \n");
+                                                                        break;
+                                                                    case 108:
+                                                                        devproperty = &DEVPKEY_DrvPkg_DocumentationLink;
+                                                                        printf("DEVPKEY_DrvPkg_DocumentationLink: \n");
+                                                                        break;
+                                                                    case 109:
+                                                                        devproperty = &DEVPKEY_DrvPkg_Icon;
+                                                                        printf("DEVPKEY_DrvPkg_Icon: \n");
+                                                                        break;
+                                                                    case 110:
+                                                                        devproperty = &DEVPKEY_DrvPkg_BrandingIcon;
+                                                                        printf("DEVPKEY_DrvPkg_BrandingIcon: \n");
+                                                                        break;
+                                                                    case 111:
+                                                                        devproperty = &DEVPKEY_DeviceClass_UpperFilters;
+                                                                        printf("DEVPKEY_DeviceClass_UpperFilters: \n");
+                                                                        break;
+                                                                    case 112:
+                                                                        devproperty = &DEVPKEY_DeviceClass_LowerFilters;
+                                                                        printf("DEVPKEY_DeviceClass_LowerFilters: \n");
+                                                                        break;
+                                                                    case 113:
+                                                                        devproperty = &DEVPKEY_DeviceClass_Security;
+                                                                        printf("DEVPKEY_DeviceClass_Security: \n");
+                                                                        break;
+                                                                    case 114:
+                                                                        devproperty = &DEVPKEY_DeviceClass_SecuritySDS;
+                                                                        printf("DEVPKEY_DeviceClass_SecuritySDS: \n");
+                                                                        break;
+                                                                    case 115:
+                                                                        devproperty = &DEVPKEY_DeviceClass_DevType;
+                                                                        printf("DEVPKEY_DeviceClass_DevType: \n");
+                                                                        break;
+                                                                    case 116:
+                                                                        devproperty = &DEVPKEY_DeviceClass_Exclusive;
+                                                                        printf("DEVPKEY_DeviceClass_Exclusive: \n");
+                                                                        break;
+                                                                    case 117:
+                                                                        devproperty = &DEVPKEY_DeviceClass_Characteristics;
+                                                                        printf("DEVPKEY_DeviceClass_Characteristics: \n");
+                                                                        break;
+                                                                    case 118:
+                                                                        devproperty = &DEVPKEY_DeviceClass_Name;
+                                                                        printf("DEVPKEY_DeviceClass_Name: \n");
+                                                                        break;
+                                                                    case 119:
+                                                                        devproperty = &DEVPKEY_DeviceClass_ClassName;
+                                                                        printf("DEVPKEY_DeviceClass_ClassName: \n");
+                                                                        break;
+                                                                    case 120:
+                                                                        devproperty = &DEVPKEY_DeviceClass_Icon;
+                                                                        printf("DEVPKEY_DeviceClass_Icon: \n");
+                                                                        break;
+                                                                    case 121:
+                                                                        devproperty = &DEVPKEY_DeviceClass_ClassInstaller;
+                                                                        printf("DEVPKEY_DeviceClass_ClassInstaller: \n");
+                                                                        break;
+                                                                    case 122:
+                                                                        devproperty = &DEVPKEY_DeviceClass_PropPageProvider;
+                                                                        printf("DEVPKEY_DeviceClass_PropPageProvider: \n");
+                                                                        break;
+                                                                    case 123:
+                                                                        devproperty = &DEVPKEY_DeviceClass_NoInstallClass;
+                                                                        printf("DEVPKEY_DeviceClass_NoInstallClass: \n");
+                                                                        break;
+                                                                    case 124:
+                                                                        devproperty = &DEVPKEY_DeviceClass_NoDisplayClass;
+                                                                        printf("DEVPKEY_DeviceClass_NoDisplayClass: \n");
+                                                                        break;
+                                                                    case 125:
+                                                                        devproperty = &DEVPKEY_DeviceClass_SilentInstall;
+                                                                        printf("DEVPKEY_DeviceClass_SilentInstall: \n");
+                                                                        break;
+                                                                    case 126:
+                                                                        devproperty = &DEVPKEY_DeviceClass_NoUseClass;
+                                                                        printf("DEVPKEY_DeviceClass_NoUseClass: \n");
+                                                                        break;
+                                                                    case 127:
+                                                                        devproperty = &DEVPKEY_DeviceClass_DefaultService;
+                                                                        printf("DEVPKEY_DeviceClass_DefaultService: \n");
+                                                                        break;
+                                                                    case 128:
+                                                                        devproperty = &DEVPKEY_DeviceClass_IconPath;
+                                                                        printf("DEVPKEY_DeviceClass_IconPath: \n");
+                                                                        break;
+                                                                    case 129:
+                                                                        devproperty = &DEVPKEY_DeviceClass_DHPRebalanceOptOut;
+                                                                        printf("DEVPKEY_DeviceClass_DHPRebalanceOptOut: \n");
+                                                                        break;
+                                                                    case 130:
+                                                                        devproperty = &DEVPKEY_DeviceClass_ClassCoInstallers;
+                                                                        printf("DEVPKEY_DeviceClass_ClassCoInstallers: \n");
+                                                                        break;
+                                                                    case 131:
+                                                                        devproperty = &DEVPKEY_DeviceInterface_FriendlyName;
+                                                                        printf("DEVPKEY_DeviceInterface_FriendlyName: \n");
+                                                                        break;
+                                                                    case 132:
+                                                                        devproperty = &DEVPKEY_DeviceInterface_Enabled;
+                                                                        printf("DEVPKEY_DeviceInterface_Enabled: \n");
+                                                                        break;
+                                                                    case 133:
+                                                                        devproperty = &DEVPKEY_DeviceInterface_ClassGuid;
+                                                                        printf("DEVPKEY_DeviceInterface_ClassGuid: \n");
+                                                                        break;
+                                                                    case 134:
+                                                                        devproperty = &DEVPKEY_DeviceInterface_ReferenceString;
+                                                                        printf("DEVPKEY_DeviceInterface_ReferenceString: \n");
+                                                                        break;
+                                                                    case 135:
+                                                                        devproperty = &DEVPKEY_DeviceInterface_Restricted;
+                                                                        printf("DEVPKEY_DeviceInterface_Restricted: \n");
+                                                                        break;
+                                                                    case 136:
+                                                                        devproperty = &DEVPKEY_DeviceInterface_UnrestrictedAppCapabilities;
+                                                                        printf("DEVPKEY_DeviceInterface_UnrestrictedAppCapabilities: \n");
+                                                                        break;
+                                                                    case 137:
+                                                                        devproperty = &DEVPKEY_DeviceInterface_SchematicName;
+                                                                        printf("DEVPKEY_DeviceInterface_SchematicName: \n");
+                                                                        break;
+                                                                    case 138:
+                                                                        devproperty = &DEVPKEY_DeviceInterfaceClass_DefaultInterface;
+                                                                        printf("DEVPKEY_DeviceInterfaceClass_DefaultInterface: \n");
+                                                                        break;
+                                                                    case 139:
+                                                                        devproperty = &DEVPKEY_DeviceInterfaceClass_Name;
+                                                                        printf("DEVPKEY_DeviceInterfaceClass_Name: \n");
+                                                                        break;
+                                                                    case 140:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Address;
+                                                                        printf("DEVPKEY_DeviceContainer_Address: \n");
+                                                                        break;
+                                                                    case 141:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_DiscoveryMethod;
+                                                                        printf("DEVPKEY_DeviceContainer_DiscoveryMethod: \n");
+                                                                        break;
+                                                                    case 142:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsEncrypted;
+                                                                        printf("DEVPKEY_DeviceContainer_IsEncrypted: \n");
+                                                                        break;
+                                                                    case 143:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsAuthenticated;
+                                                                        printf("DEVPKEY_DeviceContainer_IsAuthenticated: \n");
+                                                                        break;
+                                                                    case 144:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsConnected;
+                                                                        printf("DEVPKEY_DeviceContainer_IsConnected: \n");
+                                                                        break;
+                                                                    case 145:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsPaired;
+                                                                        printf("DEVPKEY_DeviceContainer_IsPaired: \n");
+                                                                        break;
+                                                                    case 146:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Icon;
+                                                                        printf("DEVPKEY_DeviceContainer_Icon: \n");
+                                                                        break;
+                                                                    case 147:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Version;
+                                                                        printf("DEVPKEY_DeviceContainer_Version: \n");
+                                                                        break;
+                                                                    case 148:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Last_Seen;
+                                                                        printf("DEVPKEY_DeviceContainer_Last_Seen: \n");
+                                                                        break;
+                                                                    case 149:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Last_Connected;
+                                                                        printf("DEVPKEY_DeviceContainer_Last_Connected: \n");
+                                                                        break;
+                                                                    case 150:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsShowInDisconnectedState;
+                                                                        printf("DEVPKEY_DeviceContainer_IsShowInDisconnectedState: \n");
+                                                                        break;
+                                                                    case 151:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsLocalMachine;
+                                                                        printf("DEVPKEY_DeviceContainer_IsLocalMachine: \n");
+                                                                        break;
+                                                                    case 152:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_MetadataPath;
+                                                                        printf("DEVPKEY_DeviceContainer_MetadataPath: \n");
+                                                                        break;
+                                                                    case 153:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsMetadataSearchInProgress;
+                                                                        printf("DEVPKEY_DeviceContainer_IsMetadataSearchInProgress: \n");
+                                                                        break;
+                                                                    case 154:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_MetadataChecksum;
+                                                                        printf("DEVPKEY_DeviceContainer_MetadataChecksum: \n");
+                                                                        break;
+                                                                    case 155:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsNotInterestingForDisplay;
+                                                                        printf("DEVPKEY_DeviceContainer_IsNotInterestingForDisplay: \n");
+                                                                        break;
+                                                                    case 156:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_LaunchDeviceStageOnDeviceConnect;
+                                                                        printf("DEVPKEY_DeviceContainer_LaunchDeviceStageOnDeviceConnect: \n");
+                                                                        break;
+                                                                    case 157:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_LaunchDeviceStageFromExplorer;
+                                                                        printf("DEVPKEY_DeviceContainer_LaunchDeviceStageFromExplorer: \n");
+                                                                        break;
+                                                                    case 158:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_BaselineExperienceId;
+                                                                        printf("DEVPKEY_DeviceContainer_BaselineExperienceId: \n");
+                                                                        break;
+                                                                    case 159:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsDeviceUniquelyIdentifiable;
+                                                                        printf("DEVPKEY_DeviceContainer_IsDeviceUniquelyIdentifiable: \n");
+                                                                        break;
+                                                                    case 160:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_AssociationArray;
+                                                                        printf("DEVPKEY_DeviceContainer_AssociationArray: \n");
+                                                                        break;
+                                                                    case 161:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_DeviceDescription1;
+                                                                        printf("DEVPKEY_DeviceContainer_DeviceDescription1: \n");
+                                                                        break;
+                                                                    case 162:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_DeviceDescription2;
+                                                                        printf("DEVPKEY_DeviceContainer_DeviceDescription2: \n");
+                                                                        break;
+                                                                    case 163:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_HasProblem;
+                                                                        printf("DEVPKEY_DeviceContainer_HasProblem: \n");
+                                                                        break;
+                                                                    case 164:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsSharedDevice;
+                                                                        printf("DEVPKEY_DeviceContainer_IsSharedDevice: \n");
+                                                                        break;
+                                                                    case 165:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsNetworkDevice;
+                                                                        printf("DEVPKEY_DeviceContainer_IsNetworkDevice: \n");
+                                                                        break;
+                                                                    case 166:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsDefaultDevice;
+                                                                        printf("DEVPKEY_DeviceContainer_IsDefaultDevice: \n");
+                                                                        break;
+                                                                    case 167:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_MetadataCabinet;
+                                                                        printf("DEVPKEY_DeviceContainer_MetadataCabinet: \n");
+                                                                        break;
+                                                                    case 168:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_RequiresPairingElevation;
+                                                                        printf("DEVPKEY_DeviceContainer_RequiresPairingElevation: \n");
+                                                                        break;
+                                                                    case 169:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_ExperienceId;
+                                                                        printf("DEVPKEY_DeviceContainer_ExperienceId: \n");
+                                                                        break;
+                                                                    case 170:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Category;
+                                                                        printf("DEVPKEY_DeviceContainer_Category: \n");
+                                                                        break;
+                                                                    case 171:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Category_Desc_Singular;
+                                                                        printf("DEVPKEY_DeviceContainer_Category_Desc_Singular: \n");
+                                                                        break;
+                                                                    case 172:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Category_Desc_Plural;
+                                                                        printf("DEVPKEY_DeviceContainer_Category_Desc_Plural: \n");
+                                                                        break;
+                                                                    case 173:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Category_Icon;
+                                                                        printf("DEVPKEY_DeviceContainer_Category_Icon: \n");
+                                                                        break;
+                                                                    case 174:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_CategoryGroup_Desc;
+                                                                        printf("DEVPKEY_DeviceContainer_CategoryGroup_Desc: \n");
+                                                                        break;
+                                                                    case 175:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_CategoryGroup_Icon;
+                                                                        printf("DEVPKEY_DeviceContainer_CategoryGroup_Icon: \n");
+                                                                        break;
+                                                                    case 176:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_PrimaryCategory;
+                                                                        printf("DEVPKEY_DeviceContainer_PrimaryCategory: \n");
+                                                                        break;
+                                                                    case 178:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_UnpairUninstall;
+                                                                        printf("DEVPKEY_DeviceContainer_UnpairUninstall: \n");
+                                                                        break;
+                                                                    case 179:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_RequiresUninstallElevation;
+                                                                        printf("DEVPKEY_DeviceContainer_RequiresUninstallElevation: \n");
+                                                                        break;
+                                                                    case 180:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_DeviceFunctionSubRank;
+                                                                        printf("DEVPKEY_DeviceContainer_DeviceFunctionSubRank: \n");
+                                                                        break;
+                                                                    case 181:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_AlwaysShowDeviceAsConnected;
+                                                                        printf("DEVPKEY_DeviceContainer_AlwaysShowDeviceAsConnected: \n");
+                                                                        break;
+                                                                    case 182:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_ConfigFlags;
+                                                                        printf("DEVPKEY_DeviceContainer_ConfigFlags: \n");
+                                                                        break;
+                                                                    case 183:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_PrivilegedPackageFamilyNames;
+                                                                        printf("DEVPKEY_DeviceContainer_PrivilegedPackageFamilyNames: \n");
+                                                                        break;
+                                                                    case 184:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_CustomPrivilegedPackageFamilyNames;
+                                                                        printf("DEVPKEY_DeviceContainer_CustomPrivilegedPackageFamilyNames: \n");
+                                                                        break;
+                                                                    case 185:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_IsRebootRequired;
+                                                                        printf("DEVPKEY_DeviceContainer_IsRebootRequired: \n");
+                                                                        break;
+                                                                    case 186:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_FriendlyName;
+                                                                        printf("DEVPKEY_DeviceContainer_FriendlyName: \n");
+                                                                        break;
+                                                                    case 187:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_Manufacturer;
+                                                                        printf("DEVPKEY_DeviceContainer_Manufacturer: \n");
+                                                                        break;
+                                                                    case 188:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_ModelName;
+                                                                        printf("DEVPKEY_DeviceContainer_ModelName: \n");
+                                                                        break;
+                                                                    case 189:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_ModelNumber;
+                                                                        printf("DEVPKEY_DeviceContainer_ModelNumber: \n");
+                                                                        break;
+                                                                    case 190:
+                                                                        devproperty = &DEVPKEY_DeviceContainer_InstallInProgress;
+                                                                        printf("DEVPKEY_DeviceContainer_InstallInProgress: \n");
+                                                                        break;
+                                                                    case 191:
+                                                                        devproperty = &DEVPKEY_DevQuery_ObjectType;
+                                                                        printf("DEVPKEY_DevQuery_ObjectType: \n");
+                                                                        break;
+                                                                    default:
+                                                                        devproperty = NULL;
+                                                                        break;
+                                                                    }
+                                                                    propertyBufLen = 0;
+                                                                    cmRet = CM_Get_DevNode_PropertyW(propInst, devproperty, &propertyType, NULL, &propertyBufLen, 0);
+                                                                    if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
+                                                                    {
+                                                                        PBYTE propertyBuf = (PBYTE)calloc(propertyBufLen + 1, sizeof(BYTE));
+                                                                        if (propertyBuf)
+                                                                        {
+                                                                            propertyBufLen += 1;
+                                                                            cmRet = CM_Get_DevNode_PropertyW(propInst, devproperty, &propertyType, propertyBuf, &propertyBufLen, 0);
+                                                                            if (CR_SUCCESS == cmRet)
+                                                                            {
+                                                                                switch (propertyType)
+                                                                                {
+                                                                                case DEVPROP_TYPE_STRING:
+                                                                                    // Fall-through //
+                                                                                case DEVPROP_TYPE_STRING_LIST:
+                                                                                    //setup to handle multiple strings
+                                                                                    for (LPWSTR property = (LPWSTR)propertyBuf; *property; property += wcslen(property) + 1)
+                                                                                    {
+                                                                                        if (property && ((uintptr_t)property - (uintptr_t)propertyBuf) < propertyBufLen && wcslen(property))
+                                                                                        {
+                                                                                            wprintf(L"\t%s\n", property);
+                                                                                        }
+                                                                                    }
+                                                                                    break;
+                                                                                case DEVPROP_TYPE_SBYTE://8bit signed byte
+                                                                                {
+                                                                                    char *signedByte = (char*)propertyBuf;
+                                                                                    printf("\t%" PRId8 "\n", *signedByte);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_BYTE:
+                                                                                {
+                                                                                    BYTE *unsignedByte = (BYTE*)propertyBuf;
+                                                                                    printf("\t%" PRIu8 "\n", *unsignedByte);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_INT16:
+                                                                                {
+                                                                                    INT16 *signed16 = (INT16*)propertyBuf;
+                                                                                    printf("\t%" PRId16 "\n", *signed16);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_UINT16:
+                                                                                {
+                                                                                    UINT16 *unsigned16 = (UINT16*)propertyBuf;
+                                                                                    printf("\t%" PRIu16 "\n", *unsigned16);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_INT32:
+                                                                                {
+                                                                                    INT32 *signed32 = (INT32*)propertyBuf;
+                                                                                    printf("\t%" PRId32 "\n", *signed32);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_UINT32:
+                                                                                {
+                                                                                    UINT32 *unsigned32 = (UINT32*)propertyBuf;
+                                                                                    printf("\t%" PRIu32 "\n", *unsigned32);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_INT64:
+                                                                                {
+                                                                                    INT64 *signed64 = (INT64*)propertyBuf;
+                                                                                    printf("\t%" PRId64 "\n", *signed64);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_UINT64:
+                                                                                {
+                                                                                    UINT64 *unsigned64 = (UINT64*)propertyBuf;
+                                                                                    printf("\t%" PRIu64 "\n", *unsigned64);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_FLOAT:
+                                                                                {
+                                                                                    FLOAT *theFloat = (FLOAT*)propertyBuf;
+                                                                                    printf("\t%f\n", *theFloat);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_DOUBLE:
+                                                                                {
+                                                                                    DOUBLE *theFloat = (DOUBLE*)propertyBuf;
+                                                                                    printf("\t%f\n", *theFloat);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_BOOLEAN:
+                                                                                {
+                                                                                    BOOLEAN *theBool = (BOOLEAN*)propertyBuf;
+                                                                                    if (*theBool == DEVPROP_FALSE)
+                                                                                    {
+                                                                                        printf("\tFALSE\n");
+                                                                                    }
+                                                                                    else //if (*theBool == DEVPROP_TRUE)
+                                                                                    {
+                                                                                        printf("\tTRUE\n");
+                                                                                    }
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_ERROR://win32 error code
+                                                                                {
+                                                                                    DWORD *win32Error = (DWORD*)propertyBuf;
+                                                                                    print_Windows_Error_To_Screen(*win32Error);
+                                                                                }
+                                                                                break;
+                                                                                case DEVPROP_TYPE_DECIMAL://128bit decimal
+                                                                                case DEVPROP_TYPE_GUID://128bit guid
+                                                                                case DEVPROP_TYPE_CURRENCY:
+                                                                                case DEVPROP_TYPE_DATE:
+                                                                                case DEVPROP_TYPE_FILETIME:
+                                                                                case DEVPROP_TYPE_SECURITY_DESCRIPTOR:
+                                                                                case DEVPROP_TYPE_SECURITY_DESCRIPTOR_STRING:
+                                                                                case DEVPROP_TYPE_DEVPROPKEY:
+                                                                                case DEVPROP_TYPE_DEVPROPTYPE:
+                                                                                case DEVPROP_TYPE_BINARY://custom binary data
+                                                                                case DEVPROP_TYPE_NTSTATUS://NTSTATUS code
+                                                                                case DEVPROP_TYPE_STRING_INDIRECT:
+                                                                                default:
+                                                                                    print_Data_Buffer(propertyBuf, propertyBufLen, true);
+                                                                                    break;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                        safe_Free(propertyBuf);
+                                                                    }
+                                                                    //else
+                                                                    //{
+                                                                    //    printf("\tUnable to find requested property\n");
+                                                                    //}
+                                                                    ++counter;
+                                                                }
+                                                                ++instanceCounter;
+                                                                counter = 0;
+                                                                //change to parent instance
+                                                                propInst = parentInst;
+                                                                //reset to beginning of properties
+                                                                devproperty = &DEVPKEY_NAME;
+                                                                propertyType = 0;
+                                                                propertyBufLen = 0;
+                                                            }
+                                                        }
+                                                        /*/
+                                                        //*/
+
+                                                        //here is where we need to parse the USB VID/PID or TODO: PCI Vendor, Product, and Revision numbers
+                                                        if (_tcsncmp(TEXT("USB"), parentBuffer, _tcsclen(TEXT("USB"))) == 0)
+                                                        {
+                                                            ULONG propertyBufLen = 0;
+                                                            DEVPROPTYPE propertyType = 0;
+#if defined (_MSC_VER) && _MSC_VER < SEA_MSC_VER_VS2015
+                                                            //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
+                                                            int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%x&PID_%x\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
+#else
+                                                            int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%") TEXT(SCNx32) TEXT("&PID_%") TEXT(SCNx32) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
+#endif
+                                                            device->drive_info.adapter_info.vendorIDValid = true;
+                                                            device->drive_info.adapter_info.productIDValid = true;
+                                                            if (scannedVals < 2)
+                                                            {
+#if (_DEBUG)
+                                                                printf("Could not scan all values. Scanned %d values\n", scannedVals);
+#endif
+                                                            }
+                                                            device->drive_info.adapter_info.infoType = ADAPTER_INFO_USB;
+                                                            //unfortunately, this device ID doesn't have a revision in it for USB.
+                                                            //We can do this other property request to read it, but it's wide characters only. No TCHARs allowed.
+                                                            cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_HardwareIds, &propertyType, NULL, &propertyBufLen, 0);
+                                                            if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
+                                                            {
+                                                                PBYTE propertyBuf = (PBYTE)calloc(propertyBufLen + 1, sizeof(BYTE));
+                                                                if (propertyBuf)
+                                                                {
+                                                                    propertyBufLen += 1;
+                                                                    //NOTE: This key contains all 3 parts, VID, PID, and REV from the "parentInst": Example: USB\VID_174C&PID_2362&REV_0100
+                                                                    if (CR_SUCCESS == CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_HardwareIds, &propertyType, propertyBuf, &propertyBufLen, 0))
+                                                                    {
+                                                                        //multiple strings can be returned.
+                                                                        for (LPWSTR property = (LPWSTR)propertyBuf; *property; property += wcslen(property) + 1)
+                                                                        {
+                                                                            if (property && ((uintptr_t)property - (uintptr_t)propertyBuf) < propertyBufLen && wcslen(property))
+                                                                            {
+                                                                                LPWSTR revisionStr = wcsstr(property, L"REV_");
+                                                                                if (revisionStr)
+                                                                                {
+                                                                                    if (1 == swscanf(revisionStr, L"REV_%x", &device->drive_info.adapter_info.revision))
+                                                                                    {
+                                                                                        device->drive_info.adapter_info.revisionValid = true;
+                                                                                        break;
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                                safe_Free(propertyBuf);
+                                                            }
+                                                        }
+                                                        else if (_tcsncmp(TEXT("PCI"), parentBuffer, _tcsclen(TEXT("PCI"))) == 0)
+                                                        {
+                                                            uint32_t subsystem = 0;
+                                                            uint8_t revision = 0;
+#if defined (_MSC_VER) && _MSC_VER  < SEA_MSC_VER_VS2015
+                                                            //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
+                                                            int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("PCI\\VEN_%lx&DEV_%lx&SUBSYS_%lx&REV_%hhx\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
+#else
+                                                            int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("PCI\\VEN_%") TEXT(SCNx32) TEXT("&DEV_%") TEXT(SCNx32) TEXT("&SUBSYS_%") TEXT(SCNx32) TEXT("&REV_%") TEXT(SCNx8) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
+#endif
+                                                            device->drive_info.adapter_info.vendorIDValid = true;
+                                                            device->drive_info.adapter_info.productIDValid = true;
+                                                            device->drive_info.adapter_info.revision = revision;
+                                                            device->drive_info.adapter_info.revisionValid = true;
+                                                            device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
+                                                            if (scannedVals < 4)
+                                                            {
+#if (_DEBUG)
+                                                                printf("Could not scan all values. Scanned %d values\n", scannedVals);
+#endif
+                                                            }
+                                                            //can also read DEVPKEY_Device_HardwareIds for parentInst to get all this data
+                                                        }
+                                                        else if (_tcsncmp(TEXT("1394"), parentBuffer, _tcsclen(TEXT("1394"))) == 0)
+                                                        {
+                                                            //Parent buffer already contains the vendor ID as part of the buffer where a full WWN is reported...we just need first 6 bytes. example, brackets added for clarity: 1394\Maxtor&5000DV__v1.00.00\[0010B9]20003D9D6E
+                                                            //DEVPKEY_Device_CompatibleIds gets use 1394 specifier ID for the device instance
+                                                            //DEVPKEY_Device_CompatibleIds gets revision and specifier ID for the parent instance: 1394\<specifier>&<revision>
+                                                            //DEVPKEY_Device_ConfigurationId gets revision and specifier ID for parent instance: sbp2.inf:1394\609E&10483,sbp2_install
+                                                            //NOTE: There is no currently known way to get the product ID for this interface
+                                                            ULONG propertyBufLen = 0;
+                                                            DEVPROPTYPE propertyType = 0;
+                                                            const DEVPROPKEY *propertyKey = &DEVPKEY_Device_CompatibleIds;
+                                                            //scan parentBuffer to get vendor
+                                                            TCHAR *nextToken = NULL;
+                                                            TCHAR *token = _tcstok_s(parentBuffer, TEXT("\\"), &nextToken);
+                                                            while (token && nextToken &&  _tcsclen(nextToken) > 0)
+                                                            {
+                                                                token = _tcstok_s(NULL, TEXT("\\"), &nextToken);
+                                                            }
+                                                            if (token)
+                                                            {
+                                                                //at this point, the token contains only the part we care about reading
+                                                                //We need the first 6 characters to convert into hex for the vendor ID
+                                                                TCHAR vendorIDString[7] = { 0 };
+                                                                _tcsncpy_s(vendorIDString, 7 * sizeof(TCHAR), token, 6);
+                                                                _tprintf(TEXT("%s\n"), vendorIDString);
+#if defined (_MSC_VER) && _MSC_VER  < SEA_MSC_VER_VS2015
+                                                                //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
+                                                                int result = _stscanf(token, TEXT("%06lx"), &device->drive_info.adapter_info.vendorID);
+#else
+                                                                int result = _stscanf(token, TEXT("%06") TEXT(SCNx32), &device->drive_info.adapter_info.vendorID);
+#endif
+                                                                
+                                                                if (result == 1)
+                                                                {
+                                                                    device->drive_info.adapter_info.vendorIDValid = true;
+                                                                }
+                                                            }
+
+                                                            device->drive_info.adapter_info.infoType = ADAPTER_INFO_IEEE1394;
+                                                            cmRet = CM_Get_DevNode_PropertyW(parentInst, propertyKey, &propertyType, NULL, &propertyBufLen, 0);
+                                                            if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
+                                                            {
+                                                                PBYTE propertyBuf = (PBYTE)calloc(propertyBufLen + 1, sizeof(BYTE));
+                                                                if (propertyBuf)
+                                                                {
+                                                                    propertyBufLen += 1;
+                                                                    if (CR_SUCCESS == CM_Get_DevNode_PropertyW(parentInst, propertyKey, &propertyType, propertyBuf, &propertyBufLen, 0))
+                                                                    {
+                                                                        //multiple strings can be returned for some properties. This one will most likely only return one.
+                                                                        for (LPWSTR property = (LPWSTR)propertyBuf; *property; property += wcslen(property) + 1)
+                                                                        {
+                                                                            if (property && ((uintptr_t)property - (uintptr_t)propertyBuf) < propertyBufLen && wcslen(property))
+                                                                            {
+                                                                                int scannedVals = _snwscanf_s((const wchar_t*)propertyBuf, propertyBufLen, L"1394\\%x&%x", &device->drive_info.adapter_info.specifierID, &device->drive_info.adapter_info.revision);
+                                                                                if (scannedVals < 2)
+                                                                                {
+#if (_DEBUG)
+                                                                                    printf("Could not scan all values. Scanned %d values\n", scannedVals);
+#endif
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    device->drive_info.adapter_info.specifierIDValid = true;
+                                                                                    device->drive_info.adapter_info.revisionValid = true;
+                                                                                    break;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                                safe_Free(propertyBuf);
+                                                            }
+                                                        }
+                                                    }
+                                                    safe_Free(parentBuffer);
+                                                }
+                                            }
+                                            else
+                                            {
+                                                //for some reason, we matched, but didn't find a matching drive number. Keep going through the list and trying to figure it out!
+                                                foundMatch = false;
+                                            }
+                                        }
+                                    }
+                                    CloseHandle(deviceHandle);
+                                }
+                            }
+                        }
+                        safe_Free(interfaceList);
+                    }
+                }//else node is not available most likely...possibly not attached to the system.
+            }
+            if (foundMatch)
+            {
+                ret = SUCCESS;
+            }
+        }
+        safe_Free(listBuffer);
+    }
+    return ret;
+}
+
 #if !defined (DISABLE_NVME_PASSTHROUGH)
 #if WINVER >= SEA_WIN32_WINNT_WINBLUE
 int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
@@ -169,7 +1514,7 @@ int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
     PSTORAGE_FIRMWARE_ACTIVATE  firmwareActivate;
 #if defined (_DEBUG)
     printf("%s: -->\n", __FUNCTION__);
-    printf("%s: Slot %d\n", __FUNCTION__, M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0));
+    printf("%s: Slot %" PRIu8 "\n", __FUNCTION__, (uint8_t)M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0));
 #endif
 
     //
@@ -181,7 +1526,7 @@ int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
     bufferSize += firmwareStructureOffset;
     bufferSize += FIELD_OFFSET(STORAGE_FIRMWARE_DOWNLOAD, ImageBuffer);
 
-    buffer = (PUCHAR)calloc(bufferSize,1);
+    buffer = (PUCHAR)calloc_aligned(bufferSize, sizeof(UCHAR), nvmeIoCtx->device->os_info.minimumAlignment);
     if (!buffer)
     {
         return MEMORY_FAILURE;
@@ -269,6 +1614,7 @@ int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
             break;
         }
     }
+    safe_Free_aligned(buffer);
 #if defined (_DEBUG)
     printf("%s: <-- (ret=%d)\n", __FUNCTION__, ret);
 #endif
@@ -352,15 +1698,9 @@ int get_Device(const char *filename, tDevice *device )
     STORAGE_PROPERTY_QUERY      query;
     STORAGE_DESCRIPTOR_HEADER   header;
 
-#if defined UNICODE
-    WCHAR device_name[80] = { 0 };
-    LPCWSTR ptrDeviceName = &device_name[0];
-    mbstowcs_s(NULL, device_name, strlen(filename) + 1, filename, _TRUNCATE); //Plus null
-#else
-    char device_name[40] = { 0 };
-    LPCSTR ptrDeviceName = &device_name[0];
-    strcpy(&device_name[0], filename);
-#endif
+    TCHAR device_name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+    TCHAR *ptrDeviceName = &device_name[0];
+    _stprintf_s(device_name, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), filename);
 
     //printf("%s -->\n Opening Device %s\n",__FUNCTION__, filename);
     if (!(validate_Device_Struct(device->sanity)))
@@ -400,38 +1740,42 @@ int get_Device(const char *filename, tDevice *device )
         //set the handle name
         strncpy_s(device->os_info.name, 30, filename, 30);
 
-        if (strstr(device->os_info.name, "Physical"))
+        if (strstr(device->os_info.name, WIN_PHYSICAL_DRIVE))
         {
             uint32_t drive = UINT32_MAX;
-            sscanf_s(device->os_info.name, "\\\\.\\PhysicalDrive%" SCNu32, &drive);
+            const char *scanFormatString = WIN_PHYSICAL_DRIVE "%" SCNu32;
+            sscanf_s(device->os_info.name, scanFormatString, &drive);
             sprintf(device->os_info.friendlyName, "PD%" PRIu32, drive);
             device->os_info.os_drive_number = drive;
         }
-        else if (strstr(device->os_info.name, "CDROM"))
+        else if (strstr(device->os_info.name, WIN_CDROM_DRIVE))
         {
             uint32_t drive = UINT32_MAX;
-            sscanf_s(device->os_info.name, "\\\\.\\CDROM%" SCNu32, &drive);
+            const char *scanFormatString = WIN_CDROM_DRIVE "%" SCNu32;
+            sscanf_s(device->os_info.name, scanFormatString, &drive);
             sprintf(device->os_info.friendlyName, "CDROM%" PRIu32, drive);
             device->os_info.os_drive_number = drive;
         }
-        else if (strstr(device->os_info.name, "Tape"))
+        else if (strstr(device->os_info.name, WIN_TAPE_DRIVE))
         {
             uint32_t drive = UINT32_MAX;
-            sscanf_s(device->os_info.name, "\\\\.\\Tape%" SCNu32, &drive);
+            const char *scanFormatString = WIN_TAPE_DRIVE "%" SCNu32;
+            sscanf_s(device->os_info.name, scanFormatString, &drive);
             sprintf(device->os_info.friendlyName, "TAPE%" PRIu32, drive);
             device->os_info.os_drive_number = drive;
         }
-        else if (strstr(device->os_info.name, "Changer"))
+        else if (strstr(device->os_info.name, WIN_CHANGER_DEVICE))
         {
             uint32_t drive = UINT32_MAX;
-            sscanf_s(device->os_info.name, "\\\\.\\Changer%" SCNu32, &drive);
+            const char *scanFormatString = WIN_CHANGER_DEVICE "%" SCNu32;
+            sscanf_s(device->os_info.name, scanFormatString, &drive);
             sprintf(device->os_info.friendlyName, "CHGR%" PRIu32, drive);
             device->os_info.os_drive_number = drive;
         }
 
         //map the drive to a volume letter
         DWORD driveLetters = 0;
-        char currentLetter = 'A';
+        TCHAR currentLetter = 'A';
         driveLetters = GetLogicalDrives();
         device->os_info.fileSystemInfo.fileSystemInfoValid = true;//Setting this since we have code here to detect the volumes in the OS
         bool foundVolumeLetter = false;
@@ -440,17 +1784,10 @@ int get_Device(const char *filename, tDevice *device )
             if (driveLetters & BIT0)
             {
                 //a volume with this letter exists...check it's physical device number
-#if defined UNICODE
-                WCHAR device_name[80] = { 0 };
-                LPWSTR ptrLetterName = &device_name[0];
-                swprintf(ptrLetterName, 80, L"\\\\.\\%c:", currentLetter);
-                HANDLE letterHandle = CreateFile((LPCWSTR)ptrLetterName,
-#else
-                char device_name[40] = { 0 };
-                LPSTR ptrLetterName = &device_name[0];
-                snprintf(ptrLetterName, 40, "\\\\.\\%c:", currentLetter);
-                HANDLE letterHandle = CreateFile((LPCSTR)ptrLetterName,
-#endif
+                TCHAR device_name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+                TCHAR *ptrLetterName = &device_name[0];
+                _stprintf_s(ptrLetterName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\%c:"), currentLetter);
+                HANDLE letterHandle = CreateFile(ptrLetterName,
                     GENERIC_WRITE | GENERIC_READ,
                     FILE_SHARE_READ | FILE_SHARE_WRITE,
                     NULL,
@@ -583,6 +1920,24 @@ int get_Device(const char *filename, tDevice *device )
                     {
                         device->os_info.srbtype = SRB_TYPE_SCSI_REQUEST_BLOCK;
                     }
+                    switch (adapter_desc->AlignmentMask)
+                    {
+                    case 0://byte
+                        device->os_info.minimumAlignment = 1;
+                        break;
+                    case 1://word
+                        device->os_info.minimumAlignment = 2;
+                        break;
+                    case 3://dword
+                        device->os_info.minimumAlignment = 4;
+                        break;
+                    case 7://qword
+                        device->os_info.minimumAlignment = 8;
+                        break;
+                    default:
+                        device->os_info.minimumAlignment = 0;
+                        break;
+                    }
                     device->os_info.alignmentMask = adapter_desc->AlignmentMask;//may be needed later....currently unused
                     // Now lets get device stuff
                     query.PropertyId = StorageDeviceProperty;
@@ -611,8 +1966,13 @@ int get_Device(const char *filename, tDevice *device )
                                                   FALSE);
                             if (win_ret > 0)
                             {
+
+                                get_Adapter_IDs(device, device_desc, header.Size);
+
 #if WINVER >= SEA_WIN32_WINNT_WIN10
                                 get_Windows_FWDL_IO_Support(device, device_desc->BusType);
+#else
+                                device->os_info.fwdlIOsupport.fwdlIOSupported = false;//this API is not available before Windows 10
 #endif
                                 //#if defined (_DEBUG)
                                 //printf("Drive BusType: ");
@@ -635,6 +1995,8 @@ int get_Device(const char *filename, tDevice *device )
                                 {
                                     device->drive_info.drive_type = ATAPI_DRIVE;
                                     device->drive_info.interface_type = IDE_INTERFACE;
+                                    device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
+                                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//This is GENERALLY true because almost all times the CDB is passed through instead of translated for a passthrough command, so just block it no matter what.
                                     //TODO: These devices use the SCSI MMC command set in packet commands over ATA...other than for a few other commands.
                                     //If we care to properly support this, we should investigate either how to send a packet command, or we should try issuing only SCSI commands
                                     device->os_info.ioType = WIN_IOCTL_ATA_PASSTHROUGH;
@@ -653,6 +2015,8 @@ int get_Device(const char *filename, tDevice *device )
                                     //we are assuming, for now, that SAT translation is being done below, and so far through testing on a few chipsets this appears to be correct.
                                     device->drive_info.interface_type = IDE_INTERFACE;
                                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
+                                    device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
+                                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
                                     get_Windows_SMART_IO_Support(device);//might be used later
                                 }
                                 else if (device_desc->BusType == BusTypeUsb)
@@ -669,26 +2033,29 @@ int get_Device(const char *filename, tDevice *device )
                                     device->drive_info.interface_type = IEEE_1394_INTERFACE;
                                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                                 }
-#if WINVER >= SEA_WIN32_WINNT_WINBLUE//win 8.1 added NVME
-                                else if (device_desc->BusType == BusTypeNvme)
+                                //NVMe bustype can be defined for Win7 with openfabrics nvme driver, so make sure we can handle it...it shows as a SCSI device on this interface unless you use a SCSI?: handle with the IOCTL directly to the driver.
+                                else if (device_desc->BusType == BusTypeNvme && device_desc->VendorIdOffset == 0)//Open fabrics will set a vendorIDoffset, MSFT driver will not.
                                 {
 #if WINVER >= SEA_WIN32_WINNT_WIN10 && !defined(DISABLE_NVME_PASSTHROUGH)
                                     device->drive_info.drive_type = NVME_DRIVE;
                                     device->drive_info.interface_type = NVME_INTERFACE;
-                                    set_Namespace_ID_For_Device(device);
+                                    //set_Namespace_ID_For_Device(device);
                                     device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
 #else
                                     device->drive_info.drive_type = SCSI_DRIVE;
                                     device->drive_info.interface_type = SCSI_INTERFACE;
                                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
-                                    //Because out of box driver fails if STORAGE_BLOCK flag is used.
-                                    device->os_info.srbtype = SRB_TYPE_SCSI_REQUEST_BLOCK;
 #endif
                                 }
-#endif //WINVER >= Win8.1 for bustype NVMe
-                                // This else essentially eliminates the RAID support from this layer.
-                                // Please check the history of the file for more info.
-                                else
+                                else //treat anything else as a SCSI device.
                                 {
                                     device->drive_info.interface_type = SCSI_INTERFACE;
                                     //This does NOT mean that drive_type is SCSI, but set SCSI drive for now
@@ -696,16 +2063,23 @@ int get_Device(const char *filename, tDevice *device )
                                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                                 }
 
+                                //Doing this here because the NSID may be needed for NVMe over USB interfaces too
+                                device->drive_info.namespaceID = device->os_info.scsi_addr.Lun + 1;
+
                                 if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
                                 {
-                                    //TODO: Actually get the VID and PID set before calling this.
-                                    set_ATA_Passthrough_Type(device);
+                                    setup_Passthrough_Hacks_By_ID(device);
                                 }
 
                                 //For now force direct IO all the time to match previous functionality.
                                 //TODO: Investigate how to decide using double buffered vs direct vs mixed.
-                                //Note: On a couple systems here, when using double buffered IO with ATA Passthrough, invalid checksums are retunred for identify commands, but direct is fine...
+                                //Note: On a couple systems here, when using double buffered IO with ATA Pass-through, invalid checksums are returned for identify commands, but direct is fine...
                                 device->os_info.ioMethod = WIN_IOCTL_FORCE_ALWAYS_DIRECT;
+
+                                if (device->dFlags & OPEN_HANDLE_ONLY)//This is this far down because there is a lot of other things that need to be saved in order for windows pass-through to work correctly.
+                                {
+                                    return SUCCESS;
+                                }
 
                                 // Lets fill out rest of info
                                 //TODO: This doesn't work for ATAPI on Windows right now. Will need to debug it more to figure out what other parts are wrong to get it fully functional.
@@ -825,33 +2199,28 @@ int get_Device(const char *filename, tDevice *device )
 int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
     HANDLE fd = NULL;
-#if defined (UNICODE)
-    wchar_t deviceName[40] = { 0 };
-#else
-    char deviceName[40] = { 0 };
-#endif
-
+    TCHAR deviceName[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+    
     //Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
-#if !defined (_M_ARM) && !defined (_M_ARM_ARMV7VE) && !defined (_M_ARM_FP ) && !defined (_M_ARM64)
+    //ARM requires 10.0.16299.0 API to get cfgmgr32 library!
+    //TODO: add better check for API version and ARM to turn this on and off.
     //try forcing a system rescan before opening the list. This should help with crappy drivers or bad hotplug support - TJE
-    DEVINST deviceInstance;
-    DEVINSTID tree = NULL;//set to null for root of device tree
-    ULONG locateNodeFlags = 0;//add flags here if we end up needing them
-    if (CR_SUCCESS == CM_Locate_DevNode(&deviceInstance, tree, locateNodeFlags))
+    if (flags & BUS_RESCAN_ALLOWED)
     {
-        ULONG reenumerateFlags = 0;
-        CM_Reenumerate_DevNode(deviceInstance, reenumerateFlags);
+        DEVINST deviceInstance;
+        DEVINSTID tree = NULL;//set to null for root of device tree
+        ULONG locateNodeFlags = 0;//add flags here if we end up needing them
+        if (CR_SUCCESS == CM_Locate_DevNode(&deviceInstance, tree, locateNodeFlags))
+        {
+            ULONG reenumerateFlags = 0;
+            CM_Reenumerate_DevNode(deviceInstance, reenumerateFlags);
+        }
     }
-#endif
 
     int  driveNumber = 0, found = 0;
-    for (driveNumber = 0; driveNumber < MAX_DEVICES_TO_SCAN; driveNumber++)
+    for (driveNumber = 0; driveNumber < MAX_DEVICES_TO_SCAN; ++driveNumber)
     {
-#if defined (UNICODE)
-    wsprintf(deviceName, L"\\\\.\\PHYSICALDRIVE%d", driveNumber);
-#else
-     snprintf(deviceName, sizeof(deviceName), "\\\\.\\PhysicalDrive%d", driveNumber);
-#endif
+        _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
         //lets try to open the device.
         fd = CreateFile(deviceName,
                         GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
@@ -918,12 +2287,8 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     int returnValue = SUCCESS;
     int numberOfDevices = 0;
     int driveNumber = 0, found = 0, failedGetDeviceCount = 0;
-#if defined (UNICODE)
-    wchar_t deviceName[40] = { 0 };
-#else
-    char deviceName[40] = { 0 };
-#endif
-    char    name[80] = { 0 }; //Because get device needs char
+    TCHAR deviceName[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+    char    name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 }; //Because get device needs char
     HANDLE fd = INVALID_HANDLE_VALUE;
     tDevice * d = NULL;
 #if defined (ENABLE_CSMI)
@@ -957,12 +2322,8 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         d = ptrToDeviceList;
         for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN) && (found < numberOfDevices)); driveNumber++)
         {
-#if defined (UNICODE)
-            wsprintf(deviceName, L"\\\\.\\%hs%d", WIN_PHYSICAL_DRIVE, driveNumber);
-#else
-            snprintf(deviceName, sizeof(deviceName), "%s%d", WIN_PHYSICAL_DRIVE, driveNumber);
-#endif
-      //lets try to open the device.
+            _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
+            //lets try to open the device.
             fd = CreateFile((LPCTSTR)deviceName,
                 GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
                 FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -977,7 +2338,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             if (fd != INVALID_HANDLE_VALUE)
             {
                 CloseHandle(fd);
-                snprintf(name, 80, "%s%d", WIN_PHYSICAL_DRIVE, driveNumber);
+                snprintf(name, WIN_MAX_DEVICE_NAME_LENGTH, "%s%d", WIN_PHYSICAL_DRIVE, driveNumber);
                 eVerbosityLevels temp = d->deviceVerbosity;
                 memset(d, 0, sizeof(tDevice));
                 d->deviceVerbosity = temp;
@@ -1090,13 +2451,20 @@ int convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx, ptrSCSIPassTh
         ret = FAILURE;
         break;
     }
-    if (scsiIoCtx->timeout != 0)
+    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
     {
-        psptd->scsiPassThroughEXDirect.TimeOutValue = scsiIoCtx->timeout;
+        psptd->scsiPassThroughEX.TimeOutValue = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
     }
     else
     {
-        psptd->scsiPassThroughEXDirect.TimeOutValue = 15;
+        if (scsiIoCtx->timeout != 0)
+        {
+            psptd->scsiPassThroughEX.TimeOutValue = scsiIoCtx->timeout;
+        }
+        else
+        {
+            psptd->scsiPassThroughEX.TimeOutValue = 15;
+        }
     }
     psptd->scsiPassThroughEX.SenseInfoOffset = offsetof(scsiPassThroughEXIOStruct, senseBuffer);
     memcpy(psptd->scsiPassThroughEX.Cdb, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
@@ -1286,13 +2654,20 @@ int convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx, ptrSCS
         ret = FAILURE;
         break;
     }
-    if (scsiIoCtx->timeout != 0)
+    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
     {
-        psptd->scsiPassThroughEXDirect.TimeOutValue = scsiIoCtx->timeout;
+        psptd->scsiPassThroughEXDirect.TimeOutValue = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
     }
     else
     {
-        psptd->scsiPassThroughEXDirect.TimeOutValue = 15;
+        if (scsiIoCtx->timeout != 0)
+        {
+            psptd->scsiPassThroughEXDirect.TimeOutValue = scsiIoCtx->timeout;
+        }
+        else
+        {
+            psptd->scsiPassThroughEXDirect.TimeOutValue = 15;
+        }
     }
     psptd->scsiPassThroughEXDirect.SenseInfoOffset = offsetof(scsiPassThroughEXIOStruct, senseBuffer);
     memcpy(psptd->scsiPassThroughEXDirect.Cdb, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
@@ -1490,13 +2865,20 @@ int convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx, ptrSCSIPa
         ret = FAILURE;
         break;
     }
-    if (scsiIoCtx->timeout != 0)
+    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
     {
-        psptd->scsiPassthroughDirect.TimeOutValue = scsiIoCtx->timeout;
+        psptd->scsiPassthroughDirect.TimeOutValue = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
     }
     else
     {
-        psptd->scsiPassthroughDirect.TimeOutValue = 15;
+        if (scsiIoCtx->timeout != 0)
+        {
+            psptd->scsiPassthroughDirect.TimeOutValue = scsiIoCtx->timeout;
+        }
+        else
+        {
+            psptd->scsiPassthroughDirect.TimeOutValue = 15;
+        }
     }
     //Use offsetof macro to set where to place the sense data. Old code, for whatever reason, didn't always work right...see comments below-TJE
     psptd->scsiPassthroughDirect.SenseInfoOffset = offsetof(scsiPassThroughIOStruct, senseBuffer);
@@ -1542,19 +2924,26 @@ int convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(ScsiIoCtx *scsiIoCtx, 
         ret = FAILURE;
         break;
     }
-    if (scsiIoCtx->timeout != 0)
+    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
     {
-        psptd->scsiPassthroughDirect.TimeOutValue = scsiIoCtx->timeout;
+        psptd->scsiPassthrough.TimeOutValue = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
     }
     else
     {
-        psptd->scsiPassthroughDirect.TimeOutValue = 15;
+        if (scsiIoCtx->timeout != 0)
+        {
+            psptd->scsiPassthrough.TimeOutValue = scsiIoCtx->timeout;
+        }
+        else
+        {
+            psptd->scsiPassthrough.TimeOutValue = 15;
+        }
     }
     //Use offsetof macro to set where to place the sense data. Old code, for whatever reason, didn't always work right...see comments below-TJE
-    psptd->scsiPassthroughDirect.SenseInfoOffset = offsetof(scsiPassThroughIOStruct, senseBuffer);
+    psptd->scsiPassthrough.SenseInfoOffset = offsetof(scsiPassThroughIOStruct, senseBuffer);
     //sets the offset to the beginning of the sense buffer-TJE
-    //psptd->scsiPassthroughDirect.SenseInfoOffset = (ULONG)((&psptd->senseBuffer[0] - (uint8_t*)&psptd->scsiPassthroughDirect));
-    memcpy(psptd->scsiPassthroughDirect.Cdb, scsiIoCtx->cdb, sizeof(psptd->scsiPassthroughDirect.Cdb));
+    //psptd->scsiPassthrough.SenseInfoOffset = (ULONG)((&psptd->senseBuffer[0] - (uint8_t*)&psptd->scsiPassthrough));
+    memcpy(psptd->scsiPassthrough.Cdb, scsiIoCtx->cdb, sizeof(psptd->scsiPassthrough.Cdb));
     return ret;
 }
 
@@ -1950,13 +3339,20 @@ int convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx *p_scsiIoCtx, PATA_PASS_THROUGH_
         ret = NOT_SUPPORTED;
         break;
     }
-    if (p_scsiIoCtx->timeout != 0)
+    if (p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > p_scsiIoCtx->timeout)
     {
-        ptrATAPassThroughDirect->TimeOutValue = p_scsiIoCtx->timeout;
+        ptrATAPassThroughDirect->TimeOutValue = p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
     }
     else
     {
-        ptrATAPassThroughDirect->TimeOutValue = 15;
+        if (p_scsiIoCtx->timeout != 0)
+        {
+            ptrATAPassThroughDirect->TimeOutValue = p_scsiIoCtx->timeout;
+        }
+        else
+        {
+            ptrATAPassThroughDirect->TimeOutValue = 15;
+        }
     }
     ptrATAPassThroughDirect->PathId = p_scsiIoCtx->device->os_info.scsi_addr.PathId;
     ptrATAPassThroughDirect->TargetId = p_scsiIoCtx->device->os_info.scsi_addr.TargetId;
@@ -2251,13 +3647,20 @@ int convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx *p_scsiIoCtx, ptrATADoubleBufferedIO
         ret = NOT_SUPPORTED;
         break;
     }
-    if (p_scsiIoCtx->timeout != 0)
+    if (p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > p_scsiIoCtx->timeout)
     {
-        p_t_ata_pt->ataPTCommand.TimeOutValue = p_scsiIoCtx->timeout;
+        p_t_ata_pt->ataPTCommand.TimeOutValue = p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
     }
     else
     {
-        p_t_ata_pt->ataPTCommand.TimeOutValue = 15;
+        if (p_scsiIoCtx->timeout != 0)
+        {
+            p_t_ata_pt->ataPTCommand.TimeOutValue = p_scsiIoCtx->timeout;
+        }
+        else
+        {
+            p_t_ata_pt->ataPTCommand.TimeOutValue = 15;
+        }
     }
     p_t_ata_pt->ataPTCommand.PathId = p_scsiIoCtx->device->os_info.scsi_addr.PathId;
     p_t_ata_pt->ataPTCommand.TargetId = p_scsiIoCtx->device->os_info.scsi_addr.TargetId;
@@ -3242,6 +4645,7 @@ int win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     }
     else
     {
+        safe_Free(downloadIO);
         return BAD_PARAMETER;
     }
     //set the size of the buffer
@@ -3857,59 +5261,38 @@ int send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int device_Reset(ScsiIoCtx *scsiIoCtx)
+int os_Device_Reset(tDevice *device)
 {
     int ret = FAILURE;
     //this IOCTL is only supported for non-scsi devices, which includes anything (ata or scsi) attached to a USB or SCSI or SAS interface
-    if (scsiIoCtx->device->drive_info.drive_type == ATA_DRIVE)
+    //This does not seem to work since it is obsolete and likely not implemented in modern drivers
+    //use the Windows API call - http://msdn.microsoft.com/en-us/library/windows/hardware/ff560603%28v=vs.85%29.aspx
+    //ULONG returned_data = 0;
+    BOOL success = 0;
+    SetLastError(NO_ERROR);
+    device->os_info.last_error = NO_ERROR;
+    success = DeviceIoControl(device->os_info.fd,
+        OBSOLETE_IOCTL_STORAGE_RESET_DEVICE,
+        NULL,
+        0,
+        NULL,
+        0,
+        NULL,
+        FALSE);
+    device->os_info.last_error = GetLastError();
+    if (success && device->os_info.last_error == NO_ERROR)
     {
-        //This does not seem to work since it is obsolete and likely not implemented in modern drivers
-        //use the Windows API call - http://msdn.microsoft.com/en-us/library/windows/hardware/ff560603%28v=vs.85%29.aspx
-        //ULONG returned_data = 0;
-        BOOL success = 0;
-        scsiIoCtx->device->os_info.last_error = 0;
-        success = DeviceIoControl(scsiIoCtx->device->os_info.fd,
-            OBSOLETE_IOCTL_STORAGE_RESET_DEVICE,
-            NULL,
-            0,
-            NULL,
-            0,
-            NULL,
-            FALSE);
-        scsiIoCtx->device->os_info.last_error = GetLastError();
-        if (success && scsiIoCtx->device->os_info.last_error == 0)
-        {
-            ret = SUCCESS;
-        }
-        else
-        {
-            ret = NOT_SUPPORTED;
-            scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_FIXED;
-            scsiIoCtx->returnStatus.senseKey = 0x05;
-            scsiIoCtx->returnStatus.asc = 0x20;
-            scsiIoCtx->returnStatus.ascq = 0x00;
-            //dummy up sense data
-            if (scsiIoCtx->psense != NULL)
-            {
-                memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-                //fill in not supported
-                scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
-                scsiIoCtx->psense[2] = 0x05;
-                //acq
-                scsiIoCtx->psense[12] = 0x20;//invalid operation code
-                //acsq
-                scsiIoCtx->psense[13] = 0x00;
-            }
-        }
+        ret = SUCCESS;
     }
     else
     {
-        ret = NOT_SUPPORTED;
+        ret = OS_COMMAND_NOT_AVAILABLE;
     }
+    //TODO: catch not supported versus an error
     return ret;
 }
 
-int bus_Reset(ScsiIoCtx *scsiIoCtx)
+int os_Bus_Reset(tDevice *device)
 {
     int ret = FAILURE;
     //This does not seem to work since it is obsolete and likely not implemented in modern drivers
@@ -3917,8 +5300,10 @@ int bus_Reset(ScsiIoCtx *scsiIoCtx)
     ULONG returned_data = 0;
     BOOL success = 0;
     STORAGE_BUS_RESET_REQUEST reset = { 0 };
-    scsiIoCtx->device->os_info.last_error = 0;
-    success = DeviceIoControl(scsiIoCtx->device->os_info.fd,
+    reset.PathId = device->os_info.scsi_addr.PathId;
+    SetLastError(NO_ERROR);
+    device->os_info.last_error = NO_ERROR;
+    success = DeviceIoControl(device->os_info.fd,
         OBSOLETE_IOCTL_STORAGE_RESET_BUS,
         &reset,
         sizeof(reset),
@@ -3926,32 +5311,22 @@ int bus_Reset(ScsiIoCtx *scsiIoCtx)
         sizeof(reset),
         &returned_data,
         FALSE);
-    scsiIoCtx->device->os_info.last_error = GetLastError();
-    if (success && scsiIoCtx->device->os_info.last_error == 0)
+    device->os_info.last_error = GetLastError();
+    if (success && device->os_info.last_error == NO_ERROR)
     {
         ret = SUCCESS;
     }
     else
     {
-        ret = NOT_SUPPORTED;
-        scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_FIXED;
-        scsiIoCtx->returnStatus.senseKey = 0x05;
-        scsiIoCtx->returnStatus.asc = 0x20;
-        scsiIoCtx->returnStatus.ascq = 0x00;
-        //dummy up sense data
-        if (scsiIoCtx->psense != NULL)
-        {
-            memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-            //fill in not supported
-            scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
-            scsiIoCtx->psense[2] = 0x05;
-            //acq
-            scsiIoCtx->psense[12] = 0x20;//invalid operation code
-            //acsq
-            scsiIoCtx->psense[13] = 0x00;
-        }
+        ret = OS_COMMAND_NOT_AVAILABLE;
     }
+    //TODO: catch not supported versus an error
     return ret;
+}
+
+int os_Controller_Reset(tDevice *device)
+{
+    return OS_COMMAND_NOT_AVAILABLE;
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -4162,7 +5537,10 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         protocolCommand->DataToDeviceBufferOffset = protocolCommand->ErrorInfoOffset + protocolCommand->ErrorInfoLength;
         protocolCommand->DataFromDeviceBufferOffset = 0;
         //copy the data we're sending into this structure to send to the device
-        memcpy(&commandBuffer[protocolCommand->DataToDeviceBufferOffset], nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+        if (nvmeIoCtx->ptrData)
+        {
+            memcpy(&commandBuffer[protocolCommand->DataToDeviceBufferOffset], nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+        }
         break;
     case XFER_NO_DATA:
         protocolCommand->DataToDeviceTransferLength = 0;
@@ -4176,7 +5554,10 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         protocolCommand->DataToDeviceBufferOffset = protocolCommand->ErrorInfoOffset + protocolCommand->ErrorInfoLength;
         protocolCommand->DataFromDeviceBufferOffset = protocolCommand->ErrorInfoOffset + protocolCommand->ErrorInfoLength + protocolCommand->DataToDeviceTransferLength;
         //copy the data we're sending into this structure to send to the device
-        memcpy(&commandBuffer[protocolCommand->DataToDeviceBufferOffset], nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+        if (nvmeIoCtx->ptrData)
+        {
+            memcpy(&commandBuffer[protocolCommand->DataToDeviceBufferOffset], nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+        }
         break;
     }
 
@@ -4244,7 +5625,7 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
 
     if (ret == SUCCESS)
     {
-        if (nvmeIoCtx->commandDirection != XFER_DATA_OUT && protocolCommand->DataFromDeviceBufferOffset != 0)
+        if (nvmeIoCtx->commandDirection != XFER_DATA_OUT && protocolCommand->DataFromDeviceBufferOffset != 0 && nvmeIoCtx->ptrData)
         {
             memcpy(nvmeIoCtx->ptrData, &commandBuffer[protocolCommand->DataFromDeviceBufferOffset], nvmeIoCtx->dataSize);
         }
@@ -5201,7 +6582,7 @@ int win10_Translate_Set_Error_Recovery_Time_Limit(nvmeCmdCtx *nvmeIoCtx)
     if (!dulbe && !(nvmeIoCtx->cmd.adminCmd.cdw11 >> 16))//make sure unsupported fields aren't set!!!
     {
         //use read-write error recovery MP - recovery time limit field
-        uint8_t *errorRecoveryMP = (uint8_t*)calloc(MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN, sizeof(uint8_t));
+        uint8_t *errorRecoveryMP = (uint8_t*)calloc_aligned(MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment);
         if (errorRecoveryMP)
         {
             //first, read the page into memory
@@ -5213,7 +6594,7 @@ int win10_Translate_Set_Error_Recovery_Time_Limit(nvmeCmdCtx *nvmeIoCtx)
                 //send it back to the drive
                 ret = scsi_Mode_Select_10(nvmeIoCtx->device, MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN, true, false, false, errorRecoveryMP, MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN);
             }
-            safe_Free(errorRecoveryMP);
+            safe_Free_aligned(errorRecoveryMP);
         }
         else
         {
@@ -5233,7 +6614,7 @@ int win10_Translate_Set_Volatile_Write_Cache(nvmeCmdCtx *nvmeIoCtx)
     if (!(nvmeIoCtx->cmd.adminCmd.cdw11 >> 31))//make sure unsupported fields aren't set!!!
     {
         //use caching MP - write back cache enabled field
-        uint8_t *cachingMP = (uint8_t*)calloc(MODE_HEADER_LENGTH10 + MP_CACHING_LEN, sizeof(uint8_t));
+        uint8_t *cachingMP = (uint8_t*)calloc_aligned(MODE_HEADER_LENGTH10 + MP_CACHING_LEN, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment);
         if (cachingMP)
         {
             //first, read the page into memory
@@ -5254,7 +6635,7 @@ int win10_Translate_Set_Volatile_Write_Cache(nvmeCmdCtx *nvmeIoCtx)
                 //send it back to the drive
                 ret = scsi_Mode_Select_10(nvmeIoCtx->device, MODE_HEADER_LENGTH10 + MP_CACHING_LEN, true, false, false, cachingMP, MODE_HEADER_LENGTH10 + MP_CACHING_LEN);
             }
-            safe_Free(cachingMP);
+            safe_Free_aligned(cachingMP);
         }
         else
         {
@@ -5828,7 +7209,7 @@ int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
         bool atLeastOneContextAttributeSet = false;
         //first, allocate enough memory for the Unmap command
         uint32_t unmapDataLength = 8 + (16 * numberOfRanges);
-        uint8_t *unmapParameterData = (uint8_t*)calloc(unmapDataLength, sizeof(uint8_t));//each range is 16 bytes plus an 8 byte header
+        uint8_t *unmapParameterData = (uint8_t*)calloc_aligned(unmapDataLength, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment);//each range is 16 bytes plus an 8 byte header
         if (unmapParameterData)
         {
             //in a loop, set the unmap descriptors
@@ -5887,7 +7268,7 @@ int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
         {
             ret = MEMORY_FAILURE;
         }
-        safe_Free(unmapParameterData);
+        safe_Free_aligned(unmapParameterData);
     }
     nvmeIoCtx->device->deviceVerbosity = inVerbosity;
     return ret;
@@ -6489,7 +7870,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
-int nvme_Reset(tDevice *device)
+int os_nvme_Reset(tDevice *device)
 {
     //This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code otherwise compile without ifdefs
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
@@ -6504,7 +7885,7 @@ int nvme_Reset(tDevice *device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-int nvme_Subsystem_Reset(tDevice *device)
+int os_nvme_Subsystem_Reset(tDevice *device)
 {
     //This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code otherwise compile without ifdefs
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
@@ -6599,7 +7980,6 @@ int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&commandTimer);
-    device->os_info.last_error = GetLastError();
     CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
     overlappedStruct.hEvent = NULL;
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
@@ -6818,7 +8198,7 @@ int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
     memset(&verifyCmd, 0, sizeof(VERIFY_INFORMATION));
     seatimer_t verifyTimer;
     memset(&verifyTimer, 0, sizeof(seatimer_t));
-    verifyCmd.StartingOffset.QuadPart = lba;
+    verifyCmd.StartingOffset.QuadPart = lba * device->drive_info.deviceBlockSize;//LBA needs to be converted to a byte offset
     verifyCmd.Length = range * device->drive_info.deviceBlockSize;//needs to be a range in bytes!
     uint64_t timeoutInSeconds = 0;
     if (device->drive_info.defaultTimeoutSeconds == 0)

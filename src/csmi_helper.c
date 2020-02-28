@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -19,6 +19,7 @@
 #include <string.h>
 #if defined(_WIN32)
 #include <windows.h>
+#include <tchar.h>
 #else
 #include <sys/ioctl.h>
 #endif
@@ -720,7 +721,22 @@ int send_SSP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
         //setup the IOCTL header
         ptrSSPPassthrough->IoctlHeader.HeaderLength = sizeof(IOCTL_HEADER);
         ptrSSPPassthrough->IoctlHeader.Length = (ULONG)(allocatedSize - sizeof(IOCTL_HEADER));
-        ptrSSPPassthrough->IoctlHeader.Timeout = CSMI_ALL_TIMEOUT;
+        ptrSSPPassthrough->IoctlHeader.Timeout = scsiIoCtx->timeout;
+        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+        {
+            ptrSSPPassthrough->IoctlHeader.Timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        }
+        else
+        {
+            if (scsiIoCtx->timeout != 0)
+            {
+                ptrSSPPassthrough->IoctlHeader.Timeout = scsiIoCtx->timeout;
+            }
+            else
+            {
+                ptrSSPPassthrough->IoctlHeader.Timeout = 15;
+            }
+        }
         ptrSSPPassthrough->IoctlHeader.ControlCode = CC_CSMI_SAS_SSP_PASSTHRU;
         memcpy(ptrSSPPassthrough->IoctlHeader.Signature, CSMI_SAS_SIGNATURE, sizeof(CSMI_SAS_SIGNATURE));
         //setup the parameters
@@ -913,6 +929,21 @@ int send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
         pSTPPassthrough->IoctlHeader.HeaderLength = sizeof(IOCTL_HEADER);
         pSTPPassthrough->IoctlHeader.Length = (ULONG)(allocatedSize - sizeof(IOCTL_HEADER));
         pSTPPassthrough->IoctlHeader.Timeout = scsiIoCtx->timeout;
+        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+        {
+            pSTPPassthrough->IoctlHeader.Timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        }
+        else
+        {
+            if (scsiIoCtx->timeout != 0)
+            {
+                pSTPPassthrough->IoctlHeader.Timeout = scsiIoCtx->timeout;
+            }
+            else
+            {
+                pSTPPassthrough->IoctlHeader.Timeout = 15;
+            }
+        }
         pSTPPassthrough->IoctlHeader.ControlCode = CC_CSMI_SAS_STP_PASSTHRU;
         memcpy(pSTPPassthrough->IoctlHeader.Signature, CSMI_SAS_SIGNATURE, sizeof(CSMI_SAS_SIGNATURE));
         //set up the parameters
@@ -1262,15 +1293,9 @@ int get_CSMI_Device(const char *filename, tDevice *device)
     }
 
 #if defined(_WIN32)
-#if defined UNICODE
-    WCHAR device_name[80] = { 0 };
-    LPCWSTR ptrDeviceName = &device_name[0];
-    mbstowcs_s(NULL, device_name, strlen(handle) + 1, handle, _TRUNCATE); //Plus null
-#else
-    char device_name[40] = { 0 };
-    LPCSTR ptrDeviceName = &device_name[0];
-    strcpy(&device_name[0], handle);
-#endif
+    TCHAR device_name[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+    CONST TCHAR *ptrDeviceName = &device_name[0];
+    _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), handle);
 
     //lets try to open the device.
     device->os_info.fd = CreateFile(ptrDeviceName,
@@ -1290,7 +1315,8 @@ int get_CSMI_Device(const char *filename, tDevice *device)
     if ((device->os_info.fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
 #endif
     {
-        device->raid_device = (ptrCSMIDevice)calloc(1 * sizeof(csmiDevice), sizeof(csmiDevice));
+        device->os_info.minimumAlignment = sizeof(void *);//setting alignment this way to be compatible across OSs since CSMI doesn't really dictate an alignment, but we should set something. - TJE
+        device->raid_device = (ptrCSMIDevice)calloc(1, sizeof(csmiDevice));
         device->issue_io = (issue_io_func)send_CSMI_IO;
         ptrCSMIDevice csmiDevice = (ptrCSMIDevice)device->raid_device;
         if (!csmiDevice)
@@ -1309,7 +1335,7 @@ int get_CSMI_Device(const char *filename, tDevice *device)
         //TODO: check driver info
         CSMI_SAS_PHY_INFO_BUFFER phyInfo;
         get_CSMI_Phy_Info(device, &phyInfo);
-        //Using the data we've already gotten, we need to save phyidentifier, port identifier, port protocol, and SAS address.
+        //Using the data we've already gotten, we need to save phy identifier, port identifier, port protocol, and SAS address.
         //TODO: Check if we should be using the Identify or Attached structure information to populate the support fields.
         //Identify appears to contain initiator data, and attached seems to include target data...
         if (portNumber > 31)
@@ -1369,7 +1395,7 @@ int get_CSMI_Device(const char *filename, tDevice *device)
             csmiDevice->portProtocol = CSMI_SAS_PROTOCOL_SSP;
             csmiDevice->ataVendorUniquePT = true;
         }
-        //these flags may help some weird drivers/controllers...default behaviour should be to use whatever we can get back from the driver...I mean...if it told us something it makes sense to keep using it.-TJE
+        //these flags may help some weird drivers/controllers...default behavior should be to use whatever we can get back from the driver...I mean...if it told us something it makes sense to keep using it.-TJE
         if (device->dFlags & CSMI_FLAG_USE_PORT)
         {
             csmiDevice->phyIdentifier = CSMI_SAS_USE_PORT_IDENTIFIER;
@@ -1424,11 +1450,7 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
 #if defined (_WIN32)
     HANDLE fd = NULL;
-#if defined (UNICODE)
-    wchar_t deviceName[40] = { 0 };
-#else
-    char deviceName[40] = { 0 };
-#endif
+    TCHAR deviceName[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
 #else
     int fd = -1;
 #endif
@@ -1436,11 +1458,7 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     for (controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS; ++controllerNumber)
     {
 #if defined (_WIN32)
-#if defined (UNICODE)
-        wsprintf(deviceName, L"\\\\.\\SCSI%d:", controllerNumber);
-#else
-        snprintf(deviceName, sizeof(deviceName), "\\\\.\\SCSI%d:", controllerNumber);
-#endif
+        _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d:"), TEXT(WIN_CSMI_DRIVE), controllerNumber);
         //lets try to open the controller.
         fd = CreateFile(deviceName,
             GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
@@ -1455,7 +1473,7 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
             NULL);
         if (fd != INVALID_HANDLE_VALUE)
 #else
-        if (fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
+        if ((fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
 #endif
         {
             CSMI_SAS_PHY_INFO_BUFFER phyInfo;
@@ -1526,11 +1544,7 @@ int get_CSMI_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, 
     int numberOfDevices = 0;
     int controllerNumber = 0, driveNumber = 0, found = 0, failedGetDeviceCount = 0;
 #if defined (_WIN32)
-#if !defined (UNICODE)
-    char deviceName[40] = { 0 };
-#else
-    wchar_t deviceName[40] = { 0 };
-#endif
+    TCHAR deviceName[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
     char    name[80] = { 0 }; //Because get device needs char
     HANDLE fd = INVALID_HANDLE_VALUE;
 #else
@@ -1556,11 +1570,7 @@ int get_CSMI_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, 
         {
             //TODO: get controller info and only try to go further when we have a phy/port with an attached device.
 #if defined(_WIN32)
-#if !defined (UNICODE)
-            snprintf(deviceName, sizeof(deviceName), "\\\\.\\SCSI%d:", controllerNumber);
-#else
-            wsprintf(deviceName, L"\\\\.\\SCSI%d:", controllerNumber);
-#endif
+            _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d:"), TEXT(WIN_CSMI_DRIVE), controllerNumber);
             //lets try to open the device.
             fd = CreateFile((LPCTSTR)deviceName,
                 GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
@@ -1575,7 +1585,7 @@ int get_CSMI_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, 
                 NULL);
             if (fd != INVALID_HANDLE_VALUE)
 #else
-            if (fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
+            if ((fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
 #endif
             {
                 //get some controller/driver into then start checking for connected ports and increment the counter.
@@ -1767,10 +1777,10 @@ void print_CSMI_Device_Info(tDevice * device)
             printf("Edge Expanded Device\n");
             break;
         case CSMI_SAS_FANOUT_EXPANDER_DEVICE:
-            printf("Fannout Expander Device\n");
+            printf("Fanout Expander Device\n");
             break;
         default:
-            printf("Unknown device type %"PRIX8"h\n", csmiDevice->phyInfo.Identify.bDeviceType);
+            printf("Unknown device type %" PRIX8 "h\n", csmiDevice->phyInfo.Identify.bDeviceType);
             break;
         }
         printf("\tInitiator Port Protocol: ");
@@ -1995,7 +2005,7 @@ void print_CSMI_Device_Info(tDevice * device)
             printf("Edge Expanded Device\n");
             break;
         case CSMI_SAS_FANOUT_EXPANDER_DEVICE:
-            printf("Fannout Expander Device\n");
+            printf("Fanout Expander Device\n");
             break;
         default:
             printf("Unknown device type %"PRIX8"h\n", csmiDevice->phyInfo.Attached.bDeviceType);
@@ -2070,7 +2080,7 @@ void print_CSMI_Device_Info(tDevice * device)
             printf("Enclosure\n");
             break;
         default:
-            printf("Unkown signal class %"PRIX8"\n", csmiDevice->phyInfo.Attached.bSignalClass);
+            printf("Unknown signal class %"PRIX8"\n", csmiDevice->phyInfo.Attached.bSignalClass);
             break;
         }
         if (csmiDevice->scsiAddressValid)

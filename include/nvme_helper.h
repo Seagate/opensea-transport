@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -566,6 +566,7 @@ extern "C"
         NVME_LOG_TELEMETRY_HOST = 0x07,
         NVME_LOG_TELEMETRY_CTRL = 0x08,
         NVME_LOG_RESERVATION_ID = 0x80,
+        NVME_LOG_SANITIZE_ID = 0x81,
     }eNvmeLogs;
 
     typedef enum _eNvmeFeaturesSelectValue {

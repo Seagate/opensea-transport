@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,8 +14,9 @@
 
 //This file just helps with platform specific stuff.
 
-
-#if defined (__linux__) || defined (__DragonFly__)
+#if defined (UEFI_C_SOURCE)
+#include "uefi_helper.h"
+#elif defined (__linux__) || defined (__DragonFly__)
 #if defined (VMK_CROSS_COMP)
 #include "vm_helper.h"
 #else

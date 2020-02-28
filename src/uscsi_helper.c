@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -55,6 +55,9 @@ int get_Device(const char *filename, tDevice *device)
         ret = FAILURE;
     }
 
+    device->os_info.osType = OS_SOLARIS;
+    device->os_info.minimumAlignment = sizeof(void *);//setting to be compatible with certain aligned memory allocation functions.
+
     //Adding support for different device discovery options. 
     if (device->dFlags == OPEN_HANDLE_ONLY)
     {
@@ -77,7 +80,7 @@ int get_Device(const char *filename, tDevice *device)
         if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
         {
             //TODO: Actually get the VID and PID set before calling this.
-            set_ATA_Passthrough_Type(device);
+            setup_Passthrough_Hacks_By_ID(device);
         }
         //fill in the device info
         ret = fill_Drive_Info_Data(device);
@@ -111,15 +114,43 @@ int get_Device(const char *filename, tDevice *device)
     return ret;
 }
 
-int device_Reset(ScsiIoCtx *scsiIoCtx)
+int uscsi_Reset(int fd, int resetFlag)
 {
-    //need to investigate if there is a way to do this in solaris
-    return NOT_SUPPORTED;
+    struct uscsi_cmd uscsi_io;
+    int ret = SUCCESS;
+
+    memset(&uscsi_io, 0, sizeof(uscsi_io));
+
+    uscsi_io.uscsi_flags |= resetFlag;
+    ret = ioctl(fd, USCSICMD, &uscsi_io);
+    if (ret < 0)
+    {
+        //TODO: check errno to figure out failure versus not supported???
+        ret = OS_COMMAND_NOT_AVAILABLE;
+    }
+    else
+    {
+        ret = SUCCESS;
+    }
+    return ret;
 }
-int bus_Reset(ScsiIoCtx *scsiIoCtx)
+
+int os_Device_Reset(tDevice *device)
 {
-    //need to investigate if there is a way to do this in solaris
-    return NOT_SUPPORTED;
+    //NOTE: USCSI_RESET is the same thing, but for legacy versions
+    //TODO: is USCSI_RESET_LUN better???
+    return uscsi_Reset(device->os_info.fd, USCSI_RESET_TARGET);
+}
+    
+int os_Bus_Reset(tDevice *device)
+{
+    //USCSI_RESET_ALL seems to imply a bus reset
+    return uscsi_Reset(device->os_info.fd, USCSI_RESET_ALL);
+}
+
+int os_Controller_Reset(tDevice *device)
+{
+    return OS_COMMAND_NOT_AVAILABLE;
 }
 
 int send_IO (ScsiIoCtx *scsiIoCtx)
@@ -171,6 +202,21 @@ int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
     }
 
     uscsi_io.uscsi_timeout = scsiIoCtx->timeout;
+    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    {
+        uscsi_io.uscsi_timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+    }
+    else
+    {
+        if (scsiIoCtx->timeout != 0)
+        {
+            uscsi_io.uscsi_timeout = scsiIoCtx->timeout;
+        }
+        else
+        {
+            uscsi_io.uscsi_timeout = 15;//default to 15 second timeout
+        }
+    }
     uscsi_io.uscsi_cdb = (caddr_t)scsiIoCtx->cdb;
     uscsi_io.uscsi_cdblen = scsiIoCtx->cdbLength;
     uscsi_io.uscsi_rqbuf = (caddr_t)scsiIoCtx->psense;
@@ -338,10 +384,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         devs[i] = (char *)malloc((strlen("/dev/rdsk/") + strlen(namelist[i]->d_name) + 1) * sizeof(char));
         strcpy(devs[i], "/dev/rdsk/");
         strcat(devs[i], namelist[i]->d_name);
-        free(namelist[i]);
+        safe_Free(namelist[i]);
     }
     devs[i] = NULL;
-    free(namelist);
+    safe_Free(namelist);
 
     //TODO: Check if sizeInBytes is a multiple of 
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -411,6 +457,7 @@ int os_Flush(tDevice *device)
 {
     return NOT_SUPPORTED;
 }
+
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
@@ -422,12 +469,12 @@ int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize)
     return NOT_SUPPORTED;
 }
 
-int nvme_Reset(tDevice *device)
+int os_nvme_Reset(tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int nvme_Subsystem_Reset(tDevice *device)
+int os_nvme_Subsystem_Reset(tDevice *device)
 {
     return NOT_SUPPORTED;
 }

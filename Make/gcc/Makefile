@@ -17,9 +17,9 @@ FILE_OUTPUT_DIR=lib
 #Change the Major version when major interface changes are made. E.g. tDevice changes
 MAJOR=1
 #Change the Minor version when new features are added. 
-MINOR=19
+MINOR=21
 #Change the patch version when only bug fixes are made.
-PATCH=10
+PATCH=30
 VERSION=$(MAJOR).$(MINOR).$(PATCH)
 SRC_DIR=../../src/
 INC_DIR=-I../../include -I../../include/vendor -I../../../opensea-common/include  
@@ -64,7 +64,9 @@ LIB_SRC_FILES = \
 	$(SRC_DIR)nec_legacy_helper.c\
 	$(SRC_DIR)prolific_legacy_helper.c\
 	$(SRC_DIR)usb_hacks.c\
-	$(SRC_DIR)sntl_helper.c
+	$(SRC_DIR)sntl_helper.c\
+	$(SRC_DIR)jmicron_nvme_helper.c\
+	$(SRC_DIR)asmedia_nvme_helper.c
 
 UNAME := $(shell uname)
 ifeq ($(UNAME),Linux)

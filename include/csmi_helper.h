@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -35,6 +35,8 @@ extern "C"
     #endif
 
     #define CSMI_DEBUG_LEVEL 0 //set to values 1 - 4 to debug different verbosity levels...this is a define because I thought it was easier to use for the conversion than another variable..this shouldn't be on in released code anyways
+
+    #define CSMI_WIN_MAX_DEVICE_NAME_LENGTH UINT8_C(40)
 
     typedef enum
     {

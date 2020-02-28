@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -307,21 +307,21 @@ extern "C"
 
     typedef enum _eWriteBufferMode
     {
-        SCSI_WB_OBSOLETE1                                           = 0x00,
-        SCSI_WB_VENDOR_SPECIFIC                                     = 0x01,
-        SCSI_WB_DATA                                                = 0x02,
-        SCSI_WB_RESERVED                                            = 0x03,
-        SCSI_WB_DL_MICROCODE_TEMP_ACTIVATE                          = 0x04,
-        SCSI_WB_DL_MICROCODE_SAVE_ACTIVATE                          = 0x05,
-        SCSI_WB_DL_MICROCODE_OFFSETS_ACTIVATE                       = 0x06,
-        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_ACTIVATE                  = 0x07,
-        SCSI_WB_WRITE_DATA_TO_ECHO_BUFFER                           = 0x0A,
-        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_SELECT_ACTIVATE_DEFER     = 0x0D,
-        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER                     = 0x0E,
-        SCSI_WB_ACTIVATE_DEFERRED_MICROCODE                         = 0x0F,
-        SCSI_WB_OBSOLETE2                                           = 0x1A,
-        SCSI_WB_OBSOLETE3                                           = 0x1B,
-        SCSI_WB_DOWNLOAD_APPLICATION_CLIENT_ERROR_HISTORY           = 0x1C,
+        SCSI_WB_COMBINED_HEADER_AND_DATA                                = 0x00,//obsolete (see SPC or SCSI2)
+        SCSI_WB_VENDOR_SPECIFIC                                         = 0x01,
+        SCSI_WB_DATA                                                    = 0x02,
+        SCSI_WB_RESERVED                                                = 0x03,
+        SCSI_WB_DL_MICROCODE_TEMP_ACTIVATE                              = 0x04,
+        SCSI_WB_DL_MICROCODE_SAVE_ACTIVATE                              = 0x05,
+        SCSI_WB_DL_MICROCODE_OFFSETS_ACTIVATE                           = 0x06,
+        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_ACTIVATE                      = 0x07,
+        SCSI_WB_WRITE_DATA_TO_ECHO_BUFFER                               = 0x0A,
+        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_SELECT_ACTIVATE_DEFER         = 0x0D,
+        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER                         = 0x0E,
+        SCSI_WB_ACTIVATE_DEFERRED_MICROCODE                             = 0x0F,
+        SCSI_WB_ENABLE_EXPANDER_COMMUNICATIONS_PROTOCOL_AND_ECHO_BUFFER = 0x1A,//obsolete (see SPC2)
+        SCSI_WB_DISABLE_EXPANDER_COMMUNICATIONS_PROTOCOL                = 0x1B,//obsolete (see SPC2)
+        SCSI_WB_DOWNLOAD_APPLICATION_CLIENT_ERROR_HISTORY               = 0x1C,
     }eWriteBufferMode;
 
 
@@ -437,9 +437,9 @@ extern "C"
         SUPPORTED_VPD_PAGES                             = 0x00,
         STANDARD_INQUIRY                                = 0x00,
         //01h - 7Fh - ASCII Information
+        UNIT_SERIAL_NUMBER                              = 0x80,
         IMPLEMENTED_OPERATING_DEFINITIONS               = 0x81,//Obsolete. Used to tell what can be sent with the change definition command (scsi 2 vs scsi 3, etc)
         ASCII_IMPLEMENTED_OPERATING_DEFINITION          = 0x82,//Obsolete
-        UNIT_SERIAL_NUMBER                              = 0x80,
         DEVICE_IDENTIFICATION                           = 0x83,
         SOFTWARE_INTERFACE_IDENTIFICATION               = 0x84,
         MANAGEMENT_NETWORK_ADDRESSES                    = 0x85,
@@ -454,6 +454,7 @@ extern "C"
         THIRD_PARTY_COPY                                = 0x8F,
         PROTOCOL_SPECIFIC_LU_INFO                       = 0x90,
         PROTOCOL_SPECIFIC_PORT_INFO                     = 0x91,
+        SCSI_FEATURE_SETS                               = 0x92,
         BLOCK_LIMITS                                    = 0xB0,
         BLOCK_DEVICE_CHARACTERISTICS                    = 0xB1,
         LOGICAL_BLOCK_PROVISIONING                      = 0xB2,
@@ -538,6 +539,7 @@ extern "C"
         MP_INFORMATION_EXCEPTIONS_LEN    = 12,
         MP_READ_WRITE_ERROR_RECOVERY_LEN = 12,
         MP_VERIFY_ERROR_RECOVERY_LEN     = 12,
+        MP_RIGID_DISK_GEOMETRY_LEN       = 24,
     }eScsiModeParameterLengths;
 
     typedef enum _eScsiPowerConditionValues
@@ -620,8 +622,8 @@ extern "C"
         PERIPHERAL_OPTICAL_MEMORY_DEVICE                = 0x07,
         PERIPHERAL_MEDIUM_CHANGER_DEVICE                = 0x08,
         PERIPHERAL_COMMUNICATIONS_DEVICE                = 0x09,
-        PERIPHERAL_OBSOLETE1                            = 0x0A,//ASC IT8 (Graphic arts pre-press devices)
-        PERIPHERAL_OBSOLETE2                            = 0x0B,//ASC IT8 (Graphic arts pre-press devices)
+        PERIPHERAL_ASC_IT8_1                            = 0x0A,//ASC IT8 (Graphic arts pre-press devices)
+        PERIPHERAL_ASC_IT8_2                            = 0x0B,//ASC IT8 (Graphic arts pre-press devices)
         PERIPHERAL_STORAGE_ARRAY_CONTROLLER_DEVICE      = 0x0C,
         PERIPHERAL_ENCLOSURE_SERVICES_DEVICE            = 0x0D,
         PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE      = 0x0E,

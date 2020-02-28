@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -39,11 +39,10 @@
 #define SNTL_EXT
 //SNTL_EXT is used to enable extensions beyond the SNTL spec...which we want since it's pretty out of date and we might as well add everything we can
 //Extention translations not yet complete:
-// - DST
-// - Sanitize
 // - mode page policy VPD page
 // - nvme passthrough command (needs to handle admin vs nvm, nondata, data-in, data-out, bidirectional transfers and vendor unique commands
 // - read buffer command to return the NVMe telemetry log (similar to SAT translation to return current internal status log)
+// - supported sector sizes log pages
 
 void sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(uint8_t data[8], bool cd, bool bpv, uint8_t bitPointer, uint16_t fieldPointer)
 {
@@ -85,7 +84,7 @@ void sntl_Set_Sense_Key_Specific_Descriptor_Progress_Indicator(uint8_t data[8], 
     }
 }
 
-void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLength, uint8_t senseKey, uint8_t asc, uint8_t ascq, bool descriptorFormat, uint8_t descriptor[], uint8_t descriptorCount /* this will probably only be 1, but up to 2 or 3 max */)
+void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLength, uint8_t senseKey, uint8_t asc, uint8_t ascq, bool descriptorFormat, uint8_t *descriptor, uint8_t descriptorCount /* this will probably only be 1, but up to 2 or 3 max */)
 {
     uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
     uint8_t additionalSenseLength = 0;
@@ -148,7 +147,7 @@ void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLe
                     {
                         senseData[0] |= BIT7;//set the valid bit
                     }
-                    uint64_t descriptorInformation = M_BytesTo8ByteValue(&descriptor[descriptorOffset + 4], &descriptor[descriptorOffset + 5], &descriptor[descriptorOffset + 6], &descriptor[descriptorOffset + 7], &descriptor[descriptorOffset + 8], &descriptor[descriptorOffset + 9], &descriptor[descriptorOffset + 10], &descriptor[descriptorOffset + 11]);
+                    uint64_t descriptorInformation = M_BytesTo8ByteValue(descriptor[descriptorOffset + 4], descriptor[descriptorOffset + 5], descriptor[descriptorOffset + 6], descriptor[descriptorOffset + 7], descriptor[descriptorOffset + 8], descriptor[descriptorOffset + 9], descriptor[descriptorOffset + 10], descriptor[descriptorOffset + 11]);
                     if (descriptorInformation > UINT32_MAX)
                     {
                         memset(&senseData[3], UINT8_MAX, 4);
@@ -162,7 +161,7 @@ void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLe
                 break;
                 case 1://command specific information
                 {
-                    uint64_t descriptorCmdInformation = M_BytesTo8ByteValue(&descriptor[descriptorOffset + 4], &descriptor[descriptorOffset + 5], &descriptor[descriptorOffset + 6], &descriptor[descriptorOffset + 7], &descriptor[descriptorOffset + 8], &descriptor[descriptorOffset + 9], &descriptor[descriptorOffset + 10], &descriptor[descriptorOffset + 11]);
+                    uint64_t descriptorCmdInformation = M_BytesTo8ByteValue(descriptor[descriptorOffset + 4], descriptor[descriptorOffset + 5], descriptor[descriptorOffset + 6], descriptor[descriptorOffset + 7], descriptor[descriptorOffset + 8], descriptor[descriptorOffset + 9], descriptor[descriptorOffset + 10], descriptor[descriptorOffset + 11]);
                     if (descriptorCmdInformation > UINT32_MAX)
                     {
                         memset(&senseData[8], UINT8_MAX, 4);
@@ -265,7 +264,7 @@ void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLe
                     senseData[14] = descriptor[descriptorOffset + 7];
                     {
                         //information
-                        uint64_t descriptorInformation = M_BytesTo8ByteValue(&descriptor[descriptorOffset + 8], &descriptor[descriptorOffset + 9], &descriptor[descriptorOffset + 10], &descriptor[descriptorOffset + 11], &descriptor[descriptorOffset + 12], &descriptor[descriptorOffset + 13], &descriptor[descriptorOffset + 14], &descriptor[descriptorOffset + 15]);
+                        uint64_t descriptorInformation = M_BytesTo8ByteValue(descriptor[descriptorOffset + 8], descriptor[descriptorOffset + 9], descriptor[descriptorOffset + 10], descriptor[descriptorOffset + 11], descriptor[descriptorOffset + 12], descriptor[descriptorOffset + 13], descriptor[descriptorOffset + 14], descriptor[descriptorOffset + 15]);
                         if (descriptorInformation > UINT32_MAX)
                         {
                             memset(&senseData[3], UINT8_MAX, 4);
@@ -276,7 +275,7 @@ void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLe
                             memcpy(&senseData[3], &descriptor[descriptorOffset + 12], 4);
                         }
                         //command specific information
-                        uint64_t descriptorCmdInformation = M_BytesTo8ByteValue(&descriptor[descriptorOffset + 16], &descriptor[descriptorOffset + 17], &descriptor[descriptorOffset + 18], &descriptor[descriptorOffset + 19], &descriptor[descriptorOffset + 20], &descriptor[descriptorOffset + 21], &descriptor[descriptorOffset + 22], &descriptor[descriptorOffset + 23]);
+                        uint64_t descriptorCmdInformation = M_BytesTo8ByteValue(descriptor[descriptorOffset + 16], descriptor[descriptorOffset + 17], descriptor[descriptorOffset + 18], descriptor[descriptorOffset + 19], descriptor[descriptorOffset + 20], descriptor[descriptorOffset + 21], descriptor[descriptorOffset + 22], descriptor[descriptorOffset + 23]);
                         if (descriptorCmdInformation > UINT32_MAX)
                         {
                             memset(&senseData[8], UINT8_MAX, 4);
@@ -684,7 +683,7 @@ void set_Sense_Data_By_Media_Errors_NVMe_Status(tDevice *device, uint8_t nvmeSta
     }
     return;
 }
-
+//TODO: Handle doing other things like setting progress indication if a test is running while translating sense data or other things like that.
 void set_Sense_Data_By_NVMe_Status(tDevice *device, uint32_t completionDWord3, uint8_t *sensePtr, uint32_t senseDataLength)
 {
     uint8_t statusCodeType = M_GETBITRANGE(completionDWord3, 27, 25);
@@ -903,7 +902,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     if (eui64nonZero)//this must be non-zero to be supported.
     {
         naaDesignatorLength = 20 /*ext*/ + 12 /*locally assigned*/;
-        naaDesignator = (uint8_t*)calloc(naaDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        naaDesignator = (uint8_t*)calloc(naaDesignatorLength, sizeof(uint8_t));
         //NAA extended format (6 + OUI + 64bitsEUI64 + 32bits of zeros)
         naaDesignator[0] = 1;//codes set 1
         naaDesignator[1] = 3;//designator type 3, associated with logical unit
@@ -942,7 +941,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     else if (!eui64nonZero && !nguidnonZero) //NVMe 1.0 devices won't support EUI or NGUID, so we should be able to detect them like this
     {
         naaDesignatorLength = 20 /*ext*/ + 12 /*locally assigned*/;
-        naaDesignator = (uint8_t*)calloc(naaDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        naaDesignator = (uint8_t*)calloc(naaDesignatorLength, sizeof(uint8_t));
         //NAA extended format (6 + OUI + 64bitsEUI64 + 32bits of zeros)
         naaDesignator[0] = 1;//codes set 1
         naaDesignator[1] = 3;//designator type 3, associated with logical unit
@@ -992,7 +991,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         {
             t10VendorIdDesignatorLength += 16;//16 characters to hold the EUI64 as a string
         }
-        t10VendorIdDesignator = (uint8_t*)calloc(t10VendorIdDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        t10VendorIdDesignator = (uint8_t*)calloc(t10VendorIdDesignatorLength, sizeof(uint8_t));
         t10VendorIdDesignator[0] = 2;//codes set 2
         t10VendorIdDesignator[1] = 1;//designator type 1, associated with logical unit
         t10VendorIdDesignator[2] = RESERVED;
@@ -1039,7 +1038,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     {
         uint8_t offset = 12;
         t10VendorIdDesignatorLength = 44;
-        t10VendorIdDesignator = (uint8_t*)calloc(t10VendorIdDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        t10VendorIdDesignator = (uint8_t*)calloc(t10VendorIdDesignatorLength, sizeof(uint8_t));
         t10VendorIdDesignator[0] = 2;//codes set 2 (ASCII)
         t10VendorIdDesignator[1] = 1;//designator type 1, associated with logical unit
         t10VendorIdDesignator[2] = RESERVED;
@@ -1089,7 +1088,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         uint8_t offset = 8;
         //1 descriptor for eui64 and 1 for nguid
         SCSINameStringDesignatorLength = 64;
-        SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength, sizeof(uint8_t));
         //NGUID first!
         SCSINameStringDesignator[0] = 3;//codes set 3 (UTF-8)
         SCSINameStringDesignator[1] = 1;//designator type 1, associated with logical unit
@@ -1136,7 +1135,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         uint8_t offset = 8;
         //eui. + 32 hex digits from nguid (msb to lsb) 36Bytes total length
         SCSINameStringDesignatorLength = 40;
-        SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength, sizeof(uint8_t));
         SCSINameStringDesignator[0] = 3;//codes set 3 (UTF-8)
         SCSINameStringDesignator[1] = 1;//designator type 1, associated with logical unit
         SCSINameStringDesignator[2] = RESERVED;
@@ -1161,7 +1160,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         uint8_t offset = 8;
         //eui. + 32 hex digits from nguid (msb to lsb) 36Bytes total length
         SCSINameStringDesignatorLength = 24;
-        SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength, sizeof(uint8_t));
         SCSINameStringDesignator[0] = 3;//codes set 3 (UTF-8)
         SCSINameStringDesignator[1] = 1;//designator type 1, associated with logical unit
         SCSINameStringDesignator[2] = RESERVED;
@@ -1184,7 +1183,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     {
         uint8_t offset = 8;
         SCSINameStringDesignatorLength = 72;
-        SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength, sizeof(uint8_t));
         SCSINameStringDesignator[0] = 3;//codes set 3 (UTF-8)
         SCSINameStringDesignator[1] = 1;//designator type 1, associated with logical unit
         SCSINameStringDesignator[2] = RESERVED;
@@ -1218,7 +1217,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         //1 descriptor for eui64 and 1 for nguid
         uint8_t offset = 4;
         eui64DesignatorLength = 32;
-        eui64Designator = (uint8_t*)calloc(eui64DesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        eui64Designator = (uint8_t*)calloc(eui64DesignatorLength, sizeof(uint8_t));
         //NGUID first
         eui64Designator[0] = 1;//codes set 1 (binary)
         eui64Designator[1] = 2;//designator type 2, associated with logical unit
@@ -1243,7 +1242,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     {
         uint8_t offset = 4;
         eui64DesignatorLength = 20;
-        eui64Designator = (uint8_t*)calloc(eui64DesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        eui64Designator = (uint8_t*)calloc(eui64DesignatorLength, sizeof(uint8_t));
         eui64Designator[0] = 1;//codes set 1 (binary)
         eui64Designator[1] = 2;//designator type 2, associated with logical unit
         eui64Designator[2] = RESERVED;
@@ -1257,7 +1256,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     {
         uint8_t offset = 4;
         eui64DesignatorLength = 12;
-        eui64Designator = (uint8_t*)calloc(eui64DesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+        eui64Designator = (uint8_t*)calloc(eui64DesignatorLength, sizeof(uint8_t));
         eui64Designator[0] = 1;//codes set 1 (binary)
         eui64Designator[1] = 2;//designator type 2, associated with logical unit
         eui64Designator[2] = RESERVED;
@@ -1270,9 +1269,12 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     //else NVMe 1.0 will not support this designator!
     
     //now setup the device identification page
-    deviceIdentificationPage = (uint8_t*)calloc(4U + eui64DesignatorLength + t10VendorIdDesignatorLength + naaDesignatorLength + SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+    deviceIdentificationPage = (uint8_t*)calloc(4U + eui64DesignatorLength + t10VendorIdDesignatorLength + naaDesignatorLength + SCSINameStringDesignatorLength, sizeof(uint8_t));
     if (!deviceIdentificationPage)
     {
+        safe_Free(naaDesignator);
+        safe_Free(SCSINameStringDesignator);
+        safe_Free(t10VendorIdDesignator);
         return MEMORY_FAILURE;
     }
     deviceIdentificationPage[0] = 0;
@@ -1920,12 +1922,14 @@ int sntl_Translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *scsiIoCtx)
     //temperature log
     supportedPages[offset] = LP_TEMPERATURE;
     offset += increment;
-    ////If smart self test is supported, add the self test results log (10h)
-    //if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)
-    //{
-    //    supportedPages[offset] = LP_SELF_TEST_RESULTS;
-    //    offset += increment;
-    //}
+#if defined (SNTL_EXT)
+    //If smart self test is supported, add the self test results log (10h)
+    if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)
+    {
+        supportedPages[offset] = LP_SELF_TEST_RESULTS;
+        offset += increment;
+    }
+#endif
     //solid state media
     supportedPages[offset] = LP_SOLID_STATE_MEDIA;
     offset += increment;
@@ -2014,7 +2018,7 @@ int sntl_Translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiIoCtx)
         memset(&getTempThresh, 0, sizeof(nvmeFeaturesCmdOpt));
         memset(logPage, 0, 512);
         getTempThresh.fid = 0x04;//temperature threshold
-        getTempThresh.prp1 = (uint64_t)logPage;
+        getTempThresh.prp1 = (uintptr_t)logPage;
         getTempThresh.featSetGetValue = 0;
         if(SUCCESS == nvme_Get_Features(device, &getTempThresh))
         {
@@ -2387,6 +2391,194 @@ int sntl_Translate_General_Statistics_And_Performance_Log_0x19(tDevice *device, 
     }
     return ret;
 }
+
+int sntl_Translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx *scsiIoCtx)
+{
+    int ret = SUCCESS;
+    uint8_t selfTestResults[404] = { 0 };
+    uint16_t parameterCode = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
+    if (parameterCode > 0x0014)
+    {
+        fieldPointer = 5;
+        bitPointer = 7;
+        sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        ret = NOT_SUPPORTED;
+        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return ret;
+    }
+    if (parameterCode == 0)
+    {
+        parameterCode = 1;
+    }
+    //set the header
+    selfTestResults[0] = 0x10;
+    selfTestResults[1] = 0x00;
+    selfTestResults[2] = 0x01;
+    selfTestResults[3] = 0x90;
+    //read the nvme log page
+    uint8_t nvmDSTLog[564] = { 0 };
+    nvmeGetLogPageCmdOpts dstLog;
+    memset(&dstLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+    dstLog.nsid = NVME_ALL_NAMESPACES;//TODO: by namespace instead?
+    dstLog.addr = nvmDSTLog;
+    dstLog.dataLen = 564;
+    dstLog.lid = NVME_LOG_DEV_SELF_TEST;
+    dstLog.rae = 1;//preserve any asynchronous events
+    if (SUCCESS != nvme_Get_Log_Page(device, &dstLog))
+    {
+        set_Sense_Data_By_Command_Specific_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+        return SUCCESS;
+    }
+    //convert NVMe DST log to SCSI DST Log
+    for (uint16_t parameterCode = 0x0001, nvmDSTOffset = 4, selfTestOffset = 4; parameterCode <= 0x0014 && nvmDSTOffset <= 564 && selfTestOffset <= 404U; ++parameterCode, nvmDSTOffset += 28, selfTestOffset += 20)
+    {
+        selfTestResults[selfTestOffset] = M_Byte1(parameterCode);
+        selfTestResults[selfTestOffset + 1] = M_Byte0(parameterCode);
+        selfTestResults[selfTestOffset + 2] = 0x03;//format and linking set to 11b
+        selfTestResults[selfTestOffset + 3] = 0x10;
+        //If we have a valid entry in the NVMe dst log, then set up remaining bytes, otherwise leave set to zero
+        if (M_Nibble0(nvmDSTLog[nvmDSTOffset]) != 0x0F)
+        {
+            uint8_t selfTestCode = 0;
+            switch (M_Nibble1(nvmDSTLog[nvmDSTOffset]))
+            {
+            case 1:
+                selfTestCode = 1;
+                break;
+            case 2:
+                selfTestCode = 2;
+                break;
+            default:
+                selfTestCode = 0;
+                break;
+            }
+            selfTestResults[selfTestOffset + 4] = (selfTestCode << 5) | M_Nibble0(nvmDSTLog[nvmDSTOffset]);
+            selfTestResults[selfTestOffset + 5] = nvmDSTLog[nvmDSTOffset + 1];//segment number
+            uint64_t nvmPOH = M_BytesTo8ByteValue(nvmDSTLog[nvmDSTOffset + 11], nvmDSTLog[nvmDSTOffset + 10], nvmDSTLog[nvmDSTOffset + 9], nvmDSTLog[nvmDSTOffset + 8], nvmDSTLog[nvmDSTOffset + 7], nvmDSTLog[nvmDSTOffset + 6], nvmDSTLog[nvmDSTOffset + 5], nvmDSTLog[nvmDSTOffset + 4]);
+            if (nvmPOH > UINT16_MAX)
+            {
+                selfTestResults[selfTestOffset + 6] = 0xFF;
+                selfTestResults[selfTestOffset + 7] = 0xFF;
+            }
+            else
+            {
+                selfTestResults[selfTestOffset + 6] = M_Byte1(nvmPOH);
+                selfTestResults[selfTestOffset + 7] = M_Byte0(nvmPOH);
+            }
+            //failing LBA if any (otherwise set all F's)
+            if (nvmDSTLog[nvmDSTOffset + 2] & BIT1)
+            {
+                selfTestResults[selfTestOffset + 8] = nvmDSTLog[nvmDSTOffset + 23];
+                selfTestResults[selfTestOffset + 9] = nvmDSTLog[nvmDSTOffset + 22];
+                selfTestResults[selfTestOffset + 10] = nvmDSTLog[nvmDSTOffset + 21];
+                selfTestResults[selfTestOffset + 11] = nvmDSTLog[nvmDSTOffset + 20];
+                selfTestResults[selfTestOffset + 12] = nvmDSTLog[nvmDSTOffset + 19];
+                selfTestResults[selfTestOffset + 13] = nvmDSTLog[nvmDSTOffset + 18];
+                selfTestResults[selfTestOffset + 14] = nvmDSTLog[nvmDSTOffset + 17];
+                selfTestResults[selfTestOffset + 15] = nvmDSTLog[nvmDSTOffset + 16];
+            }
+            else
+            {
+                selfTestResults[selfTestOffset + 8] = UINT8_MAX;
+                selfTestResults[selfTestOffset + 9] = UINT8_MAX;
+                selfTestResults[selfTestOffset + 10] = UINT8_MAX;
+                selfTestResults[selfTestOffset + 11] = UINT8_MAX;
+                selfTestResults[selfTestOffset + 12] = UINT8_MAX;
+                selfTestResults[selfTestOffset + 13] = UINT8_MAX;
+                selfTestResults[selfTestOffset + 14] = UINT8_MAX;
+                selfTestResults[selfTestOffset + 15] = UINT8_MAX;
+            }
+            uint8_t senseKey = 0, additionalSenseCode = 0, additionalSenseCodeQualifier = 0;
+            //TODO: translate NVMe Status to a SCSI Sense code as best as possible.
+            //if (nvmDSTLog[nvmDSTOffset + 2] & BIT2 && nvmDSTLog[nvmDSTOffset + 2] & BIT3)
+            //{
+            //    //convert NVM status to a SCSI sense code
+            //}
+            //else
+            {
+                //generic translation much like SAT spec
+                switch (M_Nibble0(nvmDSTLog[nvmDSTOffset]))
+                {
+                case 15://unused entry
+                case 0://no error
+                    senseKey = SENSE_KEY_NO_ERROR;
+                    additionalSenseCode = 0;
+                    additionalSenseCodeQualifier = 0;
+                    break;
+                case 1://aborted by DST command
+                    senseKey = SENSE_KEY_ABORTED_COMMAND;
+                    additionalSenseCode = 0x40;
+                    additionalSenseCodeQualifier = 0x80 + M_Nibble0(nvmDSTLog[nvmDSTOffset]);
+                    break;
+                case 2://aborted by controller level reset
+                    senseKey = SENSE_KEY_ABORTED_COMMAND;
+                    additionalSenseCode = 0x40;
+                    additionalSenseCodeQualifier = 0x80 + M_Nibble0(nvmDSTLog[nvmDSTOffset]);
+                    break;
+                case 3://aborted due to removal of namespace
+                    senseKey = SENSE_KEY_ABORTED_COMMAND;
+                    additionalSenseCode = 0x40;
+                    additionalSenseCodeQualifier = 0x80 + M_Nibble0(nvmDSTLog[nvmDSTOffset]);
+                    break;
+                case 4://aborted due to processing of a format
+                    senseKey = SENSE_KEY_ABORTED_COMMAND;
+                    additionalSenseCode = 0x40;
+                    additionalSenseCodeQualifier = 0x80 + M_Nibble0(nvmDSTLog[nvmDSTOffset]);
+                    break;
+                case 5://fatal or unknown error
+                    senseKey = SENSE_KEY_ABORTED_COMMAND;
+                    additionalSenseCode = 0x40;
+                    additionalSenseCodeQualifier = 0x80 + M_Nibble0(nvmDSTLog[nvmDSTOffset]);
+                    break;
+                case 6://segment failed, but unknown segment number that failed
+                    senseKey = SENSE_KEY_HARDWARE_ERROR;
+                    additionalSenseCode = 0x40;
+                    additionalSenseCodeQualifier = 0x80 + M_Nibble0(nvmDSTLog[nvmDSTOffset]);
+                    break;
+                case 7://segment failed and indicated by segment number
+                    senseKey = SENSE_KEY_HARDWARE_ERROR;
+                    additionalSenseCode = 0x40;
+                    additionalSenseCodeQualifier = 0x80 + M_Nibble0(nvmDSTLog[nvmDSTOffset]);
+                    break;
+                case 8://aborted for unknown reason
+                    senseKey = SENSE_KEY_ABORTED_COMMAND;
+                    additionalSenseCode = 0x40;
+                    additionalSenseCodeQualifier = 0x80 + M_Nibble0(nvmDSTLog[nvmDSTOffset]);
+                    break;
+                case 9://aborted by sanitize command
+                    senseKey = SENSE_KEY_ABORTED_COMMAND;
+                    additionalSenseCode = 0x40;
+                    additionalSenseCodeQualifier = 0x80 + M_Nibble0(nvmDSTLog[nvmDSTOffset]);
+                    break;
+                case 10://not defined, fallthrough
+                case 11:
+                case 12:
+                case 13:
+                case 14:
+                default:
+                    senseKey = SENSE_KEY_NO_ERROR;//don't set an error, but setup remaining fields
+                    additionalSenseCode = 0x40;
+                    additionalSenseCodeQualifier = 0x80 + M_Nibble0(nvmDSTLog[nvmDSTOffset]);
+                    break;
+                }
+            }
+            selfTestResults[selfTestOffset + 16] = senseKey;
+            selfTestResults[selfTestOffset + 17] = additionalSenseCode;
+            selfTestResults[selfTestOffset + 18] = additionalSenseCodeQualifier;
+            //vendor specific
+            selfTestResults[selfTestOffset + 19] = 0;
+
+        }
+    }
+    if (scsiIoCtx->pdata)
+    {
+        memcpy(scsiIoCtx->pdata, selfTestResults, M_Min(404U, scsiIoCtx->dataLength));
+    }
+    return ret;
+}
 #endif
 
 int sntl_Translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
@@ -2459,33 +2651,34 @@ int sntl_Translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     break;
                 }
                 break;
-            //TODO: add in support for this page when we can also issue DST commands through send diagnostic
-            //case LP_SELF_TEST_RESULTS://self test results
-            //  switch (subpageCode)
-            //  {
-            //  case 0:
-            //      if (device->drive_info.IdentifyData.ata.Word084 & BIT1 || device->drive_info.IdentifyData.ata.Word087 & BIT1)
-            //      {
-            //          ret = translate_Self_Test_Results_Log_0x10(device, scsiIoCtx);
-            //      }
-            //      else
-            //      {
-            //          fieldPointer = 2;
-            //          bitPointer = 5;
-            //          sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-            //          ret = NOT_SUPPORTED;
-            //          sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-            //      }
-            //      break;
-            //  default:
-            //      fieldPointer = 3;
-            //      bitPointer = 7;
-            //      sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-            //      ret = NOT_SUPPORTED;
-            //      sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-            //      break;
-            //  }
-            //  break;
+#if defined (SNTL_EXT)
+            case LP_SELF_TEST_RESULTS://self test results
+              switch (subpageCode)
+              {
+              case 0:
+                  if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)
+                  {
+                      ret = sntl_Translate_Self_Test_Results_Log_0x10(device, scsiIoCtx);
+                  }
+                  else
+                  {
+                      fieldPointer = 2;
+                      bitPointer = 5;
+                      sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                      ret = NOT_SUPPORTED;
+                      sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                  }
+                  break;
+              default:
+                  fieldPointer = 3;
+                  bitPointer = 7;
+                  sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                  ret = NOT_SUPPORTED;
+                  sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                  break;
+              }
+              break;
+#endif
             case 0x11://solid state media
                 switch (subpageCode)
                 {
@@ -2622,7 +2815,7 @@ int sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(tDevice *device, Scs
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    readWriteErrorRecovery = (uint8_t*)calloc(pageLength * sizeof(uint8_t), sizeof(uint8_t));
+    readWriteErrorRecovery = (uint8_t*)calloc(pageLength, sizeof(uint8_t));
     if (!readWriteErrorRecovery)
     {
         //TODO: set an error in the sense data
@@ -2758,7 +2951,7 @@ int sntl_Translate_Mode_Sense_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx,
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    caching = (uint8_t*)calloc(pageLength * sizeof(uint8_t), sizeof(uint8_t));
+    caching = (uint8_t*)calloc(pageLength, sizeof(uint8_t));
     if (!caching)
     {
         //TODO: set an error in the sense data
@@ -2909,7 +3102,7 @@ int sntl_Translate_Mode_Sense_Control_0Ah(tDevice *device, ScsiIoCtx *scsiIoCtx,
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    controlPage = (uint8_t*)calloc(pageLength * sizeof(uint8_t), sizeof(uint8_t));
+    controlPage = (uint8_t*)calloc(pageLength, sizeof(uint8_t));
     if (!controlPage)
     {
         //TODO: set an error in the sense data
@@ -3011,7 +3204,7 @@ int sntl_Translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *scs
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    powerConditionPage = (uint8_t*)calloc(pageLength * sizeof(uint8_t), sizeof(uint8_t));
+    powerConditionPage = (uint8_t*)calloc(pageLength, sizeof(uint8_t));
     if (!powerConditionPage)
     {
         //TODO: set an error in the sense data
@@ -3087,7 +3280,7 @@ int sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(tDevice *device, ScsiIoC
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    controlExtPage = (uint8_t*)calloc(pageLength * sizeof(uint8_t), sizeof(uint8_t));
+    controlExtPage = (uint8_t*)calloc(pageLength, sizeof(uint8_t));
     if (!controlExtPage)
     {
         //TODO: set an error in the sense data
@@ -3195,7 +3388,7 @@ int sntl_Translate_Mode_Sense_Informational_Exceptions_Control_1Ch(tDevice *devi
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    informationalExceptions = (uint8_t*)calloc(pageLength * sizeof(uint8_t), sizeof(uint8_t));
+    informationalExceptions = (uint8_t*)calloc(pageLength, sizeof(uint8_t));
     if (!informationalExceptions)
     {
         //TODO: set an error in the sense data
@@ -4722,7 +4915,7 @@ int sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *scsiIoCt
         //read the identify active namespace list
     {
         bool singleLun = false;
-        uint8_t* activeNamespaces = (uint8_t*)calloc(4096, sizeof(uint8_t));
+        uint8_t* activeNamespaces = (uint8_t*)calloc_aligned(4096, sizeof(uint8_t), device->os_info.minimumAlignment);
         if (activeNamespaces)
         {
             if (SUCCESS == nvme_Identify(device, activeNamespaces, 0, 2))
@@ -4771,7 +4964,7 @@ int sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *scsiIoCt
             //dummy up a single lun
             singleLun = true;
         }
-        safe_Free(activeNamespaces);
+        safe_Free_aligned(activeNamespaces);
         if (singleLun)
         {
             reportLunsDataLength += 8;
@@ -4806,7 +4999,7 @@ int sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *scsiIoCt
     safe_Free(reportLunsData);
     return ret;
 }
-
+//TODO: if any kind of "device fault" occurs, send back a sense code similar to SAT with ATA devices
 int sntl_Translate_SCSI_Test_Unit_Ready_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
@@ -4837,35 +5030,38 @@ int sntl_Translate_SCSI_Test_Unit_Ready_Command(tDevice *device, ScsiIoCtx *scsi
         sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
+#if defined (SNTL_EXT)
+    //If the device supports sanitize or DST, check if either of these is in progress to report that before returing the default "ready"
+    if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.sanicap != 0)
+    {
+        //sanitize is supported. Check if sanitize is currently running or not
+        uint8_t logPage[512] = { 0 };
+        nvmeGetLogPageCmdOpts sanitizeLog;
+        memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+        sanitizeLog.addr = logPage;
+        sanitizeLog.dataLen = 512;
+        sanitizeLog.lid = NVME_LOG_SANITIZE_ID;
+        if (SUCCESS == nvme_Get_Log_Page(device, &sanitizeLog))
+        {
+            uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
+            uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
+            if(sanitizeStatus == 0x2)//sanitize in progress
+            {
+                //set sense data to in progress and set a progress indicator!
+                sntl_Set_Sense_Key_Specific_Descriptor_Progress_Indicator(senseKeySpecificDescriptor, M_BytesTo2ByteValue(logPage[1], logPage[0]));
+                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NOT_READY, 0x04, 0x1B, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                return SUCCESS;
+            }
+            else if (sanitizeStatus == 0x3)//sanitize failed
+            {
+                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                return SUCCESS;
+            }
+        }//no need for an else. We shouldn't fail just because this log read failed.
+    }
+#endif
     //SNTL only specifies saying if the drive is ready for commands or not...just going to say ready.
     sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-
-    //TODO: With extensions for Sanitize, DST, & format, we need to return if sanitize is in progress or not!
-    //check sanitize status...check if device supports sanitize before doing this?
-    //if (SUCCESS == ata_Sanitize_Status(device, false))
-    //{
-    //    //In progress?
-    //    if (device->drive_info.lastCommandRTFRs.secCntExt & BIT6)
-    //    {
-    //        //set up a progress descriptor
-    //        set_Sense_Key_Specific_Descriptor_Progress_Indicator(senseKeySpecificDescriptor, M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaMid, device->drive_info.lastCommandRTFRs.lbaLow));
-    //        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NOT_READY, 0x04, 0x1B, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-    //    }
-    //    else if (device->drive_info.lastCommandRTFRs.secCntExt & BIT15)
-    //    {
-    //        //sanitize completed without error
-    //        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-    //    }
-    //    else
-    //    {
-    //        //sanitize completed with error
-    //        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-    //    }
-    //}
-    //else
-    //{
-    //    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NOT_READY, 0x05, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-    //}
     return ret;
 }
 
@@ -5075,97 +5271,63 @@ int sntl_Translate_SCSI_Send_Diagnostic_Command(tDevice *device, ScsiIoCtx *scsi
         }
         else
         {
-            if (selfTestCode == 0)
+#if defined (SNTL_EXT)
+            if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)//DST supported
             {
-                ret = SUCCESS;//nothing to do! Take hints from SAT to translate the self test code to a DST if DST is supported.
+                //NOTE: doing all namespaces for now...not sure if this should be changed in the future.
+                switch (selfTestCode)
+                {
+                case 0://default self test
+                    ret = SUCCESS;
+                    break;
+                case 1://background self test
+                    ret = nvme_Device_Self_Test(device, UINT32_MAX, 1);
+                    if (ret != SUCCESS)
+                    {
+                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    }
+                    break;
+                case 2://background extended self test
+                    ret = nvme_Device_Self_Test(device, UINT32_MAX, 2);
+                    if (ret != SUCCESS)
+                    {
+                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    }
+                    break;
+                case 4://abort background self test
+                    ret = nvme_Device_Self_Test(device, UINT32_MAX, 0xF);
+                    if (ret != SUCCESS)
+                    {
+                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    }
+                    break;
+                default:
+                    ret = NOT_SUPPORTED;
+                    bitPointer = 7;
+                    fieldPointer = 1;
+                    sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                    break;
+                }
             }
             else
             {
-                ret = NOT_SUPPORTED;
-                bitPointer = 7;
-                fieldPointer = 1;
-                sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+#endif
+                if (selfTestCode == 0)
+                {
+                    ret = SUCCESS;//nothing to do! Take hints from SAT to translate the self test code to a DST if DST is supported.
+                }
+                else
+                {
+                    ret = NOT_SUPPORTED;
+                    bitPointer = 7;
+                    fieldPointer = 1;
+                    sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                }
+#if defined (SNTL_EXT)
             }
-            //if (nvmeSelfTestSupported)
-            //{
-            //        uint8_t smartReadData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
-            //        uint16_t timeout = 15;
-            //        switch (selfTestCode)
-            //        {
-            //        case 0://default self test
-            //            //return good status (not required to do anything according to the spec) - TJE
-            //            break;
-            //        case 1://background short self test
-            //            ata_SMART_Offline(device, 0x01, timeout);
-            //            break;
-            //        case 2://background extended self test
-            //            ata_SMART_Offline(device, 0x02, timeout);
-            //            break;
-            //        case 4://abort background self test
-            //            if (SUCCESS != ata_SMART_Offline(device, 0x7F, timeout))
-            //            {
-            //                ret = NOT_SUPPORTED;
-            //                bitPointer = 7;
-            //                fieldPointer = 1;
-            //                sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-            //                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-            //            }
-            //            break;
-            //        case 5://foreground short self test
-            //            timeout = 120;
-            //            if (SUCCESS != ata_SMART_Offline(device, 0x81, timeout))
-            //            {
-            //                ret = FAILURE;
-            //                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_HARDWARE_ERROR, 0x3E, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-            //            }
-            //            break;
-            //        case 6://foreground extended self test
-            //            //first get the timeout value from SMART Read Data command
-            //            if (SUCCESS == ata_SMART_Read_Data(device, smartReadData, LEGACY_DRIVE_SEC_SIZE))
-            //            {
-            //                timeout = smartReadData[373];
-            //                if (timeout == 0xFF)
-            //                {
-            //                    timeout = M_BytesTo2ByteValue(smartReadData[376], smartReadData[375]);
-            //                }
-            //            }
-            //            else //this case shouldn't ever happen...
-            //            {
-            //                //set the timeout to max
-            //                timeout = UINT16_MAX;
-            //            }
-            //            if (SUCCESS != ata_SMART_Offline(device, 0x82, timeout))
-            //            {
-            //                ret = FAILURE;
-            //                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_HARDWARE_ERROR, 0x3E, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-            //            }
-            //            break;
-            //        case 7://reserved
-            //        case 3://reserved
-            //        default:
-            //            ret = NOT_SUPPORTED;
-            //            bitPointer = 7;
-            //            fieldPointer = 1;
-            //            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-            //            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-            //            break;
-            //        }
-            //    }
-            //    else
-            //    {
-            //        ret = NOT_SUPPORTED;
-            //        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ABORTED_COMMAND, 0x67, 0x0B, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-            //    }
-            //}
-            //else
-            //{
-            //    bitPointer = 7;
-            //    fieldPointer = 1;
-            //    sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-            //    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-            //    ret = NOT_SUPPORTED;
-            //}
+#endif
         }
     }
     else
@@ -5707,7 +5869,7 @@ int sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         uint16_t unmapBlockDescriptorLength = (M_BytesTo2ByteValue(scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]) / 16) * 16;//this can be set to zero, which is NOT an error. Also, I'm making sure this is a multiple of 16 to avoid partial block descriptors-TJE
         if (unmapBlockDescriptorLength > 0)
         {
-            uint8_t *dsmBuffer = (uint8_t*)calloc(4096, sizeof(uint8_t));//allocate the max size the device supports...we'll fill in as much as we need to
+            uint8_t *dsmBuffer = (uint8_t*)calloc_aligned(4096, sizeof(uint8_t), device->os_info.minimumAlignment);//allocate the max size the device supports...we'll fill in as much as we need to
             //need to check to make sure there weren't any truncated block descriptors before we begin
             uint16_t minBlockDescriptorLength = M_Min(unmapBlockDescriptorLength + 8, parameterListLength);
             uint16_t unmapBlockDescriptorIter = 8;
@@ -5832,15 +5994,15 @@ int sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 }
             }
-            safe_Free(dsmBuffer);
+            safe_Free_aligned(dsmBuffer);
         }
     }
     return ret;
 }
 
 //TODO: Add support for Format in progress
-//TODO: Add support sanitize commands with our extensions
-//TODO: Add detecting when background self test is in progress and reporting progress from that
+//Add support sanitize commands with our extensions
+//Add detecting when background self test is in progress and reporting progress from that
 //TODO: Figure out other ways to improve what happens in here to pass back out that would be useful. SNTL spec doesn't really say much about what to do here.
 int sntl_Translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
@@ -5877,6 +6039,69 @@ int sntl_Translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx *scsiIo
     {
         descriptorFormat = true;
     }
+#if defined (SNTL_EXT)
+    if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.sanicap != 0)
+    {
+        //sanitize is supported. Check if sanitize is currently running or not
+        uint8_t logPage[512] = { 0 };
+        nvmeGetLogPageCmdOpts sanitizeLog;
+        memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+        sanitizeLog.addr = logPage;
+        sanitizeLog.dataLen = 512;
+        sanitizeLog.lid = NVME_LOG_SANITIZE_ID;
+        if (SUCCESS == nvme_Get_Log_Page(device, &sanitizeLog))
+        {
+            uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
+            uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
+            if (sanitizeStatus == 0x2)//sanitize in progress
+            {
+                //set sense data to in progress and set a progress indicator!
+                sntl_Set_Sense_Key_Specific_Descriptor_Progress_Indicator(senseKeySpecificDescriptor, M_BytesTo2ByteValue(logPage[1], logPage[0]));
+                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NOT_READY, 0x04, 0x1B, descriptorFormat, senseKeySpecificDescriptor, 1);
+                if (scsiIoCtx->pdata)
+                {
+                    memcpy(scsiIoCtx->pdata, senseData, M_Min(scsiIoCtx->cdb[4], SPC3_SENSE_LEN));
+                }
+                return SUCCESS;
+            }
+            else if (sanitizeStatus == 0x3)//sanitize failed
+            {
+                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, descriptorFormat, NULL, 0);
+                if (scsiIoCtx->pdata)
+                {
+                    memcpy(scsiIoCtx->pdata, senseData, M_Min(scsiIoCtx->cdb[4], SPC3_SENSE_LEN));
+                }
+                return SUCCESS;
+            }
+        }//no need for an else. We shouldn't fail just because this log read failed.
+    }
+    //NOTE: DST progress should only report like this under request sense. In test unit ready, DST in progress should only happen for foreground mode (i.e. captive) which isn't supported on NVMe
+    if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)//DST is supported
+    {
+        uint8_t logPage[564] = { 0 };
+        nvmeGetLogPageCmdOpts dstLog;
+        memset(&dstLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+        dstLog.addr = logPage;
+        dstLog.dataLen = 512;
+        dstLog.lid = NVME_LOG_DEV_SELF_TEST;
+        if (SUCCESS == nvme_Get_Log_Page(device, &dstLog))
+        {
+            uint8_t currentSelfTest = M_Nibble0(logPage[0]);
+            if (currentSelfTest == 0x1 || currentSelfTest == 0x2)//DST in progress
+            {
+                //convert progress into a value whose divisor is 65535
+                uint16_t dstProgress = 656 * M_GETBITRANGE(logPage[1], 6, 0);//This comes out very close to the actual percent...close enough anyways. There is probably a way to scale it to more even round numbers but this will do fine.
+                sntl_Set_Sense_Key_Specific_Descriptor_Progress_Indicator(senseKeySpecificDescriptor, dstProgress);
+                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NOT_READY, 0x04, 0x09, descriptorFormat, senseKeySpecificDescriptor, 1);
+                if (scsiIoCtx->pdata)
+                {
+                    memcpy(scsiIoCtx->pdata, senseData, M_Min(scsiIoCtx->cdb[4], SPC3_SENSE_LEN));
+                }
+                return SUCCESS;
+            }
+        }//no need for else for failure...just fall through
+    }
+#endif
     //read the current power state
     nvmeFeaturesCmdOpt powerState;
     memset(&powerState, 0, sizeof(nvmeFeaturesCmdOpt));
@@ -6662,6 +6887,371 @@ int sntl_Translate_Persistent_Reserve_Out(tDevice * device, ScsiIoCtx * scsiIoCt
     return ret;
 }
 
+#if defined (SNTL_EXT)
+int sntl_Translate_SCSI_Sanitize_Command(tDevice * device, ScsiIoCtx * scsiIoCtx)
+{
+    int ret = SUCCESS;
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
+    //filter out invalid fields
+    if (
+        ((fieldPointer = 1) != 0 && (bitPointer = 6) != 0 && scsiIoCtx->cdb[1] & BIT6) || //ZNR bit
+        ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[2] != 0)
+        || ((fieldPointer = 3) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[3] != 0)
+        || ((fieldPointer = 4) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[4] != 0)
+        || ((fieldPointer = 5) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[5] != 0)
+        || ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[6] != 0)
+        )
+    {
+        if (bitPointer == 0)
+        {
+            uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+            uint8_t counter = 0;
+            while (reservedByteVal > 0 && counter < 8)
+            {
+                reservedByteVal >>= 1;
+                ++counter;
+            }
+            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+        }
+        sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        //invalid field in CDB
+        ret = NOT_SUPPORTED;
+        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return ret;
+    }
+    if (device->drive_info.IdentifyData.nvme.ctrl.sanicap > 0)
+    {
+        uint8_t serviceAction = 0x1F & scsiIoCtx->cdb[1];
+        bool immediate = false;//this is ignored for now since there is no way to handle this without multi-threading
+        //bool znr = false;
+        bool ause = false;
+        uint16_t parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+        if (scsiIoCtx->cdb[1] & BIT7)
+        {
+            immediate = true;
+        }
+        /*if (scsiIoCtx->cdb[1] & BIT6)
+        {
+            znr = true;
+        }*/
+        if (scsiIoCtx->cdb[1] & BIT5)
+        {
+            ause = true;
+        }
+        //begin validating the parameters
+        switch (serviceAction)
+        {
+        case 0x01://overwrite
+            if (parameterListLength != 0x0008)
+            {
+                fieldPointer = 7;
+                bitPointer = 7;
+                sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                ret = NOT_SUPPORTED;
+            }
+            else if (!scsiIoCtx->pdata)//if this pointer is invalid set sense data saying the cdb list is invalid...which shouldn't ever happen, but just in case...
+            {
+                fieldPointer = 7;
+                bitPointer = 7;
+                sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                ret = BAD_PARAMETER;
+            }
+            else
+            {
+                if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT2)
+                {
+                    //check the parameter data
+                    bool invert = false;
+                    uint8_t numberOfPasses = scsiIoCtx->pdata[0] & 0x1F;
+                    uint32_t pattern = M_BytesTo4ByteValue(scsiIoCtx->pdata[4], scsiIoCtx->pdata[5], scsiIoCtx->pdata[6], scsiIoCtx->pdata[7]);
+                    if (scsiIoCtx->pdata[0] & BIT7)
+                    {
+                        invert = true;
+                    }
+                    //validate the parameter data for the number of passes and pattern length according to SAT
+                    if (
+                        ((fieldPointer = 0) == 0 && (bitPointer = 6) != 0 && scsiIoCtx->pdata[0] & BIT6)
+                        || ((fieldPointer = 0) == 0 && (bitPointer = 5) != 0 && scsiIoCtx->pdata[0] & BIT5)
+                        || ((fieldPointer = 1) != 0 && (bitPointer = 0) != 0 && scsiIoCtx->pdata[1] != 0)
+                        || ((fieldPointer = 0) != 0 && (bitPointer = 4) != 0 && (numberOfPasses == 0 || numberOfPasses > 0x10))
+                        || ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && 0x0004 != M_BytesTo2ByteValue(scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]))
+                        )
+                    {
+                        if (bitPointer == 0)
+                        {
+                            uint8_t reservedByteVal = scsiIoCtx->pdata[fieldPointer];
+                            uint8_t counter = 0;
+                            while (reservedByteVal > 0 && counter < 8)
+                            {
+                                reservedByteVal >>= 1;
+                                ++counter;
+                            }
+                            bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
+                        }
+                        sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
+                        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                        return NOT_SUPPORTED;
+                    }
+                    if (numberOfPasses == 0x10)
+                    {
+                        numberOfPasses = 0;//this needs to be set to zero to specify 16 passes as this is how ATA does it.
+                    }
+                    if (SUCCESS != nvme_Sanitize(device, false, invert, numberOfPasses, ause, SANITIZE_NVM_OVERWRITE, pattern) && !immediate)
+                    {
+                        ret = FAILURE;
+                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    }
+                    else if (!immediate)
+                    {
+                        //poll until there is no longer a sanitize command in progress
+                        uint8_t logPage[512] = { 0 };
+                        uint8_t sanitizeStatus = 0x02;//start as in progress
+                        nvmeGetLogPageCmdOpts sanitizeLog;
+                        memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+                        sanitizeLog.addr = logPage;
+                        sanitizeLog.dataLen = 512;
+                        sanitizeLog.lid = NVME_LOG_SANITIZE_ID;
+                        while (sanitizeStatus == 0x2)
+                        {
+                            delay_Seconds(5);
+                            if (SUCCESS == nvme_Get_Log_Page(device, &sanitizeLog))
+                            {
+                                uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
+                                uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
+                                if (sanitizeStatus == 0x3)//sanitize failed
+                                {
+                                    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                //set failure for command failing to work
+                                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                                break;
+                            }
+                        }
+                        if (sanitizeStatus == 0x03)
+                        {
+                            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        }
+                    }
+                }
+                else
+                {
+                    fieldPointer = 1;
+                    bitPointer = 4;
+                    sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                    ret = NOT_SUPPORTED;
+                }
+            }
+            break;
+        case 0x02://block erase
+            if (parameterListLength != 0)
+            {
+                fieldPointer = 7;
+                bitPointer = 7;
+                sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                ret = NOT_SUPPORTED;
+            }
+            else
+            {
+                if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT1)
+                {
+                    if (SUCCESS != nvme_Sanitize(device, false, false, 0, ause, SANITIZE_NVM_BLOCK_ERASE, 0) && !immediate)
+                    {
+                        ret = FAILURE;
+                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    }
+                    else if (!immediate)
+                    {
+                        //poll until there is no longer a sanitize command in progress
+                        uint8_t logPage[512] = { 0 };
+                        uint8_t sanitizeStatus = 0x02;//start as in progress
+                        nvmeGetLogPageCmdOpts sanitizeLog;
+                        memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+                        sanitizeLog.addr = logPage;
+                        sanitizeLog.dataLen = 512;
+                        sanitizeLog.lid = NVME_LOG_SANITIZE_ID;
+                        while (sanitizeStatus == 0x2)
+                        {
+                            delay_Seconds(5);
+                            if (SUCCESS == nvme_Get_Log_Page(device, &sanitizeLog))
+                            {
+                                uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
+                                uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
+                                if (sanitizeStatus == 0x3)//sanitize failed
+                                {
+                                    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                //set failure for command failing to work
+                                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                                break;
+                            }
+                        }
+                        if (sanitizeStatus == 0x03)
+                        {
+                            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        }
+                    }
+                }
+                else
+                {
+                    fieldPointer = 1;
+                    bitPointer = 4;
+                    sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                    ret = NOT_SUPPORTED;
+                }
+            }
+            break;
+        case 0x03://cryptographic erase
+            if (parameterListLength != 0)
+            {
+                fieldPointer = 7;
+                bitPointer = 7;
+                sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                ret = NOT_SUPPORTED;
+            }
+            else
+            {
+                if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT0)
+                {
+                    if (SUCCESS != nvme_Sanitize(device, false, false, 0, ause, SANITIZE_NVM_CRYPTO, 0) && !immediate)
+                    {
+                        ret = FAILURE;
+                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    }
+                    else if (!immediate)
+                    {
+                        //poll until there is no longer a sanitize command in progress
+                        uint8_t logPage[512] = { 0 };
+                        uint8_t sanitizeStatus = 0x02;//start as in progress
+                        nvmeGetLogPageCmdOpts sanitizeLog;
+                        memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+                        sanitizeLog.addr = logPage;
+                        sanitizeLog.dataLen = 512;
+                        sanitizeLog.lid = NVME_LOG_SANITIZE_ID;
+                        while (sanitizeStatus == 0x2)
+                        {
+                            delay_Seconds(5);
+                            if (SUCCESS == nvme_Get_Log_Page(device, &sanitizeLog))
+                            {
+                                uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
+                                uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
+                                if (sanitizeStatus == 0x3)//sanitize failed
+                                {
+                                    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                //set failure for command failing to work
+                                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                                break;
+                            }
+                        }
+                        if (sanitizeStatus == 0x03)
+                        {
+                            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                        }
+                    }
+                }
+                else
+                {
+                    fieldPointer = 1;
+                    bitPointer = 4;
+                    sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                    ret = NOT_SUPPORTED;
+                }
+            }
+            break;
+        case 0x1F://exit failure mode
+            if (parameterListLength != 0)
+            {
+                fieldPointer = 7;
+                bitPointer = 7;
+                sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                ret = NOT_SUPPORTED;
+            }
+            else
+            {
+                if (SUCCESS != nvme_Sanitize(device, false, false, 0, ause, SANITIZE_NVM_EXIT_FAILURE_MODE, 0) && !immediate)
+                {
+                    ret = FAILURE;
+                    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                }
+                else if (!immediate)
+                {
+                    //poll until there is no longer a sanitize command in progress
+                    uint8_t logPage[512] = { 0 };
+                    uint8_t sanitizeStatus = 0x02;//start as in progress
+                    nvmeGetLogPageCmdOpts sanitizeLog;
+                    memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+                    sanitizeLog.addr = logPage;
+                    sanitizeLog.dataLen = 512;
+                    sanitizeLog.lid = NVME_LOG_SANITIZE_ID;
+                    while (sanitizeStatus == 0x2)
+                    {
+                        delay_Seconds(5);
+                        if (SUCCESS == nvme_Get_Log_Page(device, &sanitizeLog))
+                        {
+                            uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
+                            uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
+                            if (sanitizeStatus == 0x3)//sanitize failed
+                            {
+                                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            //set failure for command failing to work
+                            set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                            break;
+                        }
+                    }
+                    if (sanitizeStatus == 0x03)
+                    {
+                        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+                    }
+                }
+            }
+            break;
+        default:
+            fieldPointer = 1;
+            bitPointer = 4;
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            ret = NOT_SUPPORTED;
+        }
+    }
+    else //sanitize feature not supported.
+    {
+        fieldPointer = 0;
+        bitPointer = 7;
+        sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        ret = NOT_SUPPORTED;
+        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+    }
+    return ret;
+}
+#endif
+
 void sntl_Set_Command_Timeouts_Descriptor(uint32_t nominalCommandProcessingTimeout, uint32_t recommendedCommandProcessingTimeout, uint8_t *pdata, uint32_t *offset)
 {
     pdata[*offset + 0] = 0x00;
@@ -6702,7 +7292,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case INQUIRY_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6717,7 +7307,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case READ_CAPACITY_10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6737,7 +7327,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case LOG_SENSE_CMD:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6756,7 +7346,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case MODE_SENSE_6_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6771,7 +7361,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case MODE_SENSE10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6790,7 +7380,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case MODE_SELECT_6_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6805,7 +7395,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case MODE_SELECT10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6824,7 +7414,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case READ6:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6840,7 +7430,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case READ10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6859,7 +7449,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case READ12:
         cdbLength = 12;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6880,7 +7470,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case READ16:
         cdbLength = 16;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6905,7 +7495,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case REPORT_LUNS_CMD:
         cdbLength = 12;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6926,7 +7516,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case REQUEST_SENSE_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6944,7 +7534,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
         {
             cdbLength = 12;
             *dataLength += cdbLength;
-            *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+            *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -6970,7 +7560,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case SEND_DIAGNOSTIC_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -6985,7 +7575,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case START_STOP_UNIT_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7000,7 +7590,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case SYNCHRONIZE_CACHE_10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7019,7 +7609,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case SYNCHRONIZE_CACHE_16_CMD:
         cdbLength = 16;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7044,7 +7634,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case TEST_UNIT_READY_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7061,7 +7651,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
         {
             cdbLength = 10;
             *dataLength += cdbLength;
-            *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+            *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -7085,7 +7675,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case VERIFY10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7104,7 +7694,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case VERIFY12:
         cdbLength = 12;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7125,7 +7715,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case VERIFY16:
         cdbLength = 16;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7150,7 +7740,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case WRITE6:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7166,7 +7756,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case WRITE10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7185,7 +7775,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case WRITE12:
         cdbLength = 12;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7206,7 +7796,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     case WRITE16:
         cdbLength = 16;
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7231,7 +7821,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     //case WRITE_AND_VERIFY_10:
     //    cdbLength = 10;
     //    *dataLength += cdbLength;
-    //    *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+    //    *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
     //    if (!*pdata)
     //    {
     //        return MEMORY_FAILURE;
@@ -7250,7 +7840,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     //case WRITE_AND_VERIFY_12:
     //    cdbLength = 12;
     //    *dataLength += cdbLength;
-    //    *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+    //    *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
     //    if (!*pdata)
     //    {
     //        return MEMORY_FAILURE;
@@ -7271,7 +7861,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     //case WRITE_AND_VERIFY_16:
     //    cdbLength = 16;
     //    *dataLength += cdbLength;
-    //    *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+    //    *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
     //    if (!*pdata)
     //    {
     //        return MEMORY_FAILURE;
@@ -7298,7 +7888,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
         {
             cdbLength = 10;
             *dataLength += cdbLength;
-            *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+            *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -7322,7 +7912,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     //case SCSI_FORMAT_UNIT_CMD:
     //    cdbLength = 6;
     //    *dataLength += cdbLength;
-    //    *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+    //    *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
     //    if (!*pdata)
     //    {
     //        return MEMORY_FAILURE;
@@ -7344,7 +7934,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
     {
         //allocate memory
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7397,7 +7987,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
         case 0x10://read capacity 16
             cdbLength = 16;
             *dataLength += cdbLength;
-            *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+            *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -7430,7 +8020,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
         case 0x0C://report supported op codes
             cdbLength = 12;
             *dataLength += cdbLength;
-            *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+            *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -7453,65 +8043,81 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
             break;
         }
         break;
-        //TODO: add in sanitize support when we add this extention
 #if defined (SNTL_EXT)
-    //case SANITIZE_CMD:
-    //    if (device->drive_info.IdentifyData.ata.Word059 & BIT12)
-    //    {
-    //        switch (serviceAction)
-    //        {
-    //        case 1://overwrite
-    //            cdbLength = 10;
-    //            *dataLength += cdbLength;
-    //            *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
-    //            if (!*pdata)
-    //            {
-    //                return MEMORY_FAILURE;
-    //            }
-    //            pdata[0][offset + 0] = operationCode;
-    //            pdata[0][offset + 1] = (serviceAction & 0x001F) | BIT5;//TODO: add immediate and znr bit support
-    //            pdata[0][offset + 2] = RESERVED;
-    //            pdata[0][offset + 3] = RESERVED;
-    //            pdata[0][offset + 4] = RESERVED;
-    //            pdata[0][offset + 5] = RESERVED;
-    //            pdata[0][offset + 6] = RESERVED;
-    //            pdata[0][offset + 7] = 0xFF;
-    //            pdata[0][offset + 8] = 0xFF;
-    //            pdata[0][offset + 9] = controlByte;//control byte
-    //            break;
-    //        case 2://block erase
-    //            //fallthrough
-    //        case 3://cryptographic erase
-    //            //fallthrough
-    //        case 0x1F://exit failure mode
-    //            cdbLength = 10;
-    //            *dataLength += cdbLength;
-    //            *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
-    //            if (!*pdata)
-    //            {
-    //                return MEMORY_FAILURE;
-    //            }
-    //            pdata[0][offset + 0] = operationCode;
-    //            pdata[0][offset + 1] = (serviceAction & 0x001F) | BIT5;//TODO: add immediate and znr bit support
-    //            pdata[0][offset + 2] = RESERVED;
-    //            pdata[0][offset + 3] = RESERVED;
-    //            pdata[0][offset + 4] = RESERVED;
-    //            pdata[0][offset + 5] = RESERVED;
-    //            pdata[0][offset + 6] = RESERVED;
-    //            pdata[0][offset + 7] = 0;
-    //            pdata[0][offset + 8] = 0;
-    //            pdata[0][offset + 9] = controlByte;//control byte
-    //            break;
-    //        default:
-    //            commandSupported = false;
-    //            break;
-    //        }
-    //    }
-    //    else
-    //    {
-    //        commandSupported = false;
-    //    }
-    //    break;
+    case SANITIZE_CMD:
+        if (device->drive_info.IdentifyData.nvme.ctrl.sanicap > 0)
+        {
+            switch (serviceAction)
+            {
+            case 1://overwrite
+                if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT2)
+                {
+                    cdbLength = 10;
+                    *dataLength += cdbLength;
+                    *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
+                    if (!*pdata)
+                    {
+                        return MEMORY_FAILURE;
+                    }
+                    pdata[0][offset + 0] = operationCode;
+                    pdata[0][offset + 1] = (serviceAction & 0x001F) | BIT5;//TODO: add immediate bit support
+                    pdata[0][offset + 2] = RESERVED;
+                    pdata[0][offset + 3] = RESERVED;
+                    pdata[0][offset + 4] = RESERVED;
+                    pdata[0][offset + 5] = RESERVED;
+                    pdata[0][offset + 6] = RESERVED;
+                    pdata[0][offset + 7] = 0xFF;
+                    pdata[0][offset + 8] = 0xFF;
+                    pdata[0][offset + 9] = controlByte;//control byte
+                }
+                else
+                {
+                    commandSupported = false;
+                }
+                break;
+            case 2://block erase
+                if (!(device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT1))
+                {
+                    commandSupported = false;
+                    break;
+                }
+                //fallthrough
+            case 3://cryptographic erase
+                if (!(device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT0))
+                {
+                    commandSupported = false;
+                    break;
+                }
+                //fallthrough
+            case 0x1F://exit failure mode
+                cdbLength = 10;
+                *dataLength += cdbLength;
+                *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
+                if (!*pdata)
+                {
+                    return MEMORY_FAILURE;
+                }
+                pdata[0][offset + 0] = operationCode;
+                pdata[0][offset + 1] = (serviceAction & 0x001F) | BIT5;//TODO: add immediate bit support
+                pdata[0][offset + 2] = RESERVED;
+                pdata[0][offset + 3] = RESERVED;
+                pdata[0][offset + 4] = RESERVED;
+                pdata[0][offset + 5] = RESERVED;
+                pdata[0][offset + 6] = RESERVED;
+                pdata[0][offset + 7] = 0;
+                pdata[0][offset + 8] = 0;
+                pdata[0][offset + 9] = controlByte;//control byte
+                break;
+            default:
+                commandSupported = false;
+                break;
+            }
+        }
+        else
+        {
+            commandSupported = false;
+        }
+        break;
 #endif
     case WRITE_BUFFER_CMD:
     {
@@ -7522,7 +8128,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
             case 0x05://download
                 cdbLength = 10;
                 *dataLength += cdbLength;
-                *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+                *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -7542,7 +8148,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
                 //case 0x07://download offsets
                 //        cdbLength = 10;
                 //        *dataLength += cdbLength;
-                //        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+                //        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
                 //        if (!*pdata)
                 //        {
                 //            return MEMORY_FAILURE;
@@ -7562,7 +8168,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
             case 0x0D://download offsets defer
                 cdbLength = 10;
                 *dataLength += cdbLength;
-                *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+                *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -7582,7 +8188,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
             case 0x0E://download offsets defer
                 cdbLength = 10;
                 *dataLength += cdbLength;
-                *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+                *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -7601,7 +8207,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
             case 0x0F://activate deferred code
                 cdbLength = 10;
                 *dataLength += cdbLength;
-                *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+                *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -7637,7 +8243,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
     //    case 0x03://descriptor
     //        cdbLength = 10;
     //        *dataLength += cdbLength;
-    //        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+    //        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
     //        if (!*pdata)
     //        {
     //            return MEMORY_FAILURE;
@@ -7658,7 +8264,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
         //    {
         //        cdbLength = 10;
         //        *dataLength += cdbLength;
-        //        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        //        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         //        if (!*pdata)
         //        {
         //            return MEMORY_FAILURE;
@@ -7693,7 +8299,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
             {
                 cdbLength = 16;
                 *dataLength += cdbLength;
-                *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+                *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -7733,7 +8339,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scs
     {
         //allocate memory
         *dataLength += cdbLength;
-        *pdata = (uint8_t*)calloc(*dataLength * sizeof(uint8_t), sizeof(uint8_t));
+        *pdata = (uint8_t*)calloc(*dataLength, sizeof(uint8_t));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -7769,7 +8375,7 @@ int sntl_Create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint8_
     int ret = SUCCESS;
     uint32_t reportAllMaxLength = 4 * LEGACY_DRIVE_SEC_SIZE;
     uint32_t offset = 4;
-    *pdata = (uint8_t*)calloc(reportAllMaxLength * sizeof(uint8_t), sizeof(uint8_t));
+    *pdata = (uint8_t*)calloc(reportAllMaxLength, sizeof(uint8_t));
     if (!*pdata)
     {
         return MEMORY_FAILURE;
@@ -8253,88 +8859,88 @@ int sntl_Create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint8_
             sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
         }
     }
-#if defined (SNTL_EXT) //TODO: SNTL sanitize extension
-    ////SANITIZE_CMD = 0x48//4 possible service actions
-    //if (device->drive_info.IdentifyData.ata.Word059 & BIT12)
-    //{
-    //    //check overwrite
-    //    if (device->drive_info.IdentifyData.ata.Word059 & BIT14)
-    //    {
-    //        pdata[0][offset + 0] = SANITIZE_CMD;
-    //        pdata[0][offset + 1] = RESERVED;
-    //        pdata[0][offset + 2] = M_Byte1(0x01);//service action msb
-    //        pdata[0][offset + 3] = M_Byte0(0x01);//service action lsb if non zero set byte 5, bit0
-    //        pdata[0][offset + 4] = RESERVED;
-    //        pdata[0][offset + 5] = BIT0;
-    //        pdata[0][offset + 6] = M_Byte1(CDB_LEN_10);
-    //        pdata[0][offset + 7] = M_Byte0(CDB_LEN_10);
-    //        offset += 8;
-    //        if (rctd)
-    //        {
-    //            //set CTPD to 1
-    //            pdata[0][offset - 8 + 5] |= BIT1;
-    //            //set up timeouts descriptor
-    //            sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
-    //        }
-    //    }
-    //    //check block erase
-    //    if (device->drive_info.IdentifyData.ata.Word059 & BIT15)
-    //    {
-    //        pdata[0][offset + 0] = SANITIZE_CMD;
-    //        pdata[0][offset + 1] = RESERVED;
-    //        pdata[0][offset + 2] = M_Byte1(0x02);//service action msb
-    //        pdata[0][offset + 3] = M_Byte0(0x02);//service action lsb if non zero set byte 5, bit0
-    //        pdata[0][offset + 4] = RESERVED;
-    //        pdata[0][offset + 5] = BIT0;
-    //        pdata[0][offset + 6] = M_Byte1(CDB_LEN_10);
-    //        pdata[0][offset + 7] = M_Byte0(CDB_LEN_10);
-    //        offset += 8;
-    //        if (rctd)
-    //        {
-    //            //set CTPD to 1
-    //            pdata[0][offset - 8 + 5] |= BIT1;
-    //            //set up timeouts descriptor
-    //            sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
-    //        }
-    //    }
-    //    //check crypto erase
-    //    if (device->drive_info.IdentifyData.ata.Word059 & BIT13)
-    //    {
-    //        pdata[0][offset + 0] = SANITIZE_CMD;
-    //        pdata[0][offset + 1] = RESERVED;
-    //        pdata[0][offset + 2] = M_Byte1(0x03);//service action msb
-    //        pdata[0][offset + 3] = M_Byte0(0x03);//service action lsb if non zero set byte 5, bit0
-    //        pdata[0][offset + 4] = RESERVED;
-    //        pdata[0][offset + 5] = BIT0;
-    //        pdata[0][offset + 6] = M_Byte1(CDB_LEN_10);
-    //        pdata[0][offset + 7] = M_Byte0(CDB_LEN_10);
-    //        offset += 8;
-    //        if (rctd)
-    //        {
-    //            //set CTPD to 1
-    //            pdata[0][offset - 8 + 5] |= BIT1;
-    //            //set up timeouts descriptor
-    //            sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
-    //        }
-    //    }
-    //    //set exit failure mode since it's always available
-    //    pdata[0][offset + 0] = SANITIZE_CMD;
-    //    pdata[0][offset + 1] = RESERVED;
-    //    pdata[0][offset + 2] = M_Byte1(0x1F);//service action msb
-    //    pdata[0][offset + 3] = M_Byte0(0x1F);//service action lsb if non zero set byte 5, bit0
-    //    pdata[0][offset + 4] = RESERVED;
-    //    pdata[0][offset + 5] = BIT0;
-    //    pdata[0][offset + 6] = M_Byte1(CDB_LEN_10);
-    //    pdata[0][offset + 7] = M_Byte0(CDB_LEN_10);
-    //    offset += 8;
-    //    if (rctd)
-    //    {
-    //        //set CTPD to 1
-    //        pdata[0][offset - 8 + 5] |= BIT1;
-    //        //set up timeouts descriptor
-    //        sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
-    //    }
-    //}
+#if defined (SNTL_EXT) //SNTL sanitize extension
+    //SANITIZE_CMD = 0x48//4 possible service actions
+    if (device->drive_info.IdentifyData.ata.Word059 & BIT12)
+    {
+        //check overwrite
+        if (device->drive_info.IdentifyData.ata.Word059 & BIT14)
+        {
+            pdata[0][offset + 0] = SANITIZE_CMD;
+            pdata[0][offset + 1] = RESERVED;
+            pdata[0][offset + 2] = M_Byte1(0x01);//service action msb
+            pdata[0][offset + 3] = M_Byte0(0x01);//service action lsb if non zero set byte 5, bit0
+            pdata[0][offset + 4] = RESERVED;
+            pdata[0][offset + 5] = BIT0;
+            pdata[0][offset + 6] = M_Byte1(CDB_LEN_10);
+            pdata[0][offset + 7] = M_Byte0(CDB_LEN_10);
+            offset += 8;
+            if (rctd)
+            {
+                //set CTPD to 1
+                pdata[0][offset - 8 + 5] |= BIT1;
+                //set up timeouts descriptor
+                sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
+            }
+        }
+        //check block erase
+        if (device->drive_info.IdentifyData.ata.Word059 & BIT15)
+        {
+            pdata[0][offset + 0] = SANITIZE_CMD;
+            pdata[0][offset + 1] = RESERVED;
+            pdata[0][offset + 2] = M_Byte1(0x02);//service action msb
+            pdata[0][offset + 3] = M_Byte0(0x02);//service action lsb if non zero set byte 5, bit0
+            pdata[0][offset + 4] = RESERVED;
+            pdata[0][offset + 5] = BIT0;
+            pdata[0][offset + 6] = M_Byte1(CDB_LEN_10);
+            pdata[0][offset + 7] = M_Byte0(CDB_LEN_10);
+            offset += 8;
+            if (rctd)
+            {
+                //set CTPD to 1
+                pdata[0][offset - 8 + 5] |= BIT1;
+                //set up timeouts descriptor
+                sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
+            }
+        }
+        //check crypto erase
+        if (device->drive_info.IdentifyData.ata.Word059 & BIT13)
+        {
+            pdata[0][offset + 0] = SANITIZE_CMD;
+            pdata[0][offset + 1] = RESERVED;
+            pdata[0][offset + 2] = M_Byte1(0x03);//service action msb
+            pdata[0][offset + 3] = M_Byte0(0x03);//service action lsb if non zero set byte 5, bit0
+            pdata[0][offset + 4] = RESERVED;
+            pdata[0][offset + 5] = BIT0;
+            pdata[0][offset + 6] = M_Byte1(CDB_LEN_10);
+            pdata[0][offset + 7] = M_Byte0(CDB_LEN_10);
+            offset += 8;
+            if (rctd)
+            {
+                //set CTPD to 1
+                pdata[0][offset - 8 + 5] |= BIT1;
+                //set up timeouts descriptor
+                sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
+            }
+        }
+        //set exit failure mode since it's always available
+        pdata[0][offset + 0] = SANITIZE_CMD;
+        pdata[0][offset + 1] = RESERVED;
+        pdata[0][offset + 2] = M_Byte1(0x1F);//service action msb
+        pdata[0][offset + 3] = M_Byte0(0x1F);//service action lsb if non zero set byte 5, bit0
+        pdata[0][offset + 4] = RESERVED;
+        pdata[0][offset + 5] = BIT0;
+        pdata[0][offset + 6] = M_Byte1(CDB_LEN_10);
+        pdata[0][offset + 7] = M_Byte0(CDB_LEN_10);
+        offset += 8;
+        if (rctd)
+        {
+            //set CTPD to 1
+            pdata[0][offset - 8 + 5] |= BIT1;
+            //set up timeouts descriptor
+            sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
+        }
+    }
 #endif
     //LOG_SENSE_CMD = 0x4D
     pdata[0][offset + 0] = LOG_SENSE_CMD;
@@ -8903,9 +9509,12 @@ int sntl_Translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         break;
     //SNTL doesn't have this, but we should add it similar to SAT
 #if defined (SNTL_EXT)
-    //case SANITIZE_CMD://NVMe Sanitize
-    //  ret = sntl_Translate_SCSI_Sanitize_Command(device, scsiIoCtx);
-    //  break;
+    case SANITIZE_CMD://NVMe Sanitize
+        if (device->drive_info.IdentifyData.nvme.ctrl.sanicap != 0)
+        {
+            ret = sntl_Translate_SCSI_Sanitize_Command(device, scsiIoCtx);
+        }
+      break;
 #endif
     case SECURITY_PROTOCOL_IN:
         if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT0)

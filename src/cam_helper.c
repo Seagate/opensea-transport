@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -54,6 +54,7 @@ int get_Device( const char *filename, tDevice *device )
 
             //set the OS Type
             device->os_info.osType = OS_FREEBSD;
+            device->os_info.minimumAlignment = sizeof(void *);
             
             if (device->dFlags == OPEN_HANDLE_ONLY)
             {
@@ -149,7 +150,7 @@ int get_Device( const char *filename, tDevice *device )
                         if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
                         {
                             //TODO: Actually get the VID and PID set before calling this.
-                            set_ATA_Passthrough_Type(device);
+                            setup_Passthrough_Hacks_By_ID(device);
                         }
                         ret = fill_Drive_Info_Data(device);
                     }
@@ -273,14 +274,38 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
         }
 
         uint32_t camTimeout = scsiIoCtx->timeout;
-        if (camTimeout == 0)
+        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
         {
-            camTimeout = 15;
+            camTimeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+            //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
+            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < 4294966)
+            {
+                camTimeout *= 1000;//convert to milliseconds
+            }
+            else
+            {
+                camTimeout = UINT32_MAX;//no timeout or maximum timeout
+            }
         }
-        //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-        if (camTimeout < 4294966)
+        else
         {
-            camTimeout *= 1000;//convert to milliseconds.
+            if (scsiIoCtx->timeout != 0)
+            {
+                camTimeout = scsiIoCtx->timeout;
+                //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
+                if (scsiIoCtx->timeout < 4294966)
+                {
+                    camTimeout *= 1000;//convert to milliseconds
+                }
+                else
+                {
+                    camTimeout = UINT32_MAX;//no timeout or maximum timeout
+                }
+            }
+            else
+            {
+                camTimeout = 15 * 1000;//default to 15 second timeout
+            }
         }
 
         cam_fill_ataio(&ccb->ataio,
@@ -514,14 +539,38 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
         csio->ccb_h.retry_count = 0; // should we change it to 1?
         csio->ccb_h.cbfcnp = NULL;
         uint32_t camTimeout = scsiIoCtx->timeout;
-        if (camTimeout == 0)
+        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
         {
-            camTimeout = 15;
+            camTimeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+            //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
+            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < 4294966)
+            {
+                camTimeout *= 1000;//convert to milliseconds
+            }
+            else
+            {
+                camTimeout = UINT32_MAX;//no timeout or maximum timeout
+            }
         }
-        //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-        if (camTimeout < 4294966)
+        else
         {
-            camTimeout *= 1000;//convert to milliseconds.
+            if (scsiIoCtx->timeout != 0)
+            {
+                camTimeout = scsiIoCtx->timeout;
+                //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
+                if (scsiIoCtx->timeout < 4294966)
+                {
+                    camTimeout *= 1000;//convert to milliseconds
+                }
+                else
+                {
+                    camTimeout = UINT32_MAX;//no timeout or maximum timeout
+                }
+            }
+            else
+            {
+                camTimeout = 15 * 1000;//default to 15 second timeout
+            }
         }
         csio->ccb_h.timeout = camTimeout;
         csio->cdb_len = scsiIoCtx->cdbLength;
@@ -826,18 +875,18 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         devs[i] = (char *)malloc((strlen("/dev/") + strlen(danamelist[i]->d_name) + 1) * sizeof(char));
         strcpy(devs[i], "/dev/");
         strcat(devs[i], danamelist[i]->d_name);
-        free(danamelist[i]);
+        safe_Free(danamelist[i]);
     }
     for (j = 0; i < (num_da_devs + num_ada_devs); ++i, j++)
     {
         devs[i] = (char *)malloc((strlen("/dev/") + strlen(adanamelist[j]->d_name) + 1) * sizeof(char));
         strcpy(devs[i], "/dev/");
         strcat(devs[i], adanamelist[j]->d_name);
-        free(adanamelist[j]);
+        safe_Free(adanamelist[j]);
     }
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
-    free(danamelist);
-    free(adanamelist);
+    safe_Free(danamelist);
+    safe_Free(adanamelist);
 
     //TODO: Check if sizeInBytes is a multiple of 
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -911,18 +960,34 @@ int os_Flush(tDevice *device)
     return NOT_SUPPORTED;
 }
 
+//TODO: Add code for CAM resets. There should be XPT function codes to do some amount of resetting
+int os_Device_Reset(tDevice *device)
+{
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+    
+int os_Bus_Reset(tDevice *device)
+{
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+
+int os_Controller_Reset(tDevice *device)
+{
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
     return NOT_SUPPORTED;
 }
 
-int nvme_Reset(tDevice *device)
+int os_nvme_Reset(tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int nvme_Subsystem_Reset(tDevice *device)
+int os_nvme_Subsystem_Reset(tDevice *device)
 {
     return NOT_SUPPORTED;
 }

@@ -1,0 +1,89 @@
+## @file
+#  opensea-transport lib
+#
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = opensea-transport
+  FILE_GUID                      = 56b6f742-0cdf-4b57-a8d1-a79fb25233d4
+  MODULE_TYPE                    = UEFI_APPLICATION
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = opensea-transport
+
+#
+#  VALID_ARCHITECTURES           = IA32 X64 ARM AARCH64 IPF
+#
+
+[Sources]
+  include/ata_helper.h
+  include/ata_helper_func.h
+  include/cmds.h
+  include/common_public.h
+  include/cypress_legacy_helper.h
+  include/nec_legacy_helper.h
+  include/nvme_helper.h
+  include/nvme_helper_func.h
+  include/platform_helper.h
+  include/prolific_legacy_helper.h
+  include/psp_legacy_helper.h
+  include/sat_helper.h
+  include/sat_helper_func.h
+  include/scsi_helper.h
+  include/scsi_helper_func.h
+  include/sntl_helper.h
+  include/ti_legacy_helper.h
+  include/uefi_helper.h
+  include/usb_hacks.h
+  include/version.h
+  include/vendor/seagate/seagate_common_types.h
+  include/vendor/seagate/seagate_ata_types.h
+  include/vendor/seagate/seagate_scsi_types.h
+  include/asmedia_nvme_helper.h
+  include/jmicron_nvme_helper.h
+  src/ata_cmds.c
+  src/ata_helper.c
+  src/ata_legacy_cmds.c
+  src/cmds.c
+  src/common_public.c
+  src/cypress_legacy_helper.c
+  src/nec_legacy_helper.c
+  src/nvme_cmds.c
+  src/nvme_helper.c
+  src/prolific_legacy_helper.c
+  src/psp_legacy_helper.c
+  src/sat_helper.c
+  src/scsi_cmds.c
+  src/scsi_helper.c
+  src/sntl_helper.c
+  src/ti_legacy_helper.c
+  src/uefi_helper.c
+  src/usb_hacks.c
+  src/asmedia_nvme_helper.c
+  src/jmicron_nvme_helper.c
+
+[Packages]
+  StdLib/StdLib.dec
+  StdLibPrivateInternalFiles/DoNotUse.dec
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  ShellPkg/ShellPkg.dec
+  opensea-libs/opensea-common/opensea-common.dec
+
+[LibraryClasses]
+  LibC
+  LibCType
+  LibMath
+  LibTime
+  ShellCEntryLib
+  UefiLib
+  BaseLib
+  BaseMemoryLib
+  MemoryAllocationLib
+  LibStdLib
+  LibStdio
+  LibString
+  DevConsole
+  opensea-commonlib
+

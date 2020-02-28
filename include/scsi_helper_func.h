@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -22,6 +22,10 @@
 extern "C"
 {
 #endif
+
+    //This is a private function that is used by the send CDB function below in order to contain printing debug output in one location instead of multiple so that the ATA layer can also call this.
+    //Do not use this directly to send a CDB. Use the scsi_Send_Cdb function instead.
+    int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields);
 
     //-----------------------------------------------------------------------------
     //

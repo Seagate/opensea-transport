@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -28,6 +28,31 @@
 int fill_In_NVMe_Device_Info(tDevice *device)
 {
     int ret = UNKNOWN;
+
+    //set some pointers to where we want to fill in information...we're doing this so that on USB, we can store some info about the child drive, without disrupting the standard drive_info that has already been filled in by the fill_SCSI_Info function
+    char *fillModelNumber = device->drive_info.product_identification;
+    char *fillSerialNumber = device->drive_info.serialNumber;
+    char *fillFWRev = device->drive_info.product_revision;
+    uint64_t *fillWWN = &device->drive_info.worldWideName;
+    uint32_t *fillLogicalSectorSize = &device->drive_info.deviceBlockSize;
+    uint32_t *fillPhysicalSectorSize = &device->drive_info.devicePhyBlockSize;
+    uint16_t *fillSectorAlignment = &device->drive_info.sectorAlignment;
+    uint64_t *fillMaxLba = &device->drive_info.deviceMaxLba;
+
+    //If not an NVMe interface, such as USB, then we need to store things differently
+    if (device->drive_info.interface_type != NVME_INTERFACE)
+    {
+        device->drive_info.bridge_info.isValid = true;
+        fillModelNumber = device->drive_info.bridge_info.childDriveMN;
+        fillSerialNumber = device->drive_info.bridge_info.childDriveSN;
+        fillFWRev = device->drive_info.bridge_info.childDriveFW;
+        fillWWN = &device->drive_info.bridge_info.childWWN;
+        fillLogicalSectorSize = &device->drive_info.bridge_info.childDeviceBlockSize;
+        fillPhysicalSectorSize = &device->drive_info.bridge_info.childDevicePhyBlockSize;
+        fillSectorAlignment = &device->drive_info.bridge_info.childSectorAlignment;
+        fillMaxLba = &device->drive_info.bridge_info.childDeviceMaxLba;
+    }
+
     nvmeIDCtrl * ctrlData = &device->drive_info.IdentifyData.nvme.ctrl; //Conroller information data structure
     nvmeIDNameSpaces * nsData = &device->drive_info.IdentifyData.nvme.ns; //Name Space Data structure 
 #ifdef _DEBUG
@@ -44,32 +69,39 @@ printf("fill NVMe info ret = %d\n", ret);
     {
         //set the t10 vendor id to NVMe
         sprintf(device->drive_info.T10_vendor_ident, "NVMe");
+        device->drive_info.media_type = MEDIA_NVM;//This will bite us someday when someone decided to put non-ssds on NVMe interface.
 
         //Set the other device fields we need.
-        memcpy(device->drive_info.serialNumber,ctrlData->sn,SERIAL_NUM_LEN);
-        device->drive_info.serialNumber[20] = '\0';
-        remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
-        memcpy(device->drive_info.product_revision, ctrlData->fr,8); //8 is the NVMe spec length of this
-        device->drive_info.product_revision[8] = '\0';
-        remove_Leading_And_Trailing_Whitespace(device->drive_info.product_revision);
-        memcpy(device->drive_info.product_identification, ctrlData->mn,MODEL_NUM_LEN); 
-        device->drive_info.product_identification[40] = '\0';
-        remove_Leading_And_Trailing_Whitespace(device->drive_info.product_identification);
-        device->drive_info.bridge_info.vendorID = ctrlData->vid;
+        memcpy(fillSerialNumber,ctrlData->sn,SERIAL_NUM_LEN);
+        fillSerialNumber[20] = '\0';
+        remove_Leading_And_Trailing_Whitespace(fillSerialNumber);
+        memcpy(fillFWRev, ctrlData->fr,8); //8 is the NVMe spec length of this
+        fillFWRev[8] = '\0';
+        remove_Leading_And_Trailing_Whitespace(fillFWRev);
+        memcpy(fillModelNumber, ctrlData->mn,MODEL_NUM_LEN); 
+        fillModelNumber[40] = '\0';
+        remove_Leading_And_Trailing_Whitespace(fillModelNumber);
+        //Do not overwrite this with non-NVMe interfaces. This is used by USB to figure out and track bridge chip specific things that are stored in this location
+        if (device->drive_info.interface_type == NVME_INTERFACE && !device->drive_info.adapter_info.vendorIDValid)
+        {
+            device->drive_info.adapter_info.vendorID = ctrlData->vid;
+            device->drive_info.adapter_info.vendorIDValid = true;
+        }
 
         //set the IEEE OUI into the WWN since we use the WWN for detecting if the drive is a Seagate drive.
         //TODO: currently we set NAA to 5, but we should probably at least follow the SCSI-NVMe translation specification!
-        device->drive_info.worldWideName = M_BytesTo8ByteValue(0x05, ctrlData->ieee[2], ctrlData->ieee[1], ctrlData->ieee[0], 0, 0, 0, 0) << 4;
+        *fillWWN = M_BytesTo8ByteValue(0x05, ctrlData->ieee[2], ctrlData->ieee[1], ctrlData->ieee[0], 0, 0, 0, 0) << 4;
 
         ret = nvme_Identify(device,(uint8_t *)nsData, device->drive_info.namespaceID, NVME_IDENTIFY_NS);
 
         if (ret == SUCCESS) 
         {
 
-            device->drive_info.deviceBlockSize = (uint32_t)power_Of_Two(nsData->lbaf[nsData->flbas].lbaDS); //removed math.h pow() function - TJE
-            device->drive_info.devicePhyBlockSize = device->drive_info.deviceBlockSize; //True for NVMe?
+            *fillLogicalSectorSize = (uint32_t)power_Of_Two(nsData->lbaf[nsData->flbas].lbaDS); //removed math.h pow() function - TJE
+            *fillPhysicalSectorSize = *fillLogicalSectorSize; //True for NVMe?
+            *fillSectorAlignment = 0;
 
-            device->drive_info.deviceMaxLba = nsData->nsze - 1;//spec says this is from 0 to (n-1)!
+            *fillMaxLba = nsData->nsze - 1;//spec says this is from 0 to (n-1)!
             
 
             //TODO: Add support if more than one Namespace. 
