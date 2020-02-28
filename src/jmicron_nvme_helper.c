@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2019 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -336,7 +336,43 @@ int send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
     return ret;
 }
 
-//TODO: Figure out how to make this happen on this bridge chip. PCIe power off, then back on???
+int jm_NVMe_Normal_Shutdown(tDevice *device)
+{
+    uint8_t cdb[JMICRON_NVME_CDB_SIZE] = { 0 };
+    eDataTransferDirection jmCDBDir = XFER_NO_DATA;
+    uint8_t jmPayload[JMICRON_NVME_CMD_PAYLOAD_SIZE] = { 0 };
+    int ret = build_JM_NVMe_CDB_And_Payload(cdb, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_SET_PAYLOAD, JM_VENDOR_CTRL_NVME_NORMAL_SHUTDOWN, NULL);
+    if (ret == SUCCESS)
+    {
+        ret = scsi_Send_Cdb(device, cdb, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, NULL, 0, 15);
+        //TODO: Do we need to do a XFER NO DATA protocol or is this enough to issue this option???
+    }
+    else
+    {
+        ret = NOT_SUPPORTED;
+    }
+    return ret;
+}
+
+int jm_NVMe_MCU_Reset(tDevice *device)
+{
+    uint8_t cdb[JMICRON_NVME_CDB_SIZE] = { 0 };
+    eDataTransferDirection jmCDBDir = XFER_NO_DATA;
+    uint8_t jmPayload[JMICRON_NVME_CMD_PAYLOAD_SIZE] = { 0 };
+    int ret = build_JM_NVMe_CDB_And_Payload(cdb, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_SET_PAYLOAD, JM_VENDOR_CTRL_MCU_RESET, NULL);
+    if (ret == SUCCESS)
+    {
+        ret = scsi_Send_Cdb(device, cdb, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, NULL, 0, 15);
+        //TODO: Do we need to do a XFER NO DATA protocol or is this enough to issue this option???
+    }
+    else
+    {
+        ret = NOT_SUPPORTED;
+    }
+    return ret;
+}
+
+
 int jm_nvme_Reset(tDevice *device)
 {
     int ret = OS_COMMAND_NOT_AVAILABLE;
@@ -344,7 +380,17 @@ int jm_nvme_Reset(tDevice *device)
     {
         printf("Sending JMicron NVMe Reset\n");
     }
-    //TODO: insert something here to do a reset
+    if (SUCCESS == jm_NVMe_Normal_Shutdown(device))
+    {
+        if (SUCCESS == jm_NVMe_MCU_Reset(device))
+        {
+            ret = SUCCESS;
+        }
+        else
+        {
+            ret = FAILURE;
+        }
+    }
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
         print_Return_Enum("Jmicron NVMe Reset", ret);
@@ -352,7 +398,6 @@ int jm_nvme_Reset(tDevice *device)
     return ret;
 }
 
-//TODO: Figure out how to make this happen on this bridge chip. PCIe power off, then back on???
 int jm_nvme_Subsystem_Reset(tDevice *device)
 {
     int ret = OS_COMMAND_NOT_AVAILABLE;
@@ -360,7 +405,17 @@ int jm_nvme_Subsystem_Reset(tDevice *device)
     {
         printf("Sending JMicron NVMe Subsystem Reset\n");
     }
-    //TODO: insert something here to do a reset
+    if (SUCCESS == jm_NVMe_Normal_Shutdown(device))
+    {
+        if (SUCCESS == jm_NVMe_MCU_Reset(device))
+        {
+            ret = SUCCESS;
+        }
+        else
+        {
+            ret = FAILURE;
+        }
+    }
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
         print_Return_Enum("JMicron NVMe Subsystem Reset", ret);

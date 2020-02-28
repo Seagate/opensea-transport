@@ -1,11 +1,11 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://urldefense.proofpoint.com/v2/url?u=http-3A__mozilla.org_MPL_2.0_&d=DwIGAg&c=IGDlg0lD0b-nebmJJ0Kp8A&r=57G6zc3onntjgzg7foSF7GC8HanSAN_KSacx5Jxblq4&m=inFDTtXZCWJQO2tiRNqXcfEsvaGXTsM7WsOHlsHAAY4&s=WIhSObqstO-YuUmZMRu0eL5PxfSm16hGH87Eb7MT1RY&e= .
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 // ******************************************************************************************
 // 

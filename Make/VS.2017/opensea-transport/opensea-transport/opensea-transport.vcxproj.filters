@@ -206,5 +206,11 @@
     <ClInclude Include="..\..\..\..\include\asmedia_nvme_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\include\vendor\seagate\seagate_common_types.h">
+      <Filter>Header Files\vendor\seagate</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\vendor\seagate\seagate_scsi_types.h">
+      <Filter>Header Files\vendor\seagate</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

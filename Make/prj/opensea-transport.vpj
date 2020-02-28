@@ -158,5 +158,10 @@
             <F N="../UEFI/opensea-transport.dsc"/>
             <F N="../UEFI/opensea-transport.inf"/>
         </Folder>
+        <Folder Name="../vmware">
+            <F
+                N="../vmware/Makefile"
+                Type="Makefile"/>
+        </Folder>
     </Files>
 </Project>

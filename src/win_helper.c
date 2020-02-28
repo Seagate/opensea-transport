@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -7980,7 +7980,6 @@ int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&commandTimer);
-    device->os_info.last_error = GetLastError();
     CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
     overlappedStruct.hEvent = NULL;
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);

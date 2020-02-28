@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2019 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -582,13 +582,88 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     return ret;
 }
 
+int asm_nvme_Shutdown(tDevice *device, bool withShutdownProcessing)
+{
+    uint8_t cdb[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
+    eDataTransferDirection asmCDBDir = XFER_NO_DATA;
+    int ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_POWER_DOWN_NVME, withShutdownProcessing ? 1 : 0, NULL, NULL, 0);
+    if (ret == SUCCESS)
+    {
+        //send it
+        ret = scsi_Send_Cdb(device, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE, NULL, 0, asmCDBDir, NULL, 0, 15);
+    }
+    else
+    {
+        ret = NOT_SUPPORTED;
+    }
+    return ret;
+}
+
+int asm_nvme_Reset_Bridge(tDevice *device)
+{
+    uint8_t cdb[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
+    eDataTransferDirection asmCDBDir = XFER_NO_DATA;
+    int ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_RESET_BRIDGE, 0, NULL, NULL, 0);
+    if (ret == SUCCESS)
+    {
+        //send it
+        ret = scsi_Send_Cdb(device, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE, NULL, 0, asmCDBDir, NULL, 0, 15);
+    }
+    else
+    {
+        ret = NOT_SUPPORTED;
+    }
+    return ret;
+}
+
+int asm_nvme_Relink_Bridge(tDevice *device, bool normalShutdownBeforeDisconnect)
+{
+    uint8_t cdb[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
+    eDataTransferDirection asmCDBDir = XFER_NO_DATA;
+    int ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_RELINK_USB, normalShutdownBeforeDisconnect ? 1 : 0, NULL, NULL, 0);
+    if (ret == SUCCESS)
+    {
+        //send it
+        ret = scsi_Send_Cdb(device, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE, NULL, 0, asmCDBDir, NULL, 0, 15);
+    }
+    else
+    {
+        ret = NOT_SUPPORTED;
+    }
+    return ret;
+}
+
 int asm_nvme_Reset(tDevice *device)
 {
-    return NOT_SUPPORTED;
+    //shutdown, then reset bridge
+    if (SUCCESS == asm_nvme_Shutdown(device, true))
+    {
+        if (SUCCESS == asm_nvme_Reset_Bridge(device))
+        {
+            return SUCCESS;
+        }
+        else
+        {
+            //something went wrong...try relink before failing
+            if (SUCCESS == asm_nvme_Relink_Bridge(device, false))
+            {
+                return SUCCESS;
+            }
+            else
+            {
+                return FAILURE;
+            }
+        }
+    }
+    else
+    {
+        return NOT_SUPPORTED;
+    }
 }
 
 int asm_nvme_Subsystem_Reset(tDevice *device)
 {
-    return NOT_SUPPORTED;
+    //relink USB command
+    return asm_nvme_Relink_Bridge(device, true);
 }
 #endif //DISABLE_NVME_PASSTHROUGH
