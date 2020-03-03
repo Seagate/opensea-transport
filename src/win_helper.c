@@ -47,6 +47,10 @@
 #include "csmi_helper_func.h"
 #endif
 
+#if defined (ENABLE_OFNVME)
+#include "of_nvme_helper_func.h"
+#endif
+
 //MinGW may or may not have some of these, so there is a need to define these here to build properly when they are otherwise not available.
 //TODO: as mingw changes versions, some of these below may be available. Need to have a way to check mingw preprocessor defines for versions to work around these.
 //NOTE: The device property keys are incomplete in mingw. Need to add similar code using setupapi and some sort of ifdef to switch between for VS and mingw to resolve this better.
@@ -81,6 +85,10 @@
         DEFINE_GUID(GUID_DEVINTERFACE_DISK,                   0x53f56307L, 0xb6bf, 0x11d0, 0x94, 0xf2, 0x00, 0xa0, 0xc9, 0x1e, 0xfb, 0x8b);
     #endif
 
+#endif
+
+#if WINVER < SEA_WIN32_WINNT_WINBLUE && !defined (BusTypeNvme)
+#define BusTypeNvme 17
 #endif
 
 #if WINVER < SEA_WIN32_WINNT_WINBLUE && !defined (BusTypeNvme)
@@ -1635,6 +1643,28 @@ int get_os_drive_number( char *filename )
     return drive_num;
 }
 
+int close_SCSI_SRB_Handle(tDevice *device)
+{
+    int ret = SUCCESS;
+    if (device)
+    {
+        if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE)
+        {
+            if (CloseHandle(device->os_info.scsiSRBHandle))
+            {
+                ret = SUCCESS;
+                device->os_info.scsiSRBHandle = INVALID_HANDLE_VALUE;
+            }
+            else
+            {
+                ret = FAILURE;
+            }
+            device->os_info.last_error = GetLastError();
+        }
+    }
+    return ret;
+}
+
 //-----------------------------------------------------------------------------
 //
 //  close_Device()
@@ -1653,6 +1683,9 @@ int close_Device(tDevice *dev)
     int retValue = 0;
     if (dev)
     {
+#if defined (ENABLE_OFNVME)
+        close_SCSI_SRB_Handle(dev);
+#endif
 #if defined (ENABLE_CSMI)
         if (strncmp(dev->os_info.name, "\\\\.\\SCSI", 8) == 0)
         {
@@ -1675,6 +1708,48 @@ int close_Device(tDevice *dev)
     {
         return MEMORY_FAILURE;
     }
+}
+
+//opens this handle, but does nothing else with it
+int open_SCSI_SRB_Handle(tDevice *device)
+{
+    int ret = NOT_SUPPORTED;
+    if (device->os_info.scsi_addr.PortNumber != 0xFF)
+    {
+        //open the SCSI SRB handle
+        TCHAR scsiDeviceName[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+        TCHAR *ptrSCSIDeviceName = &scsiDeviceName[0];
+        _stprintf_s(scsiDeviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs%d:"), WIN_SCSI_SRB, device->os_info.scsi_addr.PortNumber);
+        device->os_info.scsiSRBHandle = CreateFile(ptrSCSIDeviceName,
+            /* We are reverting to the GENERIC_WRITE | GENERIC_READ because
+               in the use case of a dll where multiple applications are using
+               our library, this needs to not request full access. If you suspect
+               some commands might fail (e.g. ISE/SED because of that
+               please write to developers  -MA */
+            GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
+            FILE_SHARE_READ | FILE_SHARE_WRITE,
+            NULL,
+            OPEN_EXISTING,
+#if !defined(WINDOWS_DISABLE_OVERLAPPED)
+            FILE_FLAG_OVERLAPPED,
+#else
+            0,
+#endif
+            NULL);
+
+        device->os_info.last_error = GetLastError();
+
+        // Check if we get a invalid handle back.
+        if (device->os_info.fd == INVALID_HANDLE_VALUE)
+        {
+            ret = FAILURE;
+        }
+        else
+        {
+            ret = SUCCESS;
+        }
+    }
+    return ret;
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -2033,28 +2108,76 @@ int get_Device(const char *filename, tDevice *device )
                                     device->drive_info.interface_type = IEEE_1394_INTERFACE;
                                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                                 }
+#if !defined(DISABLE_NVME_PASSTHROUGH)
                                 //NVMe bustype can be defined for Win7 with openfabrics nvme driver, so make sure we can handle it...it shows as a SCSI device on this interface unless you use a SCSI?: handle with the IOCTL directly to the driver.
-                                else if (device_desc->BusType == BusTypeNvme && device_desc->VendorIdOffset == 0)//Open fabrics will set a vendorIDoffset, MSFT driver will not.
+                                else if (device_desc->BusType == BusTypeNvme)
                                 {
-#if WINVER >= SEA_WIN32_WINNT_WIN10 && !defined(DISABLE_NVME_PASSTHROUGH)
-                                    device->drive_info.drive_type = NVME_DRIVE;
-                                    device->drive_info.interface_type = NVME_INTERFACE;
-                                    //set_Namespace_ID_For_Device(device);
-                                    device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
-                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit = true;
-                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload = true;
-                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures = true;
-                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
-                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController = true;
-                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace = true;
-                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique = true;
-                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
-#else
-                                    device->drive_info.drive_type = SCSI_DRIVE;
-                                    device->drive_info.interface_type = SCSI_INTERFACE;
-                                    device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
-#endif
+                                    device->drive_info.namespaceID = device->os_info.scsi_addr.Lun + 1;
+                                    if (device_desc->VendorIdOffset)//Open fabrics will set a vendorIDoffset, MSFT driver will not.
+                                    {
+#if defined (ENABLE_OFNVME)
+                                        if (SUCCESS == open_SCSI_SRB_Handle(device))
+                                        {
+                                            //now see if the IOCTL is supported or not
+                                            if (supports_OFNVME_IO(device->os_info.scsiSRBHandle))
+                                            {
+                                                //congratulations! nvme commands can be passed through!!!
+                                                device->os_info.openFabricsNVMePassthroughSupported = true;
+                                                device->drive_info.drive_type = NVME_DRIVE;
+                                                device->drive_info.interface_type = NVME_INTERFACE;
+                                                //device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
+                                                //TODO: Setup limited passthrough capabilities structure???
+                                            }
+                                            else
+                                            {
+                                                //unable to do passthrough, and isn't in normal Win10 mode, this means it's some other driver that we don't know how to use. Treat as SCSI
+                                                device->os_info.openFabricsNVMePassthroughSupported = false;
+                                                device->drive_info.drive_type = SCSI_DRIVE;
+                                                device->drive_info.interface_type = SCSI_INTERFACE;
+                                                device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
+                                            }
+                                        }
+                                        else
+#endif //ENABLE_OFNVME
+                                        {
+                                            //close the handle that was opened. TODO: May need to remove this in the future.
+                                            close_SCSI_SRB_Handle(device);
+                                            //treat as SCSI
+                                            device->drive_info.drive_type = SCSI_DRIVE;
+                                            device->drive_info.interface_type = SCSI_INTERFACE;
+                                            device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
+                                        }
+                                    }
+                                    else
+                                    {
+#if WINVER >= SEA_WIN32_WINNT_WIN10 
+                                        if (is_Windows_10_Or_Higher())
+                                        {
+                                            device->drive_info.drive_type = NVME_DRIVE;
+                                            device->drive_info.interface_type = NVME_INTERFACE;
+                                            //set_Namespace_ID_For_Device(device);
+                                            device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
+                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit = true;
+                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload = true;
+                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures = true;
+                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
+                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController = true;
+                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace = true;
+                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique = true;
+                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
+                                        }
+                                        else
+#endif //WINVER >= SEA_WIN32_WINNT_WIN10 
+                                        {
+                                            device->drive_info.drive_type = SCSI_DRIVE;
+                                            device->drive_info.interface_type = SCSI_INTERFACE;
+                                            device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
+                                        }
+
+                                    }
+                                    
                                 }
+#endif //!defined(DISABLE_NVME_PASSTHROUGH)
                                 else //treat anything else as a SCSI device.
                                 {
                                     device->drive_info.interface_type = SCSI_INTERFACE;
@@ -7751,7 +7874,7 @@ int send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx)
 #endif //WINVER >= SEA_WIN32_WINNT_WIN10
 
 //MS NVMe requirements are listed here: https://msdn.microsoft.com/en-us/library/jj134356(v=vs.85).aspx
-int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
+int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = OS_COMMAND_NOT_AVAILABLE;
     //TODO: Should we be checking the nsid in each command before issuing it? This should happen at some point, at least to filter out "all namespaces" for certain commands since MS won't let us issue some of them through their API - TJE
@@ -7870,34 +7993,88 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
+int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
+{
+    int ret = OS_PASSTHROUGH_FAILURE;
+    switch (nvmeIoCtx->device->drive_info.interface_type)
+    {
+    case NVME_INTERFACE:
+#if defined (ENABLE_OFNVME)
+        if (nvmeIoCtx->device->os_info.openFabricsNVMePassthroughSupported)
+        {
+            ret = send_OFNVME_IO(nvmeIoCtx);
+        }
+        else
+#endif
+        {
+            ret = send_Win_NVMe_IO(nvmeIoCtx);
+        }
+        break;
+    case RAID_INTERFACE:
+        if (nvmeIoCtx->device->issue_nvme_io != NULL)
+        {
+            ret = nvmeIoCtx->device->issue_nvme_io(nvmeIoCtx);
+        }
+        else
+        {
+            if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
+            {
+                printf("Raid PassThrough Interface is not supported for this device \n");
+            }
+            ret = NOT_SUPPORTED;
+        }
+        break;
+    default:
+        if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
+        {
+            printf("Target Device does not have a valid interface\n");
+        }
+        ret = BAD_PARAMETER;
+        break;
+    }
+    return ret;
+}
+
 int os_nvme_Reset(tDevice *device)
 {
+    int ret = OS_COMMAND_NOT_AVAILABLE;
     //This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code otherwise compile without ifdefs
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
         printf("Sending NVMe Reset\n");
     }
-
+#if defined (ENABLE_OFNVME)
+    if (device->os_info.openFabricsNVMePassthroughSupported)
+    {
+        ret = send_OFNVME_Reset(device);
+    }
+#endif
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
-        print_Return_Enum("NVMe Reset", OS_COMMAND_NOT_AVAILABLE);
+        print_Return_Enum("NVMe Reset", ret);
     }
-    return OS_COMMAND_NOT_AVAILABLE;
+    return ret;
 }
 
 int os_nvme_Subsystem_Reset(tDevice *device)
 {
+    int ret = OS_COMMAND_NOT_AVAILABLE;
     //This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code otherwise compile without ifdefs
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
         printf("Sending NVMe Subsystem Reset\n");
     }
-
+#if defined (ENABLE_OFNVME)
+    if (device->os_info.openFabricsNVMePassthroughSupported)
+    {
+        ret = send_OFNVME_Reset(device);
+    }
+#endif
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
-        print_Return_Enum("NVMe Subsystem Reset", OS_COMMAND_NOT_AVAILABLE);
+        print_Return_Enum("NVMe Subsystem Reset", ret);
     }
-    return OS_COMMAND_NOT_AVAILABLE;
+    return ret;
 }
 
 int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize)

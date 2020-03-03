@@ -42,6 +42,7 @@ extern "C"
 #define SRB_TYPE_SCSI_REQUEST_BLOCK 0
 #endif
 
+#define WIN_SCSI_SRB "\\\\.\\SCSI" //can be used to issue mini port ioctls. Not really supported right now...
 #define WIN_PHYSICAL_DRIVE  "\\\\.\\PhysicalDrive"
 #define WIN_TAPE_DRIVE "\\\\.\\Tape"
 #define WIN_CDROM_DRIVE "\\\\.\\CDROM" //Most likely an ATAPI device, but it could be a really old SCSI interface device...
