@@ -704,9 +704,6 @@ extern "C"
         IEEE_1394_INTERFACE,
     } eInterfaceType;
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif
     //revisit this later as this may not be the best way we want to do this
     typedef struct _bridgeInfo
     {
@@ -729,12 +726,7 @@ extern "C"
         uint32_t childDeviceBlockSize; //This is the logical block size reported by the drive
         uint32_t childDevicePhyBlockSize; // This is the physical block size reported by the drive.
         uint64_t childDeviceMaxLba;
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }bridgeInfo;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) bridgeInfo;
-    #endif
 
     typedef enum _eAdapterInfoType
     {
@@ -744,9 +736,6 @@ extern "C"
         ADAPTER_INFO_IEEE1394, //supported under linux today
     }eAdapterInfoType;
 
-#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-#pragma pack(push,1)
-#endif
     //this structure may or may not be populated with some low-level device adapter info. This will hold USB or PCI/PCIe vendor, product, and revision codes which may help filter capabilities.
     typedef struct _adapterInfo
     {
@@ -761,13 +750,7 @@ extern "C"
         uint32_t productID;
         uint32_t revision;
         uint32_t specifierID;//Used on IEEE1394 only
-#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }adapterInfo;
-#pragma pack(pop)
-#else
-    }__attribute__((packed, aligned(1))) adapterInfo;
-#endif
-
 
     typedef enum _eATASynchronousDMAMode
     {
@@ -798,9 +781,6 @@ extern "C"
         PASSTHROUGH_NONE = UINT32_MAX
     }ePassthroughType;
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif
     typedef struct _ataOptions
     {
         eATASynchronousDMAMode dmaMode;
@@ -823,12 +803,7 @@ extern "C"
         bool enableLegacyPassthroughDetectionThroughTrialAndError;//This must be set to true in order to work on legacy (ancient) passthrough if the VID/PID is not in the list and not read from the system.
         bool senseDataReportingEnabled;//this is to track when the RTFRs may contain a sense data bit so it can be read automatically.
         uint8_t forceSATCDBLength;//set this to 12, 16, or 32 to force a specific CDB length to use. If you set 12, but send an extended command 16B will be used if any extended registers are set. Same with 32B will be used if ICC or AUX are set.
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataOptions;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) ataOptions;
-    #endif
 
     typedef enum _eZonedDeviceType {
         ZONED_TYPE_NOT_ZONED = 0,
@@ -839,9 +814,6 @@ extern "C"
     }eZonedDeviceType;
 
     //This is used by the software SAT translation layer. DO NOT Update this directly
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif
     typedef struct _softwareSATFlags
     {
         bool identifyDeviceDataLogSupported;
@@ -864,20 +836,12 @@ extern "C"
         bool zeroExtSupported;
         uint8_t rtfrIndex;
         ataReturnTFRs ataPassthroughResults[16];
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }softwareSATFlags;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) softwareSATFlags;
-    #endif
 
     //This is for test unit ready after failures to keep up performance on devices that slow down a LOT durring error processing (USB mostly)
     #define TURF_LIMIT 10
 
     //The passthroughHacks structure is to hold information to help with passthrough on OSs, USB adapters, SCSI adapters, etc. Most of this is related to USB adapters though.
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif
     typedef struct _passthroughHacks
     {
         //generic information up top.
@@ -970,16 +934,8 @@ extern "C"
             }nvmePTHacks;
         };//This is an annonymous union for nvme/ata passthrough hacks since a device will only ever have one or the other. This should be accessed based on passthrough type
         //TODO: Add more hacks and padd this structure
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }passthroughHacks;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) passthroughHacks;
-    #endif
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif
     typedef struct _driveInfo {
         eMediaType     media_type;
         eDriveType     drive_type;
@@ -1044,12 +1000,7 @@ extern "C"
         };
         //9304 bytes to make divisible by 8
         passthroughHacks passThroughHacks;
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }driveInfo;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) driveInfo;
-    #endif
 
 #if defined(UEFI_C_SOURCE)
     typedef enum _eUEFIPassthroughType
@@ -1086,9 +1037,7 @@ extern "C"
         WIN_IOCTL_MAX_METHOD
     }eWindowsIOCTLMethod;
 #endif
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif
+
     // \struct typedef struct _OSDriveInfo
     typedef struct _OSDriveInfo
     {
@@ -1221,12 +1170,7 @@ extern "C"
             bool isSystemDisk;//This will be set if the drive has a file system and the OS is running off of it. Ex: Windows' C:\Windows\System32, Linux's / & /boot, etc
         }fileSystemInfo;
         uint8_t padd[4];//padd to 400 byte on UEFI. TODO: Make all OS's keep this structure the same size!!!
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }OSDriveInfo;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) OSDriveInfo;
-    #endif
 
     typedef enum _eDiscoveryOptions
     {
@@ -1253,27 +1197,16 @@ extern "C"
 
     typedef int (*issue_io_func)( void * );
 
-    #define DEVICE_BLOCK_VERSION    (5)
+    #define DEVICE_BLOCK_VERSION    (6)
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push, 1)
-    #endif
     // verification for compatibility checking
     typedef struct _versionBlock
     {
         uint32_t size;      // size of enclosing structure
         uint32_t version;   // version of enclosing structure
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }versionBlock;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) versionBlock;
-    #endif
 
     // \struct typedef struct _tDevice
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push, 1)
-    #endif
     typedef struct _tDevice
     {
         versionBlock        sanity;
@@ -1284,12 +1217,7 @@ extern "C"
         issue_io_func       issue_nvme_io;//nvme IO function pointer for raid or other driver/custom interface to send commands
         eDiscoveryOptions   dFlags;
         eVerbosityLevels    deviceVerbosity;
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }tDevice;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) tDevice;
-    #endif
 
      //Common enum for getting/setting power states.
      //This enum encompasses Mode Sense/Select commands for SCSI, Set Features for ATA
