@@ -52,7 +52,7 @@ int build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirection *cdbData
             memset(dataPtr, 0, JMICRON_NVME_CMD_PAYLOAD_SIZE);
             parameterListLength = JMICRON_NVME_CMD_PAYLOAD_SIZE;
             //set the signature
-            strncpy((char*)dataPtr, JMICRON_NVME_NAMESTRING, strlen(JMICRON_NVME_NAMESTRING));
+            memcpy(dataPtr, JMICRON_NVME_NAMESTRING, strlen(JMICRON_NVME_NAMESTRING));
             //based on vendor ctrl value, we may setup a cmd, or leave those fields blank to setup some other action
             dataPtr[72] = (uint8_t)jmCtrl;
             if (jmCtrl == JM_VENDOR_CTRL_SERVICE_PROTOCOL_FIELD)

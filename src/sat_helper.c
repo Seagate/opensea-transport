@@ -2069,11 +2069,14 @@ int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *scsiIoCtx
 
     if (strlen(openseaVersionString) < 8)
     {
-        snprintf((char*)(&ataInformation[24]), 8, " %-s", openseaVersionString);
+        ataInformation[24] = ' ';
+        memcpy(&ataInformation[25], openseaVersionString, strlen(openseaVersionString));
+        //snprintf((char*)(&ataInformation[24]), 8, " %-s", openseaVersionString);
     }
     else
     {
-        snprintf((char*)(&ataInformation[24]), 8, "%-s", openseaVersionString);
+        memcpy(&ataInformation[24], openseaVersionString, 8);
+        //snprintf((char*)(&ataInformation[24]), 8, "%-s", openseaVersionString);
     }
     //SAT Product Revision -set to SAT Version supported by library
     ataInformation[32] = 'S';
