@@ -630,9 +630,6 @@ extern "C"
 
     #endif //disable NVME passthrough
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif
     typedef struct _ataReturnTFRs
     {
         uint8_t                error;
@@ -647,12 +644,7 @@ extern "C"
         uint8_t                device;
         uint8_t                status;
         uint8_t                padding[5];//empty padding to make sure this structure endds on an 8byte aligned boundary
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataReturnTFRs;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) ataReturnTFRs;
-    #endif
 
     // Defined by SPC3 as the maximum sense length
     #define SPC3_SENSE_LEN  UINT8_C(252)
