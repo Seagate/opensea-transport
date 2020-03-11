@@ -175,6 +175,7 @@ extern "C"
         uint8_t         vendorSpecific[2];
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     } nvmeSelfTestRes;
+    #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeSelfTestRes;
     #endif
@@ -189,6 +190,7 @@ extern "C"
         nvmeSelfTestRes         result[20];
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     } nvmeSelfTestLog;
+    #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeSelfTestLog;
     #endif
@@ -211,6 +213,7 @@ extern "C"
         uint8_t  resv[2048];
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     } nvmeEffectsLog;
+    #pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeEffectsLog;
     #endif
@@ -1046,9 +1049,8 @@ typedef struct _fb_log_page_CF
    uint8_t                  Vendor_Specific_Reserved[ 456 ];     // 56-511
 }fb_log_page_CF;
 
+#pragma pack(pop)
 
-
-#pragma pack()
 /* EOF Extended-SMART Information*/
 
 #if defined (__cplusplus)
