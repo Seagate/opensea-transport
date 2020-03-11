@@ -988,7 +988,7 @@ extern "C"
 /***************************
 * Extended-SMART Information
 ***************************/
-#pragma pack(1)
+#pragma pack(push, 1)
 #define NUMBER_EXTENDED_SMART_ATTRIBUTES      42
 
 typedef enum _EXTENDED_SMART_VERSION_
