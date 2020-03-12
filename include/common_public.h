@@ -73,34 +73,22 @@ extern "C"
         uint8_t reserved; 
     } apiVersionInfo;
 
-// These need to be moved to ata_helper.h
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push, 1)
-    #endif
-    typedef struct
+    // These need to be moved to ata_helper.h
+    //NOTE: This structure is defined like this without bitfield ON PURPOSE.
+    //DO NOT ADD BITFIELDS
+    //DO NOT ADD > 16bit types here in order to keep this packed by compilers correctly.
+    //IF this structure is used in another, make sure it begins at a MINIMUM of a 2 byte offset for correct addressing, however 8 byte is recommended!
+    //Previously, this was packed and aligned with attributes/pragmas to the compiler, but those were removed after properly fixing this structure so that those extra instructions aren't needed.
+    //This prevents potential misaligned addresses on some CPU architectures that require special pointer alignment for data access. This does not affect x86, but does for some like SPARC and possibly ARM.
+    typedef struct _tAtaIdentifyData
     {
-        union {
-            uint16_t Config; //This has to be firs
-            uint16_t Word000;
-        };
-        union {
-            uint16_t DefCyln;
-            uint16_t Word001;
-        };
-        union {
-            uint16_t Resv1;
-            uint16_t Word002;
-        };
-        union {
-            uint16_t DefHead;
-            uint16_t Word003;
-        };
+        uint16_t Word000;
+        uint16_t Word001;
+        uint16_t Word002;
+        uint16_t Word003;
         uint16_t Word004;
         uint16_t Word005;
-        union {
-            uint16_t DefSector;
-            uint16_t Word006;
-        };
+        uint16_t Word006;
         uint16_t Word007;
         uint16_t Word008;
         uint16_t Word009;
@@ -108,92 +96,34 @@ extern "C"
         uint8_t  SerNum[20];
 
         uint16_t Word020;
-        union {
-            uint16_t BufSize;           // 21
-            uint16_t Word021;
-        };
-        union {
-            uint16_t RWLongByte;        // 22
-            uint16_t Word022;
-        };
+        uint16_t Word021;
+        uint16_t Word022;
         uint8_t  FirmVer[8];        // 23 24 25 26
         uint8_t  ModelNum[40];      // 27 ... 46
-        union {
-            uint8_t  BLK_SIZE[2];       // 47
-            uint16_t Word047;
-        };
-        union {
-            uint16_t DoubleWordIO;      // 48
-            uint16_t Word048;
-        };
-        union {
-            uint16_t Capability;        // 49
-            uint16_t Word049;
-        };
+        uint16_t Word047;
+        uint16_t Word048;
+        uint16_t Word049;
 
         uint16_t Word050;
-        union {
-            uint16_t PIOCycleTimeMode;  // 51
-            uint16_t Word051;
-        };
-        union {
-            uint16_t DMACycleTimeMode;  // 52
-            uint16_t Word052;
-        };
-        union {
-            uint16_t ValidWord;         // 53
-            uint16_t Word053;
-        };
-        union {
-            uint16_t CurCyln;           // 54
-            uint16_t Word054;
-        };
-        union {
-            uint16_t CurHead;           // 55
-            uint16_t Word055;
-        };
-        union {
-            uint16_t CurSector;         // 56
-            uint16_t Word056;
-        };
-        uint32_t TotSectNumCHS;     // 57 58
-        union {
-            uint16_t MultiSectNum;      // 59
-            uint16_t Word059;
-        };
+        uint16_t Word051;
+        uint16_t Word052;
+        uint16_t Word053;
+        uint16_t Word054;
+        uint16_t Word055;
+        uint16_t Word056;
+        uint16_t Word057;//Total sectors CHS
+        uint16_t Word058;//Total sectors CHS
+        uint16_t Word059;
 
-        uint32_t TotSectNumLBA;     // 60 61
-        union {
-            uint16_t SingleDMAMode;     // 62
-            uint16_t Word062;
-        };
-        union {
-            struct {
-                uint8_t  MwDmaModesSupported;
-                uint8_t  MultiDMAMode; // 63
-            }mwdmaInfo;
-            uint16_t Word063;
-        };
-        union {
-            uint16_t AdvanPIOMode;      // 64
-            uint16_t Word064;
-        };
-        union {
-            uint16_t MinDMACycleTime;      // 65
-            uint16_t Word065;
-        };
-        union {
-            uint16_t RecDMACycleTime;      // 66
-            uint16_t Word066;
-        };
-        union {
-            uint16_t MinPIOCycleTime;      // 67
-            uint16_t Word067;
-        };
-        union {
-            uint16_t MinPIOCycleTimeIORDY; // 68
-            uint16_t Word068;
-        };
+        uint16_t Word060;//Total LBAs (28bit)
+        uint16_t Word061;
+        uint16_t Word062;
+        uint16_t Word063;
+        uint16_t Word064;
+        uint16_t Word065;
+        uint16_t Word066;
+        uint16_t Word067;
+        uint16_t Word068;
         uint16_t Word069;
 
         uint16_t Word070;
@@ -201,51 +131,21 @@ extern "C"
         uint16_t Word072;
         uint16_t Word073;
         uint16_t Word074;
-        union {
-            uint16_t MaxQueueTag; // 75, bits 0-4 only
-            uint16_t Word075;
-        };
-        union {
-            uint16_t SataCapabilities; // 76
-            uint16_t Word076;
-        };
+        uint16_t Word075;
+        uint16_t Word076;
         uint16_t Word077;
         uint16_t Word078;
         uint16_t Word079;
 
         uint16_t Word080;
         uint16_t Word081;
-        union {
-            uint16_t CommandsAndFeaturesSupported1; // 82
-            uint16_t Word082;
-        };
-        union {
-            uint16_t CommandsAndFeaturesSupported2; // 83
-            uint16_t Word083;
-        };
-        union {
-            uint16_t CommandsAndFeaturesSupported3; // 84
-            uint16_t Word084;
-        };
-        union {
-            uint16_t CommandsAndFeaturesEnabled1;   // 85
-            uint16_t Word085;
-        };
-        union {
-            uint16_t CommandsAndFeaturesEnabled2;   // 86
-            uint16_t Word086;
-        };
-        union {
-            uint16_t CommandsAndFeaturesEnabled3;   // 87
-            uint16_t Word087;
-        };
-        union {
-            struct {
-                uint8_t  UDmaModesSupported;
-                uint8_t  UDmaMode; // 88
-            }udmaModeInfo;
-            uint16_t Word088;
-        };
+        uint16_t Word082;
+        uint16_t Word083;
+        uint16_t Word084;
+        uint16_t Word085;
+        uint16_t Word086;
+        uint16_t Word087;
+        uint16_t Word088;
         uint16_t Word089;
 
         uint16_t Word090;
@@ -259,28 +159,13 @@ extern "C"
         uint16_t Word098;
         uint16_t Word099;
 
-
-        //Both Changed from tUINT32 to 16
-        uint32_t TotSectNumLBALo;
-        uint32_t TotSectNumLBAHi;
-
+        uint16_t Word100;//total addressable logical sectors
+        uint16_t Word101;//total addressable logical sectors
+        uint16_t Word102;//total addressable logical sectors
+        uint16_t Word103;//total addressable logical sectors
         uint16_t Word104;
         uint16_t Word105;
-        //union {  // 106
-        //   uint16_t AsWord;
-        //   struct  {
-        //      uint16_t LogicalSectorCount:4; // Bits 0-3
-        //      uint16_t Reserved4_11:8;       // Bits 4-11
-        //      uint16_t LargeSectors:1;       // Bit 12
-        //      uint16_t LogicalSectors:1;     // Bit 13
-        //      uint16_t FeatureSupport:2;     // Bits 14-15
-        //   } bitfields;
-        //} SectorSizeReport;
-        // Commentedout the above because of portability issues with bit fields.
-        union {
-            uint16_t SectorSizeReport;
-            uint16_t Word106;
-        };
+        uint16_t Word106;
         uint16_t Word107;
         uint16_t Word108;
         uint16_t Word109;
@@ -292,7 +177,8 @@ extern "C"
         uint16_t Word114;
         uint16_t Word115;
         uint16_t Word116;
-        uint16_t SectorSize[2]; // 117-118
+        uint16_t Word117;//sector size
+        uint16_t Word118;//sector size
         uint16_t Word119;
 
         uint16_t Word120;
@@ -327,11 +213,8 @@ extern "C"
         uint16_t Word147;
         uint16_t Word148;
         uint16_t Word149;
-
-        union {
-            uint16_t VendorUniqueTDSupport; // 150
-            uint16_t Word150;
-        };
+        
+        uint16_t Word150;
         uint16_t Word151;
         uint16_t Word152;
         uint16_t Word153;
@@ -447,18 +330,12 @@ extern "C"
         uint16_t Word253;
         uint16_t Word254;
         uint16_t Word255;
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }tAtaIdentifyData, *ptAtaIdentifyData;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) tAtaIdentifyData, *ptAtaIdentifyData;
-    #endif
-
 
     #if !defined(DISABLE_NVME_PASSTHROUGH)
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
-    #endif
+    #endif*/
     //All of the NVME structs in here were moved here to fix a circular include issue
     typedef struct _nvmeIDPowerState {
         uint16_t            maxPower;   /* centiwatts */
@@ -476,16 +353,16 @@ extern "C"
         uint16_t            activePower;
         uint8_t             activeWorkScale;
         uint8_t             rsvd23[9];
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDPowerState;
-    #pragma pack(pop)
+    /*#pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeIDPowerState;
-    #endif
+    #endif*/
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
-    #endif
+    #endif*/
     typedef struct _nvmeIDCtrl {
         //controller capabilities and features
         uint16_t            vid;
@@ -556,30 +433,30 @@ extern "C"
         uint8_t             nvmeOverFabrics[256];
         nvmeIDPowerState    psd[32];
         uint8_t             vs[1024];
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDCtrl;
-    #pragma pack(pop)
+    /*#pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeIDCtrl;
-    #endif
+    #endif*/
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
-    #endif
+    #endif*/
     typedef struct _nvmeLBAF {
         uint16_t            ms;
         uint8_t             lbaDS;
         uint8_t             rp;
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeLBAF;
-    #pragma pack(pop)
+    /*#pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeLBAF;
-    #endif
+    #endif*/
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
-    #endif
+    #endif*/
     typedef struct _nvmeIDNameSpaces {
         uint64_t            nsze;
         uint64_t            ncap;
@@ -608,25 +485,25 @@ extern "C"
         nvmeLBAF            lbaf[16];
         uint8_t             rsvd192[192];
         uint8_t             vs[3712];
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDNameSpaces;
-    #pragma pack(pop)
+    /*#pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeIDNameSpaces;
-    #endif
+    #endif*/
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
-    #endif
+    #endif*/
     typedef struct _nvmeIdentifyData {
         nvmeIDCtrl          ctrl;
         nvmeIDNameSpaces    ns; // Currently we only support 1 NS - Revisit.  
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
+    //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIdentifyData;
-    #pragma pack(pop)
+    /*#pragma pack(pop)
     #else
     }__attribute__((packed,aligned(1))) nvmeIdentifyData;
-    #endif
+    #endif*/
 
     #endif //disable NVME passthrough
 
@@ -955,7 +832,7 @@ extern "C"
 #endif
             //reserved field below is set to 8192 because nvmeIdentifyData structure holds both controller and namespace data which are 4k each
             uint8_t reserved[8192];//putting this here to allow some compatibility when NVMe passthrough is NOT enabled.
-        }IdentifyData;
+        }IdentifyData; //THis MUST be at an even 8 byte offset to be accessed correctly!!!
         tVpdData         scsiVpdData; // Intentionally not part of the above IdentifyData union
         ataReturnTFRs lastCommandRTFRs;//This holds the RTFRs for the last command to be sent to the device. This is not necessarily the last function called as functions may send multiple commands to the device.
         struct {
