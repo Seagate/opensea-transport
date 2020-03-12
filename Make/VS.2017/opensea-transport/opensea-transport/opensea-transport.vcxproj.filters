@@ -214,6 +214,7 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\vendor\seagate\seagate_scsi_types.h">
       <Filter>Header Files\vendor\seagate</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\..\include\of_nvmeIoctl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
