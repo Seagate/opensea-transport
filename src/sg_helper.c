@@ -1659,7 +1659,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 continue;
             }
             memset(name, 0, sizeof(name));//clear name before reusing it
-            strncpy(name, devs[driveNumber], M_Min(sizeof(name), strlen(devs[driveNumber])));
+            strcpy(name, devs[driveNumber]);
             fd = -1;
             //lets try to open the device.      
             fd = open(name, O_RDWR | O_NONBLOCK);
