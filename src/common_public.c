@@ -2006,8 +2006,11 @@ bool is_CSMI_Device(tDevice *device)
 
 #if defined (_DEBUG)
 //This function is more for debugging than anything else!
+#include <stddef.h>
 void print_tDevice_Size()
 {
+    printf("==Device struct information==\n");
+    printf("--structure sizes--\n");
     printf("tDevice = %zu\n", sizeof(tDevice));
     printf("\tversionBlock = %zu\n", sizeof(versionBlock));
     printf("\tOSDriveInfo = %zu\n", sizeof(OSDriveInfo));
@@ -2016,6 +2019,25 @@ void print_tDevice_Size()
     printf("\tissue_io_func = %zu\n", sizeof(issue_io_func));
     printf("\teDiscoveryOptions = %zu\n", sizeof(eDiscoveryOptions));
     printf("\teVerbosityLevels = %zu\n", sizeof(eVerbosityLevels));
+    printf("\n--Important offsets--\n");
+    printf("tDevice = 0\n");
+    printf("\tversionBlock = %zu\n", offsetof(tDevice, sanity));
+    printf("\tos_info = %zu\n", offsetof(tDevice, os_info));
+    printf("\tdrive_info = %zu\n", offsetof(tDevice, drive_info));
+    printf("\t\tIdentifyData = %zu\n", offsetof(tDevice, drive_info.IdentifyData));
+    printf("\t\tATA Identify = %zu\n", offsetof(tDevice, drive_info.IdentifyData.ata));
+    #if !defined (DISABLE_NVME_PASSTHROUGH)
+    printf("\t\tNVMe CTRL ID = %zu\n", offsetof(tDevice, drive_info.IdentifyData.nvme.ctrl));
+    printf("\t\tNVMe Namespace ID = %zu\n", offsetof(tDevice, drive_info.IdentifyData.nvme.ns));
+    #endif
+    printf("\t\tscsiVpdData = %zu\n", offsetof(tDevice, drive_info.scsiVpdData));
+    printf("\t\tlastCommandSenseData = %zu\n", offsetof(tDevice, drive_info.lastCommandSenseData));
+    printf("\traid_device = %zu\n", offsetof(tDevice, raid_device));
+    printf("\tissue_io = %zu\n", offsetof(tDevice, issue_io));
+    printf("\tissue_nvme_io = %zu\n", offsetof(tDevice, issue_nvme_io));
+    printf("\tdFlags = %zu\n", offsetof(tDevice, dFlags));
+    printf("\tdeviceVerbosity = %zu\n", offsetof(tDevice, deviceVerbosity));
+    printf("\n");
 }
 #endif //_DEBUG
 

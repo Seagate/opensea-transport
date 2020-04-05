@@ -1625,7 +1625,7 @@ int satl_Read_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba, uint8_t *ptrData, uint
 {
     int ret = SUCCESS;
     bool dmaSupported = false;
-    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Capability & BIT8)
+    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word049 & BIT8)
     {
         if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2))
         {
@@ -1698,7 +1698,7 @@ int satl_Write_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba, uint8_t *ptrData, uin
 {
     int ret = SUCCESS;
     bool dmaSupported = false;
-    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Capability & BIT8)
+    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word049 & BIT8)
     {
         if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2))
         {
@@ -1776,7 +1776,7 @@ int satl_Read_Verify_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba, uint8_t *ptrDat
     int ret = SUCCESS;
     bool dmaSupported = false;
     uint32_t verificationLength = dataSize / scsiIoCtx->device->drive_info.deviceBlockSize;
-    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Capability & BIT8)
+    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word049 & BIT8)
     {
         if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2))
         {
@@ -1788,7 +1788,7 @@ int satl_Read_Verify_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba, uint8_t *ptrDat
         }
     }
     //check if 48bit
-    if (scsiIoCtx->device->drive_info.IdentifyData.ata.CommandsAndFeaturesSupported2 & BIT10)
+    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word083 & BIT10)
     {
         uint16_t scnt = verificationLength / scsiIoCtx->device->drive_info.deviceBlockSize;
         if (verificationLength == 65536)
@@ -2249,7 +2249,7 @@ int translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx *scs
     char *ataVendorId = "ATA     ";
     //will hold the complete data to return
     uint8_t *deviceIdentificationPage = NULL;
-    if (device->drive_info.IdentifyData.ata.CommandsAndFeaturesEnabled3 & BIT8) //NAA and SCSI Name String
+    if (device->drive_info.IdentifyData.ata.Word087 & BIT8) //NAA and SCSI Name String
     {
         uint64_t wwn = M_WordsTo8ByteValue(device->drive_info.IdentifyData.ata.Word108,\
                                            device->drive_info.IdentifyData.ata.Word109,\
@@ -4301,11 +4301,11 @@ int translate_SCSI_Synchronize_Cache_Command(tDevice *device, ScsiIoCtx *scsiIoC
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
         return BAD_PARAMETER;
     }
-    if (device->drive_info.IdentifyData.ata.CommandsAndFeaturesSupported2 & BIT13) //ext command
+    if (device->drive_info.IdentifyData.ata.Word083 & BIT13) //ext command
     {
         ret = ata_Flush_Cache(device, true);
     }
-    else if (device->drive_info.IdentifyData.ata.CommandsAndFeaturesSupported2 & BIT12) //28bit command
+    else if (device->drive_info.IdentifyData.ata.Word083 & BIT12) //28bit command
     {
         ret = ata_Flush_Cache(device, false);
     }
@@ -4432,7 +4432,7 @@ int translate_SCSI_Write_And_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCt
     uint8_t senseKeySpecificDescriptor[8] = { 0 };
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
-    if (device->drive_info.IdentifyData.ata.Capability & BIT8)
+    if (device->drive_info.IdentifyData.ata.Word049 & BIT8)
     {
         if (device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2))
         {
@@ -4532,7 +4532,7 @@ int translate_SCSI_Write_And_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCt
         return SUCCESS;
     }
     //check if 48bit
-    if (device->drive_info.IdentifyData.ata.CommandsAndFeaturesSupported2 & BIT10)
+    if (device->drive_info.IdentifyData.ata.Word083 & BIT10)
     {
         uint16_t scnt = verificationLength / device->drive_info.deviceBlockSize;
         if (verificationLength == 65536)
@@ -5260,7 +5260,7 @@ int translate_SCSI_Reassign_Blocks_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
         reassignLBALength = M_BytesTo4ByteValue(scsiIoCtx->pdata[0], scsiIoCtx->pdata[1], scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]);
         incrementAmount = 8;//long parameters are 8 bytes in size
     }
-    if (device->drive_info.IdentifyData.ata.CommandsAndFeaturesSupported2 & BIT10)//48bit
+    if (device->drive_info.IdentifyData.ata.Word083 & BIT10)//48bit
     {
         extCommand = true;
     }
@@ -6789,7 +6789,7 @@ int translate_SCSI_Send_Diagnostic_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
             else //3 read-verify commands
             {
                 bool extCommand = false;
-                if (device->drive_info.IdentifyData.ata.CommandsAndFeaturesSupported2 & BIT10)
+                if (device->drive_info.IdentifyData.ata.Word083 & BIT10)
                 {
                     extCommand = true;
                 }
@@ -7471,7 +7471,7 @@ int translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
     }
 
     //save some information about the flush cache commands supported
-    if (device->drive_info.IdentifyData.ata.CommandsAndFeaturesSupported2 & BIT13) //ext command
+    if (device->drive_info.IdentifyData.ata.Word083 & BIT13) //ext command
     {
         flushCacheExt = true;
     }
@@ -7499,7 +7499,7 @@ int translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
                     //ata verify command
                     uint64_t randomLba = 0;
                     bool extCommand = false;
-                    if (device->drive_info.IdentifyData.ata.CommandsAndFeaturesSupported2 & BIT10)
+                    if (device->drive_info.IdentifyData.ata.Word083 & BIT10)
                     {
                         extCommand = true;
                     }
@@ -7574,7 +7574,7 @@ int translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
                 //ata verify command
                 uint64_t randomLba = 0;
                 bool extCommand = false;
-                if (device->drive_info.IdentifyData.ata.CommandsAndFeaturesSupported2 & BIT10)
+                if (device->drive_info.IdentifyData.ata.Word083 & BIT10)
                 {
                     extCommand = true;
                 }
@@ -7774,7 +7774,7 @@ int translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
         {
             unload = true;
         }
-        if (device->drive_info.IdentifyData.ata.Capability & BIT13)
+        if (device->drive_info.IdentifyData.ata.Word049 & BIT13)
         {
             standbyTimersSpecifiedByStandard = true;
         }
@@ -7798,7 +7798,7 @@ int translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
                     //ata verify command
                     uint64_t randomLba = 0;
                     bool extCommand = false;
-                    if (device->drive_info.IdentifyData.ata.CommandsAndFeaturesSupported2 & BIT10)
+                    if (device->drive_info.IdentifyData.ata.Word083 & BIT10)
                     {
                         extCommand = true;
                     }
@@ -7868,7 +7868,7 @@ int translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
                 //ata verify command
                 uint64_t randomLba = 0;
                 bool extCommand = false;
-                if (device->drive_info.IdentifyData.ata.CommandsAndFeaturesSupported2 & BIT10)
+                if (device->drive_info.IdentifyData.ata.Word083 & BIT10)
                 {
                     extCommand = true;
                 }
@@ -7974,7 +7974,7 @@ int translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
                         //ata verify command
                         uint64_t randomLba = 0;
                         bool extCommand = false;
-                        if (device->drive_info.IdentifyData.ata.CommandsAndFeaturesSupported2 & BIT10)
+                        if (device->drive_info.IdentifyData.ata.Word083 & BIT10)
                         {
                             extCommand = true;
                         }
