@@ -335,7 +335,11 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 
     struct dirent **namelist;
     num_devs = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
-
+    for (int iter = 0; iter < num_devs; ++iter)
+    {
+        safe_Free(namelist[iter]);
+    }
+    safe_Free(namelist);
     *numberOfDevices = num_devs;
     
     return SUCCESS;
@@ -424,6 +428,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 found++;
                 d++;
             }
+            safe_Free(devs[driveNumber]);
         }
         if (found == failedGetDeviceCount)
         {
