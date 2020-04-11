@@ -62,7 +62,7 @@ extern "C"
 
     #define SERIAL_NUM_LEN          (20) //Going with ATA lengths
     #define MODEL_NUM_LEN           (40)
-    #define FW_REV_LEN              (10)
+    #define FW_REV_LEN              (8)
     #define T10_VENDOR_ID_LEN       (8)
 
     typedef struct _apiVersionInfo 
@@ -584,7 +584,7 @@ extern "C"
         char childDriveSN[SERIAL_NUM_LEN + 1];
         uint8_t padd2[3];
         char childDriveFW[FW_REV_LEN + 1];
-        uint8_t padd3[5];
+        uint8_t padd3[7];
         uint64_t childWWN;
         char t10SATvendorID[9];//VPD page 89h
         uint8_t padd4[7];
@@ -823,7 +823,7 @@ extern "C"
         char           product_identification[MODEL_NUM_LEN + 1]; //not INQ
         uint8_t padd3[7];
         char           product_revision[FW_REV_LEN + 1];
-        uint8_t padd4[5];
+        uint8_t padd4[7];
         uint64_t       worldWideName;
         union{
             tAtaIdentifyData ata;
