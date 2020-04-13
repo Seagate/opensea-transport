@@ -695,10 +695,11 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                 }
                 //now we need to loop through each think in the class folder, read the link, and check if we match.
                 struct dirent **classList;
+                int remains = 0;
                 int numberOfItems = scandir(classPath, &classList, NULL /*not filtering anything. Just go through each item*/, alphasort);
                 for (int iter = 0; iter < numberOfItems; ++iter)
                 {
-                    //printf("item = %s\n", classList[iter]->d_name);
+                    //printf("item = %s: %d of %d\n", classList[iter]->d_name,iter,numberOfItems);
                     //now we need to read the link for classPath/d_name into a buffer...then compare it to the one we read earlier.
                     char temp[PATH_MAX] = { 0 };
                     strcpy(temp, classPath);
@@ -757,6 +758,15 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                                     }
                                     safe_Free(className);
                                     safe_Free(incomingClassName);
+                                    // start PRH valgrind fixes
+                                    // this is causing a mem leak... when we bail the loop, there are a string of classList[] items 
+                                    // still allocated. 
+                                    for(remains = iter; remains<numberOfItems; remains++)
+                                    {
+                                        safe_Free(classList[remains]);
+                                    }
+                                    safe_Free(classList);
+                                    // end PRH valgrind fixes.
                                     return SUCCESS;
                                     break;//found a match, exit the loop
                                 }
@@ -764,6 +774,7 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                             safe_Free(className);
                         }
                     }
+                    safe_Free(classList[iter]); // PRH - valgrind
                 }
                 safe_Free(classList);
             }
@@ -1519,34 +1530,25 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
         //check for SD devices
         num_devs = scandir("/dev", &namelist, sd_filter, alphasort); 
     }
+    //free the list of names to not leak memory
+    for(int iter = 0; iter < num_devs; ++iter)
+    {
+    	safe_Free(namelist[iter]);
+    }
+    safe_Free(namelist);
     //add nvme devices to the list
     #if !defined(DISABLE_NVME_PASSTHROUGH)
     num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter,alphasort);
+    //free the nvmenamelist to not leak memory
+    for(int iter = 0; iter < num_nvme_devs; ++iter)
+    {
+    	safe_Free(nvmenamelist[iter]);
+    }
+    safe_Free(nvmenamelist);
     #endif
 
     *numberOfDevices = num_devs + num_nvme_devs;
-    /*
 
-    int fd = -1;
-    char deviceName[40];    
-    int  driveNumber = 0, found = 0;    
-    //Currently lets just do MAX_DEVICE_PER_CONTROLLER. 
-    //Because this function essentially should only be used by GUIs
-    //If we find a GUI that is trying to handle more than 256 devices, we can revisit. 
-    for (driveNumber = 0; driveNumber < MAX_DEVICES_PER_CONTROLLER; driveNumber++)
-    {
-        snprintf(deviceName, sizeof(deviceName), "%s%d",SG_PHYSICAL_DRIVE, driveNumber);    
-        fd = -1;
-        //lets try to open the device.      
-        fd = open(deviceName, O_RDWR | O_NONBLOCK);
-        if (fd >= 0)
-        {
-            ++found;
-            close(fd);
-        }
-    }
-    *numberOfDevices = found;
-    */
     
     return SUCCESS;
 }
@@ -1691,22 +1693,26 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             }
             else if (errno == EACCES) //quick fix for opening drives without sudo
             {
-                safe_Free(devs);
-                return PERMISSION_DENIED;
+                returnValue = PERMISSION_DENIED;
             }
+            //free the dev[deviceNumber] since we are done with it now.
+            safe_Free(devs[driveNumber]);
         }
 #if defined (DEGUG_SCAN_TIME)
         stop_Timer(&getDeviceListTimer);
         printf("Time to get all device = %fms\n", get_Milli_Seconds(getDeviceListTimer));
 #endif
-        if (found == failedGetDeviceCount)
-        {
-            returnValue = FAILURE;
-        }
-        else if (failedGetDeviceCount)
-        {
-            returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
-        }
+		if(returnValue != PERMISSION_DENIED)
+		{
+		    if (found == failedGetDeviceCount)
+		    {
+		        returnValue = FAILURE;
+		    }
+		    else if (failedGetDeviceCount)
+		    {
+		        returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
+		    }
+		}
     }
     safe_Free(devs);
     return returnValue;

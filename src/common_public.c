@@ -194,7 +194,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
     {
         if (deviceCount > 0)
         {
-            tDevice * deviceList = (tDevice*)calloc_aligned(deviceCount * sizeof(tDevice), sizeof(tDevice), 8);
+            tDevice * deviceList = (tDevice*)calloc_aligned(deviceCount, sizeof(tDevice), 8);
             versionBlock version;
             if (!deviceList)
             {
