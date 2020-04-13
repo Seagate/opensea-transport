@@ -1810,12 +1810,40 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 int close_Device(tDevice *dev)
 {
     int retValue = 0;
+    bool isNVMe = false;
+    char *nvmeDevName;
+
+    /**
+     * In VMWare NVMe device the drivename (for NDDK) 
+     * always starts with "vmhba" (e.g. vmhba1) 
+     */
+
+    nvmeDevName = strstr(dev->os_info.name, "vmhba");
+    isNVMe = (nvmeDevName != NULL) ? true : false;
+
     if (dev)
     {
-        Nvme_Close(dev->os_info.nvmeFd);
-        dev->os_info.last_error = errno;
-
-        return SUCCESS;
+        if (isNVMe) 
+        {
+            Nvme_Close(dev->os_info.nvmeFd);
+            dev->os_info.last_error = errno;
+            retValue = 0;
+        }
+        else
+        {
+            retValue = close(dev->os_info.fd);
+            dev->os_info.last_error = errno;
+        }
+        
+        if ( retValue == 0)
+        {
+            dev->os_info.fd = -1;
+            return SUCCESS;
+        }
+        else
+        {
+            return FAILURE;
+        }
     }
     else
     {

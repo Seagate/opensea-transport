@@ -190,7 +190,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
     {
         if (deviceCount > 0)
         {
-            tDevice * deviceList = (tDevice*)calloc_aligned(deviceCount * sizeof(tDevice), sizeof(tDevice), 8);
+            tDevice * deviceList = (tDevice*)calloc_aligned(deviceCount, sizeof(tDevice), 8);
             versionBlock version;
             if (!deviceList)
             {
@@ -362,12 +362,12 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                         }
 #endif
                         char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
-                        strncpy(printable_sn, deviceList[devIter].drive_info.serialNumber, SERIAL_NUM_LEN);
+                        strncpy(printable_sn, deviceList[devIter].drive_info.serialNumber, SERIAL_NUM_LEN + 1);
                         //if seagate scsi, need to truncate to 8 digits
                         if (deviceList[devIter].drive_info.drive_type == SCSI_DRIVE && is_Seagate_Family(&deviceList[devIter]) == SEAGATE)
                         {
                             memset(printable_sn, 0, SERIAL_NUM_LEN);
-                            strncpy(printable_sn, deviceList[devIter].drive_info.serialNumber, 8);
+                            memcpy(printable_sn, deviceList[devIter].drive_info.serialNumber, 8);
                         }
                         //now show the results (or save to a file)
                         if (printToScreen)

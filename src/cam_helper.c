@@ -824,6 +824,19 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     num_da_devs = scandir("/dev", &danamelist, da_filter, alphasort);
     num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
 
+    //free the list of names to not leak memory
+    for (int iter = 0; iter < num_da_devs; ++iter)
+    {
+        safe_Free(danamelist[iter]);
+    }
+    safe_Free(danamelist);
+    //free the list of names to not leak memory
+    for (int iter = 0; iter < num_ada_devs; ++iter)
+    {
+        safe_Free(adanamelist[iter]);
+    }
+    safe_Free(adanamelist);
+
     *numberOfDevices = num_da_devs + num_ada_devs;
     
     return SUCCESS;
@@ -926,6 +939,8 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 found++;
                 d++;
             }
+            //free the dev[deviceNumber] since we are done with it now.
+            safe_Free(devs[driveNumber]);
         }
         if (found == failedGetDeviceCount)
         {
