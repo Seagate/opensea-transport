@@ -1645,7 +1645,7 @@ extern "C"
     //
     //  Entry:
     //!   \param device - device handle
-    //!   \param subcommand - set to the subcommand/feature you want to configure
+    //!   \param subcommand - set to the subcommand/feature you want to configure. Can be a hex value, or from eATASetFeaturesSubcommands
     //!   \param subcommandCountField - subcommand specific
     //!   \param subcommandLBALo - subcommand specific
     //!   \param subcommandLBAMid - subcommand specific
@@ -1655,7 +1655,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Set_Features(tDevice *device, eATASetFeaturesSubcommands subcommand, uint8_t subcommandCountField, uint8_t subcommandLBALo, uint8_t subcommandLBAMid, uint16_t subcommandLBAHi);
+    OPENSEA_TRANSPORT_API int ata_Set_Features(tDevice *device, uint8_t subcommand, uint8_t subcommandCountField, uint8_t subcommandLBALo, uint8_t subcommandLBAMid, uint16_t subcommandLBAHi);
 
     OPENSEA_TRANSPORT_API int ata_EPC_Restore_Power_Condition_Settings(tDevice *device, uint8_t powerConditionID, bool defaultBit, bool save);
 

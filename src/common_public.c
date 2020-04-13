@@ -1906,8 +1906,8 @@ int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDe
             ret = SUCCESS;
             sameSlNo = false;
 
-            if ( ((deviceList + i)->drive_info.serialNumber != NULL) &&
-                 ((deviceList + j)->drive_info.serialNumber != NULL) )
+            if ( ((deviceList + i) && strlen((deviceList + i)->drive_info.serialNumber) > 0) &&
+                 ((deviceList + j) && strlen((deviceList + j)->drive_info.serialNumber) > 0) )
             {
                  sameSlNo = (strncmp((deviceList + i)->drive_info.serialNumber,
                      (deviceList + j)->drive_info.serialNumber,

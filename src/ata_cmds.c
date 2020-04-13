@@ -3841,7 +3841,7 @@ int ata_NV_Remove_LBAs_From_Cache(tDevice *device, bool unpinAll, uint8_t *ptrDa
 
     return ret;
 }
-int ata_Set_Features(tDevice *device, eATASetFeaturesSubcommands subcommand, uint8_t subcommandCountField, uint8_t subcommandLBALo, uint8_t subcommandLBAMid, uint16_t subcommandLBAHi)
+int ata_Set_Features(tDevice *device, uint8_t subcommand, uint8_t subcommandCountField, uint8_t subcommandLBALo, uint8_t subcommandLBAMid, uint16_t subcommandLBAHi)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -3862,7 +3862,7 @@ int ata_Set_Features(tDevice *device, eATASetFeaturesSubcommands subcommand, uin
     }
     ataCommandOptions.tfr.DeviceHead |= M_Nibble2(subcommandLBAHi);
     ataCommandOptions.tfr.SectorCount = subcommandCountField;
-    ataCommandOptions.tfr.ErrorFeature = (uint8_t)subcommand;
+    ataCommandOptions.tfr.ErrorFeature = subcommand;
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.tfr.CommandStatus = ATA_SET_FEATURE;
 
