@@ -21,9 +21,6 @@
 #include "nvme_helper.h"
 #endif
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
-#include "nvme_helper.h"
-#endif
 
 #if defined (__cplusplus)
 extern "C"
@@ -39,7 +36,9 @@ extern "C"
 #define _NTSCSI_USER_MODE_ //this must be defined before including scsi.h
 #include <Scsi.h>
 #else
+#if !defined (SRB_TYPE_SCSI_REQUEST_BLOCK)
 #define SRB_TYPE_SCSI_REQUEST_BLOCK 0
+#endif
 #endif
 
 #define WIN_SCSI_SRB "\\\\.\\SCSI" //can be used to issue mini port ioctls. Not really supported right now...
