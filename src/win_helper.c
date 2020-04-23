@@ -2156,7 +2156,7 @@ int get_Device(const char *filename, tDevice *device )
                                             device->drive_info.drive_type = NVME_DRIVE;
                                             device->drive_info.interface_type = NVME_INTERFACE;
                                             //set_Namespace_ID_For_Device(device);
-                                            device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
+                                            device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this, althrough SCSI Read/write 16 will work too!
                                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit = true;
                                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload = true;
                                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures = true;
@@ -2165,6 +2165,20 @@ int get_Device(const char *filename, tDevice *device )
                                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace = true;
                                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique = true;
                                             device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
+                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest = true;//NOTE: probably specific to a certain Win10 update. Not clearly documented when this became available, so need to do some testing before this is perfect
+                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive = true;
+                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securitySend = true;
+                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures = true;//Only 1 feature today.
+                                            if (is_Windows_PE())
+                                            {
+                                                //If in Windows PE, then these other commands become available
+                                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceAttachment = true;
+                                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceManagement = true;
+                                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.format = true;
+                                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miReceive = true;
+                                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miSend = true;
+                                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize = true;
+                                            }
                                         }
                                         else
 #endif //WINVER >= SEA_WIN32_WINNT_WIN10 
@@ -7099,7 +7113,8 @@ int win10_Translate_Flush(nvmeCmdCtx *nvmeIoCtx)
     //TODO: should we do this or should we send a SCSI Synchronize Cache command to be translated?
     //ret = os_Flush(nvmeIoCtx->device);
     nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-    ret = scsi_Synchronize_Cache_16(nvmeIoCtx->device, false, 0, 0, 0);
+    //ret = scsi_Synchronize_Cache_16(nvmeIoCtx->device, false, 0, 0, 0);//NOTE: Switched to synchronize cache 10 due to documentation from MSFT only specifying the 10byte CDB opcode - TJE
+    ret = scsi_Synchronize_Cache_10(nvmeIoCtx->device, false, 0, 0, 0);
     nvmeIoCtx->device->deviceVerbosity = inVerbosity;
     return ret;
 }
@@ -7250,67 +7265,68 @@ int win10_Translate_Write(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
-int win10_Translate_Compare(nvmeCmdCtx *nvmeIoCtx)
-{
-    int ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
-    //TODO: We need to validate other fields to make sure we make the right call...may need a SCSI verify command or a simple os_Verify
-    //extract fields from NVMe context, then see if we can put them into a compatible SCSI command
-    uint64_t startingLBA = M_BytesTo8ByteValue(M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10));
-    bool limitedRetry = nvmeIoCtx->cmd.nvmCmd.cdw12 & BIT31;
-    bool fua = nvmeIoCtx->cmd.nvmCmd.cdw12 & BIT30;
-    uint8_t prInfo = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw12, 29, 26);
-    bool pract = prInfo & BIT3;
-    uint8_t prchk = M_GETBITRANGE(prInfo, 2, 0);
-    uint16_t numberOfLogicalBlocks = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12) + 1;
-    uint32_t expectedLogicalBlockAccessTag = nvmeIoCtx->cmd.nvmCmd.cdw14;
-    uint16_t expectedLogicalBlockTagMask = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw12);
-    uint16_t expectedLogicalBlockApplicationTag = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12);
-    //now validate all the fields to see if we can send this command...
-    uint8_t vrProtect = 0xFF;
-    uint8_t byteCheck = 0xFF;
-    nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-    if (pract)//this MUST be set for the translation to work
-    {
-        byteCheck = 0;//this should catch all possible translation cases...
-        switch (prchk)
-        {
-        case 7:
-            vrProtect = 1;//or 101b or others...
-            break;
-        case 3:
-            vrProtect = 2;
-            break;
-        case 0:
-            vrProtect = 3;
-            break;
-        case 4:
-            vrProtect = 4;
-            break;
-        default:
-            //don't do anything so we can filter out unsupported fields
-            break;
-        }
-    }
-    if (vrProtect != 0xFF && byteCheck != 0xFF && !limitedRetry && !fua)//vrProtect must be a valid value AND these other fields must not be set...-TJE
-    {
-        //NOTE: Spec only mentions translations for verify 10, 12, 16...but we may also need 32!
-        //Even though it isn't in the spec, we'll attempt it anyways when we have certain fields set... - TJE
-        //TODO: we should check if the drive was formatted with protection information to make a better call on what to do...-TJE
-        if (expectedLogicalBlockAccessTag != 0 || expectedLogicalBlockApplicationTag != 0 || expectedLogicalBlockTagMask != 0)
-        {
-            //verify 32 command
-            ret = scsi_Verify_32(nvmeIoCtx->device, vrProtect, false, byteCheck, startingLBA, 0, numberOfLogicalBlocks, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, expectedLogicalBlockAccessTag, expectedLogicalBlockApplicationTag, expectedLogicalBlockTagMask);
-        }
-        else
-        {
-            //verify 16 should work
-            ret = scsi_Verify_16(nvmeIoCtx->device, vrProtect, false, byteCheck, startingLBA, 0, numberOfLogicalBlocks, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
-        }
-    }
-    nvmeIoCtx->device->deviceVerbosity = inVerbosity;
-    return ret;
-}
+//MSFT documentation does not show this translation as available. Code left here in case someone wants to test it in the future.
+//int win10_Translate_Compare(nvmeCmdCtx *nvmeIoCtx)
+//{
+//    int ret = OS_COMMAND_NOT_AVAILABLE;
+//    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+//    //TODO: We need to validate other fields to make sure we make the right call...may need a SCSI verify command or a simple os_Verify
+//    //extract fields from NVMe context, then see if we can put them into a compatible SCSI command
+//    uint64_t startingLBA = M_BytesTo8ByteValue(M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10));
+//    bool limitedRetry = nvmeIoCtx->cmd.nvmCmd.cdw12 & BIT31;
+//    bool fua = nvmeIoCtx->cmd.nvmCmd.cdw12 & BIT30;
+//    uint8_t prInfo = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw12, 29, 26);
+//    bool pract = prInfo & BIT3;
+//    uint8_t prchk = M_GETBITRANGE(prInfo, 2, 0);
+//    uint16_t numberOfLogicalBlocks = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12) + 1;
+//    uint32_t expectedLogicalBlockAccessTag = nvmeIoCtx->cmd.nvmCmd.cdw14;
+//    uint16_t expectedLogicalBlockTagMask = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw12);
+//    uint16_t expectedLogicalBlockApplicationTag = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12);
+//    //now validate all the fields to see if we can send this command...
+//    uint8_t vrProtect = 0xFF;
+//    uint8_t byteCheck = 0xFF;
+//    nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
+//    if (pract)//this MUST be set for the translation to work
+//    {
+//        byteCheck = 0;//this should catch all possible translation cases...
+//        switch (prchk)
+//        {
+//        case 7:
+//            vrProtect = 1;//or 101b or others...
+//            break;
+//        case 3:
+//            vrProtect = 2;
+//            break;
+//        case 0:
+//            vrProtect = 3;
+//            break;
+//        case 4:
+//            vrProtect = 4;
+//            break;
+//        default:
+//            //don't do anything so we can filter out unsupported fields
+//            break;
+//        }
+//    }
+//    if (vrProtect != 0xFF && byteCheck != 0xFF && !limitedRetry && !fua)//vrProtect must be a valid value AND these other fields must not be set...-TJE
+//    {
+//        //NOTE: Spec only mentions translations for verify 10, 12, 16...but we may also need 32!
+//        //Even though it isn't in the spec, we'll attempt it anyways when we have certain fields set... - TJE
+//        //TODO: we should check if the drive was formatted with protection information to make a better call on what to do...-TJE
+//        if (expectedLogicalBlockAccessTag != 0 || expectedLogicalBlockApplicationTag != 0 || expectedLogicalBlockTagMask != 0)
+//        {
+//            //verify 32 command
+//            ret = scsi_Verify_32(nvmeIoCtx->device, vrProtect, false, byteCheck, startingLBA, 0, numberOfLogicalBlocks, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, expectedLogicalBlockAccessTag, expectedLogicalBlockApplicationTag, expectedLogicalBlockTagMask);
+//        }
+//        else
+//        {
+//            //verify 16 should work
+//            ret = scsi_Verify_16(nvmeIoCtx->device, vrProtect, false, byteCheck, startingLBA, 0, numberOfLogicalBlocks, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+//        }
+//    }
+//    nvmeIoCtx->device->deviceVerbosity = inVerbosity;
+//    return ret;
+//}
 
 int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
 {
@@ -7397,262 +7413,263 @@ int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
-int win10_Translate_Reservation_Register(nvmeCmdCtx *nvmeIoCtx)
-{
-    int ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
-    //Command inputs
-    uint8_t cptpl = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 31, 30);
-    bool iekey = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT3;
-    uint8_t rrega = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 2, 0);
-    //data structure inputs
-    //uint64_t crkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[0], nvmeIoCtx->ptrData[1], nvmeIoCtx->ptrData[2], nvmeIoCtx->ptrData[3], nvmeIoCtx->ptrData[4], nvmeIoCtx->ptrData[5], nvmeIoCtx->ptrData[6], nvmeIoCtx->ptrData[7]);
-    uint64_t nrkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[8], nvmeIoCtx->ptrData[9], nvmeIoCtx->ptrData[10], nvmeIoCtx->ptrData[11], nvmeIoCtx->ptrData[12], nvmeIoCtx->ptrData[13], nvmeIoCtx->ptrData[14], nvmeIoCtx->ptrData[15]);
-    //scsi command stuff
-    uint8_t scsiCommandData[24] = { 0 };
-    uint8_t scsiServiceAction = 0;
-    bool issueSCSICommand = false;
-    //now check that those can convert to SCSI...if they can, then convert it!
-    if (!iekey && (rrega == 0 || rrega == 1) && (cptpl == 2 || cptpl == 3))
-    {
-        //can translate. Service action is 0 (Register)
-        scsiServiceAction = 0;
-        //set up the data buffer
-        if (nrkey == 0)
-        {
-            //reservation key
-            memcpy(&scsiCommandData[0], &nvmeIoCtx->ptrData[0], 8);//CRKEY
-        }
-        else
-        {
-            //service action reservation key
-            memcpy(&scsiCommandData[8], &nvmeIoCtx->ptrData[8], 8);//NRKEY
-        }
-        //aptpl
-        if (cptpl == 3)
-        {
-            scsiCommandData[20] |= BIT0;
-        }
-        issueSCSICommand = true;
-    }
-    else if (iekey && (rrega == 0 || rrega == 1) && (cptpl == 2 || cptpl == 3))
-    {
-        //can translate. Service action is 6 (Register and ignore existing key)
-        scsiServiceAction = 6;
-        //set up the data buffer
-        if (nrkey == 0)
-        {
-            //reservation key
-            memcpy(&scsiCommandData[0], &nvmeIoCtx->ptrData[0], 8);//CRKEY
-        }
-        else
-        {
-            //service action reservation key
-            memcpy(&scsiCommandData[8], &nvmeIoCtx->ptrData[8], 8);//NRKEY
-        }
-        //aptpl
-        if (cptpl == 3)
-        {
-            scsiCommandData[20] |= BIT0;
-        }
-        issueSCSICommand = true;
-    }
-    else if (!iekey && rrega == 2)
-    {
-        //can translate. service action is 7 (Register and move)
-        scsiServiceAction = 7;
-        //set up the data buffer
-        //reservation key
-        memcpy(&scsiCommandData[0], &nvmeIoCtx->ptrData[0], 8);//CRKEY
-                                                                //service action reservation key
-        memcpy(&scsiCommandData[8], &nvmeIoCtx->ptrData[8], 8);//NRKEY
-        issueSCSICommand = true;
-    }
-    if (issueSCSICommand)
-    {
-        //if none of the above checks caught the command, then it cannot be translated
-        nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-        ret = scsi_Persistent_Reserve_Out(nvmeIoCtx->device, scsiServiceAction, 0, 0, 24, scsiCommandData);
-        nvmeIoCtx->device->deviceVerbosity = inVerbosity;
-    }
-    return ret;
-}
-
-int win10_Translate_Reservation_Report(nvmeCmdCtx *nvmeIoCtx)
-{
-    int ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
-    bool issueSCSICommand = false;
-    //command bytes
-    uint32_t numberOfDwords = nvmeIoCtx->cmd.nvmCmd.cdw10 + 1;
-    bool eds = nvmeIoCtx->cmd.nvmCmd.cdw11 & BIT0;
-    //TODO: need it issue possibly multiple scsi persistent reserve in commands to get the data we want...
-    if (issueSCSICommand)
-    {
-        //if none of the above checks caught the command, then it cannot be translated
-        nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-        //ret = scsi_Persistent_Reserve_Out(nvmeIoCtx->device, scsiServiceAction, 0, 0, 24, scsiCommandData);
-        nvmeIoCtx->device->deviceVerbosity = inVerbosity;
-    }
-    return ret;
-}
-
-int win10_Translate_Reservation_Acquire(nvmeCmdCtx *nvmeIoCtx)
-{
-    int ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
-    //Command inputs
-    uint8_t rtype = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 15, 8);
-    bool iekey = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT3;
-    uint8_t racqa = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 2, 0);
-    //data structure inputs
-    //uint64_t crkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[0], nvmeIoCtx->ptrData[1], nvmeIoCtx->ptrData[2], nvmeIoCtx->ptrData[3], nvmeIoCtx->ptrData[4], nvmeIoCtx->ptrData[5], nvmeIoCtx->ptrData[6], nvmeIoCtx->ptrData[7]);
-    //uint64_t prkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[8], nvmeIoCtx->ptrData[9], nvmeIoCtx->ptrData[10], nvmeIoCtx->ptrData[11], nvmeIoCtx->ptrData[12], nvmeIoCtx->ptrData[13], nvmeIoCtx->ptrData[14], nvmeIoCtx->ptrData[15]);
-    //scsi command stuff
-    uint8_t scsiCommandData[24] = { 0 };
-    uint8_t scsiServiceAction = 0;
-    uint8_t scsiType = 0xF;
-    switch (rtype)
-    {
-    case 0://not a reservation holder
-        scsiType = 0;
-        break;
-    case 1:
-        scsiType = 1;
-        break;
-    case 2:
-        scsiType = 3;
-        break;
-    case 3:
-        scsiType = 5;
-        break;
-    case 4:
-        scsiType = 6;
-        break;
-    case 5:
-        scsiType = 7;
-        break;
-    case 6:
-        scsiType = 8;
-        break;
-    default:
-        //nothing to do...we'll filder out the bad SCSI type below
-        break;
-    }
-    bool issueSCSICommand = false;
-    //now check that those can convert to SCSI...if they can, then convert it!
-    if (!iekey && racqa == 0)
-    {
-        //can translate. Service action is 1 (Reserve)
-        scsiServiceAction = 1;
-        //set up the data buffer
-        //reservation key
-        memcpy(&scsiCommandData[0], &nvmeIoCtx->ptrData[0], 8);//CRKEY
-        issueSCSICommand = true;
-    }
-    else if (!iekey && racqa == 1)
-    {
-        //can translate. Service action is 4 (Preempt)
-        scsiServiceAction = 4;
-        //set up the data buffer
-        //reservation key
-        memcpy(&scsiCommandData[0], &nvmeIoCtx->ptrData[0], 8);//CRKEY
-                                                                //service action reservation key
-        memcpy(&scsiCommandData[8], &nvmeIoCtx->ptrData[8], 8);//PRKEY
-        issueSCSICommand = true;
-    }
-    else if (!iekey && racqa == 2)
-    {
-        //can translate. Service action is 5 (Preempt and abort)
-        scsiServiceAction = 5;
-        //set up the data buffer
-        //reservation key
-        memcpy(&scsiCommandData[0], &nvmeIoCtx->ptrData[0], 8);//CRKEY
-                                                                //service action reservation key
-        memcpy(&scsiCommandData[8], &nvmeIoCtx->ptrData[8], 8);//PRKEY
-        issueSCSICommand = true;
-    }
-    if (issueSCSICommand && scsiType != 0xF)
-    {
-        //if none of the above checks caught the command, then it cannot be translated
-        nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-        ret = scsi_Persistent_Reserve_Out(nvmeIoCtx->device, scsiServiceAction, 0, scsiType, 24, scsiCommandData);
-        nvmeIoCtx->device->deviceVerbosity = inVerbosity;
-    }
-    return ret;
-}
-
-int win10_Translate_Reservation_Release(nvmeCmdCtx *nvmeIoCtx)
-{
-    int ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
-    //Command inputs
-    uint8_t rtype = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 15, 8);
-    bool iekey = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT3;
-    uint8_t rrela = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 2, 0);
-    //data structure inputs
-    //uint64_t crkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[0], nvmeIoCtx->ptrData[1], nvmeIoCtx->ptrData[2], nvmeIoCtx->ptrData[3], nvmeIoCtx->ptrData[4], nvmeIoCtx->ptrData[5], nvmeIoCtx->ptrData[6], nvmeIoCtx->ptrData[7]);
-    //scsi command stuff
-    uint8_t scsiCommandData[24] = { 0 };
-    uint8_t scsiServiceAction = 0;
-    uint8_t scsiType = 0xF;
-    switch (rtype)
-    {
-    case 0://not a reservation holder
-        scsiType = 0;
-        break;
-    case 1:
-        scsiType = 1;
-        break;
-    case 2:
-        scsiType = 3;
-        break;
-    case 3:
-        scsiType = 5;
-        break;
-    case 4:
-        scsiType = 6;
-        break;
-    case 5:
-        scsiType = 7;
-        break;
-    case 6:
-        scsiType = 8;
-        break;
-    default:
-        //nothing to do...we'll filder out the bad SCSI type below
-        break;
-    }
-    bool issueSCSICommand = false;
-    //now check that those can convert to SCSI...if they can, then convert it!
-    if (!iekey && rrela == 0)
-    {
-        //can translate. Service action is 2 (Release)
-        scsiServiceAction = 2;
-        //set up the data buffer
-        //reservation key
-        memcpy(&scsiCommandData[0], &nvmeIoCtx->ptrData[0], 8);//CRKEY
-        issueSCSICommand = true;
-    }
-    else if (!iekey && rrela == 1)
-    {
-        //can translate. Service action is 3 (Clear)
-        scsiServiceAction = 3;
-        //set up the data buffer
-        //reservation key
-        memcpy(&scsiCommandData[0], &nvmeIoCtx->ptrData[0], 8);//CRKEY
-        issueSCSICommand = true;
-    }
-    if (issueSCSICommand && scsiType != 0xF)
-    {
-        //if none of the above checks caught the command, then it cannot be translated
-        nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-        ret = scsi_Persistent_Reserve_Out(nvmeIoCtx->device, scsiServiceAction, 0, scsiType, 24, scsiCommandData);
-        nvmeIoCtx->device->deviceVerbosity = inVerbosity;
-    }
-
-    return ret;
-}
+//These commands are not supported VIA SCSI translation. There are however other Windows IOCTLs that may work
+//int win10_Translate_Reservation_Register(nvmeCmdCtx *nvmeIoCtx)
+//{
+//    int ret = OS_COMMAND_NOT_AVAILABLE;
+//    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+//    //Command inputs
+//    uint8_t cptpl = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 31, 30);
+//    bool iekey = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT3;
+//    uint8_t rrega = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 2, 0);
+//    //data structure inputs
+//    //uint64_t crkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[0], nvmeIoCtx->ptrData[1], nvmeIoCtx->ptrData[2], nvmeIoCtx->ptrData[3], nvmeIoCtx->ptrData[4], nvmeIoCtx->ptrData[5], nvmeIoCtx->ptrData[6], nvmeIoCtx->ptrData[7]);
+//    uint64_t nrkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[8], nvmeIoCtx->ptrData[9], nvmeIoCtx->ptrData[10], nvmeIoCtx->ptrData[11], nvmeIoCtx->ptrData[12], nvmeIoCtx->ptrData[13], nvmeIoCtx->ptrData[14], nvmeIoCtx->ptrData[15]);
+//    //scsi command stuff
+//    uint8_t scsiCommandData[24] = { 0 };
+//    uint8_t scsiServiceAction = 0;
+//    bool issueSCSICommand = false;
+//    //now check that those can convert to SCSI...if they can, then convert it!
+//    if (!iekey && (rrega == 0 || rrega == 1) && (cptpl == 2 || cptpl == 3))
+//    {
+//        //can translate. Service action is 0 (Register)
+//        scsiServiceAction = 0;
+//        //set up the data buffer
+//        if (nrkey == 0)
+//        {
+//            //reservation key
+//            memcpy(&scsiCommandData[0], &nvmeIoCtx->ptrData[0], 8);//CRKEY
+//        }
+//        else
+//        {
+//            //service action reservation key
+//            memcpy(&scsiCommandData[8], &nvmeIoCtx->ptrData[8], 8);//NRKEY
+//        }
+//        //aptpl
+//        if (cptpl == 3)
+//        {
+//            scsiCommandData[20] |= BIT0;
+//        }
+//        issueSCSICommand = true;
+//    }
+//    else if (iekey && (rrega == 0 || rrega == 1) && (cptpl == 2 || cptpl == 3))
+//    {
+//        //can translate. Service action is 6 (Register and ignore existing key)
+//        scsiServiceAction = 6;
+//        //set up the data buffer
+//        if (nrkey == 0)
+//        {
+//            //reservation key
+//            memcpy(&scsiCommandData[0], &nvmeIoCtx->ptrData[0], 8);//CRKEY
+//        }
+//        else
+//        {
+//            //service action reservation key
+//            memcpy(&scsiCommandData[8], &nvmeIoCtx->ptrData[8], 8);//NRKEY
+//        }
+//        //aptpl
+//        if (cptpl == 3)
+//        {
+//            scsiCommandData[20] |= BIT0;
+//        }
+//        issueSCSICommand = true;
+//    }
+//    else if (!iekey && rrega == 2)
+//    {
+//        //can translate. service action is 7 (Register and move)
+//        scsiServiceAction = 7;
+//        //set up the data buffer
+//        //reservation key
+//        memcpy(&scsiCommandData[0], &nvmeIoCtx->ptrData[0], 8);//CRKEY
+//                                                                //service action reservation key
+//        memcpy(&scsiCommandData[8], &nvmeIoCtx->ptrData[8], 8);//NRKEY
+//        issueSCSICommand = true;
+//    }
+//    if (issueSCSICommand)
+//    {
+//        //if none of the above checks caught the command, then it cannot be translated
+//        nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
+//        ret = scsi_Persistent_Reserve_Out(nvmeIoCtx->device, scsiServiceAction, 0, 0, 24, scsiCommandData);
+//        nvmeIoCtx->device->deviceVerbosity = inVerbosity;
+//    }
+//    return ret;
+//}
+//
+//int win10_Translate_Reservation_Report(nvmeCmdCtx *nvmeIoCtx)
+//{
+//    int ret = OS_COMMAND_NOT_AVAILABLE;
+//    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+//    bool issueSCSICommand = false;
+//    //command bytes
+//    uint32_t numberOfDwords = nvmeIoCtx->cmd.nvmCmd.cdw10 + 1;
+//    bool eds = nvmeIoCtx->cmd.nvmCmd.cdw11 & BIT0;
+//    //TODO: need it issue possibly multiple scsi persistent reserve in commands to get the data we want...
+//    if (issueSCSICommand)
+//    {
+//        //if none of the above checks caught the command, then it cannot be translated
+//        nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
+//        //ret = scsi_Persistent_Reserve_Out(nvmeIoCtx->device, scsiServiceAction, 0, 0, 24, scsiCommandData);
+//        nvmeIoCtx->device->deviceVerbosity = inVerbosity;
+//    }
+//    return ret;
+//}
+//
+//int win10_Translate_Reservation_Acquire(nvmeCmdCtx *nvmeIoCtx)
+//{
+//    int ret = OS_COMMAND_NOT_AVAILABLE;
+//    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+//    //Command inputs
+//    uint8_t rtype = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 15, 8);
+//    bool iekey = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT3;
+//    uint8_t racqa = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 2, 0);
+//    //data structure inputs
+//    //uint64_t crkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[0], nvmeIoCtx->ptrData[1], nvmeIoCtx->ptrData[2], nvmeIoCtx->ptrData[3], nvmeIoCtx->ptrData[4], nvmeIoCtx->ptrData[5], nvmeIoCtx->ptrData[6], nvmeIoCtx->ptrData[7]);
+//    //uint64_t prkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[8], nvmeIoCtx->ptrData[9], nvmeIoCtx->ptrData[10], nvmeIoCtx->ptrData[11], nvmeIoCtx->ptrData[12], nvmeIoCtx->ptrData[13], nvmeIoCtx->ptrData[14], nvmeIoCtx->ptrData[15]);
+//    //scsi command stuff
+//    uint8_t scsiCommandData[24] = { 0 };
+//    uint8_t scsiServiceAction = 0;
+//    uint8_t scsiType = 0xF;
+//    switch (rtype)
+//    {
+//    case 0://not a reservation holder
+//        scsiType = 0;
+//        break;
+//    case 1:
+//        scsiType = 1;
+//        break;
+//    case 2:
+//        scsiType = 3;
+//        break;
+//    case 3:
+//        scsiType = 5;
+//        break;
+//    case 4:
+//        scsiType = 6;
+//        break;
+//    case 5:
+//        scsiType = 7;
+//        break;
+//    case 6:
+//        scsiType = 8;
+//        break;
+//    default:
+//        //nothing to do...we'll filder out the bad SCSI type below
+//        break;
+//    }
+//    bool issueSCSICommand = false;
+//    //now check that those can convert to SCSI...if they can, then convert it!
+//    if (!iekey && racqa == 0)
+//    {
+//        //can translate. Service action is 1 (Reserve)
+//        scsiServiceAction = 1;
+//        //set up the data buffer
+//        //reservation key
+//        memcpy(&scsiCommandData[0], &nvmeIoCtx->ptrData[0], 8);//CRKEY
+//        issueSCSICommand = true;
+//    }
+//    else if (!iekey && racqa == 1)
+//    {
+//        //can translate. Service action is 4 (Preempt)
+//        scsiServiceAction = 4;
+//        //set up the data buffer
+//        //reservation key
+//        memcpy(&scsiCommandData[0], &nvmeIoCtx->ptrData[0], 8);//CRKEY
+//                                                                //service action reservation key
+//        memcpy(&scsiCommandData[8], &nvmeIoCtx->ptrData[8], 8);//PRKEY
+//        issueSCSICommand = true;
+//    }
+//    else if (!iekey && racqa == 2)
+//    {
+//        //can translate. Service action is 5 (Preempt and abort)
+//        scsiServiceAction = 5;
+//        //set up the data buffer
+//        //reservation key
+//        memcpy(&scsiCommandData[0], &nvmeIoCtx->ptrData[0], 8);//CRKEY
+//                                                                //service action reservation key
+//        memcpy(&scsiCommandData[8], &nvmeIoCtx->ptrData[8], 8);//PRKEY
+//        issueSCSICommand = true;
+//    }
+//    if (issueSCSICommand && scsiType != 0xF)
+//    {
+//        //if none of the above checks caught the command, then it cannot be translated
+//        nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
+//        ret = scsi_Persistent_Reserve_Out(nvmeIoCtx->device, scsiServiceAction, 0, scsiType, 24, scsiCommandData);
+//        nvmeIoCtx->device->deviceVerbosity = inVerbosity;
+//    }
+//    return ret;
+//}
+//
+//int win10_Translate_Reservation_Release(nvmeCmdCtx *nvmeIoCtx)
+//{
+//    int ret = OS_COMMAND_NOT_AVAILABLE;
+//    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+//    //Command inputs
+//    uint8_t rtype = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 15, 8);
+//    bool iekey = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT3;
+//    uint8_t rrela = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 2, 0);
+//    //data structure inputs
+//    //uint64_t crkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[0], nvmeIoCtx->ptrData[1], nvmeIoCtx->ptrData[2], nvmeIoCtx->ptrData[3], nvmeIoCtx->ptrData[4], nvmeIoCtx->ptrData[5], nvmeIoCtx->ptrData[6], nvmeIoCtx->ptrData[7]);
+//    //scsi command stuff
+//    uint8_t scsiCommandData[24] = { 0 };
+//    uint8_t scsiServiceAction = 0;
+//    uint8_t scsiType = 0xF;
+//    switch (rtype)
+//    {
+//    case 0://not a reservation holder
+//        scsiType = 0;
+//        break;
+//    case 1:
+//        scsiType = 1;
+//        break;
+//    case 2:
+//        scsiType = 3;
+//        break;
+//    case 3:
+//        scsiType = 5;
+//        break;
+//    case 4:
+//        scsiType = 6;
+//        break;
+//    case 5:
+//        scsiType = 7;
+//        break;
+//    case 6:
+//        scsiType = 8;
+//        break;
+//    default:
+//        //nothing to do...we'll filder out the bad SCSI type below
+//        break;
+//    }
+//    bool issueSCSICommand = false;
+//    //now check that those can convert to SCSI...if they can, then convert it!
+//    if (!iekey && rrela == 0)
+//    {
+//        //can translate. Service action is 2 (Release)
+//        scsiServiceAction = 2;
+//        //set up the data buffer
+//        //reservation key
+//        memcpy(&scsiCommandData[0], &nvmeIoCtx->ptrData[0], 8);//CRKEY
+//        issueSCSICommand = true;
+//    }
+//    else if (!iekey && rrela == 1)
+//    {
+//        //can translate. Service action is 3 (Clear)
+//        scsiServiceAction = 3;
+//        //set up the data buffer
+//        //reservation key
+//        memcpy(&scsiCommandData[0], &nvmeIoCtx->ptrData[0], 8);//CRKEY
+//        issueSCSICommand = true;
+//    }
+//    if (issueSCSICommand && scsiType != 0xF)
+//    {
+//        //if none of the above checks caught the command, then it cannot be translated
+//        nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
+//        ret = scsi_Persistent_Reserve_Out(nvmeIoCtx->device, scsiServiceAction, 0, scsiType, 24, scsiCommandData);
+//        nvmeIoCtx->device->deviceVerbosity = inVerbosity;
+//    }
+//
+//    return ret;
+//}
 
 //Windows 10 added a way to query for ATA identify data. Seems to work ok.
 //Note: Any odd parameters like a change in TFRs from the spec will not work here.
@@ -7874,6 +7891,12 @@ int send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx)
 #endif //WINVER >= SEA_WIN32_WINNT_WIN10
 
 //MS NVMe requirements are listed here: https://msdn.microsoft.com/en-us/library/jj134356(v=vs.85).aspx
+//Also: Here is a list of all the supported commands and features. This should help with implementing support for various commands.
+//Before these links were found, everything that was implemented was based on sparse documentation of basic features and trial and error.
+//SCSI Translations: https://docs.microsoft.com/en-us/windows-hardware/drivers/storage/stornvme-scsi-translation-support
+//command set support: https://docs.microsoft.com/en-us/windows-hardware/drivers/storage/stornvme-command-set-support
+//feature set support: https://docs.microsoft.com/en-us/windows-hardware/drivers/storage/stornvme-feature-support
+//Most of the code below has been updated according to these docs, however some things may be missing and those enhancements should be made to better improve support.
 int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = OS_COMMAND_NOT_AVAILABLE;
@@ -7890,6 +7913,13 @@ int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             ret = send_Win_NVMe_Identify_Cmd(nvmeIoCtx);
             break;
         case NVME_ADMIN_CMD_GET_LOG_PAGE:
+            //Notes about telemetry log:
+            /*
+            Supported through IOCTL_SCSI_PASS_THROUGH using command SCSIOP_READ_DATA_BUFF16 with buffer mode as READ_BUFFER_MODE_ERROR_HISTORY. 
+            Also available through StorageAdapterProtocolSpecificProperty/StorageDeviceProtocolSpecificProperty from IOCTL_STORAGE_QUERY_PROPERTY. 
+            For host telemetry, this is also available through IOCTL_STORAGE_GET_DEVICE_INTERNAL_LOG.
+            */
+            //TODO: Since the storage query property doesn't allow pulling in segments today, we may want to try SCSI translation using read buffer 16. Will need to figure out buffer ID, but this should be doable.
             ret = send_Win_NVMe_Get_Log_Page_Cmd(nvmeIoCtx);
             break;
         case NVME_ADMIN_CMD_GET_FEATURES:
@@ -7916,8 +7946,22 @@ int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         case NVME_ADMIN_CMD_SET_FEATURES:
             ret = send_NVMe_Set_Features_Win10(nvmeIoCtx, &useNVMPassthrough);
             break;
-        case NVME_ADMIN_CMD_FORMAT_NVM:
-            ret = win10_Translate_Format(nvmeIoCtx);
+        case NVME_ADMIN_CMD_FORMAT_NVM: //This can be done with a couple IOCTLs, but we should use STORAGE_PROTOCOL_COMMAND since it allows us to specify everything. In WinPE, a SCSI translation from SCSI sanitize is possible (which is non-standard);IOCTL_STORAGE_REINITIALIZE_MEDIA can only do the format with crypto erase
+            //ret = win10_Translate_Format(nvmeIoCtx);
+            //break;
+        case NVME_ADMIN_CMD_NAMESPACE_MANAGEMENT:
+        case NVME_ADMIN_CMD_NAMESPACE_ATTACHMENT:
+        case NVME_ADMIN_CMD_NVME_MI_SEND:
+        case NVME_ADMIN_CMD_NVME_MI_RECEIVE:
+        case NVME_ADMIN_CMD_SANITIZE:
+            if (is_Windows_PE())
+            {
+                useNVMPassthrough = true;
+            }
+            break;
+        case NVME_ADMIN_CMD_DEVICE_SELF_TEST:
+            //TODO: This hasn't always been the case. If we can identify the specific version/update of Win10 this was enabled on, then we can make this better. - TJE
+            useNVMPassthrough = true;
             break;
         default:
             //Check if it's a vendor unique op code.
@@ -7953,28 +7997,17 @@ int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         case NVME_CMD_WRITE://NOTE: This translation likely won't be hit since most code calls into the read function in cmds.h which will call os_Read instead. This is here for those requesting something specific...-TJE
             ret = win10_Translate_Write(nvmeIoCtx);
             break;
-        case NVME_CMD_COMPARE://verify?
-            ret = win10_Translate_Compare(nvmeIoCtx);
+        case NVME_CMD_COMPARE://according to MSFT documentation, this is only available in WinPE
+            //ret = win10_Translate_Compare(nvmeIoCtx);
+            if (is_Windows_PE())
+            {
+                useNVMPassthrough = true;
+            }
             break;
         case NVME_CMD_DATA_SET_MANAGEMENT://SCSI Unmap or Win API call?
             ret = win10_Translate_Data_Set_Management(nvmeIoCtx);
             break;
-        //case NVME_CMD_WRITE_ZEROS://This isn't translatable unless the SCSI to NVM translation spec is updated. - TJE
-            //FSCTL_SET_ZERO_DATA (and maybe also FSCTL_ALLOW_EXTENDED_DASD_IO)...might not work and only do filesystem level stuff
-            //break;
-        //Removing reservation translations for now...need to review them. - TJE
-        //case NVME_CMD_RESERVATION_REGISTER://Translation only available in later specifications!
-        //    ret = win10_Translate_Reservation_Register(nvmeIoCtx);
-        //    break;
-        //case NVME_CMD_RESERVATION_REPORT://Translation only available in later specifications!
-        //    ret = win10_Translate_Reservation_Report(nvmeIoCtx);
-        //    break;
-        //case NVME_CMD_RESERVATION_ACQUIRE://Translation only available in later specifications!
-        //    ret = win10_Translate_Reservation_Acquire(nvmeIoCtx);
-        //    break;
-        //case NVME_CMD_RESERVATION_RELEASE://Translation only available in later specifications!
-        //    ret = win10_Translate_Reservation_Release(nvmeIoCtx);
-        //    break;
+        //NOTE: No reservation commands are supported according to MSFT docs. Code for attempting SCSI commands is available, and MSFT does have IOCTLs specific for reservations that might work, but it is not documented
         default:
             //Check if it's a vendor unique op code.
             if (nvmeIoCtx->cmd.adminCmd.opcode >= 0x80 && nvmeIoCtx->cmd.adminCmd.opcode <= 0xFF)//admin commands in this range are vendor unique

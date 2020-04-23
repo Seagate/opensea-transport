@@ -784,7 +784,7 @@ extern "C"
             struct {
                 //This is here mostly for vendor unique NVMe passthrough capabilities.
                 //This structure may also be useful for OSs that have limited capabilities
-                bool limitedPassthroughCapabilities;//If this is set to true, this means only certain commands can be passed through to the device.
+                bool limitedPassthroughCapabilities;//If this is set to true, this means only certain commands can be passed through to the device. (See below struct, only populated when this is true, otherwise assume all commands work)
                 struct { //This structure will hold which commands are available to passthrough if the above "limitedPassthroughCapabilities" boolean is true, otherwise this structure should be ignored.
                     bool identifyGeneric;//can "generically" send any identify command with any cns value. This typically means any identify can be sent, not just controller and namespace. Basically CNS field is available.
                     bool identifyController;
@@ -795,9 +795,18 @@ extern "C"
                     bool firmwareDownload;
                     bool firmwareCommit;
                     bool vendorUnique;
+                    bool deviceSelfTest;
+                    bool sanitize;
+                    bool namespaceManagement;
+                    bool namespaceAttachment;
+                    bool setFeatures;//this does not have granularity for which features at this time!!!
+                    bool miSend;
+                    bool miReceive;
+                    bool securitySend;
+                    bool securityReceive;
                     //TODO: As other passthroughs are learned with different capabilities, add other commands that ARE supported by them here so that other layers of code can know what capabilities a given device has.
                 }limitedCommandsSupported;
-                uint8_t reserved[6];//padd out above bools to 8 byte boundaries
+                uint8_t reserved[5];//padd out above bools to 8 byte boundaries
                 uint32_t maxTransferLength;
                 uint32_t nvmepadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
             }nvmePTHacks;
