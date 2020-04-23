@@ -366,7 +366,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                         }
 #endif
                         char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
-                        strncpy(printable_sn, deviceList[devIter].drive_info.serialNumber, SERIAL_NUM_LEN + 1);
+                        strcpy(printable_sn, deviceList[devIter].drive_info.serialNumber);
                         //if seagate scsi, need to truncate to 8 digits
                         if (deviceList[devIter].drive_info.drive_type == SCSI_DRIVE && is_Seagate_Family(&deviceList[devIter]) == SEAGATE)
                         {
