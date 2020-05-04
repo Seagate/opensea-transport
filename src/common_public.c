@@ -2322,6 +2322,24 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
+            case 0x2322://Expansion (Xbox drive uses this chip)
+                //NOTE: Need to rerun a full test someday as we don't have full confirmation on supported read commands...just assumed same as above chip for now.
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 33;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
+                break;
             case 0x2330://Portable
                 passthroughHacksSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
