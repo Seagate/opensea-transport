@@ -1654,9 +1654,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 #if defined (DEGUG_SCAN_TIME)
         start_Timer(&getDeviceListTimer);
 #endif
-        for (driveNumber = 0; ((driveNumber < MAX_DEVICES_PER_CONTROLLER && driveNumber < (num_sg_devs + num_sd_devs + num_nvme_devs)) || (found < numberOfDevices)); driveNumber++)
+        for (driveNumber = 0; ((driveNumber < MAX_DEVICES_PER_CONTROLLER && driveNumber < (num_sg_devs + num_sd_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
-            if(strlen(devs[driveNumber]) == 0)
+            if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
             {
                 continue;
             }
@@ -1679,12 +1679,12 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 start_Timer(&getDeviceTimer);
 #endif
                 d->dFlags = flags;
-                returnValue = get_Device(name, d);
+                int ret = get_Device(name, d);
 #if defined (DEGUG_SCAN_TIME)
                 stop_Timer(&getDeviceTimer);
                 printf("Time to get %s = %fms\n", name, get_Milli_Seconds(getDeviceTimer));
 #endif
-                if (returnValue != SUCCESS)
+                if (ret != SUCCESS)
                 {
                     failedGetDeviceCount++;
                 }
@@ -1694,6 +1694,11 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             else if (errno == EACCES) //quick fix for opening drives without sudo
             {
                 returnValue = PERMISSION_DENIED;
+                failedGetDeviceCount++;
+            }
+            else
+            {
+                failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
             safe_Free(devs[driveNumber]);
