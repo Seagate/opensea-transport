@@ -1707,17 +1707,14 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         stop_Timer(&getDeviceListTimer);
         printf("Time to get all device = %fms\n", get_Milli_Seconds(getDeviceListTimer));
 #endif
-		if(returnValue != PERMISSION_DENIED)
-		{
-		    if (found == failedGetDeviceCount)
-		    {
-		        returnValue = FAILURE;
-		    }
-		    else if (failedGetDeviceCount)
-		    {
-		        returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
-		    }
-		}
+	    if (found == failedGetDeviceCount)
+	    {
+	        returnValue = FAILURE;
+	    }
+	    else if (failedGetDeviceCount && returnValue != PERMISSION_DENIED)
+	    {
+	        returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
+	    }
     }
     safe_Free(devs);
     return returnValue;
