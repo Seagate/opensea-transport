@@ -942,40 +942,47 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     {
         naaDesignatorLength = 20 /*ext*/ + 12 /*locally assigned*/;
         naaDesignator = (uint8_t*)calloc(naaDesignatorLength, sizeof(uint8_t));
-        //NAA extended format (6 + OUI + 64bitsEUI64 + 32bits of zeros)
-        naaDesignator[0] = 1;//codes set 1
-        naaDesignator[1] = 3;//designator type 3, associated with logical unit
-        naaDesignator[2] = RESERVED;
-        naaDesignator[3] = 16;//16 bytes following this
-        naaDesignator[4] = M_NibblesTo1ByteValue(6, M_Nibble3(device->drive_info.IdentifyData.nvme.ctrl.vid));
-        naaDesignator[5] = M_NibblesTo1ByteValue(M_Nibble2(device->drive_info.IdentifyData.nvme.ctrl.vid), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.vid));
-        naaDesignator[6] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[0]));
-        naaDesignator[7] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[0]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[1]));
-        naaDesignator[8] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[1]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[2]));
-        naaDesignator[9] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[2]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[3]));
-        naaDesignator[10] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[3]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[4]));
-        naaDesignator[11] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[4]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[5]));
-        naaDesignator[12] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[5]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[6]));
-        naaDesignator[13] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[6]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[7]));
-        naaDesignator[14] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[7]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[8]));
-        naaDesignator[15] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[8]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[9]));
-        naaDesignator[16] = M_Byte3(device->drive_info.namespaceID);
-        naaDesignator[17] = M_Byte2(device->drive_info.namespaceID);
-        naaDesignator[18] = M_Byte1(device->drive_info.namespaceID);
-        naaDesignator[19] = M_Byte0(device->drive_info.namespaceID);
-        //NAA locally assigned designator (3 + first 60bits of EUI64)
-        naaDesignator[20] = 1;//codes set 1
-        naaDesignator[21] = 3;//designator type 3, associated with logical unit
-        naaDesignator[22] = RESERVED;
-        naaDesignator[23] = 8;//8 bytes for the local designator
-        naaDesignator[24] = M_NibblesTo1ByteValue(3, M_Nibble3(device->drive_info.IdentifyData.nvme.ctrl.vid));
-        naaDesignator[25] = M_NibblesTo1ByteValue(M_Nibble2(device->drive_info.IdentifyData.nvme.ctrl.vid), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.vid));
-        naaDesignator[26] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[0]));
-        naaDesignator[27] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[0]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[1]));
-        naaDesignator[28] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[1]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[2]));
-        naaDesignator[29] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[2]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[3]));
-        naaDesignator[30] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[3]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[4]));
-        naaDesignator[31] = M_Byte0(device->drive_info.namespaceID);
+        if (naaDesignator)
+        {
+            //NAA extended format (6 + OUI + 64bitsEUI64 + 32bits of zeros)
+            naaDesignator[0] = 1;//codes set 1
+            naaDesignator[1] = 3;//designator type 3, associated with logical unit
+            naaDesignator[2] = RESERVED;
+            naaDesignator[3] = 16;//16 bytes following this
+            naaDesignator[4] = M_NibblesTo1ByteValue(6, M_Nibble3(device->drive_info.IdentifyData.nvme.ctrl.vid));
+            naaDesignator[5] = M_NibblesTo1ByteValue(M_Nibble2(device->drive_info.IdentifyData.nvme.ctrl.vid), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.vid));
+            naaDesignator[6] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[0]));
+            naaDesignator[7] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[0]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[1]));
+            naaDesignator[8] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[1]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[2]));
+            naaDesignator[9] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[2]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[3]));
+            naaDesignator[10] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[3]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[4]));
+            naaDesignator[11] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[4]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[5]));
+            naaDesignator[12] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[5]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[6]));
+            naaDesignator[13] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[6]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[7]));
+            naaDesignator[14] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[7]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[8]));
+            naaDesignator[15] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[8]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[9]));
+            naaDesignator[16] = M_Byte3(device->drive_info.namespaceID);
+            naaDesignator[17] = M_Byte2(device->drive_info.namespaceID);
+            naaDesignator[18] = M_Byte1(device->drive_info.namespaceID);
+            naaDesignator[19] = M_Byte0(device->drive_info.namespaceID);
+            //NAA locally assigned designator (3 + first 60bits of EUI64)
+            naaDesignator[20] = 1;//codes set 1
+            naaDesignator[21] = 3;//designator type 3, associated with logical unit
+            naaDesignator[22] = RESERVED;
+            naaDesignator[23] = 8;//8 bytes for the local designator
+            naaDesignator[24] = M_NibblesTo1ByteValue(3, M_Nibble3(device->drive_info.IdentifyData.nvme.ctrl.vid));
+            naaDesignator[25] = M_NibblesTo1ByteValue(M_Nibble2(device->drive_info.IdentifyData.nvme.ctrl.vid), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.vid));
+            naaDesignator[26] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[0]));
+            naaDesignator[27] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[0]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[1]));
+            naaDesignator[28] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[1]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[2]));
+            naaDesignator[29] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[2]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[3]));
+            naaDesignator[30] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[3]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[4]));
+            naaDesignator[31] = M_Byte0(device->drive_info.namespaceID);
+        }
+        else
+        {
+            naaDesignatorLength = 0;
+        }
     }
 
     //T10 Vendor ID descriptor (VendorID + productIdentification + (EUI64 || NGUID))
@@ -1037,48 +1044,55 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     else //nvme 1.0 devices: (VendorID + productIdentification + PCI VendorID + lower 52Bits of SN + NSID)
     {
         uint8_t offset = 12;
-        t10VendorIdDesignatorLength = 44;
+        t10VendorIdDesignatorLength = 47;
         t10VendorIdDesignator = (uint8_t*)calloc(t10VendorIdDesignatorLength, sizeof(uint8_t));
-        t10VendorIdDesignator[0] = 2;//codes set 2 (ASCII)
-        t10VendorIdDesignator[1] = 1;//designator type 1, associated with logical unit
-        t10VendorIdDesignator[2] = RESERVED;
-        t10VendorIdDesignator[3] = t10VendorIdDesignatorLength - 4;
-        //first set the t10 vendor id in the buffer
-        t10VendorIdDesignator[4] = 'N';
-        t10VendorIdDesignator[5] = 'V';
-        t10VendorIdDesignator[6] = 'M';
-        t10VendorIdDesignator[7] = 'e';
-        t10VendorIdDesignator[8] = ' ';
-        t10VendorIdDesignator[9] = ' ';
-        t10VendorIdDesignator[10] = ' ';
-        t10VendorIdDesignator[11] = ' ';
-        //Need to set product ID here (16 bytes)
-        for (uint8_t mnOffset = 0; mnOffset < 16; ++mnOffset, ++offset)
+        if (t10VendorIdDesignator)
         {
-            t10VendorIdDesignator[offset] = device->drive_info.IdentifyData.nvme.ctrl.mn[mnOffset];
+            t10VendorIdDesignator[0] = 2;//codes set 2 (ASCII)
+            t10VendorIdDesignator[1] = 1;//designator type 1, associated with logical unit
+            t10VendorIdDesignator[2] = RESERVED;
+            t10VendorIdDesignator[3] = t10VendorIdDesignatorLength - 4;
+            //first set the t10 vendor id in the buffer
+            t10VendorIdDesignator[4] = 'N';
+            t10VendorIdDesignator[5] = 'V';
+            t10VendorIdDesignator[6] = 'M';
+            t10VendorIdDesignator[7] = 'e';
+            t10VendorIdDesignator[8] = ' ';
+            t10VendorIdDesignator[9] = ' ';
+            t10VendorIdDesignator[10] = ' ';
+            t10VendorIdDesignator[11] = ' ';
+            //Need to set product ID here (16 bytes)
+            for (uint8_t mnOffset = 0; mnOffset < 16; ++mnOffset, ++offset)
+            {
+                t10VendorIdDesignator[offset] = device->drive_info.IdentifyData.nvme.ctrl.mn[mnOffset];
+            }
+            //now set PCI Vendor ID (as ASCII...spec is horribly written about this)
+            t10VendorIdDesignator[28] = M_Nibble3(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
+            t10VendorIdDesignator[29] = M_Nibble2(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
+            t10VendorIdDesignator[30] = M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
+            t10VendorIdDesignator[31] = M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
+            //Now some SN bytes
+            t10VendorIdDesignator[32] = device->drive_info.IdentifyData.nvme.ctrl.sn[0];
+            t10VendorIdDesignator[33] = device->drive_info.IdentifyData.nvme.ctrl.sn[1];
+            t10VendorIdDesignator[34] = device->drive_info.IdentifyData.nvme.ctrl.sn[2];
+            t10VendorIdDesignator[35] = device->drive_info.IdentifyData.nvme.ctrl.sn[3];
+            t10VendorIdDesignator[36] = device->drive_info.IdentifyData.nvme.ctrl.sn[4];
+            t10VendorIdDesignator[37] = device->drive_info.IdentifyData.nvme.ctrl.sn[5];
+            t10VendorIdDesignator[38] = device->drive_info.IdentifyData.nvme.ctrl.sn[6];
+            //Finally, NSID (as ASCII)
+            t10VendorIdDesignator[39] = M_Nibble7(device->drive_info.namespaceID) + '0';
+            t10VendorIdDesignator[40] = M_Nibble6(device->drive_info.namespaceID) + '0';
+            t10VendorIdDesignator[41] = M_Nibble5(device->drive_info.namespaceID) + '0';
+            t10VendorIdDesignator[42] = M_Nibble4(device->drive_info.namespaceID) + '0';
+            t10VendorIdDesignator[33] = M_Nibble3(device->drive_info.namespaceID) + '0';
+            t10VendorIdDesignator[44] = M_Nibble2(device->drive_info.namespaceID) + '0';
+            t10VendorIdDesignator[45] = M_Nibble1(device->drive_info.namespaceID) + '0';
+            t10VendorIdDesignator[46] = M_Nibble0(device->drive_info.namespaceID) + '0';
         }
-        //now set PCI Vendor ID (as ASCII...spec is horribly written about this)
-        t10VendorIdDesignator[28] = M_Nibble3(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
-        t10VendorIdDesignator[29] = M_Nibble2(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
-        t10VendorIdDesignator[30] = M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
-        t10VendorIdDesignator[31] = M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
-        //Now some SN bytes
-        t10VendorIdDesignator[32] = device->drive_info.IdentifyData.nvme.ctrl.sn[0];
-        t10VendorIdDesignator[33] = device->drive_info.IdentifyData.nvme.ctrl.sn[1];
-        t10VendorIdDesignator[34] = device->drive_info.IdentifyData.nvme.ctrl.sn[2];
-        t10VendorIdDesignator[35] = device->drive_info.IdentifyData.nvme.ctrl.sn[3];
-        t10VendorIdDesignator[36] = device->drive_info.IdentifyData.nvme.ctrl.sn[4];
-        t10VendorIdDesignator[37] = device->drive_info.IdentifyData.nvme.ctrl.sn[5];
-        t10VendorIdDesignator[38] = device->drive_info.IdentifyData.nvme.ctrl.sn[6];
-        //Finally, NSID (as ASCII)
-        t10VendorIdDesignator[39] = M_Nibble7(device->drive_info.namespaceID) + '0';
-        t10VendorIdDesignator[40] = M_Nibble6(device->drive_info.namespaceID) + '0';
-        t10VendorIdDesignator[41] = M_Nibble5(device->drive_info.namespaceID) + '0';
-        t10VendorIdDesignator[42] = M_Nibble4(device->drive_info.namespaceID) + '0';
-        t10VendorIdDesignator[33] = M_Nibble3(device->drive_info.namespaceID) + '0';
-        t10VendorIdDesignator[44] = M_Nibble2(device->drive_info.namespaceID) + '0';
-        t10VendorIdDesignator[45] = M_Nibble1(device->drive_info.namespaceID) + '0';
-        t10VendorIdDesignator[46] = M_Nibble0(device->drive_info.namespaceID) + '0';
+        else
+        {
+            t10VendorIdDesignatorLength = 0;
+        }
     }
 
     //SCSI Name String (depends on NGUID and EUI64 field support...)
@@ -1184,30 +1198,37 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         uint8_t offset = 8;
         SCSINameStringDesignatorLength = 72;
         SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength, sizeof(uint8_t));
-        SCSINameStringDesignator[0] = 3;//codes set 3 (UTF-8)
-        SCSINameStringDesignator[1] = 1;//designator type 1, associated with logical unit
-        SCSINameStringDesignator[2] = RESERVED;
-        SCSINameStringDesignator[3] = SCSINameStringDesignatorLength - 4;
-        //now set PCI Vendor ID (as UTF8)
-        SCSINameStringDesignator[4] = M_Nibble3(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
-        SCSINameStringDesignator[5] = M_Nibble2(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
-        SCSINameStringDesignator[6] = M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
-        SCSINameStringDesignator[7] = M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
-        //40 MN bytes
-        for (uint8_t mnCounter = 0; mnCounter < 40; ++mnCounter, ++offset)
+        if (SCSINameStringDesignator)
         {
-            SCSINameStringDesignator[offset] = device->drive_info.IdentifyData.nvme.ctrl.mn[mnCounter];
+            SCSINameStringDesignator[0] = 3;//codes set 3 (UTF-8)
+            SCSINameStringDesignator[1] = 1;//designator type 1, associated with logical unit
+            SCSINameStringDesignator[2] = RESERVED;
+            SCSINameStringDesignator[3] = SCSINameStringDesignatorLength - 4;
+            //now set PCI Vendor ID (as UTF8)
+            SCSINameStringDesignator[4] = M_Nibble3(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
+            SCSINameStringDesignator[5] = M_Nibble2(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
+            SCSINameStringDesignator[6] = M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
+            SCSINameStringDesignator[7] = M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
+            //40 MN bytes
+            for (uint8_t mnCounter = 0; mnCounter < 40; ++mnCounter, ++offset)
+            {
+                SCSINameStringDesignator[offset] = device->drive_info.IdentifyData.nvme.ctrl.mn[mnCounter];
+            }
+            //NSID (as UTF-8)
+            SCSINameStringDesignator[48] = M_Byte3(device->drive_info.namespaceID) + '0';
+            SCSINameStringDesignator[49] = M_Byte2(device->drive_info.namespaceID) + '0';
+            SCSINameStringDesignator[50] = M_Byte1(device->drive_info.namespaceID) + '0';
+            SCSINameStringDesignator[51] = M_Byte0(device->drive_info.namespaceID) + '0';
+            //Now 20 SN bytes
+            offset = 52;
+            for (uint8_t snCounter = 0; snCounter < 20; ++snCounter, ++offset)
+            {
+                SCSINameStringDesignator[offset] = device->drive_info.IdentifyData.nvme.ctrl.sn[snCounter];
+            }
         }
-        //NSID (as UTF-8)
-        SCSINameStringDesignator[48] = M_Byte3(device->drive_info.namespaceID) + '0';
-        SCSINameStringDesignator[49] = M_Byte2(device->drive_info.namespaceID) + '0';
-        SCSINameStringDesignator[50] = M_Byte1(device->drive_info.namespaceID) + '0';
-        SCSINameStringDesignator[51] = M_Byte0(device->drive_info.namespaceID) + '0';
-        //Now 20 SN bytes
-        offset = 52;
-        for (uint8_t snCounter = 0; snCounter < 20; ++snCounter, ++offset)
+        else
         {
-            SCSINameStringDesignator[offset] = device->drive_info.IdentifyData.nvme.ctrl.sn[snCounter];
+            SCSINameStringDesignatorLength = 0;
         }
     }
 
@@ -4969,11 +4990,14 @@ int sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *scsiIoCt
         {
             reportLunsDataLength += 8;
             reportLunsData = (uint8_t*)calloc(reportLunsDataLength, sizeof(uint8_t));
-            reportLunsData[15] = device->drive_info.namespaceID > 0 ? device->drive_info.namespaceID - 1 : 0;
-            reportLunsData[0] = M_Byte3(reportLunsDataLength);
-            reportLunsData[1] = M_Byte2(reportLunsDataLength);
-            reportLunsData[2] = M_Byte1(reportLunsDataLength);
-            reportLunsData[3] = M_Byte0(reportLunsDataLength);
+            if (reportLunsData)
+            {
+                reportLunsData[15] = device->drive_info.namespaceID > 0 ? device->drive_info.namespaceID - 1 : 0;
+                reportLunsData[0] = M_Byte3(reportLunsDataLength);
+                reportLunsData[1] = M_Byte2(reportLunsDataLength);
+                reportLunsData[2] = M_Byte1(reportLunsDataLength);
+                reportLunsData[3] = M_Byte0(reportLunsDataLength);
+            }
         }
     }
         break;
@@ -4992,9 +5016,13 @@ int sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *scsiIoCt
         //allocate zeroed data for the minimum length we need to return
         reportLunsData = (uint8_t*)calloc(reportLunsDataLength, sizeof(uint8_t));
     }
-    if (scsiIoCtx->pdata)
+    if (scsiIoCtx->pdata && reportLunsData)
     {
         memcpy(scsiIoCtx->pdata, reportLunsData, M_Min(reportLunsDataLength, allocationLength));
+    }
+    else
+    {
+        ret = MEMORY_FAILURE;
     }
     safe_Free(reportLunsData);
     return ret;
@@ -6186,29 +6214,36 @@ int sntl_Translate_Persistent_Reserve_In(tDevice * device, ScsiIoCtx * scsiIoCtx
         persistentReserveDataLength = (numberOfRegisteredControllers * 8) + 8;
         //allocate the memory we need.
         persistentReserveData = (uint8_t*)calloc(persistentReserveDataLength, sizeof(uint8_t));
-        //set PRGeneration (remember, the endianness is different!)
-        persistentReserveData[0] = nvmeReportKeys[3];
-        persistentReserveData[1] = nvmeReportKeys[2];
-        persistentReserveData[2] = nvmeReportKeys[1];
-        persistentReserveData[3] = nvmeReportKeys[0];
-        //set the additional length
-        persistentReserveData[4] = M_Byte3(persistentReserveDataLength - 8);
-        persistentReserveData[5] = M_Byte2(persistentReserveDataLength - 8);
-        persistentReserveData[6] = M_Byte1(persistentReserveDataLength - 8);
-        persistentReserveData[7] = M_Byte0(persistentReserveDataLength - 8);
-        //now set the keys in the list.
-        uint32_t persistentReseverOffset = 8;//each key is 8 bytes and starts at this offset
-        uint32_t nvmeReportOffset = 24;//increment by 24 for each key due to extra data NVMe returns
-        for (; persistentReseverOffset < persistentReserveDataLength && nvmeReportOffset < 4096; persistentReseverOffset += 8, nvmeReportOffset += 24)
+        if (persistentReserveData)
         {
-            persistentReserveData[persistentReseverOffset + 0] = nvmeReportKeys[nvmeReportOffset + 23];
-            persistentReserveData[persistentReseverOffset + 1] = nvmeReportKeys[nvmeReportOffset + 22];
-            persistentReserveData[persistentReseverOffset + 2] = nvmeReportKeys[nvmeReportOffset + 21];
-            persistentReserveData[persistentReseverOffset + 3] = nvmeReportKeys[nvmeReportOffset + 20];
-            persistentReserveData[persistentReseverOffset + 4] = nvmeReportKeys[nvmeReportOffset + 19];
-            persistentReserveData[persistentReseverOffset + 5] = nvmeReportKeys[nvmeReportOffset + 18];
-            persistentReserveData[persistentReseverOffset + 6] = nvmeReportKeys[nvmeReportOffset + 17];
-            persistentReserveData[persistentReseverOffset + 7] = nvmeReportKeys[nvmeReportOffset + 16];
+            //set PRGeneration (remember, the endianness is different!)
+            persistentReserveData[0] = nvmeReportKeys[3];
+            persistentReserveData[1] = nvmeReportKeys[2];
+            persistentReserveData[2] = nvmeReportKeys[1];
+            persistentReserveData[3] = nvmeReportKeys[0];
+            //set the additional length
+            persistentReserveData[4] = M_Byte3(persistentReserveDataLength - 8);
+            persistentReserveData[5] = M_Byte2(persistentReserveDataLength - 8);
+            persistentReserveData[6] = M_Byte1(persistentReserveDataLength - 8);
+            persistentReserveData[7] = M_Byte0(persistentReserveDataLength - 8);
+            //now set the keys in the list.
+            uint32_t persistentReseverOffset = 8;//each key is 8 bytes and starts at this offset
+            uint32_t nvmeReportOffset = 24;//increment by 24 for each key due to extra data NVMe returns
+            for (; persistentReseverOffset < persistentReserveDataLength && nvmeReportOffset < 4096; persistentReseverOffset += 8, nvmeReportOffset += 24)
+            {
+                persistentReserveData[persistentReseverOffset + 0] = nvmeReportKeys[nvmeReportOffset + 23];
+                persistentReserveData[persistentReseverOffset + 1] = nvmeReportKeys[nvmeReportOffset + 22];
+                persistentReserveData[persistentReseverOffset + 2] = nvmeReportKeys[nvmeReportOffset + 21];
+                persistentReserveData[persistentReseverOffset + 3] = nvmeReportKeys[nvmeReportOffset + 20];
+                persistentReserveData[persistentReseverOffset + 4] = nvmeReportKeys[nvmeReportOffset + 19];
+                persistentReserveData[persistentReseverOffset + 5] = nvmeReportKeys[nvmeReportOffset + 18];
+                persistentReserveData[persistentReseverOffset + 6] = nvmeReportKeys[nvmeReportOffset + 17];
+                persistentReserveData[persistentReseverOffset + 7] = nvmeReportKeys[nvmeReportOffset + 16];
+            }
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
         }
     }
         break;
@@ -6240,55 +6275,62 @@ int sntl_Translate_Persistent_Reserve_In(tDevice * device, ScsiIoCtx * scsiIoCtx
         }
         //allocate the memory we need.
         persistentReserveData = (uint8_t*)calloc(persistentReserveDataLength, sizeof(uint8_t));
-        //set PRGeneration (remember, the endianness is different!)
-        persistentReserveData[0] = nvmeReport[3];
-        persistentReserveData[1] = nvmeReport[2];
-        persistentReserveData[2] = nvmeReport[1];
-        persistentReserveData[3] = nvmeReport[0];
-        //set the additional length
-        persistentReserveData[4] = M_Byte3(persistentReserveDataLength - 8);
-        persistentReserveData[5] = M_Byte2(persistentReserveDataLength - 8);
-        persistentReserveData[6] = M_Byte1(persistentReserveDataLength - 8);
-        persistentReserveData[7] = M_Byte0(persistentReserveDataLength - 8);
-        if (foundReservationActive)
+        if (persistentReserveData)
         {
-            //set the key from controller holding reservation
-            persistentReserveData[8] = nvmeReport[nvmeReportOffset + 23];
-            persistentReserveData[9] = nvmeReport[nvmeReportOffset + 22];
-            persistentReserveData[10] = nvmeReport[nvmeReportOffset + 21];
-            persistentReserveData[11] = nvmeReport[nvmeReportOffset + 20];
-            persistentReserveData[12] = nvmeReport[nvmeReportOffset + 19];
-            persistentReserveData[13] = nvmeReport[nvmeReportOffset + 18];
-            persistentReserveData[14] = nvmeReport[nvmeReportOffset + 17];
-            persistentReserveData[15] = nvmeReport[nvmeReportOffset + 16];
-            //set scope (0) and type (R-Type - translate to SCSI)
-            switch (nvmeReport[4])
+            //set PRGeneration (remember, the endianness is different!)
+            persistentReserveData[0] = nvmeReport[3];
+            persistentReserveData[1] = nvmeReport[2];
+            persistentReserveData[2] = nvmeReport[1];
+            persistentReserveData[3] = nvmeReport[0];
+            //set the additional length
+            persistentReserveData[4] = M_Byte3(persistentReserveDataLength - 8);
+            persistentReserveData[5] = M_Byte2(persistentReserveDataLength - 8);
+            persistentReserveData[6] = M_Byte1(persistentReserveDataLength - 8);
+            persistentReserveData[7] = M_Byte0(persistentReserveDataLength - 8);
+            if (foundReservationActive)
             {
-            case 0:
-                persistentReserveData[21] = 0;
-                break;
-            case 1:
-                persistentReserveData[21] = 1;
-                break;
-            case 2:
-                persistentReserveData[21] = 3;
-                break;
-            case 3:
-                persistentReserveData[21] = 5;
-                break;
-            case 4:
-                persistentReserveData[21] = 6;
-                break;
-            case 5:
-                persistentReserveData[21] = 7;
-                break;
-            case 6:
-                persistentReserveData[21] = 8;
-                break;
-            default:
-                persistentReserveData[21] = 0x0F;//set to something invalid..we should be able to get this right
-                break;
+                //set the key from controller holding reservation
+                persistentReserveData[8] = nvmeReport[nvmeReportOffset + 23];
+                persistentReserveData[9] = nvmeReport[nvmeReportOffset + 22];
+                persistentReserveData[10] = nvmeReport[nvmeReportOffset + 21];
+                persistentReserveData[11] = nvmeReport[nvmeReportOffset + 20];
+                persistentReserveData[12] = nvmeReport[nvmeReportOffset + 19];
+                persistentReserveData[13] = nvmeReport[nvmeReportOffset + 18];
+                persistentReserveData[14] = nvmeReport[nvmeReportOffset + 17];
+                persistentReserveData[15] = nvmeReport[nvmeReportOffset + 16];
+                //set scope (0) and type (R-Type - translate to SCSI)
+                switch (nvmeReport[4])
+                {
+                case 0:
+                    persistentReserveData[21] = 0;
+                    break;
+                case 1:
+                    persistentReserveData[21] = 1;
+                    break;
+                case 2:
+                    persistentReserveData[21] = 3;
+                    break;
+                case 3:
+                    persistentReserveData[21] = 5;
+                    break;
+                case 4:
+                    persistentReserveData[21] = 6;
+                    break;
+                case 5:
+                    persistentReserveData[21] = 7;
+                    break;
+                case 6:
+                    persistentReserveData[21] = 8;
+                    break;
+                default:
+                    persistentReserveData[21] = 0x0F;//set to something invalid..we should be able to get this right
+                    break;
+                }
             }
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
         }
     }
         break;
@@ -6312,54 +6354,61 @@ int sntl_Translate_Persistent_Reserve_In(tDevice * device, ScsiIoCtx * scsiIoCtx
         //Both commands must complete before translating!
         persistentReserveDataLength = 8;
         persistentReserveData = (uint8_t*)calloc(persistentReserveDataLength, sizeof(uint8_t));
-        //length
-        persistentReserveData[0] = 0;
-        persistentReserveData[1] = 0x08;
-        //set ATP_C bit
-        persistentReserveData[2] |= BIT2;
-        //set PTPL_C bit
-        if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT0)
+        if (persistentReserveData)
         {
-            persistentReserveData[2] |= BIT0;
+            //length
+            persistentReserveData[0] = 0;
+            persistentReserveData[1] = 0x08;
+            //set ATP_C bit
+            persistentReserveData[2] |= BIT2;
+            //set PTPL_C bit
+            if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT0)
+            {
+                persistentReserveData[2] |= BIT0;
+            }
+            //TMV set to 1
+            persistentReserveData[3] |= BIT7;
+            //allowed commands set to zero
+            //set PTL_A
+            if (getReservationPersistence.featSetGetValue & BIT0)
+            {
+                persistentReserveData[3] |= BIT0;
+            }
+            //set the type mask
+            if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT1)
+            {
+                //wr_ex
+                persistentReserveData[4] |= BIT1;
+            }
+            if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT2)
+            {
+                //ex_ac
+                persistentReserveData[4] |= BIT3;
+            }
+            if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT3)
+            {
+                //wr_ex_ro
+                persistentReserveData[4] |= BIT5;
+            }
+            if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT4)
+            {
+                //ex_ac_ro
+                persistentReserveData[4] |= BIT6;
+            }
+            if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT5)
+            {
+                //wr_ex_ar
+                persistentReserveData[4] |= BIT7;
+            }
+            if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT6)
+            {
+                //ex_ac_ar
+                persistentReserveData[5] |= BIT0;
+            }
         }
-        //TMV set to 1
-        persistentReserveData[3] |= BIT7;
-        //allowed commands set to zero
-        //set PTL_A
-        if (getReservationPersistence.featSetGetValue & BIT0)
+        else
         {
-            persistentReserveData[3] |= BIT0;
-        }
-        //set the type mask
-        if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT1)
-        {
-            //wr_ex
-            persistentReserveData[4] |= BIT1;
-        }
-        if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT2)
-        {
-            //ex_ac
-            persistentReserveData[4] |= BIT3;
-        }
-        if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT3)
-        {
-            //wr_ex_ro
-            persistentReserveData[4] |= BIT5;
-        }
-        if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT4)
-        {
-            //ex_ac_ro
-            persistentReserveData[4] |= BIT6;
-        }
-        if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT5)
-        {
-            //wr_ex_ar
-            persistentReserveData[4] |= BIT7;
-        }
-        if (device->drive_info.IdentifyData.nvme.ns.rescap & BIT6)
-        {
-            //ex_ac_ar
-            persistentReserveData[5] |= BIT0;
+            ret = MEMORY_FAILURE;
         }
     }
         break;
@@ -6375,84 +6424,91 @@ int sntl_Translate_Persistent_Reserve_In(tDevice * device, ScsiIoCtx * scsiIoCtx
         persistentReserveDataLength = (numberOfRegisteredControllers * 32) + 8;//data structure size for full status is 32 bytes
         //allocate the memory we need.
         persistentReserveData = (uint8_t*)calloc(persistentReserveDataLength, sizeof(uint8_t));
-        //set PRGeneration (remember, the endianness is different!)
-        persistentReserveData[0] = nvmeReport[3];
-        persistentReserveData[1] = nvmeReport[2];
-        persistentReserveData[2] = nvmeReport[1];
-        persistentReserveData[3] = nvmeReport[0];
-        //set the additional length
-        persistentReserveData[4] = M_Byte3(persistentReserveDataLength - 8);
-        persistentReserveData[5] = M_Byte2(persistentReserveDataLength - 8);
-        persistentReserveData[6] = M_Byte1(persistentReserveDataLength - 8);
-        persistentReserveData[7] = M_Byte0(persistentReserveDataLength - 8);
-        //now set the keys in the list.
-        uint32_t persistentReseverOffset = 8;//each key is 32 bytes and starts at this offset
-        uint32_t nvmeReportOffset = 24;//nvme structures start here. each is 24 bytes in size
-        for (; persistentReseverOffset < persistentReserveDataLength && nvmeReportOffset < 4096; persistentReseverOffset += 32, nvmeReportOffset += 24)
+        if (persistentReserveData)
         {
-            //set reservation key
-            persistentReserveData[persistentReseverOffset + 0] = nvmeReport[nvmeReportOffset + 23];
-            persistentReserveData[persistentReseverOffset + 1] = nvmeReport[nvmeReportOffset + 22];
-            persistentReserveData[persistentReseverOffset + 2] = nvmeReport[nvmeReportOffset + 21];
-            persistentReserveData[persistentReseverOffset + 3] = nvmeReport[nvmeReportOffset + 20];
-            persistentReserveData[persistentReseverOffset + 4] = nvmeReport[nvmeReportOffset + 19];
-            persistentReserveData[persistentReseverOffset + 5] = nvmeReport[nvmeReportOffset + 18];
-            persistentReserveData[persistentReseverOffset + 6] = nvmeReport[nvmeReportOffset + 17];
-            persistentReserveData[persistentReseverOffset + 7] = nvmeReport[nvmeReportOffset + 16];
-            //bytes 8 - 11 are reserved
-            //set all_tg_pt to 1
-            persistentReserveData[persistentReseverOffset + 12] |= BIT1;
-            //set r_holder
-            if (nvmeReport[nvmeReportOffset + 2] & BIT0)//SNTL says bit 1, but that is not correct as that bit is still reserved...
+            //set PRGeneration (remember, the endianness is different!)
+            persistentReserveData[0] = nvmeReport[3];
+            persistentReserveData[1] = nvmeReport[2];
+            persistentReserveData[2] = nvmeReport[1];
+            persistentReserveData[3] = nvmeReport[0];
+            //set the additional length
+            persistentReserveData[4] = M_Byte3(persistentReserveDataLength - 8);
+            persistentReserveData[5] = M_Byte2(persistentReserveDataLength - 8);
+            persistentReserveData[6] = M_Byte1(persistentReserveDataLength - 8);
+            persistentReserveData[7] = M_Byte0(persistentReserveDataLength - 8);
+            //now set the keys in the list.
+            uint32_t persistentReseverOffset = 8;//each key is 32 bytes and starts at this offset
+            uint32_t nvmeReportOffset = 24;//nvme structures start here. each is 24 bytes in size
+            for (; persistentReseverOffset < persistentReserveDataLength && nvmeReportOffset < 4096; persistentReseverOffset += 32, nvmeReportOffset += 24)
             {
-                persistentReserveData[persistentReseverOffset + 12] |= BIT0;
+                //set reservation key
+                persistentReserveData[persistentReseverOffset + 0] = nvmeReport[nvmeReportOffset + 23];
+                persistentReserveData[persistentReseverOffset + 1] = nvmeReport[nvmeReportOffset + 22];
+                persistentReserveData[persistentReseverOffset + 2] = nvmeReport[nvmeReportOffset + 21];
+                persistentReserveData[persistentReseverOffset + 3] = nvmeReport[nvmeReportOffset + 20];
+                persistentReserveData[persistentReseverOffset + 4] = nvmeReport[nvmeReportOffset + 19];
+                persistentReserveData[persistentReseverOffset + 5] = nvmeReport[nvmeReportOffset + 18];
+                persistentReserveData[persistentReseverOffset + 6] = nvmeReport[nvmeReportOffset + 17];
+                persistentReserveData[persistentReseverOffset + 7] = nvmeReport[nvmeReportOffset + 16];
+                //bytes 8 - 11 are reserved
+                //set all_tg_pt to 1
+                persistentReserveData[persistentReseverOffset + 12] |= BIT1;
+                //set r_holder
+                if (nvmeReport[nvmeReportOffset + 2] & BIT0)//SNTL says bit 1, but that is not correct as that bit is still reserved...
+                {
+                    persistentReserveData[persistentReseverOffset + 12] |= BIT0;
+                }
+                //scope = 0, type is translated
+                //set scope (0) and type (R-Type - translate to SCSI)
+                switch (nvmeReport[4])
+                {
+                case 0:
+                    persistentReserveData[persistentReseverOffset + 13] = 0;
+                    break;
+                case 1:
+                    persistentReserveData[persistentReseverOffset + 13] = 1;
+                    break;
+                case 2:
+                    persistentReserveData[persistentReseverOffset + 13] = 3;
+                    break;
+                case 3:
+                    persistentReserveData[persistentReseverOffset + 13] = 5;
+                    break;
+                case 4:
+                    persistentReserveData[persistentReseverOffset + 13] = 6;
+                    break;
+                case 5:
+                    persistentReserveData[persistentReseverOffset + 13] = 7;
+                    break;
+                case 6:
+                    persistentReserveData[persistentReseverOffset + 13] = 8;
+                    break;
+                default:
+                    persistentReserveData[persistentReseverOffset + 13] = 0x0F;//set to something invalid..we should be able to get this right
+                    break;
+                }
+                //set relative target port identifier to nvme host identifier (swap endianness)
+                persistentReserveData[persistentReseverOffset + 18] = nvmeReport[nvmeReportOffset + 1];
+                persistentReserveData[persistentReseverOffset + 19] = nvmeReport[nvmeReportOffset + 0];
+                //set additional descriptor length to 8 for transport ID
+                persistentReserveData[persistentReseverOffset + 20] = 0;
+                persistentReserveData[persistentReseverOffset + 21] = 0;
+                persistentReserveData[persistentReseverOffset + 22] = 0;
+                persistentReserveData[persistentReseverOffset + 23] = 0x08;
+                //set transport ID to nvme host idnetifier (remember diffferent endianness...)
+                persistentReserveData[persistentReseverOffset + 24] = nvmeReport[nvmeReportOffset + 15];
+                persistentReserveData[persistentReseverOffset + 25] = nvmeReport[nvmeReportOffset + 14];
+                persistentReserveData[persistentReseverOffset + 26] = nvmeReport[nvmeReportOffset + 13];
+                persistentReserveData[persistentReseverOffset + 27] = nvmeReport[nvmeReportOffset + 12];
+                persistentReserveData[persistentReseverOffset + 28] = nvmeReport[nvmeReportOffset + 11];
+                persistentReserveData[persistentReseverOffset + 29] = nvmeReport[nvmeReportOffset + 10];
+                persistentReserveData[persistentReseverOffset + 30] = nvmeReport[nvmeReportOffset + 9];
+                persistentReserveData[persistentReseverOffset + 31] = nvmeReport[nvmeReportOffset + 8];
             }
-            //scope = 0, type is translated
-            //set scope (0) and type (R-Type - translate to SCSI)
-            switch (nvmeReport[4])
-            {
-            case 0:
-                persistentReserveData[persistentReseverOffset + 13] = 0;
-                break;
-            case 1:
-                persistentReserveData[persistentReseverOffset + 13] = 1;
-                break;
-            case 2:
-                persistentReserveData[persistentReseverOffset + 13] = 3;
-                break;
-            case 3:
-                persistentReserveData[persistentReseverOffset + 13] = 5;
-                break;
-            case 4:
-                persistentReserveData[persistentReseverOffset + 13] = 6;
-                break;
-            case 5:
-                persistentReserveData[persistentReseverOffset + 13] = 7;
-                break;
-            case 6:
-                persistentReserveData[persistentReseverOffset + 13] = 8;
-                break;
-            default:
-                persistentReserveData[persistentReseverOffset + 13] = 0x0F;//set to something invalid..we should be able to get this right
-                break;
-            }
-            //set relative target port identifier to nvme host identifier (swap endianness)
-            persistentReserveData[persistentReseverOffset + 18] = nvmeReport[nvmeReportOffset + 1];
-            persistentReserveData[persistentReseverOffset + 19] = nvmeReport[nvmeReportOffset + 0];
-            //set additional descriptor length to 8 for transport ID
-            persistentReserveData[persistentReseverOffset + 20] = 0;
-            persistentReserveData[persistentReseverOffset + 21] = 0;
-            persistentReserveData[persistentReseverOffset + 22] = 0;
-            persistentReserveData[persistentReseverOffset + 23] = 0x08;
-            //set transport ID to nvme host idnetifier (remember diffferent endianness...)
-            persistentReserveData[persistentReseverOffset + 24] = nvmeReport[nvmeReportOffset + 15];
-            persistentReserveData[persistentReseverOffset + 25] = nvmeReport[nvmeReportOffset + 14];
-            persistentReserveData[persistentReseverOffset + 26] = nvmeReport[nvmeReportOffset + 13];
-            persistentReserveData[persistentReseverOffset + 27] = nvmeReport[nvmeReportOffset + 12];
-            persistentReserveData[persistentReseverOffset + 28] = nvmeReport[nvmeReportOffset + 11];
-            persistentReserveData[persistentReseverOffset + 29] = nvmeReport[nvmeReportOffset + 10];
-            persistentReserveData[persistentReseverOffset + 30] = nvmeReport[nvmeReportOffset + 9];
-            persistentReserveData[persistentReseverOffset + 31] = nvmeReport[nvmeReportOffset + 8];
+        }
+        else
+        {
+            ret = FAILURE;
         }
     }
         break;
@@ -6466,7 +6522,7 @@ int sntl_Translate_Persistent_Reserve_In(tDevice * device, ScsiIoCtx * scsiIoCtx
         sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
-    if (scsiIoCtx->pdata)
+    if (scsiIoCtx->pdata && persistentReserveData)
     {
         memcpy(scsiIoCtx->pdata, persistentReserveData, M_Min(persistentReserveDataLength, allocationLength));
     }

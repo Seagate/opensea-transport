@@ -1892,7 +1892,7 @@ int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDe
 {
     volatile uint32_t i, j;
     bool sameSlNo = false;
-    int ret;
+    int ret = UNKNOWN;
 
 
     /*
