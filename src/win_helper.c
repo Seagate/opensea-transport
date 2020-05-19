@@ -2728,9 +2728,9 @@ int send_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx)
                 break;
             }
         }
-        safe_Free(sptdioEx);
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    safe_Free(sptdioEx);
     return ret;
 }
 
@@ -2945,8 +2945,8 @@ int send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
                 break;
             }
         }
-        safe_Free(sptdio);
     }
+    safe_Free(sptdio);
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     safe_Free(localBuffer);
     return ret;
@@ -3209,6 +3209,7 @@ int send_SCSI_Pass_Through(ScsiIoCtx *scsiIoCtx)
             }
         }
     }
+    safe_Free(sptdioDB);
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     return ret;
 }
