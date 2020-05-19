@@ -4650,6 +4650,10 @@ bool is_Activate_Command(ScsiIoCtx *scsiIoCtx)
 int win10_FW_Activate_IO_SCSI(ScsiIoCtx *scsiIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
+    if (!scsiIoCtx)
+    {
+        return BAD_PARAMETER;
+    }
     if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
         printf("Sending firmware activate with Win10 API\n");
