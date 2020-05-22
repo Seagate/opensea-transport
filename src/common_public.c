@@ -169,7 +169,11 @@ void write_JSON_To_File(void *customData, char *message)
     FILE *jsonFile = (FILE*)customData;
     if (jsonFile)
     {
-        fwrite(message, 1, strlen(message), jsonFile);
+        //fwrite(message, 1, strlen(message), jsonFile);
+        if ((fwrite(message, 1, strlen(message), jsonFile) != strlen(message)) || ferror(jsonFile))
+        {
+            perror("Error writing data to a file!\n");
+        }
     }
 }
 
@@ -412,7 +416,13 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                     }
                     if (fileOpened)
                     {
-                        fflush(outputInfo->outputFilePtr);
+                        //fflush(outputInfo->outputFilePtr);
+                        if ((fflush(outputInfo->outputFilePtr) != 0) || ferror(outputInfo->outputFilePtr))
+                        {
+                            perror("Error flushing data!\n");
+                            fclose(outputInfo->outputFilePtr);
+                            return ERROR_FLUSHING_DATA;
+                        }
                         fclose(outputInfo->outputFilePtr);
                     }
                 }
