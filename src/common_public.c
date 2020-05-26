@@ -166,6 +166,7 @@ void write_JSON_To_File(void *customData, char *message)
     if (jsonFile)
     {
         //fwrite(message, 1, strlen(message), jsonFile);
+        //TODO: Add exit code to this function to detect errors
         if ((fwrite(message, 1, strlen(message), jsonFile) != strlen(message)) || ferror(jsonFile))
         {
             perror("Error writing data to a file!\n");
@@ -413,7 +414,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                         {
                             perror("Error flushing data!\n");
                             fclose(outputInfo->outputFilePtr);
-                            return ERROR_FLUSHING_DATA;
+                            return ERROR_WRITING_FILE;
                         }
                         fclose(outputInfo->outputFilePtr);
                     }
