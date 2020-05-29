@@ -409,7 +409,6 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                     }
                     if (fileOpened)
                     {
-                        //fflush(outputInfo->outputFilePtr);
                         if ((fflush(outputInfo->outputFilePtr) != 0) || ferror(outputInfo->outputFilePtr))
                         {
                             perror("Error flushing data!\n");
