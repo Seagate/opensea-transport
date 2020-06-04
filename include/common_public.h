@@ -24,6 +24,8 @@
 #include <Protocol/DevicePath.h> //for device path union/structures
 #endif
 
+#include "csmi_helper.h" //because the device structure holds some csmi support structure for when we can issue csmi passthrough commands.
+
 #if defined (__cplusplus)
 #define __STDC_FORMAT_MACROS
 extern "C"
