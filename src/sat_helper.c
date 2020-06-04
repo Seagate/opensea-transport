@@ -7207,7 +7207,7 @@ int translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 && ((fieldPointer = 6) != 0 && (bitPointer = 7) != 0 && parameterListLength == 0)
                 )
             {
-                if (SUCCESS != ata_Download_Microcode(device, ATA_DL_MICROCODE_SAVE_IMMEDIATE, blockCount, 0, device->drive_info.ata_Options.downloadMicrocodeDMASupported, scsiIoCtx->pdata, scsiIoCtx->dataLength))
+                if (SUCCESS != ata_Download_Microcode(device, ATA_DL_MICROCODE_SAVE_IMMEDIATE, blockCount, 0, device->drive_info.ata_Options.downloadMicrocodeDMASupported, scsiIoCtx->pdata, scsiIoCtx->dataLength, scsiIoCtx->fwdlFirstSegment, scsiIoCtx->fwdlLastSegment, scsiIoCtx->timeout))
                 {
                     set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 }
@@ -7259,7 +7259,7 @@ int translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     }
                     else
                     {
-                        if (SUCCESS != ata_Download_Microcode(device, ATA_DL_MICROCODE_OFFSETS_SAVE_IMMEDIATE, blockCount, offset, device->drive_info.ata_Options.downloadMicrocodeDMASupported, scsiIoCtx->pdata, scsiIoCtx->dataLength))
+                        if (SUCCESS != ata_Download_Microcode(device, ATA_DL_MICROCODE_OFFSETS_SAVE_IMMEDIATE, blockCount, offset, device->drive_info.ata_Options.downloadMicrocodeDMASupported, scsiIoCtx->pdata, scsiIoCtx->dataLength, scsiIoCtx->fwdlFirstSegment, scsiIoCtx->fwdlLastSegment, scsiIoCtx->timeout))
                         {
                             set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                         }
@@ -7333,7 +7333,7 @@ int translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     }
                     else
                     {
-                        if (SUCCESS != ata_Download_Microcode(device, ATA_DL_MICROCODE_OFFSETS_SAVE_FUTURE, blockCount, offset, device->drive_info.ata_Options.downloadMicrocodeDMASupported, scsiIoCtx->pdata, scsiIoCtx->dataLength))
+                        if (SUCCESS != ata_Download_Microcode(device, ATA_DL_MICROCODE_OFFSETS_SAVE_FUTURE, blockCount, offset, device->drive_info.ata_Options.downloadMicrocodeDMASupported, scsiIoCtx->pdata, scsiIoCtx->dataLength, scsiIoCtx->fwdlFirstSegment, scsiIoCtx->fwdlLastSegment, scsiIoCtx->timeout))
                         {
                             set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                         }
@@ -7377,7 +7377,7 @@ int translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 && ((fieldPointer = 6) != 0 && (bitPointer = 7) != 0 && parameterListLength == 0)
                )
             {
-                if (SUCCESS != ata_Download_Microcode(device, ATA_DL_MICROCODE_ACTIVATE, blockCount, offset, device->drive_info.ata_Options.downloadMicrocodeDMASupported, scsiIoCtx->pdata, scsiIoCtx->dataLength))
+                if (SUCCESS != ata_Download_Microcode(device, ATA_DL_MICROCODE_ACTIVATE, blockCount, offset, device->drive_info.ata_Options.downloadMicrocodeDMASupported, scsiIoCtx->pdata, scsiIoCtx->dataLength, scsiIoCtx->fwdlFirstSegment, scsiIoCtx->fwdlLastSegment, scsiIoCtx->timeout))
                 {
                     set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 }

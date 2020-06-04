@@ -424,6 +424,8 @@ extern "C"
         uint8_t                         multipleCount;//This is the exponent value specifying the number of sectors used in a read/write multiple command transfer. All other commands should leave this at zero. This ONLY matters on read/write multiple commands, if this is nonzero on any other command, it will fail. Only bits 0:2 are valid (SAT limitation)
         bool                            forceCheckConditionBit;//Set this to force setting the check condition bit on a command. This is here because by default,only non-data gets this bit due to some weird chipsets. This is an override that can be used in certain commands.
         uint8_t                         forceCDBSize;//only set this if you want to force a specific SAT passthrough CDB size (12B, 16B, or 32B). Bad parameter may be returned if setting registers in a command that cannot be set in the specified SAT CDB
+        bool                            fwdlFirstSegment;//firmware download unique flag to help low-level OSs (Windows)
+        bool                            fwdlLastSegment;//firmware download unique flag to help low-level OSs (Windows)
     } ataPassthroughCommand;
 
     //added these packs to make sure this structure gets interpreted correctly

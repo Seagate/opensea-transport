@@ -310,7 +310,7 @@ int fill_Drive_Info_Data(tDevice *device)
     return status;
 }
 
-int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber, bool existingImage)
+int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber, bool existingImage, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds)
 {
     int ret = UNKNOWN;
 #ifdef _DEBUG
@@ -345,7 +345,7 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
         //ret = ata_Download_Microcode(device, ataDLMode, xferLen / LEGACY_DRIVE_SEC_SIZE, offset / LEGACY_DRIVE_SEC_SIZE, useDMA, ptrData, xferLen);
         //Switching to this new function since it will automatically try DMA mode if supported by the drive.
         //If the controller or driver don't like issuing DMA mode, this will detect it and retry the command with PIO mode.
-        ret = send_ATA_Download_Microcode_Cmd(device, ataDLMode, xferLen / LEGACY_DRIVE_SEC_SIZE, offset / LEGACY_DRIVE_SEC_SIZE, ptrData, xferLen);
+        ret = send_ATA_Download_Microcode_Cmd(device, ataDLMode, xferLen / LEGACY_DRIVE_SEC_SIZE, offset / LEGACY_DRIVE_SEC_SIZE, ptrData, xferLen, firstSegment, lastSegment, timeoutSeconds);
     }
         break;
     case NVME_DRIVE:
@@ -361,17 +361,17 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
                 if (device->drive_info.IdentifyData.nvme.ctrl.frmw & BIT4)
                 {
                     //this activate action can be used for replacing or activating existing images if the controller supports it.
-                    ret = nvme_Firmware_Commit(device, NVME_CA_ACTIVITE_IMMEDIATE, slotNumber);
+                    ret = nvme_Firmware_Commit(device, NVME_CA_ACTIVITE_IMMEDIATE, slotNumber, timeoutSeconds);
                 }
                 else
                 {
                     if (existingImage)
                     {
-                        ret = nvme_Firmware_Commit(device, NVME_CA_ACTIVITE_ON_RST, slotNumber);
+                        ret = nvme_Firmware_Commit(device, NVME_CA_ACTIVITE_ON_RST, slotNumber, timeoutSeconds);
                     }
                     else
                     {
-                        ret = nvme_Firmware_Commit(device, NVME_CA_REPLACE_ACTIVITE_ON_RST, slotNumber);
+                        ret = nvme_Firmware_Commit(device, NVME_CA_REPLACE_ACTIVITE_ON_RST, slotNumber, timeoutSeconds);
                     }
                     if (ret == SUCCESS)
                     {
@@ -414,7 +414,7 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
             }
             break;
         case DL_FW_DEFERRED:
-            ret = nvme_Firmware_Image_Dl(device, offset, xferLen, ptrData);
+            ret = nvme_Firmware_Image_Dl(device, offset, xferLen, ptrData, firstSegment, lastSegment, timeoutSeconds);
             break;
         case DL_FW_FULL:
         case DL_FW_TEMP:
@@ -454,7 +454,7 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
         default:
             return BAD_PARAMETER;
         }
-        ret = scsi_Write_Buffer(device, scsiDLMode, 0, slotNumber, offset, xferLen, ptrData);
+        ret = scsi_Write_Buffer(device, scsiDLMode, 0, slotNumber, offset, xferLen, ptrData, firstSegment, lastSegment, timeoutSeconds);
     }
         break;
     default:
@@ -467,9 +467,9 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
     return ret;
 }
 
-int firmware_Download_Activate(tDevice *device, uint8_t slotNumber, bool existingImage)
+int firmware_Download_Activate(tDevice *device, uint8_t slotNumber, bool existingImage, uint32_t timeoutSeconds)
 {
-    return firmware_Download_Command(device, DL_FW_ACTIVATE, 0, 0, NULL, slotNumber, existingImage);
+    return firmware_Download_Command(device, DL_FW_ACTIVATE, 0, 0, NULL, slotNumber, existingImage, false, false, timeoutSeconds);
 }
 
 int security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)

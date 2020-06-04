@@ -929,6 +929,8 @@ extern "C"
         uint32_t                dataSize;//size of data being sent or received in BYTES
         uint32_t                timeout; //in seconds 
         completionQueueEntry    commandCompletionData;
+        bool                    fwdlFirstSegment; //fwdl unique flag to help low-level OS code
+        bool                    fwdlLastSegment; //fwdl unique flag to help low-level OS code
     } nvmeCmdCtx;
 
     //Smart attribute IDs

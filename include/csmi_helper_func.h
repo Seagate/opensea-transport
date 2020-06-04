@@ -21,280 +21,53 @@
 #include "csmisas.h"
 #include "scsi_helper.h"
 #include "csmi_helper.h"
+#include "sata_types.h"
 
 #if defined (__cplusplus)
 extern "C"
 {
 #endif
 
-    //-----------------------------------------------------------------------------
-    //
-    //  close_CSMI_Device()
-    //
-    //! \brief   Description:  Given a device, free the memory allocated from get_CSMI_Device and set an invalid handle value.
-    //
-    //  Entry:
-    //!   \param[in] device = device stuct that holds device information.
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int close_CSMI_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API int csmi_Get_Driver_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_DRIVER_INFO_BUFFER driverInfoBuffer, eVerbosityLevels verbosity);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  get_CSMI_Phy_Info(tDevice *device, PCSMI_SAS_PHY_INFO_BUFFER PhyInfo)
-    //
-    //! \brief   Description:  Issue the CSMI IOCTL to get the phy information
-    //
-    //  Entry:
-    //!   \param[in] device = device stuct that holds device information.
-    //!   \param[out] PhyInfo = pointer to phy info buffer structure.
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_CSMI_Phy_Info(tDevice *device, PCSMI_SAS_PHY_INFO_BUFFER PhyInfo);
-    
-    //-----------------------------------------------------------------------------
-    //
-    //  get_CSMI_Controller_Info(tDevice *device, PCSMI_SAS_CNTLR_CONFIG controllerInfo)
-    //
-    //! \brief   Description:  Issue the CSMI IOCTL to get the controller information
-    //
-    //  Entry:
-    //!   \param[in] device = device stuct that holds device information.
-    //!   \param[out] controllerInfo = pointer to controler config buffer structure.
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_CSMI_Controller_Info(tDevice *device, PCSMI_SAS_CNTLR_CONFIG controllerInfo);
+    OPENSEA_TRANSPORT_API int csmi_Get_Controller_Configuration(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_CONFIG_BUFFER ctrlConfigBuffer, eVerbosityLevels verbosity);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  get_CSMI_Driver_Info(tDevice *device, PCSMI_SAS_DRIVER_INFO driverInfo)
-    //
-    //! \brief   Description:  Issue the CSMI IOCTL to get the driver information
-    //
-    //  Entry:
-    //!   \param[in] device = device stuct that holds device information.
-    //!   \param[out] driverInfo = pointer to driver config buffer structure.
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_CSMI_Driver_Info(tDevice *device, PCSMI_SAS_DRIVER_INFO driverInfo);
+    OPENSEA_TRANSPORT_API int csmi_Get_Controller_Status(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_STATUS_BUFFER ctrlStatusBuffer, eVerbosityLevels verbosity);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  get_CSMI_SATA_Signature(tDevice *device, PCSMI_SAS_SATA_SIGNATURE signature)
-    //
-    //! \brief   Description:  Issue the CSMI IOCTL to get the SATA signature. NOTE: This does not seem to return the correct signature, but a dummy value - TJE
-    //
-    //  Entry:
-    //!   \param[in] device = device stuct that holds device information.
-    //!   \param[out] signature = pointer to sata signature buffer structure.
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_CSMI_SATA_Signature(tDevice *device, PCSMI_SAS_SATA_SIGNATURE signature);
+    OPENSEA_TRANSPORT_API int csmi_Controller_Firmware_Download(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER firmwareBuffer, uint32_t firmwareBufferTotalLength, uint32_t downloadFlags, eVerbosityLevels verbosity, uint32_t timeoutSeconds);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  get_CSMI_SCSI_Address(tDevice *device, ptrCSMISCSIAddress scsiAddress)
-    //
-    //! \brief   Description:  Issue the CSMI IOCTL to get the SCSI Address
-    //
-    //  Entry:
-    //!   \param[in] device = device stuct that holds device information.
-    //!   \param[out] scsiAddress = pointer to scsi address buffer structure.
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_CSMI_SCSI_Address(tDevice *device, ptrCSMISCSIAddress scsiAddress);
+    OPENSEA_TRANSPORT_API int csmi_Get_RAID_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_INFO_BUFFER raidInfoBuffer, eVerbosityLevels verbosity);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  build_CSMI_Passthrough_CDB(uint8_t cdb[16], ataPassthroughCommand * ataPtCmd)
-    //
-    //! \brief   Description:  build the vendor unique ATA passthrough CDB defined in the original CSMI spec for when STP is not supported...not used as no controllers/drivers seem to use it - TJE
-    //
-    //  Entry:
-    //!   \param[out] cdb = pointer to 16 byte long array to hold the built CDB
-    //!   \param[in] ataPtCmd = pointer to structure defining an ATA command
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int build_CSMI_Passthrough_CDB(uint8_t cdb[16], ataPassthroughCommand * ataPtCmd);
+    OPENSEA_TRANSPORT_API int csmi_Get_RAID_Config(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_CONFIG_BUFFER raidConfigBuffer, uint32_t raidConfigBufferTotalSize, uint32_t raidSetIndex, uint8_t dataType, eVerbosityLevels verbosity);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  send_Vendor_Unique_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
-    //
-    //! \brief   Description:  Send the CSMI vendor unique ATA passthrough CDB using SSP passthrough to a device. (NOT used since no supporting device has been found) - TJE
-    //
-    //  Entry:
-    //!   \param[in] scsiIoCtx - pointer to the scsiIoCtx structure defining a command to be sent
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_Vendor_Unique_ATA_Passthrough(ScsiIoCtx *scsiIoCtx);
+    OPENSEA_TRANSPORT_API int csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_PHY_INFO_BUFFER phyInfoBuffer, eVerbosityLevels verbosity);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  send_SSP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
-    //
-    //! \brief   Description:  Send a SCSI CDB using CSMI SSP passthrough IOCTL
-    //
-    //  Entry:
-    //!   \param[in] scsiIoCtx - pointer to the scsiIoCtx structure defining a command to be sent
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_SSP_Passthrough_Command(ScsiIoCtx *scsiIoCtx);
+    OPENSEA_TRANSPORT_API int csmi_Set_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_SET_PHY_INFO_BUFFER phyInfoBuffer, eVerbosityLevels verbosity);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  build_H2D_fis(FIS_REG_H2D *fis, ataTFRBlock *tfr)
-    //
-    //! \brief   Description:  Build a H2D FIS for CSMI STP passthrough to issue
-    //
-    //  Entry:
-    //!   \param[out] fis - pointer to a H2D fis structure to fill in
-    //!   \param[in] ataTFRBlock - pointer to ATA TFR Block structure describing a command to issue.
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void build_H2D_fis(FIS_REG_H2D *fis, ataTFRBlock *tfr);
+    OPENSEA_TRANSPORT_API int csmi_Get_Link_Errors(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_LINK_ERRORS_BUFFER linkErrorsBuffer, uint8_t phyIdentifier, bool resetCounts, eVerbosityLevels verbosity);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
-    //
-    //! \brief   Description:  Send a ATA command using CSMI STP passthrough IOCTL
-    //
-    //  Entry:
-    //!   \param[in] scsiIoCtx - pointer to the scsiIoCtx structure defining a command to be sent
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx);
+    OPENSEA_TRANSPORT_API int csmi_Get_SATA_Signature(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_SATA_SIGNATURE_BUFFER sataSignatureBuffer, uint8_t phyIdentifier, eVerbosityLevels verbosity);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  get_CSMI_Device(const char *filename, tDevice *device)
-    //
-    //! \brief   Description:  Open a handle to the specified CSMI device. handle should be formatted as \\.\SCSI<controller>:<port or scsi address>
-    //
-    //  Entry:
-    //!   \param[in] filename - string that is a device handle
-    //!   \param[out] device = pointer to device structure to fill in with everything to talk over CSMI to the specified handle
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_CSMI_Device(const char *filename, tDevice *device);
+    OPENSEA_TRANSPORT_API int csmi_Get_SCSI_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddressBuffer, uint8_t sasAddress[8], uint8_t lun[8], eVerbosityLevels verbosity);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
-    //
-    //! \brief   Description:  Get the number of available CSMI devices on the system
-    //
-    //  Entry:
-    //!   \param[out] numberOfDevices - pointer to uint32_t that will hold the number of CSMI devices on a system
-    //!   \param[in] flags = flags to filter scan (NOT USED)
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags);
+    OPENSEA_TRANSPORT_API int csmi_Get_Device_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER deviceAddressBuffer, uint8_t hostIndex, uint8_t path, uint8_t target, uint8_t lun, eVerbosityLevels verbosity);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  get_CSMI_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
-    //
-    //! \brief   Description:  Get the number of available CSMI devices on the system
-    //
-    //  Entry:
-    //!   \param[out] ptrToDeviceList = pointer to list of devices that has already been allocated based on the result of getting the device count
-    //!   \param[in] sizeInBytes - number of bytes in size of the allocated device list
-    //!   \param[in] ver = filled in version structure for version compatibility validation
-    //!   \param[in] flags = flags to filter scan (NOT USED)
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_CSMI_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags);
+    OPENSEA_TRANSPORT_API int csmi_Get_Connector_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CONNECTOR_INFO_BUFFER connectorInfoBuffer, eVerbosityLevels verbosity);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  send_CSMI_IO(ScsiIoCtx *scsiIoCtx)
-    //
-    //! \brief   Description:  send a command through a CSMI IOCTL
-    //
-    //  Entry:
-    //!   \param[in] scsiIoCtx - pointer to the scsiIoCtx structure defining a command to be sent
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int send_CSMI_IO(ScsiIoCtx *scsiIoCtx);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  print_CSMI_Device_Info(tDevice * device)
-    //
-    //! \brief   Description:  for a given device output information we read and are using about the CSMI device we are talking to (driver, phy, signature, etc information)
-    //
-    //  Entry:
-    //!   \param[in] device = pointer to CSMI device.
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void print_CSMI_Device_Info(tDevice * device);
+    //Function to check for CSMI IO support on non-RAID devices (from Windows mostly since this can get around Win passthrough restrictions in some cases)
+    //This requests driver info and controller config. Both IOCTLs must pass.
+    bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, eVerbosityLevels verbosity);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  print_FIS(uint8_t fis[20])
-    //
-    //! \brief   Description:  Print out a FIS for debugging purposes
-    //
-    //  Entry:
-    //!   \param[in] fis = pointer to 20 byte array describing a generic FIS
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void print_FIS(uint8_t fis[20]);
+#if defined (_WIN32)
+    //Windows only since Intel RST additions are Windows only enhancements
+    bool device_Supports_CSMI_With_RST(tDevice *device);
+#endif
+
+    OPENSEA_TRANSPORT_API int jbod_Setup_CSMI_Info(CSMI_HANDLE deviceHandle, tDevice *device, uint8_t controllerNumber, uint8_t hostController, uint8_t pathidBus, uint8_t targetID, uint8_t lun);
 
 #if defined (__cplusplus)
 }
 #endif
-#endif
+#endif //ENABLE_CSMI

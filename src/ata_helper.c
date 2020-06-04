@@ -463,13 +463,13 @@ int send_ATA_SCT_Data_Table(tDevice *device, uint16_t functionCode, uint16_t tab
     return ret;
 }
 
-int send_ATA_Download_Microcode_Cmd(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, uint8_t *pData, uint32_t dataLen)
+int send_ATA_Download_Microcode_Cmd(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, uint8_t *pData, uint32_t dataLen, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds)
 {
     int ret = NOT_SUPPORTED;
     bool dmaRetry = false;
     if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.downloadMicrocodeDMASupported)
     {
-        ret = ata_Download_Microcode(device, subCommand, blockCount, bufferOffset, true, pData, dataLen);
+        ret = ata_Download_Microcode(device, subCommand, blockCount, bufferOffset, true, pData, dataLen, firstSegment, lastSegment, timeoutSeconds);
         if (ret == SUCCESS)
         {
             return ret;
@@ -492,7 +492,7 @@ int send_ATA_Download_Microcode_Cmd(tDevice *device, eDownloadMicrocodeFeatures 
             }
         }
     }
-    ret = ata_Download_Microcode(device, subCommand, blockCount, bufferOffset, false, pData, dataLen);
+    ret = ata_Download_Microcode(device, subCommand, blockCount, bufferOffset, false, pData, dataLen, firstSegment, lastSegment, timeoutSeconds);
     if (dmaRetry && ret != SUCCESS)
     {
         //this means something else is wrong, and it's not the DMA mode, so we can turn it back on

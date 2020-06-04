@@ -601,12 +601,15 @@ extern "C"
     //!   \param bufferOffset -
     //!   \param parameterListLength - 
     //!   \param ptrData - pointer to the data buffer to send to the tDevice
+    //!   \param[in] firstSegment = Flag to help some low-level OSs know when the first segment of a firmware download is happening...specifically Windows
+    //!   \param[in] lastSegment = Flag to help some low-level OSs know when the last segment of a firmware download is happening...specifrically Windows
+    //!   \param[in] timeoutSeconds = set a timeout in seconds for the command. This can be useful if some FWDL commands take longer (code activation for example)
     //!   
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Write_Buffer(tDevice *device, eWriteBufferMode mode, uint8_t modeSpecific, uint8_t bufferID, uint32_t bufferOffset, uint32_t parameterListLength, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API int scsi_Write_Buffer(tDevice *device, eWriteBufferMode mode, uint8_t modeSpecific, uint8_t bufferID, uint32_t bufferOffset, uint32_t parameterListLength, uint8_t *ptrData, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //

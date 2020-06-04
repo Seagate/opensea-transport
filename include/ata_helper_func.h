@@ -527,12 +527,15 @@ extern "C"
     //!   \param[in] useDMA = use download Microcode DMA command (device must support this command or this will return an error)
     //!   \param[in] pData = pointer to the data buffer to send to the device
     //!   \param[in] dataLen = length of data to transfer
+    //!   \param[in] firstSegment = Flag to help some low-level OSs know when the first segment of a firmware download is happening...specifically Windows
+    //!   \param[in] lastSegment = Flag to help some low-level OSs know when the last segment of a firmware download is happening...specifrically Windows
+    //!   \param[in] timeoutSeconds = set a timeout in seconds for the command. This can be useful if some FWDL commands take longer (code activation for example)
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, bool useDMA, uint8_t *pData, uint32_t dataLen);
+    OPENSEA_TRANSPORT_API int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, bool useDMA, uint8_t *pData, uint32_t dataLen, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -2218,7 +2221,7 @@ extern "C"
     //They will automatically try DMA if it is supported, then retry with PIO mode if the Translator or Driver doesn't support issuing DMA mode commands.
     OPENSEA_TRANSPORT_API int send_ATA_Read_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint16_t featureRegister);
     OPENSEA_TRANSPORT_API int send_ATA_Write_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, bool forceRTFRs);
-    OPENSEA_TRANSPORT_API int send_ATA_Download_Microcode_Cmd(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, uint8_t *pData, uint32_t dataLen);
+    OPENSEA_TRANSPORT_API int send_ATA_Download_Microcode_Cmd(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, uint8_t *pData, uint32_t dataLen, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds);
     OPENSEA_TRANSPORT_API int send_ATA_Trusted_Send_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
     OPENSEA_TRANSPORT_API int send_ATA_Trusted_Receive_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
     OPENSEA_TRANSPORT_API int send_ATA_Read_Buffer_Cmd(tDevice *device, uint8_t *ptrData);

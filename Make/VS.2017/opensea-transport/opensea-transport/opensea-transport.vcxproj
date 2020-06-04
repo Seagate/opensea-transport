@@ -671,6 +671,7 @@
     <ClCompile Include="..\..\..\..\src\cmds.c" />
     <ClCompile Include="..\..\..\..\src\common_public.c" />
     <ClCompile Include="..\..\..\..\src\csmi_helper.c" />
+    <ClCompile Include="..\..\..\..\src\csmi_legacy_pt_cdb_helper.c" />
     <ClCompile Include="..\..\..\..\src\cypress_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\intel_rst_helper.c" />
     <ClCompile Include="..\..\..\..\src\jmicron_nvme_helper.c" />
@@ -680,6 +681,7 @@
     <ClCompile Include="..\..\..\..\src\of_nvme_helper.c" />
     <ClCompile Include="..\..\..\..\src\prolific_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\psp_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\sata_helper_func.c" />
     <ClCompile Include="..\..\..\..\src\sat_helper.c" />
     <ClCompile Include="..\..\..\..\src\scsi_cmds.c" />
     <ClCompile Include="..\..\..\..\src\scsi_helper.c" />
@@ -703,6 +705,24 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\src\sntl_helper.c" />
     <ClCompile Include="..\..\..\..\src\ti_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\uefi_helper.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\src\usb_hacks.c" />
     <ClCompile Include="..\..\..\..\src\uscsi_helper.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
@@ -805,6 +825,7 @@
     <ClInclude Include="..\..\..\..\include\csmisas.h" />
     <ClInclude Include="..\..\..\..\include\csmi_helper.h" />
     <ClInclude Include="..\..\..\..\include\csmi_helper_func.h" />
+    <ClInclude Include="..\..\..\..\include\csmi_legacy_pt_cdb_helper.h" />
     <ClInclude Include="..\..\..\..\include\cypress_legacy_helper.h" />
     <ClInclude Include="..\..\..\..\include\intel_rst_defs.h" />
     <ClInclude Include="..\..\..\..\include\intel_rst_helper.h" />
@@ -818,6 +839,8 @@
     <ClInclude Include="..\..\..\..\include\platform_helper.h" />
     <ClInclude Include="..\..\..\..\include\prolific_legacy_helper.h" />
     <ClInclude Include="..\..\..\..\include\psp_legacy_helper.h" />
+    <ClInclude Include="..\..\..\..\include\sata_helper_func.h" />
+    <ClInclude Include="..\..\..\..\include\sata_types.h" />
     <ClInclude Include="..\..\..\..\include\sat_helper.h" />
     <ClInclude Include="..\..\..\..\include\sat_helper_func.h" />
     <ClInclude Include="..\..\..\..\include\scsi_helper.h" />

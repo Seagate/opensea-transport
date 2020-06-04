@@ -5372,7 +5372,7 @@ int sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoC
             )
         {
             //send in 1 command, followed by activate. TODO: ifdef for sending in chunks? (might be needed in case system doesn't allow a transfer of that size)
-            ret = nvme_Firmware_Image_Dl(device, bufferOffset, parameterListLength, scsiIoCtx->pdata);
+            ret = nvme_Firmware_Image_Dl(device, bufferOffset, parameterListLength, scsiIoCtx->pdata, scsiIoCtx->fwdlFirstSegment, scsiIoCtx->fwdlLastSegment, scsiIoCtx->timeout);
             if (ret != SUCCESS)
             {
                 set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
@@ -5384,7 +5384,7 @@ int sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoC
             {
                 commitAction = NVME_CA_ACTIVITE_IMMEDIATE;
             }
-            ret = nvme_Firmware_Commit(device, commitAction, bufferID);//todo: need to catch any errors
+            ret = nvme_Firmware_Commit(device, commitAction, bufferID, scsiIoCtx->timeout);//todo: need to catch any errors
             if (ret != SUCCESS)
             {
                 set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
@@ -5471,7 +5471,7 @@ int sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoC
                 }
                 if ((bufferOffset % granularity) == 0 && (parameterListLength % granularity) == 0)//check length and offset for the same granularity requirements!
                 {
-                    ret = nvme_Firmware_Image_Dl(device, bufferOffset, parameterListLength, scsiIoCtx->pdata);
+                    ret = nvme_Firmware_Image_Dl(device, bufferOffset, parameterListLength, scsiIoCtx->pdata, scsiIoCtx->fwdlFirstSegment, scsiIoCtx->fwdlLastSegment, scsiIoCtx->timeout);
                     if (ret != SUCCESS)
                     {
                         set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
@@ -5507,7 +5507,7 @@ int sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoC
                 {
                     commitAction = NVME_CA_ACTIVITE_IMMEDIATE;
                 }
-                ret = nvme_Firmware_Commit(device, commitAction, bufferID);
+                ret = nvme_Firmware_Commit(device, commitAction, bufferID, scsiIoCtx->timeout);
                 if (ret != SUCCESS)
                 {
                     set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
@@ -5560,6 +5560,7 @@ int sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoC
             }
         break;
     case 0x07://Download code and activate on final segment...we cannot support this without some other way of notifying us that it's the final segment. Can reinvestigate it later!
+        //TODO: Implement this method since scsiIoCtx now has flags for first and last segments.
     default://unknown or unsupported mode
         fieldPointer = 1;
         bitPointer = 4;

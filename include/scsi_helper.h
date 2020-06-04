@@ -278,9 +278,10 @@ extern "C"
         uint8_t         verbose;
         scsiStatus     returnStatus;
         ataPassthroughCommand *pAtaCmdOpts;
-        biDirectionalCommandBuffers biDirectionalBuffers;
         bool            isSoftReset;
         bool            isHardReset;
+        bool            fwdlFirstSegment;
+        bool            fwdlLastSegment;
     } ScsiIoCtx;
 
 

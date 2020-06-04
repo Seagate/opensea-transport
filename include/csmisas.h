@@ -89,6 +89,7 @@ Revision History:
                        Reassigned the value of CSMI_SAS_CNTLR_RAID_CFG_SUPPORT
                        to avoid a conflict.
    025 TJE   11/16/16  Added CSMI_SAS_LINK_RATE_6_0_GBPS definitions.
+   026 TJE    4/27/20  Added 12GB/s definitions
 
 **************************************************************************/
 
@@ -746,15 +747,16 @@ typedef struct _IOCTL_HEADER {
 // Negotiated and hardware link rates
 // (bNegotiatedLinkRate, bMinimumLinkRate, bMaximumLinkRate)
 
-#define CSMI_SAS_LINK_RATE_UNKNOWN  0x00
-#define CSMI_SAS_PHY_DISABLED       0x01
-#define CSMI_SAS_LINK_RATE_FAILED   0x02
-#define CSMI_SAS_SATA_SPINUP_HOLD   0x03
-#define CSMI_SAS_SATA_PORT_SELECTOR 0x04
-#define CSMI_SAS_LINK_RATE_1_5_GBPS 0x08
-#define CSMI_SAS_LINK_RATE_3_0_GBPS 0x09
-#define CSMI_SAS_LINK_RATE_6_0_GBPS 0x0A
-#define CSMI_SAS_LINK_VIRTUAL       0x10
+#define CSMI_SAS_LINK_RATE_UNKNOWN      0x00
+#define CSMI_SAS_PHY_DISABLED           0x01
+#define CSMI_SAS_LINK_RATE_FAILED       0x02
+#define CSMI_SAS_SATA_SPINUP_HOLD       0x03
+#define CSMI_SAS_SATA_PORT_SELECTOR     0x04
+#define CSMI_SAS_LINK_RATE_1_5_GBPS     0x08
+#define CSMI_SAS_LINK_RATE_3_0_GBPS     0x09
+#define CSMI_SAS_LINK_RATE_6_0_GBPS     0x0A
+#define CSMI_SAS_LINK_RATE_12_0_GBPS    0x0B
+#define CSMI_SAS_LINK_VIRTUAL           0x10
 
 // Discover state
 // (bAutoDiscover)
@@ -776,6 +778,8 @@ typedef struct _IOCTL_HEADER {
 #define CSMI_SAS_PROGRAMMED_LINK_RATE_UNCHANGED 0x00
 #define CSMI_SAS_PROGRAMMED_LINK_RATE_1_5_GBPS  0x08
 #define CSMI_SAS_PROGRAMMED_LINK_RATE_3_0_GBPS  0x09
+#define CSMI_SAS_PROGRAMMED_LINK_RATE_6_0_GBPS  0x0A
+#define CSMI_SAS_PROGRAMMED_LINK_RATE_12_0_GBPS 0x0B
 
 // Link rate
 // (bNegotiatedLinkRate in CSMI_SAS_SET_PHY_INFO)
@@ -814,6 +818,7 @@ typedef struct _IOCTL_HEADER {
 #define CSMI_SAS_LINK_RATE_1_5_GBPS    0x08
 #define CSMI_SAS_LINK_RATE_3_0_GBPS    0x09
 #define CSMI_SAS_LINK_RATE_6_0_GBPS    0x0A
+#define CSMI_SAS_LINK_RATE_12_0_GBPS   0x0B
 
 // Connection status
 // (bConnectionStatus)

@@ -640,6 +640,8 @@
     <ClInclude Include="..\..\..\..\include\csmi_helper.h" />
     <ClInclude Include="..\..\..\..\include\csmi_helper_func.h" />
     <ClInclude Include="..\..\..\..\include\cypress_legacy_helper.h" />
+    <ClInclude Include="..\..\..\..\include\intel_rst_defs.h" />
+    <ClInclude Include="..\..\..\..\include\intel_rst_helper.h" />
     <ClInclude Include="..\..\..\..\include\jmicron_nvme_helper.h" />
     <ClInclude Include="..\..\..\..\include\nec_legacy_helper.h" />
     <ClInclude Include="..\..\..\..\include\nvme_helper.h" />
@@ -650,6 +652,8 @@
     <ClInclude Include="..\..\..\..\include\platform_helper.h" />
     <ClInclude Include="..\..\..\..\include\prolific_legacy_helper.h" />
     <ClInclude Include="..\..\..\..\include\psp_legacy_helper.h" />
+    <ClInclude Include="..\..\..\..\include\sata_helper_func.h" />
+    <ClInclude Include="..\..\..\..\include\sata_types.h" />
     <ClInclude Include="..\..\..\..\include\sat_helper.h" />
     <ClInclude Include="..\..\..\..\include\sat_helper_func.h" />
     <ClInclude Include="..\..\..\..\include\scsi_helper.h" />
@@ -792,6 +796,7 @@
     <ClCompile Include="..\..\..\..\src\common_public.c" />
     <ClCompile Include="..\..\..\..\src\csmi_helper.c" />
     <ClCompile Include="..\..\..\..\src\cypress_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\intel_rst_helper.c" />
     <ClCompile Include="..\..\..\..\src\jmicron_nvme_helper.c" />
     <ClCompile Include="..\..\..\..\src\nec_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\nvme_cmds.c" />
@@ -799,6 +804,7 @@
     <ClCompile Include="..\..\..\..\src\of_nvme_helper.c" />
     <ClCompile Include="..\..\..\..\src\prolific_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\psp_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\sata_helper_func.c" />
     <ClCompile Include="..\..\..\..\src\sat_helper.c" />
     <ClCompile Include="..\..\..\..\src\scsi_cmds.c" />
     <ClCompile Include="..\..\..\..\src\scsi_helper.c" />

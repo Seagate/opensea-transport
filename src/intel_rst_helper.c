@@ -49,35 +49,20 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                 }
             }
             raidFirmwareRequest->Header.ControlCode = IOCTL_RAID_FIRMWARE;
-            raidFirmwareRequest->Header.Length = allocationSize - sizeof(SRB_IO_CONTROL);
+            raidFirmwareRequest->Header.Length = (ULONG)(allocationSize - sizeof(SRB_IO_CONTROL));
             //Next fill in IOCTL_RAID_FIRMWARE_BUFFER, then work down from there and memcpy the input data to this function since it will have the specific download function data in it
             raidFirmwareRequest->Request.Version = RAID_FIRMWARE_REQUEST_BLOCK_VERSION;
             raidFirmwareRequest->Request.TargetId = RESERVED;
             raidFirmwareRequest->Request.Lun = RESERVED;
-            if (device->drive_info.interface_type != RAID_INTERFACE)
+            if (device->os_info.csmiDeviceData && device->os_info.csmiDeviceData->csmiDeviceInfoValid)
+            {
+                raidFirmwareRequest->Request.PathId = device->os_info.csmiDeviceData->portIdentifier;
+            }
+            else
             {
                 //use Windows pathId
                 raidFirmwareRequest->Request.PathId = device->os_info.scsi_addr.PathId;
                 //TODO: may need to add in remaining scsi address in the future, but for now these other fields are reserved
-            }
-            else
-            {
-                //messy part since we now need to use CSMI info
-                if (device->raid_device)
-                {
-#if defined (ENABLE_CSMI)
-                    ptrCSMIDevice csmiDevice = (ptrCSMIDevice)device->raid_device;
-                    raidFirmwareRequest->Request.PathId = csmiDevice->portIdentifier;
-#else
-                    safe_Free_aligned(raidFirmwareRequest);
-                    return BAD_PARAMETER;
-#endif
-                }
-                else
-                {
-                    safe_Free_aligned(raidFirmwareRequest);
-                    return BAD_PARAMETER;
-                }
             }
             //setup the firmware request
             raidFirmwareRequest->Request.FwRequestBlock.Version = INTEL_FIRMWARE_REQUEST_BLOCK_STRUCTURE_VERSION;
@@ -87,7 +72,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
             if (ptrDataRequest)
             {
                 //NOTE: The offset should be a multiple of sizeof(void), which reading the structure types indicated that this should be the case for 64bit and 32bit builds. Anything else will need additional byte padding.
-                raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset = sizeof(SRB_IO_CONTROL) + sizeof(RAID_FIRMWARE_REQUEST_BLOCK) + sizeof(INTEL_FIRMWARE_REQUEST_BLOCK);
+                raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset = sizeof(SRB_IO_CONTROL) + sizeof(RAID_FIRMWARE_REQUEST_BLOCK);
                 raidFirmwareRequest->Request.FwRequestBlock.DataBufferLength = dataRequestLength;
                 memcpy(raidFirmwareRequest + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, ptrDataRequest, dataRequestLength);
             }
@@ -156,7 +141,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
 bool supports_Intel_Firmware_Download(tDevice *device)
 {
     bool supported = false;
-    uint32_t allocationSize = sizeof(INTEL_STORAGE_FIRMWARE_INFO_V2) + (sizeof(INTEL_STORAGE_FIRMWARE_SLOT_INFO_V2) * 7);
+    uint32_t allocationSize = sizeof(INTEL_STORAGE_FIRMWARE_INFO_V2) + (sizeof(INTEL_STORAGE_FIRMWARE_SLOT_INFO_V2) * 7);//max of 7 slots
     PINTEL_STORAGE_FIRMWARE_INFO_V2 firmwareInfo = (PINTEL_STORAGE_FIRMWARE_INFO_V2)calloc(allocationSize, sizeof(uint8_t));//alignment not needed since this is passed to another function where it will be copied as needed
     if (firmwareInfo)
     {
@@ -174,6 +159,13 @@ bool supports_Intel_Firmware_Download(tDevice *device)
         {
             supported = firmwareInfo->UpgradeSupport;
             //TODO: Need to store other things like alignment requirements similar to what is done in Windows 10 API today!
+            if (device->os_info.csmiDeviceData)
+            {
+                device->os_info.csmiDeviceData->intelRSTSupport.intelRSTSupported = true;
+                device->os_info.csmiDeviceData->intelRSTSupport.fwdlIOSupported = firmwareInfo->UpgradeSupport;
+                device->os_info.csmiDeviceData->intelRSTSupport.maxXferSize = firmwareInfo->ImagePayloadMaxSize;
+                device->os_info.csmiDeviceData->intelRSTSupport.payloadAlignment = firmwareInfo->ImagePayloadAlignment;
+            }
         }
         safe_Free(firmwareInfo);
     }
@@ -335,11 +327,11 @@ int send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx)
             uint32_t imageDataLength = scsiIoCtx->dataLength;
             uint32_t imageOffset = 0;
             //send download command
-            if (scsiIoCtx->device->os_info.fwdlIOsupport.isFirstSegmentOfDownload)
+            if (scsiIoCtx->fwdlFirstSegment)
             {
                 flags |= INTEL_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT;
             }
-            if (scsiIoCtx->device->os_info.fwdlIOsupport.isLastSegmentOfDownload)
+            if (scsiIoCtx->fwdlLastSegment)
             {
                 flags |= INTEL_FIRMWARE_REQUEST_FLAG_LAST_SEGMENT;
             }
@@ -399,37 +391,22 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
                 }
             }
             nvmPassthroughCommand->Header.ControlCode = IOCTL_NVME_PASSTHROUGH;
-            nvmPassthroughCommand->Header.Length = allocationSize - sizeof(SRB_IO_CONTROL);
+            nvmPassthroughCommand->Header.Length = (ULONG)(allocationSize - sizeof(SRB_IO_CONTROL));
             //srb_io_control has been setup, now to main struct fields (minus data which is set when configuring the NVMe command)
             nvmPassthroughCommand->Version = NVME_PASS_THROUGH_VERSION;
             //setup the SCSI address, pathID is only part needed at time of writing, the rest is currently reserved, so leave as zeros
             //pathId must be from the SCSI address in non-raid mode, or CSMI port number, so this is where it begins to get a little messy
             nvmPassthroughCommand->TargetId = RESERVED;
             nvmPassthroughCommand->Lun = RESERVED;
-            if (nvmeIoCtx->device->drive_info.interface_type != RAID_INTERFACE)
+            if (nvmeIoCtx->device->os_info.csmiDeviceData && nvmeIoCtx->device->os_info.csmiDeviceData->csmiDeviceInfoValid)
+            {
+                nvmPassthroughCommand->PathId = nvmeIoCtx->device->os_info.csmiDeviceData->portIdentifier;
+            }
+            else
             {
                 //use Windows pathId
                 nvmPassthroughCommand->PathId = nvmeIoCtx->device->os_info.scsi_addr.PathId;
                 //TODO: may need to add in remaining scsi address in the future, but for now these other fields are reserved
-            }
-            else
-            {
-                //messy part since we now need to use CSMI info
-                if (nvmeIoCtx->device->raid_device)
-                {
-#if defined (ENABLE_CSMI)
-                    ptrCSMIDevice csmiDevice = (ptrCSMIDevice)nvmeIoCtx->device->raid_device;
-                    nvmPassthroughCommand->PathId = csmiDevice->portIdentifier;
-#else
-                    safe_Free_aligned(nvmPassthroughCommand);
-                    return BAD_PARAMETER;
-#endif
-                }
-                else
-                {
-                    safe_Free_aligned(nvmPassthroughCommand);
-                    return BAD_PARAMETER;
-                }
             }
             //time to start setting up the command!
             nvmPassthroughCommand->Parameters.Command.DWord0 = nvmeIoCtx->cmd.dwords.cdw0;
@@ -562,11 +539,11 @@ int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx)
             //check if sending download or if sending activate
             if (nvmeIoCtx->cmd.adminCmd.opcode == NVME_ADMIN_CMD_DOWNLOAD_FW)
             {
-                if (nvmeIoCtx->device->os_info.fwdlIOsupport.isFirstSegmentOfDownload)
+                if (nvmeIoCtx->fwdlFirstSegment)
                 {
                     flags |= INTEL_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT;
                 }
-                if (nvmeIoCtx->device->os_info.fwdlIOsupport.isLastSegmentOfDownload)
+                if (nvmeIoCtx->fwdlLastSegment)
                 {
                     flags |= INTEL_FIRMWARE_REQUEST_FLAG_LAST_SEGMENT;
                 }

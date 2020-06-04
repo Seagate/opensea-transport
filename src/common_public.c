@@ -13,10 +13,6 @@
 
 #include "platform_helper.h"
 
-#if defined (ENABLE_CSMI)
-#include "csmi_helper_func.h"
-#endif
-
 int load_Bin_Buf( char *filename, void *myBuf, size_t bufSize )
 {
     //int ret = UNKNOWN;
@@ -181,10 +177,6 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
     uint32_t csmiDeviceCount = 0;
     bool csmiDeviceCountValid = false;
 #endif
-#if defined (ENABLE_OFNVME)
-    uint32_t ofNDeviceCount = 0;
-    bool ofNDeviceCountValid = false;
-#endif
     uint32_t getCountFlags = 0;
     if (flags & AGRESSIVE_SCAN)
     {
@@ -277,16 +269,16 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                         break;
                     }
                 }
-#if defined (ENABLE_CSMI)
-                if (!(flags & IGNORE_CSMI))
-                {
-                    int csmiRet = get_CSMI_Device_Count(&csmiDeviceCount, flags);//get number of CSMI devices that are in the device list so we know when to start looking for duplicates in the csmi devices
-                    if (csmiRet == SUCCESS && csmiDeviceCount > 0)
-                    {
-                        csmiDeviceCountValid = true;
-                    }
-                }
-#endif
+//#if defined (ENABLE_CSMI)
+//                if (!(flags & IGNORE_CSMI))
+//                {
+//                    int csmiRet = get_CSMI_Device_Count(&csmiDeviceCount, flags);//get number of CSMI devices that are in the device list so we know when to start looking for duplicates in the csmi devices
+//                    if (csmiRet == SUCCESS && csmiDeviceCount > 0)
+//                    {
+//                        csmiDeviceCountValid = true;
+//                    }
+//                }
+//#endif
                 for (uint32_t devIter = 0; devIter < deviceCount; ++devIter)
                 {
                     if (ret == WARN_NOT_ALL_DEVICES_ENUMERATED && UNKNOWN_DRIVE == deviceList[devIter].drive_info.drive_type)
@@ -3453,7 +3445,6 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                 device->drive_info.passThroughHacks.turfValue = 33;
                 device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in the case an ATA passthrough command is attempted, it won't try this opcode since it can cause performance problems or crash the bridge
-                //device->drive_info.drive_type = NVME_DRIVE; //Uncomment this line when it is possible to issue NVMe passthrough commands behind ASMedia chips.
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
