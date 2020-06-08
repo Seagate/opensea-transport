@@ -24,8 +24,6 @@
 #include <Protocol/DevicePath.h> //for device path union/structures
 #endif
 
-#include "csmi_helper.h" //because the device structure holds some csmi support structure for when we can issue csmi passthrough commands.
-
 #if defined (__cplusplus)
 #define __STDC_FORMAT_MACROS
 extern "C"
@@ -920,6 +918,9 @@ extern "C"
         WIN_IOCTL_MAX_METHOD
     }eWindowsIOCTLMethod;
 #endif
+
+    //forward declare csmi info to avoid including csmi_helper.h
+    typedef struct _csmiDeviceInfo csmiDeviceInfo,*ptrCsmiDeviceInfo;
 
     // \struct typedef struct _OSDriveInfo
     typedef struct _OSDriveInfo
