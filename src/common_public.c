@@ -413,7 +413,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                         {
                             perror("Error flushing data!\n");
                             fclose(outputInfo->outputFilePtr);
-                            return ERROR_WRITING_FILE;
+                            return;// ERROR_WRITING_FILE;
                         }
                         fclose(outputInfo->outputFilePtr);
                     }
