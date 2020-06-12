@@ -227,7 +227,7 @@ typedef struct _csmiIOin
 typedef struct _csmiIOout
 {
     uint32_t bytesReturned;//Windows only and returned because it may be needed to fully process the result. Will be 0 for other OSs
-    int sysIoctlReturn;//pointer to save return from calling DeviceIoControl or Ioctl functions.
+    int sysIoctlReturn;//to save return from calling DeviceIoControl or Ioctl functions.
     uint32_t *lastError;//pointer to store last error in. Optional
     seatimer_t *ioctlTimer;//pointer to a timer to start and stop if the IOCTL needs timing.
 }csmiIOout, *ptrCsmiIOout;
@@ -299,6 +299,7 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
     {
         *csmiIoOutParams->lastError = GetLastError();
     }
+    print_Windows_Error_To_Screen(GetLastError());
 #else //Linux or other 'nix systems
     //finish OS specific IOHEADER setup
     ioctlHeader->IOControllerNumber = csmiIoInParams->controllerNumber;
@@ -322,15 +323,27 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
         print_Command_Time(get_Nano_Seconds(*timer));
         printf("\n");
     }
-    if (csmiIoOutParams->sysIoctlReturn)
-    {
-        csmiIoOutParams->sysIoctlReturn = localIoctlReturn;
-    }
+    csmiIoOutParams->sysIoctlReturn = localIoctlReturn;
     if (localTimer)
     {
         safe_Free(timer);
     }
     return ret;
+}
+
+//More for debugging than anything else
+static void print_CSMI_Driver_Info(PCSMI_SAS_DRIVER_INFO driverInfo)
+{
+    if (driverInfo)
+    {
+        printf("\n====CSMI Driver Info====\n");
+        printf("\tDriver Name: %s\n", driverInfo->szName);
+        printf("\tDescription: %s\n", driverInfo->szDescription);
+        printf("\tDriver Version: %" PRIu16 ".%" PRIu16 ".%" PRIu16 ".%" PRIu16 "\n", driverInfo->usMajorRevision, driverInfo->usMinorRevision, driverInfo->usBuildRevision, driverInfo->usReleaseRevision);
+        printf("\tCSMI Version: %" PRIu16 ".%" PRIu16 "\n", driverInfo->usCSMIMajorRevision, driverInfo->usCSMIMinorRevision);
+        printf("\n");
+    }
+    return;
 }
 
 int csmi_Get_Driver_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_DRIVER_INFO_BUFFER driverInfoBuffer, eVerbosityLevels verbosity)
@@ -364,6 +377,10 @@ int csmi_Get_Driver_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PC
     if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(driverInfoBuffer->IoctlHeader.ReturnCode);
+        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
+        {
+            print_CSMI_Driver_Info(&driverInfoBuffer->Information);
+        }
     }
     else
     {
@@ -376,6 +393,81 @@ int csmi_Get_Driver_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PC
     }
 
     return ret;
+}
+
+static void print_CSMI_Controller_Configuration(PCSMI_SAS_CNTLR_CONFIG config)
+{
+    if (config)
+    {
+        printf("\n====CSMI Controller Configuration====\n");
+        printf("\tBase IO Address: %08" PRIX32 "h\n", config->uBaseIoAddress);
+        printf("\tBase Memory Address: %08" PRIX32 "%08" PRIX32 "h\n", config->BaseMemoryAddress.uHighPart, config->BaseMemoryAddress.uLowPart);
+        printf("\tBoard ID: %08" PRIX32 "h\n", config->uBoardID);
+        printf("\t\tVendor ID: %04" PRIX16 "h\n", M_DoubleWord0(config->uBoardID));
+        printf("\t\tSubsystem ID: %04" PRIX16 "h\n", M_DoubleWord1(config->uBoardID));
+        printf("\tSlot Number: ");
+        if (SLOT_NUMBER_UNKNOWN == config->usSlotNumber)
+        {
+            printf("Unknown\n");
+        }
+        else
+        {
+            printf("%" PRIu16 "\n", config->usSlotNumber);
+        }
+        printf("\tController Class: ");
+        if (CSMI_SAS_CNTLR_CLASS_HBA == config->bControllerClass)
+        {
+            printf("HBA\n");
+        }
+        else
+        {
+            printf("Unknown - %" PRIu8 "\n", config->bControllerClass);
+        }
+        printf("\tIO Bus Type: ");
+        switch (config->bIoBusType)
+        {
+        case CSMI_SAS_BUS_TYPE_PCI:
+            printf("PCI\n");
+            break;
+        case CSMI_SAS_BUS_TYPE_PCMCIA:
+            printf("PCMCIA\n");
+            break;
+        default:
+            printf("Unknown - %" PRIu8 "\n", config->bIoBusType);
+            break;
+        }
+        printf("\tBus Address\n");
+        printf("\t\tBus Number: %" PRIu8 "\n", config->BusAddress.PciAddress.bBusNumber);
+        printf("\t\tDevice Number: %" PRIu8 "\n", config->BusAddress.PciAddress.bDeviceNumber);
+        printf("\t\tFunction Number: %" PRIu8 "\n", config->BusAddress.PciAddress.bFunctionNumber);
+        printf("\tSerial Number: %s\n", config->szSerialNumber);
+        printf("\tController Version: %" PRIu16 ".%" PRIu16 ".%" PRIu16 ".%" PRIu16 "\n", config->usMajorRevision, config->usMinorRevision, config->usBuildRevision, config->usReleaseRevision);
+        printf("\tBIOS Version: %" PRIu16 ".%" PRIu16 ".%" PRIu16 ".%" PRIu16 "\n", config->usBIOSMajorRevision, config->usBIOSMinorRevision, config->usBIOSBuildRevision, config->usBIOSReleaseRevision);
+        printf("\tController Flags (%08" PRIX32 "h):\n", config->uControllerFlags);
+        if (config->uControllerFlags & CSMI_SAS_CNTLR_SAS_HBA)
+        {
+            printf("SAS HBA\n");
+        }
+        if (config->uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID)
+        {
+            printf("SAS RAID\n");
+        }
+        if (config->uControllerFlags & CSMI_SAS_CNTLR_SATA_HBA)
+        {
+            printf("SATA HBA\n");
+        }
+        if (config->uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID)
+        {
+            printf("SATA RAID\n");
+        }
+        if (config->uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
+        {
+            printf("SMART Array\n");
+        }
+        printf("\tRedundant Controller Version: %" PRIu16 ".%" PRIu16 ".%" PRIu16 ".%" PRIu16 "\n", config->usRromMajorRevision, config->usRromMinorRevision, config->usRromBuildRevision, config->usRromReleaseRevision);
+        printf("\tRedundant BIOS Version: %" PRIu16 ".%" PRIu16 ".%" PRIu16 ".%" PRIu16 "\n", config->usRromBIOSMajorRevision, config->usRromBIOSMinorRevision, config->usRromBIOSBuildRevision, config->usRromBIOSReleaseRevision);
+        printf("\n");
+    }
 }
 
 int csmi_Get_Controller_Configuration(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_CONFIG_BUFFER ctrlConfigBuffer, eVerbosityLevels verbosity)
@@ -409,6 +501,10 @@ int csmi_Get_Controller_Configuration(CSMI_HANDLE deviceHandle, uint32_t control
     if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(ctrlConfigBuffer->IoctlHeader.ReturnCode);
+        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
+        {
+            print_CSMI_Controller_Configuration(&ctrlConfigBuffer->Configuration);
+        }
     }
     else
     {
@@ -421,6 +517,56 @@ int csmi_Get_Controller_Configuration(CSMI_HANDLE deviceHandle, uint32_t control
     }
 
     return ret;
+}
+
+static void print_CSMI_Controller_Status(PCSMI_SAS_CNTLR_STATUS status)
+{
+    if (status)
+    {
+        printf("\n====CSMI Controller Status====\n");
+        printf("\tStatus: ");
+        switch (status->uStatus)
+        {
+        case CSMI_SAS_CNTLR_STATUS_GOOD:
+            printf("Good\n");
+            break;
+        case CSMI_SAS_CNTLR_STATUS_FAILED:
+            printf("Failed\n");
+            break;
+        case CSMI_SAS_CNTLR_STATUS_OFFLINE:
+            printf("Offline\n");
+            break;
+        case CSMI_SAS_CNTLR_STATUS_POWEROFF:
+            printf("Powered Off\n");
+            break;
+        default:
+            printf("Unknown\n");
+            break;
+        }
+        if (status->uStatus)
+        {
+            printf("\tOffline Reason: ");
+            switch (status->uOfflineReason)
+            {
+            case CSMI_SAS_OFFLINE_REASON_NO_REASON:
+                printf("No Reason\n");
+                break;
+            case CSMI_SAS_OFFLINE_REASON_INITIALIZING:
+                printf("Initializing\n");
+                break;
+            case CSMI_SAS_OFFLINE_REASON_BACKSIDE_BUS_DEGRADED:
+                printf("Backside Bus Degraded\n");
+                break;
+            case CSMI_SAS_OFFLINE_REASON_BACKSIDE_BUS_FAILURE:
+                printf("Backside Bus Failure\n");
+                break;
+            default:
+                printf("Unknown\n");
+                break;
+            }
+        }
+    }
+    return;
 }
 
 int csmi_Get_Controller_Status(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_STATUS_BUFFER ctrlStatusBuffer, eVerbosityLevels verbosity)
@@ -454,6 +600,10 @@ int csmi_Get_Controller_Status(CSMI_HANDLE deviceHandle, uint32_t controllerNumb
     if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(ctrlStatusBuffer->IoctlHeader.ReturnCode);
+        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
+        {
+            print_CSMI_Controller_Status(&ctrlStatusBuffer->Status);
+        }
     }
     else
     {
@@ -518,6 +668,31 @@ int csmi_Controller_Firmware_Download(CSMI_HANDLE deviceHandle, uint32_t control
     return ret;
 }
 
+static void print_CSMI_RAID_Info(PCSMI_SAS_RAID_INFO raidInfo)
+{
+    if (raidInfo)
+    {
+        printf("\n====CSMI RAID Info====\n");
+        printf("\tNumber of RAID Sets: %" PRIu32 "\n", raidInfo->uNumRaidSets);
+        printf("\tMaximum # of drives per set: %" PRIu32 "\n", raidInfo->uMaxDrivesPerSet);
+        //Check if remaining bytes are zeros. This helps track differences between original CSMI spec and some drivers that added onto it.
+        if (!is_Empty(&raidInfo->uMaxRaidSets, 92))//92 is original reserved length from original documentation...can change to something else based on actual structure size if needed
+        {
+            printf("\tMaximum # of RAID Sets: %" PRIu32 "\n", raidInfo->uMaxRaidSets);
+            printf("\tMaximum # of RAID Types: %" PRIu8 "\n", raidInfo->bMaxRaidTypes);
+            printf("\tMinimum RAID Set Blocks: %" PRIu64 "\n", M_DWordsTo8ByteValue(raidInfo->ulMinRaidSetBlocks.uHighPart, raidInfo->ulMinRaidSetBlocks.uLowPart));
+            printf("\tMaximum RAID Set Blocks: %" PRIu64 "\n", M_DWordsTo8ByteValue(raidInfo->ulMaxRaidSetBlocks.uHighPart, raidInfo->ulMaxRaidSetBlocks.uLowPart));
+            printf("\tMaximum Physical Drives: %" PRIu32 "\n", raidInfo->uMaxPhysicalDrives);
+            printf("\tMaximum Extents: %" PRIu32 "\n", raidInfo->uMaxExtents);
+            printf("\tMaximum Modules: %" PRIu32 "\n", raidInfo->uMaxModules);
+            printf("\tMaximum Transformational Memory: %" PRIu32 "\n", raidInfo->uMaxTransformationMemory);
+            printf("\tChange Count: %" PRIu32 "\n", raidInfo->uChangeCount);
+            //Add another is_Empty here for 44 bytes if other things get added here.
+        }
+    }
+    return;
+}
+
 int csmi_Get_RAID_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_INFO_BUFFER raidInfoBuffer, eVerbosityLevels verbosity)
 {
     int ret = SUCCESS;
@@ -549,6 +724,10 @@ int csmi_Get_RAID_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSM
     if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(raidInfoBuffer->IoctlHeader.ReturnCode);
+        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
+        {
+            print_CSMI_RAID_Info(&raidInfoBuffer->Information);
+        }
     }
     else
     {
@@ -562,6 +741,234 @@ int csmi_Get_RAID_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSM
 
     return ret;
 }
+
+static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t configLength)
+{
+    if (config)
+    {
+        printf("\n====CSMI RAID Configuration====\n");
+        printf("\tRAID Set Index: %" PRIu32 "\n", config->uRaidSetIndex);
+        printf("\tCapacity (MB): %" PRIu32 "\n", config->uCapacity);
+        printf("\tStripe Size (KB): %" PRIu32 "\n", config->uStripeSize);
+        printf("\tRAID Type: ");
+        switch (config->bRaidType)
+        {
+        case CSMI_SAS_RAID_TYPE_NONE:
+            printf("None\n");
+            break;
+        case CSMI_SAS_RAID_TYPE_0:
+            printf("0\n");
+            break;
+        case CSMI_SAS_RAID_TYPE_1:
+            printf("1\n");
+            break;
+        case CSMI_SAS_RAID_TYPE_10:
+            printf("10\n");
+            break;
+        case CSMI_SAS_RAID_TYPE_5:
+            printf("5\n");
+            break;
+        case CSMI_SAS_RAID_TYPE_15:
+            printf("15\n");
+            break;
+        case CSMI_SAS_RAID_TYPE_6:
+            printf("6\n");
+            break;
+        case CSMI_SAS_RAID_TYPE_50:
+            printf("50\n");
+            break;
+        case CSMI_SAS_RAID_TYPE_VOLUME:
+            printf("Volume\n");
+            break;
+        case CSMI_SAS_RAID_TYPE_1E:
+            printf("1E\n");
+            break;
+        case CSMI_SAS_RAID_TYPE_OTHER:
+            printf("Other\n");
+            break;
+        default:
+            printf("Unknown\n");
+            break;
+        }
+        printf("\tStatus: ");
+        switch (config->bStatus)
+        {
+        case CSMI_SAS_RAID_SET_STATUS_OK:
+            printf("OK\n");
+            break;
+        case CSMI_SAS_RAID_SET_STATUS_DEGRADED:
+            printf("Degraded\n");
+            printf("\tFailed Drive Index: %" PRIu8 "\n", config->bInformation);
+            break;
+        case CSMI_SAS_RAID_SET_STATUS_REBUILDING:
+            printf("Rebuilding - %" PRIu8 "%%\n", config->bInformation);
+            break;
+        case CSMI_SAS_RAID_SET_STATUS_FAILED:
+            printf("Failed - %" PRIu8 "\n", config->bInformation);
+            break;
+        case CSMI_SAS_RAID_SET_STATUS_OFFLINE:
+            printf("Offline\n");
+            break;
+        case CSMI_SAS_RAID_SET_STATUS_TRANSFORMING:
+            printf("Transforming - %" PRIu8 "%%\n", config->bInformation);
+            break;
+        case CSMI_SAS_RAID_SET_STATUS_QUEUED_FOR_REBUILD:
+            printf("Queued for Rebuild\n");
+            break;
+        case CSMI_SAS_RAID_SET_STATUS_QUEUED_FOR_TRANSFORMATION:
+            printf("Queued for Transformation\n");
+            break;
+        default:
+            printf("Unknown\n");
+            break;
+        }
+        printf("\tDrive Count: ");
+        if (config->bDriveCount > 0xF0)
+        {
+            switch (config->bDriveCount)
+            {
+            case CSMI_SAS_RAID_DRIVE_COUNT_TOO_BIG:
+                printf("Too Big\n");
+                break;
+            case CSMI_SAS_RAID_DRIVE_COUNT_SUPRESSED:
+                printf("Supressed\n");
+                break;
+            default:
+                printf("Unknown reserved value - %" PRIX8 "h\n", config->bDriveCount);
+                break;
+            }
+        }
+        else
+        {
+            printf("%" PRIu8 "\n", config->bDriveCount);
+        }
+        //Use DataType to switch between what was reported back
+        if (!is_Empty(&config->bDataType, 20))//this is being checked since failure code and change count were added later
+        {
+            printf("\tFailure Code: %" PRIu32 "\n", config->uFailureCode);
+            printf("\tChange Count: %" PRIu32 "\n", config->uChangeCount);
+        }
+        switch (config->bDataType)
+        {
+        case CSMI_SAS_RAID_DATA_DRIVES:
+            if (config->bDriveCount < 0xF1)
+            {
+                uint32_t totalDrives = (uint32_t)((configLength - 36) / sizeof(CSMI_SAS_RAID_DRIVES));//36 bytes prior to drive data
+                for (uint32_t iter = 0; iter < totalDrives && iter < config->bDriveCount; ++iter)
+                {
+                    char model[41] = { 0 };
+                    char firmware[9] = { 0 };
+                    char serialNumber[41] = { 0 };
+                    memcpy(model, config->Drives[iter].bModel, 40);
+                    memcpy(firmware, config->Drives[iter].bFirmware, 8);
+                    memcpy(serialNumber, config->Drives[iter].bSerialNumber, 40);
+                    printf("\t----RAID Drive %" PRIu32 "----\n", iter);
+                    printf("\t\tModel #: %s\n", model);
+                    printf("\t\tFirmware: %s\n", firmware);
+                    printf("\t\tSerial #: %s\n", serialNumber);
+                    printf("\t\tSAS Address: %02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "h\n", config->Drives[iter].bSASAddress[0], config->Drives[iter].bSASAddress[1], config->Drives[iter].bSASAddress[2], config->Drives[iter].bSASAddress[3], config->Drives[iter].bSASAddress[4], config->Drives[iter].bSASAddress[5], config->Drives[iter].bSASAddress[6], config->Drives[iter].bSASAddress[7]);
+                    printf("\t\tSAS LUN: %02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "h\n", config->Drives[iter].bSASLun[0], config->Drives[iter].bSASLun[1], config->Drives[iter].bSASLun[2], config->Drives[iter].bSASLun[3], config->Drives[iter].bSASLun[4], config->Drives[iter].bSASLun[5], config->Drives[iter].bSASLun[6], config->Drives[iter].bSASLun[7]);
+                    printf("\t\tDrive Status: ");
+                    switch (config->Drives[iter].bDriveStatus)
+                    {
+                    case CSMI_SAS_DRIVE_STATUS_OK:
+                        printf("OK\n");
+                        break;
+                    case CSMI_SAS_DRIVE_STATUS_REBUILDING:
+                        printf("Rebuilding\n");
+                        break;
+                    case CSMI_SAS_DRIVE_STATUS_FAILED:
+                        printf("Failed\n");
+                        break;
+                    case CSMI_SAS_DRIVE_STATUS_DEGRADED:
+                        printf("Degraded\n");
+                        break;
+                    case CSMI_SAS_DRIVE_STATUS_OFFLINE:
+                        printf("Offline\n");
+                        break;
+                    case CSMI_SAS_DRIVE_STATUS_QUEUED_FOR_REBUILD:
+                        printf("Queued for Rebuild\n");
+                        break;
+                    default:
+                        printf("Unknown\n");
+                        break;
+                    }
+                    printf("\t\tDrive Usage: ");
+                    switch (config->Drives[iter].bDriveUsage)
+                    {
+                    case CSMI_SAS_DRIVE_CONFIG_NOT_USED:
+                        printf("Not Used\n");
+                        break;
+                    case CSMI_SAS_DRIVE_CONFIG_MEMBER:
+                        printf("Member\n");
+                        break;
+                    case CSMI_SAS_DRIVE_CONFIG_SPARE:
+                        printf("Spare\n");
+                        break;
+                    case CSMI_SAS_DRIVE_CONFIG_SPARE_ACTIVE:
+                        printf("Spare - Active\n");
+                        break;
+                    case CSMI_SAS_DRIVE_CONFIG_SRT_CACHE://Unique to Intel!
+                        printf("SRT Cache\n");
+                        break;
+                    case CSMI_SAS_DRIVE_CONFIG_SRT_DATA://Unique to Intel!
+                        printf("SRT Data\n");
+                        break;
+                    default:
+                        printf("Unknown - %" PRIu8 "\n", config->Drives[iter].bDriveUsage);
+                        break;
+                    }
+                    //end of original RAID drive data in spec. Check if empty
+                    if (!is_Empty(&config->Drives[iter].usBlockSize, 30))//original spec says 22 reserved bytes, however I count 30 more bytes to check...-TJE
+                    {
+                        printf("\t\tBlock Size: %" PRIu16 "\n", config->Drives[iter].usBlockSize);
+                        printf("\t\tDrive Type: ");
+                        switch (config->Drives[iter].bDriveType)
+                        {
+                        case CSMI_SAS_DRIVE_TYPE_UNKNOWN:
+                            printf("Unknown\n");
+                            break;
+                        case CSMI_SAS_DRIVE_TYPE_SINGLE_PORT_SAS:
+                            printf("Single Port SAS\n");
+                            break;
+                        case CSMI_SAS_DRIVE_TYPE_DUAL_PORT_SAS:
+                            printf("Dual Port SAS\n");
+                            break;
+                        case CSMI_SAS_DRIVE_TYPE_SATA:
+                            printf("SATA\n");
+                            break;
+                        case CSMI_SAS_DRIVE_TYPE_SATA_PS:
+                            printf("SATA Port Selector\n");
+                            break;
+                        case CSMI_SAS_DRIVE_TYPE_OTHER:
+                            printf("Other\n");
+                            break;
+                        default:
+                            printf("Unknown - %" PRIu8 "\n", config->Drives[iter].bDriveType);
+                            break;
+                        }
+                        printf("\t\tDrive Index: %" PRIu32 "\n", config->Drives[iter].uDriveIndex);
+                        printf("\t\tTotal User Blocks: %" PRIu64 "\n", M_DWordsTo8ByteValue(config->Drives[iter].ulTotalUserBlocks.uHighPart, config->Drives[iter].ulTotalUserBlocks.uLowPart));
+                    }
+                }
+            }
+            break;
+        case CSMI_SAS_RAID_DATA_DEVICE_ID:
+            //TODO: Print this out...device identification VPD page
+            printf("Device ID (Debug info not supported at this time)\n");
+            break;
+        case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
+            //TODO: Print this out
+            printf("Additional Data (Debug info not supported at this time)\n");
+            break;
+        default:
+            printf("Unknown data type.\n");
+            break;
+        }
+    }
+    return;
+}
+
 //NOTE: This buffer should be allocated as sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES)) at minimum. If the device identification VPD page is returned instead, it may be longer
 //      RAID set index must be lower than the number of raid sets listed as supported by RAID INFO
 //NOTE: Dataype field may not be supported depending on which version of CSMI is supported. Intel RST will not support this.
@@ -599,6 +1006,10 @@ int csmi_Get_RAID_Config(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PC
     if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(raidConfigBuffer->IoctlHeader.ReturnCode);
+        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
+        {
+            print_CSMI_RAID_Config(&raidConfigBuffer->Configuration, raidConfigBufferTotalSize - sizeof(IOCTL_HEADER));
+        }
     }
     else
     {
@@ -618,6 +1029,185 @@ int csmi_Get_RAID_Config(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PC
 //      Get RAID Element
 //      Set RAID Operation
 
+static void print_CSMI_Port_Protocol(uint8_t portProtocol)
+{
+    switch (portProtocol)
+    {
+    case CSMI_SAS_PROTOCOL_SATA:
+        printf("SATA\n");
+        break;
+    case CSMI_SAS_PROTOCOL_SMP:
+        printf("SMP\n");
+        break;
+    case CSMI_SAS_PROTOCOL_STP:
+        printf("STP\n");
+        break;
+    case CSMI_SAS_PROTOCOL_SSP:
+        printf("SSP\n");
+        break;
+    default:
+        printf("Unknown\n");
+        break;
+    }
+    return;
+}
+
+static void print_CSMI_SAS_Identify(PCSMI_SAS_IDENTIFY identify)
+{
+    if (identify)
+    {
+        //everything printed with 3 tabs to fit with print function below since this is only used by Phy info data
+        printf("\t\t\tDevice Type: ");
+        switch (identify->bDeviceType)
+        {
+        case CSMI_SAS_PHY_UNUSED:
+            printf("Unused or No Device Attached\n");
+            break;
+        case CSMI_SAS_END_DEVICE:
+            printf("End Device\n");
+            break;
+        case CSMI_SAS_EDGE_EXPANDER_DEVICE:
+            printf("Edge Expander Device\n");
+            break;
+        case CSMI_SAS_FANOUT_EXPANDER_DEVICE:
+            printf("Fanout Expander Device\n");
+            break;
+        default:
+            printf("Unknown\n");
+            break;
+        }
+        printf("\t\t\tRestricted: %02" PRIX8 "h\n", identify->bRestricted);
+        printf("\t\t\tInitiator Port Protocol: ");
+        print_CSMI_Port_Protocol(identify->bInitiatorPortProtocol);
+        printf("\t\t\tTarget Port Protocol: ");
+        print_CSMI_Port_Protocol(identify->bTargetPortProtocol);
+        printf("\t\t\tRestricted 2: %02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "h\n", identify->bRestricted2[0], identify->bRestricted2[1], identify->bRestricted2[2], identify->bRestricted2[3], identify->bRestricted2[4], identify->bRestricted2[5], identify->bRestricted2[6], identify->bRestricted2[7]);
+        printf("\t\t\tSAS Address: %02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "h\n", identify->bSASAddress[0], identify->bSASAddress[1], identify->bSASAddress[2], identify->bSASAddress[3], identify->bSASAddress[4], identify->bSASAddress[5], identify->bSASAddress[6], identify->bSASAddress[7]);
+        printf("\t\t\tPhy Identifier: %" PRIu8 "\n", identify->bPhyIdentifier);
+        printf("\t\t\tSignal Class: ");
+        switch (identify->bSignalClass)
+        {
+        case CSMI_SAS_SIGNAL_CLASS_UNKNOWN:
+            printf("Unknown\n");
+            break;
+        case CSMI_SAS_SIGNAL_CLASS_DIRECT:
+            printf("Direct\n");
+            break;
+        case CSMI_SAS_SIGNAL_CLASS_SERVER:
+            printf("Server\n");
+            break;
+        case CSMI_SAS_SIGNAL_CLASS_ENCLOSURE:
+            printf("Enclosure\n");
+            break;
+        default:
+            printf("Unknown - %" PRIX8 "h\n", identify->bSignalClass);
+            break;
+        }
+    }
+    return;
+}
+
+static void print_CSMI_Link_Rate(uint8_t linkRate)
+{
+    switch (linkRate)
+    {
+    case CSMI_SAS_LINK_RATE_UNKNOWN:
+        printf("Unknown\n");
+        break;
+    case CSMI_SAS_PHY_DISABLED:
+        printf("Phy Disabled\n");
+        break;
+    case CSMI_SAS_LINK_RATE_FAILED:
+        printf("Link Rate Failed\n");
+        break;
+    case CSMI_SAS_SATA_SPINUP_HOLD:
+        printf("SATA Spinup Hold\n");
+        break;
+    case CSMI_SAS_SATA_PORT_SELECTOR:
+        printf("SATA Port Selector\n");
+        break;
+    case CSMI_SAS_LINK_RATE_1_5_GBPS:
+        printf("1.5 Gb/s\n");
+        break;
+    case CSMI_SAS_LINK_RATE_3_0_GBPS:
+        printf("3.0 Gb/s\n");
+        break;
+    case CSMI_SAS_LINK_RATE_6_0_GBPS:
+        printf("6.0 Gb/s\n");
+        break;
+    case CSMI_SAS_LINK_RATE_12_0_GBPS:
+        printf("12.0 Gb/s\n");
+        break;
+    case CSMI_SAS_LINK_VIRTUAL:
+        printf("Virtual\n");
+        break;
+    default:
+        printf("Unknown - %02" PRIX8 "h\n", linkRate);
+        break;
+    }
+}
+
+static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
+{
+    if (phyInfo)
+    {
+        printf("\n====CSMI Phy Info====\n");
+        printf("\tNumber Of Phys: %" PRIu8 "\n", phyInfo->bNumberOfPhys);
+        for (uint8_t phyIter = 0; phyIter < phyInfo->bNumberOfPhys && phyIter < 32; ++phyIter)
+        {
+            printf("\t----Phy %" PRIu8 "----\n", phyIter);
+            printf("\t\tIdentify:\n");
+            print_CSMI_SAS_Identify(&phyInfo->Phy[phyIter].Identify);
+            printf("\t\tPort Identifier: %" PRIu8 "\n", phyInfo->Phy[phyIter].bPortIdentifier);
+            printf("\t\tNegotiated Link Rate: ");
+            print_CSMI_Link_Rate(phyInfo->Phy[phyIter].bNegotiatedLinkRate);
+            printf("\t\tMinimum Link Rate: ");
+            print_CSMI_Link_Rate(phyInfo->Phy[phyIter].bMinimumLinkRate);
+            printf("\t\tMaximum Link Rate: ");
+            print_CSMI_Link_Rate(phyInfo->Phy[phyIter].bMaximumLinkRate);
+            printf("\t\tPhy Change Count: %" PRIu8 "\n", phyInfo->Phy[phyIter].bPhyChangeCount);
+            printf("\t\tAuto Discover: ");
+            switch (phyInfo->Phy[phyIter].bAutoDiscover)
+            {
+            case CSMI_SAS_DISCOVER_NOT_SUPPORTED:
+                printf("Not Supported\n");
+                break;
+            case CSMI_SAS_DISCOVER_NOT_STARTED:
+                printf("Not Started\n");
+                break;
+            case CSMI_SAS_DISCOVER_IN_PROGRESS:
+                printf("In Progress\n");
+                break;
+            case CSMI_SAS_DISCOVER_COMPLETE:
+                printf("Complete\n");
+                break;
+            case CSMI_SAS_DISCOVER_ERROR:
+                printf("Error\n");
+                break;
+            default:
+                printf("Unknown\n");
+                break;
+            }
+            printf("\t\tPhy Features: ");
+            if (phyInfo->Phy[phyIter].bPhyFeatures == 0)
+            {
+                printf("None");
+            }
+            else
+            {
+                if (phyInfo->Phy[phyIter].bPhyFeatures & CSMI_SAS_PHY_VIRTUAL_SMP)
+                {
+                    printf("Virtual SMP");
+                }
+            }
+            printf("\n");
+            printf("\t\tAttached:\n");
+            print_CSMI_SAS_Identify(&phyInfo->Phy[phyIter].Attached);
+            printf("\n");
+        }
+    }
+    return;
+}
 //Caller allocated full buffer, then we fill in the rest and send it. Data length not needed since this one is a fixed size
 int csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_PHY_INFO_BUFFER phyInfoBuffer, eVerbosityLevels verbosity)
 {
@@ -650,6 +1240,10 @@ int csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI
     if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(phyInfoBuffer->IoctlHeader.ReturnCode);
+        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
+        {
+            print_CSMI_Phy_Info(&phyInfoBuffer->Information);
+        }
     }
     else
     {
@@ -1065,6 +1659,20 @@ int csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
 
     return ret;
 }
+
+static void print_CSMI_SATA_Signature(PCSMI_SAS_SATA_SIGNATURE signature)
+{
+    if (signature)
+    {
+        printf("\n====CSMI SATA Signature====\n");
+        printf("\tPhy Identifier: %" PRIu8 "\n", signature->bPhyIdentifier);
+        printf("\tSignature FIS:\n");
+        print_FIS(signature->bSignatureFIS, 20);
+        printf("\n");
+    }
+    return;
+}
+
 //TODO: consider using a pointer to a FIS to fill in on completion instead...
 int csmi_Get_SATA_Signature(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_SATA_SIGNATURE_BUFFER sataSignatureBuffer, uint8_t phyIdentifier, eVerbosityLevels verbosity)
 {
@@ -1099,6 +1707,10 @@ int csmi_Get_SATA_Signature(CSMI_HANDLE deviceHandle, uint32_t controllerNumber,
     if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(sataSignatureBuffer->IoctlHeader.ReturnCode);
+        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
+        {
+            print_CSMI_SATA_Signature(&sataSignatureBuffer->Signature);
+        }
     }
     else
     {
@@ -1112,6 +1724,22 @@ int csmi_Get_SATA_Signature(CSMI_HANDLE deviceHandle, uint32_t controllerNumber,
 
     return ret;
 }
+
+static void print_CSMI_Get_SCSI_Address(PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddress)
+{
+    if(scsiAddress)
+    {
+        printf("\n====CSMI Get SCSI Address====\n");
+        printf("\tProvided SAS Address: %02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "h\n", scsiAddress->bSASAddress[0], scsiAddress->bSASAddress[1], scsiAddress->bSASAddress[2], scsiAddress->bSASAddress[3], scsiAddress->bSASAddress[4], scsiAddress->bSASAddress[5], scsiAddress->bSASAddress[6], scsiAddress->bSASAddress[7]);
+        printf("\tProvided SAS Lun: %02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "h\n", scsiAddress->bSASLun[0], scsiAddress->bSASLun[1], scsiAddress->bSASLun[2], scsiAddress->bSASLun[3], scsiAddress->bSASLun[4], scsiAddress->bSASLun[5], scsiAddress->bSASLun[6], scsiAddress->bSASLun[7]);
+        printf("\tHost Index: %" PRIu8 "\n", scsiAddress->bHostIndex);
+        printf("\tPath ID: %" PRIu8 "\n", scsiAddress->bPathId);
+        printf("\tTarget ID: %" PRIu8 "\n", scsiAddress->bTargetId);
+        printf("\tLUN: %" PRIu8 "\n", scsiAddress->bLun);
+    }
+    return;
+}
+
 //TODO: input/output structures for this instead???
 int csmi_Get_SCSI_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddressBuffer, uint8_t sasAddress[8], uint8_t lun[8], eVerbosityLevels verbosity)
 {
@@ -1147,6 +1775,10 @@ int csmi_Get_SCSI_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, P
     if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(scsiAddressBuffer->IoctlHeader.ReturnCode);
+        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
+        {
+            print_CSMI_Get_SCSI_Address(scsiAddressBuffer);
+        }
     }
     else
     {
@@ -1159,6 +1791,21 @@ int csmi_Get_SCSI_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, P
     }
 
     return ret;
+}
+
+static void print_CSMI_Device_Address(PCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER address)
+{
+    if (address)
+    {
+        printf("\n====CSMI Get Device Address====\n");
+        printf("\tProvided Host Index: %" PRIu8 "\n", address->bHostIndex);
+        printf("\tProvided Path ID: %" PRIu8 "\n", address->bPathId);
+        printf("\tProvided Target ID: %" PRIu8 "\n", address->bTargetId);
+        printf("\tProvided LUN: %" PRIu8 "\n", address->bLun);
+        printf("\tSAS Address: %02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "h\n", address->bSASAddress[0], address->bSASAddress[1], address->bSASAddress[2], address->bSASAddress[3], address->bSASAddress[4], address->bSASAddress[5], address->bSASAddress[6], address->bSASAddress[7]);
+        printf("\tSAS Lun: %02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "h\n", address->bSASLun[0], address->bSASLun[1], address->bSASLun[2], address->bSASLun[3], address->bSASLun[4], address->bSASLun[5], address->bSASLun[6], address->bSASLun[7]);
+    }
+    return;
 }
 
 //TODO: input/output structures for this instead???
@@ -1198,6 +1845,10 @@ int csmi_Get_Device_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber,
     if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(deviceAddressBuffer->IoctlHeader.ReturnCode);
+        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
+        {
+            print_CSMI_Device_Address(deviceAddressBuffer);
+        }
     }
     else
     {
@@ -1214,6 +1865,130 @@ int csmi_Get_Device_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber,
 
 //TODO: SAS Task management function (can be used for a few things, but hard reset is most interesting
 //CC_CSMI_SAS_TASK_MANAGEMENT
+
+static void print_CSMI_Connector_Info(PCSMI_SAS_CONNECTOR_INFO_BUFFER connectorInfo)
+{
+    if (connectorInfo)
+    {
+        //need to loop through, but only print out non-zero structures since this data doesn't give us a count.
+        //It is intended to be used alongside the phy info data which does provide a count, but we don't want to be passing that count in for this right now.
+        printf("\n====CSMI Connector Info====\n");
+        for (uint8_t iter = 0; iter < 32; ++iter)
+        {
+            if (is_Empty(&connectorInfo->Reference[iter], 36))
+            {
+                break;
+            }
+            printf("\t----Connector %" PRIu8 "----\n", iter);
+            printf("\t\tConnector: %s\n", connectorInfo->Reference[iter].bConnector);
+            printf("\t\tPinout: \n");
+            if(connectorInfo->Reference[iter].uPinout == 0)
+            {
+                printf("\t\t\tNot Reported\n");
+            }
+            else
+            {
+                if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_UNKNOWN)
+                {
+                    printf("\t\t\tUnknown\n");
+                }
+                if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8482)
+                {
+                    printf("\t\t\tSFF-8482\n");
+                }
+                if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8470_LANE_1)
+                {
+                    printf("\t\t\tSFF-8470 - Lane 1\n");
+                }
+                if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8470_LANE_2)
+                {
+                    printf("\t\t\tSFF-8470 - Lane 2\n");
+                }
+                if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8470_LANE_3)
+                {
+                    printf("\t\t\tSFF-8470 - Lane 3\n");
+                }
+                if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8470_LANE_4)
+                {
+                    printf("\t\t\tSFF-8470 - Lane 4\n");
+                }
+                if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8484_LANE_1)
+                {
+                    printf("\t\t\tSFF-8484 - Lane 1\n");
+                }
+                if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8484_LANE_2)
+                {
+                    printf("\t\t\tSFF-8484 - Lane 2\n");
+                }
+                if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8484_LANE_3)
+                {
+                    printf("\t\t\tSFF-8484 - Lane 3\n");
+                }
+                if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8484_LANE_4)
+                {
+                    printf("\t\t\tSFF-8484 - Lane 4\n");
+                }
+                if ((connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_1) ||
+                    (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_2) ||
+                    (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_3) ||
+                    (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_4) ||
+                    (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_5) ||
+                    (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_6) ||
+                    (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_7) ||
+                    (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_8) ||
+                    (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_9) ||
+                    (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_A) ||
+                    (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_B) ||
+                    (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_C)
+                    )
+                {
+                    printf("\t\t\tReserved - %08" PRIX32 "\n", connectorInfo->Reference[iter].uPinout);
+                }
+            }
+            printf("\t\tLocation: \n");
+            if (connectorInfo->Reference[iter].bLocation == 0)
+            {
+            }
+            else
+            {
+                if (connectorInfo->Reference[iter].bLocation & CSMI_SAS_CON_UNKNOWN)
+                {
+                    printf("\t\t\tUnknown\n");
+                }
+                if (connectorInfo->Reference[iter].bLocation & CSMI_SAS_CON_INTERNAL)
+                {
+                    printf("\t\t\tInternal\n");
+                }
+                if (connectorInfo->Reference[iter].bLocation & CSMI_SAS_CON_EXTERNAL)
+                {
+                    printf("\t\t\tExternal\n");
+                }
+                if (connectorInfo->Reference[iter].bLocation & CSMI_SAS_CON_SWITCHABLE)
+                {
+                    printf("\t\t\tSwitchable\n");
+                }
+                if (connectorInfo->Reference[iter].bLocation & CSMI_SAS_CON_AUTO)
+                {
+                    printf("\t\t\tAuto\n");
+                }
+                if (connectorInfo->Reference[iter].bLocation & CSMI_SAS_CON_NOT_PRESENT)
+                {
+                    printf("\t\t\tNot Present\n");
+                }
+                if (connectorInfo->Reference[iter].bLocation & CSMI_SAS_CON_RESERVED)
+                {
+                    printf("\t\t\tReserved\n");
+                }
+                if (connectorInfo->Reference[iter].bLocation & CSMI_SAS_CON_NOT_CONNECTED)
+                {
+                    printf("\t\t\tNot Connected\n");
+                }
+            }
+        }
+        printf("\n");
+    }
+    return;
+}
 
 int csmi_Get_Connector_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CONNECTOR_INFO_BUFFER connectorInfoBuffer, eVerbosityLevels verbosity)
 {
@@ -1246,6 +2021,10 @@ int csmi_Get_Connector_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber,
     if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(connectorInfoBuffer->IoctlHeader.ReturnCode);
+        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
+        {
+            print_CSMI_Connector_Info(connectorInfoBuffer);
+        }
     }
     else
     {
@@ -1281,6 +2060,14 @@ bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, eVerbosityLevels verbosit
             {
                 csmiSupported = true;
             }
+            else
+            {
+                printf("Error getting controller info\n");
+            }
+        }
+        else
+        {
+            printf("Error getting driver info\n");
         }
     }
     return csmiSupported;
@@ -1404,14 +2191,11 @@ int jbod_Setup_CSMI_Info(CSMI_HANDLE deviceHandle, tDevice *device, uint8_t cont
 //-----------------------------------------------------------------------------
 int close_CSMI_RAID_Device(tDevice *device)
 {
-    //int retValue = 0;
+    int retValue = 0;
     if (device)
     {
-        // We don't actually call the CloseHandle function since we opened \\.\SCSIx: which can point to multiple devices since this layer can be used to talk to 
-        // multiple devices and we don't want to break any other device that is being used.
-        // Instead we'll just change the handle to an invalid value and free the memory we allocated in the device structure for talking to the drive (allocated in get_CSMI_Device)
-        //retValue = CloseHandle(device->os_info.fd);
-        //device->os_info.last_error = GetLastError();
+        retValue = CloseHandle(device->os_info.fd);
+        device->os_info.last_error = GetLastError();
         safe_Free(device->os_info.csmiDeviceData);
         device->os_info.last_error = 0;
 #if defined (_WIN32)
@@ -1592,6 +2376,17 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
     return ret;
 }
 
+bool is_CSMI_Handle(const char * filename)
+{
+    bool isCSMI = false;
+    //TODO: Expand this check to make sure all necessary parts of handle are present???
+    if (strstr(filename, CSMI_HANDLE_BASE_NAME))
+    {
+        isCSMI = true;
+    }
+    return isCSMI;
+}
+
 //-----------------------------------------------------------------------------
 //
 //  get_Device_Count()
@@ -1610,7 +2405,7 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags, char **checkHandleList, uint32_t checkHandleListLength)
+int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, char **checkHandleList, uint32_t checkHandleListLength)
 {
     CSMI_HANDLE fd = CSMI_INVALID_HANDLE;
 #if defined (_WIN32)
@@ -1619,8 +2414,9 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags, char **che
     char deviceName[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
 #endif
 
-    if (!checkHandleList || checkHandleListLength)
+    if (!checkHandleList || checkHandleListLength == 0)
     {
+        printf("Handle list not valid, or list length invalid\n");
         //don't do anything. Only scan when we get a list to use.
         //Each OS that want's to do this should generate a list of handles to look for.
         return SUCCESS;
@@ -1659,23 +2455,13 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags, char **che
             if ((fd = open(filename, O_RDWR | O_NONBLOCK)) >= 0)
 #endif
             {
+                printf("Checking for CSMI Support\n");
                 //first, check if this handle supports CSMI before we try anything else
-                if (handle_Supports_CSMI_IO(fd, VERBOSITY_DEFAULT))
+                if (handle_Supports_CSMI_IO(fd, VERBOSITY_BUFFERS))
                 {
                     //Get RAID info
                     CSMI_SAS_RAID_INFO_BUFFER csmiRAIDInfo;
-                    csmi_Get_RAID_Info(fd, controllerNumber, &csmiRAIDInfo, VERBOSITY_DEFAULT);
-                    //Print out some data from the RAID info for debugging
-                    printf("\n----CSMI RAID Info----\n");
-                    printf("\tNum Raid Sets: %" PRIu32 "\n", csmiRAIDInfo.Information.uNumRaidSets);
-                    printf("\tMax Drives per set: %" PRIu32 "\n", csmiRAIDInfo.Information.uMaxDrivesPerSet);
-                    printf("\tMax RAID Sets: %" PRIu32 "\n", csmiRAIDInfo.Information.uMaxRaidSets);
-                    printf("\tMax RAID Types: %" PRIu32 "\n", csmiRAIDInfo.Information.bMaxRaidTypes);
-                    printf("\tMax Physical Drives: %" PRIu32 "\n", csmiRAIDInfo.Information.uMaxPhysicalDrives);
-                    printf("\tMax Extents: %" PRIu32 "\n", csmiRAIDInfo.Information.uMaxExtents);
-                    printf("\tMax Modules: %" PRIu32 "\n", csmiRAIDInfo.Information.uMaxModules);
-                    printf("\tMax Transformational Memory: %" PRIu32 "\n", csmiRAIDInfo.Information.uMaxTransformationMemory);
-                    printf("\tChange Count: %" PRIu32 "\n", csmiRAIDInfo.Information.uChangeCount);
+                    csmi_Get_RAID_Info(fd, controllerNumber, &csmiRAIDInfo, VERBOSITY_BUFFERS);
                     //Get RAID config
                     for (uint32_t raidSet = 0; raidSet < csmiRAIDInfo.Information.uNumRaidSets; ++raidSet)
                     {
@@ -1684,20 +2470,9 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags, char **che
                         PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
                         if (csmiRAIDConfig)
                         {
-                            if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, VERBOSITY_DEFAULT))
+                            if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, VERBOSITY_BUFFERS))
                             {
-                                print_Data_Buffer((uint8_t*)csmiRAIDConfig, raidConfigLength, true);
-                                printf("csmiRAIDConfig->bDriveCount = %" PRIu32 "\n", csmiRAIDConfig->Configuration.bDriveCount);
                                 //make sure we got all the drive information...if now, we need to reallocate with some more memory
-
-                                printf("\n----CSMI RAID Config----\n");
-                                //skipping raid set index and capacity and stripe size
-                                printf("\tRAID Type: %" PRIu8 "\n", csmiRAIDConfig->Configuration.bRaidType);
-                                printf("\tStatus: %" PRIu8 "\n", csmiRAIDConfig->Configuration.bStatus);
-                                printf("\tInformation: %" PRIu8 "\n", csmiRAIDConfig->Configuration.bInformation);
-                                printf("\tcsmiRAIDConfig->bDataType = %" PRIu8 "\n", csmiRAIDConfig->Configuration.bDataType);
-                                printf("\tDrive Info:\n");
-                                printf("\t\tBegin iterating through the data and printing out the drives\n");
                                 for (uint16_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount; ++iter)
                                 {
                                     switch (csmiRAIDConfig->Configuration.bDataType)
@@ -1705,29 +2480,9 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags, char **che
                                     case CSMI_SAS_RAID_DATA_DRIVES:
                                         printf("\t\tDrive %" PRIu16 ":\n", iter);
                                         {
-                                            char model[41] = { 0 };
-                                            char firmware[9] = { 0 };
-                                            char serialNumber[41] = { 0 };
-                                            memcpy(model, csmiRAIDConfig->Configuration.Drives[iter].bModel, 40);
-                                            memcpy(firmware, csmiRAIDConfig->Configuration.Drives[iter].bFirmware, 8);
-                                            memcpy(serialNumber, csmiRAIDConfig->Configuration.Drives[iter].bSerialNumber, 40);
-                                            printf("\t\tModel: %s\n", model);
-                                            printf("\t\tFirmware: %s\n", firmware);
-                                            printf("\t\tSerial Number: %s\n", serialNumber);
-                                            uint64_t sasAddress = M_BytesTo8ByteValue(csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[0], csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[1], csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[2], csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[3], csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[4], csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[5], csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[6], csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[7]);
-                                            uint64_t sasLun = M_BytesTo8ByteValue(csmiRAIDConfig->Configuration.Drives[iter].bSASLun[0], csmiRAIDConfig->Configuration.Drives[iter].bSASLun[1], csmiRAIDConfig->Configuration.Drives[iter].bSASLun[2], csmiRAIDConfig->Configuration.Drives[iter].bSASLun[3], csmiRAIDConfig->Configuration.Drives[iter].bSASLun[4], csmiRAIDConfig->Configuration.Drives[iter].bSASLun[5], csmiRAIDConfig->Configuration.Drives[iter].bSASLun[6], csmiRAIDConfig->Configuration.Drives[iter].bSASLun[7]);
-                                            printf("\t\tSAS Address: %" PRIX64 "h\n", sasAddress);
-                                            printf("\t\tSAS Lun: %" PRIu64 "\n", sasLun);
-                                            printf("\t\tDrive Status: %" PRIu8 "\n", csmiRAIDConfig->Configuration.Drives[iter].bDriveStatus);
-                                            printf("\t\tDrive Usage: %" PRIu8 "\n", csmiRAIDConfig->Configuration.Drives[iter].bDriveUsage);
-                                            printf("\t\tBlock Size: %" PRIu16 "\n", csmiRAIDConfig->Configuration.Drives[iter].usBlockSize);
-                                            printf("\t\tDrive Type: %" PRIu8 "\n", csmiRAIDConfig->Configuration.Drives[iter].bDriveType);
-                                            printf("\t\tDrive Index: %" PRIu32 "\n", csmiRAIDConfig->Configuration.Drives[iter].uDriveIndex);
-                                            uint64_t totalBlocks = M_DWordsTo8ByteValue(csmiRAIDConfig->Configuration.Drives[iter].ulTotalUserBlocks.uHighPart, csmiRAIDConfig->Configuration.Drives[iter].ulTotalUserBlocks.uLowPart);
-                                            printf("\t\tTotal Blocks: %" PRIu64 "\n\n", totalBlocks);
                                             //TODO: Convert sasAddress and sasLun to scsi address using CSMI functions
                                             CSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddress;
-                                            if (SUCCESS == csmi_Get_SCSI_Address(fd, controllerNumber, &scsiAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASLun, VERBOSITY_DEFAULT))
+                                            if (SUCCESS == csmi_Get_SCSI_Address(fd, controllerNumber, &scsiAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASLun, VERBOSITY_BUFFERS))
                                             {
                                                 printf("SCSI Address (Host:Path:Target:Lun): %" PRIu8 ":%" PRIu8 ":%" PRIu8 ":%" PRIu8 "\n", scsiAddress.bHostIndex, scsiAddress.bPathId, scsiAddress.bTargetId, scsiAddress.bLun);
                                             }
@@ -1738,13 +2493,8 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags, char **che
                                         }
                                         break;
                                     case CSMI_SAS_RAID_DATA_DEVICE_ID:
-                                        printf("\t\tDrive device id not supported right now\n");
-                                        break;
                                     case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
-                                        printf("\t\tDrive additional data not supported right now\n");
-                                        break;
                                     default:
-                                        printf("Unknown data type, cannot display\n");
                                         break;
                                     }
                                 }
@@ -1762,32 +2512,43 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags, char **che
                     }
 
 
-                    //CSMI_SAS_PHY_INFO_BUFFER phyInfo;
-                    //printf("Getting phy info\n");
-                    //issue_Get_Phy_Info(fd, &phyInfo);
-                    //printf("Looking for attached devices\n");
-                    ////check phy info for valid devices. expanders will be ignored for now...if we add them in, we'll need to also add SMP passthrough
-                    //for (driveNumber = 0; ((driveNumber <= phyInfo.Information.bNumberOfPhys) && (driveNumber < MAX_DEVICES_PER_CONTROLLER)); ++driveNumber)
-                    //{
-                    //    switch (phyInfo.Information.Phy[driveNumber].Attached.bDeviceType)
-                    //    {
-                    //    case CSMI_SAS_END_DEVICE:
-                    //        ++found;
-                    //        printf("\tFound SAS End device!\n");
-                    //        break;
-                    //    case CSMI_SAS_EDGE_EXPANDER_DEVICE:
-                    //        printf("\tFound SAS Edge Expander device!\n");
-                    //        break;
-                    //    case CSMI_SAS_FANOUT_EXPANDER_DEVICE:
-                    //        printf("\tFound SAS Fanout expander device!\n");
-                    //        break;
-                    //    case CSMI_SAS_NO_DEVICE_ATTACHED:
-                    //        break;
-                    //    default:
-                    //        printf("\tUnknown device type: %u\n", phyInfo.Information.Phy[driveNumber].Attached.bDeviceType);
-                    //        break;
-                    //    }
-                    //}
+                    CSMI_SAS_PHY_INFO_BUFFER phyInfo;
+                    if (SUCCESS == csmi_Get_Phy_Info(fd, controllerNumber, &phyInfo, VERBOSITY_BUFFERS))
+                    {
+                        //check phy info for valid devices. expanders will be ignored for now...if we add them in, we'll need to also add SMP passthrough
+                        for (driveNumber = 0; ((driveNumber <= phyInfo.Information.bNumberOfPhys) && (driveNumber < MAX_DEVICES_PER_CONTROLLER)); ++driveNumber)
+                        {
+                            //TODO: Debug print Phy information to screen
+                            switch (phyInfo.Information.Phy[driveNumber].Attached.bDeviceType)
+                            {
+                            case CSMI_SAS_END_DEVICE:
+                                ++found;
+                                printf("\tFound SAS End device!\n");
+                                break;
+                            case CSMI_SAS_EDGE_EXPANDER_DEVICE:
+                                printf("\tFound SAS Edge Expander device!\n");
+                                break;
+                            case CSMI_SAS_FANOUT_EXPANDER_DEVICE:
+                                printf("\tFound SAS Fanout expander device!\n");
+                                break;
+                            case CSMI_SAS_NO_DEVICE_ATTACHED:
+                                break;
+                            default:
+                                printf("\tUnknown device type: %u\n", phyInfo.Information.Phy[driveNumber].Attached.bDeviceType);
+                                break;
+                            }
+                        }
+                        printf("found %u\n", found);
+                    }
+                    else
+                    {
+                        printf("Failed to get Phy Info\n");
+                    }
+                    CSMI_SAS_CONNECTOR_INFO_BUFFER connectorInfo;
+                    if (SUCCESS == csmi_Get_Connector_Info(fd, controllerNumber, &connectorInfo, VERBOSITY_BUFFERS))
+                    {
+                        printf("Got connector info!\n");
+                    }
                 }
             }
             //close handle to the controller
@@ -1836,7 +2597,7 @@ int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags, char **che
 //!                     Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_CSMI_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
+int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags, char **checkHandleList, uint32_t checkHandleListLength)
 {
     int returnValue = SUCCESS;
     int numberOfDevices = 0;

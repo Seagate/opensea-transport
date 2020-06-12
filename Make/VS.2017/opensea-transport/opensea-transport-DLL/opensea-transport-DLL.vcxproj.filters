@@ -147,6 +147,9 @@
     <ClInclude Include="..\..\..\..\include\sata_helper_func.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\include\csmi_legacy_pt_cdb_helper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\src\ata_cmds.c">
@@ -242,5 +245,13 @@
     <ClCompile Include="..\..\..\..\src\sata_helper_func.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\src\csmi_legacy_pt_cdb_helper.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\..\src\cppdeps.pl">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

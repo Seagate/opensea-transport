@@ -1702,24 +1702,27 @@ int close_Device(tDevice *dev)
     int retValue = 0;
     if (dev)
     {
-        close_SCSI_SRB_Handle(dev);//\\.\SCSIx: could be opened for different reasons...so we need to close it here.
-        safe_Free(dev->os_info.csmiDeviceData);//CSMI may have been used, so free this memory if it was before we close out.
 #if defined (ENABLE_CSMI)
-        if (strncmp(dev->os_info.name, "\\\\.\\SCSI", 8) == 0)
+        if (is_CSMI_Handle(dev->os_info.name))
         {
-            return close_CSMI_Device(dev);
-        }
-#endif
-        retValue = CloseHandle(dev->os_info.fd);
-        dev->os_info.last_error = GetLastError();
-        if ( retValue )
-        {
-            dev->os_info.fd = INVALID_HANDLE_VALUE;
-            return SUCCESS;
+            return close_CSMI_RAID_Device(dev);
         }
         else
+#endif
         {
-            return FAILURE;
+            close_SCSI_SRB_Handle(dev);//\\.\SCSIx: could be opened for different reasons...so we need to close it here.
+            safe_Free(dev->os_info.csmiDeviceData);//CSMI may have been used, so free this memory if it was before we close out.
+            retValue = CloseHandle(dev->os_info.fd);
+            dev->os_info.last_error = GetLastError();
+            if (retValue)
+            {
+                dev->os_info.fd = INVALID_HANDLE_VALUE;
+                return SUCCESS;
+            }
+            else
+            {
+                return FAILURE;
+            }
         }
     }
     else
@@ -1850,8 +1853,8 @@ int win_Get_Device_Descriptor(HANDLE deviceHandle, PSTORAGE_DEVICE_DESCRIPTOR *d
     {
         if (storage_Property_Exists(deviceHandle, StorageDeviceProperty, &deviceDataSize))
         {
-            DWORD deviceDataLength = M_Max(sizeof(STORAGE_ADAPTER_DESCRIPTOR), deviceDataSize);
-            *deviceData = (PSTORAGE_ADAPTER_DESCRIPTOR)calloc(deviceDataLength, sizeof(uint8_t));
+            DWORD deviceDataLength = M_Max(sizeof(PSTORAGE_DEVICE_DESCRIPTOR), deviceDataSize);
+            *deviceData = (PSTORAGE_DEVICE_DESCRIPTOR)calloc(deviceDataLength, sizeof(uint8_t));
             if (*deviceData)
             {
                 ret = win_Get_Property_Data(deviceHandle, StorageDeviceProperty, *deviceData, deviceDataLength);
@@ -1870,18 +1873,8 @@ int win_Get_Device_Descriptor(HANDLE deviceHandle, PSTORAGE_DEVICE_DESCRIPTOR *d
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-int get_Device(const char *filename, tDevice *device )
+int get_Win_Device(const char *filename, tDevice *device )
 {
-#if defined (ENABLE_CSMI)
-    //check is the handle is in the format of a CSMI device handle so we can open the csmi device properly.
-    uint32_t port = 0;
-    uint32_t phy = 0;
-    int isCSMIHandle = sscanf_s(filename, "\\\\.\\SCSI%" SCNu32 ":%" SCNu32, &port, &phy);
-    if (isCSMIHandle != EOF && isCSMIHandle == 2)
-    {
-        return get_CSMI_Device(filename, device);
-    }
-#endif
     int                         ret           = FAILURE;
     int                         win_ret       = 0;
     ULONG                       returned_data = 0;
@@ -2071,7 +2064,7 @@ int get_Device(const char *filename, tDevice *device )
             {
                 device->os_info.srbtype = SRB_TYPE_SCSI_REQUEST_BLOCK;
             }
-            device->os_info.minimumAlignment = adapter_desc->AlignmentMask + 1;
+            device->os_info.minimumAlignment = (uint8_t)(adapter_desc->AlignmentMask + 1);
             device->os_info.alignmentMask = adapter_desc->AlignmentMask;//may be needed later....currently unused
             win_ret = win_Get_Device_Descriptor(device->os_info.fd, &device_desc);
             if(win_ret == SUCCESS)
@@ -2391,6 +2384,20 @@ int get_Device(const char *filename, tDevice *device )
     //printf("%s <--\n",__FUNCTION__);
     return ret;  //if we didn't get to fill_In_Device_Info FAILURE
 }
+int get_Device(const char *filename, tDevice *device)
+{
+#if defined (ENABLE_CSMI)
+    //check is the handle is in the format of a CSMI device handle so we can open the csmi device properly.
+    if (is_CSMI_Handle(filename))
+    {
+        return get_CSMI_RAID_Device(filename, device);
+    }
+    else
+#endif
+    {
+        return get_Win_Device(filename, device);
+    }
+}
 
 //-----------------------------------------------------------------------------
 //
@@ -2458,8 +2465,20 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 #if defined (ENABLE_CSMI)
     if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI))//check whether they want CSMI devices or not
     {
+        printf("Beginning CSMI scan\n");
         uint32_t csmiDeviceCount = 0;
-        int csmiRet = get_CSMI_Device_Count(&csmiDeviceCount, flags);
+        //TODO: Switch from this hardcoded list later!
+        char *checkHandleList[8] = { 0 };
+        for (uint8_t iter = 0; iter < 8; ++iter)
+        {
+            checkHandleList[iter] = calloc(12, sizeof(char));
+            if (checkHandleList[iter])
+            {
+                sprintf(checkHandleList[iter], "\\\\.\\SCSI%" PRIu8 ":", iter);
+            }
+        }
+        printf("Filled in handle list\n");
+        int csmiRet = get_CSMI_RAID_Device_Count(&csmiDeviceCount, flags, (char**)checkHandleList, 8);
         if (csmiRet == SUCCESS)
         {
             *numberOfDevices += csmiDeviceCount;
@@ -2509,7 +2528,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI))//check whether they want CSMI devices or not
     {
 
-        int csmiRet = get_CSMI_Device_Count(&csmiDeviceCount, flags);
+        int csmiRet = get_CSMI_RAID_Device_Count(&csmiDeviceCount, flags, NULL, 0);
         if (csmiRet != SUCCESS)
         {
             csmiDeviceCount = 0;
@@ -2578,7 +2597,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 #if defined (ENABLE_CSMI)
         if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI) && csmiDeviceCount > 0)
         {
-            int csmiRet = get_CSMI_Device_List(&ptrToDeviceList[numberOfDevices], csmiDeviceCount * sizeof(tDevice), ver, flags);
+            int csmiRet = get_CSMI_RAID_Device_List(&ptrToDeviceList[numberOfDevices], csmiDeviceCount * sizeof(tDevice), ver, flags, NULL, 0);
             if (returnValue == SUCCESS && csmiRet != SUCCESS)
             {
                 //this will override the normal ret if it is already set to success with the CSMI return value
