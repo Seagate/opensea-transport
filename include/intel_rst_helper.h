@@ -29,15 +29,17 @@ extern "C"
 #if !defined (DISABLE_NVME_PASSTHROUGH)
     //NOTE: This function will handle calling appropriate NVMe firmware update function as well
     //NOTE2: This will not issue whatever command you want. Only certain commands are supported by the driver. This function will attempt any command given in case driver updates allow other commands in the future.
-    int send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx);
+    OPENSEA_TRANSPORT_API int send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx);
 
-    int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx);
+    OPENSEA_TRANSPORT_API int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx);
+
+    OPENSEA_TRANSPORT_API int send_Intel_NVM_SCSI_Command(ScsiIoCtx *scsiIoCtx);
 #endif
 
     //similar to Win10 function. Sends command to read firmware info and slot info to see if the API is supported or not
-    bool supports_Intel_Firmware_Download(tDevice *device);
+    OPENSEA_TRANSPORT_API bool supports_Intel_Firmware_Download(tDevice *device);
 
-    int send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx);
+    OPENSEA_TRANSPORT_API int send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx);
 
     //TODO: Define other Intel RST unique calls here based on what is in intel_rst_defs.h
 

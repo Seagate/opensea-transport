@@ -40,7 +40,7 @@ int fill_In_NVMe_Device_Info(tDevice *device)
     uint64_t *fillMaxLba = &device->drive_info.deviceMaxLba;
 
     //If not an NVMe interface, such as USB, then we need to store things differently
-    if (device->drive_info.interface_type != NVME_INTERFACE)
+    if (device->drive_info.interface_type != NVME_INTERFACE && device->drive_info.interface_type != RAID_INTERFACE)
     {
         device->drive_info.bridge_info.isValid = true;
         fillModelNumber = device->drive_info.bridge_info.childDriveMN;

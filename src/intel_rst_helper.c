@@ -13,10 +13,107 @@
 #include "common.h"
 #include "intel_rst_defs.h"
 #include "intel_rst_helper.h"
+#include "sntl_helper.h"
 
 #if defined (ENABLE_CSMI)
 #include "csmi_helper.h"
 #endif
+
+static void print_Intel_SRB_Status(uint32_t srbStatus)
+{
+    printf("SRB Status: ");
+    switch (srbStatus)
+    {
+    case INTEL_SRB_STATUS_PENDING:
+        printf("Pending\n");
+        break;
+    case INTEL_SRB_STATUS_SUCCESS:
+        printf("Success\n");
+        break;
+    case INTEL_SRB_STATUS_ABORTED:
+        printf("Aborted\n");
+        break;
+    case INTEL_SRB_STATUS_ABORT_FAILED:
+        printf("Abort Failed\n");
+        break;
+    case INTEL_SRB_STATUS_ERROR:
+        printf("Error\n");
+        break;
+    case INTEL_SRB_STATUS_BUSY:
+        printf("Busy\n");
+        break;
+    case INTEL_SRB_STATUS_INVALID_REQUEST:
+        printf("Invalid Request\n");
+        break;
+    case INTEL_SRB_STATUS_INVALID_PATH_ID:
+        printf("Invalid Path ID\n");
+        break;
+    case INTEL_SRB_STATUS_NO_DEVICE:
+        printf("No Device\n");
+        break;
+    case INTEL_SRB_STATUS_TIMEOUT:
+        printf("Timeout\n");
+        break;
+    case INTEL_SRB_STATUS_SELECTION_TIMEOUT:
+        printf("Selection Timeout\n");
+        break;
+    case INTEL_SRB_STATUS_COMMAND_TIMEOUT:
+        printf("Command Timeout\n");
+        break;
+    case INTEL_SRB_STATUS_MESSAGE_REJECTED:
+        printf("Message Rejected\n");
+        break;
+    case INTEL_SRB_STATUS_BUS_RESET:
+        printf("Bus Reset\n");
+        break;
+    case INTEL_SRB_STATUS_PARITY_ERROR:
+        printf("Parity Error\n");
+        break;
+    case INTEL_SRB_STATUS_REQUEST_SENSE_FAILED:
+        printf("Request Sense Failed\n");
+        break;
+    case INTEL_SRB_STATUS_NO_HBA:
+        printf("No HBA\n");
+        break;
+    case INTEL_SRB_STATUS_DATA_OVERRUN:
+        printf("Data Overrun\n");
+        break;
+    case INTEL_SRB_STATUS_UNEXPECTED_BUS_FREE:
+        printf("Unexpected Bus Free\n");
+        break;
+    case INTEL_SRB_STATUS_PHASE_SEQUENCE_FAILURE:
+        printf("Phase Sequence Failure\n");
+        break;
+    case INTEL_SRB_STATUS_BAD_SRB_BLOCK_LENGTH:
+        printf("Bad SRB Block Length\n");
+        break;
+    case INTEL_SRB_STATUS_REQUEST_FLUSHED:
+        printf("Request Flushed\n");
+        break;
+    case INTEL_SRB_STATUS_INVALID_LUN:
+        printf("Invalid LUN\n");
+        break;
+    case INTEL_SRB_STATUS_INVALID_TARGET_ID:
+        printf("Invalid Target ID\n");
+        break;
+    case INTEL_SRB_STATUS_BAD_FUNCTION:
+        printf("Bad Function\n");
+        break;
+    case INTEL_SRB_STATUS_ERROR_RECOVERY:
+        printf("Error Recovery\n");
+        break;
+    case INTEL_SRB_STATUS_NOT_POWERED:
+        printf("Not Powered\n");
+        break;
+    case INTEL_SRB_STATUS_LINK_DOWN:
+        printf("Link Down\n");
+        break;
+    default:
+        printf("Unknown SRB Status - %" PRIX32 "\n", srbStatus);
+        break;
+    }
+    return;
+}
 
 //generic function to handle taking in the various RAID FW Requests to keep code from being dumplicated
 static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t dataRequestLength, uint32_t timeoutSeconds, uint32_t intelFirmwareFunction, uint32_t intelFirmwareFlags, bool readFirmwareInfo, uint32_t *returnCode)
@@ -56,7 +153,16 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
             raidFirmwareRequest->Request.Lun = RESERVED;
             if (device->os_info.csmiDeviceData && device->os_info.csmiDeviceData->csmiDeviceInfoValid)
             {
-                raidFirmwareRequest->Request.PathId = device->os_info.csmiDeviceData->portIdentifier;
+                if (device->os_info.csmiDeviceData->scsiAddressValid)
+                {
+                    raidFirmwareRequest->Request.PathId = device->os_info.csmiDeviceData->scsiAddress.pathId;
+                    raidFirmwareRequest->Request.TargetId = device->os_info.csmiDeviceData->scsiAddress.targetId;
+                    raidFirmwareRequest->Request.Lun = device->os_info.csmiDeviceData->scsiAddress.lun;
+                }
+                else
+                {
+                    raidFirmwareRequest->Request.PathId = device->os_info.csmiDeviceData->portIdentifier;
+                }
             }
             else
             {
@@ -107,6 +213,11 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
             stop_Timer(&commandTimer);
             CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
             overlappedStruct.hEvent = NULL;
+            if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+            {
+                print_Windows_Error_To_Screen(device->os_info.last_error);
+                print_Intel_SRB_Status(raidFirmwareRequest->Header.ReturnCode);
+            }
             if (!success)
             {
                 ret = FAILURE;
@@ -368,6 +479,10 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
         NVME_IOCTL_PASS_THROUGH *nvmPassthroughCommand = NULL;
         size_t allocationSize = sizeof(NVME_IOCTL_PASS_THROUGH) + nvmeIoCtx->dataSize;
         nvmPassthroughCommand = (NVME_IOCTL_PASS_THROUGH*)calloc_aligned(allocationSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment);
+        if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
+        {
+            printf("\n====Sending Intel RST NVMe Command====\n");
+        }
         if (nvmPassthroughCommand)
         {
             memset(&commandTimer, 0, sizeof(seatimer_t));
@@ -400,7 +515,16 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             nvmPassthroughCommand->Lun = RESERVED;
             if (nvmeIoCtx->device->os_info.csmiDeviceData && nvmeIoCtx->device->os_info.csmiDeviceData->csmiDeviceInfoValid)
             {
-                nvmPassthroughCommand->PathId = nvmeIoCtx->device->os_info.csmiDeviceData->portIdentifier;
+                if (nvmeIoCtx->device->os_info.csmiDeviceData->scsiAddressValid)
+                {
+                    nvmPassthroughCommand->PathId = nvmeIoCtx->device->os_info.csmiDeviceData->scsiAddress.pathId;
+                    nvmPassthroughCommand->TargetId = nvmeIoCtx->device->os_info.csmiDeviceData->scsiAddress.targetId;
+                    nvmPassthroughCommand->Lun = nvmeIoCtx->device->os_info.csmiDeviceData->scsiAddress.lun;
+                }
+                else
+                {
+                    nvmPassthroughCommand->PathId = nvmeIoCtx->device->os_info.csmiDeviceData->portIdentifier;
+                }
             }
             else
             {
@@ -489,6 +613,12 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             {
                 ret = SUCCESS;
             }
+            if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
+            {
+                print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
+                print_Intel_SRB_Status(nvmPassthroughCommand->Header.ReturnCode);
+            }
+            
             //TODO: Handle unsupported commands error codes and others that don't fill in the completion data
             //TODO: Verbose output including windows error codes and the SRB_IO header return code, etc.
             //now handle error codes and completion and copying back read data
@@ -516,6 +646,10 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
         else
         {
             ret = MEMORY_FAILURE;
+        }
+        if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
+        {
+            print_Return_Enum("Intel RST NVMe Cmd", ret);
         }
     }
     else
@@ -604,6 +738,20 @@ int send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx)
         {
             ret = send_Intel_NVM_Passthrough_Command(nvmeIoCtx);
         }
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+int send_Intel_NVM_SCSI_Command(ScsiIoCtx *scsiIoCtx)
+{
+    int ret = OS_PASSTHROUGH_FAILURE;
+    if (scsiIoCtx)
+    {
+        ret = sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
     }
     else
     {

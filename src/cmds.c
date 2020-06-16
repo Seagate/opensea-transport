@@ -287,6 +287,23 @@ int fill_Drive_Info_Data(tDevice *device)
             status = fill_In_NVMe_Device_Info(device);
             break;
 #endif
+        case RAID_INTERFACE:
+            //if it's RAID interface, the low-level RAID code may already have set the drive type, so treat it based off of what drive type is set to
+            switch (device->drive_info.drive_type)
+            {
+            case ATA_DRIVE:
+                status = fill_In_ATA_Drive_Info(device);
+                break;
+            case NVME_DRIVE:
+#if !defined(DISABLE_NVME_PASSTHROUGH)
+                status = fill_In_NVMe_Device_Info(device);
+                break;
+#endif
+            default:
+                status = fill_In_Device_Info(device);
+                break;
+            }
+            break;
         case SCSI_INTERFACE:
         default:
             //call this instead. It will handle issuing scsi commands and at the end will attempt an ATA Identify if needed

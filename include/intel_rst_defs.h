@@ -381,6 +381,36 @@ CTL_CODE(0xF000, 0xE00, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
     ////////////////////////////////////////////////////End of Remap Port IOCTL stuff (device location)///////////////////////////////////////////////////////////
 
+    //SRB Status matches Windows, redefined here to reduce includes, like the FWDL structures and flags were redefined (see srb.h)
+    #define INTEL_SRB_STATUS_PENDING                  0x00
+    #define INTEL_SRB_STATUS_SUCCESS                  0x01
+    #define INTEL_SRB_STATUS_ABORTED                  0x02
+    #define INTEL_SRB_STATUS_ABORT_FAILED             0x03
+    #define INTEL_SRB_STATUS_ERROR                    0x04
+    #define INTEL_SRB_STATUS_BUSY                     0x05
+    #define INTEL_SRB_STATUS_INVALID_REQUEST          0x06
+    #define INTEL_SRB_STATUS_INVALID_PATH_ID          0x07
+    #define INTEL_SRB_STATUS_NO_DEVICE                0x08
+    #define INTEL_SRB_STATUS_TIMEOUT                  0x09
+    #define INTEL_SRB_STATUS_SELECTION_TIMEOUT        0x0A
+    #define INTEL_SRB_STATUS_COMMAND_TIMEOUT          0x0B
+    #define INTEL_SRB_STATUS_MESSAGE_REJECTED         0x0D
+    #define INTEL_SRB_STATUS_BUS_RESET                0x0E
+    #define INTEL_SRB_STATUS_PARITY_ERROR             0x0F
+    #define INTEL_SRB_STATUS_REQUEST_SENSE_FAILED     0x10
+    #define INTEL_SRB_STATUS_NO_HBA                   0x11
+    #define INTEL_SRB_STATUS_DATA_OVERRUN             0x12
+    #define INTEL_SRB_STATUS_UNEXPECTED_BUS_FREE      0x13
+    #define INTEL_SRB_STATUS_PHASE_SEQUENCE_FAILURE   0x14
+    #define INTEL_SRB_STATUS_BAD_SRB_BLOCK_LENGTH     0x15
+    #define INTEL_SRB_STATUS_REQUEST_FLUSHED          0x16
+    #define INTEL_SRB_STATUS_INVALID_LUN              0x20
+    #define INTEL_SRB_STATUS_INVALID_TARGET_ID        0x21
+    #define INTEL_SRB_STATUS_BAD_FUNCTION             0x22
+    #define INTEL_SRB_STATUS_ERROR_RECOVERY           0x23
+    #define INTEL_SRB_STATUS_NOT_POWERED              0x24
+    #define INTEL_SRB_STATUS_LINK_DOWN                0x25
+
 #if defined (__cplusplus)
 }
 #endif

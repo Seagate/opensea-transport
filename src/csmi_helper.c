@@ -299,7 +299,7 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
     {
         *csmiIoOutParams->lastError = GetLastError();
     }
-    print_Windows_Error_To_Screen(GetLastError());
+    //print_Windows_Error_To_Screen(GetLastError());
 #else //Linux or other 'nix systems
     //finish OS specific IOHEADER setup
     ioctlHeader->IOControllerNumber = csmiIoInParams->controllerNumber;
@@ -1588,6 +1588,7 @@ int csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
     stpPassthrough->Parameters.bPortIdentifier = stpInputs->portIdentifier;
     stpPassthrough->Parameters.uDataLength = stpInputs->dataLength;
     stpPassthrough->Parameters.uFlags = stpInputs->flags;
+    memcpy(stpPassthrough->Parameters.bCommandFIS, stpInputs->commandFIS, H2D_FIS_LENGTH);
 
     if (stpPassthrough->Parameters.uFlags & CSMI_SAS_STP_WRITE)
     {
@@ -2210,11 +2211,12 @@ int close_CSMI_RAID_Device(tDevice *device)
         return MEMORY_FAILURE;
     }
 }
-
+//TODO: Accept SASAddress and SASLun inputs
 int get_CSMI_RAID_Device(const char *filename, tDevice *device)
 {
     int ret = FAILURE;
-    uint32_t controllerNum = 0, portNum = 0, lun = 0;
+    uint32_t controllerNum = 0, portID = 0, phyID = 0, lun = 0;
+    uint32_t *intelPathID = &portID, *intelTargetID = &phyID, *intelLun = &lun;
     bool intelNVMe = false;
     //Need to open this handle and setup some information then fill in the device information.
     if (!(validate_Device_Struct(device->sanity)))
@@ -2225,23 +2227,34 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
     //set the handle name first...since the tokenizing below will break it apart
     memcpy(device->os_info.name, filename, strlen(filename));
 #if defined (_WIN32)
-    int sscanfret = sscanf(filename, "csmi%" SCNu32 ":%" SCNu32 ":%" SCNu32 "", &controllerNum, &portNum, &lun);
-    if (sscanfret != 0 && sscanfret != EOF)
+    //Check if it's Intel NVMe PTL format
+    int sscanfret = sscanf(filename, "csmi:%" SCNu32 ":N:%" SCNu32 ":%" SCNu32 ":%" SCNu32 "", &controllerNum, intelPathID, intelTargetID, intelLun);
+    if (sscanfret != 0 && sscanfret != EOF && sscanfret == 4)
     {
-        sprintf(device->os_info.friendlyName, CSMI_HANDLE_BASE_NAME "%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, portNum, lun);
+        intelNVMe = true;
+        sprintf(device->os_info.friendlyName, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":N:%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, *intelPathID, *intelTargetID, *intelLun);
+        printf("Detected Intel NVMe handle provided\n");
     }
     else
     {
-        return BAD_PARAMETER;
+        sscanfret = sscanf(filename, "csmi:%" SCNu32 ":%" SCNu32 ":%" SCNu32 ":%" SCNu32 "", &controllerNum, &portID, &phyID, &lun);
+        if (sscanfret != 0 && sscanfret != EOF)
+        {
+            sprintf(device->os_info.friendlyName, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, portID, phyID, lun);
+        }
+        else
+        {
+            return BAD_PARAMETER;
+        }
     }
 #else
     //TODO: handle non-Windows OS with CSMI
     char nixBaseHandleBuf[10] = { 0 };
     char *nixBaseHandle = &nixBaseHandleBuf[0];
-    int sscanfret = sscanf(filename, "csmi%" SCNu32 ":%" SCNu32 ":%" SCNu32 " :%s", &controllerNum, &portNum, &lun, nixBaseHandle);
+    int sscanfret = sscanf(filename, "csmi:%" SCNu32 ":%" SCNu32 ":%" SCNu32 " :%s", &controllerNum, &portNum, &lun, nixBaseHandle);
     if (sscanfret != 0 && sscanfret != EOF)
     {
-        sprintf(device->os_info.friendlyName, CSMI_HANDLE_BASE_NAME "%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%s", controllerNum, portNum, lun, nixBaseHandle);
+        sprintf(device->os_info.friendlyName, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%s", controllerNum, portNum, lun, nixBaseHandle);
     }
     else
     {
@@ -2308,66 +2321,101 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
             ret = FAILURE;//TODO: should this fail here??? This IOCTL is required...
         }
 
-        
-        CSMI_SAS_PHY_INFO_BUFFER phyInfo;
-        if (SUCCESS == csmi_Get_Phy_Info(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &phyInfo, device->deviceVerbosity))
+#if defined (_WIN32)
+        if (intelNVMe)
         {
-            //Using the data we've already gotten, we need to save phy identifier, port identifier, port protocol, and SAS address.
-            //TODO: Check if we should be using the Identify or Attached structure information to populate the support fields.
-            //Identify appears to contain initiator data, and attached seems to include target data...
-            if (portNum < 32)
-            {
-                device->os_info.csmiDeviceData->portIdentifier = phyInfo.Information.Phy[portNum].bPortIdentifier;
-                device->os_info.csmiDeviceData->phyIdentifier = phyInfo.Information.Phy[portNum].Attached.bPhyIdentifier;
-                device->os_info.csmiDeviceData->portProtocol = phyInfo.Information.Phy[portNum].Attached.bTargetPortProtocol;
-                memcpy(device->os_info.csmiDeviceData->sasAddress, phyInfo.Information.Phy[portNum].Attached.bSASAddress, 8);
-            }
+            device->drive_info.drive_type = NVME_DRIVE;
+            device->issue_io = (issue_io_func)send_Intel_NVM_SCSI_Command;
+            device->issue_nvme_io = (issue_io_func)send_Intel_NVM_Command;
+            device->os_info.csmiDeviceData->intelRSTSupport.intelRSTSupported = true;
+            device->os_info.csmiDeviceData->intelRSTSupport.nvmePassthrough = true;
+            device->os_info.csmiDeviceData->scsiAddressValid = true;
+            device->os_info.csmiDeviceData->scsiAddress.hostIndex = controllerNum;
+            device->os_info.csmiDeviceData->scsiAddress.lun = *intelLun;
+            device->os_info.csmiDeviceData->scsiAddress.pathId = *intelPathID;
+            device->os_info.csmiDeviceData->portIdentifier = portID;
+            device->os_info.csmiDeviceData->phyIdentifier = phyID;
+            device->os_info.csmiDeviceData->scsiAddress.targetId = *intelTargetID;
+            device->drive_info.namespaceID = *intelLun + 1;//LUN is 0 indexed, whereas namespaces start at 1.
         }
-
-        //Read the RAID config and find the matching device from SAS address. This is needed because SSP passthrough will need the SAS LUN
-        CSMI_SAS_RAID_INFO_BUFFER raidInfo;
-        if (SUCCESS == csmi_Get_RAID_Info(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &raidInfo, device->deviceVerbosity))
+        else
+#endif //_WIN32
         {
-            for (uint32_t raidSet = 0; raidSet < raidInfo.Information.uNumRaidSets; ++raidSet)
+            device->os_info.csmiDeviceData->portIdentifier = portID;
+            device->os_info.csmiDeviceData->phyIdentifier = phyID;
+            //read phy info and match the provided port and phy identifier values with the phy data to store sasAddress since it may be needed later.
+            CSMI_SAS_PHY_INFO_BUFFER phyInfo;
+            if (SUCCESS == csmi_Get_Phy_Info(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &phyInfo, device->deviceVerbosity))
             {
-                //need to parse the RAID info to figure out how much memory to allocate and read the 
-                uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) - 1 + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
-                PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
-                if (!raidConfig)
+                //Using the data we've already gotten, we need to save phy identifier, port identifier, port protocol, and SAS address.
+                //TODO: Check if we should be using the Identify or Attached structure information to populate the support fields.
+                //Identify appears to contain initiator data, and attached seems to include target data...
+                bool foundPhyInfoForDevice = false;
+                for(uint8_t portNum = 0; portNum < 32 && portNum < phyInfo.Information.bNumberOfPhys; ++portNum)
                 {
-                    return MEMORY_FAILURE;
+                    if (phyInfo.Information.Phy[portNum].bPortIdentifier == portID && phyInfo.Information.Phy[portNum].Attached.bPhyIdentifier == phyID)
+                    {
+                        device->os_info.csmiDeviceData->portProtocol = phyInfo.Information.Phy[portNum].Attached.bTargetPortProtocol;
+                        memcpy(device->os_info.csmiDeviceData->sasAddress, phyInfo.Information.Phy[portNum].Attached.bSASAddress, 8);
+                        foundPhyInfoForDevice = true;
+                        break;
+                    }
                 }
-                if (SUCCESS == csmi_Get_RAID_Config(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, raidConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, device->deviceVerbosity))
+            }
+
+            //Read the RAID config and find the matching device from SAS address. This is needed because SSP passthrough will need the SAS LUN
+            //CSMI_SAS_RAID_INFO_BUFFER raidInfo;
+            //if (SUCCESS == csmi_Get_RAID_Info(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &raidInfo, device->deviceVerbosity))
+            //{
+            //    for (uint32_t raidSet = 0; raidSet < raidInfo.Information.uNumRaidSets; ++raidSet)
+            //    {
+            //        //need to parse the RAID info to figure out how much memory to allocate and read the 
+            //        uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) - 1 + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
+            //        PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
+            //        if (!raidConfig)
+            //        {
+            //            return MEMORY_FAILURE;
+            //        }
+            //        if (SUCCESS == csmi_Get_RAID_Config(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, raidConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, device->deviceVerbosity))
+            //        {
+            //            //iterate through the drives and find a matching SAS address.
+            //            //If we find a matching SAS address, we need to check the LUN.
+            //        }
+            //        safe_Free(raidConfig);
+            //    }
+            //}
+
+            if ((device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SATA) == 0)//TODO: Need to test this. May just want to always try it
+            {
+                //get scsi address
+                //TODO: Need to figure out how we get the LUN...it's part of RAID config drive information, but it is not part of other reported information...only need this under RAID most likely...-TJE
+                //TODO: Check to see if SMP requests can somehow figure out the 8 byte SAS Lun values. Will only need it on non-SATA devices. SATA has only a singe LUN, but SAS may have multiple LUNs
+                CSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddress;
+                if (SUCCESS == csmi_Get_SCSI_Address(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &scsiAddress, device->os_info.csmiDeviceData->sasAddress, device->os_info.csmiDeviceData->sasLUN, device->deviceVerbosity))
                 {
-                    //iterate through the drives and find a matching SAS address....TODO: multiple luns???
+                    device->os_info.csmiDeviceData->scsiAddressValid = true;
+                    device->os_info.csmiDeviceData->scsiAddress.hostIndex = scsiAddress.bHostIndex;
+                    device->os_info.csmiDeviceData->scsiAddress.pathId = scsiAddress.bPathId;
+                    device->os_info.csmiDeviceData->scsiAddress.targetId = scsiAddress.bTargetId;
+                    device->os_info.csmiDeviceData->scsiAddress.lun = scsiAddress.bLun;
                 }
-                safe_Free(raidConfig);
             }
-        }
 
-        if (device->os_info.csmiDeviceData->portProtocol != CSMI_SAS_PROTOCOL_SATA)//TODO: Need to test this. May just want to always try it
-        {
-            //get scsi address
-            //TODO: Need to figure out how we get the LUN...it's part of RAID config drive information, but it is not part of other reported information...only need this under RAID most likely...-TJE
-            //TODO: Check to see if SMP requests can somehow figure out the 8 byte SAS Lun values. Will only need it on non-SATA devices. SATA has only a singe LUN, but SAS may have multiple LUNs
-            CSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddress;
-            if (SUCCESS == csmi_Get_SCSI_Address(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &scsiAddress, device->os_info.csmiDeviceData->sasAddress, device->os_info.csmiDeviceData->sasLUN, device->deviceVerbosity))
+            if (device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SATA || device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_STP)
             {
+                CSMI_SAS_SATA_SIGNATURE_BUFFER signature;
+                device->drive_info.drive_type = ATA_DRIVE;
+                //get sata signature fis and set pmport
+                if (SUCCESS == csmi_Get_SATA_Signature(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &signature, device->os_info.csmiDeviceData->phyIdentifier, device->deviceVerbosity))
+                {
+                    memcpy(&device->os_info.csmiDeviceData->signatureFIS, &signature.Signature.bSignatureFIS, sizeof(sataD2HFis));
+                    device->os_info.csmiDeviceData->signatureFISValid = true;
+                    device->os_info.csmiDeviceData->sataPMPort = M_Nibble0(device->os_info.csmiDeviceData->signatureFIS.byte1);//lower nibble of this byte holds the port multiplier port that the device is attached to...this can help route the FIS properly
+                }
+            }
 
-            }
-        }
-        
-        if (device->os_info.csmiDeviceData->portProtocol == CSMI_SAS_PROTOCOL_SATA || device->os_info.csmiDeviceData->portProtocol == CSMI_SAS_PROTOCOL_STP)
-        {
-            CSMI_SAS_SATA_SIGNATURE_BUFFER signature;
-            device->drive_info.drive_type = ATA_DRIVE;
-            //get sata signature fis and set pmport
-            if (SUCCESS == csmi_Get_SATA_Signature(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &signature, device->os_info.csmiDeviceData->phyIdentifier, device->deviceVerbosity))
-            {
-                memcpy(&device->os_info.csmiDeviceData->signatureFIS, &signature.Signature.bSignatureFIS, sizeof(sataD2HFis));
-                device->os_info.csmiDeviceData->signatureFISValid = true;
-                device->os_info.csmiDeviceData->sataPMPort = M_Nibble0(device->os_info.csmiDeviceData->signatureFIS.byte1);//lower nibble of this byte holds the port multiplier port that the device is attached to...this can help route the FIS properly
-            }
+            //TODO: Need to check for Intel IOCTL support on SATA drives so we can send the Intel FWDL ioctls instead of passthrough.
+
         }
 
         //TODO: One more validation about if NVMe or not for intel RST!!!
@@ -2386,6 +2434,22 @@ bool is_CSMI_Handle(const char * filename)
     }
     return isCSMI;
 }
+
+//Linked list structure for scanning for decides since we need to somehow tie together phy info and raid config
+//Singly linked because we probably don't need to go more than 1 direction...change this if we end up getting more complicated.
+//RAID info provides sasAddress, sasLUN, and usage. If usage is a RAID member, scan it. OTHERWISE we should ignore it as it will be handled by a system IOCTL instead
+//Phy info provides sasAddress, portID, and phyID.
+//TODO: we may or may not need to store MN, SN, FW to compare with what we find issuing commands. This may or may not be needed
+//typedef struct _csmiLDevice
+//{
+//    ptrCsmiLDevice nextDevice;
+//    uint8_t sasAddress[8];//from RAID info
+//    uint8_t sasLun[8];//from RAID info
+//    uint8_t usage;//drive usage from RAID config
+//    uint8_t portID;//fill in from phy info
+//    uint8_t phyID;//fill in from phy info
+//    bool isIntelRST;//Special case since RST can provide PTL in SASAddress field, necessary for Intel IOCTLs
+//}csmiLDevice, *ptrCsmiLDevice;
 
 //-----------------------------------------------------------------------------
 //
@@ -2842,7 +2906,6 @@ static int send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
         //STP is not supported by this controller/driver for this device.
         //So now we need to send the IO as SSP.
         //First, try SAT (no changes), if that fails for invalid operation code, then try legacy CSMI...after that, we are done retrying.
-        scsiIoCtx->device->os_info.csmiDeviceData->portProtocol = CSMI_SAS_PROTOCOL_SSP;
         ret = send_SSP_Passthrough_Command(scsiIoCtx);//This is all we should have to do since SAT style CDBs are always created by default.
         //Check the result. If it was a invalid op code, we could have passed
         if (ret == SUCCESS)
@@ -2953,35 +3016,23 @@ static int send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
 int send_CSMI_IO(ScsiIoCtx *scsiIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
-    switch (scsiIoCtx->device->os_info.csmiDeviceData->portProtocol)
+    if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SATA || scsiIoCtx->device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_STP))
     {
-    case CSMI_SAS_PROTOCOL_SATA:
-        if (scsiIoCtx->pAtaCmdOpts)
-        {
-            ret = send_STP_Passthrough_Command(scsiIoCtx);
-        }
-        else
-        {
-            //Software SAT translation
-            ret = translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
-        }
-        break;
-    case CSMI_SAS_PROTOCOL_STP:
-        if (scsiIoCtx->pAtaCmdOpts)
-        {
-            ret = send_STP_Passthrough_Command(scsiIoCtx);
-        }
-        else //TODO: Do we let the driver do this? It may not like this and we may want this to match SATA above
-        {
-            ret = send_SSP_Passthrough_Command(scsiIoCtx);
-        }
-        break;
-    case CSMI_SAS_PROTOCOL_SSP:
+        ret = send_STP_Passthrough_Command(scsiIoCtx);
+    }
+    else if (scsiIoCtx->device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SSP)
+    {
         ret = send_SSP_Passthrough_Command(scsiIoCtx);
-        break;
-    case CSMI_SAS_PROTOCOL_SMP://NOT Supported. Just return OS_PASS_THROUGH_FAILURE
-    default:
-        break;
+    }
+    //Need case to translate SCSI CDB to ATA command!
+    else if (scsiIoCtx->device->drive_info.drive_type == ATA_DRIVE)
+    {
+        //Software SAT translation
+        ret = translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
+    }
+    else
+    {
+        return BAD_PARAMETER;
     }
     return ret;
 }

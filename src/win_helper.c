@@ -8158,7 +8158,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         {
             if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
             {
-                printf("Raid PassThrough Interface is not supported for this device \n");
+                printf("Raid PassThrough Interface is not supported for this device - NVMe\n");
             }
             ret = NOT_SUPPORTED;
         }
