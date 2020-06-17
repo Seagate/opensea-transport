@@ -169,7 +169,12 @@ void write_JSON_To_File(void *customData, char *message)
     FILE *jsonFile = (FILE*)customData;
     if (jsonFile)
     {
-        fwrite(message, 1, strlen(message), jsonFile);
+        //fwrite(message, 1, strlen(message), jsonFile);
+        //TODO: Add exit code to this function to detect errors
+        if ((fwrite(message, 1, strlen(message), jsonFile) != strlen(message)) || ferror(jsonFile))
+        {
+            perror("Error writing data to a file!\n");
+        }
     }
 }
 
@@ -412,7 +417,12 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                     }
                     if (fileOpened)
                     {
-                        fflush(outputInfo->outputFilePtr);
+                        if ((fflush(outputInfo->outputFilePtr) != 0) || ferror(outputInfo->outputFilePtr))
+                        {
+                            perror("Error flushing data!\n");
+                            fclose(outputInfo->outputFilePtr);
+                            return;// ERROR_WRITING_FILE;
+                        }
                         fclose(outputInfo->outputFilePtr);
                     }
                 }
@@ -1898,7 +1908,7 @@ int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDe
 {
     volatile uint32_t i, j;
     bool sameSlNo = false;
-    int ret;
+    int ret = UNKNOWN;
 
 
     /*
@@ -2324,6 +2334,24 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                 device->drive_info.passThroughHacks.turfValue = 10;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
+                break;
+            case 0x2322://Expansion (Xbox drive uses this chip)
+                //NOTE: Need to rerun a full test someday as we don't have full confirmation on supported read commands...just assumed same as above chip for now.
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 33;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
                 device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
