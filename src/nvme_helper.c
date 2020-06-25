@@ -40,6 +40,7 @@ int fill_In_NVMe_Device_Info(tDevice *device)
     uint64_t *fillMaxLba = &device->drive_info.deviceMaxLba;
 
     //If not an NVMe interface, such as USB, then we need to store things differently
+    //RAID Interface should be treated as "Native" or "NVME_INTERFACE" since there is likely an underlying API providing direct access of some kind.
     if (device->drive_info.interface_type != NVME_INTERFACE && device->drive_info.interface_type != RAID_INTERFACE)
     {
         device->drive_info.bridge_info.isValid = true;
