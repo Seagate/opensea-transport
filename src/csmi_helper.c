@@ -2372,29 +2372,56 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
                 }
             }
 
-            //Read the RAID config and find the matching device from SAS address. This is needed because SSP passthrough will need the SAS LUN
-            //CSMI_SAS_RAID_INFO_BUFFER raidInfo;
-            //if (SUCCESS == csmi_Get_RAID_Info(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &raidInfo, device->deviceVerbosity))
-            //{
-            //    for (uint32_t raidSet = 0; raidSet < raidInfo.Information.uNumRaidSets; ++raidSet)
-            //    {
-            //        //need to parse the RAID info to figure out how much memory to allocate and read the 
-            //        uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) - 1 + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
-            //        PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
-            //        if (!raidConfig)
-            //        {
-            //            return MEMORY_FAILURE;
-            //        }
-            //        if (SUCCESS == csmi_Get_RAID_Config(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, raidConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, device->deviceVerbosity))
-            //        {
-            //            //iterate through the drives and find a matching SAS address.
-            //            //If we find a matching SAS address, we need to check the LUN.
-            //        }
-            //        safe_Free(raidConfig);
-            //    }
-            //}
+            //Need to get SASLun from RAID config IF SSP is supported since we need the SAS LUN value for issuing commands
+            //This is not needed for other protocols.
+            if (device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SSP)
+            {
+                //Read the RAID config and find the matching device from SAS address. This is needed because SSP passthrough will need the SAS LUN
+                CSMI_SAS_RAID_INFO_BUFFER raidInfo;
+                if (SUCCESS == csmi_Get_RAID_Info(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &raidInfo, device->deviceVerbosity))
+                {
+                    bool foundDrive = false;
+                    for (uint32_t raidSet = 0; raidSet < raidInfo.Information.uNumRaidSets && !foundDrive; ++raidSet)
+                    {
+                        //need to parse the RAID info to figure out how much memory to allocate and read the 
+                        uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) - 1 + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
+                        PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
+                        if (!raidConfig)
+                        {
+                            return MEMORY_FAILURE;
+                        }
+                        if (SUCCESS == csmi_Get_RAID_Config(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, raidConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, device->deviceVerbosity))
+                        {
+                            //iterate through the drives and find a matching SAS address.
+                            //If we find a matching SAS address, we need to check the LUN....since we are only doing this for SSP, we should be able to use the get SCSI address function and validate that we have the correct lun.
+                            for (uint32_t driveIter = 0; driveIter < raidConfig->Configuration.bDriveCount && driveIter < raidInfo.Information.uMaxDrivesPerSet && !foundDrive; ++driveIter)
+                            {
+                                if (memcmp(raidConfig->Configuration.Drives[driveIter].bSASAddress, device->os_info.csmiDeviceData->sasAddress, 8) == 0)
+                                {
+                                    //take the SAS Address and SAS Lun and convert to SCSI Address...this should be supported IF we find a SAS drive.
+                                    CSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddress;
+                                    if (SUCCESS == csmi_Get_SCSI_Address(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &scsiAddress, raidConfig->Configuration.Drives[driveIter].bSASAddress, raidConfig->Configuration.Drives[driveIter].bSASLun, device->deviceVerbosity))
+                                    {
+                                        if (scsiAddress.bLun == lun)
+                                        {
+                                            device->os_info.csmiDeviceData->scsiAddress.hostIndex = scsiAddress.bHostIndex;
+                                            device->os_info.csmiDeviceData->scsiAddress.pathId = scsiAddress.bPathId;
+                                            device->os_info.csmiDeviceData->scsiAddress.targetId = scsiAddress.bTargetId;
+                                            device->os_info.csmiDeviceData->scsiAddress.lun = scsiAddress.bLun;
+                                            memcpy(device->os_info.csmiDeviceData->sasLUN, raidConfig->Configuration.Drives[driveIter].bSASLun, 8);
+                                            device->os_info.csmiDeviceData->scsiAddressValid = true;
+                                            foundDrive = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        safe_Free(raidConfig);
+                    }
+                }
+            }
 
-            if ((device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SATA) == 0)//TODO: Need to test this. May just want to always try it
+            if ((device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SATA) == 0 && !device->os_info.csmiDeviceData->scsiAddressValid)//TODO: Need to test this. May just want to always try it
             {
                 //get scsi address
                 //TODO: Need to figure out how we get the LUN...it's part of RAID config drive information, but it is not part of other reported information...only need this under RAID most likely...-TJE
@@ -2428,6 +2455,10 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
             {
                 //This is an intel driver.
                 //There is a way to get path-target-lun data from the SAS address if the other IOCTLs didn't work (which they don't seem to support this translation anyways)
+                if (!device->os_info.csmiDeviceData->scsiAddressValid)
+                {
+                    //TODO: convert SAS address to SCSI address using proprietary intel formatting since IOCTLs above didn't work or weren't used.
+                }
             }
         }
 
@@ -2555,7 +2586,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, char 
                                 if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, VERBOSITY_BUFFERS))
                                 {
                                     //make sure we got all the drive information...if now, we need to reallocate with some more memory
-                                    for (uint16_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount; ++iter)
+                                    for (uint16_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet; ++iter)
                                     {
                                         switch (csmiRAIDConfig->Configuration.bDataType)
                                         {
@@ -2741,7 +2772,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                     if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, VERBOSITY_BUFFERS))
                                     {
                                         //make sure we got all the drive information...if now, we need to reallocate with some more memory
-                                        for (uint16_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount; ++iter)
+                                        for (uint16_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet; ++iter)
                                         {
                                             bool foundDevice = false;
                                             char handle[20] = { 0 };
