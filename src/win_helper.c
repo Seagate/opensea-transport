@@ -2527,8 +2527,17 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     uint32_t csmiDeviceCount = 0;
     if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI))//check whether they want CSMI devices or not
     {
-
-        int csmiRet = get_CSMI_RAID_Device_Count(&csmiDeviceCount, flags, NULL, 0);
+        //TODO: Switch from this hardcoded list later!
+        char *checkHandleList[8] = { 0 };
+        for (uint8_t iter = 0; iter < 8; ++iter)
+        {
+            checkHandleList[iter] = calloc(12, sizeof(char));
+            if (checkHandleList[iter])
+            {
+                sprintf(checkHandleList[iter], "\\\\.\\SCSI%" PRIu8 ":", iter);
+            }
+        }
+        int csmiRet = get_CSMI_RAID_Device_Count(&csmiDeviceCount, flags, (char**)checkHandleList, 8);
         if (csmiRet != SUCCESS)
         {
             csmiDeviceCount = 0;
@@ -2597,7 +2606,17 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 #if defined (ENABLE_CSMI)
         if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI) && csmiDeviceCount > 0)
         {
-            int csmiRet = get_CSMI_RAID_Device_List(&ptrToDeviceList[numberOfDevices], csmiDeviceCount * sizeof(tDevice), ver, flags, NULL, 0);
+            //TODO: Switch from this hardcoded list later!
+            char *checkHandleList[8] = { 0 };
+            for (uint8_t iter = 0; iter < 8; ++iter)
+            {
+                checkHandleList[iter] = calloc(12, sizeof(char));
+                if (checkHandleList[iter])
+                {
+                    sprintf(checkHandleList[iter], "\\\\.\\SCSI%" PRIu8 ":", iter);
+                }
+            }
+            int csmiRet = get_CSMI_RAID_Device_List(&ptrToDeviceList[numberOfDevices], csmiDeviceCount * sizeof(tDevice), ver, flags, (char**)checkHandleList, 8);
             if (returnValue == SUCCESS && csmiRet != SUCCESS)
             {
                 //this will override the normal ret if it is already set to success with the CSMI return value
