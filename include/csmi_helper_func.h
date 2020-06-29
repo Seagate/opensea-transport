@@ -67,7 +67,6 @@ extern "C"
 
     OPENSEA_TRANSPORT_API int jbod_Setup_CSMI_Info(CSMI_HANDLE deviceHandle, tDevice *device, uint8_t controllerNumber, uint8_t hostController, uint8_t pathidBus, uint8_t targetID, uint8_t lun);
 
-
     OPENSEA_TRANSPORT_API int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, char **checkHandleList, uint32_t checkHandleListLength);
 
     OPENSEA_TRANSPORT_API int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags, char **checkHandleList, uint32_t checkHandleListLength);
@@ -77,6 +76,8 @@ extern "C"
     OPENSEA_TRANSPORT_API int close_CSMI_RAID_Device(tDevice *device);
 
     OPENSEA_TRANSPORT_API int get_CSMI_RAID_Device(const char *filename, tDevice *device);
+
+    OPENSEA_TRANSPORT_API void print_CSMI_Device_Info(tDevice *device);
 
 #if defined (__cplusplus)
 }

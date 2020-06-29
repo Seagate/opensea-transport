@@ -2116,43 +2116,230 @@ int jbod_Setup_CSMI_Info(CSMI_HANDLE deviceHandle, tDevice *device, uint8_t cont
         device->os_info.csmiDeviceData->csmiDeviceInfoValid = true;
         //Read controller info, driver info, get phy info for this device too...in non-RAID mode, Windows scsi address should match the csmi scsi address
         CSMI_SAS_DRIVER_INFO_BUFFER driverInfo;
-        if (SUCCESS == csmi_Get_Driver_Info(device->os_info.csmiDeviceData->csmiDevHandle, 0, &driverInfo, device->deviceVerbosity))
+        CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
+        if (SUCCESS == csmi_Get_Driver_And_Controller_Data(device->os_info.csmiDeviceData->csmiDevHandle, 0, &driverInfo, &controllerConfig, device->deviceVerbosity))
         {
+            bool gotSASAddress = false;
             device->os_info.csmiDeviceData->csmiMajorVersion = driverInfo.Information.usMajorRevision;
             device->os_info.csmiDeviceData->csmiMinorVersion = driverInfo.Information.usMinorRevision;
-
-            CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
-            if (SUCCESS == csmi_Get_Controller_Configuration(device->os_info.csmiDeviceData->csmiDevHandle, 0, &controllerConfig, device->deviceVerbosity))
-            {
-                device->os_info.csmiDeviceData->controllerFlags = controllerConfig.Configuration.uControllerFlags;
-                device->os_info.csmiDeviceData->lun = lun;
+            device->os_info.csmiDeviceData->controllerFlags = controllerConfig.Configuration.uControllerFlags;
+            device->os_info.csmiDeviceData->lun = lun;
                 
-                //get SAS Address
-                CSMI_SAS_GET_DEVICE_ADDRESS_BUFFER addressBuffer;
-                if (SUCCESS == csmi_Get_Device_Address(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &addressBuffer, hostController, pathidBus, targetID, lun, device->deviceVerbosity))
+            //get SAS Address
+            CSMI_SAS_GET_DEVICE_ADDRESS_BUFFER addressBuffer;
+            if (SUCCESS == csmi_Get_Device_Address(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &addressBuffer, hostController, pathidBus, targetID, lun, device->deviceVerbosity))
+            {
+                memcpy(device->os_info.csmiDeviceData->sasAddress, addressBuffer.bSASAddress, 8);
+                memcpy(device->os_info.csmiDeviceData->sasLUN, addressBuffer.bSASLun, 8);
+                gotSASAddress = true;
+            }
+            else
+            {
+                //Need to figure out the device another way to get the SAS address IF this is a SAS drive. If this is SATA, this is less important overall unless it's on a SAS HBA, but a driver should be able to handle this call already.
+                //The only other place to find a SAS Address is in the RAID Config, but the drive may or may not be listed there...try it anyways...if we still don't find it, we'll only get the sasAddress from the phy info.
+                //RAID info/config will only be available if it's a SAS or SATA RAID capable controller
+                if (controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
                 {
-                    memcpy(device->os_info.csmiDeviceData->sasAddress, addressBuffer.bSASAddress, 8);
-                    memcpy(device->os_info.csmiDeviceData->sasLUN, addressBuffer.bSASLun, 8);
-                }
-
-                //Attempt to read phy info to get phy identifier and port identifier data...this may not work on RST NVMe if this code is hit...that's OK since we are unlikely to see that.
-                CSMI_SAS_PHY_INFO_BUFFER phyInfo;
-                if (SUCCESS == csmi_Get_Phy_Info(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &phyInfo, device->deviceVerbosity))
-                {
-                    //TODO: Is there a better way to match against the port identifier with the address information provided? match to attached port or phy identifier???
-                    for (uint8_t phyIter = 0; phyIter < phyInfo.Information.bNumberOfPhys && phyIter < 32; ++phyIter)
+                    CSMI_SAS_RAID_INFO_BUFFER raidInfo;
+                    if (SUCCESS == csmi_Get_RAID_Info(device->os_info.csmiDeviceData->csmiDevHandle, 0, &raidInfo, device->deviceVerbosity))
                     {
-                        if (phyInfo.Information.Phy[phyIter].Attached.bDeviceType != CSMI_SAS_NO_DEVICE_ATTACHED)
+                        for (uint32_t raidSet = 0; !gotSASAddress && raidSet < raidInfo.Information.uNumRaidSets; ++raidSet)
                         {
-                            if (memcmp(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, device->os_info.csmiDeviceData->sasAddress, 8) == 0)
+                            //with the RAID info, now we can allocate and read the RAID config
+                            uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) - 1 + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
+                            PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
+                            if (raidConfig)
                             {
-                                //Found it???
-                                //Problem: No way to make sure correct LUN, but this may not matter.
+                                if (SUCCESS == csmi_Get_RAID_Config(device->os_info.csmiDeviceData->csmiDevHandle, 0, raidConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, device->deviceVerbosity))
+                                {
+                                    if (raidConfig->Configuration.bDriveCount < CSMI_SAS_RAID_DRIVE_COUNT_TOO_BIG)
+                                    {
+                                        for (uint32_t driveIter = 0; !gotSASAddress && driveIter < raidInfo.Information.uMaxDrivesPerSet && driveIter < raidConfig->Configuration.bDriveCount; ++driveIter)
+                                        {
+                                            switch (raidConfig->Configuration.bDataType)
+                                            {
+                                            case CSMI_SAS_RAID_DATA_DRIVES:
+                                                if (strstr(raidConfig->Configuration.Drives[driveIter].bModel, device->drive_info.product_identification) && strstr(raidConfig->Configuration.Drives[driveIter].bSerialNumber, device->drive_info.serialNumber))
+                                                {
+                                                    //Found the match!!!
+                                                    gotSASAddress = true;
+                                                    memcpy(device->os_info.csmiDeviceData->sasAddress, raidConfig->Configuration.Drives[driveIter].bSASAddress, 8);
+                                                    memcpy(device->os_info.csmiDeviceData->sasLUN, raidConfig->Configuration.Drives[driveIter].bSASLun, 8);
+                                                }
+                                                break;
+                                            default:
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                safe_Free(raidConfig);
                             }
                         }
                     }
                 }
             }
+
+            //Attempt to read phy info to get phy identifier and port identifier data...this may not work on RST NVMe if this code is hit...that's OK since we are unlikely to see that.
+            CSMI_SAS_PHY_INFO_BUFFER phyInfo;
+            bool foundPhyInfo = false;
+            if (SUCCESS == csmi_Get_Phy_Info(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &phyInfo, device->deviceVerbosity))
+            {
+                //TODO: Is there a better way to match against the port identifier with the address information provided? match to attached port or phy identifier???
+                for (uint8_t phyIter = 0; !foundPhyInfo && phyIter < phyInfo.Information.bNumberOfPhys && phyIter < 32; ++phyIter)
+                {
+                    if (phyInfo.Information.Phy[phyIter].Attached.bDeviceType != CSMI_SAS_NO_DEVICE_ATTACHED)
+                    {
+                        if (gotSASAddress && memcmp(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, device->os_info.csmiDeviceData->sasAddress, 8) == 0)
+                        {
+                            //Found it. We can save the portID and phyID to use to issue commands :)
+                            device->os_info.csmiDeviceData->portIdentifier = phyInfo.Information.Phy[phyIter].bPortIdentifier;
+                            device->os_info.csmiDeviceData->phyIdentifier = phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier;
+                            device->os_info.csmiDeviceData->portProtocol = phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol;
+                            foundPhyInfo = true;
+                        }
+                        else if (!gotSASAddress)
+                        {
+                            ScsiIoCtx csmiPTCmd;
+                            memset(&csmiPTCmd, 0, sizeof(ScsiIoCtx));
+                            csmiPTCmd.device = device;
+                            csmiPTCmd.timeout = 15;
+                            csmiPTCmd.direction = XFER_DATA_IN;
+                            csmiPTCmd.psense = device->drive_info.lastCommandSenseData;
+                            csmiPTCmd.senseDataSize = SPC3_SENSE_LEN;
+                            //Don't have a SAS Address to match to, so we need to send an identify or inquiry to the device to see if it is the same MN, then check the SN.
+                            //NOTE: This will not work if we don't already know the sasLUN for SAS drives. SATA will be ok though.
+                            device->os_info.csmiDeviceData->portIdentifier = phyInfo.Information.Phy[phyIter].bPortIdentifier;
+                            device->os_info.csmiDeviceData->phyIdentifier = phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier;
+                            device->os_info.csmiDeviceData->portProtocol = phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol;
+                            //Attempt passthrough command and compare identifying data.
+                            //for this to work, SCSIIoCTX structure must be manually defined for what we want to do right now and call the CSMI IO directly...not great, but don't want to have other force flags elsewhere at the moment- TJE
+                            if (phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_SATA || phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_STP)
+                            {
+                                //ATA identify
+                                uint8_t identifyData[512] = { 0 };
+                                ataPassthroughCommand identify;
+                                memset(&identify, 0, sizeof(ataPassthroughCommand));
+                                identify.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
+                                identify.ataTransferBlocks = ATA_PT_512B_BLOCKS;
+                                identify.commadProtocol = ATA_PROTOCOL_PIO;
+                                identify.commandDirection = XFER_DATA_IN;
+                                identify.commandType = ATA_CMD_TYPE_TASKFILE;
+                                identify.timeout = 15;
+                                csmiPTCmd.pdata = identify.ptrData = identifyData;
+                                csmiPTCmd.dataLength = identify.dataSize = 512;
+                                csmiPTCmd.pAtaCmdOpts = &identify;
+                                identify.tfr.CommandStatus = ATA_IDENTIFY;
+                                identify.tfr.SectorCount = 1;
+                                identify.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+                                if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
+                                {
+                                    //compare MN and SN...if match, then we have found the drive!
+                                    char ataMN[41] = { 0 };
+                                    char ataSN[41] = { 0 };
+                                    //char ataFW[9] = { 0 };
+                                    //copy strings
+                                    memcpy(ataSN, &identifyData[20], 40);
+                                    //memcpy(ataFW, &identifyData[46], 8);
+                                    memcpy(ataMN, &identifyData[54], 40);
+                                    //byte-swap due to ATA string silliness.
+                                    byte_Swap_String(ataSN);
+                                    byte_Swap_String(ataMN);
+                                    //byte_Swap_String(ataFW);
+                                    //remove whitespace
+                                    remove_Leading_And_Trailing_Whitespace(ataSN);
+                                    remove_Leading_And_Trailing_Whitespace(ataMN);
+                                    //remove_Leading_And_Trailing_Whitespace(ataFW);
+                                    //check for a match
+                                    if (strcmp(ataMN, device->drive_info.product_identification) == 0 && strcmp(ataSN, device->drive_info.serialNumber) == 0)
+                                    {
+                                        //found a match!
+                                        foundPhyInfo = true;
+                                    }
+                                }
+                            }
+                            else if (phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_SSP)
+                            {
+                                //SCSI Inquiry and read unit serial number VPD page
+                                uint8_t inqData[96] = { 0 };
+                                uint8_t cdb[CDB_LEN_6] = { 0 };
+                                cdb[OPERATION_CODE] = INQUIRY_CMD;
+                                /*if (evpd)
+                                {
+                                    cdb[1] |= BIT0;
+                                }*/
+                                cdb[2] = 0;// pageCode;
+                                cdb[3] = M_Byte1(96);
+                                cdb[4] = M_Byte0(96);
+                                cdb[5] = 0;//control
+
+                                csmiPTCmd.cdbLength = CDB_LEN_6;
+                                memcpy(csmiPTCmd.cdb, cdb, 6);
+                                csmiPTCmd.dataLength = 96;
+                                csmiPTCmd.pdata = inqData;
+                                
+                                if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
+                                {
+                                    //TODO: If this is a multi-LUN device, this won't currently work and it may not be possible to make this work if we got to this case in the first place. HOPEFULLY the other CSMI translation IOCTLs just work and this is unnecessary. - TJE
+                                    //If MN matches, send inquiry to unit SN vpd page to confirm we have a matching SN
+                                    char inqVendor[9] = { 0 };
+                                    char inqProductID[17] = { 0 };
+                                    //char inqProductRev[5] = { 0 };
+                                    //copy the strings
+                                    memcpy(inqVendor, &inqData[8], 8);
+                                    memcpy(inqProductID, &inqData[16], 16);
+                                    //memcpy(inqProductRev, &inqData[32], 4);
+                                    //remove whitespace
+                                    remove_Leading_And_Trailing_Whitespace(inqVendor);
+                                    remove_Leading_And_Trailing_Whitespace(inqProductID);
+                                    //remove_Leading_And_Trailing_Whitespace(inqProductRev);
+                                    //compare to tDevice
+                                    if (strcmp(inqVendor, device->drive_info.T10_vendor_ident) == 0 && strcmp(inqProductID, device->drive_info.product_identification) == 0)
+                                    {
+                                        //now read the unit SN VPD page since this matches so far that way we can compare the serial number. Not checking SCSI 2 since every SAS drive *SHOULD* support this.
+                                        memset(inqData, 0, 96);
+                                        //change CDB to read unit SN page
+                                        cdb[1] |= BIT0;
+                                        cdb[2] = UNIT_SERIAL_NUMBER;
+                                        if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
+                                        {
+                                            //check the SN
+                                            uint16_t serialNumberLength = M_Min(M_BytesTo2ByteValue(inqData[2], inqData[3]), 96) + 1;
+                                            char *serialNumber = (char*)calloc(serialNumberLength, sizeof(char));
+                                            if (serialNumber)
+                                            {
+                                                memcpy(serialNumber, &inqData[4], serialNumberLength - 1);//minus 1 to leave null terminator in tact at the end
+                                                if (strcmp(serialNumber, device->drive_info.serialNumber) == 0)
+                                                {
+                                                    //found a match!
+                                                    foundPhyInfo = true;
+                                                    //TODO: To help prevent multiport or multi-lun issues, we should REALLY check the device identification VPD page, but that can be a future enhancement
+                                                }
+                                                safe_Free(serialNumber);
+                                            }
+                                        }
+                                        //else...catastrophic failure? Not sure what to do here since this should be really rare to begin with.
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!foundPhyInfo)
+            {
+                //We don't have enough information to use CSMI passthrough on this device. Free memory and return NOT_SUPPORTED
+                safe_Free(device->os_info.csmiDeviceData);
+                ret = NOT_SUPPORTED;
+            }
+
+            //TODO: Check if Intel Driver and if FWDL IOs are supported or not. version 14.8+
+
+        }
+        else
+        {
+            ret = NOT_SUPPORTED;
         }
     }
     else
@@ -2161,30 +2348,6 @@ int jbod_Setup_CSMI_Info(CSMI_HANDLE deviceHandle, tDevice *device, uint8_t cont
     }
     return ret;
 }
-
-////will check if an atapi drive is attached by checking the signature and sets the drive type for this device to ATAPI drive.
-//void set_ATAPI_Drive_From_Signature_FIS(tDevice *device)
-//{
-//    if (device->os_info.csmiDeviceData && device->os_info.csmiDeviceData->csmiDeviceInfoValid)
-//    {
-//        //TODO: Do we need to do more checking before trying to issue this command to get the SATA signature? Most SAS HBAs don't support ATAPI so it may not matter.
-//        CSMI_SAS_SATA_SIGNATURE_BUFFER signature;
-//        memset(&signature, 0, sizeof(CSMI_SAS_SATA_SIGNATURE_BUFFER));
-//
-//        if (SUCCESS == csmi_Get_SATA_Signature(device->os_info.fd, 0, &signature, device->os_info.csmiDeviceData->phyIdentifier, device->deviceVerbosity))
-//        {
-//            ptrSataD2HFis signatureFIS = (ptrSataD2HFis)signature.Signature.bSignatureFIS;
-//            if (signatureFIS->lbaMid == 0x14 && signatureFIS->lbaHi == 0xEB)
-//            {
-//                //atapi device found
-//                device->drive_info.drive_type = ATAPI_DRIVE;
-//            }
-//        }
-//    }
-//}
-//-------------------OLD CSMI code is below. Updated/new code is above-----------------------//
-
-
 
 //-----------------------------------------------------------------------------
 //
@@ -2220,6 +2383,7 @@ int close_CSMI_RAID_Device(tDevice *device)
         return MEMORY_FAILURE;
     }
 }
+
 //TODO: Accept SASAddress and SASLun inputs
 int get_CSMI_RAID_Device(const char *filename, tDevice *device)
 {
@@ -3177,6 +3341,12 @@ int send_CSMI_IO(ScsiIoCtx *scsiIoCtx)
         return BAD_PARAMETER;
     }
     return ret;
+}
+
+void print_CSMI_Device_Info(tDevice *device)
+{
+    printf("TODO: Get and show CSMI device info.\n");
+    return;
 }
 
 #endif //ENABLE_CSMI

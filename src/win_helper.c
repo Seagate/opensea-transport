@@ -2329,11 +2329,7 @@ int get_Win_Device(const char *filename, tDevice *device )
                         //open up the CSMI handle and populate the pointer to the csmidata structure. This may allow us to work around other commands.
                         if (SUCCESS == jbod_Setup_CSMI_Info(device->os_info.scsiSRBHandle, device, 0, device->os_info.scsi_addr.PortNumber, device->os_info.scsi_addr.PathId, device->os_info.scsi_addr.TargetId, device->os_info.scsi_addr.Lun))
                         {
-                            //Check for RST support and populate RST support as well.
-                            if (device_Supports_CSMI_With_RST(device))
-                            {
-                                //Intel RST specific stuff
-                            }
+                            //TODO: Set flags, or other info?
                         }
                     }
                 }
