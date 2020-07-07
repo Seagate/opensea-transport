@@ -2101,6 +2101,7 @@ bool device_Supports_CSMI_With_RST(tDevice *device)
 #endif
 //This is really only here for Windows, but could be used under Linux if you wanted to use CSMI instead of SGIO, but that really is unnecessary
 //controller number is to target the CSMI IOCTL inputs on non-windows. hostController is a SCSI address number, which may or may not be different...If these end up the same on Linux, this should be update to remove the duplicate parameters. If not, delete part of this comment.
+//NOTE: this does not handle Intel NVMe devices in JBOD mode right now. These devices will be handled separately from this function which focuses on SATA/SAS
 int jbod_Setup_CSMI_Info(CSMI_HANDLE deviceHandle, tDevice *device, uint8_t controllerNumber, uint8_t hostController, uint8_t pathidBus, uint8_t targetID, uint8_t lun)
 {
     int ret = SUCCESS;
@@ -2124,6 +2125,12 @@ int jbod_Setup_CSMI_Info(CSMI_HANDLE deviceHandle, tDevice *device, uint8_t cont
             device->os_info.csmiDeviceData->csmiMinorVersion = driverInfo.Information.usMinorRevision;
             device->os_info.csmiDeviceData->controllerFlags = controllerConfig.Configuration.uControllerFlags;
             device->os_info.csmiDeviceData->lun = lun;
+            //set CSMI scsi address based on what was passed in since it may be needed later
+            device->os_info.csmiDeviceData->scsiAddress.hostIndex = hostController;
+            device->os_info.csmiDeviceData->scsiAddress.pathId = pathidBus;
+            device->os_info.csmiDeviceData->scsiAddress.targetId = targetID;
+            device->os_info.csmiDeviceData->scsiAddress.lun = lun;
+            device->os_info.csmiDeviceData->scsiAddressValid = true;
                 
             //get SAS Address
             CSMI_SAS_GET_DEVICE_ADDRESS_BUFFER addressBuffer;
@@ -2334,8 +2341,17 @@ int jbod_Setup_CSMI_Info(CSMI_HANDLE deviceHandle, tDevice *device, uint8_t cont
                 ret = NOT_SUPPORTED;
             }
 
-            //TODO: Check if Intel Driver and if FWDL IOs are supported or not. version 14.8+
-
+#if defined (_WIN32)
+            //Check if Intel Driver and if FWDL IOs are supported or not. version 14.8+
+            if (strncmp(driverInfo.Information.szName, "iaStor", 6) == 0)
+            {
+                //Intel driver, check for Additional IOCTLs by trying to read FWDL info
+                if (supports_Intel_Firmware_Download(device))
+                {
+                    //No need to do anything here right now since the function above will fill in parameters as necessary.
+                }
+            }
+#endif
         }
         else
         {
@@ -2396,7 +2412,6 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
     {
         return LIBRARY_MISMATCH;
     }
-    printf("\n===== CSMI Get Device =====\n");
     //set the handle name first...since the tokenizing below will break it apart
     memcpy(device->os_info.name, filename, strlen(filename));
 #if defined (_WIN32)
@@ -2406,7 +2421,6 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
     {
         intelNVMe = true;
         sprintf(device->os_info.friendlyName, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":N:%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, *intelPathID, *intelTargetID, *intelLun);
-        printf("Detected Intel NVMe handle provided\n");
     }
     else
     {
@@ -2642,22 +2656,6 @@ bool is_CSMI_Handle(const char * filename)
     return isCSMI;
 }
 
-//Linked list structure for scanning for decides since we need to somehow tie together phy info and raid config
-//Singly linked because we probably don't need to go more than 1 direction...change this if we end up getting more complicated.
-//RAID info provides sasAddress, sasLUN, and usage. If usage is a RAID member, scan it. OTHERWISE we should ignore it as it will be handled by a system IOCTL instead
-//Phy info provides sasAddress, portID, and phyID.
-//TODO: we may or may not need to store MN, SN, FW to compare with what we find issuing commands. This may or may not be needed
-//typedef struct _csmiLDevice
-//{
-//    ptrCsmiLDevice nextDevice;
-//    uint8_t sasAddress[8];//from RAID info
-//    uint8_t sasLun[8];//from RAID info
-//    uint8_t usage;//drive usage from RAID config
-//    uint8_t portID;//fill in from phy info
-//    uint8_t phyID;//fill in from phy info
-//    bool isIntelRST;//Special case since RST can provide PTL in SASAddress field, necessary for Intel IOCTLs
-//}csmiLDevice, *ptrCsmiLDevice;
-
 //-----------------------------------------------------------------------------
 //
 //  get_Device_Count()
@@ -2670,13 +2668,13 @@ bool is_CSMI_Handle(const char * filename)
 //!   \param[out] numberOfDevices = integer to hold the number of devices found.
 //!   \param[in] flags = eScanFlags based mask to let application control.
 //!                      NOTE: currently flags param is not being used.
-//!   \param[in] srbHandleList = list of handles to use to check the count. This can prevent duplicate devices if we know some handles should not be looked at.
+//!   \param[in] beginningOfList = list of handles to use to check the count. This can prevent duplicate devices if we know some handles should not be looked at.
 //!
 //  Exit:
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, char **checkHandleList, uint32_t checkHandleListLength)
+int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, ptrRaidHandleToScan *beginningOfList)
 {
     CSMI_HANDLE fd = CSMI_INVALID_HANDLE;
 #if defined (_WIN32)
@@ -2684,121 +2682,139 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, char 
 #else
     char deviceName[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
 #endif
+    eVerbosityLevels csmiCountVerbosity = VERBOSITY_DEFAULT;//change this if debugging
+    ptrRaidHandleToScan raidList = NULL;
+    ptrRaidHandleToScan previousRaidListEntry = NULL;
+    int controllerNumber = 0, driveNumber = 0, found = 0;
 
-    if (!checkHandleList || checkHandleListLength == 0)
+    if (!beginningOfList || !*beginningOfList)
     {
         //don't do anything. Only scan when we get a list to use.
         //Each OS that want's to do this should generate a list of handles to look for.
         return SUCCESS;
     }
 
+    raidList = *beginningOfList;
+
     //On non-Windows systems, we also have to check controller numbers...so there is one extra top-level loop for this on these systems.
-    int controllerNumber = 0, driveNumber = 0, found = 0;
-    for (uint32_t handleIter = 0; handleIter < checkHandleListLength; ++handleIter)
+    
+    while(raidList)
     {
-        if (!(checkHandleList[handleIter] && strlen(checkHandleList[handleIter])))
+        bool handleRemoved = false;
+        if (raidList->raidHint.csmiRAID || raidList->raidHint.unknownRAID)
         {
-            break;
-        }
 #if defined (_WIN32)
-        _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), checkHandleList[handleIter]);
-        //lets try to open the controller.
-        fd = CreateFile(deviceName,
-            GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
-            FILE_SHARE_READ | FILE_SHARE_WRITE,
-            NULL,
-            OPEN_EXISTING,
+            _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), raidList->handle);
+            //lets try to open the controller.
+            fd = CreateFile(deviceName,
+                GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                NULL,
+                OPEN_EXISTING,
 #if !defined(WINDOWS_DISABLE_OVERLAPPED)
-            FILE_FLAG_OVERLAPPED,
+                FILE_FLAG_OVERLAPPED,
 #else
-            0,
+                0,
 #endif
-            NULL);
-        if (fd != INVALID_HANDLE_VALUE)
+                NULL);
+            if (fd != INVALID_HANDLE_VALUE)
 #else
-        sprintf(deviceName, "%s", checkHandleList[handleIter]);
-        if ((fd = open(filename, O_RDWR | O_NONBLOCK)) >= 0)
+            sprintf(deviceName, "%s", raidList->handle);
+            if ((fd = open(filename, O_RDWR | O_NONBLOCK)) >= 0)
 #endif
-        {
-#if !defined (_WIN32)
-            for (controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS; ++controllerNumber)
             {
-#endif
-                //first, check if this handle supports CSMI before we try anything else
-                CSMI_SAS_DRIVER_INFO_BUFFER driverInfo;
-                CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
-                memset(&driverInfo, 0, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
-                memset(&controllerConfig, 0, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
-                if (SUCCESS == csmi_Get_Driver_And_Controller_Data(fd, controllerNumber, &driverInfo, &controllerConfig, VERBOSITY_BUFFERS))
+#if !defined (_WIN32)
+                for (controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS; ++controllerNumber)
                 {
-                    //Check if it's a RAID capable controller. We only want to enumerate devices on those in this function
-                    if (controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
-                        || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
-                        || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
+#endif
+                    //first, check if this handle supports CSMI before we try anything else
+                    CSMI_SAS_DRIVER_INFO_BUFFER driverInfo;
+                    CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
+                    memset(&driverInfo, 0, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
+                    memset(&controllerConfig, 0, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
+                    if (SUCCESS == csmi_Get_Driver_And_Controller_Data(fd, controllerNumber, &driverInfo, &controllerConfig, csmiCountVerbosity))
                     {
-                        //Get RAID info
-                        CSMI_SAS_RAID_INFO_BUFFER csmiRAIDInfo;
-                        csmi_Get_RAID_Info(fd, controllerNumber, &csmiRAIDInfo, VERBOSITY_BUFFERS);
-                        //Get RAID config
-                        for (uint32_t raidSet = 0; raidSet < csmiRAIDInfo.Information.uNumRaidSets; ++raidSet)
+                        //Check if it's a RAID capable controller. We only want to enumerate devices on those in this function
+                        if (controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
+                            || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
+                            || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
                         {
-                            //start with a length that adds no padding for extra drives, then reallocate to a new size when we know the new size
-                            uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES);
-                            PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
-                            if (csmiRAIDConfig)
+                            //Get RAID info
+                            CSMI_SAS_RAID_INFO_BUFFER csmiRAIDInfo;
+                            csmi_Get_RAID_Info(fd, controllerNumber, &csmiRAIDInfo, csmiCountVerbosity);
+                            //Get RAID config
+                            for (uint32_t raidSet = 0; raidSet < csmiRAIDInfo.Information.uNumRaidSets; ++raidSet)
                             {
-                                if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, VERBOSITY_BUFFERS))
+                                //start with a length that adds no padding for extra drives, then reallocate to a new size when we know the new size
+                                uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES);
+                                PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
+                                if (csmiRAIDConfig)
                                 {
-                                    //make sure we got all the drive information...if now, we need to reallocate with some more memory
-                                    for (uint16_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet; ++iter)
+                                    if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, csmiCountVerbosity))
                                     {
-                                        switch (csmiRAIDConfig->Configuration.bDataType)
+                                        //make sure we got all the drive information...if now, we need to reallocate with some more memory
+                                        for (uint16_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet; ++iter)
                                         {
-                                        case CSMI_SAS_RAID_DATA_DRIVES:
-                                            switch (csmiRAIDConfig->Configuration.Drives[iter].bDriveUsage)
+                                            switch (csmiRAIDConfig->Configuration.bDataType)
                                             {
-                                            case CSMI_SAS_DRIVE_CONFIG_NOT_USED:
-                                                //Don't count drives with this flag, because they are not configured in a RAID at this time. We only want those configured in a RAID/RAID-like scenario.
+                                            case CSMI_SAS_RAID_DATA_DRIVES:
+                                                switch (csmiRAIDConfig->Configuration.Drives[iter].bDriveUsage)
+                                                {
+                                                case CSMI_SAS_DRIVE_CONFIG_NOT_USED:
+                                                    //Don't count drives with this flag, because they are not configured in a RAID at this time. We only want those configured in a RAID/RAID-like scenario.
+                                                    break;
+                                                case CSMI_SAS_DRIVE_CONFIG_MEMBER:
+                                                case CSMI_SAS_DRIVE_CONFIG_SPARE:
+                                                case CSMI_SAS_DRIVE_CONFIG_SPARE_ACTIVE:
+                                                case CSMI_SAS_DRIVE_CONFIG_SRT_CACHE:
+                                                case CSMI_SAS_DRIVE_CONFIG_SRT_DATA:
+                                                    ++found;
+                                                    break;
+                                                default:
+                                                    break;
+                                                }
                                                 break;
-                                            case CSMI_SAS_DRIVE_CONFIG_MEMBER:
-                                            case CSMI_SAS_DRIVE_CONFIG_SPARE:
-                                            case CSMI_SAS_DRIVE_CONFIG_SPARE_ACTIVE:
-                                            case CSMI_SAS_DRIVE_CONFIG_SRT_CACHE:
-                                            case CSMI_SAS_DRIVE_CONFIG_SRT_DATA:
-                                                ++found;
-                                                break;
+                                            case CSMI_SAS_RAID_DATA_DEVICE_ID:
+                                            case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
                                             default:
                                                 break;
                                             }
-                                            break;
-                                        case CSMI_SAS_RAID_DATA_DEVICE_ID:
-                                        case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
-                                        default:
-                                            break;
                                         }
                                     }
+                                    safe_Free(csmiRAIDConfig);
                                 }
-                                safe_Free(csmiRAIDConfig);
                             }
                         }
+                        //printf("Found CSMI Handle: %s\tRemoving from list.\n", raidList->handle);
+                        //This was a CSMI handle, remove it from the list!
+                        //This will also increment us to the next handle
+                        raidList = remove_RAID_Handle(raidList, previousRaidListEntry);
+                        handleRemoved = true;
+                        //printf("Handle removed successfully. raidList = %p\n", raidList);
                     }
-                }
 #if !defined (_WIN32) //loop through controller numbers
+                }
+#endif
+            }
+            //close handle to the controller
+#if defined (_WIN32)
+            if (fd != INVALID_HANDLE_VALUE)
+            {
+                CloseHandle(fd);
+            }
+#else
+            if (fd < 0)
+            {
+                close(fd);
             }
 #endif
         }
-        //close handle to the controller
-#if defined (_WIN32)
-        if (fd != INVALID_HANDLE_VALUE)
+        if (!handleRemoved)
         {
-            CloseHandle(fd);
+            previousRaidListEntry = raidList;//store handle we just looked at in case we need to remove one from the list
+            //increment to next element in the list
+            raidList = raidList->next;
         }
-#else
-        if (fd < 0)
-        {
-            close(fd);
-        }
-#endif
     }
     *numberOfDevices = found;
     return SUCCESS;
@@ -2829,7 +2845,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, char 
 //!                     Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags, char **checkHandleList, uint32_t checkHandleListLength)
+int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags, ptrRaidHandleToScan *beginningOfList)
 {
     int returnValue = SUCCESS;
     int numberOfDevices = 0;
@@ -2839,15 +2855,14 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 #else
     char deviceName[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
 #endif
-
-    if (!checkHandleList || checkHandleListLength == 0)
+    eVerbosityLevels csmiListVerbosity = VERBOSITY_DEFAULT;//If debugging, change this and down below where this is set per device will also need changing
+    
+    if (!beginningOfList || !*beginningOfList)
     {
         //don't do anything. Only scan when we get a list to use.
         //Each OS that want's to do this should generate a list of handles to look for.
         return SUCCESS;
     }
-
-    tDevice * d = NULL;
 
     //TODO: Check if sizeInBytes is a multiple of
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -2860,204 +2875,217 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     }
     else
     {
+        tDevice * d = NULL;
+        ptrRaidHandleToScan raidList = *beginningOfList;
+        ptrRaidHandleToScan previousRaidListEntry = NULL;
+        int controllerNumber = 0, driveNumber = 0, found = 0, failedGetDeviceCount = 0;
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
 
         //On non-Windows systems, we also have to check controller numbers...so there is one extra top-level loop for this on these systems.
-        int controllerNumber = 0, driveNumber = 0, found = 0, failedGetDeviceCount = 0;
-        for (uint32_t handleIter = 0; handleIter < checkHandleListLength; ++handleIter)
+        
+        while (raidList)
         {
-            if (!(checkHandleList[handleIter] && strlen(checkHandleList[handleIter])))
+            bool handleRemoved = false;
+            if (raidList->raidHint.csmiRAID || raidList->raidHint.unknownRAID)
             {
-                break;
-            }
 #if defined (_WIN32)
 
-            //Get the controller number from the scsi handle since we need it later!
-            sscanf(checkHandleList[handleIter], "\\\\.\\SCSI%d:", &controllerNumber);
+                //Get the controller number from the scsi handle since we need it later!
+                sscanf(raidList->handle, "\\\\.\\SCSI%d:", &controllerNumber);
 
-            _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), checkHandleList[handleIter]);
-            //lets try to open the controller.
-            fd = CreateFile(deviceName,
-                GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
-                FILE_SHARE_READ | FILE_SHARE_WRITE,
-                NULL,
-                OPEN_EXISTING,
+                _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), raidList->handle);
+                //lets try to open the controller.
+                fd = CreateFile(deviceName,
+                    GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
+                    FILE_SHARE_READ | FILE_SHARE_WRITE,
+                    NULL,
+                    OPEN_EXISTING,
 #if !defined(WINDOWS_DISABLE_OVERLAPPED)
-                FILE_FLAG_OVERLAPPED,
+                    FILE_FLAG_OVERLAPPED,
 #else
-                0,
+                    0,
 #endif
-                NULL);
-            if (fd != INVALID_HANDLE_VALUE)
+                    NULL);
+                if (fd != INVALID_HANDLE_VALUE)
 #else
-            sprintf(deviceName, "%s", checkHandleList[handleIter]);
-            if ((fd = open(filename, O_RDWR | O_NONBLOCK)) >= 0)
+                sprintf(deviceName, "%s", raidList->handle);
+                if ((fd = open(filename, O_RDWR | O_NONBLOCK)) >= 0)
 #endif
-            {
-#if !defined (_WIN32)
-                for (controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS; ++controllerNumber)
                 {
-#endif
-                    //first, check if this handle supports CSMI before we try anything else
-                    CSMI_SAS_DRIVER_INFO_BUFFER driverInfo;
-                    CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
-                    memset(&driverInfo, 0, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
-                    memset(&controllerConfig, 0, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
-                    if (SUCCESS == csmi_Get_Driver_And_Controller_Data(fd, controllerNumber, &driverInfo, &controllerConfig, VERBOSITY_BUFFERS))
+#if !defined (_WIN32)
+                    for (controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS; ++controllerNumber)
                     {
-                        //Check if it's a RAID capable controller. We only want to enumerate devices on those in this function
-                        if (controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
-                            || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
-                            || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
+#endif
+                        //first, check if this handle supports CSMI before we try anything else
+                        CSMI_SAS_DRIVER_INFO_BUFFER driverInfo;
+                        CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
+                        memset(&driverInfo, 0, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
+                        memset(&controllerConfig, 0, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
+                        csmiListVerbosity = d->deviceVerbosity;//this is to preserve any verbosity set when coming into this function
+                        if (SUCCESS == csmi_Get_Driver_And_Controller_Data(fd, controllerNumber, &driverInfo, &controllerConfig, csmiListVerbosity))
                         {
-                            //Get RAID info & Phy info. Need to match the RAID config (below) to some of the phy info as best we can...-TJE
-#if defined (_WIN32)
-                            bool isIntelDriver = false;
-#endif
-                            CSMI_SAS_PHY_INFO_BUFFER phyInfo;
-                            CSMI_SAS_RAID_INFO_BUFFER csmiRAIDInfo;
-                            csmi_Get_RAID_Info(fd, controllerNumber, &csmiRAIDInfo, VERBOSITY_BUFFERS);
-                            csmi_Get_Phy_Info(fd, controllerNumber, &phyInfo, VERBOSITY_BUFFERS);
-#if defined (_WIN32)
-                            if (strncmp(driverInfo.Information.szName, "iaStor", 6) == 0)
+                            //Check if it's a RAID capable controller. We only want to enumerate devices on those in this function
+                            if (controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
+                                || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
+                                || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
                             {
-                                isIntelDriver = true;
-                            }
+                                //Get RAID info & Phy info. Need to match the RAID config (below) to some of the phy info as best we can...-TJE
+#if defined (_WIN32)
+                                bool isIntelDriver = false;
 #endif
-                            //Get RAID config
-                            for (uint32_t raidSet = 0; raidSet < csmiRAIDInfo.Information.uNumRaidSets; ++raidSet)
-                            {
-                                //start with a length that adds no padding for extra drives, then reallocate to a new size when we know the new size
-                                uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES);
-                                PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
-                                if (csmiRAIDConfig)
+                                CSMI_SAS_PHY_INFO_BUFFER phyInfo;
+                                CSMI_SAS_RAID_INFO_BUFFER csmiRAIDInfo;
+                                csmi_Get_RAID_Info(fd, controllerNumber, &csmiRAIDInfo, csmiListVerbosity);
+                                csmi_Get_Phy_Info(fd, controllerNumber, &phyInfo, csmiListVerbosity);
+#if defined (_WIN32)
+                                if (strncmp(driverInfo.Information.szName, "iaStor", 6) == 0)
                                 {
-                                    if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, VERBOSITY_BUFFERS))
-                                    {
-                                        //make sure we got all the drive information...if now, we need to reallocate with some more memory
-                                        for (uint16_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet; ++iter)
-                                        {
-                                            bool foundDevice = false;
-                                            char handle[20] = { 0 };
-                                            switch (csmiRAIDConfig->Configuration.bDataType)
-                                            {
-                                            case CSMI_SAS_RAID_DATA_DRIVES:
-                                                switch (csmiRAIDConfig->Configuration.Drives[iter].bDriveUsage)
-                                                {
-                                                case CSMI_SAS_DRIVE_CONFIG_NOT_USED:
-                                                    //Don't count drives with this flag, because they are not configured in a RAID at this time. We only want those configured in a RAID/RAID-like scenario.
-                                                    break;
-                                                case CSMI_SAS_DRIVE_CONFIG_MEMBER:
-                                                case CSMI_SAS_DRIVE_CONFIG_SPARE:
-                                                case CSMI_SAS_DRIVE_CONFIG_SPARE_ACTIVE:
-                                                case CSMI_SAS_DRIVE_CONFIG_SRT_CACHE:
-                                                case CSMI_SAS_DRIVE_CONFIG_SRT_DATA:
-                                                    //Need to setup a handle and try get_Device to see if it works.
-                                                    //NOTE: Need to know if on intel AND if model contains "NVMe" because we need to setup that differently to discover it properly
-#if defined (_WIN32)
-                                                    if (isIntelDriver && strncmp(csmiRAIDConfig->Configuration.Drives[iter].bModel, "NVMe", 4) == 0)
-                                                    {
-                                                        //This should only happen on Intel Drivers using SRT
-                                                        //The SAS Address holds port-target-lun data in it...I don't know the exact format, so this is purely a guess at this point until I get better documentation!
-                                                        uint8_t path = 0, target = 0, lun = 0;
-                                                        path = csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[2];//or byte 3? On my test hardware both bytes 2 and 3 have the same value set!!!
-                                                        //TODO: don't know which bytes hold target and lun...leaving as zero since they are TECHNICALLY reserved in the documentation
-                                                        //\\.\SCSI?: number is needed in windows, this is the controllerNumber in Windows.
-                                                        sprintf(handle, "csmi:%" PRIu8 ":N:%" PRIu8 ":%" PRIu8 ":%" PRIu8, controllerNumber, path, target, lun);
-                                                        foundDevice = true;
-                                                    }
-                                                    else //SAS or SATA drive
+                                    isIntelDriver = true;
+                                }
 #endif
+                                //Get RAID config
+                                for (uint32_t raidSet = 0; raidSet < csmiRAIDInfo.Information.uNumRaidSets; ++raidSet)
+                                {
+                                    //start with a length that adds no padding for extra drives, then reallocate to a new size when we know the new size
+                                    uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES);
+                                    PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
+                                    if (csmiRAIDConfig)
+                                    {
+                                        if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, csmiListVerbosity))
+                                        {
+                                            //make sure we got all the drive information...if now, we need to reallocate with some more memory
+                                            for (uint16_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet; ++iter)
+                                            {
+                                                bool foundDevice = false;
+                                                char handle[20] = { 0 };
+                                                switch (csmiRAIDConfig->Configuration.bDataType)
+                                                {
+                                                case CSMI_SAS_RAID_DATA_DRIVES:
+                                                    switch (csmiRAIDConfig->Configuration.Drives[iter].bDriveUsage)
                                                     {
-                                                        //Compare this drive info to phy info as best we can using SASAddress field. 
-                                                        //NOTE: If this doesn't work on some controllers, then this will get even more complicated as we will need to try other CSMI commands and attempt reading drive identify or inquiry data to make the match correctly!!!
-                                                        //Loop through phy info and find matching SAS address...should only occur ONCE even with multiple Luns since they attach to the same Phy
-                                                        for (uint8_t phyIter = 0; phyIter < 32 && phyIter < phyInfo.Information.bNumberOfPhys; ++phyIter)
+                                                    case CSMI_SAS_DRIVE_CONFIG_NOT_USED:
+                                                        //Don't count drives with this flag, because they are not configured in a RAID at this time. We only want those configured in a RAID/RAID-like scenario.
+                                                        break;
+                                                    case CSMI_SAS_DRIVE_CONFIG_MEMBER:
+                                                    case CSMI_SAS_DRIVE_CONFIG_SPARE:
+                                                    case CSMI_SAS_DRIVE_CONFIG_SPARE_ACTIVE:
+                                                    case CSMI_SAS_DRIVE_CONFIG_SRT_CACHE:
+                                                    case CSMI_SAS_DRIVE_CONFIG_SRT_DATA:
+                                                        //Need to setup a handle and try get_Device to see if it works.
+                                                        //NOTE: Need to know if on intel AND if model contains "NVMe" because we need to setup that differently to discover it properly
+#if defined (_WIN32)
+                                                        if (isIntelDriver && strncmp(csmiRAIDConfig->Configuration.Drives[iter].bModel, "NVMe", 4) == 0)
                                                         {
-                                                            if (memcmp(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8) == 0)
+                                                            //This should only happen on Intel Drivers using SRT
+                                                            //The SAS Address holds port-target-lun data in it...I don't know the exact format, so this is purely a guess at this point until I get better documentation!
+                                                            uint8_t path = 0, target = 0, lun = 0;
+                                                            path = csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[2];//or byte 3? On my test hardware both bytes 2 and 3 have the same value set!!!
+                                                            //TODO: don't know which bytes hold target and lun...leaving as zero since they are TECHNICALLY reserved in the documentation
+                                                            //\\.\SCSI?: number is needed in windows, this is the controllerNumber in Windows.
+                                                            sprintf(handle, "csmi:%" PRIu8 ":N:%" PRIu8 ":%" PRIu8 ":%" PRIu8, controllerNumber, path, target, lun);
+                                                            foundDevice = true;
+                                                        }
+                                                        else //SAS or SATA drive
+#endif
+                                                        {
+                                                            //Compare this drive info to phy info as best we can using SASAddress field. 
+                                                            //NOTE: If this doesn't work on some controllers, then this will get even more complicated as we will need to try other CSMI commands and attempt reading drive identify or inquiry data to make the match correctly!!!
+                                                            //Loop through phy info and find matching SAS address...should only occur ONCE even with multiple Luns since they attach to the same Phy
+                                                            for (uint8_t phyIter = 0; !foundDevice && phyIter < 32 && phyIter < phyInfo.Information.bNumberOfPhys; ++phyIter)
                                                             {
-                                                                uint8_t lun = 0;
-                                                                if (!is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSASLun, 8))//Check if there is a lun value...should be zero on SATA and single Lun SAS drives...otherwise we'll need to convert it!
+                                                                if (memcmp(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8) == 0)
                                                                 {
-                                                                    //This would be a multi-lun SAS drive. This device and the driver should actually be able to translate SASAddress and SASLun to a SCSI address for us.
-                                                                    CSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddress;
-                                                                    if (SUCCESS == csmi_Get_SCSI_Address(fd, controllerNumber, &scsiAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASLun, VERBOSITY_DEFAULT))
+                                                                    uint8_t lun = 0;
+                                                                    if (!is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSASLun, 8))//Check if there is a lun value...should be zero on SATA and single Lun SAS drives...otherwise we'll need to convert it!
                                                                     {
-                                                                        lun = scsiAddress.bLun;
+                                                                        //This would be a multi-lun SAS drive. This device and the driver should actually be able to translate SASAddress and SASLun to a SCSI address for us.
+                                                                        CSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddress;
+                                                                        if (SUCCESS == csmi_Get_SCSI_Address(fd, controllerNumber, &scsiAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASLun, VERBOSITY_DEFAULT))
+                                                                        {
+                                                                            lun = scsiAddress.bLun;
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            printf("Error converting SASLun to SCSI Address lun!\n");
+                                                                            //TODO: This is likely actually enough for a SCSI drive to work, but we would need to change more code to accept a full SAS Address and SAS Lun style handle.
+                                                                            break;
+                                                                        }
                                                                     }
-                                                                    else
+                                                                    switch (phyInfo.Information.Phy[phyIter].Attached.bDeviceType)
                                                                     {
-                                                                        printf("Error converting SASLun to SCSI Address lun!\n");
-                                                                        //TODO: This is likely actually enough for a SCSI drive to work, but we would need to change more code to accept a full SAS Address and SAS Lun style handle.
+                                                                    case CSMI_SAS_END_DEVICE:
+                                                                        foundDevice = true;
+                                                                        sprintf(handle, "csmi:%" PRIu8 ":%" PRIu8 ":%" PRIu8 ":%" PRIu8, controllerNumber, phyInfo.Information.Phy[phyIter].bPortIdentifier, phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier, lun);
+                                                                        break;
+                                                                    case CSMI_SAS_NO_DEVICE_ATTACHED:
+                                                                    case CSMI_SAS_EDGE_EXPANDER_DEVICE:
+                                                                    case CSMI_SAS_FANOUT_EXPANDER_DEVICE:
+                                                                    default:
                                                                         break;
                                                                     }
                                                                 }
-                                                                switch (phyInfo.Information.Phy[phyIter].Attached.bDeviceType)
-                                                                {
-                                                                case CSMI_SAS_END_DEVICE:
-                                                                    foundDevice = true;
-                                                                    sprintf(handle, "csmi:%" PRIu8 ":%" PRIu8 ":%" PRIu8 ":%" PRIu8, controllerNumber, phyInfo.Information.Phy[phyIter].bPortIdentifier, phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier, lun);
-                                                                    break;
-                                                                case CSMI_SAS_NO_DEVICE_ATTACHED:
-                                                                case CSMI_SAS_EDGE_EXPANDER_DEVICE:
-                                                                case CSMI_SAS_FANOUT_EXPANDER_DEVICE:
-                                                                default:
-                                                                    break;
-                                                                }
                                                             }
                                                         }
-                                                    }
-                                                    if (foundDevice)
-                                                    {
-                                                        memset(d, 0, sizeof(tDevice));
-                                                        d->sanity.size = ver.size;
-                                                        d->sanity.version = ver.version;
-                                                        d->dFlags = flags;
-                                                        d->deviceVerbosity = VERBOSITY_COMMAND_VERBOSE;
-                                                        printf("Opening CSMI RAID Device\n");
-                                                        returnValue = get_CSMI_RAID_Device(handle, d);
-                                                        if (returnValue != SUCCESS)
+                                                        if (foundDevice)
                                                         {
-                                                            failedGetDeviceCount++;
+                                                            memset(d, 0, sizeof(tDevice));
+                                                            d->sanity.size = ver.size;
+                                                            d->sanity.version = ver.version;
+                                                            d->dFlags = flags;
+                                                            returnValue = get_CSMI_RAID_Device(handle, d);
+                                                            if (returnValue != SUCCESS)
+                                                            {
+                                                                failedGetDeviceCount++;
+                                                            }
+                                                            ++d;
+                                                            //If we were unable to open the device using get_CSMI_Device, then  we need to increment the failure counter. - TJE
+                                                            ++found;
                                                         }
-                                                        ++d;
-                                                        //If we were unable to open the device using get_CSMI_Device, then  we need to increment the failure counter. - TJE
-                                                        ++found;
+                                                        break;
+                                                    default:
+                                                        break;
                                                     }
                                                     break;
+                                                case CSMI_SAS_RAID_DATA_DEVICE_ID:
+                                                case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
                                                 default:
                                                     break;
                                                 }
-                                                break;
-                                            case CSMI_SAS_RAID_DATA_DEVICE_ID:
-                                            case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
-                                            default:
-                                                break;
                                             }
                                         }
+                                        safe_Free(csmiRAIDConfig);
                                     }
-                                    safe_Free(csmiRAIDConfig);
                                 }
                             }
                         }
-                    }
+                        //This was a CSMI handle, remove it from the list!
+                        //This will also increment us to the next handle
+                        raidList = remove_RAID_Handle(raidList, previousRaidListEntry);
+                        handleRemoved = true;
 #if !defined (_WIN32) //loop through controller numbers
+                    }
+#endif
+                }
+                //close handle to the controller
+#if defined (_WIN32)
+                if (fd != INVALID_HANDLE_VALUE)
+                {
+                    CloseHandle(fd);
+                }
+#else
+                if (fd < 0)
+                {
+                    close(fd);
                 }
 #endif
+                if (!handleRemoved)
+                {
+                    previousRaidListEntry = raidList;//store handle we just looked at in case we need to remove one from the list
+                    //increment to next element in the list
+                    raidList = raidList->next;
+                }
             }
-            //close handle to the controller
-#if defined (_WIN32)
-            if (fd != INVALID_HANDLE_VALUE)
-            {
-                CloseHandle(fd);
-            }
-#else
-            if (fd < 0)
-            {
-                close(fd);
-            }
-#endif
         }
         if (found == failedGetDeviceCount)
         {

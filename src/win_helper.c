@@ -51,6 +51,8 @@
 #include "of_nvme_helper_func.h"
 #endif
 
+#include "raid_scan_helper.h"
+
 //MinGW may or may not have some of these, so there is a need to define these here to build properly when they are otherwise not available.
 //TODO: as mingw changes versions, some of these below may be available. Need to have a way to check mingw preprocessor defines for versions to work around these.
 //NOTE: The device property keys are incomplete in mingw. Need to add similar code using setupapi and some sort of ifdef to switch between for VS and mingw to resolve this better.
@@ -2416,7 +2418,8 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
     HANDLE fd = NULL;
     TCHAR deviceName[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
-    
+    ptrRaidHandleToScan raidHandleList = NULL;
+    ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
     //Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
     //ARM requires 10.0.16299.0 API to get cfgmgr32 library!
     //TODO: add better check for API version and ARM to turn this on and off.
@@ -2433,7 +2436,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
         }
     }
 
-    int  driveNumber = 0, found = 0;
+    int  driveNumber = 0, found = 0, possibleRAID = 0;
     for (driveNumber = 0; driveNumber < MAX_DEVICES_TO_SCAN; ++driveNumber)
     {
         _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
@@ -2452,6 +2455,32 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
         if (fd != INVALID_HANDLE_VALUE)
         {
             ++found;
+            //Check if the interface is reported as RAID from adapter data because an additional scan for RAID devices will be needed.
+            PSTORAGE_ADAPTER_DESCRIPTOR adapterData = NULL;
+            if (SUCCESS == win_Get_Adapter_Descriptor(fd, &adapterData))
+            {
+                if (adapterData->BusType == BusTypeRAID)
+                {
+                    //get the SCSI address for this device and save it to the RAID handle list so it can be scanned for additional types of RAID interfaces.
+                    SCSI_ADDRESS scsiAddress;
+                    memset(&scsiAddress, 0, sizeof(SCSI_ADDRESS));
+                    if (SUCCESS == win_Get_SCSI_Address(fd, &scsiAddress))
+                    {
+                        char raidHandle[15] = { 0 };
+                        raidTypeHint raidHint;
+                        memset(&raidHint, 0, sizeof(raidTypeHint));
+                        raidHint.unknownRAID = true;//TODO: Find a better way to hint at what type of raid we thing this might be. Can look at T10 vendor ID, low-level PCI/PCIe identifiers, etc.
+                        snprintf(raidHandle, 15, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
+                        raidHandleList = add_RAID_Handle_If_Not_In_List(beginRaidHandleList, raidHandleList, raidHandle, raidHint);
+                        if (!beginRaidHandleList)
+                        {
+                            beginRaidHandleList = raidHandleList;
+                        }
+                        ++possibleRAID;
+                    }
+                }
+            }
+            safe_Free(adapterData);
             CloseHandle(fd);
         }
     }
@@ -2461,26 +2490,17 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 #if defined (ENABLE_CSMI)
     if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI))//check whether they want CSMI devices or not
     {
-        printf("Beginning CSMI scan\n");
         uint32_t csmiDeviceCount = 0;
-        //TODO: Switch from this hardcoded list later!
-        char *checkHandleList[8] = { 0 };
-        for (uint8_t iter = 0; iter < 8; ++iter)
-        {
-            checkHandleList[iter] = calloc(12, sizeof(char));
-            if (checkHandleList[iter])
-            {
-                sprintf(checkHandleList[iter], "\\\\.\\SCSI%" PRIu8 ":", iter);
-            }
-        }
-        printf("Filled in handle list\n");
-        int csmiRet = get_CSMI_RAID_Device_Count(&csmiDeviceCount, flags, (char**)checkHandleList, 8);
+        int csmiRet = get_CSMI_RAID_Device_Count(&csmiDeviceCount, flags, &beginRaidHandleList);
         if (csmiRet == SUCCESS)
         {
             *numberOfDevices += csmiDeviceCount;
         }
     }
 #endif
+
+    //Clean up RAID handle list
+    delete_RAID_List(beginRaidHandleList);
 
     return SUCCESS;
 }
@@ -2513,33 +2533,14 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
 {
     int returnValue = SUCCESS;
-    int numberOfDevices = 0;
+    int numberOfDevices = 0, possibleRAID = 0;
     int driveNumber = 0, found = 0, failedGetDeviceCount = 0;
     TCHAR deviceName[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
     char    name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 }; //Because get device needs char
     HANDLE fd = INVALID_HANDLE_VALUE;
     tDevice * d = NULL;
-#if defined (ENABLE_CSMI)
-    uint32_t csmiDeviceCount = 0;
-    if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI))//check whether they want CSMI devices or not
-    {
-        //TODO: Switch from this hardcoded list later!
-        char *checkHandleList[8] = { 0 };
-        for (uint8_t iter = 0; iter < 8; ++iter)
-        {
-            checkHandleList[iter] = calloc(12, sizeof(char));
-            if (checkHandleList[iter])
-            {
-                sprintf(checkHandleList[iter], "\\\\.\\SCSI%" PRIu8 ":", iter);
-            }
-        }
-        int csmiRet = get_CSMI_RAID_Device_Count(&csmiDeviceCount, flags, (char**)checkHandleList, 8);
-        if (csmiRet != SUCCESS)
-        {
-            csmiDeviceCount = 0;
-        }
-    }
-#endif
+    ptrRaidHandleToScan raidHandleList = NULL;
+    ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
 
     //TODO: Check if sizeInBytes is a multiple of
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -2553,9 +2554,6 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     else
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
-#if defined (ENABLE_CSMI)
-        numberOfDevices -= csmiDeviceCount;
-#endif
         d = ptrToDeviceList;
         for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN) && (found < numberOfDevices)); driveNumber++)
         {
@@ -2587,10 +2585,50 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 {
                     failedGetDeviceCount++;
                 }
+                else
+                {
+                    PSTORAGE_ADAPTER_DESCRIPTOR adapterData = NULL;
+                    if (SUCCESS == win_Get_Adapter_Descriptor(d->os_info.fd, &adapterData))
+                    {
+                        if (adapterData->BusType == BusTypeRAID)
+                        {
+                            //get the SCSI address for this device and save it to the RAID handle list so it can be scanned for additional types of RAID interfaces.
+                            SCSI_ADDRESS scsiAddress;
+                            memset(&scsiAddress, 0, sizeof(SCSI_ADDRESS));
+                            if (SUCCESS == win_Get_SCSI_Address(fd, &scsiAddress))
+                            {
+                                char raidHandle[15] = { 0 };
+                                raidTypeHint raidHint;
+                                memset(&raidHint, 0, sizeof(raidTypeHint));
+                                raidHint.unknownRAID = true;//TODO: Find a better way to hint at what type of raid we thing this might be. Can look at T10 vendor ID, low-level PCI/PCIe identifiers, etc.
+                                snprintf(raidHandle, 15, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
+                                raidHandleList = add_RAID_Handle_If_Not_In_List(beginRaidHandleList, raidHandleList, raidHandle, raidHint);
+                                if (!beginRaidHandleList)
+                                {
+                                    beginRaidHandleList = raidHandleList;
+                                }
+                                ++possibleRAID;
+                            }
+                        }
+                    }
+                    safe_Free(adapterData);
+                }
                 found++;
                 d++;
             }
         }
+#if defined (ENABLE_CSMI)
+        if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI))
+        {
+            uint32_t csmiDeviceCount = numberOfDevices - found;
+            int csmiRet = get_CSMI_RAID_Device_List(&ptrToDeviceList[found], csmiDeviceCount * sizeof(tDevice), ver, flags, &beginRaidHandleList);
+            if (returnValue == SUCCESS && csmiRet != SUCCESS)
+            {
+                //this will override the normal ret if it is already set to success with the CSMI return value
+                returnValue = csmiRet;
+            }
+        }
+#endif
         if (found == failedGetDeviceCount)
         {
             returnValue = FAILURE;
@@ -2599,27 +2637,8 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
-#if defined (ENABLE_CSMI)
-        if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI) && csmiDeviceCount > 0)
-        {
-            //TODO: Switch from this hardcoded list later!
-            char *checkHandleList[8] = { 0 };
-            for (uint8_t iter = 0; iter < 8; ++iter)
-            {
-                checkHandleList[iter] = calloc(12, sizeof(char));
-                if (checkHandleList[iter])
-                {
-                    sprintf(checkHandleList[iter], "\\\\.\\SCSI%" PRIu8 ":", iter);
-                }
-            }
-            int csmiRet = get_CSMI_RAID_Device_List(&ptrToDeviceList[numberOfDevices], csmiDeviceCount * sizeof(tDevice), ver, flags, (char**)checkHandleList, 8);
-            if (returnValue == SUCCESS && csmiRet != SUCCESS)
-            {
-                //this will override the normal ret if it is already set to success with the CSMI return value
-                returnValue = csmiRet;
-            }
-        }
-#endif
+        //Clean up RAID handle list
+        delete_RAID_List(beginRaidHandleList);
     }
 
     return returnValue;

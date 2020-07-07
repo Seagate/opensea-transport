@@ -27,18 +27,87 @@ extern "C"
 #endif
 
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-    //NOTE: This function will handle calling appropriate NVMe firmware update function as well
-    //NOTE2: This will not issue whatever command you want. Only certain commands are supported by the driver. This function will attempt any command given in case driver updates allow other commands in the future.
+    //-----------------------------------------------------------------------------
+    //
+    //  send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx)
+    //
+    //! \brief   Description:  Sends an NVMe command through the Intel RST passthrough IOCTL. 
+    //!          NOTE: This driver filters commands, so many may not work. This function does not perform any filtering and attempts all commands it receives.
+    //!          It is recommended this is used for any NVMe command received. It will call the appropriate firmware download IOCTL if firmware download commands are received.
+    //
+    //  Entry:
+    //!   \param[in] nvmeIoCtx - NVMe context structure that holds all the information necessary to issue an NVMe command to a device.
+    //! 
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
+    //
+    //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx);
 
+    //-----------------------------------------------------------------------------
+    //
+    //  send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx)
+    //
+    //! \brief   Description:  Sends an NVMe Firmware download command through the Intel RST passthrough IOCTL. 
+    //
+    //  Entry:
+    //!   \param[in] nvmeIoCtx - NVMe context structure that holds all the information necessary to issue an NVMe command to a device.
+    //! 
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
+    //
+    //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx);
 
+    //-----------------------------------------------------------------------------
+    //
+    //  send_Intel_NVM_SCSI_Command(ScsiIoCtx *scsiIoCtx)
+    //
+    //! \brief   Description:  Handles reception of a SCSI command by sending it through software translation.
+    //
+    //  Entry:
+    //!   \param[in] scsiIoCtx - SCSI context structure that holds all the information necessary to translate a SCSI command to a device.
+    //! 
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
+    //
+    //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int send_Intel_NVM_SCSI_Command(ScsiIoCtx *scsiIoCtx);
 #endif
 
-    //similar to Win10 function. Sends command to read firmware info and slot info to see if the API is supported or not
+    //-----------------------------------------------------------------------------
+    //
+    //  supports_Intel_Firmware_Download(tDevice *device)
+    //
+    //! \brief   Description:  Checks if the provided device supports Intel's Firmware update IOCTLs. Due to how this works, CSMI may be necessary to make this work properly
+    //
+    //  Entry:
+    //!   \param[in] device - pointer to device structure.
+    //! 
+    //!
+    //  Exit:
+    //!   \return true = supports Intel RST firmware update IOCTLs, false = not supported.
+    //
+    //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API bool supports_Intel_Firmware_Download(tDevice *device);
 
+    //-----------------------------------------------------------------------------
+    //
+    //  send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx)
+    //
+    //! \brief   Description: Sends an Intel RST Firmware update IOCTL based on provided SCSI parameters
+    //
+    //  Entry:
+    //!   \param[in] scsiIoCtx - SCSI context structure that holds all the information necessary to send a firmware update (ATA or SCSI command)
+    //! 
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
+    //
+    //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx);
 
     //TODO: Define other Intel RST unique calls here based on what is in intel_rst_defs.h

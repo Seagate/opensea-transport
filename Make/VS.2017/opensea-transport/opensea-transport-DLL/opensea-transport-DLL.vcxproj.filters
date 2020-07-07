@@ -150,6 +150,9 @@
     <ClInclude Include="..\..\..\..\include\csmi_legacy_pt_cdb_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\include\raid_scan_helper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\src\ata_cmds.c">
@@ -246,6 +249,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\src\csmi_legacy_pt_cdb_helper.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\raid_scan_helper.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

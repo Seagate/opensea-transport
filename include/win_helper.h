@@ -47,6 +47,7 @@ extern "C"
 #define WIN_CDROM_DRIVE "\\\\.\\CDROM" //Most likely an ATAPI device, but it could be a really old SCSI interface device...
 #define WIN_CHANGER_DEVICE "\\\\.\\Changer" //This is a SCSI type device
 
+#define WIN_SCSI_SRB_MAX_LEN UINT8_C(15)
 #define WIN_MAX_DEVICE_NAME_LENGTH UINT8_C(40)
 
 #define DOUBLE_BUFFERED_MAX_TRANSFER_SIZE   16384 //Bytes....16KiB to be exact since that is what MS documentation says. - TJE
