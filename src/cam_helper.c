@@ -870,7 +870,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 {
     int returnValue = SUCCESS;
     int numberOfDevices = 0;
-    int driveNumber = 0, found = 0, failedGetDeviceCount = 0;
+    int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     char name[80]; //Because get device needs char
     int fd;
     tDevice * d = NULL;
@@ -881,7 +881,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     num_da_devs = scandir("/dev", &danamelist, da_filter, alphasort);
     num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
     
-    char **devs = (char **)calloc(MAX_DEVICES_PER_CONTROLLER, sizeof(char *));
+    char **devs = (char **)calloc(num_da_devs + num_ada_devs, sizeof(char *));
     int i = 0, j = 0;
     for (i = 0; i < num_da_devs; ++i)
     {
@@ -914,9 +914,14 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
-        for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_da_devs + num_ada_devs)) || (found < numberOfDevices)); driveNumber++)
+        for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_da_devs + num_ada_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
-            strncpy(name, devs[driveNumber], M_Min(sizeof(name), devs[driveNumber]));
+            if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
+            {
+                continue;
+            }
+            memset(name, 0, sizeof(name));//clear name before reusing it
+            strcpy(name, devs[driveNumber]);
             fd = -1;
             //lets try to open the device.      
             fd = cam_get_device(name, d->os_info.name, sizeof(d->os_info.name), &d->os_info.fd);
@@ -931,13 +936,22 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 d->deviceVerbosity = temp;
                 d->sanity.size = ver.size;
                 d->sanity.version = ver.version;
-                returnValue = get_Device(name, d);
-                if (returnValue != SUCCESS)
+                int ret = get_Device(name, d);
+                if (ret != SUCCESS)
                 {
                     failedGetDeviceCount++;
                 }
                 found++;
                 d++;
+            }
+            else if (errno == EACCES) //quick fix for opening drives without sudo
+            {
+                ++permissionDeniedCount;
+                failedGetDeviceCount++;
+            }
+            else
+            {
+                failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
             safe_Free(devs[driveNumber]);
@@ -946,7 +960,11 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         {
             returnValue = FAILURE;
         }
-        else if (failedGetDeviceCount)
+        else if(permissionDeniedCount == (num_sg_devs + num_sd_devs + num_nvme_devs))
+        {
+            returnValue = PERMISSION_DENIED;
+        }
+	    else if (failedGetDeviceCount && returnValue != PERMISSION_DENIED)
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }

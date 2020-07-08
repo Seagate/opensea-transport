@@ -1609,7 +1609,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter,alphasort);
     #endif
     
-    char **devs = (char **)calloc(MAX_DEVICES_TO_SCAN, sizeof(char *));
+    char **devs = (char **)calloc(num_sg_devs + num_sd_devs + num_nvme_devs, sizeof(char *));
     int i = 0;
     #if !defined(DISABLE_NVME_PASSTHROUGH)
     int j = 0;
@@ -1620,7 +1620,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         devs[i] = (char *)malloc((strlen("/dev/") + strlen(namelist[i]->d_name) + 1) * sizeof(char));
         strcpy(devs[i], "/dev/");
         strcat(devs[i], namelist[i]->d_name);
-        free(namelist[i]);
+        safe_Free(namelist[i]);
     }
     #if !defined(DISABLE_NVME_PASSTHROUGH)
     //add nvme devices to the list
@@ -1629,7 +1629,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         devs[i] = (char *)malloc((strlen("/dev/") + strlen(nvmenamelist[j]->d_name) + 1) * sizeof(char));
         strcpy(devs[i], "/dev/");
         strcat(devs[i], nvmenamelist[j]->d_name);
-        free(nvmenamelist[j]);
+        safe_Free(nvmenamelist[j]);
     }
     #endif
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
@@ -1654,7 +1654,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 #if defined (DEGUG_SCAN_TIME)
         start_Timer(&getDeviceListTimer);
 #endif
-        for (driveNumber = 0; ((driveNumber < MAX_DEVICES_PER_CONTROLLER && driveNumber < (num_sg_devs + num_sd_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
+        for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_sg_devs + num_sd_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
             if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
             {

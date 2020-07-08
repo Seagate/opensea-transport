@@ -1605,14 +1605,14 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     struct dirent **namelist;
 
     num_devs = scandir("/dev/disks", &namelist, drive_filter, alphasort); 
-    /*
-    if(num_devs == 0)
-    {
-        //check for SD devices
-        num_devs = scandir("/dev", &namelist, sd_filter, alphasort); 
-    } 
-    */ 
 
+    //free the list of names to not leak memory
+    for(int iter = 0; iter < num_devs; ++iter)
+    {
+    	safe_Free(namelist[iter]);
+    }
+    safe_Free(namelist);
+    
 #ifdef _DEBUG
     printf("get_Device_Count : num_devs %d\n", num_devs);
 #endif
@@ -1662,7 +1662,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 {
     int returnValue = SUCCESS;
     int numberOfDevices = 0;
-    int driveNumber = 0, found = 0, failedGetDeviceCount = 0;
+    int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     char name[128] = { 0 }; //Because get device needs char
     int fd;
     tDevice * d = NULL;
@@ -1676,14 +1676,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 #endif
     struct dirent **namelist;
 
-    int  num_sg_devs = 0, num_sd_devs = 0, num_nvme_devs = 0;
+    int  num_sg_devs = 0, num_nvme_devs = 0;
 
     num_sg_devs = scandir("/dev/disks", &namelist, drive_filter, alphasort); 
-    if(num_sg_devs == 0)
-    {
-        //check for SD devices
-        num_sd_devs = scandir("/dev/disks", &namelist, drive_filter, alphasort); 
-    }
 
     rc = Nvme_GetAdapterList(&nvmeAdptList);
 
@@ -1693,20 +1688,20 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     }
 
 
-    char **devs = (char **)calloc(MAX_DEVICES_TO_SCAN, sizeof(char *));
+    char **devs = (char **)calloc(num_sg_devs + num_nvme_devs, sizeof(char *));
     int i = 0, j = 0;
     //add sg/sd devices to the list
-    for (; i < (num_sg_devs + num_sd_devs); i++)
+    for (; i < (num_sg_devs); i++)
     {
         devs[i] = (char *)malloc((strlen("/dev/disks/") + strlen(namelist[i]->d_name) + 1) * sizeof(char));
         strcpy(devs[i], "/dev/disks/");
         strcat(devs[i], namelist[i]->d_name);
-        free(namelist[i]);
+        safe_Free(namelist[i]);
     }
     safe_Free(namelist);
 
     //add nvme devices to the list
-    for (j = 0; i < (num_sg_devs + num_sd_devs + num_nvme_devs) && i < MAX_DEVICES_PER_CONTROLLER;i++, j++)
+    for (j = 0; i < (num_sg_devs + num_nvme_devs) && i < MAX_DEVICES_PER_CONTROLLER;i++, j++)
     {
         int nvmeAdptNameLen = 0;
 
@@ -1734,14 +1729,14 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 #if defined (DEGUG_SCAN_TIME)
         start_Timer(&getDeviceListTimer);
 #endif
-        for (driveNumber = 0; ((driveNumber < MAX_DEVICES_PER_CONTROLLER && driveNumber < (num_sg_devs + num_sd_devs + num_nvme_devs)) || (found < numberOfDevices)); driveNumber++)
+        for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_sg_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
-            if(strlen(devs[driveNumber]) == 0)
+            if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
             {
                 continue;
             }
             memset(name, 0, sizeof(name));//clear name before reusing it
-            strncpy(name, devs[driveNumber], M_Min(sizeof(name), strlen(devs[driveNumber])));
+            strcpy(name, devs[driveNumber]);
             fd = -1;
             //lets try to open the device.      
             fd = open(name, O_RDWR | O_NONBLOCK);
@@ -1759,12 +1754,12 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 start_Timer(&getDeviceTimer);
 #endif
                 d->dFlags = flags;
-                returnValue = get_Device(name, d);
+                int ret = get_Device(name, d);
 #if defined (DEGUG_SCAN_TIME)
                 stop_Timer(&getDeviceTimer);
                 printf("Time to get %s = %fms\n", name, get_Milli_Seconds(getDeviceTimer));
 #endif
-                if (returnValue != SUCCESS)
+                if (ret != SUCCESS)
                 {
                     failedGetDeviceCount++;
                 }
@@ -1773,9 +1768,15 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             }
             else if (errno == EACCES) //quick fix for opening drives without sudo
             {
-                safe_Free(devs);
-                return PERMISSION_DENIED;
+                ++permissionDeniedCount;
+                failedGetDeviceCount++;
             }
+            else
+            {
+                failedGetDeviceCount++;
+            }
+            //free the dev[deviceNumber] since we are done with it now.
+            safe_Free(devs[driveNumber]);
         }
 #if defined (DEGUG_SCAN_TIME)
         stop_Timer(&getDeviceListTimer);
@@ -1785,7 +1786,11 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         {
             returnValue = FAILURE;
         }
-        else if (failedGetDeviceCount)
+        else if(permissionDeniedCount == (num_sg_devs + num_sd_devs + num_nvme_devs))
+        {
+            returnValue = PERMISSION_DENIED;
+        }
+	    else if (failedGetDeviceCount && returnValue != PERMISSION_DENIED)
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
