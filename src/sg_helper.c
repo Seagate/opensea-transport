@@ -1581,7 +1581,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 {
     int returnValue = SUCCESS;
     int numberOfDevices = 0;
-    int driveNumber = 0, found = 0, failedGetDeviceCount = 0;
+    int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     char name[80] = { 0 }; //Because get device needs char
     int fd;
     tDevice * d = NULL;
@@ -1693,7 +1693,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             }
             else if (errno == EACCES) //quick fix for opening drives without sudo
             {
-                returnValue = PERMISSION_DENIED;
+                ++permissionDeniedCount;
                 failedGetDeviceCount++;
             }
             else
@@ -1711,6 +1711,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 	    {
 	        returnValue = FAILURE;
 	    }
+        else if(permissionDeniedCount == (num_sg_devs + num_sd_devs + num_nvme_devs))
+        {
+            returnValue = PERMISSION_DENIED;
+        }
 	    else if (failedGetDeviceCount && returnValue != PERMISSION_DENIED)
 	    {
 	        returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
