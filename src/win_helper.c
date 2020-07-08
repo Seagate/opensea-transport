@@ -2423,7 +2423,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 {
     int returnValue = SUCCESS;
     int numberOfDevices = 0;
-    int driveNumber = 0, found = 0, failedGetDeviceCount = 0;
+    int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     TCHAR deviceName[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
     char    name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 }; //Because get device needs char
     HANDLE fd = INVALID_HANDLE_VALUE;
@@ -2490,15 +2490,21 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 found++;
                 d++;
             }
+            else
+            {
+                //Check last error for permissions issues
+                DWORD lastError = GetLastError();
+                if (lastError == ERROR_ACCESS_DENIED)
+                {
+                    ++permissionDeniedCount;
+                    ++failedGetDeviceCount;
+                }
+                //NOTE: No generic else like other OS's due to the way devices are scanned in Windows today. Since we are just trying to open handles, they can fail for various reasons, like the handle not even being valid, but that should not cause a failure.
+                //If the code is updated to use something like setupapi or cfgmgr32 to figure out devices in the system, then it would make sense to add additional error checks here like we have for 'nix OSs. - TJE
+                //If a handle does not exist ERROR_FILE_NOT_FOUND is returned.
+            }
         }
-        if (found == failedGetDeviceCount)
-        {
-            returnValue = FAILURE;
-        }
-        else if (failedGetDeviceCount)
-        {
-            returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
-        }
+        
 #if defined (ENABLE_CSMI)
         if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI) && csmiDeviceCount > 0)
         {
@@ -2510,6 +2516,18 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             }
         }
 #endif
+        if (found == failedGetDeviceCount)
+        {
+            returnValue = FAILURE;
+        }
+        else if (permissionDeniedCount == numberOfDevices)
+        {
+            returnValue = PERMISSION_DENIED;
+        }
+        else if (failedGetDeviceCount)
+        {
+            returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
+        }
     }
 
     return returnValue;
