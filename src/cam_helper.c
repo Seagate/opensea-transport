@@ -881,7 +881,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     num_da_devs = scandir("/dev", &danamelist, da_filter, alphasort);
     num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
     
-    char **devs = (char **)calloc(num_da_devs + num_ada_devs, sizeof(char *));
+    char **devs = (char **)calloc(num_da_devs + num_ada_devs + 1, sizeof(char *));
     int i = 0, j = 0;
     for (i = 0; i < num_da_devs; ++i)
     {

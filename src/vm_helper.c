@@ -1688,7 +1688,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     }
 
 
-    char **devs = (char **)calloc(num_sg_devs + num_nvme_devs, sizeof(char *));
+    char **devs = (char **)calloc(num_sg_devs + num_nvme_devs + 1, sizeof(char *));
     int i = 0, j = 0;
     //add sg/sd devices to the list
     for (; i < (num_sg_devs); i++)

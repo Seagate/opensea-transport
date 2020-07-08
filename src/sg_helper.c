@@ -1609,7 +1609,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter,alphasort);
     #endif
     
-    char **devs = (char **)calloc(num_sg_devs + num_sd_devs + num_nvme_devs, sizeof(char *));
+    char **devs = (char **)calloc(num_sg_devs + num_sd_devs + num_nvme_devs + 1, sizeof(char *));
     int i = 0;
     #if !defined(DISABLE_NVME_PASSTHROUGH)
     int j = 0;

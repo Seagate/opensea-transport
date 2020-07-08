@@ -381,7 +381,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     struct dirent **namelist;
     int num_devs = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
     
-    char **devs = (char **)calloc(num_devs, sizeof(char *));
+    char **devs = (char **)calloc(num_devs + 1, sizeof(char *));
     int i = 0;
     for(; i < num_devs; i++)
     {
