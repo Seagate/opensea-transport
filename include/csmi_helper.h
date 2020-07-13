@@ -61,6 +61,15 @@ extern "C"
         uint8_t lun;
     }csmiSCSIAddress, *ptrCSMISCSIAddress;
 
+    //This is helpful for determining if a driver is configured to allow everything or not, mostly in Windows.
+    typedef enum _eCSMISecurityAccess
+    {
+        CSMI_SECURITY_ACCESS_NONE = 0,
+        CSMI_SECURITY_ACCESS_RESTRICTED = 1,
+        CSMI_SECURITY_ACCESS_LIMITED = 2,
+        CSMI_SECURITY_ACCESS_FULL = 3
+    }eCSMISecurityAccess;
+
     //This structure is intended to be used in windows/linux for CSMI if a device supports this, whether in RAID or JBOD mode.
     //RAID implementations are suggested to include this as a substructure or have a pointer of some kind to this.
     typedef struct _csmiDeviceInfo
@@ -90,6 +99,7 @@ extern "C"
             uint32_t payloadAlignment; //From MSDN: The alignment of the image payload, in number of bytes. The maximum is PAGE_SIZE. The transfer size is a mutliple of this size. Some protocols require at least sector size. When this value is set to 0, this means that this value is invalid.
             uint32_t maxXferSize; //From MSDN: The image payload maximum size, this is used for a single command
         }intelRSTSupport;
+        eCSMISecurityAccess securityAccess;//mostly for Windows...
     }csmiDeviceInfo, *ptrCsmiDeviceInfo;
 
     #if defined (_WIN32)

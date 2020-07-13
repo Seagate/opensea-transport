@@ -2493,6 +2493,7 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
             device->os_info.csmiDeviceData->csmiMinorVersion = driverInfo.Information.usCSMIMinorRevision;
             //TODO: If this is an Intel RST driver, check the name and additionally check to see if it supports the Intel IOCTLs
             //NOTE: If it's an Intel NVMe, then we need to special case some of the below IOCTLs since it won't respond the same...
+            device->os_info.csmiDeviceData->securityAccess = get_CSMI_Security_Access(driverInfo.Information.szName);//With this, we could add some intelligence to when commands are supported or not, at least under Windows, but mostly just a placeholder today. - TJE
         }
         else
         {
@@ -2655,6 +2656,78 @@ bool is_CSMI_Handle(const char * filename)
     }
     return isCSMI;
 }
+
+eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
+{
+    eCSMISecurityAccess access = CSMI_SECURITY_ACCESS_NONE;
+#if defined (_WIN32)
+    HKEY keyHandle;
+    TCHAR *baseRegKeyPath = TEXT("SYSTEM\\CurrentControlSet\\Services\\");
+    TCHAR *paramRegKeyPath = TEXT("\\Parameters");
+    size_t tdriverNameLength = (strlen(driverName) + 1) * sizeof(TCHAR);
+    size_t registryKeyStringLength = _tcslen(baseRegKeyPath) + tdriverNameLength + _tcslen(paramRegKeyPath);
+    TCHAR *registryKey = (TCHAR*)calloc(registryKeyStringLength, sizeof(TCHAR));
+    TCHAR *tdriverName = (TCHAR*)calloc(tdriverNameLength, sizeof(TCHAR));
+    if (tdriverName)
+    {
+        _stprintf_s(tdriverName, tdriverNameLength, TEXT("%hs"), driverName);
+    }
+    if (registryKey)
+    {
+        _stprintf_s(registryKey, registryKeyStringLength, TEXT("%s%s%s"), baseRegKeyPath, tdriverName, paramRegKeyPath);
+    }
+    if (_tcslen(tdriverName) > 0 && _tcslen(registryKey) > 0)
+    {
+        if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_LOCAL_MACHINE, registryKey, 0, KEY_READ, &keyHandle))
+        {
+            //Found the driver's parameters. Now search for CSMI DWORD
+            DWORD dataLen = 4;
+            BYTE regData[4] = { 0 };
+            TCHAR *valueName = TEXT("CSMI");
+            DWORD valueType = REG_DWORD;
+            if (ERROR_SUCCESS == RegQueryValueEx(keyHandle, valueName, NULL, &valueType, regData, &dataLen))
+            {
+                int32_t dwordVal = M_BytesTo4ByteValue(regData[3], regData[2], regData[1], regData[0]);
+                switch (dwordVal)
+                {
+                case 0:
+                    access = CSMI_SECURITY_ACCESS_NONE;
+                    break;
+                case 1:
+                    access = CSMI_SECURITY_ACCESS_RESTRICTED;
+                    break;
+                case 2:
+                    access = CSMI_SECURITY_ACCESS_LIMITED;
+                    break;
+                case 3:
+                default:
+                    access = CSMI_SECURITY_ACCESS_FULL;
+                    break;
+                }
+            }
+            else
+            {
+                //This key doesn't exist. It is not entirely clear what this means when it is not present, so for now, this returns "FULL" since that matches what I see for intel drivers - TJE
+                access = CSMI_SECURITY_ACCESS_FULL;
+            }
+        }
+        else
+        {
+            //This shouldn't happen, but it could happen...setting Limited for now - TJE
+            access = CSMI_SECURITY_ACCESS_LIMITED;
+        }
+    }
+    safe_Free(tdriverName);
+    safe_Free(registryKey);
+#else //not windows, need root, otherwise not available at all. Return FULL if running as root
+    if (is_Running_Elevated())
+    {
+        access = CSMI_SECURITY_ACCESS_FULL;
+    }
+#endif
+    return access;
+}
+
 
 //-----------------------------------------------------------------------------
 //
@@ -2889,8 +2962,8 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             bool handleRemoved = false;
             if (raidList->raidHint.csmiRAID || raidList->raidHint.unknownRAID)
             {
+                eCSMISecurityAccess csmiAccess = CSMI_SECURITY_ACCESS_NONE;//only really needed in Windows - TJE
 #if defined (_WIN32)
-
                 //Get the controller number from the scsi handle since we need it later!
                 sscanf(raidList->handle, "\\\\.\\SCSI%d:", &controllerNumber);
 
@@ -2925,6 +2998,22 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                         csmiListVerbosity = d->deviceVerbosity;//this is to preserve any verbosity set when coming into this function
                         if (SUCCESS == csmi_Get_Driver_And_Controller_Data(fd, controllerNumber, &driverInfo, &controllerConfig, csmiListVerbosity))
                         {
+                            csmiAccess = get_CSMI_Security_Access(driverInfo.Information.szName);
+                            switch (csmiAccess)
+                            {
+                            case CSMI_SECURITY_ACCESS_NONE:
+                                printf("CSMI Security access set to none! Won't be able to properly communicate with the device(s)!\n");
+                                break;
+                            case CSMI_SECURITY_ACCESS_RESTRICTED:
+                                printf("CSMI Security access set to restricted! Won't be able to properly communicate with the device(s)!\n");
+                                break;
+                            case CSMI_SECURITY_ACCESS_LIMITED:
+                                printf("CSMI Security access set to limited! Won't be able to properly communicate with the device(s)!\n");
+                                break;
+                            case CSMI_SECURITY_ACCESS_FULL:
+                            default:
+                                break;
+                            }
                             //Check if it's a RAID capable controller. We only want to enumerate devices on those in this function
                             if (controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                                 || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
@@ -3373,7 +3462,81 @@ int send_CSMI_IO(ScsiIoCtx *scsiIoCtx)
 
 void print_CSMI_Device_Info(tDevice *device)
 {
-    printf("TODO: Get and show CSMI device info.\n");
+    if (device->os_info.csmiDeviceData && device->os_info.csmiDeviceData->csmiDeviceInfoValid)
+    {
+        //print the things we stored since those are what we currently care about. Can add printing other things out later if they are determined to be of use. - TJE
+        printf("\n=====CSMI Info=====\n");
+        printf("\tCSMI Version: %" PRIu16 ".%" PRIu16 "\n", device->os_info.csmiDeviceData->csmiMajorVersion, device->os_info.csmiDeviceData->csmiMinorVersion);
+        printf("\tSecurity Access: ");
+        switch (device->os_info.csmiDeviceData->securityAccess)
+        {
+        case CSMI_SECURITY_ACCESS_NONE:
+            printf("None\n");
+            break;
+        case CSMI_SECURITY_ACCESS_RESTRICTED:
+            printf("Restricted\n");
+            break;
+        case CSMI_SECURITY_ACCESS_LIMITED:
+            printf("Limited\n");
+            break;
+        case CSMI_SECURITY_ACCESS_FULL:
+            printf("Full\n");
+            break;
+        }
+        if (device->os_info.csmiDeviceData->intelRSTSupport.intelRSTSupported && device->os_info.csmiDeviceData->intelRSTSupport.nvmePassthrough)
+        {
+            printf("\tIntel RST NVMe device.\n");
+            printf("\t\tPath ID  : %" PRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.pathId);
+            printf("\t\tTarget ID: %" PRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.targetId);
+            printf("\t\tLUN      : %" PRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.lun);
+        }
+        else
+        {
+            printf("\tPHY ID: %" PRIX8 "h\n", device->os_info.csmiDeviceData->phyIdentifier);
+            printf("\tPort ID: %" PRIX8 "h\n", device->os_info.csmiDeviceData->portIdentifier);
+            printf("\tSupported Port Protocols:\n");
+            if (device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SATA)
+            {
+                printf("\t\tSATA\n");
+            }
+            if (device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SMP)
+            {
+                printf("\t\tSMP\n");
+            }
+            if (device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_STP)
+            {
+                printf("\t\tSTP\n");
+            }
+            if (device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SSP)
+            {
+                printf("\t\tSSP\n");
+            }
+
+            printf("\tSAS Address: %02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "h\n", device->os_info.csmiDeviceData->sasAddress[0], device->os_info.csmiDeviceData->sasAddress[1], device->os_info.csmiDeviceData->sasAddress[2], device->os_info.csmiDeviceData->sasAddress[3], device->os_info.csmiDeviceData->sasAddress[4], device->os_info.csmiDeviceData->sasAddress[5], device->os_info.csmiDeviceData->sasAddress[6], device->os_info.csmiDeviceData->sasAddress[7]);
+            printf("\tSAS Lun: %02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "%02" PRIX8 "h\n", device->os_info.csmiDeviceData->sasLUN[0], device->os_info.csmiDeviceData->sasLUN[1], device->os_info.csmiDeviceData->sasLUN[2], device->os_info.csmiDeviceData->sasLUN[3], device->os_info.csmiDeviceData->sasLUN[4], device->os_info.csmiDeviceData->sasLUN[5], device->os_info.csmiDeviceData->sasLUN[6], device->os_info.csmiDeviceData->sasLUN[7]);
+            printf("\tSCSI Address: ");
+            if (device->os_info.csmiDeviceData->scsiAddressValid)
+            {
+                printf("\t\tHost Index: %" PRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.hostIndex);
+                printf("\t\tPath ID  : %" PRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.pathId);
+                printf("\t\tTarget ID: %" PRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.targetId);
+                printf("\t\tLUN      : %" PRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.lun);
+            }
+            else
+            {
+                printf("Not Valid\n");
+            }
+            if (device->os_info.csmiDeviceData->signatureFISValid)
+            {
+                printf("\tSATA Signature FIS:\n");
+                print_FIS(&device->os_info.csmiDeviceData->signatureFIS, H2D_FIS_LENGTH);
+            }
+        }
+    }
+    else
+    {
+        printf("No CSMI info, not a CSMI supporting device.\n");
+    }
     return;
 }
 

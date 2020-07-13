@@ -466,6 +466,22 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void print_CSMI_Device_Info(tDevice *device);
 
+    //-----------------------------------------------------------------------------
+    //
+    //  get_CSMI_Security_Access(char *driverName)
+    //
+    //! \brief   Description:  Using the driver name, Windows registry is checked for the level of access available. if not able to determine, FULL will be returned. 
+    //!                        In other OS's, this just checks for root permissions as that is all that is noted in CSMI documentation.
+    //
+    //  Entry:
+    //!   \param[in] driverName - Name of the port driver. This will match reporting by the CSMI get driver information call
+    //!
+    //  Exit:
+    //!   \return eCSMISecurityAccess value that describes access level
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API eCSMISecurityAccess get_CSMI_Security_Access(char *driverName);
+
 #if defined (__cplusplus)
 }
 #endif
