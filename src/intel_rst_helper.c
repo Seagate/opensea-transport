@@ -692,7 +692,7 @@ int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx)
                 {
                     //Activate actions 2, & 3 sound like the closest match to this flag. Each of these requests switching to the a firmware already on the drive.
                     //Activate action 0 & 1 say to replace a firmware image in a specified slot (and to or not to activate).
-                    flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
+                    flags |= INTEL_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
                 }
                 firmwareSlot = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
                 //send activate command API
