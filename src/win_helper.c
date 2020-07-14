@@ -5155,7 +5155,7 @@ int convert_SCSI_CTX_To_ATA_SMART_Cmd(ScsiIoCtx *scsiIoCtx, PSENDCMDINPARAMS sma
         scsiIoCtx->device->os_info.winSMARTCmdSupport.deviceBitmap & BIT6
         )
     {
-        //this drive is a master...make sure bit 4 is not set!
+        //this is device 0...make sure bit 4 is not set!
         if (smartCmd->irDriveRegs.bDriveHeadReg & BIT4)
         {
             smartCmd->irDriveRegs.bDriveHeadReg ^= BIT4;
@@ -5166,7 +5166,7 @@ int convert_SCSI_CTX_To_ATA_SMART_Cmd(ScsiIoCtx *scsiIoCtx, PSENDCMDINPARAMS sma
         scsiIoCtx->device->os_info.winSMARTCmdSupport.deviceBitmap & BIT5 ||
         scsiIoCtx->device->os_info.winSMARTCmdSupport.deviceBitmap & BIT7)
     {
-        //this drive is a slave...make sure bit 4 is set
+        //this is device 1...make sure bit 4 is set
         smartCmd->irDriveRegs.bDriveHeadReg |= BIT4;
     }
 

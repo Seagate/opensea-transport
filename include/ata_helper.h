@@ -54,7 +54,7 @@ extern "C"
     #define MAX_28BIT UINT32_C(0xFFFFFFF)
 
     #define LBA_MODE_BIT BIT6 //Set this in the device/head register to set LBA mode.
-    #define DEVICE_SELECT_BIT BIT4 //On PATA, this is to select drive 1 (aka slave). Device/Head register
+    #define DEVICE_SELECT_BIT BIT4 //On PATA, this is to select drive 1. Device/Head register
     #define DEVICE_REG_BACKWARDS_COMPATIBLE_BITS 0xA0 //device/head in ATA & ATA3 say these bits should be set on every command. New specs mark these obsolete in commands that are from old specs. New commands may use these for other purposes.
 
     #define ATA_CHECKSUM_VALIDITY_INDICATOR 0xA5
