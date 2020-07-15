@@ -51,6 +51,8 @@
 #include "of_nvme_helper_func.h"
 #endif
 
+#include "raid_scan_helper.h"
+
 //MinGW may or may not have some of these, so there is a need to define these here to build properly when they are otherwise not available.
 //TODO: as mingw changes versions, some of these below may be available. Need to have a way to check mingw preprocessor defines for versions to work around these.
 //NOTE: The device property keys are incomplete in mingw. Need to add similar code using setupapi and some sort of ifdef to switch between for VS and mingw to resolve this better.
@@ -85,10 +87,6 @@
         DEFINE_GUID(GUID_DEVINTERFACE_DISK,                   0x53f56307L, 0xb6bf, 0x11d0, 0x94, 0xf2, 0x00, 0xa0, 0xc9, 0x1e, 0xfb, 0x8b);
     #endif
 
-#endif
-
-#if WINVER < SEA_WIN32_WINNT_WINBLUE && !defined (BusTypeNvme)
-#define BusTypeNvme 17
 #endif
 
 #if WINVER < SEA_WIN32_WINNT_WINBLUE && !defined (BusTypeNvme)
@@ -1509,6 +1507,29 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
     return ret;
 }
 
+int win_Get_SCSI_Address(HANDLE deviceHandle, PSCSI_ADDRESS scsiAddress)
+{
+    int ret = SUCCESS;
+    if (scsiAddress && deviceHandle != INVALID_HANDLE_VALUE)
+    {
+        DWORD returnedBytes = 0;
+        BOOL result = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_ADDRESS, NULL, 0, scsiAddress, sizeof(SCSI_ADDRESS), &returnedBytes, NULL);
+        if (!result)
+        {
+            scsiAddress->PortNumber = UINT8_MAX;
+            scsiAddress->PathId = UINT8_MAX;
+            scsiAddress->TargetId = UINT8_MAX;
+            scsiAddress->Lun = UINT8_MAX;
+            ret = FAILURE;
+        }
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
 #if !defined (DISABLE_NVME_PASSTHROUGH)
 #if WINVER >= SEA_WIN32_WINNT_WINBLUE
 int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
@@ -1683,25 +1704,27 @@ int close_Device(tDevice *dev)
     int retValue = 0;
     if (dev)
     {
-#if defined (ENABLE_OFNVME)
-        close_SCSI_SRB_Handle(dev);
-#endif
 #if defined (ENABLE_CSMI)
-        if (strncmp(dev->os_info.name, "\\\\.\\SCSI", 8) == 0)
+        if (is_CSMI_Handle(dev->os_info.name))
         {
-            return close_CSMI_Device(dev);
-        }
-#endif
-        retValue = CloseHandle(dev->os_info.fd);
-        dev->os_info.last_error = GetLastError();
-        if ( retValue )
-        {
-            dev->os_info.fd = INVALID_HANDLE_VALUE;
-            return SUCCESS;
+            return close_CSMI_RAID_Device(dev);
         }
         else
+#endif
         {
-            return FAILURE;
+            close_SCSI_SRB_Handle(dev);//\\.\SCSIx: could be opened for different reasons...so we need to close it here.
+            safe_Free(dev->os_info.csmiDeviceData);//CSMI may have been used, so free this memory if it was before we close out.
+            retValue = CloseHandle(dev->os_info.fd);
+            dev->os_info.last_error = GetLastError();
+            if (retValue)
+            {
+                dev->os_info.fd = INVALID_HANDLE_VALUE;
+                return SUCCESS;
+            }
+            else
+            {
+                return FAILURE;
+            }
         }
     }
     else
@@ -1751,27 +1774,114 @@ int open_SCSI_SRB_Handle(tDevice *device)
     }
     return ret;
 }
+//This is a basic way of getting storage properties and cannot account for some which require additional input parameters
+//Others with additional parameters should be in their own function since the additional parameters will vary!
+int win_Get_Property_Data(HANDLE deviceHandle, STORAGE_PROPERTY_ID propertyID, void *outputData, DWORD outputDataLength)
+{
+    int ret = SUCCESS;
+    if (outputData)
+    {
+        STORAGE_PROPERTY_QUERY query;
+        BOOL success = FALSE;
+        DWORD returnedData = 0;
+        memset(&query, 0, sizeof(STORAGE_PROPERTY_QUERY));
+        query.PropertyId = propertyID;
+        query.QueryType = PropertyStandardQuery;
+        success = DeviceIoControl(deviceHandle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(STORAGE_PROPERTY_QUERY), outputData, outputDataLength, &returnedData, NULL);
+        if (!success)
+        {
+            ret = NOT_SUPPORTED;
+        }
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+//Determines if a property exists (true if it does) and optionally returns the length of the property
+bool storage_Property_Exists(HANDLE deviceHandle, STORAGE_PROPERTY_ID propertyID, DWORD *propertySize)
+{
+    bool exists = false;
+    STORAGE_DESCRIPTOR_HEADER header;
+    memset(&header, 0, sizeof(STORAGE_DESCRIPTOR_HEADER));
+    if(SUCCESS == win_Get_Property_Data(deviceHandle, propertyID, &header, sizeof(STORAGE_DESCRIPTOR_HEADER)))
+    {
+        if (header.Size > 0)
+        {
+            exists = true;
+            if (propertySize)
+            {
+                *propertySize = header.Size;
+            }
+        }
+    }
+    return exists;
+}
+
+int win_Get_Adapter_Descriptor(HANDLE deviceHandle, PSTORAGE_ADAPTER_DESCRIPTOR *adapterData)
+{
+    int ret = NOT_SUPPORTED;
+    DWORD adapterDataSize = 0;
+    if (adapterData)
+    {
+        if (storage_Property_Exists(deviceHandle, StorageAdapterProperty, &adapterDataSize))
+        {
+            DWORD adapterDataLength = M_Max(sizeof(STORAGE_ADAPTER_DESCRIPTOR), adapterDataSize);
+            *adapterData = (PSTORAGE_ADAPTER_DESCRIPTOR)calloc(adapterDataLength, sizeof(uint8_t));
+            if (*adapterData)
+            {
+                ret = win_Get_Property_Data(deviceHandle, StorageAdapterProperty, *adapterData, adapterDataLength);
+            }
+            else
+            {
+                ret = MEMORY_FAILURE;
+            }
+        }
+    }
+    else
+    {
+        return BAD_PARAMETER;
+    }
+    return ret;
+}
+
+int win_Get_Device_Descriptor(HANDLE deviceHandle, PSTORAGE_DEVICE_DESCRIPTOR *deviceData)
+{
+    int ret = NOT_SUPPORTED;
+    DWORD deviceDataSize = 0;
+    if (deviceData)
+    {
+        if (storage_Property_Exists(deviceHandle, StorageDeviceProperty, &deviceDataSize))
+        {
+            DWORD deviceDataLength = M_Max(sizeof(PSTORAGE_DEVICE_DESCRIPTOR), deviceDataSize);
+            *deviceData = (PSTORAGE_DEVICE_DESCRIPTOR)calloc(deviceDataLength, sizeof(uint8_t));
+            if (*deviceData)
+            {
+                ret = win_Get_Property_Data(deviceHandle, StorageDeviceProperty, *deviceData, deviceDataLength);
+            }
+            else
+            {
+                ret = MEMORY_FAILURE;
+            }
+        }
+    }
+    else
+    {
+        return BAD_PARAMETER;
+    }
+    return ret;
+}
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-int get_Device(const char *filename, tDevice *device )
+int get_Win_Device(const char *filename, tDevice *device )
 {
-#if defined (ENABLE_CSMI)
-    //check is the handle is in the format of a CSMI device handle so we can open the csmi device properly.
-    uint32_t port = 0;
-    uint32_t phy = 0;
-    int isCSMIHandle = sscanf_s(filename, "\\\\.\\SCSI%" SCNu32 ":%" SCNu32, &port, &phy);
-    if (isCSMIHandle != EOF && isCSMIHandle == 2)
-    {
-        return get_CSMI_Device(filename, device);
-    }
-#endif
     int                         ret           = FAILURE;
     int                         win_ret       = 0;
     ULONG                       returned_data = 0;
     PSTORAGE_DEVICE_DESCRIPTOR  device_desc   = NULL;
     PSTORAGE_ADAPTER_DESCRIPTOR adapter_desc  = NULL;
-    STORAGE_PROPERTY_QUERY      query;
-    STORAGE_DESCRIPTOR_HEADER   header;
 
     TCHAR device_name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
     TCHAR *ptrDeviceName = &device_name[0];
@@ -1929,391 +2039,362 @@ int get_Device(const char *filename, tDevice *device )
         device->os_info.osType = OS_WINDOWS;
 
         // Lets get the SCSI address
-        win_ret = DeviceIoControl(device->os_info.fd,
-                                  IOCTL_SCSI_GET_ADDRESS,
-                                  NULL,
-                                  0,
-                                  &device->os_info.scsi_addr,
-                                  sizeof(device->os_info.scsi_addr),
-                                  &returned_data,
-                                  FALSE);  //returns 0 on failure
-        if (win_ret == 0)
-        {
-            device->os_info.scsi_addr.PortNumber = 0xFF;
-            device->os_info.scsi_addr.PathId = 0xFF;
-            device->os_info.scsi_addr.TargetId = 0xFF;
-            device->os_info.scsi_addr.Lun = 0xFF;
-        }
+        win_Get_SCSI_Address(device->os_info.fd, &device->os_info.scsi_addr);
+        
         // Lets get some properties.
-        memset(&query, 0, sizeof(STORAGE_PROPERTY_QUERY));
-        memset(&header, 0, sizeof(STORAGE_DESCRIPTOR_HEADER));
-
-        query.QueryType = PropertyStandardQuery;
-        query.PropertyId = StorageAdapterProperty;
-
-        win_ret = DeviceIoControl(device->os_info.fd,
-                                  IOCTL_STORAGE_QUERY_PROPERTY,
-                                  &query,
-                                  sizeof(STORAGE_PROPERTY_QUERY),
-                                  &header,
-                                  sizeof(STORAGE_DESCRIPTOR_HEADER),
-                                  &returned_data,
-                                  FALSE);
-        if ((win_ret > 0) && (header.Size != 0))
+        win_ret = win_Get_Adapter_Descriptor(device->os_info.fd, &adapter_desc);
+        
+        if (win_ret == SUCCESS)
         {
-            adapter_desc = (PSTORAGE_ADAPTER_DESCRIPTOR)LocalAlloc(LPTR, header.Size);
-            if (adapter_desc != NULL)
-            {
-                win_ret = DeviceIoControl(device->os_info.fd,
-                                          IOCTL_STORAGE_QUERY_PROPERTY,
-                                          &query,
-                                          sizeof(STORAGE_PROPERTY_QUERY),
-                                          adapter_desc,
-                                          header.Size,
-                                          &returned_data,
-                                          FALSE);
-
-                if (win_ret > 0)
-                {
-                    // TODO: Copy any of the adapter stuff.
-                    #if defined (_DEBUG)
-                    printf("Adapter BusType: ");
-                    print_bus_type(adapter_desc->BusType);
-                    printf(" \n");
-                    #endif
-                    //saving max transfer size (in bytes)
-                    device->os_info.adapterMaxTransferSize = adapter_desc->MaximumTransferLength;
-
-                    //saving the SRB type so that we know when an adapter supports the new SCSI Passthrough EX IOCTLS - TJE
-#if WINVER >= SEA_WIN32_WINNT_WIN8 //If this check is wrong, make sure minGW is properly defining WINVER in the makefile.
-                    if (is_Windows_8_Or_Higher())//from opensea-common now to remove versionhelpes.h include
-                    {
-                        device->os_info.srbtype = adapter_desc->SrbType;
-                    }
-                    else
+            // TODO: Copy any of the adapter stuff.
+#if defined (_DEBUG)
+            printf("Adapter BusType: ");
+            print_bus_type(adapter_desc->BusType);
+            printf(" \n");
 #endif
-                    {
-                        device->os_info.srbtype = SRB_TYPE_SCSI_REQUEST_BLOCK;
-                    }
-                    switch (adapter_desc->AlignmentMask)
-                    {
-                    case 0://byte
-                        device->os_info.minimumAlignment = 1;
-                        break;
-                    case 1://word
-                        device->os_info.minimumAlignment = 2;
-                        break;
-                    case 3://dword
-                        device->os_info.minimumAlignment = 4;
-                        break;
-                    case 7://qword
-                        device->os_info.minimumAlignment = 8;
-                        break;
-                    default:
-                        device->os_info.minimumAlignment = 0;
-                        break;
-                    }
-                    device->os_info.alignmentMask = adapter_desc->AlignmentMask;//may be needed later....currently unused
-                    // Now lets get device stuff
-                    query.PropertyId = StorageDeviceProperty;
-                    memset(&header, 0, sizeof(STORAGE_DESCRIPTOR_HEADER));
-                    win_ret = DeviceIoControl(device->os_info.fd,
-                                          IOCTL_STORAGE_QUERY_PROPERTY,
-                                          &query,
-                                          sizeof(STORAGE_PROPERTY_QUERY),
-                                          &header,
-                                          sizeof(STORAGE_DESCRIPTOR_HEADER),
-                                          &returned_data,
-                                          FALSE);
+            //saving max transfer size (in bytes)
+            device->os_info.adapterMaxTransferSize = adapter_desc->MaximumTransferLength;
 
-                    if ((win_ret > 0) && (header.Size != 0))
-                    {
-                        device_desc = (PSTORAGE_DEVICE_DESCRIPTOR)LocalAlloc(LPTR, header.Size);
-                        if (device_desc != NULL)
-                        {
-                            win_ret = DeviceIoControl(device->os_info.fd,
-                                                  IOCTL_STORAGE_QUERY_PROPERTY,
-                                                  &query,
-                                                  sizeof(STORAGE_PROPERTY_QUERY),
-                                                  device_desc,
-                                                  header.Size,
-                                                  &returned_data,
-                                                  FALSE);
-                            if (win_ret > 0)
-                            {
+            //saving the SRB type so that we know when an adapter supports the new SCSI Passthrough EX IOCTLS - TJE
+#if WINVER >= SEA_WIN32_WINNT_WIN8 //If this check is wrong, make sure minGW is properly defining WINVER in the makefile.
+            if (is_Windows_8_Or_Higher())//from opensea-common now to remove versionhelpes.h include
+            {
+                device->os_info.srbtype = adapter_desc->SrbType;
+            }
+            else
+#endif
+            {
+                device->os_info.srbtype = SRB_TYPE_SCSI_REQUEST_BLOCK;
+            }
+            device->os_info.minimumAlignment = (uint8_t)(adapter_desc->AlignmentMask + 1);
+            device->os_info.alignmentMask = adapter_desc->AlignmentMask;//may be needed later....currently unused
+            win_ret = win_Get_Device_Descriptor(device->os_info.fd, &device_desc);
+            if(win_ret == SUCCESS)
+            {
+                bool checkForCSMI = false;
 
-                                get_Adapter_IDs(device, device_desc, header.Size);
+                get_Adapter_IDs(device, device_desc, device_desc->Size);
 
 #if WINVER >= SEA_WIN32_WINNT_WIN10
-                                get_Windows_FWDL_IO_Support(device, device_desc->BusType);
+                get_Windows_FWDL_IO_Support(device, device_desc->BusType);
 #else
-                                device->os_info.fwdlIOsupport.fwdlIOSupported = false;//this API is not available before Windows 10
+                device->os_info.fwdlIOsupport.fwdlIOSupported = false;//this API is not available before Windows 10
 #endif
-                                //#if defined (_DEBUG)
-                                //printf("Drive BusType: ");
-                                //print_bus_type(device_desc->BusType);
-                                //printf(" \n");
-                                //#endif
+                //#if defined (_DEBUG)
+                //printf("Drive BusType: ");
+                //print_bus_type(device_desc->BusType);
+                //printf(" \n");
+                //#endif
 
-                                if ((adapter_desc->BusType == BusTypeAta) ||
-                                    (device_desc->BusType == BusTypeAta)
-                                    )
-                                {
-                                    device->drive_info.drive_type = ATA_DRIVE;
-                                    device->drive_info.interface_type = IDE_INTERFACE;
-                                    device->os_info.ioType = WIN_IOCTL_ATA_PASSTHROUGH;
-                                    get_Windows_SMART_IO_Support(device);//might be used later
-                                }
-                                else if ((adapter_desc->BusType == BusTypeAtapi) ||
-                                    (device_desc->BusType == BusTypeAtapi)
-                                    )
-                                {
-                                    device->drive_info.drive_type = ATAPI_DRIVE;
-                                    device->drive_info.interface_type = IDE_INTERFACE;
-                                    device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
-                                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//This is GENERALLY true because almost all times the CDB is passed through instead of translated for a passthrough command, so just block it no matter what.
-                                    //TODO: These devices use the SCSI MMC command set in packet commands over ATA...other than for a few other commands.
-                                    //If we care to properly support this, we should investigate either how to send a packet command, or we should try issuing only SCSI commands
-                                    device->os_info.ioType = WIN_IOCTL_ATA_PASSTHROUGH;
-                                    get_Windows_SMART_IO_Support(device);//might be used later
-                                }
-                                else if ((device_desc->BusType == BusTypeSata))
-                                {
-                                    if (strncmp(WIN_CDROM_DRIVE, filename, strlen(WIN_CDROM_DRIVE)) == 0)
-                                    {
-                                        device->drive_info.drive_type = ATAPI_DRIVE;
-                                    }
-                                    else
-                                    {
-                                        device->drive_info.drive_type = ATA_DRIVE;
-                                    }
-                                    //we are assuming, for now, that SAT translation is being done below, and so far through testing on a few chipsets this appears to be correct.
-                                    device->drive_info.interface_type = IDE_INTERFACE;
-                                    device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
-                                    device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
-                                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
-                                    get_Windows_SMART_IO_Support(device);//might be used later
-                                }
-                                else if (device_desc->BusType == BusTypeUsb)
-                                {
-                                    //set this to SCSI_DRIVE. The fill_Drive_Info_Data call will change this if it supports SAT
-                                    device->drive_info.drive_type = SCSI_DRIVE;
-                                    device->drive_info.interface_type = USB_INTERFACE;
-                                    device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
-                                }
-                                else if (device_desc->BusType == BusType1394)
-                                {
-                                    //set this to SCSI_DRIVE. The fill_Drive_Info_Data call will change this if it supports SAT
-                                    device->drive_info.drive_type = SCSI_DRIVE;
-                                    device->drive_info.interface_type = IEEE_1394_INTERFACE;
-                                    device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
-                                }
-#if !defined(DISABLE_NVME_PASSTHROUGH)
-                                //NVMe bustype can be defined for Win7 with openfabrics nvme driver, so make sure we can handle it...it shows as a SCSI device on this interface unless you use a SCSI?: handle with the IOCTL directly to the driver.
-                                else if (device_desc->BusType == BusTypeNvme)
-                                {
-                                    device->drive_info.namespaceID = device->os_info.scsi_addr.Lun + 1;
-                                    if (device_desc->VendorIdOffset)//Open fabrics will set a vendorIDoffset, MSFT driver will not.
-                                    {
-#if defined (ENABLE_OFNVME)
-                                        if (SUCCESS == open_SCSI_SRB_Handle(device))
-                                        {
-                                            //now see if the IOCTL is supported or not
-                                            if (supports_OFNVME_IO(device->os_info.scsiSRBHandle))
-                                            {
-                                                //congratulations! nvme commands can be passed through!!!
-                                                device->os_info.openFabricsNVMePassthroughSupported = true;
-                                                device->drive_info.drive_type = NVME_DRIVE;
-                                                device->drive_info.interface_type = NVME_INTERFACE;
-                                                //device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
-                                                //TODO: Setup limited passthrough capabilities structure???
-                                            }
-                                            else
-                                            {
-                                                //unable to do passthrough, and isn't in normal Win10 mode, this means it's some other driver that we don't know how to use. Treat as SCSI
-                                                device->os_info.openFabricsNVMePassthroughSupported = false;
-                                                device->drive_info.drive_type = SCSI_DRIVE;
-                                                device->drive_info.interface_type = SCSI_INTERFACE;
-                                                device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
-                                            }
-                                        }
-                                        else
-#endif //ENABLE_OFNVME
-                                        {
-                                            //close the handle that was opened. TODO: May need to remove this in the future.
-                                            close_SCSI_SRB_Handle(device);
-                                            //treat as SCSI
-                                            device->drive_info.drive_type = SCSI_DRIVE;
-                                            device->drive_info.interface_type = SCSI_INTERFACE;
-                                            device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
-                                        }
-                                    }
-                                    else
-                                    {
-#if WINVER >= SEA_WIN32_WINNT_WIN10 
-                                        if (is_Windows_10_Or_Higher())
-                                        {
-                                            device->drive_info.drive_type = NVME_DRIVE;
-                                            device->drive_info.interface_type = NVME_INTERFACE;
-                                            //set_Namespace_ID_For_Device(device);
-                                            device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this, althrough SCSI Read/write 16 will work too!
-                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit = true;
-                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload = true;
-                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures = true;
-                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
-                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController = true;
-                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace = true;
-                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique = true;
-                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
-                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest = true;//NOTE: probably specific to a certain Win10 update. Not clearly documented when this became available, so need to do some testing before this is perfect
-                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive = true;
-                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securitySend = true;
-                                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures = true;//Only 1 feature today.
-                                            if (is_Windows_PE())
-                                            {
-                                                //If in Windows PE, then these other commands become available
-                                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceAttachment = true;
-                                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceManagement = true;
-                                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.format = true;
-                                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miReceive = true;
-                                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miSend = true;
-                                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize = true;
-                                            }
-                                        }
-                                        else
-#endif //WINVER >= SEA_WIN32_WINNT_WIN10 
-                                        {
-                                            device->drive_info.drive_type = SCSI_DRIVE;
-                                            device->drive_info.interface_type = SCSI_INTERFACE;
-                                            device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
-                                        }
-
-                                    }
-                                    
-                                }
-#endif //!defined(DISABLE_NVME_PASSTHROUGH)
-                                else //treat anything else as a SCSI device.
-                                {
-                                    device->drive_info.interface_type = SCSI_INTERFACE;
-                                    //This does NOT mean that drive_type is SCSI, but set SCSI drive for now
-                                    device->drive_info.drive_type = SCSI_DRIVE;
-                                    device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
-                                }
-
-                                //Doing this here because the NSID may be needed for NVMe over USB interfaces too
-                                device->drive_info.namespaceID = device->os_info.scsi_addr.Lun + 1;
-
-                                if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
-                                {
-                                    setup_Passthrough_Hacks_By_ID(device);
-                                }
-
-                                //For now force direct IO all the time to match previous functionality.
-                                //TODO: Investigate how to decide using double buffered vs direct vs mixed.
-                                //Note: On a couple systems here, when using double buffered IO with ATA Pass-through, invalid checksums are returned for identify commands, but direct is fine...
-                                device->os_info.ioMethod = WIN_IOCTL_FORCE_ALWAYS_DIRECT;
-
-                                if (device->dFlags & OPEN_HANDLE_ONLY)//This is this far down because there is a lot of other things that need to be saved in order for windows pass-through to work correctly.
-                                {
-                                    return SUCCESS;
-                                }
-
-                                // Lets fill out rest of info
-                                //TODO: This doesn't work for ATAPI on Windows right now. Will need to debug it more to figure out what other parts are wrong to get it fully functional.
-                                //This won't be easy since ATAPI is a weird SCSI over ATA hybrid-TJE
-                                ret = fill_Drive_Info_Data(device);
-
-                                /*
-                                While in most newer systems we found out that _force_ SCSI PassThrough will work,
-                                using older version of WinPE will cause the SCSI IOCTL to fail - MA
-                                */
-                                if ((ret != SUCCESS) && (device->drive_info.interface_type == IDE_INTERFACE) )
-                                {
-                                    //we weren't successful getting device information...so now try switching to the other IOCTLs
-                                    if (device->os_info.ioType == WIN_IOCTL_SCSI_PASSTHROUGH || device->os_info.ioType == WIN_IOCTL_SCSI_PASSTHROUGH_EX)
-                                    {
-                                        device->os_info.ioType = WIN_IOCTL_ATA_PASSTHROUGH;
-                                    }
-                                    else if (device->os_info.ioType == WIN_IOCTL_ATA_PASSTHROUGH)//ATA pass-through didn't work...so try SCSI pass-through just in case before falling back to legacy
-                                    {
-                                        device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
-                                    }
-                                    ret = fill_Drive_Info_Data(device);
-                                    if (ret != SUCCESS)
-                                    {
-                                        //if we are here, then we are likely dealing with an old legacy driver that doesn't support these other IOs we've been trying...so fall back to some good old legacy stuff that may still not work. - TJE
-                                        bool idePassThroughSupported = false;
-                                        //test an identify command with IDE pass-through
-                                        device->os_info.ioType = WIN_IOCTL_IDE_PASSTHROUGH_ONLY;
-                                        //TODO: use check power mode command instead?
-                                        if (SUCCESS == ata_Identify(device, (uint8_t *)&device->drive_info.IdentifyData.ata.Word000, sizeof(tAtaIdentifyData)) || SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)&device->drive_info.IdentifyData.ata.Word000, sizeof(tAtaIdentifyData)))
-                                        {
-                                            idePassThroughSupported = true;
-                                        }
-                                        if (device->os_info.winSMARTCmdSupport.smartIOSupported && idePassThroughSupported)
-                                        {
-                                            device->os_info.ioType = WIN_IOCTL_SMART_AND_IDE;
-                                        }
-                                        else if (device->os_info.winSMARTCmdSupport.smartIOSupported && !idePassThroughSupported)
-                                        {
-                                            device->os_info.ioType = WIN_IOCTL_SMART_ONLY;
-                                        }
-                                        device->os_info.osReadWriteRecommended = true;
-                                        ret = fill_Drive_Info_Data(device);
-                                    }
-                                }
-
-                                //Fill in IDE for ATA interface so we can know based on scan output which passthrough may need debugging
-                                if (device->drive_info.interface_type == IDE_INTERFACE)
-                                {
-                                    memset(device->drive_info.T10_vendor_ident, 0, sizeof(device->drive_info.T10_vendor_ident));
-                                    //Setting the vendor ID for ATA controllers like this so we can have an idea when we detect what we think is IDE and what we think is SATA. This may be helpful for debugging later. - TJE
-                                    if (adapter_desc->BusType == BusTypeSata)
-                                    {
-                                        sprintf(device->drive_info.T10_vendor_ident, "%s", "SATA");
-                                    }
-                                    else
-                                    {
-                                        sprintf(device->drive_info.T10_vendor_ident, "%s", "IDE");
-                                    }
-                                }
-                                //now windows api gives us some extra details that we should check to make sure that our fill_Drive_Info_Data call did correctly...just for some things the generic code may miss
-                                switch (device_desc->BusType)
-                                {
-                                case BusTypeAtapi:
-                                    device->drive_info.drive_type = ATAPI_DRIVE;
-                                    device->drive_info.media_type = MEDIA_OPTICAL;
-                                    break;
-                                case BusTypeSd:
-                                    device->drive_info.drive_type = FLASH_DRIVE;
-                                    device->drive_info.media_type = MEDIA_SSM_FLASH;
-                                    device->drive_info.interface_type = SD_INTERFACE;
-                                    break;
-                                case BusTypeMmc:
-                                    device->drive_info.drive_type = FLASH_DRIVE;
-                                    device->drive_info.media_type = MEDIA_SSM_FLASH;
-                                    device->drive_info.interface_type = MMC_INTERFACE;
-                                    break;
-                                default:
-                                    //do nothing since we assume everything else was set correctly earlier
-                                    break;
-                                }
-                            }
-                            LocalFree(device_desc);
-                            device_desc = NULL;
-                        } // else couldn't device desc allocate memory
-                    } // either ret or size is zero
+                if ((adapter_desc->BusType == BusTypeAta) ||
+                    (device_desc->BusType == BusTypeAta)
+                    )
+                {
+                    device->drive_info.drive_type = ATA_DRIVE;
+                    device->drive_info.interface_type = IDE_INTERFACE;
+                    device->os_info.ioType = WIN_IOCTL_ATA_PASSTHROUGH;
+                    get_Windows_SMART_IO_Support(device);//might be used later
+                    checkForCSMI = true;
                 }
-                LocalFree(adapter_desc);
-                adapter_desc = NULL;
-            } // else couldn't adapter desc allocate memory
-        } // either ret or size is zero
+                else if ((adapter_desc->BusType == BusTypeAtapi) ||
+                    (device_desc->BusType == BusTypeAtapi)
+                    )
+                {
+                    device->drive_info.drive_type = ATAPI_DRIVE;
+                    device->drive_info.interface_type = IDE_INTERFACE;
+                    device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
+                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//This is GENERALLY true because almost all times the CDB is passed through instead of translated for a passthrough command, so just block it no matter what.
+                    //TODO: These devices use the SCSI MMC command set in packet commands over ATA...other than for a few other commands.
+                    //If we care to properly support this, we should investigate either how to send a packet command, or we should try issuing only SCSI commands
+                    device->os_info.ioType = WIN_IOCTL_ATA_PASSTHROUGH;
+                    get_Windows_SMART_IO_Support(device);//might be used later
+                }
+                else if ((device_desc->BusType == BusTypeSata))
+                {
+                    if (strncmp(WIN_CDROM_DRIVE, filename, strlen(WIN_CDROM_DRIVE)) == 0)
+                    {
+                        device->drive_info.drive_type = ATAPI_DRIVE;
+                    }
+                    else
+                    {
+                        device->drive_info.drive_type = ATA_DRIVE;
+                        checkForCSMI = true;
+                    }
+                    //we are assuming, for now, that SAT translation is being done below, and so far through testing on a few chipsets this appears to be correct.
+                    device->drive_info.interface_type = IDE_INTERFACE;
+                    device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
+                    device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
+                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
+                    get_Windows_SMART_IO_Support(device);//might be used later
+                }
+                else if (device_desc->BusType == BusTypeUsb)
+                {
+                    //set this to SCSI_DRIVE. The fill_Drive_Info_Data call will change this if it supports SAT
+                    device->drive_info.drive_type = SCSI_DRIVE;
+                    device->drive_info.interface_type = USB_INTERFACE;
+                    device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
+                }
+                else if (device_desc->BusType == BusType1394)
+                {
+                    //set this to SCSI_DRIVE. The fill_Drive_Info_Data call will change this if it supports SAT
+                    device->drive_info.drive_type = SCSI_DRIVE;
+                    device->drive_info.interface_type = IEEE_1394_INTERFACE;
+                    device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
+                }
+#if !defined(DISABLE_NVME_PASSTHROUGH)
+                //NVMe bustype can be defined for Win7 with openfabrics nvme driver, so make sure we can handle it...it shows as a SCSI device on this interface unless you use a SCSI?: handle with the IOCTL directly to the driver.
+                else if (device_desc->BusType == BusTypeNvme)
+                {
+                    device->drive_info.namespaceID = device->os_info.scsi_addr.Lun + 1;
+                    if (device_desc->VendorIdOffset)//Open fabrics will set a vendorIDoffset, MSFT driver will not.
+                    {
+
+                        if (SUCCESS == open_SCSI_SRB_Handle(device))
+                        {
+                            //now see if the IOCTL is supported or not
+#if defined (ENABLE_OFNVME) || defined (ENABLE_INTEL_RST)
+                            //if defined hell since we can flag these interfaces on and off
+    #if defined (ENABLE_OFNVME)
+                            if (supports_OFNVME_IO(device->os_info.scsiSRBHandle))
+                            {
+                                //congratulations! nvme commands can be passed through!!!
+                                device->os_info.openFabricsNVMePassthroughSupported = true;
+                                device->drive_info.drive_type = NVME_DRIVE;
+                                device->drive_info.interface_type = NVME_INTERFACE;
+                                device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
+                                //TODO: Setup limited passthrough capabilities structure???
+                            }
+    #if !defined (ENABLE_INTEL_RST)
+                            else
+    #endif //!ENABLE_INTEL_RST
+    #endif //ENABLE_OFNVME
+    #if defined (ENABLE_OFNVME)
+                            else
+    #endif//ENABLE_OFNVME
+    #if defined (ENABLE_INTEL_RST)
+                            //TODO: else if(/*check for Intel RST CSMI support*/)
+                            if (device_Supports_CSMI_With_RST(device->os_info.scsiSRBHandle))
+                            {
+                                //TODO: setup CSMI structure
+                                device->drive_info.drive_type = NVME_DRIVE;
+                                device->drive_info.interface_type = NVME_INTERFACE;
+                                device->os_info.csmiDeviceData->intelRSTSupport.nvmePassthrough = true;
+                            }
+    #endif//ENABLE_INTEL_RST
+                            
+                            else
+#endif //ENABLE_OFNVME || ENABLE_INTEL_RST
+                            {
+                                //unable to do passthrough, and isn't in normal Win10 mode, this means it's some other driver that we don't know how to use. Treat as SCSI
+                                device->os_info.openFabricsNVMePassthroughSupported = false;
+                                device->drive_info.drive_type = SCSI_DRIVE;
+                                device->drive_info.interface_type = SCSI_INTERFACE;
+                                device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
+                            }
+                        }
+                        else
+                        {
+                            //close the handle that was opened. TODO: May need to remove this in the future.
+                            close_SCSI_SRB_Handle(device);
+                            //treat as SCSI
+                            device->drive_info.drive_type = SCSI_DRIVE;
+                            device->drive_info.interface_type = SCSI_INTERFACE;
+                            device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
+                        }
+                    }
+                    else
+                    {
+#if WINVER >= SEA_WIN32_WINNT_WIN10 
+                        if (is_Windows_10_Or_Higher())
+                        {
+                            device->drive_info.drive_type = NVME_DRIVE;
+                            device->drive_info.interface_type = NVME_INTERFACE;
+                            //set_Namespace_ID_For_Device(device);
+                            device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this, althrough SCSI Read/write 16 will work too!
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest = true;//NOTE: probably specific to a certain Win10 update. Not clearly documented when this became available, so need to do some testing before this is perfect
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securitySend = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures = true;//Only 1 feature today.
+                            if (is_Windows_PE())
+                            {
+                                //If in Windows PE, then these other commands become available
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceAttachment = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceManagement = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.format = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miReceive = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miSend = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize = true;
+                            }
+                        }
+                        else
+#endif //WINVER >= SEA_WIN32_WINNT_WIN10 
+                        {
+                            device->drive_info.drive_type = SCSI_DRIVE;
+                            device->drive_info.interface_type = SCSI_INTERFACE;
+                            device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
+                        }
+
+                    }
+
+                }
+#endif //!defined(DISABLE_NVME_PASSTHROUGH)
+                else //treat anything else as a SCSI device.
+                {
+                    device->drive_info.interface_type = SCSI_INTERFACE;
+                    //This does NOT mean that drive_type is SCSI, but set SCSI drive for now
+                    device->drive_info.drive_type = SCSI_DRIVE;
+                    device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
+                    if (device_desc->BusType == BusTypeSas)
+                    {
+                        //If this is SAS, check for CSMI capabilities.
+                        //Only do this for SAS since CSMI only mentions SAS and SATA, there is no need to do this for Fibre, RAID, or parallel SCSI since those likely won't be supported or are handled somewhere else. - TJE
+                        checkForCSMI = true;
+                    }
+                }
+
+                //Doing this here because the NSID may be needed for NVMe over USB interfaces too
+                device->drive_info.namespaceID = device->os_info.scsi_addr.Lun + 1;
+
+                if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
+                {
+                    setup_Passthrough_Hacks_By_ID(device);
+                }
+
+                //For now force direct IO all the time to match previous functionality.
+                //TODO: Investigate how to decide using double buffered vs direct vs mixed.
+                //Note: On a couple systems here, when using double buffered IO with ATA Pass-through, invalid checksums are returned for identify commands, but direct is fine...
+                device->os_info.ioMethod = WIN_IOCTL_FORCE_ALWAYS_DIRECT;
+
+                if (device->dFlags & OPEN_HANDLE_ONLY)//This is this far down because there is a lot of other things that need to be saved in order for windows pass-through to work correctly.
+                {
+                    return SUCCESS;
+                }
+
+                // Lets fill out rest of info
+                //TODO: This doesn't work for ATAPI on Windows right now. Will need to debug it more to figure out what other parts are wrong to get it fully functional.
+                //This won't be easy since ATAPI is a weird SCSI over ATA hybrid-TJE
+                ret = fill_Drive_Info_Data(device);
+
+                /*
+                While in most newer systems we found out that _force_ SCSI PassThrough will work,
+                using older version of WinPE will cause the SCSI IOCTL to fail - MA
+                */
+                if ((ret != SUCCESS) && (device->drive_info.interface_type == IDE_INTERFACE))
+                {
+                    //we weren't successful getting device information...so now try switching to the other IOCTLs
+                    if (device->os_info.ioType == WIN_IOCTL_SCSI_PASSTHROUGH || device->os_info.ioType == WIN_IOCTL_SCSI_PASSTHROUGH_EX)
+                    {
+                        device->os_info.ioType = WIN_IOCTL_ATA_PASSTHROUGH;
+                    }
+                    else if (device->os_info.ioType == WIN_IOCTL_ATA_PASSTHROUGH)//ATA pass-through didn't work...so try SCSI pass-through just in case before falling back to legacy
+                    {
+                        device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
+                    }
+                    ret = fill_Drive_Info_Data(device);
+                    if (ret != SUCCESS)
+                    {
+                        //if we are here, then we are likely dealing with an old legacy driver that doesn't support these other IOs we've been trying...so fall back to some good old legacy stuff that may still not work. - TJE
+                        bool idePassThroughSupported = false;
+                        //test an identify command with IDE pass-through
+                        device->os_info.ioType = WIN_IOCTL_IDE_PASSTHROUGH_ONLY;
+                        //TODO: use check power mode command instead?
+                        if (SUCCESS == ata_Identify(device, (uint8_t *)&device->drive_info.IdentifyData.ata.Word000, sizeof(tAtaIdentifyData)) || SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)&device->drive_info.IdentifyData.ata.Word000, sizeof(tAtaIdentifyData)))
+                        {
+                            idePassThroughSupported = true;
+                        }
+                        if (device->os_info.winSMARTCmdSupport.smartIOSupported && idePassThroughSupported)
+                        {
+                            device->os_info.ioType = WIN_IOCTL_SMART_AND_IDE;
+                        }
+                        else if (device->os_info.winSMARTCmdSupport.smartIOSupported && !idePassThroughSupported)
+                        {
+                            device->os_info.ioType = WIN_IOCTL_SMART_ONLY;
+                        }
+                        device->os_info.osReadWriteRecommended = true;
+                        ret = fill_Drive_Info_Data(device);
+                        checkForCSMI = false;//if we are using any of these limited, old IOCTLs, it is extremely unlikely that CSMI will work at all.
+                    }
+                }
+
+                if (checkForCSMI)
+                {
+                    if (handle_Supports_CSMI_IO(device->os_info.scsiSRBHandle, device->deviceVerbosity))
+                    {
+                        //open up the CSMI handle and populate the pointer to the csmidata structure. This may allow us to work around other commands.
+                        if (SUCCESS == jbod_Setup_CSMI_Info(device->os_info.scsiSRBHandle, device, 0, device->os_info.scsi_addr.PortNumber, device->os_info.scsi_addr.PathId, device->os_info.scsi_addr.TargetId, device->os_info.scsi_addr.Lun))
+                        {
+                            //TODO: Set flags, or other info?
+                        }
+                    }
+                }
+
+                //Fill in IDE for ATA interface so we can know based on scan output which passthrough may need debugging
+                if (device->drive_info.interface_type == IDE_INTERFACE)
+                {
+                    memset(device->drive_info.T10_vendor_ident, 0, sizeof(device->drive_info.T10_vendor_ident));
+                    //Setting the vendor ID for ATA controllers like this so we can have an idea when we detect what we think is IDE and what we think is SATA. This may be helpful for debugging later. - TJE
+                    if (adapter_desc->BusType == BusTypeSata)
+                    {
+                        sprintf(device->drive_info.T10_vendor_ident, "%s", "SATA");
+                    }
+                    else
+                    {
+                        sprintf(device->drive_info.T10_vendor_ident, "%s", "IDE");
+                    }
+                }
+                //now windows api gives us some extra details that we should check to make sure that our fill_Drive_Info_Data call did correctly...just for some things the generic code may miss
+                switch (device_desc->BusType)
+                {
+                case BusTypeAtapi:
+                    device->drive_info.drive_type = ATAPI_DRIVE;
+                    device->drive_info.media_type = MEDIA_OPTICAL;
+                    break;
+                case BusTypeSd:
+                    device->drive_info.drive_type = FLASH_DRIVE;
+                    device->drive_info.media_type = MEDIA_SSM_FLASH;
+                    device->drive_info.interface_type = SD_INTERFACE;
+                    break;
+                case BusTypeMmc:
+                    device->drive_info.drive_type = FLASH_DRIVE;
+                    device->drive_info.media_type = MEDIA_SSM_FLASH;
+                    device->drive_info.interface_type = MMC_INTERFACE;
+                    break;
+                default:
+                    //do nothing since we assume everything else was set correctly earlier
+                    break;
+                }
+                safe_Free(device_desc);
+            }
+            safe_Free(adapter_desc);
+        }
     }
     // Just in case we bailed out in any way.
     device->os_info.last_error = GetLastError();
 
     //printf("%s <--\n",__FUNCTION__);
     return ret;  //if we didn't get to fill_In_Device_Info FAILURE
+}
+int get_Device(const char *filename, tDevice *device)
+{
+#if defined (ENABLE_CSMI)
+    //check is the handle is in the format of a CSMI device handle so we can open the csmi device properly.
+    if (is_CSMI_Handle(filename))
+    {
+        return get_CSMI_RAID_Device(filename, device);
+    }
+    else
+#endif
+    {
+        return get_Win_Device(filename, device);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -2337,7 +2418,8 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
     HANDLE fd = NULL;
     TCHAR deviceName[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
-    
+    ptrRaidHandleToScan raidHandleList = NULL;
+    ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
     //Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
     //ARM requires 10.0.16299.0 API to get cfgmgr32 library!
     //TODO: add better check for API version and ARM to turn this on and off.
@@ -2373,6 +2455,31 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
         if (fd != INVALID_HANDLE_VALUE)
         {
             ++found;
+            //Check if the interface is reported as RAID from adapter data because an additional scan for RAID devices will be needed.
+            PSTORAGE_ADAPTER_DESCRIPTOR adapterData = NULL;
+            if (SUCCESS == win_Get_Adapter_Descriptor(fd, &adapterData))
+            {
+                if (adapterData->BusType == BusTypeRAID)
+                {
+                    //get the SCSI address for this device and save it to the RAID handle list so it can be scanned for additional types of RAID interfaces.
+                    SCSI_ADDRESS scsiAddress;
+                    memset(&scsiAddress, 0, sizeof(SCSI_ADDRESS));
+                    if (SUCCESS == win_Get_SCSI_Address(fd, &scsiAddress))
+                    {
+                        char raidHandle[15] = { 0 };
+                        raidTypeHint raidHint;
+                        memset(&raidHint, 0, sizeof(raidTypeHint));
+                        raidHint.unknownRAID = true;//TODO: Find a better way to hint at what type of raid we thing this might be. Can look at T10 vendor ID, low-level PCI/PCIe identifiers, etc.
+                        snprintf(raidHandle, 15, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
+                        raidHandleList = add_RAID_Handle_If_Not_In_List(beginRaidHandleList, raidHandleList, raidHandle, raidHint);
+                        if (!beginRaidHandleList)
+                        {
+                            beginRaidHandleList = raidHandleList;
+                        }
+                    }
+                }
+            }
+            safe_Free(adapterData);
             CloseHandle(fd);
         }
     }
@@ -2383,13 +2490,16 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI))//check whether they want CSMI devices or not
     {
         uint32_t csmiDeviceCount = 0;
-        int csmiRet = get_CSMI_Device_Count(&csmiDeviceCount, flags);
+        int csmiRet = get_CSMI_RAID_Device_Count(&csmiDeviceCount, flags, &beginRaidHandleList);
         if (csmiRet == SUCCESS)
         {
             *numberOfDevices += csmiDeviceCount;
         }
     }
 #endif
+
+    //Clean up RAID handle list
+    delete_RAID_List(beginRaidHandleList);
 
     return SUCCESS;
 }
@@ -2428,18 +2538,8 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     char    name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 }; //Because get device needs char
     HANDLE fd = INVALID_HANDLE_VALUE;
     tDevice * d = NULL;
-#if defined (ENABLE_CSMI)
-    uint32_t csmiDeviceCount = 0;
-    if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI))//check whether they want CSMI devices or not
-    {
-
-        int csmiRet = get_CSMI_Device_Count(&csmiDeviceCount, flags);
-        if (csmiRet != SUCCESS)
-        {
-            csmiDeviceCount = 0;
-        }
-    }
-#endif
+    ptrRaidHandleToScan raidHandleList = NULL;
+    ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
 
     //TODO: Check if sizeInBytes is a multiple of
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -2453,9 +2553,6 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     else
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
-#if defined (ENABLE_CSMI)
-        numberOfDevices -= csmiDeviceCount;
-#endif
         d = ptrToDeviceList;
         for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN) && (found < numberOfDevices)); driveNumber++)
         {
@@ -2487,6 +2584,33 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 {
                     failedGetDeviceCount++;
                 }
+                else
+                {
+                    PSTORAGE_ADAPTER_DESCRIPTOR adapterData = NULL;
+                    if (SUCCESS == win_Get_Adapter_Descriptor(d->os_info.fd, &adapterData))
+                    {
+                        if (adapterData->BusType == BusTypeRAID)
+                        {
+                            //get the SCSI address for this device and save it to the RAID handle list so it can be scanned for additional types of RAID interfaces.
+                            SCSI_ADDRESS scsiAddress;
+                            memset(&scsiAddress, 0, sizeof(SCSI_ADDRESS));
+                            if (SUCCESS == win_Get_SCSI_Address(fd, &scsiAddress))
+                            {
+                                char raidHandle[15] = { 0 };
+                                raidTypeHint raidHint;
+                                memset(&raidHint, 0, sizeof(raidTypeHint));
+                                raidHint.unknownRAID = true;//TODO: Find a better way to hint at what type of raid we thing this might be. Can look at T10 vendor ID, low-level PCI/PCIe identifiers, etc.
+                                snprintf(raidHandle, 15, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
+                                raidHandleList = add_RAID_Handle_If_Not_In_List(beginRaidHandleList, raidHandleList, raidHandle, raidHint);
+                                if (!beginRaidHandleList)
+                                {
+                                    beginRaidHandleList = raidHandleList;
+                                }
+                            }
+                        }
+                    }
+                    safe_Free(adapterData);
+                }
                 found++;
                 d++;
             }
@@ -2506,9 +2630,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         }
         
 #if defined (ENABLE_CSMI)
-        if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI) && csmiDeviceCount > 0)
+        if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI))
         {
-            int csmiRet = get_CSMI_Device_List(&ptrToDeviceList[numberOfDevices], csmiDeviceCount * sizeof(tDevice), ver, flags);
+            uint32_t csmiDeviceCount = numberOfDevices - found;
+            int csmiRet = get_CSMI_RAID_Device_List(&ptrToDeviceList[found], csmiDeviceCount * sizeof(tDevice), ver, flags, &beginRaidHandleList);
             if (returnValue == SUCCESS && csmiRet != SUCCESS)
             {
                 //this will override the normal ret if it is already set to success with the CSMI return value
@@ -2528,6 +2653,8 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
+        //Clean up RAID handle list
+        delete_RAID_List(beginRaidHandleList);
     }
 
     return returnValue;
@@ -4742,6 +4869,12 @@ int win10_FW_Activate_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 //DO NOT Attempt to use the STORAGE_HW_FIRMWARE_DOWNLOAD_V2 structure! This is not compatible as the low-level driver has a hard-coded alignment for the image buffer and will not transmit the correct data!!!
+#if !defined (STORAGE_HW_FIRMWARE_REQUEST_FLAG_LAST_SEGMENT)
+#define STORAGE_HW_FIRMWARE_REQUEST_FLAG_LAST_SEGMENT 0x00000002
+#endif
+#if !defined (STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT)
+#define STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT 0x00000004
+#endif
 int win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
@@ -4769,7 +4902,7 @@ int win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     downloadIO->Version = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD);
     downloadIO->Size = downloadStructureSize;
 #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
-    if (scsiIoCtx->device->os_info.fwdlIOsupport.isLastSegmentOfDownload)
+    if (scsiIoCtx->fwdlLastSegment)
     {
         //This IS documented on MSDN but VS2015 can't seem to find it...
         //One website says that this flag is new in Win10 1704 - creators update (10.0.15021)
@@ -4777,7 +4910,7 @@ int win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     }
 #endif
 #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
-    if (scsiIoCtx->device->os_info.fwdlIOsupport.isFirstSegmentOfDownload)
+    if (scsiIoCtx->fwdlFirstSegment)
     {
         downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT;
     }
@@ -4853,7 +4986,7 @@ int win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
             //set status register to 50
             memset(&scsiIoCtx->pAtaCmdOpts->rtfr, 0, sizeof(ataReturnTFRs));
             scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
-            if (scsiIoCtx->device->os_info.fwdlIOsupport.isLastSegmentOfDownload)
+            if (scsiIoCtx->fwdlLastSegment)
             {
                 scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = 0x03;//device has all segments saved and is ready to activate
             }
@@ -6602,7 +6735,7 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     downloadIO->Size = downloadStructureSize;
     downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;
 #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
-    if (nvmeIoCtx->device->os_info.fwdlIOsupport.isLastSegmentOfDownload)
+    if (nvmeIoCtx->fwdlLastSegment)
     {
         //This IS documented on MSDN but VS2015 can't seem to find it...
         //One website says that this flag is new in Win10 1704 - creators update (10.0.15021)
@@ -6610,7 +6743,7 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     }
 #endif
 #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
-    if (nvmeIoCtx->device->os_info.fwdlIOsupport.isFirstSegmentOfDownload)
+    if (nvmeIoCtx->fwdlFirstSegment)
     {
         downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT;
     }
@@ -8075,7 +8208,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         {
             if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
             {
-                printf("Raid PassThrough Interface is not supported for this device \n");
+                printf("Raid PassThrough Interface is not supported for this device - NVMe\n");
             }
             ret = NOT_SUPPORTED;
         }

@@ -21,10 +21,7 @@
 #include "prolific_legacy_helper.h"
 #include "cypress_legacy_helper.h"
 #include "psp_legacy_helper.h"
-
-time_t currentTime;
-char   currentTimeString[64];
-char   *currentTime_ptr = currentTimeString;
+#include "csmi_legacy_pt_cdb_helper.h"
 
 int ata_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCommandOptions)
 {
@@ -48,6 +45,9 @@ int ata_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCommandO
         break;
     case ATA_PASSTHROUGH_SAT:
         ret = send_SAT_Passthrough_Command(device, ataCommandOptions);
+        break;
+    case ATA_PASSTHROUGH_CSMI:
+        ret = send_CSMI_Legacy_ATA_Passthrough(device, ataCommandOptions);
         break;
     default:
         ret = BAD_PARAMETER;
@@ -1290,7 +1290,7 @@ int ata_Set_Max_Address_Ext(tDevice *device, uint64_t newMaxLBA, bool volatileVa
     return ret;
 }
 
-int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, bool useDMA, uint8_t *pData, uint32_t dataLen)
+int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, bool useDMA, uint8_t *pData, uint32_t dataLen, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -1298,6 +1298,8 @@ int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subComman
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
+    ataCommandOptions.fwdlFirstSegment = firstSegment;
+    ataCommandOptions.fwdlLastSegment = lastSegment;
     if (useDMA)
     {
         ataCommandOptions.tfr.CommandStatus = ATA_DOWNLOAD_MICROCODE_DMA;
@@ -1340,6 +1342,12 @@ int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subComman
         ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;
     }
 
+    ataCommandOptions.timeout = timeoutSeconds;
+    if (ataCommandOptions.timeout == 0)
+    {
+        ataCommandOptions.timeout = 30;//using 30 seconds since some firmwares can take a little longer to activate
+    }
+
     //if we are told to use the activate command, we need to set the protocol to non-data, set pdata to NULL, and dataSize to 0
     if (subCommand == ATA_DL_MICROCODE_ACTIVATE)
     {
@@ -1353,12 +1361,6 @@ int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subComman
         ataCommandOptions.tfr.LbaLow = 0;
         ataCommandOptions.tfr.LbaMid = 0;
         ataCommandOptions.tfr.LbaHi = 0;
-    }
-    else
-    {
-        //This line is commented out because it was for special cases. Default timeout should be fine in most cases.
-        //ataCommandOptions.timeout = 3600;//I'm putting this in here for now to make a lamarr update work. This long timeout should also help with Kahunas that have a long timeout issue.
-        ataCommandOptions.timeout = 15;
     }
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)

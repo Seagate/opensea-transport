@@ -550,10 +550,7 @@ int nvme_Compare(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogical
 }
 
 
-int nvme_Firmware_Image_Dl(tDevice *device,\
-                            uint32_t bufferOffset,\
-                            uint32_t numberOfBytes,\
-                            uint8_t *ptrData)
+int nvme_Firmware_Image_Dl(tDevice *device, uint32_t bufferOffset, uint32_t numberOfBytes, uint8_t *ptrData, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds)
 {
     int ret = SUCCESS;
     nvmeCmdCtx ImageDl;
@@ -567,7 +564,13 @@ int nvme_Firmware_Image_Dl(tDevice *device,\
     ImageDl.dataSize = numberOfBytes;
     ImageDl.cmd.adminCmd.cdw10 = (numberOfBytes >> 2) - 1; //Since this is, 0 based, number of DWords not Bytes. 
     ImageDl.cmd.adminCmd.cdw11 = bufferOffset >> 2;
-    ImageDl.timeout = 15;
+    ImageDl.timeout = timeoutSeconds;
+    if (ImageDl.timeout == 0)
+    {
+        ImageDl.timeout = 30;//default to 30 seconds to make sure we have a long enough timeout
+    }
+    ImageDl.fwdlFirstSegment = firstSegment;
+    ImageDl.fwdlLastSegment = lastSegment;
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -581,7 +584,7 @@ int nvme_Firmware_Image_Dl(tDevice *device,\
     return ret;
 }
 
-int nvme_Firmware_Commit(tDevice *device, nvmeFWCommitAction commitAction, uint8_t firmwareSlot)
+int nvme_Firmware_Commit(tDevice *device, nvmeFWCommitAction commitAction, uint8_t firmwareSlot, uint32_t timeoutSeconds)
 {
     int ret = BAD_PARAMETER;
     nvmeCmdCtx FirmwareCommit;
@@ -597,7 +600,11 @@ int nvme_Firmware_Commit(tDevice *device, nvmeFWCommitAction commitAction, uint8
     FirmwareCommit.commandDirection = XFER_NO_DATA;
     FirmwareCommit.cmd.adminCmd.cdw10 = (commitAction << 3); // 05:03 Bits CA
     FirmwareCommit.cmd.adminCmd.cdw10 |= (firmwareSlot & 0x07); // 02:00 Bits Firmware Slot
-    FirmwareCommit.timeout = 30;
+    FirmwareCommit.timeout = timeoutSeconds;
+    if (FirmwareCommit.timeout == 0)
+    {
+        FirmwareCommit.timeout = 30;//default to 30 seconds since some images may take more time to activate
+    }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending NVMe Firmware Commit Command\n");

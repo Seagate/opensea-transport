@@ -21,6 +21,8 @@
 #include "csmisas.h"
 #include "scsi_helper.h"
 #include "csmi_helper.h"
+#include "sata_types.h"
+#include "raid_scan_helper.h"
 
 #if defined (__cplusplus)
 extern "C"
@@ -29,272 +31,458 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  close_CSMI_Device()
+    //  csmi_Get_Driver_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_DRIVER_INFO_BUFFER driverInfoBuffer, eVerbosityLevels verbosity)
     //
-    //! \brief   Description:  Given a device, free the memory allocated from get_CSMI_Device and set an invalid handle value.
+    //! \brief   Description:  Sends the CSMI Get Driver Info IOCTL
     //
     //  Entry:
-    //!   \param[in] device = device stuct that holds device information.
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on other OSs
+    //!   \param[in] controllerNumber - Linux only, controller number since Linux needs this in the IOCTL_HEADER
+    //!   \param[in] driverInfoBuffer - CSMI spec driver info buffer to use.
+    //!   \param[in] verbosity - the level of verbose output to use when performing this IO
+    //! 
     //!
     //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int close_CSMI_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API int csmi_Get_Driver_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_DRIVER_INFO_BUFFER driverInfoBuffer, eVerbosityLevels verbosity);
 
     //-----------------------------------------------------------------------------
     //
-    //  get_CSMI_Phy_Info(tDevice *device, PCSMI_SAS_PHY_INFO_BUFFER PhyInfo)
+    //  csmi_Get_Controller_Configuration(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_CONFIG_BUFFER ctrlConfigBuffer, eVerbosityLevels verbosity)
     //
-    //! \brief   Description:  Issue the CSMI IOCTL to get the phy information
-    //
-    //  Entry:
-    //!   \param[in] device = device stuct that holds device information.
-    //!   \param[out] PhyInfo = pointer to phy info buffer structure.
-    //!
-    //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_CSMI_Phy_Info(tDevice *device, PCSMI_SAS_PHY_INFO_BUFFER PhyInfo);
-    
-    //-----------------------------------------------------------------------------
-    //
-    //  get_CSMI_Controller_Info(tDevice *device, PCSMI_SAS_CNTLR_CONFIG controllerInfo)
-    //
-    //! \brief   Description:  Issue the CSMI IOCTL to get the controller information
+    //! \brief   Description:  Sends the CSMI Get Controller Configuration IOCTL
     //
     //  Entry:
-    //!   \param[in] device = device stuct that holds device information.
-    //!   \param[out] controllerInfo = pointer to controler config buffer structure.
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on other OSs
+    //!   \param[in] controllerNumber - Linux only, controller number since Linux needs this in the IOCTL_HEADER
+    //!   \param[in] ctrlConfigBuffer - CSMI spec controller configuration buffer buffer to use.
+    //!   \param[in] verbosity - the level of verbose output to use when performing this IO
+    //! 
     //!
     //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_CSMI_Controller_Info(tDevice *device, PCSMI_SAS_CNTLR_CONFIG controllerInfo);
+    OPENSEA_TRANSPORT_API int csmi_Get_Controller_Configuration(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_CONFIG_BUFFER ctrlConfigBuffer, eVerbosityLevels verbosity);
 
     //-----------------------------------------------------------------------------
     //
-    //  get_CSMI_Driver_Info(tDevice *device, PCSMI_SAS_DRIVER_INFO driverInfo)
+    //  csmi_Get_Controller_Status(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_STATUS_BUFFER ctrlStatusBuffer, eVerbosityLevels verbosity)
     //
-    //! \brief   Description:  Issue the CSMI IOCTL to get the driver information
+    //! \brief   Description:  Sends the CSMI Controller Status IOCTL
     //
     //  Entry:
-    //!   \param[in] device = device stuct that holds device information.
-    //!   \param[out] driverInfo = pointer to driver config buffer structure.
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on other OSs
+    //!   \param[in] controllerNumber - Linux only, controller number since Linux needs this in the IOCTL_HEADER
+    //!   \param[in] ctrlStatusBuffer - CSMI spec controller status buffer buffer to use.
+    //!   \param[in] verbosity - the level of verbose output to use when performing this IO
+    //! 
     //!
     //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_CSMI_Driver_Info(tDevice *device, PCSMI_SAS_DRIVER_INFO driverInfo);
+    OPENSEA_TRANSPORT_API int csmi_Get_Controller_Status(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_STATUS_BUFFER ctrlStatusBuffer, eVerbosityLevels verbosity);
 
     //-----------------------------------------------------------------------------
     //
-    //  get_CSMI_SATA_Signature(tDevice *device, PCSMI_SAS_SATA_SIGNATURE signature)
+    //  csmi_Controller_Firmware_Download(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER firmwareBuffer, uint32_t firmwareBufferTotalLength, uint32_t downloadFlags, eVerbosityLevels verbosity, uint32_t timeoutSeconds)
     //
-    //! \brief   Description:  Issue the CSMI IOCTL to get the SATA signature. NOTE: This does not seem to return the correct signature, but a dummy value - TJE
+    //! \brief   Description:  Sends the CSMI Controller Firmware Download IOCTL
     //
     //  Entry:
-    //!   \param[in] device = device stuct that holds device information.
-    //!   \param[out] signature = pointer to sata signature buffer structure.
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on other OSs
+    //!   \param[in] controllerNumber - Linux only, controller number since Linux needs this in the IOCTL_HEADER
+    //!   \param[in] firmwareBuffer - CSMI spec controller status buffer buffer to use. Filled in with controller firmware to flash
+    //!   \param[in] firmwareBufferTotalLength - length of the allocated firmwareBuffer so that the IOs send the correct data length
+    //!   \param[in] downloadFlags - flags to control the download
+    //!   \param[in] verbosity - the level of verbose output to use when performing this IO
+    //!   \param[in] timeoutSeconds - the number of seconds to use for the timeout on downloading controller firmware.
+    //! 
     //!
     //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_CSMI_SATA_Signature(tDevice *device, PCSMI_SAS_SATA_SIGNATURE signature);
+    OPENSEA_TRANSPORT_API int csmi_Controller_Firmware_Download(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER firmwareBuffer, uint32_t firmwareBufferTotalLength, uint32_t downloadFlags, eVerbosityLevels verbosity, uint32_t timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
-    //  get_CSMI_SCSI_Address(tDevice *device, ptrCSMISCSIAddress scsiAddress)
+    //  csmi_Get_RAID_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_INFO_BUFFER raidInfoBuffer, eVerbosityLevels verbosity)
     //
-    //! \brief   Description:  Issue the CSMI IOCTL to get the SCSI Address
+    //! \brief   Description:  Sends the CSMI Get RAID Info IOCTL
     //
     //  Entry:
-    //!   \param[in] device = device stuct that holds device information.
-    //!   \param[out] scsiAddress = pointer to scsi address buffer structure.
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on other OSs
+    //!   \param[in] controllerNumber - Linux only, controller number since Linux needs this in the IOCTL_HEADER
+    //!   \param[in] raidInfoBuffer - CSMI spec buffer to use. This should be empty.
+    //!   \param[in] verbosity - the level of verbose output to use when performing this IO
+    //! 
     //!
     //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_CSMI_SCSI_Address(tDevice *device, ptrCSMISCSIAddress scsiAddress);
+    OPENSEA_TRANSPORT_API int csmi_Get_RAID_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_INFO_BUFFER raidInfoBuffer, eVerbosityLevels verbosity);
 
     //-----------------------------------------------------------------------------
     //
-    //  build_CSMI_Passthrough_CDB(uint8_t cdb[16], ataPassthroughCommand * ataPtCmd)
+    //  csmi_Get_RAID_Config(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_CONFIG_BUFFER raidConfigBuffer, uint32_t raidConfigBufferTotalSize, uint32_t raidSetIndex, uint8_t dataType, eVerbosityLevels verbosity)
     //
-    //! \brief   Description:  build the vendor unique ATA passthrough CDB defined in the original CSMI spec for when STP is not supported...not used as no controllers/drivers seem to use it - TJE
+    //! \brief   Description:  Sends the CSMI Get RAID Config IOCTL
     //
     //  Entry:
-    //!   \param[out] cdb = pointer to 16 byte long array to hold the built CDB
-    //!   \param[in] ataPtCmd = pointer to structure defining an ATA command
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on other OSs
+    //!   \param[in] controllerNumber - Linux only, controller number since Linux needs this in the IOCTL_HEADER
+    //!   \param[in] raidConfigBuffer - CSMI spec buffer to use. This should be empty.
+    //!   \param[in] raidConfigBufferTotalSize - size of full raid config buffer allocation. This needs to be passed in since this should be allocated based on maximum number of drives in a given RAID set, as reported by get RAID info.
+    //!   \param[in] raidSetIndex - which RAID set to get configuration of. This is for controllers that support multiple RAIDs on a single controller.
+    //!   \param[in] dataType - what data to report about a RAID configuration. This should be one of the bDataType's from the csmisas.h file.
+    //!   \param[in] verbosity - the level of verbose output to use when performing this IO
+    //! 
     //!
     //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int build_CSMI_Passthrough_CDB(uint8_t cdb[16], ataPassthroughCommand * ataPtCmd);
+    OPENSEA_TRANSPORT_API int csmi_Get_RAID_Config(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_CONFIG_BUFFER raidConfigBuffer, uint32_t raidConfigBufferTotalSize, uint32_t raidSetIndex, uint8_t dataType, eVerbosityLevels verbosity);
 
     //-----------------------------------------------------------------------------
     //
-    //  send_Vendor_Unique_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
+    //  csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_PHY_INFO_BUFFER phyInfoBuffer, eVerbosityLevels verbosity)
     //
-    //! \brief   Description:  Send the CSMI vendor unique ATA passthrough CDB using SSP passthrough to a device. (NOT used since no supporting device has been found) - TJE
+    //! \brief   Description:  Sends the CSMI Get Phy Info IOCTL
     //
     //  Entry:
-    //!   \param[in] scsiIoCtx - pointer to the scsiIoCtx structure defining a command to be sent
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on other OSs
+    //!   \param[in] controllerNumber - Linux only, controller number since Linux needs this in the IOCTL_HEADER
+    //!   \param[in] phyInfoBuffer - CSMI spec buffer to use. This should be empty.
+    //!   \param[in] verbosity - the level of verbose output to use when performing this IO
+    //! 
     //!
     //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_Vendor_Unique_ATA_Passthrough(ScsiIoCtx *scsiIoCtx);
+    OPENSEA_TRANSPORT_API int csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_PHY_INFO_BUFFER phyInfoBuffer, eVerbosityLevels verbosity);
 
     //-----------------------------------------------------------------------------
     //
-    //  send_SSP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
+    //  csmi_Set_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_SET_PHY_INFO_BUFFER phyInfoBuffer, eVerbosityLevels verbosity)
     //
-    //! \brief   Description:  Send a SCSI CDB using CSMI SSP passthrough IOCTL
+    //! \brief   Description:  Sends the CSMI Set Phy Info IOCTL
     //
     //  Entry:
-    //!   \param[in] scsiIoCtx - pointer to the scsiIoCtx structure defining a command to be sent
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on other OSs
+    //!   \param[in] controllerNumber - Linux only, controller number since Linux needs this in the IOCTL_HEADER
+    //!   \param[in] phyInfoBuffer - CSMI spec buffer to use. This should be filled with the phy settings being changed.
+    //!   \param[in] verbosity - the level of verbose output to use when performing this IO
+    //! 
     //!
     //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_SSP_Passthrough_Command(ScsiIoCtx *scsiIoCtx);
+    OPENSEA_TRANSPORT_API int csmi_Set_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_SET_PHY_INFO_BUFFER phyInfoBuffer, eVerbosityLevels verbosity);
 
     //-----------------------------------------------------------------------------
     //
-    //  build_H2D_fis(FIS_REG_H2D *fis, ataTFRBlock *tfr)
+    //  csmi_Get_Link_Errors(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_LINK_ERRORS_BUFFER linkErrorsBuffer, uint8_t phyIdentifier, bool resetCounts, eVerbosityLevels verbosity)
     //
-    //! \brief   Description:  Build a H2D FIS for CSMI STP passthrough to issue
+    //! \brief   Description:  Sends the CSMI Get Link Errors IOCTL
     //
     //  Entry:
-    //!   \param[out] fis - pointer to a H2D fis structure to fill in
-    //!   \param[in] ataTFRBlock - pointer to ATA TFR Block structure describing a command to issue.
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on other OSs
+    //!   \param[in] controllerNumber - Linux only, controller number since Linux needs this in the IOCTL_HEADER
+    //!   \param[in] linkErrorsBuffer - CSMI spec buffer to use. This should be empty.
+    //!   \param[in] phyIdentifier - phy to get link errors for
+    //!   \param[in] resetCounts - set to true will cause all counts to reset after reading the current counts
+    //!   \param[in] verbosity - the level of verbose output to use when performing this IO
+    //! 
     //!
     //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void build_H2D_fis(FIS_REG_H2D *fis, ataTFRBlock *tfr);
+    OPENSEA_TRANSPORT_API int csmi_Get_Link_Errors(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_LINK_ERRORS_BUFFER linkErrorsBuffer, uint8_t phyIdentifier, bool resetCounts, eVerbosityLevels verbosity);
 
     //-----------------------------------------------------------------------------
     //
-    //  send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
+    //  csmi_Get_SATA_Signature(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_SATA_SIGNATURE_BUFFER sataSignatureBuffer, uint8_t phyIdentifier, eVerbosityLevels verbosity)
     //
-    //! \brief   Description:  Send a ATA command using CSMI STP passthrough IOCTL
+    //! \brief   Description:  Sends the CSMI Get SATA Signature IOCTL
     //
     //  Entry:
-    //!   \param[in] scsiIoCtx - pointer to the scsiIoCtx structure defining a command to be sent
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on other OSs
+    //!   \param[in] controllerNumber - Linux only, controller number since Linux needs this in the IOCTL_HEADER
+    //!   \param[in] sataSignatureBuffer - CSMI spec buffer to use. This should be empty
+    //!   \param[in] phyIdentifier - phy ID to read signature for. This can help identify how a device was detected on boot/last reset to detect the device type.
+    //!   \param[in] verbosity - the level of verbose output to use when performing this IO
+    //! 
     //!
     //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx);
+    OPENSEA_TRANSPORT_API int csmi_Get_SATA_Signature(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_SATA_SIGNATURE_BUFFER sataSignatureBuffer, uint8_t phyIdentifier, eVerbosityLevels verbosity);
 
     //-----------------------------------------------------------------------------
     //
-    //  get_CSMI_Device(const char *filename, tDevice *device)
+    //  csmi_Get_SCSI_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddressBuffer, uint8_t sasAddress[8], uint8_t lun[8], eVerbosityLevels verbosity)
     //
-    //! \brief   Description:  Open a handle to the specified CSMI device. handle should be formatted as \\.\SCSI<controller>:<port or scsi address>
+    //! \brief   Description:  Sends the CSMI Get SCSI Address IOCTL
     //
     //  Entry:
-    //!   \param[in] filename - string that is a device handle
-    //!   \param[out] device = pointer to device structure to fill in with everything to talk over CSMI to the specified handle
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on other OSs
+    //!   \param[in] controllerNumber - Linux only, controller number since Linux needs this in the IOCTL_HEADER
+    //!   \param[in] scsiAddressBuffer - CSMI spec buffer to use. This should be empty (filled on successful completion)
+    //!   \param[in] sasAddress - SAS Address to use to convert to SCSI address. this may come from RAID Config data.
+    //!   \param[in] lun - SAS Lun, 64bits that should be converted to SCSI Address. this may come from RAID config data.
+    //!   \param[in] verbosity - the level of verbose output to use when performing this IO
+    //! 
     //!
     //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_CSMI_Device(const char *filename, tDevice *device);
+    OPENSEA_TRANSPORT_API int csmi_Get_SCSI_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddressBuffer, uint8_t sasAddress[8], uint8_t lun[8], eVerbosityLevels verbosity);
 
     //-----------------------------------------------------------------------------
     //
-    //  get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
+    //  csmi_Get_Device_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER deviceAddressBuffer, uint8_t hostIndex, uint8_t path, uint8_t target, uint8_t lun, eVerbosityLevels verbosity)
     //
-    //! \brief   Description:  Get the number of available CSMI devices on the system
+    //! \brief   Description:  Sends the CSMI Get Device Address IOCTL
     //
     //  Entry:
-    //!   \param[out] numberOfDevices - pointer to uint32_t that will hold the number of CSMI devices on a system
-    //!   \param[in] flags = flags to filter scan (NOT USED)
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on other OSs
+    //!   \param[in] controllerNumber - Linux only, controller number since Linux needs this in the IOCTL_HEADER
+    //!   \param[in] deviceAddressBuffer - CSMI spec buffer to use. This should be empty (filled on successful completion)
+    //!   \param[in] hostIndex - host/controller number. Most likely available from some other host specific reporting method
+    //!   \param[in] path - path ID, or bus. Most likely available from some other host specific reporting method
+    //!   \param[in] target - target ID. Most likely available from some other host specific reporting method
+    //!   \param[in] lun = logical unit number. Most likely available from some other host specific reporting method
+    //!   \param[in] verbosity - the level of verbose output to use when performing this IO
+    //! 
     //!
     //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_CSMI_Device_Count(uint32_t * numberOfDevices, uint64_t flags);
+    OPENSEA_TRANSPORT_API int csmi_Get_Device_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER deviceAddressBuffer, uint8_t hostIndex, uint8_t path, uint8_t target, uint8_t lun, eVerbosityLevels verbosity);
 
     //-----------------------------------------------------------------------------
     //
-    //  get_CSMI_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
+    //  csmi_Get_Connector_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CONNECTOR_INFO_BUFFER connectorInfoBuffer, eVerbosityLevels verbosity)
     //
-    //! \brief   Description:  Get the number of available CSMI devices on the system
+    //! \brief   Description:  Sends the CSMI Get Conector Info IOCTL (Phy count reported in get Phy Info)
     //
     //  Entry:
-    //!   \param[out] ptrToDeviceList = pointer to list of devices that has already been allocated based on the result of getting the device count
-    //!   \param[in] sizeInBytes - number of bytes in size of the allocated device list
-    //!   \param[in] ver = filled in version structure for version compatibility validation
-    //!   \param[in] flags = flags to filter scan (NOT USED)
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on other OSs
+    //!   \param[in] controllerNumber - Linux only, controller number since Linux needs this in the IOCTL_HEADER
+    //!   \param[in] connectorInfoBuffer - CSMI spec buffer to use. This should be empty (filled on successful completion)
+    //!   \param[in] verbosity - the level of verbose output to use when performing this IO
+    //! 
     //!
     //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_CSMI_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags);
+    OPENSEA_TRANSPORT_API int csmi_Get_Connector_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CONNECTOR_INFO_BUFFER connectorInfoBuffer, eVerbosityLevels verbosity);
 
     //-----------------------------------------------------------------------------
     //
     //  send_CSMI_IO(ScsiIoCtx *scsiIoCtx)
     //
-    //! \brief   Description:  send a command through a CSMI IOCTL
+    //! \brief   Description:  Sends a SAS/SATA command based on CSMI flags from device discovery
     //
     //  Entry:
-    //!   \param[in] scsiIoCtx - pointer to the scsiIoCtx structure defining a command to be sent
+    //!   \param[in] scsiIoCtx - holds all information pertinent to sending a SCSI or ATA command to a given device.
+    //! 
     //!
     //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int send_CSMI_IO(ScsiIoCtx *scsiIoCtx);
 
     //-----------------------------------------------------------------------------
     //
-    //  print_CSMI_Device_Info(tDevice * device)
+    //  handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, eVerbosityLevels verbosity)
     //
-    //! \brief   Description:  for a given device output information we read and are using about the CSMI device we are talking to (driver, phy, signature, etc information)
+    //! \brief   Description:  Quick check to see if CSMI is supported. Determined by success of both reading controller config and driver information. These are mandatory IOCTLs in CSMI spec.
     //
     //  Entry:
-    //!   \param[in] device = pointer to CSMI device.
+    //!   \param[in] scsiIoCtx - holds all information pertinent to sending a SCSI or ATA command to a given device.
+    //!   \param[in] verbosity - the level of verbose output to use when performing this IO
+    //! 
     //!
     //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void print_CSMI_Device_Info(tDevice * device);
+    bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, eVerbosityLevels verbosity);
+
+#if defined (_WIN32)
+    //-----------------------------------------------------------------------------
+    //
+    //  device_Supports_CSMI_With_RST(tDevice *device)
+    //
+    //! \brief   Description:  Checks if CSMI and Intel's RST IOCTLs are supported. This is for Windows only. This uses Intel's FWDL API to check if Intel IOCTLs are supported. It does not do a complete check of each Intel IOCTL.
+    //
+    //  Entry:
+    //!   \param[in] device - device structure. This is intended to be used only Within Windows where this provides the information necessary to perform this test.
+    //! 
+    //!
+    //  Exit:
+    //!   \return true = CSMI and RST calls supported, false = RST calls not supported. CSMI may or may not be supported
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool device_Supports_CSMI_With_RST(tDevice *device);
+#endif
 
     //-----------------------------------------------------------------------------
     //
-    //  print_FIS(uint8_t fis[20])
+    //  jbod_Setup_CSMI_Info(CSMI_HANDLE deviceHandle, tDevice *device, uint8_t controllerNumber, uint8_t hostController, uint8_t pathidBus, uint8_t targetID, uint8_t lun)
     //
-    //! \brief   Description:  Print out a FIS for debugging purposes
+    //! \brief   Description:  Meant for use primarily in Windows where low-level may filter or block certain commands. CSMI can be used in place to get around those limitations.
+    //!                        While this may work for SAS, this will likely only be used for SATA devices. SAS may not work if the LUN is non-zero, but this could depend on the HBA driver's CSMI support.
     //
     //  Entry:
-    //!   \param[in] fis = pointer to 20 byte array describing a generic FIS
+    //!   \param[in] deviceHandle - OS handle value that was opened to be used for issuing commands.
+    //!   \param[in] device - device structure. This is intended to be used only Within Windows where this provides the information necessary to perform this test.
+    //!   \param[in] controllerNumber - not necessary for Windows, but put into this call in case CSMI support like this is needed in another OS.
+    //!   \param[in] hostController - host or contoller number from system's scsi Address
+    //!   \param[in] pathidBus - pathID or Bus number from system's scsi Address
+    //!   \param[in] targetID - target ID from system's scsi Address
+    //!   \param[in] lun - logical unit number from system's scsi Address.
     //!
     //  Exit:
-    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void print_FIS(uint8_t fis[20]);
+    OPENSEA_TRANSPORT_API int jbod_Setup_CSMI_Info(CSMI_HANDLE deviceHandle, tDevice *device, uint8_t controllerNumber, uint8_t hostController, uint8_t pathidBus, uint8_t targetID, uint8_t lun);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, char **checkHandleList, uint32_t checkHandleListLength)
+    //
+    //! \brief   Description:  Get the number of CSMI RAID devices. This is intended to only discover drives configured in a RAID. Those not configured in RAID should use the OS passthrough with CSMI as a backup with jbod_Setup_CSMI_Info call
+    //!                        This call requires a list of handles to check for RAID support. This list should be created based on what is a suspected, or known RAID controller to help reduce duplicate devices.
+    //
+    //  Entry:
+    //!   \param[out] numberOfDevices - number of devices discovered based on provided list of handles to check.
+    //!   \param[in] device - device structure. This is intended to be used only Within Windows where this provides the information necessary to perform this test.
+    //!   \param[in] flags - 
+    //!   \param[in/out] beginningOfList - pointer to the beginning of the RAID handle list. double pointer so that it can be updated as necessary. I.E. remove elements as devices are found so that other RAID libs don't rescan the same handle
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, ptrRaidHandleToScan *beginningOfList);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags, char **checkHandleList, uint32_t checkHandleListLength)
+    //
+    //! \brief   Description:  Get the list of CSMI RAID devices. This is intended to only discover drives configured in a RAID. Those not configured in RAID should use the OS passthrough with CSMI as a backup with jbod_Setup_CSMI_Info call
+    //!                        This call requires a list of handles to check for RAID support. This list should be created based on what is a suspected, or known RAID controller to help reduce duplicate devices.
+    //
+    //  Entry:
+    //!   \param[out] ptrToDeviceList - pointer to a device list to start using to fill in discovered CSMI RAID devices.
+    //!   \param[in] sizeInBytes - size of device list in bytes. Should be multiple of tDevice. Used to determine how many CSMI devices to find.
+    //!   \param[in] ver - version block info to use when opening devices. Used to check version compatibility.
+    //!   \param[in] flags -
+    //!   \param[in/out] beginningOfList - pointer to the beginning of the RAID handle list. double pointer so that it can be updated as necessary. I.E. remove elements as devices are found so that other RAID libs don't rescan the same handle
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags, ptrRaidHandleToScan *beginningOfList);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  bool is_CSMI_Handle(const char * filename)
+    //
+    //! \brief   Description:  Checks if the provided string is a valid format for opening a CSMI device (very basic check right now)
+    //
+    //  Entry:
+    //!   \param[in] sizeInBytes - size of device list in bytes. Should be multiple of tDevice. Used to determine how many CSMI devices to find.
+    //!
+    //  Exit:
+    //!   \return true = valid CSMI device handle format. false = not a valid CSMI device handle format.
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_CSMI_Handle(const char * filename);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  close_CSMI_RAID_Device(tDevice *device)
+    //
+    //! \brief   Description:  Closes a handle to CSMI RAID device. Should only be used for those opened with get_CSMI_RAID_Device(). This also free's the memory allocated for CSMI devices.
+    //
+    //  Entry:
+    //!   \param[in] device - pointer to tDevice structure for a CSMI RAID Device.
+    //!
+    //  Exit:
+    //!   \return SUCCESS = sucessfully closed the handle, else something else went wrong or not a CSMI device to close a handle for.
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int close_CSMI_RAID_Device(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_CSMI_RAID_Device(const char *filename, tDevice *device)
+    //
+    //! \brief   Description:  Opens the provided file for a CSMI device. This should be in one of the following formats:
+    //!                            1. SAS/SATA - csmi:<controllerNumber/SCSI #>:<portID>:<phyID>:<lun>
+    //!                            2. Intel RST NVMe - csmi:<controllerNumber/SCSI #>:N:<pathID>:<targetID>:<lun>
+    //
+    //  Entry:
+    //!   \param[in] filename - formatted handle to specify opening a device for CSMI commands, typically in a RAID environment. Can be a JBOD device, but that is not recommended.
+    //!   \param[in] device - pointer to tDevice structure for a CSMI RAID Device.
+    //!
+    //  Exit:
+    //!   \return SUCCESS = sucessfully opened CSMI device, else something went wrong while trying to open the device.
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int get_CSMI_RAID_Device(const char *filename, tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  print_CSMI_Device_Info(tDevice *device)
+    //
+    //! \brief   Description:  Prints out some CSMI Device info which may be helpful for debugging.
+    //
+    //  Entry:
+    //!   \param[in] device - pointer to tDevice structure for a CSMI RAID Device.
+    //!
+    //  Exit:
+    //!   \return void
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API void print_CSMI_Device_Info(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_CSMI_Security_Access(char *driverName)
+    //
+    //! \brief   Description:  Using the driver name, Windows registry is checked for the level of access available. if not able to determine, FULL will be returned. 
+    //!                        In other OS's, this just checks for root permissions as that is all that is noted in CSMI documentation.
+    //
+    //  Entry:
+    //!   \param[in] driverName - Name of the port driver. This will match reporting by the CSMI get driver information call
+    //!
+    //  Exit:
+    //!   \return eCSMISecurityAccess value that describes access level
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API eCSMISecurityAccess get_CSMI_Security_Access(char *driverName);
 
 #if defined (__cplusplus)
 }
 #endif
-#endif
+#endif //ENABLE_CSMI

@@ -131,7 +131,9 @@ int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields)
     return ret;
 }
 
-int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata, uint32_t dataLen, eDataTransferDirection dataDirection, uint8_t *senseData, uint32_t senseDataLen, uint32_t timeoutSeconds)
+//created this function as internal where we can add more flags for now so we can preserve previous functionality at this time.
+//Did this so that write buffer can set the first and last segment flags for FWDL commands
+static int scsi_Send_Cdb_Int(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata, uint32_t dataLen, eDataTransferDirection dataDirection, uint8_t *senseData, uint32_t senseDataLen, uint32_t timeoutSeconds, bool fwdlFirstSegment, bool fwdlLastSegment)
 {
     int ret = UNKNOWN;
     ScsiIoCtx scsiIoCtx;
@@ -193,6 +195,11 @@ int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata,
     }
 
     return ret;
+}
+
+int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata, uint32_t dataLen, eDataTransferDirection dataDirection, uint8_t *senseData, uint32_t senseDataLen, uint32_t timeoutSeconds)
+{
+    return scsi_Send_Cdb_Int(device, cdb, cdbLen, pdata, dataLen, dataDirection, senseData, senseDataLen, timeoutSeconds, false, false);
 }
 
 int scsi_SecurityProtocol_In(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, bool inc512, uint32_t allocationLength, uint8_t *ptrData)
@@ -766,10 +773,15 @@ int scsi_Mode_Select_10(tDevice *device, uint16_t parameterListLength, bool page
     return ret;
 }
 
-int scsi_Write_Buffer(tDevice *device, eWriteBufferMode mode, uint8_t modeSpecific, uint8_t bufferID, uint32_t bufferOffset, uint32_t parameterListLength, uint8_t *ptrData)
+int scsi_Write_Buffer(tDevice *device, eWriteBufferMode mode, uint8_t modeSpecific, uint8_t bufferID, uint32_t bufferOffset, uint32_t parameterListLength, uint8_t *ptrData, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds)
 {
     int ret = UNKNOWN;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
+    uint32_t writeBufferTimeout = timeoutSeconds;
+    if (writeBufferTimeout == 0)
+    {
+        writeBufferTimeout = 30;//default to 30 seconds since this is most often used for FWDL and that activation can sometimes take more time
+    }
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -792,11 +804,11 @@ int scsi_Write_Buffer(tDevice *device, eWriteBufferMode mode, uint8_t modeSpecif
     //send the command
     if (ptrData && parameterListLength != 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, parameterListLength, XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+        ret = scsi_Send_Cdb_Int(device, &cdb[0], sizeof(cdb), ptrData, parameterListLength, XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, writeBufferTimeout, firstSegment, lastSegment);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+        ret = scsi_Send_Cdb_Int(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, writeBufferTimeout, firstSegment, lastSegment);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {

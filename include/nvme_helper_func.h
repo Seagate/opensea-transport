@@ -200,16 +200,16 @@ OPENSEA_TRANSPORT_API int nvme_Identify(tDevice *device, uint8_t *ptrData, uint3
 //!   \param[in] bufferOffset = buffer offset for the image download
 //!   \param[in] numberOfBytes = Xfer length
 //!   \param[in] ptrData = pointer to the data buffer to be filled in with identify data
+//!   \param[in] firstSegment = Flag to help some low-level OSs know when the first segment of a firmware download is happening...specifically Windows
+//!   \param[in] lastSegment = Flag to help some low-level OSs know when the last segment of a firmware download is happening...specifrically Windows
+//!   \param[in] timeoutSeconds = set a timeout in seconds for the command. This can be useful if some FWDL commands take longer (code activation for example)
 //! 
 //!
 //  Exit:
 //!   \return SUCCESS = pass, !SUCCESS = something when wrong
 //
 //-----------------------------------------------------------------------------
-OPENSEA_TRANSPORT_API int nvme_Firmware_Image_Dl(tDevice *device,\
-                            uint32_t bufferOffset,\
-                            uint32_t numberOfBytes,\
-                            uint8_t *ptrData);
+OPENSEA_TRANSPORT_API int nvme_Firmware_Image_Dl(tDevice *device, uint32_t bufferOffset, uint32_t numberOfBytes, uint8_t *ptrData, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds);
 
 //-----------------------------------------------------------------------------
 //
@@ -221,13 +221,14 @@ OPENSEA_TRANSPORT_API int nvme_Firmware_Image_Dl(tDevice *device,\
 //!   \param[in] device = pointer to tDevice structure
 //!   \param[in] commitAction = Image Download commit action to take
 //!   \param[in] firmwareSlot = Firmware Slot to take action on. 
+//!   \param[in] timeoutSeconds = timeout for the activate command. Selectable since some commands take more time than others
 //! 
 //!
 //  Exit:
 //!   \return SUCCESS = pass, !SUCCESS = something when wrong
 //
 //-----------------------------------------------------------------------------
-OPENSEA_TRANSPORT_API int nvme_Firmware_Commit(tDevice *device, nvmeFWCommitAction commitAction, uint8_t firmwareSlot);
+OPENSEA_TRANSPORT_API int nvme_Firmware_Commit(tDevice *device, nvmeFWCommitAction commitAction, uint8_t firmwareSlot, uint32_t timeoutSeconds);
 
 
 

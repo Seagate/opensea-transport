@@ -24,6 +24,8 @@
 #include <Protocol/DevicePath.h> //for device path union/structures
 #endif
 
+#include "csmi_helper.h" //because the device structure holds some csmi support structure for when we can issue csmi passthrough commands.
+
 #if defined (__cplusplus)
 #define __STDC_FORMAT_MACROS
 extern "C"
@@ -638,6 +640,9 @@ extern "C"
         ATA_PASSTHROUGH_TI,
         ATA_PASSTHROUGH_NEC,
         ATA_PASSTHROUGH_PSP, //Some PSP drives use this passthrough and others use SAT...it's not clear if this was ever even used. If testing for it, test it last.
+        ATA_PASSTHROUGH_END_LEGACY_USB = ATA_PASSTHROUGH_PSP,//This is set because all legacy USB passthrough's should proceed other driver/controller passthroughs on non-USB interfaces.
+        ATA_PASSTHROUGH_BEGIN_NON_USB = 30,//set so if we need to find a passthrough that may be available for drivers or non-USB controllers, they can start at this value.Assuming there will never be 30 different USB passthrough types - TJE
+        ATA_PASSTHROUGH_CSMI, //This is a legacy CDB that is implemented in case old CSMI drivers are encountered that follow the original CSMI spec found online that defines this CDB instead of SAT. It is not currently tested - TJE
         ATA_PASSTHROUGH_UNKNOWN = 99,//final value to be used by ATA passthrough types
         //NVMe stuff defined here. All NVMe stuff should be 100 or higher with the exception of the default system passthrough
         NVME_PASSTHROUGH_SYSTEM = 0,//This is for NVMe devices to use the system passthrough. This is the default since this is most NVMe devices.
@@ -916,6 +921,9 @@ extern "C"
     }eWindowsIOCTLMethod;
 #endif
 
+    //forward declare csmi info to avoid including csmi_helper.h
+    typedef struct _csmiDeviceInfo csmiDeviceInfo,*ptrCsmiDeviceInfo;
+
     // \struct typedef struct _OSDriveInfo
     typedef struct _OSDriveInfo
     {
@@ -1018,16 +1026,10 @@ extern "C"
             bool allowFlexibleUseOfAPI;//Set this to true to allow using the Win10 API for FWDL for any compatible download commands. If this is false, the Win10 API will only be used on IDE_INTERFACE for an ATA download command and SCSI interface for a supported Write buffer command. If true, it will be used regardless of which command the caller is using. This is useful for pure FW updates versus testing a specific condition.
             uint32_t payloadAlignment; //From MSDN: The alignment of the image payload, in number of bytes. The maximum is PAGE_SIZE. The transfer size is a mutliple of this size. Some protocols require at least sector size. When this value is set to 0, this means that this value is invalid.
             uint32_t maxXferSize; //From MSDN: The image payload maximum size, this is used for a single command
-            bool isLastSegmentOfDownload;//This should be set only when we are issuing a download command...We should find a better place for this.
-            bool isFirstSegmentOfDownload;//This should be set only when we are issuing a download command...We should find a better place for this.
             //TODO: expand this struct if we need other data when we check for firmware download support on a device.
         }fwdlIOsupport;
         uint32_t adapterMaxTransferSize;//Bytes. Returned by querying for adapter properties. Can be used to know when trying to request more than the adapter or driver supports.
-#if defined (ENABLE_OFNVME) && !defined (DISABLE_NVME_PASSTHROUGH)
         bool openFabricsNVMePassthroughSupported;//If true, then nvme commands can be issued using the open fabrics NVMe passthrough IOCTL
-#else
-        bool ofReservedUnusedPadding;
-#endif
         //TODO: Store the device path! This may occasionally be useful to have. Longest one will probably be no more that MAX_DEVICE_ID_LEN characters. (This is defined as 200)
         //padding to keep same size as other OSs. This is to keep things similar across OSs.
         //Variable sizes based on 32 vs 64bit since handle is a void*
@@ -1047,7 +1049,8 @@ extern "C"
             bool hasFileSystem;//This will only be true for filesystems the current OS can detect. Ex: Windows will only set this for mounted volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem types since it can handle more than Windows by default
             bool isSystemDisk;//This will be set if the drive has a file system and the OS is running off of it. Ex: Windows' C:\Windows\System32, Linux's / & /boot, etc
         }fileSystemInfo;
-        uint8_t padd[4];//padd to 400 byte on UEFI. TODO: Make all OS's keep this structure the same size!!!
+        ptrCsmiDeviceInfo csmiDeviceData;//This is a pointer because it will only be allocated when CSMI is supported. This is also used by Intel RST NVMe passthrough which is basically an extension of CSMI
+        uint8_t padd[6];//padd to multiple of 8 bytes
     }OSDriveInfo;
 
     typedef enum _eDiscoveryOptions
@@ -1063,14 +1066,6 @@ extern "C"
         FORCE_ATA_DMA_SAT_MODE = BIT17, //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
         FORCE_ATA_UDMA_SAT_MODE = BIT18, //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
         GET_DEVICE_FUNCS_IGNORE_CSMI = BIT19, //use this bit in get_Device_Count and get_Device_List to ignore CSMI devices.
-#if defined (ENABLE_CSMI)
-        CSMI_FLAG_IGNORE_PORT = BIT25,
-        CSMI_FLAG_USE_PORT = BIT26,
-        CSMI_FLAG_FORCE_PRE_SAT_VU_PASSTHROUGH = BIT27, //This is for DEBUG. This uses a pre-sat passthrough CDB which may not work properly...
-        CSMI_FLAG_FORCE_SSP = BIT28,
-        CSMI_FLAG_FORCE_STP = BIT29,
-        CSMI_FLAG_VERBOSE = BIT30,
-#endif
     } eDiscoveryOptions;
 
     typedef int (*issue_io_func)( void * );

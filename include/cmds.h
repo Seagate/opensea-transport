@@ -150,12 +150,15 @@ extern "C"
     //!   \param ptrData - pointer to the data buffer that will do the transfer
     //!   \param slotNumber - set to the slot number (NVMe) or buffer ID (SCSI) that you want to set. If unsure, set this to zero. Ignored on ATA drives. Only used for activate on NVMe drives.
     //!   \param existingImage - set to true if using this command to activate an existing image in the specified slot, false if it is a new image to activate.
+    //!   \param firstSegment - first segment of a firmware download. Helps low-level OS ioctls (Mostly Windows based)
+    //!   \param lastSegment - last segment of a firmware download. Helps low-level OS ioctls (Mostly Windows based)
+    //!   \param timeoutSeconds - timeout for the command. Selectable since some updates may be slower than others.
     //!   
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber, bool existingImage);
+    OPENSEA_TRANSPORT_API int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber, bool existingImage, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -166,12 +169,13 @@ extern "C"
     //!   \param device - pointer to the device structure
     //!   \param slotNumber - set to the slot number (NVMe) or buffer ID (SCSI) that you want to set. If unsure, set this to zero. Ignored on ATA drives.
     //!   \param existingImage - set to true if using this command to activate an existing image in the specified slot, false if it is a new image to activate.
+    //!   \param timeoutSeconds - timeout for the command. Selectable since some updates may be slower than others.
     //!   
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int firmware_Download_Activate(tDevice *device, uint8_t slotNumber, bool existingImage);
+    OPENSEA_TRANSPORT_API int firmware_Download_Activate(tDevice *device, uint8_t slotNumber, bool existingImage, uint32_t timeoutSeconds);
 
     typedef enum _eSecurityProtocols
     {

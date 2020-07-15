@@ -89,6 +89,9 @@ Revision History:
                        Reassigned the value of CSMI_SAS_CNTLR_RAID_CFG_SUPPORT
                        to avoid a conflict.
    025 TJE   11/16/16  Added CSMI_SAS_LINK_RATE_6_0_GBPS definitions.
+   026 TJE    4/27/20  Added 12GB/s definitions
+   027 TJE    6/10/20  Adding Intel Smart Response drive usage definitions
+                       These were figured out by looking at the RAID Config data
 
 **************************************************************************/
 
@@ -561,6 +564,9 @@ typedef struct _IOCTL_HEADER {
 #define CSMI_SAS_DRIVE_CONFIG_MEMBER        1
 #define CSMI_SAS_DRIVE_CONFIG_SPARE         2
 #define CSMI_SAS_DRIVE_CONFIG_SPARE_ACTIVE  3
+//Adding Intel Smart Response types
+#define CSMI_SAS_DRIVE_CONFIG_SRT_CACHE     10
+#define CSMI_SAS_DRIVE_CONFIG_SRT_DATA      11
 
 // RAID Drive Type
 // (bDriveType)
@@ -746,15 +752,16 @@ typedef struct _IOCTL_HEADER {
 // Negotiated and hardware link rates
 // (bNegotiatedLinkRate, bMinimumLinkRate, bMaximumLinkRate)
 
-#define CSMI_SAS_LINK_RATE_UNKNOWN  0x00
-#define CSMI_SAS_PHY_DISABLED       0x01
-#define CSMI_SAS_LINK_RATE_FAILED   0x02
-#define CSMI_SAS_SATA_SPINUP_HOLD   0x03
-#define CSMI_SAS_SATA_PORT_SELECTOR 0x04
-#define CSMI_SAS_LINK_RATE_1_5_GBPS 0x08
-#define CSMI_SAS_LINK_RATE_3_0_GBPS 0x09
-#define CSMI_SAS_LINK_RATE_6_0_GBPS 0x0A
-#define CSMI_SAS_LINK_VIRTUAL       0x10
+#define CSMI_SAS_LINK_RATE_UNKNOWN      0x00
+#define CSMI_SAS_PHY_DISABLED           0x01
+#define CSMI_SAS_LINK_RATE_FAILED       0x02
+#define CSMI_SAS_SATA_SPINUP_HOLD       0x03
+#define CSMI_SAS_SATA_PORT_SELECTOR     0x04
+#define CSMI_SAS_LINK_RATE_1_5_GBPS     0x08
+#define CSMI_SAS_LINK_RATE_3_0_GBPS     0x09
+#define CSMI_SAS_LINK_RATE_6_0_GBPS     0x0A
+#define CSMI_SAS_LINK_RATE_12_0_GBPS    0x0B
+#define CSMI_SAS_LINK_VIRTUAL           0x10
 
 // Discover state
 // (bAutoDiscover)
@@ -766,6 +773,7 @@ typedef struct _IOCTL_HEADER {
 #define CSMI_SAS_DISCOVER_ERROR           0x04
 
 // Phy features
+// (bPhyFeatures)
 
 #define CSMI_SAS_PHY_VIRTUAL_SMP          0x01
 
@@ -776,6 +784,8 @@ typedef struct _IOCTL_HEADER {
 #define CSMI_SAS_PROGRAMMED_LINK_RATE_UNCHANGED 0x00
 #define CSMI_SAS_PROGRAMMED_LINK_RATE_1_5_GBPS  0x08
 #define CSMI_SAS_PROGRAMMED_LINK_RATE_3_0_GBPS  0x09
+#define CSMI_SAS_PROGRAMMED_LINK_RATE_6_0_GBPS  0x0A
+#define CSMI_SAS_PROGRAMMED_LINK_RATE_12_0_GBPS 0x0B
 
 // Link rate
 // (bNegotiatedLinkRate in CSMI_SAS_SET_PHY_INFO)
@@ -814,6 +824,7 @@ typedef struct _IOCTL_HEADER {
 #define CSMI_SAS_LINK_RATE_1_5_GBPS    0x08
 #define CSMI_SAS_LINK_RATE_3_0_GBPS    0x09
 #define CSMI_SAS_LINK_RATE_6_0_GBPS    0x0A
+#define CSMI_SAS_LINK_RATE_12_0_GBPS   0x0B
 
 // Connection status
 // (bConnectionStatus)
@@ -912,6 +923,19 @@ typedef struct _IOCTL_HEADER {
 #define CSMI_SAS_CON_SFF_8484_LANE_2      0x00020000
 #define CSMI_SAS_CON_SFF_8484_LANE_3      0x00040000
 #define CSMI_SAS_CON_SFF_8484_LANE_4      0x00080000
+//Reserving these other definitions to fill in if found in use
+#define CSMI_SAS_CON_RESERVED_1           0x00100000
+#define CSMI_SAS_CON_RESERVED_2           0x00200000
+#define CSMI_SAS_CON_RESERVED_3           0x00400000
+#define CSMI_SAS_CON_RESERVED_4           0x00800000
+#define CSMI_SAS_CON_RESERVED_5           0x01000000
+#define CSMI_SAS_CON_RESERVED_6           0x02000000
+#define CSMI_SAS_CON_RESERVED_7           0x04000000
+#define CSMI_SAS_CON_RESERVED_8           0x08000000
+#define CSMI_SAS_CON_RESERVED_9           0x10000000
+#define CSMI_SAS_CON_RESERVED_A           0x20000000
+#define CSMI_SAS_CON_RESERVED_B           0x40000000
+#define CSMI_SAS_CON_RESERVED_C           0x80000000
 
 // Connector Location Information
 // (bLocation)
@@ -923,6 +947,7 @@ typedef struct _IOCTL_HEADER {
 #define CSMI_SAS_CON_SWITCHABLE           0x08
 #define CSMI_SAS_CON_AUTO                 0x10
 #define CSMI_SAS_CON_NOT_PRESENT          0x20
+#define CSMI_SAS_CON_RESERVED             0x40
 #define CSMI_SAS_CON_NOT_CONNECTED        0x80
 
 // Device location identification
