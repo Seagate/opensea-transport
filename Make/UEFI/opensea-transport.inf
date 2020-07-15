@@ -43,6 +43,9 @@
   include/asmedia_nvme_helper.h
   include/jmicron_nvme_helper.h
   include/csmi_legacy_pt_cdb_helper.h
+  include/sata_types.h
+  include/sata_helper_func.h
+  include/raid_scan_helper.h
   src/ata_cmds.c
   src/ata_helper.c
   src/ata_legacy_cmds.c
@@ -64,6 +67,8 @@
   src/asmedia_nvme_helper.c
   src/jmicron_nvme_helper.c
   src/csmi_legacy_pt_cdb_helper.c
+  src/sata_helper_func.c
+  src/raid_scan_helper.c
   
 [Packages]
   StdLib/StdLib.dec
