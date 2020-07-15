@@ -131,7 +131,7 @@ int get_RTFRs_From_PSP_Legacy(tDevice *device, ataPassthroughCommand *ataCommand
     uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
     cdb[OPERATION_CODE] = PSP_OPCODE;
     cdb[1] |= PSP_FUNC_RETURN_TASK_FILE_REGISTERS;
-    //Set the device register in offset 7 for selecting master vs slave drive....we won't do that at this time - TJE
+    //Set the device register in offset 7 for selecting device 0 vs device 1...we won't do that at this time - TJE
     //send the command
     ret = scsi_Send_Cdb(device, cdb, CDB_LEN_16, returnData, 14, XFER_DATA_IN, senseData, SPC3_SENSE_LEN, 0);
     //now get the RTFRs

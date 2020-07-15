@@ -2436,7 +2436,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
         }
     }
 
-    int  driveNumber = 0, found = 0, possibleRAID = 0;
+    int  driveNumber = 0, found = 0;
     for (driveNumber = 0; driveNumber < MAX_DEVICES_TO_SCAN; ++driveNumber)
     {
         _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
@@ -2476,7 +2476,6 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
                         {
                             beginRaidHandleList = raidHandleList;
                         }
-                        ++possibleRAID;
                     }
                 }
             }
@@ -2533,8 +2532,8 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
 {
     int returnValue = SUCCESS;
-    int numberOfDevices = 0, possibleRAID = 0;
-    int driveNumber = 0, found = 0, failedGetDeviceCount = 0;
+    int numberOfDevices = 0;
+    int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     TCHAR deviceName[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
     char    name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 }; //Because get device needs char
     HANDLE fd = INVALID_HANDLE_VALUE;
@@ -2607,7 +2606,6 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                                 {
                                     beginRaidHandleList = raidHandleList;
                                 }
-                                ++possibleRAID;
                             }
                         }
                     }
@@ -2616,7 +2614,21 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 found++;
                 d++;
             }
+            else
+            {
+                //Check last error for permissions issues
+                DWORD lastError = GetLastError();
+                if (lastError == ERROR_ACCESS_DENIED)
+                {
+                    ++permissionDeniedCount;
+                    ++failedGetDeviceCount;
+                }
+                //NOTE: No generic else like other OS's due to the way devices are scanned in Windows today. Since we are just trying to open handles, they can fail for various reasons, like the handle not even being valid, but that should not cause a failure.
+                //If the code is updated to use something like setupapi or cfgmgr32 to figure out devices in the system, then it would make sense to add additional error checks here like we have for 'nix OSs. - TJE
+                //If a handle does not exist ERROR_FILE_NOT_FOUND is returned.
+            }
         }
+        
 #if defined (ENABLE_CSMI)
         if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI))
         {
@@ -2632,6 +2644,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         if (found == failedGetDeviceCount)
         {
             returnValue = FAILURE;
+        }
+        else if (permissionDeniedCount == numberOfDevices)
+        {
+            returnValue = PERMISSION_DENIED;
         }
         else if (failedGetDeviceCount)
         {
@@ -5272,7 +5288,7 @@ int convert_SCSI_CTX_To_ATA_SMART_Cmd(ScsiIoCtx *scsiIoCtx, PSENDCMDINPARAMS sma
         scsiIoCtx->device->os_info.winSMARTCmdSupport.deviceBitmap & BIT6
         )
     {
-        //this drive is a master...make sure bit 4 is not set!
+        //this is device 0...make sure bit 4 is not set!
         if (smartCmd->irDriveRegs.bDriveHeadReg & BIT4)
         {
             smartCmd->irDriveRegs.bDriveHeadReg ^= BIT4;
@@ -5283,7 +5299,7 @@ int convert_SCSI_CTX_To_ATA_SMART_Cmd(ScsiIoCtx *scsiIoCtx, PSENDCMDINPARAMS sma
         scsiIoCtx->device->os_info.winSMARTCmdSupport.deviceBitmap & BIT5 ||
         scsiIoCtx->device->os_info.winSMARTCmdSupport.deviceBitmap & BIT7)
     {
-        //this drive is a slave...make sure bit 4 is set
+        //this is device 1...make sure bit 4 is set
         smartCmd->irDriveRegs.bDriveHeadReg |= BIT4;
     }
 
