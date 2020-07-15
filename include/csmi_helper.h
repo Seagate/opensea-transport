@@ -108,6 +108,61 @@ extern "C"
         #define CSMI_SYSTEM_IOCTL_SUCCESS 0
     #endif
 
+    //These definitions should be used when printing from CSMI headers since the types may be different than expected and generate warnings
+    //Also, note, these MAY vary between linux and Windows, so update these to fix warnings as necessary (without breaking existing systems)
+    //Linux includes linux/types.h for these. They are defined in csmisas.h for Windows
+    //NOTE: not taking into account netware because it isn't supported or used at this point.
+    //NOTE: only defining the printf macros we used. Adding a "C" to the beginning to differentiating them with the standards
+#ifdef __KERNEL__
+    //Define these as best we can based on linux/types.h which varies depending on architecture
+    //Since this include path includes another file actually making the definition, check which one it is using the definitions they define
+    //TODO: if __WORDSIZE == 64 may also work to switch between, but not positive - TJE
+    #if defined(_ASM_GENERIC_INT_L64_H)
+        #define CPRIu8 "u"
+        #define CPRIu16 "u"
+        #define CPRIu32 "u"
+        #define CPRIu64 "lu"
+
+        #define CPRIX8 "X"
+        #define CPRIX16 "X"
+        #define CPRIX32 "X"
+        #define CPRIX64 "lX"
+    #elif defined (_ASM_GENERIC_INT_LL64_H)
+        #define CPRIu8 "u"
+        #define CPRIu16 "u"
+        #define CPRIu32 "u"
+        #define CPRIu64 "llu"
+
+        #define CPRIX8 "X"
+        #define CPRIX16 "X"
+        #define CPRIX32 "X"
+        #define CPRIX64 "llX"
+    #else
+        #error "Need to define CSMI printf macros for this OS"
+    #endif
+#else
+    //match the csmisas.h definitions of the types as best we can
+    #define CPRIu8 "u"
+    #define CPRIu16 "u"
+    #ifndef __LP64__  // ILP32 (32-bit), LLP64 (64-bit MSVC, MinGW)
+        #define CPRIu32 "lu"
+    #else // LP64 (64-bit Cygwin)
+        #define CPRIu32 "u"
+    #endif
+    #define CPRIu64 "llu"
+
+    #define CPRIX8 "X"
+    #define CPRIX16 "X"
+    #ifndef __LP64__  // ILP32 (32-bit), LLP64 (64-bit MSVC, MinGW)
+        #define CPRIX32 "lX"
+    #else // LP64 (64-bit Cygwin)
+        #define CPRIX32 "X"
+    #endif
+    #define CPRIX64 "llX"
+
+
+#endif
+
 #if defined (__cplusplus)
 }
 #endif

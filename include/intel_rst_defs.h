@@ -174,8 +174,10 @@ CTL_CODE(0xF000, 0x010, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
     } INTEL_STORAGE_FIRMWARE_SLOT_INFO_V2, *PINTEL_STORAGE_FIRMWARE_SLOT_INFO_V2;
 
+#if defined (_MSC_VER)
 #pragma warning(push)
 #pragma warning(disable:4200) // nonstandard extension used : zero-sized array in struct/union
+#endif
     typedef struct _INTEL_STORAGE_FIRMWARE_INFO_V2 {
 
         ULONG   Version;        // INTEL_STORAGE_FIRMWARE_INFO_STRUCTURE_VERSION_V2
@@ -214,7 +216,9 @@ CTL_CODE(0xF000, 0x010, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
 } INTEL_STORAGE_FIRMWARE_DOWNLOAD_V2, *PINTEL_STORAGE_FIRMWARE_DOWNLOAD_V2;
 
+#if defined (_MSC_VER)
 #pragma warning(pop)//disable warning 4200
+#endif
 
 #define INTEL_STORAGE_FIRMWARE_ACTIVATE_STRUCTURE_VERSION         0x1
 
