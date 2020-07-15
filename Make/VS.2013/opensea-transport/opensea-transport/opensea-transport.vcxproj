@@ -167,7 +167,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -184,7 +184,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -202,7 +202,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -219,7 +219,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -239,7 +239,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -260,7 +260,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -282,7 +282,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -303,7 +303,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -334,13 +334,18 @@
     <ClCompile Include="..\..\..\..\src\cmds.c" />
     <ClCompile Include="..\..\..\..\src\common_public.c" />
     <ClCompile Include="..\..\..\..\src\csmi_helper.c" />
+    <ClCompile Include="..\..\..\..\src\csmi_legacy_pt_cdb_helper.c" />
     <ClCompile Include="..\..\..\..\src\cypress_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\intel_rst_helper.c" />
     <ClCompile Include="..\..\..\..\src\jmicron_nvme_helper.c" />
     <ClCompile Include="..\..\..\..\src\nec_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\nvme_cmds.c" />
     <ClCompile Include="..\..\..\..\src\nvme_helper.c" />
+    <ClCompile Include="..\..\..\..\src\of_nvme_helper.c" />
     <ClCompile Include="..\..\..\..\src\prolific_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\psp_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\raid_scan_helper.c" />
+    <ClCompile Include="..\..\..\..\src\sata_helper_func.c" />
     <ClCompile Include="..\..\..\..\src\sat_helper.c" />
     <ClCompile Include="..\..\..\..\src\scsi_cmds.c" />
     <ClCompile Include="..\..\..\..\src\scsi_helper.c" />
@@ -428,14 +433,23 @@
     <ClInclude Include="..\..\..\..\include\csmisas.h" />
     <ClInclude Include="..\..\..\..\include\csmi_helper.h" />
     <ClInclude Include="..\..\..\..\include\csmi_helper_func.h" />
+    <ClInclude Include="..\..\..\..\include\csmi_legacy_pt_cdb_helper.h" />
     <ClInclude Include="..\..\..\..\include\cypress_legacy_helper.h" />
+    <ClInclude Include="..\..\..\..\include\intel_rst_defs.h" />
+    <ClInclude Include="..\..\..\..\include\intel_rst_helper.h" />
     <ClInclude Include="..\..\..\..\include\jmicron_nvme_helper.h" />
     <ClInclude Include="..\..\..\..\include\nec_legacy_helper.h" />
     <ClInclude Include="..\..\..\..\include\nvme_helper.h" />
     <ClInclude Include="..\..\..\..\include\nvme_helper_func.h" />
+    <ClInclude Include="..\..\..\..\include\of_nvmeIoctl.h" />
+    <ClInclude Include="..\..\..\..\include\of_nvme_helper.h" />
+    <ClInclude Include="..\..\..\..\include\of_nvme_helper_func.h" />
     <ClInclude Include="..\..\..\..\include\platform_helper.h" />
     <ClInclude Include="..\..\..\..\include\prolific_legacy_helper.h" />
     <ClInclude Include="..\..\..\..\include\psp_legacy_helper.h" />
+    <ClInclude Include="..\..\..\..\include\raid_scan_helper.h" />
+    <ClInclude Include="..\..\..\..\include\sata_helper_func.h" />
+    <ClInclude Include="..\..\..\..\include\sata_types.h" />
     <ClInclude Include="..\..\..\..\include\sat_helper.h" />
     <ClInclude Include="..\..\..\..\include\sat_helper_func.h" />
     <ClInclude Include="..\..\..\..\include\scsi_helper.h" />
