@@ -2091,10 +2091,12 @@ bool device_Supports_CSMI_With_RST(tDevice *device)
     {
         //check for FWDL IOCTL support. If this works, then the Intel Additions are supported. (TODO: try NVMe passthrough???)
         //TODO: Based on driver name, only check this for known intel drivers???
+#if defined (ENABLE_INTEL_RST)
         if (supports_Intel_Firmware_Download(device))
         {
             csmiWithRSTSupported = true;
         }
+#endif
     }
     return csmiWithRSTSupported;
 }
@@ -2341,7 +2343,7 @@ int jbod_Setup_CSMI_Info(CSMI_HANDLE deviceHandle, tDevice *device, uint8_t cont
                 ret = NOT_SUPPORTED;
             }
 
-#if defined (_WIN32)
+#if defined (_WIN32) && defined (ENABLE_INTEL_RST)
             //Check if Intel Driver and if FWDL IOs are supported or not. version 14.8+
             if (strncmp((const char*)driverInfo.Information.szName, "iaStor", 6) == 0)
             {
@@ -2509,7 +2511,7 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
             ret = FAILURE;//TODO: should this fail here??? This IOCTL is required...
         }
 
-#if defined (_WIN32)
+#if defined (_WIN32) && defined (ENABLE_INTEL_RST) && !defined (DISABLE_NVME_PASSTHROUGH)
         if (intelNVMe)
         {
             device->drive_info.drive_type = NVME_DRIVE;
