@@ -2106,7 +2106,7 @@ int get_Win_Device(const char *filename, tDevice *device )
                     device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//This is GENERALLY true because almost all times the CDB is passed through instead of translated for a passthrough command, so just block it no matter what.
                     //TODO: These devices use the SCSI MMC command set in packet commands over ATA...other than for a few other commands.
                     //If we care to properly support this, we should investigate either how to send a packet command, or we should try issuing only SCSI commands
-                    device->os_info.ioType = WIN_IOCTL_ATA_PASSTHROUGH;
+                    device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                     get_Windows_SMART_IO_Support(device);//might be used later
                 }
                 else if ((device_desc->BusType == BusTypeSata))
@@ -5268,9 +5268,16 @@ int convert_SCSI_CTX_To_ATA_SMART_Cmd(ScsiIoCtx *scsiIoCtx, PSENDCMDINPARAMS sma
 {
     if (!is_ATA_Cmd_Supported_By_SMART_IO(scsiIoCtx))
     {
-        return BAD_PARAMETER;//or NOT_SUPPORTED? - TJE
+        return OS_COMMAND_NOT_AVAILABLE;
     }
-    smartCmd->cBufferSize = scsiIoCtx->dataLength;
+    if (scsiIoCtx->direction == XFER_DATA_OUT)
+    {
+        smartCmd->cBufferSize = scsiIoCtx->dataLength;
+    }
+    else
+    {
+        smartCmd->cBufferSize = 0;
+    }
     //set up the registers
     smartCmd->irDriveRegs.bFeaturesReg = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature;
     smartCmd->irDriveRegs.bSectorCountReg = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount;
@@ -5327,6 +5334,7 @@ int send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
     ULONG returned_data = 0;
     uint32_t dataInLength = 1;//set to one for the minus 1s below
     uint32_t dataOutLength = 1;//set to one for the minus 1s below
+    uint32_t magicPadding = 16;//This is found through trial and error to get nForce 680i driver working.
     bool nonDataRTFRs = false;
     switch (scsiIoCtx->direction)
     {
@@ -5343,13 +5351,13 @@ int send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
     default:
         break;
     }
-    PSENDCMDINPARAMS smartIOin = (PSENDCMDINPARAMS)malloc(sizeof(SENDCMDINPARAMS) - 1 + dataInLength);
+    PSENDCMDINPARAMS smartIOin = (PSENDCMDINPARAMS)calloc(sizeof(SENDCMDINPARAMS) - 1 + dataInLength, sizeof(uint8_t));
     if (!smartIOin)
     {
         //something went really wrong...
         return MEMORY_FAILURE;
     }
-    PSENDCMDOUTPARAMS smartIOout = (PSENDCMDOUTPARAMS)malloc(sizeof(SENDCMDOUTPARAMS) - 1 + dataOutLength);
+    PSENDCMDOUTPARAMS smartIOout = (PSENDCMDOUTPARAMS)calloc(sizeof(SENDCMDOUTPARAMS) - 1 + dataOutLength + magicPadding, sizeof(uint8_t));
     if (!smartIOout)
     {
         safe_Free(smartIOin);
@@ -5358,8 +5366,6 @@ int send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
     }
     seatimer_t commandTimer;
     memset(&commandTimer, 0, sizeof(commandTimer));
-    memset(smartIOin, 0, sizeof(SENDCMDINPARAMS) - 1 + dataInLength);
-    memset(smartIOout, 0, sizeof(SENDCMDOUTPARAMS) - 1 + dataOutLength);
     ret = convert_SCSI_CTX_To_ATA_SMART_Cmd(scsiIoCtx, smartIOin);
     if (SUCCESS == ret)
     {
@@ -5395,7 +5401,7 @@ int send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
             smartIOin,
             inBufferLength,
             smartIOout,
-            outBufferLength,
+            outBufferLength + magicPadding,
             &returned_data,
             &overlappedStruct);
         scsiIoCtx->device->os_info.last_error = GetLastError();

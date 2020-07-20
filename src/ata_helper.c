@@ -762,7 +762,12 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         //If this failed, issue a test unit ready command, followed by switching to 16B sat commands. Most devices tested will support A1h and very few will not if they support SAT at all.
         if (device->drive_info.passThroughHacks.passthroughType == ATA_PASSTHROUGH_SAT)
         {
-            scsi_Test_Unit_Ready(device, NULL);
+            //If IDE_INTERFACE, do not attempt the test unit ready, since this will go through softwareSAT translation and fail/get hung in an infinite loop.
+            //This test unit ready exists to help clear out stuck bad status for other devices (such as USB) where this can help work around limitations. - TJE
+            if (device->drive_info.interface_type != IDE_INTERFACE)
+            {
+                scsi_Test_Unit_Ready(device, NULL);
+            }
             memset(identifyData, 0, 512);
             device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
             if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
