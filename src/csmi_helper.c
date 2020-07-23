@@ -2632,13 +2632,18 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
             }
 
             //Need to check for Intel IOCTL support on SATA drives so we can send the Intel FWDL ioctls instead of passthrough.
-            if (strncmp((const char*)driverInfo.Information.szName, "iaStor", 6) == 0)
+            if (strncmp((const char*)driverInfo.Information.szName, "iaStorA", 7) == 0)
             {
                 //This is an intel driver.
                 //There is a way to get path-target-lun data from the SAS address if the other IOCTLs didn't work (which they don't seem to support this translation anyways)
                 if (!device->os_info.csmiDeviceData->scsiAddressValid)
                 {
-                    //TODO: convert SAS address to SCSI address using proprietary intel formatting since IOCTLs above didn't work or weren't used.
+                    //convert SAS address to SCSI address using proprietary intel formatting since IOCTLs above didn't work or weren't used.
+                    //NOTE: This is only valid for the noted driver. Previous versions used different formats for sasAddress that don't support firmware update IOCTLs, and are not supported - TJE
+                    device->os_info.csmiDeviceData->scsiAddress.lun = device->os_info.csmiDeviceData->sasAddress[0];
+                    device->os_info.csmiDeviceData->scsiAddress.targetId = device->os_info.csmiDeviceData->sasAddress[1];
+                    device->os_info.csmiDeviceData->scsiAddress.pathId = device->os_info.csmiDeviceData->sasAddress[2];
+                    device->os_info.csmiDeviceData->scsiAddressValid = true;
                 }
             }
         }
@@ -3069,9 +3074,11 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                         if (isIntelDriver && strncmp((const char*)csmiRAIDConfig->Configuration.Drives[iter].bModel, "NVMe", 4) == 0)
                                                         {
                                                             //This should only happen on Intel Drivers using SRT
-                                                            //The SAS Address holds port-target-lun data in it...I don't know the exact format, so this is purely a guess at this point until I get better documentation!
+                                                            //The SAS Address holds port-target-lun data in it. NOTE: This is correct for this version of the driver, but this is not necessarily true for previous RST drivers according to documentation received from Intel. -TJE
                                                             uint8_t path = 0, target = 0, lun = 0;
-                                                            path = csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[2];//or byte 3? On my test hardware both bytes 2 and 3 have the same value set!!!
+                                                            lun = csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[0];
+                                                            target = csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[1];
+                                                            path = csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[2];
                                                             //TODO: don't know which bytes hold target and lun...leaving as zero since they are TECHNICALLY reserved in the documentation
                                                             //\\.\SCSI?: number is needed in windows, this is the controllerNumber in Windows.
                                                             sprintf(handle, "csmi:%" CPRIu8 ":N:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber, path, target, lun);
