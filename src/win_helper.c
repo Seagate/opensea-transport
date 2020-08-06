@@ -1916,7 +1916,9 @@ int get_Win_Device(const char *filename, tDevice *device )
     {
         if (VERBOSITY_QUIET < device->deviceVerbosity)
         {
-            printf("Error: opening dev %s. Error: %"PRId32"\n", filename, device->os_info.last_error);
+            printf("Error: opening dev %s. ", filename);
+            print_Windows_Error_To_Screen(device->os_info.last_error);
+            printf("\n");
         }
         ret = FAILURE;
     }
@@ -2626,6 +2628,12 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 //NOTE: No generic else like other OS's due to the way devices are scanned in Windows today. Since we are just trying to open handles, they can fail for various reasons, like the handle not even being valid, but that should not cause a failure.
                 //If the code is updated to use something like setupapi or cfgmgr32 to figure out devices in the system, then it would make sense to add additional error checks here like we have for 'nix OSs. - TJE
                 //If a handle does not exist ERROR_FILE_NOT_FOUND is returned.
+                if (VERBOSITY_COMMAND_NAMES <= d->deviceVerbosity)
+                {
+                    _tprintf_s(TEXT("Error: opening dev %s. "), deviceName);
+                    print_Windows_Error_To_Screen(lastError);
+                    _tprintf_s(TEXT("\n"));
+                }
             }
         }
         
