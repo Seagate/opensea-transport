@@ -2560,7 +2560,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         {
             _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
             //lets try to open the device.
-            fd = CreateFile((LPCTSTR)deviceName,
+            fd = CreateFile(deviceName,
                 GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
                 FILE_SHARE_READ | FILE_SHARE_WRITE,
                 NULL,
