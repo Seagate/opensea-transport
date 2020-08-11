@@ -46,15 +46,12 @@ extern "C"
         bool intelVROC      : 1;//Intel VROC - NVMe (Not supported yet)
     }raidTypeHint;
 
-    //predeclare the struct so that the linked list can work
-    typedef struct _raidHandleToScan raidHandleToScan, *ptrRaidHandleToScan;
-
     //Define the max string length
     #define RAID_HANDLE_STRING_MAX_LEN UINT8_C(24)
 
     typedef struct _raidHandleToScan
     {
-        ptrRaidHandleToScan next;
+        struct _raidHandleToScan * next; //must be declared like this to work with older GCC compilers.
         char handle[RAID_HANDLE_STRING_MAX_LEN];
         raidTypeHint raidHint;
     }raidHandleToScan, *ptrRaidHandleToScan;
