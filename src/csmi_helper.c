@@ -2868,7 +2868,13 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, ptrRa
                         //printf("Found CSMI Handle: %s\tRemoving from list.\n", raidList->handle);
                         //This was a CSMI handle, remove it from the list!
                         //This will also increment us to the next handle
+                        bool pointerAtBeginningOfRAIDList = raidList == *beginningOfList ? true : false;
                         raidList = remove_RAID_Handle(raidList, previousRaidListEntry);
+                        if (pointerAtBeginningOfRAIDList)
+                        {
+                            //if the first entry in the list was removed, we need up update the pointer before we exit so that the code that called here won't have an invalid pointer
+                            *beginningOfList = raidList;
+                        }
                         handleRemoved = true;
                         //printf("Handle removed successfully. raidList = %p\n", raidList);
                     }

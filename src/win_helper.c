@@ -2641,11 +2641,14 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI))
         {
             uint32_t csmiDeviceCount = numberOfDevices - found;
-            int csmiRet = get_CSMI_RAID_Device_List(&ptrToDeviceList[found], csmiDeviceCount * sizeof(tDevice), ver, flags, &beginRaidHandleList);
-            if (returnValue == SUCCESS && csmiRet != SUCCESS)
+            if (csmiDeviceCount > 0)
             {
-                //this will override the normal ret if it is already set to success with the CSMI return value
-                returnValue = csmiRet;
+                int csmiRet = get_CSMI_RAID_Device_List(&ptrToDeviceList[found], csmiDeviceCount * sizeof(tDevice), ver, flags, &beginRaidHandleList);
+                if (returnValue == SUCCESS && csmiRet != SUCCESS)
+                {
+                    //this will override the normal ret if it is already set to success with the CSMI return value
+                    returnValue = csmiRet;
+                }
             }
         }
 #endif
