@@ -21,6 +21,8 @@ extern "C"
 {
 #endif
 
+    //swaps all words of ATA ID Data...used only in big endian right now for compatibility.
+    void byte_Swap_ID_Data_Buffer(uint16_t *idData);
 
     //-----------------------------------------------------------------------------
     //

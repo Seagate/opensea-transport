@@ -840,7 +840,7 @@ extern "C"
         uint8_t padd4[7];
         uint64_t       worldWideName;
         union{
-            tAtaIdentifyData ata;
+            tAtaIdentifyData ata; //NOTE: This will automatically be byte swapped when saved here on big-endian systems for compatibility will all kinds of bit checks of the data throughout the code at this time. Use a separate buffer if you want the completely raw data without this happening. - TJE
 #if !defined(DISABLE_NVME_PASSTHROUGH)
             nvmeIdentifyData nvme;
 #endif

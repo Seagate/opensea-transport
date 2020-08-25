@@ -119,6 +119,13 @@ int ata_Identify(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
         memcpy(&device->drive_info.IdentifyData.ata.Word000, ptrData, sizeof(tAtaIdentifyData));
     }
 
+#if defined (__BIG_ENDIAN__)
+    if(ptrData == (uint8_t*)&device->drive_info.IdentifyData.ata.Word000)
+    {
+        byte_Swap_ID_Data_Buffer(&device->drive_info.IdentifyData.ata.Word000);
+    }
+#endif
+
     if (ret == SUCCESS)
     {
         if (ptrData[510] == ATA_CHECKSUM_VALIDITY_INDICATOR)
@@ -4003,6 +4010,13 @@ int ata_Identify_Packet_Device(tDevice *device, uint8_t *ptrData, uint32_t dataS
         //copy the data to the device structure so that it's not (as) stale
         memcpy(&device->drive_info.IdentifyData.ata.Word000, ptrData, sizeof(tAtaIdentifyData));
     }
+
+#if defined (__BIG_ENDIAN__)
+    if(ptrData == (uint8_t*)&device->drive_info.IdentifyData.ata.Word000)
+    {
+        byte_Swap_ID_Data_Buffer(&device->drive_info.IdentifyData.ata.Word000);
+    }
+#endif
 
     if (ret == SUCCESS)
     {

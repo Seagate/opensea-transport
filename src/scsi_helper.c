@@ -8640,11 +8640,9 @@ void copy_Read_Capacity_Info(uint32_t *logicalBlockSize, uint32_t *physicalBlock
     {
         uint8_t sectorSizeExponent = 0;
         //get the max LBA
-        memcpy(maxLBA, &ptrBuf[0], 8);
-        byte_Swap_64(maxLBA);
+        *maxLBA = M_BytesTo8ByteValue(ptrBuf[0], ptrBuf[1], ptrBuf[2], ptrBuf[3], ptrBuf[4], ptrBuf[5], ptrBuf[6], ptrBuf[7]);
         //get the logical sector size
-        memcpy(logicalBlockSize, &ptrBuf[8], 4);
-        byte_Swap_32(logicalBlockSize);
+        *logicalBlockSize = M_BytesTo4ByteValue(ptrBuf[8], ptrBuf[9], ptrBuf[10], ptrBuf[11]);
         //get the physical sector size
         sectorSizeExponent = ptrBuf[13] & 0x0F;
         *physicalBlockSize = (uint32_t)(*logicalBlockSize * power_Of_Two(sectorSizeExponent));
@@ -8654,11 +8652,9 @@ void copy_Read_Capacity_Info(uint32_t *logicalBlockSize, uint32_t *physicalBlock
     else
     {
         //get the maxLBA
-        memcpy(maxLBA, &ptrBuf[0], 4);
-        byte_Swap_32((uint32_t *)maxLBA);
+        *maxLBA = M_BytesTo4ByteValue(ptrBuf[0], ptrBuf[1], ptrBuf[2], ptrBuf[3]);
         //get the logical sector size
-        memcpy(logicalBlockSize, &ptrBuf[4], 4);
-        byte_Swap_32(logicalBlockSize);
+        *logicalBlockSize = M_BytesTo4ByteValue(ptrBuf[4], ptrBuf[5], ptrBuf[6], ptrBuf[7]);
         *physicalBlockSize = *logicalBlockSize;
         *sectorAlignment = 0;
     }

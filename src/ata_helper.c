@@ -733,6 +733,15 @@ int send_ATA_Write_Stream_Cmd(tDevice *device, uint8_t streamID, bool flush, boo
     return ret;
 }
 
+void byte_Swap_ID_Data_Buffer(uint16_t *idData)
+{
+    uint16_t idIter = 0;
+    for(idIter = 0; idIter < 256; ++idIter)
+    {
+        byte_Swap_16(&idData[idIter]);
+    }
+}
+
 int fill_In_ATA_Drive_Info(tDevice *device)
 {
     int ret = UNKNOWN;
@@ -847,10 +856,12 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         fillSerialNumber[SERIAL_NUM_LEN] = '\0';
         memcpy(fillFWRev, &ident_word[23], 8);
         fillFWRev[FW_REV_LEN] = '\0';
-        //Byte swap due to endianess
+        //Byte swap due to endianess (little endian hosts only since the buffer we are using will be byte swapped for us)
+#if !defined(__BIG_ENDIAN__)
         byte_Swap_String(fillModelNumber);
         byte_Swap_String(fillSerialNumber);
         byte_Swap_String(fillFWRev);
+#endif
         //remove leading and trailing whitespace
         remove_Leading_And_Trailing_Whitespace(fillModelNumber);
         remove_Leading_And_Trailing_Whitespace(fillSerialNumber);
