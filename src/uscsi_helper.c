@@ -449,7 +449,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         {
             returnValue = FAILURE;
         }
-        else if(permissionDeniedCount == (num_sg_devs + num_sd_devs + num_nvme_devs))
+        else if(permissionDeniedCount == (num_devs))
         {
             returnValue = PERMISSION_DENIED;
         }
