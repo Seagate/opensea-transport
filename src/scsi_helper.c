@@ -383,7 +383,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -409,7 +409,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -435,7 +435,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -475,7 +475,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -725,7 +725,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -751,7 +751,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -777,7 +777,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -803,7 +803,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -857,7 +857,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -918,7 +918,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -944,7 +944,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -1083,7 +1083,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -1234,7 +1234,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -1295,7 +1295,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -1342,7 +1342,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -1361,7 +1361,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -1422,7 +1422,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -1595,7 +1595,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -1621,7 +1621,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -1647,7 +1647,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -1722,7 +1722,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -1762,7 +1762,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -1816,7 +1816,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -1895,7 +1895,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -1969,7 +1969,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -2016,7 +2016,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -2042,7 +2042,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -2068,7 +2068,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -2108,7 +2108,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -2141,7 +2141,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -2166,7 +2166,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -2178,6 +2178,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
             ret = UNKNOWN;
             break;
         }
+        break;
     case 0x1F:
         switch (ascq)
         {
@@ -2191,7 +2192,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -2322,7 +2323,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -2404,7 +2405,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -2430,7 +2431,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -2526,7 +2527,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -2615,7 +2616,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -2641,7 +2642,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -2814,7 +2815,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -2896,7 +2897,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -2943,7 +2944,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3011,7 +3012,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3173,7 +3174,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3199,7 +3200,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3340,7 +3341,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3365,7 +3366,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3412,7 +3413,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3466,7 +3467,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3604,7 +3605,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3651,7 +3652,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3684,7 +3685,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3710,7 +3711,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3736,7 +3737,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3797,7 +3798,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3823,7 +3824,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3848,7 +3849,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3898,7 +3899,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3924,7 +3925,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -3978,7 +3979,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -4183,7 +4184,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -4202,7 +4203,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -4228,7 +4229,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -4282,7 +4283,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -4487,7 +4488,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -4511,7 +4512,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
             ret = FAILURE;
             break;
         default:
-            if (ascq >= 0x80 && ascq <= 0xFF)
+            if (ascq >= 0x80/*  && ascq <= 0xFF */)
             {
                 if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
                 {
@@ -4543,7 +4544,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -4569,7 +4570,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -4581,6 +4582,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
             ret = UNKNOWN;
             break;
         }
+        break;
     case 0x43:
         switch (ascq)
         {
@@ -4594,7 +4596,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -4634,7 +4636,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -4660,7 +4662,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -4686,7 +4688,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -4761,7 +4763,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -4787,7 +4789,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -4813,7 +4815,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -4839,7 +4841,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -5012,7 +5014,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -5038,7 +5040,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -5075,7 +5077,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -5094,7 +5096,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -5134,7 +5136,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -5167,7 +5169,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -5193,7 +5195,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -5310,7 +5312,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -5336,7 +5338,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -5478,7 +5480,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -5497,7 +5499,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -5521,7 +5523,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
             ret = FAILURE;
             break;
         default:
-            if (ascq >= 0x80 && ascq <= 0xFF)
+            if (ascq >= 0x80/*  && ascq <= 0xFF */)
             {
                 print_acs_ascq("Vendor specific ascq code", asc, ascq);
             }
@@ -5546,7 +5548,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -5571,7 +5573,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -5618,7 +5620,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -5665,7 +5667,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -5704,7 +5706,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6318,7 +6320,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6449,7 +6451,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6468,7 +6470,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6494,7 +6496,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6534,7 +6536,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6560,7 +6562,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6593,7 +6595,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6626,7 +6628,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6652,7 +6654,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6699,7 +6701,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6814,7 +6816,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6847,7 +6849,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6887,7 +6889,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6912,7 +6914,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6949,7 +6951,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6974,7 +6976,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -6999,7 +7001,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7025,7 +7027,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7118,7 +7120,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7149,7 +7151,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7224,7 +7226,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7304,7 +7306,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7519,7 +7521,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7538,7 +7540,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7557,7 +7559,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7576,7 +7578,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7595,7 +7597,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7614,7 +7616,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7633,7 +7635,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7652,7 +7654,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7671,7 +7673,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7690,7 +7692,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7709,7 +7711,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7728,7 +7730,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                if (ascq >= 0x80 && ascq <= 0xFF)
+                if (ascq >= 0x80/*  && ascq <= 0xFF */)
                 {
                     print_acs_ascq("Vendor specific ascq code", asc, ascq);
                 }
@@ -7744,7 +7746,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     default:
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
-            if (asc >= 0x80 && asc <= 0xFF)
+            if (asc >= 0x80 /* && asc <= 0xFF */)
             {
                 print_acs_ascq("Vendor specific ASC & ascq code", asc, ascq);
             }
@@ -8146,6 +8148,7 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
             break;
         case SCSI_SENSE_DEFER_ERR_FIXED:
             senseFields->deferredError = true;
+            M_FALLTHROUGH
         case SCSI_SENSE_CUR_INFO_FIXED:
             senseFields->fixedFormat = true;
             senseFields->validStructure = true;
@@ -8223,6 +8226,7 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
             break;
         case SCSI_SENSE_DEFER_ERR_DESC:
             senseFields->deferredError = true;
+            M_FALLTHROUGH
         case SCSI_SENSE_CUR_INFO_DESC:
             senseFields->fixedFormat = false;
             senseFields->validStructure = true;
@@ -8529,6 +8533,7 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
                 {
                     printf("Unit attention condition is not due to a queue overflow\n");
                 }
+                break;
             case SENSE_KEY_SPECIFIC_UNKNOWN:
             default:
                 printf("Unknown sense key specific data: %" PRIX8 "h %" PRIX8 "h %" PRIX8 "h\n", senseFields->senseKeySpecificInformation.unknownDataType[0], senseFields->senseKeySpecificInformation.unknownDataType[1], senseFields->senseKeySpecificInformation.unknownDataType[2]);

@@ -182,6 +182,8 @@ static int scsi_Send_Cdb_Int(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint
     scsiIoCtx.dataLength = dataLen;
     scsiIoCtx.verbose = 0;
     scsiIoCtx.timeout = M_Max(timeoutSeconds, device->drive_info.defaultTimeoutSeconds);
+    scsiIoCtx.fwdlFirstSegment = fwdlFirstSegment;
+    scsiIoCtx.fwdlLastSegment = fwdlLastSegment;
     if (timeoutSeconds == 0)
     {
         scsiIoCtx.timeout = M_Max(15, device->drive_info.defaultTimeoutSeconds);
@@ -1049,8 +1051,8 @@ int scsi_Read_Buffer_16(tDevice *device, uint8_t mode, uint8_t modeSpecific, uin
     // Set up the CDB.
     cdb[OPERATION_CODE] = READ_BUFFER_16_CMD;
     //set the mode
-    //TODO: the mentioned reserved bits are now "mode specific" field...will need to add support for this.
-    cdb[1] = mode;// &0x1F;//removed this &0x1F in order to get internal status log going. Looks like some reserved bits may be used in a newer spec or something that I don't have yet. - TJE
+    cdb[1] = mode & 0x1F;
+    cdb[1] |= modeSpecific << 5;
     cdb[2] = M_Byte7(bufferOffset);
     cdb[3] = M_Byte6(bufferOffset);
     cdb[4] = M_Byte5(bufferOffset);
@@ -3646,7 +3648,7 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
     if (!noDataOut)
     {
         //send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, device->drive_info.deviceBlockSize, XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {

@@ -234,10 +234,24 @@ int nvme_Asynchronous_Event_Request(tDevice *device, uint8_t *logPageIdentifier,
         printf("Sending NVMe Asynchronous Event Request Command\n");
     }
     ret = nvme_Cmd(device, &adminCommand);
-    //TODO: Need a function to print out some verbose information for any/all commands (if possible)
     //Command specific return codes:
     // 5h = The number of concurrently outstanding Asynchronous Event Request commands has been exceeded.
-    //TODO: Figure out how to get the completion queue DWORD0 information out...is this the same as DWORD0 going in?
+    
+    if (logPageIdentifier)
+    {
+        *logPageIdentifier = M_GETBITRANGE(adminCommand.commandCompletionData.dw0, 23, 16);
+    }
+    
+    if (asynchronousEventInformation)
+    {
+        *asynchronousEventInformation = M_GETBITRANGE(adminCommand.commandCompletionData.dw0, 15, 8);
+    }
+    
+    if (asynchronousEventType)
+    {
+        *asynchronousEventType = M_GETBITRANGE(adminCommand.commandCompletionData.dw0, 2, 0);
+    }
+    
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Asynchronous Event Request", ret);

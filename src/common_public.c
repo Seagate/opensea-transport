@@ -1980,6 +1980,8 @@ int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDe
                         j--;
                     }
                 }
+#else 
+                M_USE_UNUSED(rmvDevFlag);
 
 #endif
             }
@@ -3335,6 +3337,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
             default:
                 break;
             }
+            break;
         case USB_Vendor_Maxtor://0D49
             switch (device->drive_info.adapter_info.productID)
             {

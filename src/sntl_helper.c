@@ -717,7 +717,7 @@ void set_Sense_Data_By_NVMe_Status(tDevice *device, uint32_t completionDWord3, u
     }
 }
 
-int sntl_Translate_Supported_VPD_Pages_00h(tDevice *device, ScsiIoCtx *scsiIoCtx)
+int sntl_Translate_Supported_VPD_Pages_00h(ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t supportedPages[LEGACY_DRIVE_SEC_SIZE] = { 0 };
@@ -1497,7 +1497,7 @@ int sntl_Translate_Block_Limits_VPD_Page_B0h(tDevice *device, ScsiIoCtx *scsiIoC
     return ret;
 }
 
-int sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(tDevice *device, ScsiIoCtx *scsiIoCtx)
+int sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t blockDeviceCharacteriticsPage[64] = { 0 };
@@ -1621,7 +1621,7 @@ int sntl_Translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             {
             case SUPPORTED_VPD_PAGES:
                 //update this as more supported pages are added!
-                ret = sntl_Translate_Supported_VPD_Pages_00h(device, scsiIoCtx);
+                ret = sntl_Translate_Supported_VPD_Pages_00h(scsiIoCtx);
                 break;
             case UNIT_SERIAL_NUMBER:
                 ret = sntl_Translate_Unit_Serial_Number_VPD_Page_80h(device, scsiIoCtx);
@@ -1639,7 +1639,7 @@ int sntl_Translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 ret = sntl_Translate_Block_Limits_VPD_Page_B0h(device, scsiIoCtx);
                 break;
             case BLOCK_DEVICE_CHARACTERISTICS:
-                ret = sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(device, scsiIoCtx);
+                ret = sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(scsiIoCtx);
                 break;
             case LOGICAL_BLOCK_PROVISIONING:
                 ret = sntl_Translate_Logical_Block_Provisioning_VPD_Page_B2h(device, scsiIoCtx);
@@ -1913,7 +1913,7 @@ int sntl_Translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *scsiIoCtx)
     int ret = SUCCESS;
     bool subpageFormat = false;
     uint8_t supportedPages[LEGACY_DRIVE_SEC_SIZE] = { 0 };//this should be plenty big for now
-    uint8_t offset = 4;
+    uint16_t offset = 4;
     uint8_t increment = 1;
     if (scsiIoCtx->cdb[3] == 0xFF)
     {
@@ -1974,7 +1974,7 @@ int sntl_Translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *scsiIoCtx)
     supportedPages[3] = M_Byte0(offset - 4);
     if (scsiIoCtx->pdata)
     {
-        memcpy(scsiIoCtx->pdata, supportedPages, M_Min(scsiIoCtx->dataLength, (uint16_t)M_Min(LEGACY_DRIVE_SEC_SIZE, (uint16_t)offset)));
+        memcpy(scsiIoCtx->pdata, supportedPages, M_Min(scsiIoCtx->dataLength, (uint16_t)M_Min(LEGACY_DRIVE_SEC_SIZE, offset)));
     }
     return ret;
 }
@@ -2847,7 +2847,7 @@ int sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(tDevice *device, Scs
     //copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        memcpy(&readWriteErrorRecovery[headerLength], modeParameterHeader, blockDescLength);
+        memcpy(&readWriteErrorRecovery[headerLength], dataBlockDescriptor, blockDescLength);
     }
     //set the remaining part of the page up
     readWriteErrorRecovery[offset + 0] = 0x01;//page number
@@ -2983,7 +2983,7 @@ int sntl_Translate_Mode_Sense_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx,
     //copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        memcpy(&caching[headerLength], modeParameterHeader, blockDescLength);
+        memcpy(&caching[headerLength], dataBlockDescriptor, blockDescLength);
     }
     //set the remaining part of the page up
     //send an identify command to get up to date read/write cache info
@@ -3084,7 +3084,7 @@ int sntl_Translate_Mode_Sense_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx,
 
 //mode parameter header must be 4 bytes for short format and 8 bytes for long format (longHeader set to true)
 //dataBlockDescriptor must be non-null when returnDataBlockDescriiptor is true. When non null, it must be 8 bytes for short, or 16 for long (when longLBABit is set to true)
-int sntl_Translate_Mode_Sense_Control_0Ah(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
+int sntl_Translate_Mode_Sense_Control_0Ah(ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
 {
     int ret = SUCCESS;
     uint8_t *controlPage = NULL;//will be allocated later
@@ -3134,7 +3134,7 @@ int sntl_Translate_Mode_Sense_Control_0Ah(tDevice *device, ScsiIoCtx *scsiIoCtx,
     //copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        memcpy(&controlPage[headerLength], modeParameterHeader, blockDescLength);
+        memcpy(&controlPage[headerLength], dataBlockDescriptor, blockDescLength);
     }
     //set the remaining part of the page up
     controlPage[offset + 0] = 0x0A;
@@ -3186,7 +3186,7 @@ int sntl_Translate_Mode_Sense_Control_0Ah(tDevice *device, ScsiIoCtx *scsiIoCtx,
 
 //mode parameter header must be 4 bytes for short format and 8 bytes for long format (longHeader set to true)
 //dataBlockDescriptor must be non-null when returnDataBlockDescriiptor is true. When non null, it must be 8 bytes for short, or 16 for long (when longLBABit is set to true)
-int sntl_Translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
+int sntl_Translate_Mode_Sense_Power_Condition_1A(ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
 {
     int ret = SUCCESS;
     uint8_t *powerConditionPage = NULL;//will be allocated later
@@ -3236,12 +3236,13 @@ int sntl_Translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *scs
     //copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        memcpy(&powerConditionPage[headerLength], modeParameterHeader, blockDescLength);
+        memcpy(&powerConditionPage[headerLength], dataBlockDescriptor, blockDescLength);
     }
     //set the remaining part of the page up
     powerConditionPage[offset + 0] = 0x1A;
     powerConditionPage[offset + 1] = 0x26;//length
     //no timers suppored in nvme, so all fields are set to zero
+    M_USE_UNUSED(pageControl); //This is not being used as all bytes are the same for this mode page today...
     //set the mode data length
     if (longHeader)
     {
@@ -3262,7 +3263,7 @@ int sntl_Translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *scs
 }
 
 #if defined (SNTL_EXT)
-int sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
+int sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
 {
     int ret = SUCCESS;
     uint8_t *controlExtPage = NULL;//will be allocated later
@@ -3312,7 +3313,7 @@ int sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(tDevice *device, ScsiIoC
     //copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        memcpy(&controlExtPage[headerLength], modeParameterHeader, blockDescLength);
+        memcpy(&controlExtPage[headerLength], dataBlockDescriptor, blockDescLength);
     }
     //set the remaining part of the page up
     controlExtPage[offset + 0] = 0x0A;
@@ -3370,7 +3371,7 @@ int sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(tDevice *device, ScsiIoC
     return ret;
 }
 
-int sntl_Translate_Mode_Sense_Informational_Exceptions_Control_1Ch(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
+int sntl_Translate_Mode_Sense_Informational_Exceptions_Control_1Ch(ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
 {
     int ret = SUCCESS;
     uint8_t *informationalExceptions = NULL;//will be allocated later
@@ -3420,7 +3421,7 @@ int sntl_Translate_Mode_Sense_Informational_Exceptions_Control_1Ch(tDevice *devi
     //copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        memcpy(&informationalExceptions[headerLength], modeParameterHeader, blockDescLength);
+        memcpy(&informationalExceptions[headerLength], dataBlockDescriptor, blockDescLength);
     }
     //set the remaining part of the page up
     informationalExceptions[offset + 0] = 0x1C;//page number
@@ -3608,11 +3609,11 @@ int sntl_Translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
         switch (subpageCode)
         {
         case 0://control
-            ret = sntl_Translate_Mode_Sense_Control_0Ah(device, scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
+            ret = sntl_Translate_Mode_Sense_Control_0Ah(scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
             break;
 #if defined (SNTL_EXT)
         case 0x01://control extension
-            ret = sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(device, scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
+            ret = sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
             break;
 #endif
         default:
@@ -3659,7 +3660,7 @@ int sntl_Translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
         switch (subpageCode)
         {
         case 0:
-            ret = sntl_Translate_Mode_Sense_Informational_Exceptions_Control_1Ch(device, scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
+            ret = sntl_Translate_Mode_Sense_Informational_Exceptions_Control_1Ch(scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
             break;
         default:
             ret = NOT_SUPPORTED;
@@ -3675,7 +3676,7 @@ int sntl_Translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
         switch (subpageCode)
         {
         case 0://power condition
-            ret = sntl_Translate_Mode_Sense_Power_Condition_1A(device, scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
+            ret = sntl_Translate_Mode_Sense_Power_Condition_1A(scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
             break;
         default:
             ret = NOT_SUPPORTED;
@@ -3698,7 +3699,7 @@ int sntl_Translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
     return ret;
 }
 
-int sntl_Translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx, bool parametersSaveble, uint8_t *ptrToBeginningOfModePage, uint16_t pageLength)
+int sntl_Translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t *ptrToBeginningOfModePage, uint16_t pageLength)
 {
     int ret = SUCCESS;
     uint32_t dataOffset = (uint32_t)(ptrToBeginningOfModePage - scsiIoCtx->pdata);//to be used when setting which field is invalid in parameter list
@@ -4139,7 +4140,7 @@ int sntl_Translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCt
         //time to call the function that handles the changes for the mode page requested...save all this info and pass it in for convenience in that function
         uint8_t modePage = scsiIoCtx->pdata[headerLength + blockDescriptorLength] & 0x3F;
         bool subPageFormat = scsiIoCtx->pdata[headerLength + blockDescriptorLength] & BIT6;
-        bool parametersSaveble = scsiIoCtx->pdata[headerLength + blockDescriptorLength] & BIT7;
+        //bool parametersSaveble = scsiIoCtx->pdata[headerLength + blockDescriptorLength] & BIT7;
         uint8_t subpage = 0;
         uint16_t pageLength = scsiIoCtx->pdata[headerLength + blockDescriptorLength + 1];
         if (subPageFormat)
@@ -4154,7 +4155,7 @@ int sntl_Translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCt
             switch (subpage)
             {
             case 0://caching mode page
-                ret = sntl_Translate_Mode_Select_Caching_08h(device, scsiIoCtx, parametersSaveble, &scsiIoCtx->pdata[headerLength + blockDescriptorLength], pageLength);
+                ret = sntl_Translate_Mode_Select_Caching_08h(device, scsiIoCtx, &scsiIoCtx->pdata[headerLength + blockDescriptorLength], pageLength);
                 break;
             default:
                 //invalid field in parameter list...we don't support this page
@@ -4171,7 +4172,7 @@ int sntl_Translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCt
         //    switch (subpage)
         //    {
         //    case 0://control mode page
-        //        ret = sntl_Translate_Mode_Select_Control_0Ah(device, scsiIoCtx, parametersSaveble, &scsiIoCtx->pdata[headerLength + blockDescriptorLength], pageLength);
+        //        ret = sntl_Translate_Mode_Select_Control_0Ah(device, scsiIoCtx, &scsiIoCtx->pdata[headerLength + blockDescriptorLength], pageLength);
         //        break;
         //    default:
         //        fieldPointer = headerLength + blockDescriptorLength + 1;//plus one for subpage
@@ -4186,7 +4187,7 @@ int sntl_Translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCt
         //    switch (subpage)
         //    {
         //    case 0://power conditions
-        //        ret = sntl_Translate_Mode_Select_Power_Conditions_1A(device, scsiIoCtx, parametersSaveble, &scsiIoCtx->pdata[headerLength + blockDescriptorLength], pageLength);
+        //        ret = sntl_Translate_Mode_Select_Power_Conditions_1A(device, scsiIoCtx, &scsiIoCtx->pdata[headerLength + blockDescriptorLength], pageLength);
         //        break;
         //    default:
         //        fieldPointer = headerLength + blockDescriptorLength + 1;//plus one for subpage
@@ -4931,6 +4932,7 @@ int sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *scsiIoCt
             emptyData = true;
             break;
         }
+        M_FALLTHROUGH
     case 0x00:
     case 0x02:
         //read the identify active namespace list
@@ -5476,7 +5478,7 @@ int sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoC
             sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
             break;
         }
-        //fall through to finish processing the command
+        M_FALLTHROUGH
 #endif
     case 0x0E://Firmware image download
 #if defined SNTL_EXT
@@ -7331,7 +7333,7 @@ void sntl_Set_Command_Timeouts_Descriptor(uint32_t nominalCommandProcessingTimeo
 }
 
 //TODO: add in support info for immediate bits (requires command support via threading)
-int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t operationCode, bool rctd, uint8_t **pdata, uint32_t *dataLength)
+int sntl_Check_Operation_Code(tDevice *device, uint8_t operationCode, bool rctd, uint8_t **pdata, uint32_t *dataLength)
 {
     int ret = SUCCESS;
     *dataLength = 4;//add onto this for each of the different commands below, then allocate memory accordingly
@@ -8023,7 +8025,7 @@ int sntl_Check_Operation_Code(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t ope
 }
 
 //TODO: add in support info for immediate bits (requires command support via threading)
-int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t operationCode, uint16_t serviceAction, bool rctd, uint8_t **pdata, uint32_t *dataLength)
+int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, uint8_t operationCode, uint16_t serviceAction, bool rctd, uint8_t **pdata, uint32_t *dataLength)
 {
     int ret = SUCCESS;
     *dataLength = 4;//add onto this for each of the different commands below, then allocate memory accordingly
@@ -9391,14 +9393,14 @@ int sntl_Translate_SCSI_Report_Supported_Operation_Codes_Command(tDevice *device
         break;
     case 1://check operation code, service action ignored
         //check op code func
-        ret = sntl_Check_Operation_Code(device, scsiIoCtx, requestedOperationCode, rctd, &supportedOpData, &supportedOpDataLength);
+        ret = sntl_Check_Operation_Code(device, requestedOperationCode, rctd, &supportedOpData, &supportedOpDataLength);
         break;
     case 2://check operation code and service action (error on commands that don't have service actions)
         //check opcode and service action func
-        ret = sntl_Check_Operation_Code_and_Service_Action(device, scsiIoCtx, requestedOperationCode, requestedServiceAction, rctd, &supportedOpData, &supportedOpDataLength);
+        ret = sntl_Check_Operation_Code_and_Service_Action(device, requestedOperationCode, requestedServiceAction, rctd, &supportedOpData, &supportedOpDataLength);
         break;
     case 3://case 1 or case 2 (SPC4+)
-        if (SUCCESS == sntl_Check_Operation_Code(device, scsiIoCtx, requestedOperationCode, rctd, &supportedOpData, &supportedOpDataLength))
+        if (SUCCESS == sntl_Check_Operation_Code(device, requestedOperationCode, rctd, &supportedOpData, &supportedOpDataLength))
         {
             ret = SUCCESS;
         }
@@ -9407,7 +9409,7 @@ int sntl_Translate_SCSI_Report_Supported_Operation_Codes_Command(tDevice *device
             //free this memory since the last function allocated it, but failed, then check if the op/sa combination is supported
             safe_Free(supportedOpData);
             supportedOpDataLength = 0;
-            if (sntl_Check_Operation_Code_and_Service_Action(device, scsiIoCtx, requestedOperationCode, requestedServiceAction, rctd, &supportedOpData, &supportedOpDataLength))
+            if (sntl_Check_Operation_Code_and_Service_Action(device, requestedOperationCode, requestedServiceAction, rctd, &supportedOpData, &supportedOpDataLength))
             {
                 ret = SUCCESS;
             }

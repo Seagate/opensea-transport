@@ -149,6 +149,9 @@ int build_CSMI_Passthrough_CDB(uint8_t cdb[CSMI_PASSTHROUGH_CDB_LENGTH], ataPass
 int get_RTFRs_From_CSMI_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, int commandRet)
 {
     //TODO: Whenever a driver is found using this legacy CDB, we need to figure out how RTFRs are returned, IF there is a way that they are returned.
+    M_USE_UNUSED(device);
+    M_USE_UNUSED(ataCommandOptions);
+    M_USE_UNUSED(commandRet);
     return NOT_SUPPORTED;
 }
 

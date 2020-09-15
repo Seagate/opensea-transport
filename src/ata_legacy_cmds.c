@@ -168,8 +168,8 @@ int ata_Legacy_Read_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, ui
         break;
     }
     ataCommandOptions.tfr.SectorNumber = sector;
-    ataCommandOptions.tfr.CylinderLowExt = 0;
-    ataCommandOptions.tfr.CylinderHighExt = 0;
+    ataCommandOptions.tfr.CylinderLow = M_Byte0(cylinder);
+    ataCommandOptions.tfr.CylinderHigh = M_Byte1(cylinder);
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     ataCommandOptions.tfr.DeviceHead |= M_Nibble0(head);
     if (device->drive_info.ata_Options.isDevice1)

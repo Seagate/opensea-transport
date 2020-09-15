@@ -550,11 +550,13 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
         {
             printf("Read Log - Log %02"PRIX8"h\n", lbaLo);
         }
+        M_FALLTHROUGH
     case ATA_SMART_RDATTR_THRESH:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_RDATTR_THRESH)
         {
             printf("Read Thresholds\n");
         }
+        M_FALLTHROUGH
     case ATA_SMART_READ_DATA:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_READ_DATA)
         {
@@ -580,31 +582,37 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
         {
             printf("Attribute Autosave\n");
         }
+        M_FALLTHROUGH
     case ATA_SMART_SAVE_ATTRVALUE:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_SAVE_ATTRVALUE)
         {
             printf("Save Attributes\n");
         }
+        M_FALLTHROUGH
     case ATA_SMART_ENABLE:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_ENABLE)
         {
             printf("Enable Operations\n");
         }
+        M_FALLTHROUGH
     case ATA_SMART_EXEC_OFFLINE_IMM:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_EXEC_OFFLINE_IMM)
         {
             printf("Offline Immediate - test %02" PRIX8 "h\n", lbaLo);
         }
+        M_FALLTHROUGH
     case ATA_SMART_RTSMART:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_RTSMART)
         {
             printf("Return Status\n");
         }
+        M_FALLTHROUGH
     case ATA_SMART_DISABLE:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_DISABLE)
         {
             printf("Disable Operations\n");
         }
+        M_FALLTHROUGH
     default:
         ataCommandOptions.commandDirection = XFER_NO_DATA;
         ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
@@ -4599,6 +4607,12 @@ int ata_Zeros_Ext(tDevice *device, uint16_t numberOfLogicalSectors, uint64_t lba
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
+    
+    if (trim)
+    {
+        ataCommandOptions.tfr.ErrorFeature |= BIT0;
+    }
+    
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Zeros Ext\n");
@@ -4725,6 +4739,14 @@ int ata_Remove_Element_And_Truncate(tDevice *device, uint32_t elementIdentifier,
     ataCommandOptions.tfr.ErrorFeature = M_Byte2(elementIdentifier);
     ataCommandOptions.tfr.Feature48 = M_Byte3(elementIdentifier);
     ataCommandOptions.timeout = UINT32_MAX;//This may take a few minutes...or hours
+    ataCommandOptions.tfr.LbaLow = M_Byte0(requestedMaxLBA);
+    ataCommandOptions.tfr.LbaMid = M_Byte1(requestedMaxLBA);
+    ataCommandOptions.tfr.LbaHi = M_Byte3(requestedMaxLBA);
+    ataCommandOptions.tfr.LbaLow48 = M_Byte4(requestedMaxLBA);
+    ataCommandOptions.tfr.LbaMid48 = M_Byte5(requestedMaxLBA);
+    ataCommandOptions.tfr.LbaHi48 = M_Byte6(requestedMaxLBA);
+    
+    
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -4924,7 +4946,12 @@ int ata_NCQ_Send_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*/, 
 //ncq data set management
 int ata_NCQ_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uint32_t dataSize, uint8_t prio /*bits 1:0*/, uint8_t ncqTag)
 {
-    return ata_NCQ_Send_FPDMA_Queued(device, 0, dataSize / LEGACY_DRIVE_SEC_SIZE, prio, ncqTag, RESERVED, RESERVED, ptrData);
+    uint32_t auxreg = 0;//bits 15:0 represent feature register of the NCQ data set management command.
+    if (trimBit)
+    {
+        auxreg |= BIT0;
+    }
+    return ata_NCQ_Send_FPDMA_Queued(device, 0, dataSize / LEGACY_DRIVE_SEC_SIZE, prio, ncqTag, RESERVED, auxreg, ptrData);
 }
 
 //ncq write log DMA ext

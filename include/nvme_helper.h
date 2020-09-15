@@ -909,13 +909,25 @@ extern "C"
     typedef struct _completionQueueEntry
     {
         bool dw0Valid;//OS doing passthrough may or may not get this field back...so this is set to indicate it was retrieved by the OS
-        uint32_t commandSpecific;//AKA result
         bool dw1Valid;
-        uint32_t dw1Reserved;
         bool dw2Valid;
-        uint32_t sqIDandHeadPtr;//This likely won't contain anything valid even if the OS passthrough gave us this DWORD
         bool dw3Valid;//AKA status and CID. Don't expect a valid CID though! Not every OS will give us that.
-        uint32_t statusAndCID;
+        union {
+            uint32_t commandSpecific;//AKA result
+            uint32_t dw0;
+        };
+        union {
+            uint32_t dw1Reserved;
+            uint32_t dw1;
+        };
+        union {
+            uint32_t sqIDandHeadPtr;//This likely won't contain anything valid even if the OS passthrough gave us this DWORD
+            uint32_t dw2;
+        };
+        union {
+            uint32_t statusAndCID;
+            uint32_t dw3;
+        };
     }completionQueueEntry;
 
     // \struct typedef struct _nvmeCmdCtx
