@@ -2236,7 +2236,7 @@ int sntl_Translate_Background_Scan_Results_Log_0x15(tDevice *device, ScsiIoCtx *
         //poh
         uint64_t pohMinutes = 0;
         double nvmePOH = convert_128bit_to_double(&logPage[128]);
-        if ((nvmePOH * 60.0) >= UINT64_MAX)
+        if ((nvmePOH * 60.0) >= (double)UINT64_MAX)
         {
             pohMinutes = UINT64_MAX;
         }
@@ -2320,7 +2320,7 @@ int sntl_Translate_General_Statistics_And_Performance_Log_0x19(tDevice *device, 
         {
             double nvmeReads = convert_128bit_to_double(&logPage[64]);
             uint64_t numberReads = 0;
-            if (nvmeReads >= UINT64_MAX)
+            if (nvmeReads >= (double)UINT64_MAX)
             {
                 numberReads = UINT64_MAX;
             }
@@ -2341,7 +2341,7 @@ int sntl_Translate_General_Statistics_And_Performance_Log_0x19(tDevice *device, 
         {
             double nvmeWrites = convert_128bit_to_double(&logPage[80]);
             uint64_t numberWrites = 0;
-            if (nvmeWrites >= UINT64_MAX)
+            if (nvmeWrites >= (double)UINT64_MAX)
             {
                 numberWrites = UINT64_MAX;
             }
@@ -2362,7 +2362,7 @@ int sntl_Translate_General_Statistics_And_Performance_Log_0x19(tDevice *device, 
         {
             double nvmeWritesInLBAs = (convert_128bit_to_double(&logPage[48]) * 1000 * 512) / device->drive_info.deviceBlockSize;
             uint64_t numLogBlocksWritten = 0;
-            if (nvmeWritesInLBAs >= UINT64_MAX)
+            if (nvmeWritesInLBAs >= (double)UINT64_MAX)
             {
                 numLogBlocksWritten = UINT64_MAX;
             }
@@ -2383,7 +2383,7 @@ int sntl_Translate_General_Statistics_And_Performance_Log_0x19(tDevice *device, 
         {
             double nvmeReadsInLBAs = (convert_128bit_to_double(&logPage[32]) * 1000 * 512) / device->drive_info.deviceBlockSize;
             uint64_t numLogBlocksRead = 0;
-            if (nvmeReadsInLBAs >= UINT64_MAX)
+            if (nvmeReadsInLBAs >= (double)UINT64_MAX)
             {
                 numLogBlocksRead = UINT64_MAX;
             }
