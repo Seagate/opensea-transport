@@ -4973,7 +4973,7 @@ int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                                         if (initializationPatternLength > 0)
                                         {
                                             //copy the provided pattern into our buffer
-                                            for (uint16_t copyIter = 0; copyIter < ataWriteDataLength; copyIter += device->drive_info.deviceBlockSize)
+                                            for (uint32_t copyIter = 0; copyIter < ataWriteDataLength; copyIter += device->drive_info.deviceBlockSize)
                                             {
                                                 memcpy(&ataWritePattern[copyIter], initializationPattern, initializationPatternLength);
                                             }
@@ -5037,7 +5037,7 @@ int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                                                 if (initializationPatternLength > 0)
                                                 {
                                                     //copy the provided pattern into our buffer
-                                                    for (uint16_t copyIter = 0; copyIter < ataWriteDataLength; copyIter += device->drive_info.deviceBlockSize)
+                                                    for (uint32_t copyIter = 0; copyIter < ataWriteDataLength; copyIter += device->drive_info.deviceBlockSize)
                                                     {
                                                         memcpy(&ataWritePattern[copyIter], initializationPattern, initializationPatternLength);
                                                     }
