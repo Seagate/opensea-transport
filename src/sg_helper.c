@@ -1624,7 +1624,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     }
     #if !defined(DISABLE_NVME_PASSTHROUGH)
     //add nvme devices to the list
-    for (j = 0; i < (num_sg_devs + num_sd_devs + num_nvme_devs);i++, j++)
+    for (j = 0; i < (num_sg_devs + num_sd_devs + num_nvme_devs) && j < num_nvme_devs;i++, j++)
     {
         devs[i] = (char *)malloc((strlen("/dev/") + strlen(nvmenamelist[j]->d_name) + 1) * sizeof(char));
         strcpy(devs[i], "/dev/");

@@ -341,7 +341,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     }
     safe_Free(namelist);
     *numberOfDevices = num_devs;
-    
+    M_USE_UNUSED(flags); 
     return SUCCESS;
 }
 
@@ -406,7 +406,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
-        for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_devs)) && (found < numberOfDevices)); ++driveNumber)
+        for (driveNumber = 0; ((driveNumber >= 0 && (unsigned int)driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
             if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
             {
@@ -462,43 +462,43 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     return returnValue;
 }
 
-int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
+int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool async, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
+int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool async, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
+int os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Flush(tDevice *device)
+int os_Flush(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
+int send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx *nvmeIoCtx)
 {
     return NOT_SUPPORTED;
 }
 
-int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize)
+int pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_nvme_Reset(tDevice *device)
+int os_nvme_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int os_nvme_Subsystem_Reset(tDevice *device)
+int os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }

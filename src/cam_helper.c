@@ -838,7 +838,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     safe_Free(adanamelist);
 
     *numberOfDevices = num_da_devs + num_ada_devs;
-    
+    M_USE_UNUSED(flags);  
     return SUCCESS;
 }
 
@@ -890,7 +890,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         strcat(devs[i], danamelist[i]->d_name);
         safe_Free(danamelist[i]);
     }
-    for (j = 0; i < (num_da_devs + num_ada_devs); ++i, j++)
+    for (j = 0; i < (num_da_devs + num_ada_devs) && j < num_ada_devs; ++i, j++)
     {
         devs[i] = (char *)malloc((strlen("/dev/") + strlen(adanamelist[j]->d_name) + 1) * sizeof(char));
         strcpy(devs[i], "/dev/");
@@ -914,7 +914,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
-        for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_da_devs + num_ada_devs)) && (found < numberOfDevices)); ++driveNumber)
+        for (driveNumber = 0; ((driveNumber >= 0 && (unsigned int)driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_da_devs + num_ada_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
             if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
             {
@@ -973,59 +973,59 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     return returnValue;
 }
 
-int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
+int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool async, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
+int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool async, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
+int os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Flush(tDevice *device)
+int os_Flush(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
 //TODO: Add code for CAM resets. There should be XPT function codes to do some amount of resetting
-int os_Device_Reset(tDevice *device)
+int os_Device_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
     
-int os_Bus_Reset(tDevice *device)
+int os_Bus_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-int os_Controller_Reset(tDevice *device)
+int os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
+int send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx *nvmeIoCtx)
 {
     return NOT_SUPPORTED;
 }
 
-int os_nvme_Reset(tDevice *device)
+int os_nvme_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int os_nvme_Subsystem_Reset(tDevice *device)
+int os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize)
+int pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
