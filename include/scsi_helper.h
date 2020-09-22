@@ -273,7 +273,7 @@ extern "C"
         uint8_t         *pdata;
         uint32_t        dataLength;
         uint8_t         *psense;
-        uint32_t        senseDataSize;
+        uint32_t        senseDataSize;//should be reduced to uint8 in the future as sense data maxes at 252Bytes
         uint32_t        timeout; //seconds
         uint8_t         verbose;
         scsiStatus     returnStatus;

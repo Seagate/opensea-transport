@@ -531,7 +531,7 @@ int ata_Write_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, 
     return ret;
 }
 
-int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *ptrData, uint32_t dataSize, uint16_t timeout, bool forceRTFRs, uint8_t countReg)
+int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *ptrData, uint32_t dataSize, uint32_t timeout, bool forceRTFRs, uint8_t countReg)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -649,7 +649,7 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
     }
     else
     {
-        ataCommandOptions.tfr.SectorCount = dataSize / LEGACY_DRIVE_SEC_SIZE;
+        ataCommandOptions.tfr.SectorCount = (uint8_t)(dataSize / LEGACY_DRIVE_SEC_SIZE);
     }
 
     ataCommandOptions.tfr.ErrorFeature = feature;
@@ -750,7 +750,7 @@ int ata_SMART_Write_Log(tDevice *device, uint8_t logAddress, uint8_t *ptrData, u
     return ata_SMART_Command(device,ATA_SMART_WRITE_LOG, logAddress, ptrData, dataSize, 15, forceRTFRs, 0);
 }
 
-int ata_SMART_Offline(tDevice *device, uint8_t subcommand, uint16_t timeout)
+int ata_SMART_Offline(tDevice *device, uint8_t subcommand, uint32_t timeout)
 {
     return ata_SMART_Command(device, ATA_SMART_EXEC_OFFLINE_IMM, subcommand, NULL, 0, timeout, false, 0);
 }
@@ -3801,7 +3801,7 @@ int ata_NV_Cache_Add_LBAs_To_Cache(tDevice *device, bool populateImmediately, ui
     {
         lba |= BIT0;
     }
-    ret = ata_NV_Cache_Feature(device, NV_ADD_LBAS_TO_NV_CACHE_PINNED_SET, dataSize / LEGACY_DRIVE_SEC_SIZE, lba, ptrData, dataSize);
+    ret = ata_NV_Cache_Feature(device, NV_ADD_LBAS_TO_NV_CACHE_PINNED_SET, C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), lba, ptrData, dataSize);
     return ret;
 }
 
@@ -3836,7 +3836,7 @@ int ata_NV_Query_Misses(tDevice *device, uint8_t *ptrData)
 int ata_NV_Query_Pinned_Set(tDevice *device, uint64_t dataBlockNumber, uint8_t *ptrData, uint32_t dataSize)
 {
     int ret = UNKNOWN;
-    ret = ata_NV_Cache_Feature(device, NV_QUERY_NV_CACHE_PINNED_SET, dataSize / LEGACY_DRIVE_SEC_SIZE, dataBlockNumber, ptrData, dataSize);
+    ret = ata_NV_Cache_Feature(device, NV_QUERY_NV_CACHE_PINNED_SET, C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), dataBlockNumber, ptrData, dataSize);
     return ret;
 }
 
@@ -3853,7 +3853,7 @@ int ata_NV_Remove_LBAs_From_Cache(tDevice *device, bool unpinAll, uint8_t *ptrDa
     }
     else
     {
-        ret = ata_NV_Cache_Feature(device, NV_REMOVE_LBAS_FROM_NV_CACHE_PINNED_SET, dataSize / LEGACY_DRIVE_SEC_SIZE, lba, ptrData, dataSize);
+        ret = ata_NV_Cache_Feature(device, NV_REMOVE_LBAS_FROM_NV_CACHE_PINNED_SET, C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), lba, ptrData, dataSize);
     }
 
     return ret;
@@ -4835,7 +4835,7 @@ int ata_NCQ_Deadline_Handlinge(tDevice *device, bool rdnc, bool wdnc, uint8_t nc
 int ata_NCQ_Set_Features(tDevice *device, eATASetFeaturesSubcommands subcommand, uint8_t subcommandCountField, uint8_t subcommandLBALo, uint8_t subcommandLBAMid, uint16_t subcommandLBAHi, uint8_t ncqTag)
 {
     uint64_t lba = M_BytesTo4ByteValue(M_Nibble0(M_Byte1(subcommandLBAHi)), M_Byte0(subcommandLBAHi), subcommandLBAMid, subcommandLBALo);
-    return ata_NCQ_Non_Data(device, 5, subcommand << 4, subcommandCountField, ncqTag, lba, RESERVED);
+    return ata_NCQ_Non_Data(device, UINT8_C(5), C_CAST(uint16_t, subcommand << 4), subcommandCountField, ncqTag, lba, RESERVED);
 }
 
 //ncq zeros ext
@@ -4894,7 +4894,7 @@ int ata_NCQ_Receive_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*
 int ata_NCQ_Read_Log_DMA_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint16_t featureRegister, uint8_t prio /*bits 1:0*/, uint8_t ncqTag)
 {
     uint64_t lba = M_BytesTo8ByteValue(0, 0, RESERVED, M_Byte1(pageNumber), RESERVED, RESERVED, M_Byte0(pageNumber), logAddress);
-    return ata_NCQ_Receive_FPDMA_Queued(device, 1, dataSize / LEGACY_DRIVE_SEC_SIZE, prio, ncqTag, lba, featureRegister, ptrData);
+    return ata_NCQ_Receive_FPDMA_Queued(device, UINT8_C(1), C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), prio, ncqTag, lba, featureRegister, ptrData);
 }
 
 //ncq ZAC management in
@@ -4951,14 +4951,14 @@ int ata_NCQ_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData,
     {
         auxreg |= BIT0;
     }
-    return ata_NCQ_Send_FPDMA_Queued(device, 0, dataSize / LEGACY_DRIVE_SEC_SIZE, prio, ncqTag, RESERVED, auxreg, ptrData);
+    return ata_NCQ_Send_FPDMA_Queued(device, UINT8_C(0), C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), prio, ncqTag, RESERVED, auxreg, ptrData);
 }
 
 //ncq write log DMA ext
 int ata_NCQ_Write_Log_DMA_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint8_t prio /*bits 1:0*/, uint8_t ncqTag)
 {
     uint64_t lba = M_BytesTo8ByteValue(0, 0, RESERVED, M_Byte1(pageNumber), RESERVED, RESERVED, M_Byte0(pageNumber), logAddress);
-    return ata_NCQ_Send_FPDMA_Queued(device, 2, dataSize / LEGACY_DRIVE_SEC_SIZE, prio, ncqTag, lba, RESERVED, ptrData);
+    return ata_NCQ_Send_FPDMA_Queued(device, UINT8_C(2), C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), prio, ncqTag, lba, RESERVED, ptrData);
 }
 
 //ncq ZAC management out

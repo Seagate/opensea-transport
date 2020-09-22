@@ -1009,7 +1009,7 @@ extern "C"
         HANDLE              fd;
         HANDLE              scsiSRBHandle;//To support for SCSI SRB IOCTLs (miniport) that use this same handle type (\\.\SCSI<pathId>:)
         SCSI_ADDRESS        scsi_addr;
-        int                 os_drive_number;
+        uint32_t            os_drive_number;
         int                 srbtype; //this will be used to filter when a controller supports the new SCSI PassThrough EX IOCTLs
         int                 alignmentMask;//save the alignment mask. This may be needed on some controllers....not currently used but SHOULD be added later for the SCSI IOCTL DIRECT EX
         eWindowsIOCTLType   ioType;//This will be set during get_Device so we know how to talk to the drive (Mostly for ATA). Only change this if you know what you're doing.

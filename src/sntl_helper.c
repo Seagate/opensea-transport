@@ -44,6 +44,14 @@
 // - read buffer command to return the NVMe telemetry log (similar to SAT translation to return current internal status log)
 // - supported sector sizes log pages
 
+#if defined (_MSC_VER)
+//Visual studio level 4 produces lots of warnings for "assignment within conditional expression" which is normally a good warning, but
+//it is used HEAVILY in this file by the software SAT translator to return the field pointer on errors.
+//So for VS only, this warning will be disabled in this file.
+#pragma warning(push)
+#pragma warning(disable:4706)
+#endif
+
 void sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(uint8_t data[8], bool cd, bool bpv, uint8_t bitPointer, uint16_t fieldPointer)
 {
     if (data)
@@ -2181,7 +2189,7 @@ int sntl_Translate_Informational_Exceptions_Log_Page_2F(tDevice *device, ScsiIoC
         informationalExceptions[9] = 0x00;
     }
     //set temperature reading
-    informationalExceptions[10] = M_BytesTo2ByteValue(logPage[2], logPage[1]) - 273;
+    informationalExceptions[10] = C_CAST(uint8_t, M_BytesTo2ByteValue(logPage[2], logPage[1]) - UINT16_C(273));
     if (scsiIoCtx->pdata)
     {
         memcpy(scsiIoCtx->pdata, informationalExceptions, M_Min(11U, scsiIoCtx->dataLength));
@@ -2450,11 +2458,12 @@ int sntl_Translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx *scsiIo
     dstLog.rae = 1;//preserve any asynchronous events
     if (SUCCESS != nvme_Get_Log_Page(device, &dstLog))
     {
-        set_Sense_Data_By_Command_Specific_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
         return SUCCESS;
     }
     //convert NVMe DST log to SCSI DST Log
-    for (uint16_t parameterCode = 0x0001, nvmDSTOffset = 4, selfTestOffset = 4; parameterCode <= 0x0014 && nvmDSTOffset <= 564 && selfTestOffset <= 404U; ++parameterCode, nvmDSTOffset += 28, selfTestOffset += 20)
+    uint16_t nvmDSTOffset = 4 + (parameterCode * 28);//each NVM DST entry is 28B long and the first starts at byte 4. Set this to match the parameter code since that can select an "offset" in the log
+    for (uint16_t selfTestOffset = 4; parameterCode <= 0x0014 && nvmDSTOffset <= 564 && selfTestOffset <= 404U; ++parameterCode, nvmDSTOffset += 28, selfTestOffset += 20)
     {
         selfTestResults[selfTestOffset] = M_Byte1(parameterCode);
         selfTestResults[selfTestOffset + 1] = M_Byte0(parameterCode);
@@ -2915,12 +2924,12 @@ int sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(tDevice *device, Scs
     //set the mode data length
     if (longHeader)
     {
-        readWriteErrorRecovery[0] = M_Byte1(pageLength - 2);
-        readWriteErrorRecovery[1] = M_Byte0(pageLength - 2);
+        readWriteErrorRecovery[0] = M_Byte1(pageLength - UINT16_C(2));
+        readWriteErrorRecovery[1] = M_Byte0(pageLength - UINT16_C(2));
     }
     else
     {
-        readWriteErrorRecovery[0] = pageLength - 1;
+        readWriteErrorRecovery[0] = C_CAST(uint8_t, pageLength - UINT8_C(1));
     }
     //now copy the data back and return from this function
     if (scsiIoCtx->pdata)
@@ -3066,12 +3075,12 @@ int sntl_Translate_Mode_Sense_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx,
     //set the mode data length
     if (longHeader)
     {
-        caching[0] = M_Byte1(pageLength - 2);
-        caching[1] = M_Byte0(pageLength - 2);
+        caching[0] = M_Byte1(pageLength - UINT16_C(2));
+        caching[1] = M_Byte0(pageLength - UINT16_C(2));
     }
     else
     {
-        caching[0] = pageLength - 1;
+        caching[0] = C_CAST(uint8_t, pageLength - UINT8_C(1));
     }
     //now copy the data back and return from this function
     if (scsiIoCtx->pdata)
@@ -3168,12 +3177,12 @@ int sntl_Translate_Mode_Sense_Control_0Ah(ScsiIoCtx *scsiIoCtx, uint8_t pageCont
     //set the mode data length
     if (longHeader)
     {
-        controlPage[0] = M_Byte1(pageLength - 2);
-        controlPage[1] = M_Byte0(pageLength - 2);
+        controlPage[0] = M_Byte1(pageLength - UINT16_C(2));
+        controlPage[1] = M_Byte0(pageLength - UINT16_C(2));
     }
     else
     {
-        controlPage[0] = pageLength - 1;
+        controlPage[0] = C_CAST(uint8_t, pageLength - UINT8_C(1));
     }
     //now copy the data back and return from this function
     if (scsiIoCtx->pdata)
@@ -3246,12 +3255,12 @@ int sntl_Translate_Mode_Sense_Power_Condition_1A(ScsiIoCtx *scsiIoCtx, uint8_t p
     //set the mode data length
     if (longHeader)
     {
-        powerConditionPage[0] = M_Byte1(pageLength - 2);
-        powerConditionPage[1] = M_Byte0(pageLength - 2);
+        powerConditionPage[0] = M_Byte1(pageLength - UINT16_C(2));
+        powerConditionPage[1] = M_Byte0(pageLength - UINT16_C(2));
     }
     else
     {
-        powerConditionPage[0] = pageLength - 1;
+        powerConditionPage[0] = C_CAST(uint8_t, pageLength - UINT16_C(1));
     }
     //now copy the data back and return from this function
     if (scsiIoCtx->pdata)
@@ -3355,12 +3364,12 @@ int sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(ScsiIoCtx *scsiIoCtx, ui
     //set the mode data length
     if (longHeader)
     {
-        controlExtPage[0] = M_Byte1(pageLength - 2);
-        controlExtPage[1] = M_Byte0(pageLength - 2);
+        controlExtPage[0] = M_Byte1(pageLength - UINT16_C(2));
+        controlExtPage[1] = M_Byte0(pageLength - UINT16_C(2));
     }
     else
     {
-        controlExtPage[0] = pageLength - 1;
+        controlExtPage[0] = C_CAST(uint8_t, pageLength - UINT16_C(1));
     }
     //now copy the data back and return from this function
     if (scsiIoCtx->pdata)
@@ -3447,12 +3456,12 @@ int sntl_Translate_Mode_Sense_Informational_Exceptions_Control_1Ch(ScsiIoCtx *sc
     //set the mode data length
     if (longHeader)
     {
-        informationalExceptions[0] = M_Byte1(pageLength - 2);
-        informationalExceptions[1] = M_Byte0(pageLength - 2);
+        informationalExceptions[0] = M_Byte1(pageLength - UINT16_C(2));
+        informationalExceptions[1] = M_Byte0(pageLength - UINT16_C(2));
     }
     else
     {
-        informationalExceptions[0] = pageLength - 1;
+        informationalExceptions[0] = C_CAST(uint8_t, pageLength - UINT16_C(1));
     }
     //now copy the data back and return from this function
     if (scsiIoCtx->pdata)
@@ -3702,7 +3711,7 @@ int sntl_Translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
 int sntl_Translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t *ptrToBeginningOfModePage, uint16_t pageLength)
 {
     int ret = SUCCESS;
-    uint32_t dataOffset = (uint32_t)(ptrToBeginningOfModePage - scsiIoCtx->pdata);//to be used when setting which field is invalid in parameter list
+    uint16_t dataOffset = C_CAST(uint16_t, ptrToBeginningOfModePage - scsiIoCtx->pdata);//to be used when setting which field is invalid in parameter list
     uint8_t senseKeySpecificDescriptor[8] = { 0 };
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
@@ -4382,7 +4391,7 @@ int sntl_Translate_SCSI_Read_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     {
         return SUCCESS;
     }
-    else if (transferLength > 65536)//not issuing multiple commands...
+    else if (transferLength > UINT32_C(65536))//not issuing multiple commands...
     {
         //return an error
         switch (scsiIoCtx->cdb[OPERATION_CODE])
@@ -4427,7 +4436,7 @@ int sntl_Translate_SCSI_Read_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             return UNKNOWN;
         }
     }
-    int ret = nvme_Read(device, lba, transferLength - 1, false, fua, pi, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+    int ret = nvme_Read(device, lba, C_CAST(uint16_t, transferLength - 1), false, fua, pi, scsiIoCtx->pdata, scsiIoCtx->dataLength);
     set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
     return ret;
 }
@@ -4543,7 +4552,7 @@ int sntl_Translate_SCSI_Write_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         //a transfer length of zero means do nothing but validate inputs and is not an error
         return SUCCESS;
     }
-    else if (transferLength > 65536)
+    else if (transferLength > UINT32_C(65536))
     {
         //return an error
         switch (scsiIoCtx->cdb[OPERATION_CODE])
@@ -4588,7 +4597,7 @@ int sntl_Translate_SCSI_Write_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             return UNKNOWN;
         }
     }
-    int ret = nvme_Write(device, lba, transferLength - 1, false, fua, pi, 0, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+    int ret = nvme_Write(device, lba, C_CAST(uint16_t, transferLength - 1), false, fua, pi, 0, scsiIoCtx->pdata, scsiIoCtx->dataLength);
     set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
     return ret;
 }
@@ -4675,7 +4684,7 @@ int sntl_Translate_SCSI_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     {
         return SUCCESS;
     }
-    else if (verificationLength > 65536)
+    else if (verificationLength > UINT32_C(65536))
     {
         //return an error
         switch (scsiIoCtx->cdb[OPERATION_CODE])
@@ -4739,7 +4748,7 @@ int sntl_Translate_SCSI_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 break;
             }
         }
-        ret = nvme_Compare(device, lba, verificationLength - 1, false, true, pi, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+        ret = nvme_Compare(device, lba, C_CAST(uint16_t, verificationLength - UINT32_C(1)), false, true, pi, scsiIoCtx->pdata, scsiIoCtx->dataLength);
         set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
         break;
     case 2://not defined
@@ -4994,7 +5003,7 @@ int sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *scsiIoCt
             reportLunsData = (uint8_t*)calloc(reportLunsDataLength, sizeof(uint8_t));
             if (reportLunsData)
             {
-                reportLunsData[15] = device->drive_info.namespaceID > 0 ? device->drive_info.namespaceID - 1 : 0;
+                reportLunsData[15] = device->drive_info.namespaceID > 0 ? C_CAST(uint8_t, device->drive_info.namespaceID - UINT32_C(1)) : UINT8_C(0);
                 reportLunsData[0] = M_Byte3(reportLunsDataLength);
                 reportLunsData[1] = M_Byte2(reportLunsDataLength);
                 reportLunsData[2] = M_Byte1(reportLunsDataLength);
@@ -5907,7 +5916,7 @@ int sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             uint64_t numberOfLBAsToDeallocate = 0;//this will be checked later to make sure it isn't greater than what we reported on the VPD pages
             uint16_t numberOfBlockDescriptors = 0;//this will be checked later to make sure it isn't greater than what we reported on the VPD pages
             uint16_t nvmeDSMOffset = 0;
-            uint32_t numberOfRanges = 0;
+            uint8_t numberOfRanges = 0;
             if (!dsmBuffer)
             {
                 //lets just set this error for now...-TJE
@@ -7080,7 +7089,7 @@ int sntl_Translate_SCSI_Sanitize_Command(tDevice * device, ScsiIoCtx * scsiIoCtx
                             if (SUCCESS == nvme_Get_Log_Page(device, &sanitizeLog))
                             {
                                 uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
-                                uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
+                                sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
                                 if (sanitizeStatus == 0x3)//sanitize failed
                                 {
                                     sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
@@ -7144,7 +7153,7 @@ int sntl_Translate_SCSI_Sanitize_Command(tDevice * device, ScsiIoCtx * scsiIoCtx
                             if (SUCCESS == nvme_Get_Log_Page(device, &sanitizeLog))
                             {
                                 uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
-                                uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
+                                sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
                                 if (sanitizeStatus == 0x3)//sanitize failed
                                 {
                                     sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
@@ -7208,7 +7217,7 @@ int sntl_Translate_SCSI_Sanitize_Command(tDevice * device, ScsiIoCtx * scsiIoCtx
                             if (SUCCESS == nvme_Get_Log_Page(device, &sanitizeLog))
                             {
                                 uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
-                                uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
+                                sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
                                 if (sanitizeStatus == 0x3)//sanitize failed
                                 {
                                     sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
@@ -7270,7 +7279,7 @@ int sntl_Translate_SCSI_Sanitize_Command(tDevice * device, ScsiIoCtx * scsiIoCtx
                         if (SUCCESS == nvme_Get_Log_Page(device, &sanitizeLog))
                         {
                             uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
-                            uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
+                            sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
                             if (sanitizeStatus == 0x3)//sanitize failed
                             {
                                 sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x03, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
@@ -9732,5 +9741,12 @@ int sntl_Translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     }
     return ret;
 }
+
+#if defined (_MSC_VER)
+//Visual studio level 4 produces lots of warnings for "assignment within conditional expression" which is normally a good warning, but
+//it is used HEAVILY in this file by the software SAT translator to return the field pointer on errors.
+//So for VS only, this warning will be disabled in this file.
+#pragma warning(pop)
+#endif
 
 #endif // (DISABLE_NVME_PASSTHROUGH)

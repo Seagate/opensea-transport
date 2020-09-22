@@ -245,7 +245,8 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                                 strcat(fileNameAndPath, "scanOutput");
                             }
                             strcat(fileNameAndPath, ".txt");
-                            if (!(outputInfo->outputFilePtr = fopen(fileNameAndPath, "w+")))
+                            outputInfo->outputFilePtr = fopen(fileNameAndPath, "w+");
+                            if (!(outputInfo->outputFilePtr))
                             {
                                 safe_Free(deviceList);
                                 perror("could not open file!");
@@ -1674,7 +1675,6 @@ uint32_t get_Sector_Count_For_Read_Write(tDevice *device)
     default:
         return 64;//just set something in case they try to use this value but didn't check the return code from this function - TJE
     }
-    return 0;
 }
 
 uint32_t get_Sector_Count_For_512B_Based_XFers(tDevice *device)
@@ -1696,7 +1696,6 @@ uint32_t get_Sector_Count_For_512B_Based_XFers(tDevice *device)
     default:
         return 64;//just set something in case they try to use this value but didn't check the return code from this function - TJE
     }
-    return 0;
 }
 
 uint32_t get_Sector_Count_For_4096B_Based_XFers(tDevice *device)
@@ -1718,7 +1717,6 @@ uint32_t get_Sector_Count_For_4096B_Based_XFers(tDevice *device)
     default:
         return 8;//just set something in case they try to use this value but didn't check the return code from this function - TJE
     }
-    return 0;
 }
 
 void print_Command_Time(uint64_t timeInNanoSeconds)
@@ -1914,12 +1912,12 @@ void print_Time(uint64_t timeInNanoSeconds)
 
 uint64_t align_LBA(tDevice *device, uint64_t LBA)
 {
-    uint16_t logicalPerPhysical = device->drive_info.devicePhyBlockSize / device->drive_info.deviceBlockSize;
+    uint16_t logicalPerPhysical = C_CAST(uint16_t, device->drive_info.devicePhyBlockSize / device->drive_info.deviceBlockSize);
     if (logicalPerPhysical > 1)
     {
         //make sure the incoming LBA is aligned to the start of the physical sector it is in
-        uint64_t tempLBA = LBA / (uint64_t)logicalPerPhysical;
-        tempLBA *= (uint64_t)logicalPerPhysical;
+        uint64_t tempLBA = LBA / C_CAST(uint64_t, logicalPerPhysical);
+        tempLBA *= C_CAST(uint64_t, logicalPerPhysical);
         LBA = tempLBA - device->drive_info.sectorAlignment;
     }
     return LBA;
@@ -2133,7 +2131,7 @@ bool is_Removable_Media(tDevice *device)
     }
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES )
     {
-        printf("Calling from file : %s function : %s line : %d \n", __FILE__, __FUNCTION__, __LINE__);
+        printf("Calling from file : %s function : %s line : %i \n", __FILE__, __FUNCTION__, __LINE__);
         if (result)
         {
             printf("This is a Removable Media");

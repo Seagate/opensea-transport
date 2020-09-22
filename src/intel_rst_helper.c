@@ -145,7 +145,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                     raidFirmwareRequest->Header.Timeout = 15;
                 }
             }
-            raidFirmwareRequest->Header.ControlCode = IOCTL_RAID_FIRMWARE;
+            raidFirmwareRequest->Header.ControlCode = (ULONG)IOCTL_RAID_FIRMWARE;
             raidFirmwareRequest->Header.Length = (ULONG)(allocationSize - sizeof(SRB_IO_CONTROL));
             //Next fill in IOCTL_RAID_FIRMWARE_BUFFER, then work down from there and memcpy the input data to this function since it will have the specific download function data in it
             raidFirmwareRequest->Request.Version = RAID_FIRMWARE_REQUEST_BLOCK_VERSION;
@@ -505,7 +505,7 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
                     nvmPassthroughCommand->Header.Timeout = 15;
                 }
             }
-            nvmPassthroughCommand->Header.ControlCode = IOCTL_NVME_PASSTHROUGH;
+            nvmPassthroughCommand->Header.ControlCode = (ULONG)IOCTL_NVME_PASSTHROUGH;
             nvmPassthroughCommand->Header.Length = (ULONG)(allocationSize - sizeof(SRB_IO_CONTROL));
             //srb_io_control has been setup, now to main struct fields (minus data which is set when configuring the NVMe command)
             nvmPassthroughCommand->Version = NVME_PASS_THROUGH_VERSION;

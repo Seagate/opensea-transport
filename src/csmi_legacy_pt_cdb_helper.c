@@ -100,7 +100,7 @@ int build_CSMI_Passthrough_CDB(uint8_t cdb[CSMI_PASSTHROUGH_CDB_LENGTH], ataPass
             cdb[14] = M_Byte1(ataPtCmd->dataSize / sizeof(uint16_t));
             cdb[15] = M_Byte0(ataPtCmd->dataSize / sizeof(uint16_t));
         }
-        else if (ATA_PT_NO_DATA_TRANSFER)
+        else if (ataPtCmd->ataTransferBlocks == ATA_PT_NO_DATA_TRANSFER)
         {
             cdb[14] = 0;
             cdb[15] = 0;

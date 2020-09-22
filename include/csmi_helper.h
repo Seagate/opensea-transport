@@ -144,7 +144,7 @@ extern "C"
     //match the csmisas.h definitions of the types as best we can
     #define CPRIu8 "u"
     #define CPRIu16 "u"
-    #ifndef __LP64__  // ILP32 (32-bit), LLP64 (64-bit MSVC, MinGW)
+    #if !defined __LP64__ // ILP32 (32-bit), LLP64 (64-bit MSVC, MinGW)
         #define CPRIu32 "lu"
     #else // LP64 (64-bit Cygwin)
         #define CPRIu32 "u"

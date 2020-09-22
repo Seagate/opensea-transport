@@ -258,7 +258,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *ptrData, uint32_t dataSize, uint16_t timeout, bool forceRTFRs, uint8_t countReg);
+    OPENSEA_TRANSPORT_API int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *ptrData, uint32_t dataSize, uint32_t timeout, bool forceRTFRs, uint8_t countReg);
 
     //-----------------------------------------------------------------------------
     //
@@ -292,7 +292,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SMART_Offline(tDevice *device, uint8_t subcommand, uint16_t timeout);
+    OPENSEA_TRANSPORT_API int ata_SMART_Offline(tDevice *device, uint8_t subcommand, uint32_t timeout);
 
     //-----------------------------------------------------------------------------
     //

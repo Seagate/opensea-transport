@@ -226,7 +226,7 @@ typedef struct _csmiIOin
 
 typedef struct _csmiIOout
 {
-    uint32_t bytesReturned;//Windows only and returned because it may be needed to fully process the result. Will be 0 for other OSs
+    unsigned long bytesReturned;//Windows only and returned because it may be needed to fully process the result. Will be 0 for other OSs
     int sysIoctlReturn;//to save return from calling DeviceIoControl or Ioctl functions.
     uint32_t *lastError;//pointer to store last error in. Optional
     seatimer_t *ioctlTimer;//pointer to a timer to start and stop if the IOCTL needs timing.
@@ -2104,7 +2104,7 @@ bool device_Supports_CSMI_With_RST(tDevice *device)
 //This is really only here for Windows, but could be used under Linux if you wanted to use CSMI instead of SGIO, but that really is unnecessary
 //controller number is to target the CSMI IOCTL inputs on non-windows. hostController is a SCSI address number, which may or may not be different...If these end up the same on Linux, this should be update to remove the duplicate parameters. If not, delete part of this comment.
 //NOTE: this does not handle Intel NVMe devices in JBOD mode right now. These devices will be handled separately from this function which focuses on SATA/SAS
-int jbod_Setup_CSMI_Info(CSMI_HANDLE deviceHandle, tDevice *device, uint8_t controllerNumber, uint8_t hostController, uint8_t pathidBus, uint8_t targetID, uint8_t lun)
+int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device, uint8_t controllerNumber, uint8_t hostController, uint8_t pathidBus, uint8_t targetID, uint8_t lun)
 {
     int ret = SUCCESS;
     device->os_info.csmiDeviceData = (ptrCsmiDeviceInfo)calloc(1, sizeof(csmiDeviceInfo));
@@ -2454,7 +2454,7 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
 #if defined(_WIN32)
     TCHAR device_name[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
     CONST TCHAR *ptrDeviceName = &device_name[0];
-    _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\SCSI") TEXT("%") TEXT(CPRIu32) TEXT(":"), controllerNum);
+    _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\SCSI") TEXT("%") TEXT(PRIu32) TEXT(":"), controllerNum);
 
     //lets try to open the device.
     device->os_info.fd = CreateFile(ptrDeviceName,
@@ -2520,19 +2520,19 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
             device->os_info.csmiDeviceData->intelRSTSupport.intelRSTSupported = true;
             device->os_info.csmiDeviceData->intelRSTSupport.nvmePassthrough = true;
             device->os_info.csmiDeviceData->scsiAddressValid = true;
-            device->os_info.csmiDeviceData->scsiAddress.hostIndex = controllerNum;
-            device->os_info.csmiDeviceData->scsiAddress.lun = *intelLun;
-            device->os_info.csmiDeviceData->scsiAddress.pathId = *intelPathID;
-            device->os_info.csmiDeviceData->portIdentifier = portID;
-            device->os_info.csmiDeviceData->phyIdentifier = phyID;
-            device->os_info.csmiDeviceData->scsiAddress.targetId = *intelTargetID;
+            device->os_info.csmiDeviceData->scsiAddress.hostIndex = C_CAST(uint8_t, controllerNum);
+            device->os_info.csmiDeviceData->scsiAddress.lun = C_CAST(uint8_t, *intelLun);
+            device->os_info.csmiDeviceData->scsiAddress.pathId = C_CAST(uint8_t, *intelPathID);
+            device->os_info.csmiDeviceData->portIdentifier = C_CAST(uint8_t, portID);
+            device->os_info.csmiDeviceData->phyIdentifier = C_CAST(uint8_t, phyID);
+            device->os_info.csmiDeviceData->scsiAddress.targetId = C_CAST(uint8_t, *intelTargetID);
             device->drive_info.namespaceID = *intelLun + 1;//LUN is 0 indexed, whereas namespaces start at 1.
         }
         else
 #endif //_WIN32
         {
-            device->os_info.csmiDeviceData->portIdentifier = portID;
-            device->os_info.csmiDeviceData->phyIdentifier = phyID;
+            device->os_info.csmiDeviceData->portIdentifier = C_CAST(uint8_t, portID);
+            device->os_info.csmiDeviceData->phyIdentifier = C_CAST(uint8_t, phyID);
             //read phy info and match the provided port and phy identifier values with the phy data to store sasAddress since it may be needed later.
             CSMI_SAS_PHY_INFO_BUFFER phyInfo;
             if (SUCCESS == csmi_Get_Phy_Info(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &phyInfo, device->deviceVerbosity))
@@ -2754,7 +2754,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, ptrRaidHandleToScan *beginningOfList)
+int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags, ptrRaidHandleToScan *beginningOfList)
 {
     CSMI_HANDLE fd = CSMI_INVALID_HANDLE;
 #if defined (_WIN32)
@@ -2765,7 +2765,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, ptrRa
     eVerbosityLevels csmiCountVerbosity = VERBOSITY_DEFAULT;//change this if debugging
     ptrRaidHandleToScan raidList = NULL;
     ptrRaidHandleToScan previousRaidListEntry = NULL;
-    int controllerNumber = 0, driveNumber = 0, found = 0;
+    int controllerNumber = 0, found = 0;
 
     if (!beginningOfList || !*beginningOfList)
     {
@@ -2964,7 +2964,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         tDevice * d = NULL;
         ptrRaidHandleToScan raidList = *beginningOfList;
         ptrRaidHandleToScan previousRaidListEntry = NULL;
-        int controllerNumber = 0, driveNumber = 0, found = 0, failedGetDeviceCount = 0;
+        int controllerNumber = 0, found = 0, failedGetDeviceCount = 0;
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
 

@@ -1247,14 +1247,14 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                     uint64_t qword0 = M_BytesTo8ByteValue(logBuffer[7], logBuffer[6], logBuffer[5], logBuffer[4], logBuffer[3], logBuffer[2], logBuffer[1], logBuffer[0]);
                     if (qword0 & BIT63 && M_Byte2(qword0) == ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES && M_Word0(qword0) >= 0x0001)
                     {
-                        uint64_t supportedCapabilities = M_BytesTo8ByteValue(logBuffer[15], logBuffer[14], logBuffer[13], logBuffer[12], logBuffer[11], logBuffer[10], logBuffer[9], logBuffer[8]);
-                        if (supportedCapabilities & BIT63)
+                        uint64_t supportedCapabilitiesQWord = M_BytesTo8ByteValue(logBuffer[15], logBuffer[14], logBuffer[13], logBuffer[12], logBuffer[11], logBuffer[10], logBuffer[9], logBuffer[8]);
+                        if (supportedCapabilitiesQWord & BIT63)
                         {
-                            if (supportedCapabilities & BIT50)
+                            if (supportedCapabilitiesQWord & BIT50)
                             {
                                 device->drive_info.softSATFlags.dataSetManagementXLSupported = true;
                             }
-                            if (supportedCapabilities & BIT48)
+                            if (supportedCapabilitiesQWord & BIT48)
                             {
                                 device->drive_info.softSATFlags.zeroExtSupported = true;
                             }
@@ -1695,9 +1695,9 @@ int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_
                 {
                     uint32_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word055;
                     uint32_t sectorsPerTrack = device->drive_info.IdentifyData.ata.Word056;
-                    *cylinder = lba / (uint32_t)(headsPerCylinder * sectorsPerTrack);
-                    *head = (uint8_t)((lba / sectorsPerTrack) % headsPerCylinder);
-                    *sector = (uint8_t)((lba % sectorsPerTrack) + UINT8_C(1));
+                    *cylinder = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder * sectorsPerTrack));
+                    *head = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
+                    *sector = C_CAST(uint8_t, (lba % sectorsPerTrack) + UINT8_C(1));
                     //check that this isn't above the value of words 58:57
                     uint32_t currentSector = (*cylinder) * (*head) * (*sector);
                     if (currentSector > userAddressableCapacityCHS)
@@ -1710,9 +1710,9 @@ int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_
                 {
                     uint32_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word003;
                     uint32_t sectorsPerTrack = device->drive_info.IdentifyData.ata.Word006;
-                    *cylinder = lba / (uint32_t)(headsPerCylinder * sectorsPerTrack);
-                    *head = (uint8_t)((lba / sectorsPerTrack) % headsPerCylinder);
-                    *sector = (uint8_t)((lba % sectorsPerTrack) + UINT8_C(1));
+                    *cylinder = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder * sectorsPerTrack));
+                    *head = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
+                    *sector = C_CAST(uint8_t, (lba % sectorsPerTrack) + UINT8_C(1));
                     userAddressableCapacityCHS = device->drive_info.IdentifyData.ata.Word001 * device->drive_info.IdentifyData.ata.Word003 * device->drive_info.IdentifyData.ata.Word006;
                     //check that this isn't above the value of words 58:57
                     uint32_t currentSector = (*cylinder) * (*head) * (*sector);

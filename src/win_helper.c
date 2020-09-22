@@ -101,9 +101,6 @@ int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busType);
 bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx);//TODO: add nvme support...may not need an NVMe version since it's the only way to update code on NVMe
 int send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx);
 int send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx);
-#if !defined(DISABLE_NVME_PASSTHROUGH)
-void set_Namespace_ID_For_Device(tDevice *device);//For Win 10 NVMe
-#endif
 #endif
 #if defined (_DEBUG)
 // \fn print_bus_type (BYTE type)
@@ -355,10 +352,10 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                         if (CR_SUCCESS == cmRet)
                         {
                             //Loop through this list, just in case more than one thing comes through
-                            for (LPTSTR deviceID = interfaceList; *deviceID && !foundMatch; deviceID += _tcslen(deviceID) + 1)
+                            for (LPTSTR currentDeviceID = interfaceList; *currentDeviceID && !foundMatch; currentDeviceID += _tcslen(currentDeviceID) + 1)
                             {
                                 //With this device path, open a handle and get the storage device number. This is a match for the PhysicalDriveX number and we can check that for a match
-                                HANDLE deviceHandle = CreateFile(deviceID,
+                                HANDLE deviceHandle = CreateFile(currentDeviceID,
                                     GENERIC_WRITE | GENERIC_READ,
                                     FILE_SHARE_READ | FILE_SHARE_WRITE,
                                     NULL,
@@ -1879,7 +1876,6 @@ int get_Win_Device(const char *filename, tDevice *device )
 {
     int                         ret           = FAILURE;
     int                         win_ret       = 0;
-    ULONG                       returned_data = 0;
     PSTORAGE_DEVICE_DESCRIPTOR  device_desc   = NULL;
     PSTORAGE_ADAPTER_DESCRIPTOR adapter_desc  = NULL;
 
@@ -1930,32 +1926,28 @@ int get_Win_Device(const char *filename, tDevice *device )
         if (strstr(device->os_info.name, WIN_PHYSICAL_DRIVE))
         {
             uint32_t drive = UINT32_MAX;
-            const char *scanFormatString = WIN_PHYSICAL_DRIVE "%" SCNu32;
-            sscanf_s(device->os_info.name, scanFormatString, &drive);
+            sscanf_s(device->os_info.name, WIN_PHYSICAL_DRIVE "%" SCNu32, &drive);
             sprintf(device->os_info.friendlyName, "PD%" PRIu32, drive);
             device->os_info.os_drive_number = drive;
         }
         else if (strstr(device->os_info.name, WIN_CDROM_DRIVE))
         {
             uint32_t drive = UINT32_MAX;
-            const char *scanFormatString = WIN_CDROM_DRIVE "%" SCNu32;
-            sscanf_s(device->os_info.name, scanFormatString, &drive);
+            sscanf_s(device->os_info.name, WIN_CDROM_DRIVE "%" SCNu32, &drive);
             sprintf(device->os_info.friendlyName, "CDROM%" PRIu32, drive);
             device->os_info.os_drive_number = drive;
         }
         else if (strstr(device->os_info.name, WIN_TAPE_DRIVE))
         {
             uint32_t drive = UINT32_MAX;
-            const char *scanFormatString = WIN_TAPE_DRIVE "%" SCNu32;
-            sscanf_s(device->os_info.name, scanFormatString, &drive);
+            sscanf_s(device->os_info.name, WIN_TAPE_DRIVE "%" SCNu32, &drive);
             sprintf(device->os_info.friendlyName, "TAPE%" PRIu32, drive);
             device->os_info.os_drive_number = drive;
         }
         else if (strstr(device->os_info.name, WIN_CHANGER_DEVICE))
         {
             uint32_t drive = UINT32_MAX;
-            const char *scanFormatString = WIN_CHANGER_DEVICE "%" SCNu32;
-            sscanf_s(device->os_info.name, scanFormatString, &drive);
+            sscanf_s(device->os_info.name, WIN_CHANGER_DEVICE "%" SCNu32, &drive);
             sprintf(device->os_info.friendlyName, "CHGR%" PRIu32, drive);
             device->os_info.os_drive_number = drive;
         }
@@ -1971,8 +1963,8 @@ int get_Win_Device(const char *filename, tDevice *device )
             if (driveLetters & BIT0)
             {
                 //a volume with this letter exists...check it's physical device number
-                TCHAR device_name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
-                TCHAR *ptrLetterName = &device_name[0];
+                TCHAR volume_name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+                TCHAR *ptrLetterName = &volume_name[0];
                 _stprintf_s(ptrLetterName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\%c:"), currentLetter);
                 HANDLE letterHandle = CreateFile(ptrLetterName,
                     GENERIC_WRITE | GENERIC_READ,
@@ -2972,7 +2964,7 @@ int send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
     int           ret = FAILURE;
     BOOL          success = FALSE;
     ULONG         returned_data = 0;
-    size_t scsiPTIoStructSize = sizeof(scsiPassThroughEXIOStruct);
+    //size_t scsiPTIoStructSize = sizeof(scsiPassThroughEXIOStruct);
     ptrSCSIPassThroughEXIOStruct sptdio = (ptrSCSIPassThroughEXIOStruct)malloc(sizeof(scsiPassThroughEXIOStruct));//add cdb and data length so that the memory allocated correctly!
     if (!sptdio)
     {
@@ -3131,7 +3123,7 @@ int convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx, ptrSCSIPa
     psptd->scsiPassthroughDirect.Lun = scsiIoCtx->device->os_info.scsi_addr.Lun;
     psptd->scsiPassthroughDirect.CdbLength = scsiIoCtx->cdbLength;
     psptd->scsiPassthroughDirect.ScsiStatus = 255;//set to something invalid
-    psptd->scsiPassthroughDirect.SenseInfoLength = scsiIoCtx->senseDataSize;
+    psptd->scsiPassthroughDirect.SenseInfoLength = C_CAST(UCHAR, scsiIoCtx->senseDataSize);
     ZeroMemory(psptd->senseBuffer, SPC3_SENSE_LEN);
     switch (scsiIoCtx->direction)
     {
@@ -3190,7 +3182,7 @@ int convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(ScsiIoCtx *scsiIoCtx, 
     psptd->scsiPassthrough.Lun = scsiIoCtx->device->os_info.scsi_addr.Lun;
     psptd->scsiPassthrough.CdbLength = scsiIoCtx->cdbLength;
     psptd->scsiPassthrough.ScsiStatus = 255;//set to something invalid
-    psptd->scsiPassthrough.SenseInfoLength = scsiIoCtx->senseDataSize;
+    psptd->scsiPassthrough.SenseInfoLength = C_CAST(UCHAR, scsiIoCtx->senseDataSize);
     ZeroMemory(psptd->senseBuffer, SPC3_SENSE_LEN);
     switch (scsiIoCtx->direction)
     {
@@ -4656,8 +4648,8 @@ int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busType)
 #if defined (_DEBUG)
         printf("Got Win10 FWDL Info\n");
         printf("\tSupported: %d\n", fwdlSupportedInfo->SupportUpgrade);
-        printf("\tPayload Alignment: %d\n", fwdlSupportedInfo->ImagePayloadAlignment);
-        printf("\tmaxXferSize: %d\n", fwdlSupportedInfo->ImagePayloadMaxSize);
+        printf("\tPayload Alignment: %ld\n", fwdlSupportedInfo->ImagePayloadAlignment);
+        printf("\tmaxXferSize: %ld\n", fwdlSupportedInfo->ImagePayloadMaxSize);
         printf("\tPendingActivate: %d\n", fwdlSupportedInfo->PendingActivateSlot);
         printf("\tActiveSlot: %d\n", fwdlSupportedInfo->ActiveSlot);
         printf("\tSlot Count: %d\n", fwdlSupportedInfo->SlotCount);
@@ -4674,7 +4666,7 @@ int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busType)
     }
     else
     {
-        DWORD lastError = GetLastError();
+        //DWORD lastError = GetLastError();
         ret = FAILURE;
     }
     safe_Free(outputData);
@@ -5634,7 +5626,7 @@ int os_Bus_Reset(tDevice *device)
     return ret;
 }
 
-int os_Controller_Reset(tDevice *device)
+int os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
@@ -6014,270 +6006,6 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
 #define NVME_IDENTIFY_CNS_ACTIVE_NAMESPACES 2
 #endif
 
-void set_Namespace_ID_For_Device(tDevice *device)
-{
-    //This function is way more complicated than it needs to be! (Thanks MS)
-    //First, we read controller identify data to see how many namespaces are supported.
-    //TODO: Second, if the controller supports more than 1 namespace, we will issue a few additional commands to try and determine which one it is...
-    uint8_t nvmeControllerIdentify[NVME_IDENTIFY_DATA_LEN] = { 0 };
-    if (SUCCESS == nvme_Identify(device, nvmeControllerIdentify, 0, 1))
-    {
-        uint32_t maxNamespaces = M_BytesTo4ByteValue(nvmeControllerIdentify[519], nvmeControllerIdentify[518], nvmeControllerIdentify[517], nvmeControllerIdentify[516]);
-        if (maxNamespaces > 1)
-        {
-            //Check if the current namespace size matches the total NVM size or not.
-            //If it does match, then we only have 1 namespace in use right now.
-            struct
-            {
-                uint64_t highPart;
-                uint64_t lowPart;
-            }tnvmCap;
-            tnvmCap.highPart = M_BytesTo8ByteValue(nvmeControllerIdentify[295], nvmeControllerIdentify[294], nvmeControllerIdentify[293], nvmeControllerIdentify[292], nvmeControllerIdentify[291], nvmeControllerIdentify[290], nvmeControllerIdentify[289], nvmeControllerIdentify[288]);
-            tnvmCap.lowPart = M_BytesTo8ByteValue(nvmeControllerIdentify[287], nvmeControllerIdentify[286], nvmeControllerIdentify[285], nvmeControllerIdentify[284], nvmeControllerIdentify[283], nvmeControllerIdentify[282], nvmeControllerIdentify[281], nvmeControllerIdentify[280]);
-            uint8_t nvmeNamespaceIdentify[NVME_IDENTIFY_DATA_LEN] = { 0 };
-            nvme_Identify(device, nvmeNamespaceIdentify, 0, 0);//This command SHOULD always pass, but it doesn't matter if it fails right now since the rest of this code should work regardless. - TJE
-            struct
-            {
-                uint64_t highPart;
-                uint64_t lowPart;
-            }nvmCap;
-            nvmCap.highPart = M_BytesTo8ByteValue(nvmeNamespaceIdentify[63], nvmeNamespaceIdentify[62], nvmeNamespaceIdentify[61], nvmeNamespaceIdentify[60], nvmeNamespaceIdentify[59], nvmeNamespaceIdentify[58], nvmeNamespaceIdentify[57], nvmeNamespaceIdentify[56]);
-            nvmCap.lowPart = M_BytesTo8ByteValue(nvmeNamespaceIdentify[55], nvmeNamespaceIdentify[54], nvmeNamespaceIdentify[53], nvmeNamespaceIdentify[52], nvmeNamespaceIdentify[51], nvmeNamespaceIdentify[50], nvmeNamespaceIdentify[49], nvmeNamespaceIdentify[48]);
-            //If these two capacities match, and the device supports management and attachment commands (which it SHOULD), then we are good to go...
-            if (nvmCap.highPart == tnvmCap.highPart && nvmCap.lowPart == tnvmCap.lowPart && nvmeControllerIdentify[256] & BIT3)
-            {
-                device->drive_info.namespaceID = 1;
-            }
-            else
-            {
-                //      1. If we know the devie supports multiple namespaces, take current handle value - maxNamespaces
-                //      2. Start at that handle value (or zero) and open that handle
-                //      3. Check that the device MN, SN, and IEEE OUI matches the handle we had coming into here.
-                //      4. If the MN matches (and/or vendor ID is "NVMe") then we can get the difference between the handle numbers to know what namespace we are talking to since Windows will enumerate them in order.
-                //      NOTE: All NVMe namespaces start at 1, so we just need to make sure we take that into account.
-                //      NOTE2: This code is long and ugly because other attempts by reading topology information or trying to read namespace list or other namespace identify data all failed.
-                int32_t currentHandleNumber = 0;
-                char currentHandleString[31] = { 0 };
-                memcpy(&currentHandleString, device->os_info.name, 30);
-                convert_String_To_Upper_Case(currentHandleString);
-                int sscanfRet = sscanf(currentHandleString, WIN_PHYSICAL_DRIVE "%" PRId32, &currentHandleNumber);//This will get the handle value we are talking to right now...
-                if (sscanfRet == 0 || sscanfRet == EOF)
-                {
-                    //couldn't parse the handle name for this, so stop and return
-                    return;
-                }
-
-                uint32_t startHandleValue = 0;
-                if ((int32_t)(currentHandleNumber - maxNamespaces) > 0)
-                {
-                    startHandleValue = (currentHandleNumber - maxNamespaces);
-                }
-
-                //If our start and current handle match, this is the first namespace - TJE
-                if (startHandleValue == currentHandleNumber)//This SHOULD prevent us from needing to compare anything in namespace identify data and shorten the amount of code below - TJE
-                {
-                    device->drive_info.namespaceID = 1;
-                }
-                else
-                {
-                    //First, get some current identifying information
-                    char currentModelNumber[41] = { 0 };
-                    memcpy(currentModelNumber, &nvmeControllerIdentify[24], 40);
-                    char currentSerialNumber[21] = { 0 };
-                    memcpy(currentSerialNumber, &nvmeControllerIdentify[4], 20);
-                    uint32_t currentIEEEOUI = M_BytesTo4ByteValue(0, nvmeControllerIdentify[75], nvmeControllerIdentify[74], nvmeControllerIdentify[73]);
-                    uint16_t currentControllerID = M_BytesTo2ByteValue(nvmeControllerIdentify[79], nvmeControllerIdentify[78]);//only on NVMe 1.1 & higher devices - TJE
-                    uint8_t currentFguid[16] = { 0 };//NVMe 1.3 & higher (when implemented)
-                    memcpy(currentFguid, &nvmeControllerIdentify[112], 16);
-
-                    bool foundAMatchingDevice = false;
-                    //Now, we need to loop until we find the first device that has a matching MN & SN & IEEE OUI
-                    for (uint32_t counter = startHandleValue; counter < MAX_DEVICES_TO_SCAN && (int32_t)counter <= currentHandleNumber && !foundAMatchingDevice; ++counter)
-                    {
-                        char device_name[40] = { 0 };
-                        LPCSTR ptrDeviceName = &device_name[0];
-                        sprintf(&device_name[0], WIN_PHYSICAL_DRIVE "%" PRIu32, counter);
-                        //First set a device name into a buffer to open it
-                        HANDLE checkHandle = CreateFileA(ptrDeviceName,
-                            /* We are reverting to the GENERIC_WRITE | GENERIC_READ because
-                            in the use case of a dll where multiple applications are using
-                            our library, this needs to not request full access. If you suspect
-                            some commands might fail (e.g. ISE/SED because of that
-                            please notify the developers -MA */
-                            GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
-                            FILE_SHARE_READ | FILE_SHARE_WRITE,
-                            NULL,
-                            OPEN_EXISTING,
-#if !defined(WINDOWS_DISABLE_OVERLAPPED)
-                            FILE_FLAG_OVERLAPPED,
-#else
-                            0,
-#endif
-                            NULL);
-
-                        if (checkHandle != INVALID_HANDLE_VALUE)
-                        {
-                            //This is a valid device!
-                            //Get some device descriptor information to make sure it's an NVMe interface
-                            // Now lets get device stuff
-                            STORAGE_PROPERTY_QUERY      query;
-                            STORAGE_DESCRIPTOR_HEADER   header;
-                            DWORD returned_data = 0;
-                            memset(&query, 0, sizeof(STORAGE_PROPERTY_QUERY));
-                            memset(&header, 0, sizeof(STORAGE_DESCRIPTOR_HEADER));
-                            query.QueryType = PropertyStandardQuery;
-                            query.PropertyId = StorageDeviceProperty;
-                            if (DeviceIoControl(checkHandle,
-                                IOCTL_STORAGE_QUERY_PROPERTY,
-                                &query,
-                                sizeof(STORAGE_PROPERTY_QUERY),
-                                &header,
-                                sizeof(STORAGE_DESCRIPTOR_HEADER),
-                                &returned_data,
-                                FALSE))
-                            {
-                                PSTORAGE_DEVICE_DESCRIPTOR device_desc = (PSTORAGE_DEVICE_DESCRIPTOR)LocalAlloc(LPTR, header.Size);
-                                if (DeviceIoControl(checkHandle,
-                                    IOCTL_STORAGE_QUERY_PROPERTY,
-                                    &query,
-                                    sizeof(STORAGE_PROPERTY_QUERY),
-                                    device_desc,
-                                    header.Size,
-                                    &returned_data,
-                                    FALSE)
-                                )
-                                {
-                                    if (device_desc->BusType == BusTypeNvme)
-                                    {
-                                        //we know it's an NVMe device, so now we need to get the controller identify data for this device and see if it matches this device or not
-                                        //BOOL    result;
-                                        PVOID   buffer = NULL;
-                                        ULONG   bufferLength = 0;
-                                        ULONG   returnedLength = 0;
-
-                                        PSTORAGE_PROPERTY_QUERY query = NULL;
-                                        PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = NULL;
-                                        PSTORAGE_PROTOCOL_DATA_DESCRIPTOR protocolDataDescr = NULL;
-
-                                        //
-                                        // Allocate buffer for use.
-                                        //
-                                        bufferLength = FIELD_OFFSET(STORAGE_PROPERTY_QUERY, AdditionalParameters) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA) + NVME_IDENTIFY_DATA_LEN;
-                                        buffer = malloc(bufferLength);
-
-                                        if (buffer)
-                                        {
-
-                                            /*
-                                            Initialize query data structure to get Identify Controller Data.
-                                            */
-                                            ZeroMemory(buffer, bufferLength);
-
-                                            query = (PSTORAGE_PROPERTY_QUERY)buffer;
-                                            protocolDataDescr = (PSTORAGE_PROTOCOL_DATA_DESCRIPTOR)buffer;
-                                            protocolData = (PSTORAGE_PROTOCOL_SPECIFIC_DATA)query->AdditionalParameters;
-
-                                            //Identify controller data
-                                            query->PropertyId = StorageAdapterProtocolSpecificProperty;
-                                            protocolData->ProtocolDataRequestValue = NVME_IDENTIFY_CNS_CONTROLLER;
-                                            query->QueryType = PropertyStandardQuery;
-                                            protocolData->ProtocolType = ProtocolTypeNvme;
-                                            protocolData->DataType = NVMeDataTypeIdentify;
-                                            protocolData->ProtocolDataRequestSubValue = 0;
-                                            protocolData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA);
-                                            protocolData->ProtocolDataLength = NVME_IDENTIFY_DATA_LEN;
-
-                                            /*
-                                            // Send request down.
-                                            */
-
-                                            if (DeviceIoControl(checkHandle,
-                                                IOCTL_STORAGE_QUERY_PROPERTY,
-                                                buffer,
-                                                bufferLength,
-                                                buffer,
-                                                bufferLength,
-                                                &returnedLength,
-                                                NULL
-                                                )
-                                                )
-                                            {
-                                                //got namespace identify information for this handle we're checking.
-                                                //Now compare it and see if we have a match!!!
-                                                uint8_t* checkIdentifyControllerData = (char*)((PCHAR)protocolData + protocolData->ProtocolDataOffset);
-
-                                                char checkModelNumber[41] = { 0 };
-                                                memcpy(checkModelNumber, &checkIdentifyControllerData[24], 40);
-                                                char checkSerialNumber[21] = { 0 };
-                                                memcpy(checkSerialNumber, &checkIdentifyControllerData[4], 20);
-                                                uint32_t checkIEEEOUI = M_BytesTo4ByteValue(0, checkIdentifyControllerData[75], checkIdentifyControllerData[74], checkIdentifyControllerData[73]);
-                                                uint16_t checkControllerID = M_BytesTo2ByteValue(checkIdentifyControllerData[79], checkIdentifyControllerData[78]);//only on NVMe 1.1 & higher devices - TJE
-                                                uint8_t checkFguid[16] = { 0 };//NVMe 1.3 & higher (when implemented)
-                                                memcpy(checkFguid, &checkIdentifyControllerData[112], 16);
-
-                                                if (checkIEEEOUI == currentIEEEOUI
-                                                    &&
-                                                    strcmp(checkModelNumber, currentModelNumber) == 0
-                                                    &&
-                                                    strcmp(checkSerialNumber, currentSerialNumber) == 0
-                                                    &&
-                                                    checkControllerID == currentControllerID
-                                                    &&
-                                                    memcmp(checkFguid, currentFguid, 16) == 0
-                                                    )
-                                                {
-                                                    //This is the same controller for this drive!!!
-                                                    //We have found a match!
-                                                    //now check the difference between the handle values and we'll have the namespace number!
-                                                    foundAMatchingDevice = true;
-                                                    if ((currentHandleNumber - counter) > 0)
-                                                    {
-                                                        //We should only ever fall into here because the currentHandleNumber should always be greater than the handle we are trying to check.
-                                                        device->drive_info.namespaceID = (currentHandleNumber - counter) + 1;//plus 1 since the NSID is a 1 based value
-#if defined (_DEBUG)
-                                                        printf("NSID was set to %" PRIu32 "\n", device->drive_info.namespaceID);
-#endif
-                                                    }
-                                                    else
-                                                    {
-                                                        //This is not expected!!!
-#if defined (_DEBUG)
-                                                        printf("ERROR encountered while determining the NSID of this device!\n");
-#endif
-                                                    }
-                                                }
-                                            }
-                                            safe_Free(buffer);
-                                        }
-                                    }
-                                }
-                                LocalFree(device_desc);
-                            }
-                            //else...we couldn't figure it out...just bailing since our normal get_Device code would! - TJE
-                            //close the handle since we are now done with it
-                            CloseHandle(checkHandle);
-                        }
-
-                    }
-
-                    if (!foundAMatchingDevice)
-                    {
-                        //This LIKELY means that the device supports multiple namespaces, but is only using 1 at the moment
-                        //This assumption SHOULD be fairly safe to make, but this might be a bug later - TJE
-                        device->drive_info.namespaceID = 1;
-                    }
-                }
-            }
-        }
-        else
-        {
-            device->drive_info.namespaceID = 1;
-        }
-    }
-
-    return;// ret;
-}
-
 int send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
 {
     int     ret = SUCCESS;
@@ -6648,7 +6376,7 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
     }
     downloadActivate.Slot = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
 #if defined (_DEBUG)
-    printf("%s: downloadActivate->Version=%d\n\t->Size=%d\n\t->Flags=0x%X\n\t->Slot=%d\n",\
+    printf("%s: downloadActivate->Version=%ld\n\t->Size=%ld\n\t->Flags=0x%lX\n\t->Slot=%d\n",\
         __FUNCTION__, downloadActivate.Version,downloadActivate.Size, downloadActivate.Flags, downloadActivate.Slot);
 #endif
     DWORD returned_data = 0;
@@ -6729,7 +6457,7 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2) + nvmeIoCtx->dataSize;
     PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2 downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2)malloc(downloadStructureSize);
 #if defined (_DEBUG)
-    printf("%s: sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2)=%zu+%d=%d\n", \
+    printf("%s: sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2)=%zu+%" PRIu32 "=%ld\n", \
         __FUNCTION__, sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2), nvmeIoCtx->dataSize, downloadStructureSize);
 #endif
 #else
@@ -6778,7 +6506,7 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     memcpy(downloadIO->ImageBuffer, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
 
 #if defined (_DEBUG)
-    printf("%s: downloadIO\n\t->Version=%d\n\t->Size=%d\n\t->Flags=0x%X\n\t->Slot=%d\n\t->Offset=0x%llX\n\t->BufferSize=0x%llX\n", \
+    printf("%s: downloadIO\n\t->Version=%ld\n\t->Size=%ld\n\t->Flags=0x%lX\n\t->Slot=%d\n\t->Offset=0x%llX\n\t->BufferSize=0x%llX\n", \
         __FUNCTION__, downloadIO->Version, downloadIO->Size, downloadIO->Flags, downloadIO->Slot, downloadIO->Offset, downloadIO->BufferSize);
     //print_Data_Buffer(downloadIO->ImageBuffer, (downloadStructureSize - FIELD_OFFSET(STORAGE_HW_FIRMWARE_DOWNLOAD, ImageBuffer)), false);
 #endif
@@ -7107,7 +6835,7 @@ int send_NVMe_Set_Features_Win10(nvmeCmdCtx *nvmeIoCtx, bool *useNVMPassthrough)
     int ret = OS_COMMAND_NOT_AVAILABLE;
     //TODO: Depending on the feature, we may need a SCSI translation, a Windows API call, or we won't be able to perform any translation at all.
     //IOCTL_STORAGE_DEVICE_POWER_CAP
-    bool save = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT31;
+    //bool save = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT31;
     uint8_t featureID = M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10);
     switch (featureID)
     {
@@ -7175,7 +6903,7 @@ int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
     bool mset = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT4;
     uint8_t lbaFormat = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 3, 0);
     nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-    if (reservedBitsDWord10 == 0 && secureEraseSettings == 0)//we dont want to miss parameters that are currently reserved and we cannot do a secure erase with this translation
+    if (reservedBitsDWord10 == 0 && secureEraseSettings == 0 && !pil && mset)//we dont want to miss parameters that are currently reserved and we cannot do a secure erase with this translation
     {
         //mode select with mode descriptor (if needed for block size changes)
         //First we need to map the incoming LBA format to a size in bytes to send in a mode select
@@ -7573,7 +7301,7 @@ int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
             //if (!atLeastOneContextAttributeSet) //This is commented out for now, but we can use it to return OS_COMMAND_NOT_SUPPORTED if we want to - TJE
             {
                 //send the command
-                ret = scsi_Unmap(nvmeIoCtx->device, false, 0, unmapDataLength, unmapParameterData);
+                ret = scsi_Unmap(nvmeIoCtx->device, false, 0, C_CAST(uint16_t, unmapDataLength), unmapParameterData);
             }
         }
         else
@@ -8079,7 +7807,6 @@ int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 #if WINVER >= SEA_WIN32_WINNT_WIN10 //This should wrap around anything going through the Windows API...Win 10 is required for NVMe IOs
         //TODO: If different versions of Windows 10 API support different commands, then check WIN_API_TARGET_VERSION to see which version of the API is in use to filter this list better. - TJE
         bool useNVMPassthrough = false;//this is only true when attempting the command with the generic storage protocol command IOCTL which is supposed to be used for VU commands only. - TJE
-        int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
         switch (nvmeIoCtx->cmd.adminCmd.opcode)
         {
         case NVME_ADMIN_CMD_IDENTIFY:
@@ -8138,7 +7865,7 @@ int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             break;
         default:
             //Check if it's a vendor unique op code.
-            if (nvmeIoCtx->cmd.adminCmd.opcode >= 0xC0 && nvmeIoCtx->cmd.adminCmd.opcode <= 0xFF)//admin commands in this range are vendor unique
+            if (nvmeIoCtx->cmd.adminCmd.opcode >= 0xC0 /*&& nvmeIoCtx->cmd.adminCmd.opcode <= 0xFF*/)//admin commands in this range are vendor unique
             {
                 useNVMPassthrough = true;
             }
@@ -8183,7 +7910,7 @@ int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         //NOTE: No reservation commands are supported according to MSFT docs. Code for attempting SCSI commands is available, and MSFT does have IOCTLs specific for reservations that might work, but it is not documented
         default:
             //Check if it's a vendor unique op code.
-            if (nvmeIoCtx->cmd.adminCmd.opcode >= 0x80 && nvmeIoCtx->cmd.adminCmd.opcode <= 0xFF)//admin commands in this range are vendor unique
+            if (nvmeIoCtx->cmd.adminCmd.opcode >= 0x80 /* && nvmeIoCtx->cmd.adminCmd.opcode <= 0xFF */)//admin commands in this range are vendor unique
             {
                 useNVMPassthrough = true;
             }
@@ -8283,7 +8010,7 @@ int os_nvme_Subsystem_Reset(tDevice *device)
     return ret;
 }
 
-int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize)
+int pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }

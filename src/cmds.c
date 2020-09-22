@@ -77,7 +77,7 @@ int send_Sanitize_Crypto_Erase(tDevice *device, bool exitFailureMode, bool znr)
     return ret;
 }
 
-int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool invertBetweenPasses, uint8_t overwritePasses, uint8_t *pattern, uint32_t patternLength, bool znr)
+int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool invertBetweenPasses, uint8_t overwritePasses, uint8_t *pattern, uint16_t patternLength, bool znr)
 {
     int ret = UNKNOWN;
     bool localPattern = false;
@@ -362,7 +362,7 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
         //ret = ata_Download_Microcode(device, ataDLMode, xferLen / LEGACY_DRIVE_SEC_SIZE, offset / LEGACY_DRIVE_SEC_SIZE, useDMA, ptrData, xferLen);
         //Switching to this new function since it will automatically try DMA mode if supported by the drive.
         //If the controller or driver don't like issuing DMA mode, this will detect it and retry the command with PIO mode.
-        ret = send_ATA_Download_Microcode_Cmd(device, ataDLMode, xferLen / LEGACY_DRIVE_SEC_SIZE, offset / LEGACY_DRIVE_SEC_SIZE, ptrData, xferLen, firstSegment, lastSegment, timeoutSeconds);
+        ret = send_ATA_Download_Microcode_Cmd(device, ataDLMode, C_CAST(uint16_t, xferLen / LEGACY_DRIVE_SEC_SIZE), C_CAST(uint16_t, offset / LEGACY_DRIVE_SEC_SIZE), ptrData, xferLen, firstSegment, lastSegment, timeoutSeconds);
     }
         break;
     case NVME_DRIVE:
@@ -936,9 +936,9 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                                 uint16_t cylinder = 0;
                                 uint8_t head = 0;
                                 uint8_t sector = 0;
-                                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                                if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, lba), &cylinder, &head, &sector))
                                 {
-                                    ret = ata_Legacy_Read_Multiple_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, true);
+                                    ret = ata_Legacy_Read_Multiple_CHS(device, cylinder, head, sector, ptrData, C_CAST(uint16_t, sectors), dataSize, true);
                                 }
                                 else //Couldn't convert or the LBA is greater than the current CHS mode
                                 {
@@ -947,7 +947,7 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                             }
                             else
                             {
-                                ret = ata_Read_Multiple(device, lba, ptrData, sectors, dataSize, true);
+                                ret = ata_Read_Multiple(device, lba, ptrData, C_CAST(uint16_t, sectors), dataSize, true);
                             }
                         }
                         else
@@ -957,9 +957,9 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                                 uint16_t cylinder = 0;
                                 uint8_t head = 0;
                                 uint8_t sector = 0;
-                                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                                if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, lba), &cylinder, &head, &sector))
                                 {
-                                    ret = ata_Legacy_Read_Sectors_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, true);
+                                    ret = ata_Legacy_Read_Sectors_CHS(device, cylinder, head, sector, ptrData, C_CAST(uint16_t, sectors), dataSize, true);
                                 }
                                 else //Couldn't convert or the LBA is greater than the current CHS mode
                                 {
@@ -968,7 +968,7 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                             }
                             else
                             {
-                                ret = ata_Read_Sectors(device, lba, ptrData, sectors, dataSize, true);
+                                ret = ata_Read_Sectors(device, lba, ptrData, C_CAST(uint16_t, sectors), dataSize, true);
                             }
                         }
                     }
@@ -979,9 +979,9 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                             uint16_t cylinder = 0;
                             uint8_t head = 0;
                             uint8_t sector = 0;
-                            if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                            if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, lba), &cylinder, &head, &sector))
                             {
-                                ret = ata_Legacy_Read_DMA_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, true);
+                                ret = ata_Legacy_Read_DMA_CHS(device, cylinder, head, sector, ptrData, C_CAST(uint16_t, sectors), dataSize, true);
                             }
                             else //Couldn't convert or the LBA is greater than the current CHS mode
                             {
@@ -991,7 +991,7 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                         else
                         {
                             //use DMA commands
-                            ret = ata_Read_DMA(device, lba, ptrData, sectors, dataSize, true);
+                            ret = ata_Read_DMA(device, lba, ptrData, C_CAST(uint16_t, sectors), dataSize, true);
                         }
                         if (ret != SUCCESS)
                         {
@@ -1051,9 +1051,9 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                                 uint16_t cylinder = 0;
                                 uint8_t head = 0;
                                 uint8_t sector = 0;
-                                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                                if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, lba), &cylinder, &head, &sector))
                                 {
-                                    ret = ata_Legacy_Read_Multiple_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, false);
+                                    ret = ata_Legacy_Read_Multiple_CHS(device, cylinder, head, sector, ptrData, C_CAST(uint16_t, sectors), dataSize, false);
                                 }
                                 else //Couldn't convert or the LBA is greater than the current CHS mode
                                 {
@@ -1062,7 +1062,7 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                             }
                             else
                             {
-                                ret = ata_Read_Multiple(device, lba, ptrData, sectors, dataSize, false);
+                                ret = ata_Read_Multiple(device, lba, ptrData, C_CAST(uint16_t, sectors), dataSize, false);
                             }
                         }
                         else
@@ -1072,9 +1072,9 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                                 uint16_t cylinder = 0;
                                 uint8_t head = 0;
                                 uint8_t sector = 0;
-                                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                                if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, lba), &cylinder, &head, &sector))
                                 {
-                                    ret = ata_Legacy_Read_Sectors_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, false);
+                                    ret = ata_Legacy_Read_Sectors_CHS(device, cylinder, head, sector, ptrData, C_CAST(uint16_t, sectors), dataSize, false);
                                 }
                                 else //Couldn't convert or the LBA is greater than the current CHS mode
                                 {
@@ -1083,7 +1083,7 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                             }
                             else
                             {
-                                ret = ata_Read_Sectors(device, lba, ptrData, sectors, dataSize, false);
+                                ret = ata_Read_Sectors(device, lba, ptrData, C_CAST(uint16_t, sectors), dataSize, false);
                             }
                         }
                     }
@@ -1094,9 +1094,9 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                             uint16_t cylinder = 0;
                             uint8_t head = 0;
                             uint8_t sector = 0;
-                            if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                            if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, lba), &cylinder, &head, &sector))
                             {
-                                ret = ata_Legacy_Read_DMA_CHS(device, cylinder, head, sector, ptrData, sectors, dataSize, false);
+                                ret = ata_Legacy_Read_DMA_CHS(device, cylinder, head, sector, ptrData, C_CAST(uint16_t, sectors), dataSize, false);
                             }
                             else //Couldn't convert or the LBA is greater than the current CHS mode
                             {
@@ -1106,7 +1106,7 @@ int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
                         else
                         {
                             //use DMA commands
-                            ret = ata_Read_DMA(device, lba, ptrData, sectors, dataSize, false);
+                            ret = ata_Read_DMA(device, lba, ptrData, C_CAST(uint16_t, sectors), dataSize, false);
                         }
                         if (ret != SUCCESS)
                         {
@@ -1414,15 +1414,15 @@ int scsi_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
             }
             else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12)
             {
-                ret = scsi_Read_12(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                ret = scsi_Read_12(device, 0, false, false, false, C_CAST(uint32_t, lba), 0, sectors, ptrData, dataSize);
             }
             else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10)
             {
-                ret = scsi_Read_10(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                ret = scsi_Read_10(device, 0, false, false, false, C_CAST(uint32_t, lba), 0, C_CAST(uint16_t, sectors), ptrData, dataSize);
             }
             else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6)
             {
-                ret = scsi_Read_6(device, (uint32_t)lba, sectors, ptrData, dataSize);
+                ret = scsi_Read_6(device, C_CAST(uint32_t, lba), C_CAST(uint8_t, sectors), ptrData, dataSize);
             }
             else
             {
@@ -1438,7 +1438,7 @@ int scsi_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                 if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && sectors <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
                 {
                     //use read 10
-                    ret = scsi_Read_10(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                    ret = scsi_Read_10(device, 0, false, false, false, C_CAST(uint32_t, lba), 0, C_CAST(uint16_t, sectors), ptrData, dataSize);
                 }
                 else
                 {
@@ -1449,7 +1449,7 @@ int scsi_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
             else
             {
                 //try a read10. If it fails for invalid op-code, then try read 6
-                ret = scsi_Read_10(device, 0, false, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                ret = scsi_Read_10(device, 0, false, false, false, C_CAST(uint32_t, lba), 0, C_CAST(uint16_t, sectors), ptrData, dataSize);
                 if (SUCCESS != ret)
                 {
                     senseDataFields readSense;
@@ -1457,7 +1457,7 @@ int scsi_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                     get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &readSense);
                     if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x20 && readSense.scsiStatusCodes.ascq == 0x00)
                     {
-                        ret = scsi_Read_6(device, (uint32_t)lba, sectors, ptrData, dataSize);
+                        ret = scsi_Read_6(device, C_CAST(uint32_t, lba), C_CAST(uint8_t, sectors), ptrData, dataSize);
                         if (SUCCESS == ret)
                         {
                             //setup the hacks like this so prevent future retries
@@ -1498,15 +1498,15 @@ int scsi_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint
             }
             else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12)
             {
-                ret = scsi_Write_12(device, 0, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                ret = scsi_Write_12(device, 0, false, false, C_CAST(uint32_t, lba), 0, sectors, ptrData, dataSize);
             }
             else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10)
             {
-                ret = scsi_Write_10(device, 0, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                ret = scsi_Write_10(device, 0, false, false, C_CAST(uint32_t, lba), 0, C_CAST(uint16_t, sectors), ptrData, dataSize);
             }
             else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6)
             {
-                ret = scsi_Write_6(device, (uint32_t)lba, sectors, ptrData, dataSize);
+                ret = scsi_Write_6(device, C_CAST(uint32_t, lba), C_CAST(uint8_t, sectors), ptrData, dataSize);
             }
             else
             {
@@ -1522,7 +1522,7 @@ int scsi_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint
                 if (device->drive_info.deviceMaxLba <= UINT32_MAX && sectors <= UINT16_MAX && lba <= UINT32_MAX)
                 {
                     //use write 10
-                    ret = scsi_Write_10(device, 0, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                    ret = scsi_Write_10(device, 0, false, false, C_CAST(uint32_t, lba), 0, C_CAST(uint16_t, sectors), ptrData, dataSize);
                 }
                 else
                 {
@@ -1533,7 +1533,7 @@ int scsi_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint
             else
             {
                 //try a write10. If it fails for invalid op-code, then try read 6
-                ret = scsi_Write_10(device, 0, false, false, (uint32_t)lba, 0, sectors, ptrData, dataSize);
+                ret = scsi_Write_10(device, 0, false, false, C_CAST(uint32_t, lba), 0, C_CAST(uint16_t, sectors), ptrData, dataSize);
                 if (SUCCESS != ret)
                 {
                     senseDataFields readSense;
@@ -1541,7 +1541,7 @@ int scsi_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint
                     get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &readSense);
                     if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x20 && readSense.scsiStatusCodes.ascq == 0x00)
                     {
-                        ret = scsi_Write_6(device, (uint32_t)lba, sectors, ptrData, dataSize);
+                        ret = scsi_Write_6(device, C_CAST(uint32_t, lba), C_CAST(uint8_t, sectors), ptrData, dataSize);
                         if (SUCCESS == ret)
                         {
                             //setup the hacks like this so prevent future retries
@@ -1585,7 +1585,7 @@ int io_Read(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32_
         break;
     case NVME_INTERFACE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-        return nvme_Read(device, lba, (dataSize / device->drive_info.deviceBlockSize) - 1, false, false, 0, ptrData, dataSize);
+        return nvme_Read(device, lba, C_CAST(uint16_t, (dataSize / device->drive_info.deviceBlockSize) - 1), false, false, 0, ptrData, dataSize);
 #else 
         //perform SCSI reads
         return scsi_Read(device, lba, async, ptrData, dataSize);
@@ -1598,7 +1598,6 @@ int io_Read(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32_
         return NOT_SUPPORTED;
         break;
     }
-    return UNKNOWN;
 }
 
 int io_Write(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32_t dataSize)
@@ -1630,7 +1629,7 @@ int io_Write(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32
         break;
     case NVME_INTERFACE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-        return nvme_Write(device, lba, (dataSize / device->drive_info.deviceBlockSize) - 1, false, false, 0, 0, ptrData, dataSize);
+        return nvme_Write(device, lba, C_CAST(uint16_t, (dataSize / device->drive_info.deviceBlockSize) - 1), false, false, 0, 0, ptrData, dataSize);
 #else 
         //perform SCSI writes
         return scsi_Write(device, lba, async, ptrData, dataSize);
@@ -1642,7 +1641,6 @@ int io_Write(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32
         return NOT_SUPPORTED;
         break;
     }
-    return UNKNOWN;
 }
 
 int read_LBA(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32_t dataSize)
@@ -1788,7 +1786,7 @@ int nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
     uint8_t *data = (uint8_t*)calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment);
     if (data)
     {
-        ret = nvme_Read(device, lba, range - 1, false, true, 0, data, dataLength);
+        ret = nvme_Read(device, lba, C_CAST(uint16_t, range - 1), false, true, 0, data, dataLength);
     }
     else
     {
@@ -1837,7 +1835,6 @@ int verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
             break;
         }
     }
-    return UNKNOWN;
 }
 
 int ata_Flush_Cache_Command(tDevice *device)
@@ -1902,7 +1899,6 @@ int flush_Cache(tDevice *device)
             break;
         }
     }
-    return UNKNOWN;
 }
 
 int close_Zone(tDevice *device, bool closeAll, uint64_t zoneID)
@@ -1987,7 +1983,7 @@ int report_Zones(tDevice *device, eZoneReportingOptions reportingOptions, bool p
         {
             return BAD_PARAMETER;
         }
-        ret = ata_Report_Zones_Ext(device, reportingOptions, partial, dataSize / LEGACY_DRIVE_SEC_SIZE, zoneLocator, ptrData, dataSize);
+        ret = ata_Report_Zones_Ext(device, reportingOptions, partial, C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), zoneLocator, ptrData, dataSize);
         break;
     case SCSI_DRIVE:
         ret = scsi_Report_Zones(device, reportingOptions, partial, dataSize, zoneLocator, ptrData);

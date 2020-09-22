@@ -76,7 +76,7 @@ extern "C"
     //!   \return SUCCESS = pass, FAILURE = fail
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool invertBetweenPasses, uint8_t overwritePasses, uint8_t *pattern, uint32_t patternLength, bool znr);
+    OPENSEA_TRANSPORT_API int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool invertBetweenPasses, uint8_t overwritePasses, uint8_t *pattern, uint16_t patternLength, bool znr);
 
     //-----------------------------------------------------------------------------
     //

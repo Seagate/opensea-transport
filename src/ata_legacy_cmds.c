@@ -1261,7 +1261,7 @@ int ata_Legacy_Write_Verify_CHS(tDevice *device, uint16_t cylinder, uint8_t head
     ataCommandOptions.dataSize = dataSize;
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
-    ataCommandOptions.tfr.SectorCount = dataSize / LEGACY_DRIVE_SEC_SIZE;
+    ataCommandOptions.tfr.SectorCount = C_CAST(uint8_t, dataSize / LEGACY_DRIVE_SEC_SIZE);
     ataCommandOptions.tfr.SectorNumber = sector;
     ataCommandOptions.tfr.CylinderLow = M_Byte0(cylinder);
     ataCommandOptions.tfr.CylinderHigh = M_Byte1(cylinder);
@@ -1304,7 +1304,7 @@ int ata_Legacy_Write_Verify(tDevice *device, uint32_t lba, uint8_t *ptrData, uin
     ataCommandOptions.dataSize = dataSize;
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
-    ataCommandOptions.tfr.SectorCount = dataSize / LEGACY_DRIVE_SEC_SIZE;
+    ataCommandOptions.tfr.SectorCount = C_CAST(uint8_t, dataSize / LEGACY_DRIVE_SEC_SIZE);
     ataCommandOptions.tfr.LbaLow = M_Byte0(lba);
     ataCommandOptions.tfr.LbaMid = M_Byte1(lba);
     ataCommandOptions.tfr.LbaHi = M_Byte2(lba);

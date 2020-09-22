@@ -40,7 +40,6 @@ int nvme_Reset(tDevice *device)
     default:
         return BAD_PARAMETER;
     }
-    return BAD_PARAMETER;
 }
 
 int nvme_Subsystem_Reset(tDevice *device)
@@ -62,7 +61,6 @@ int nvme_Subsystem_Reset(tDevice *device)
     default:
         return BAD_PARAMETER;
     }
-    return BAD_PARAMETER;
 }
 
 int nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
