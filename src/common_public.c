@@ -2131,7 +2131,7 @@ bool is_Removable_Media(tDevice *device)
     }
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES )
     {
-        printf("Calling from file : %s function : %s line : %i \n", __FILE__, __FUNCTION__, __LINE__);
+        printf("Calling from file : %s function : %s line : %li \n", __FILE__, __FUNCTION__, __LINE__);
         if (result)
         {
             printf("This is a Removable Media");
