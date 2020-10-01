@@ -4875,6 +4875,16 @@ int ata_NCQ_Receive_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*
     ataCommandOptions.tfr.aux4 = M_Byte3(auxilary);
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
 
+    if (ataCommandOptions.tfr.aux1 ||
+        ataCommandOptions.tfr.aux2 ||
+        ataCommandOptions.tfr.aux3 ||
+        ataCommandOptions.tfr.aux4 ||
+        ataCommandOptions.tfr.icc
+        )
+    {
+        ataCommandOptions.commandType = ATA_CMD_TYPE_COMPLETE_TASKFILE;
+    }
+
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Receive FPDMA Queued, Subcommand %u\n", subCommand);
@@ -4927,6 +4937,16 @@ int ata_NCQ_Send_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*/, 
     ataCommandOptions.tfr.aux3 = M_Byte2(auxilary);
     ataCommandOptions.tfr.aux4 = M_Byte3(auxilary);
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
+
+    if (ataCommandOptions.tfr.aux1 ||
+        ataCommandOptions.tfr.aux2 ||
+        ataCommandOptions.tfr.aux3 ||
+        ataCommandOptions.tfr.aux4 ||
+        ataCommandOptions.tfr.icc
+        )
+    {
+        ataCommandOptions.commandType = ATA_CMD_TYPE_COMPLETE_TASKFILE;
+    }
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -4993,6 +5013,16 @@ int ata_NCQ_Read_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba, uint8_t *
     ataCommandOptions.tfr.icc = icc;
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
 
+    if (ataCommandOptions.tfr.aux1 ||
+        ataCommandOptions.tfr.aux2 ||
+        ataCommandOptions.tfr.aux3 ||
+        ataCommandOptions.tfr.aux4 ||
+        ataCommandOptions.tfr.icc
+        )
+    {
+        ataCommandOptions.commandType = ATA_CMD_TYPE_COMPLETE_TASKFILE;
+    }
+
     if (fua)
     {
         ataCommandOptions.tfr.DeviceHead |= BIT7;
@@ -5042,6 +5072,16 @@ int ata_NCQ_Write_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba, uint8_t 
     ataCommandOptions.tfr.aux4 = RESERVED;
     ataCommandOptions.tfr.icc = icc;
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
+
+    if (ataCommandOptions.tfr.aux1 ||
+        ataCommandOptions.tfr.aux2 ||
+        ataCommandOptions.tfr.aux3 ||
+        ataCommandOptions.tfr.aux4 ||
+        ataCommandOptions.tfr.icc
+        )
+    {
+        ataCommandOptions.commandType = ATA_CMD_TYPE_COMPLETE_TASKFILE;
+    }
 
     if (fua)
     {

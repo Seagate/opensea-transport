@@ -2382,10 +2382,9 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
 //-----------------------------------------------------------------------------
 int close_CSMI_RAID_Device(tDevice *device)
 {
-    int retValue = 0;
     if (device)
     {
-        retValue = CloseHandle(device->os_info.fd);
+        CloseHandle(device->os_info.fd);
         device->os_info.last_error = GetLastError();
         safe_Free(device->os_info.csmiDeviceData);
         device->os_info.last_error = 0;
@@ -2540,14 +2539,14 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
                 //Using the data we've already gotten, we need to save phy identifier, port identifier, port protocol, and SAS address.
                 //TODO: Check if we should be using the Identify or Attached structure information to populate the support fields.
                 //Identify appears to contain initiator data, and attached seems to include target data...
-                bool foundPhyInfoForDevice = false;
+                //bool foundPhyInfoForDevice = false;
                 for(uint8_t portNum = 0; portNum < 32 && portNum < phyInfo.Information.bNumberOfPhys; ++portNum)
                 {
                     if (phyInfo.Information.Phy[portNum].bPortIdentifier == portID && phyInfo.Information.Phy[portNum].Attached.bPhyIdentifier == phyID)
                     {
                         device->os_info.csmiDeviceData->portProtocol = phyInfo.Information.Phy[portNum].Attached.bTargetPortProtocol;
                         memcpy(device->os_info.csmiDeviceData->sasAddress, phyInfo.Information.Phy[portNum].Attached.bSASAddress, 8);
-                        foundPhyInfoForDevice = true;
+                        //foundPhyInfoForDevice = true;
                         break;
                     }
                 }
@@ -2970,7 +2969,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 
         //On non-Windows systems, we also have to check controller numbers...so there is one extra top-level loop for this on these systems.
         
-        while (raidList)
+        while (raidList && found < numberOfDevices)
         {
             bool handleRemoved = false;
             if (raidList->raidHint.csmiRAID || raidList->raidHint.unknownRAID)
@@ -3000,7 +2999,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 #endif
                 {
 #if !defined (_WIN32)
-                    for (controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS; ++controllerNumber)
+                    for (controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS && found < numberOfDevices; ++controllerNumber)
                     {
 #endif
                         //first, check if this handle supports CSMI before we try anything else
@@ -3047,7 +3046,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                 }
 #endif
                                 //Get RAID config
-                                for (uint32_t raidSet = 0; raidSet < csmiRAIDInfo.Information.uNumRaidSets; ++raidSet)
+                                for (uint32_t raidSet = 0; raidSet < csmiRAIDInfo.Information.uNumRaidSets && found < numberOfDevices; ++raidSet)
                                 {
                                     //start with a length that adds no padding for extra drives, then reallocate to a new size when we know the new size
                                     uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES);
@@ -3057,7 +3056,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                         if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, csmiListVerbosity))
                                         {
                                             //make sure we got all the drive information...if now, we need to reallocate with some more memory
-                                            for (uint16_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet; ++iter)
+                                            for (uint16_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet && found < numberOfDevices; ++iter)
                                             {
                                                 bool foundDevice = false;
                                                 char handle[20] = { 0 };

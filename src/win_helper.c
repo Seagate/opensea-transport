@@ -69,11 +69,11 @@
 
     //This is for looking up hardware IDs of devices for PCIe/USB, etc
     #if !defined (DEVPKEY_Device_HardwareIds)
-        DEFINE_DEVPROPKEY(DEVPKEY_Device_HardwareIds,            0xa45c254e, 0xdf1c, 0x4efd, 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0, 3); 
+        //DEFINE_DEVPROPKEY(DEVPKEY_Device_HardwareIds,            0xa45c254e, 0xdf1c, 0x4efd, 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0, 3); 
     #endif
 
     #if !defined (DEVPKEY_Device_CompatibleIds)
-        DEFINE_DEVPROPKEY(DEVPKEY_Device_CompatibleIds, 0xa45c254e, 0xdf1c, 0x4efd, 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0, 4);
+        //DEFINE_DEVPROPKEY(DEVPKEY_Device_CompatibleIds, 0xa45c254e, 0xdf1c, 0x4efd, 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0, 4);
     #endif
 
     #if !defined (CM_GETIDLIST_FILTER_PRESENT)
@@ -2430,10 +2430,10 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
         }
     }
 
-    int  driveNumber = 0, found = 0;
+    uint32_t driveNumber = 0, found = 0;
     for (driveNumber = 0; driveNumber < MAX_DEVICES_TO_SCAN; ++driveNumber)
     {
-        _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
+        _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%u"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
         //lets try to open the device.
         fd = CreateFile(deviceName,
                         GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
@@ -2526,8 +2526,8 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
 {
     int returnValue = SUCCESS;
-    int numberOfDevices = 0;
-    int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
+    uint32_t numberOfDevices = 0;
+    uint32_t driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     TCHAR deviceName[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
     char    name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 }; //Because get device needs char
     HANDLE fd = INVALID_HANDLE_VALUE;

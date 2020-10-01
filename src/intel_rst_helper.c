@@ -561,7 +561,7 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             {
             case XFER_DATA_OUT:
                 memcpy(nvmPassthroughCommand->data, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
-                //Fallthrough to setup the rest since it's the same
+                M_FALLTHROUGH
             case XFER_DATA_IN:
                 //set the data length and offset
                 nvmPassthroughCommand->Parameters.DataBufferLength = nvmeIoCtx->dataSize;
