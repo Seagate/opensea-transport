@@ -4765,6 +4765,51 @@ int ata_Remove_Element_And_Truncate(tDevice *device, uint32_t elementIdentifier,
     return ret;
 }
 
+int ata_Restore_Elements_And_Rebuild(tDevice *device)
+{
+    int ret = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions;
+    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    ataCommandOptions.commandDirection = XFER_NO_DATA;
+    ataCommandOptions.ptrData = NULL;
+    ataCommandOptions.dataSize = 0;
+    ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
+    ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
+    ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
+    ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
+    ataCommandOptions.tfr.CommandStatus = ATA_REMOVE_AND_TRUNCATE;
+    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    ataCommandOptions.tfr.SectorCount = RESERVED;
+    ataCommandOptions.tfr.SectorCount48 = RESERVED;
+    ataCommandOptions.tfr.ErrorFeature = RESERVED;
+    ataCommandOptions.tfr.Feature48 = RESERVED;
+    ataCommandOptions.timeout = UINT32_MAX;//This may take a few minutes...or hours
+    ataCommandOptions.tfr.LbaLow = RESERVED;
+    ataCommandOptions.tfr.LbaMid = RESERVED;
+    ataCommandOptions.tfr.LbaHi = RESERVED;
+    ataCommandOptions.tfr.LbaLow48 = RESERVED;
+    ataCommandOptions.tfr.LbaMid48 = RESERVED;
+    ataCommandOptions.tfr.LbaHi48 = RESERVED;
+
+
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending ATA Restore Elements and Rebuild\n");
+    }
+
+    ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Restore Elements and Rebuild", ret);
+    }
+    return ret;
+}
+
 /////////////////////////////////////////////
 /// Asynchronous Commands below this line /// //NOTE: Not in the header file at this time since lower layer code isn't asynchronous yet
 /////////////////////////////////////////////

@@ -2133,6 +2133,21 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int scsi_Remove_And_Truncate(tDevice *device, uint64_t requestedCapacity, uint32_t elementIdentifier);
 
+    //-----------------------------------------------------------------------------
+    //
+    //  scsi_Restore_Elements_And_Rebuild(tDevice *device)
+    //
+    //! \brief   Description:  Sends the SCSI Restore Elements and Rebuild command
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to device structure
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int scsi_Restore_Elements_And_Rebuild(tDevice *device);
+
     typedef enum _ePersistentReserveInServiceActions
     {
         SCSI_PERSISTENT_RESERVE_IN_READ_KEYS = 0,

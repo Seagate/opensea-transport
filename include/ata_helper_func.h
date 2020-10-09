@@ -2109,6 +2109,21 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
+    //  ata_Restore_Elements_And_Rebuild(tDevice *device)
+    //
+    //! \brief   Description:  Sends the ATA Restore Elements and Rebuild command
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to device structure
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int ata_Restore_Elements_And_Rebuild(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
     //  set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize)
     //
     //! \brief   Description:  Use this function to calculate and set a checksum into a data buffer. Useful for some SMART commands and DCO commands.

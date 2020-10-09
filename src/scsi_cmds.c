@@ -4225,10 +4225,45 @@ int scsi_Remove_And_Truncate(tDevice *device, uint64_t requestedCapacity, uint32
         printf("Sending SCSI Remove And Truncate\n");
     }
     //send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, UINT32_MAX);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Remove And Truncate", ret);
+    }
+    return ret;
+}
+
+int scsi_Restore_Elements_And_Rebuild(tDevice *device)
+{
+    int ret = FAILURE;
+    uint8_t cdb[CDB_LEN_16] = { 0 };
+    cdb[OPERATION_CODE] = 0x9E;
+    //set the service action
+    cdb[1] = 0x19;
+    cdb[2] = RESERVED;
+    cdb[3] = RESERVED;
+    cdb[4] = RESERVED;
+    cdb[5] = RESERVED;
+    cdb[6] = RESERVED;
+    cdb[7] = RESERVED;
+    cdb[8] = RESERVED;
+    cdb[9] = RESERVED;
+    cdb[10] = RESERVED;
+    cdb[11] = RESERVED;
+    cdb[12] = RESERVED;
+    cdb[13] = RESERVED;
+    cdb[14] = RESERVED;
+    cdb[15] = 0;//control
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending SCSI Restore Elements and Rebuild\n");
+    }
+    //send the command
+    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, UINT32_MAX);
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Restore Elements and Rebuild", ret);
     }
     return ret;
 }
