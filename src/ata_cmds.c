@@ -4738,7 +4738,7 @@ int ata_Remove_Element_And_Truncate(tDevice *device, uint32_t elementIdentifier,
     ataCommandOptions.tfr.SectorCount48 = M_Byte1(elementIdentifier);
     ataCommandOptions.tfr.ErrorFeature = M_Byte2(elementIdentifier);
     ataCommandOptions.tfr.Feature48 = M_Byte3(elementIdentifier);
-    ataCommandOptions.timeout = UINT32_MAX;//This may take a few minutes...or hours
+    ataCommandOptions.timeout = UINT16_MAX;//This may take a few minutes...or hours
     ataCommandOptions.tfr.LbaLow = M_Byte0(requestedMaxLBA);
     ataCommandOptions.tfr.LbaMid = M_Byte1(requestedMaxLBA);
     ataCommandOptions.tfr.LbaHi = M_Byte3(requestedMaxLBA);
@@ -4783,7 +4783,7 @@ int ata_Restore_Elements_And_Rebuild(tDevice *device)
     ataCommandOptions.tfr.SectorCount48 = RESERVED;
     ataCommandOptions.tfr.ErrorFeature = RESERVED;
     ataCommandOptions.tfr.Feature48 = RESERVED;
-    ataCommandOptions.timeout = UINT32_MAX;//This may take a few minutes...or hours
+    ataCommandOptions.timeout = UINT16_MAX;//This may take a few minutes...or hours
     ataCommandOptions.tfr.LbaLow = RESERVED;
     ataCommandOptions.tfr.LbaMid = RESERVED;
     ataCommandOptions.tfr.LbaHi = RESERVED;

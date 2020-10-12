@@ -4225,7 +4225,7 @@ int scsi_Remove_And_Truncate(tDevice *device, uint64_t requestedCapacity, uint32
         printf("Sending SCSI Remove And Truncate\n");
     }
     //send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, UINT32_MAX);
+    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, UINT16_MAX);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Remove And Truncate", ret);
@@ -4260,7 +4260,7 @@ int scsi_Restore_Elements_And_Rebuild(tDevice *device)
         printf("Sending SCSI Restore Elements and Rebuild\n");
     }
     //send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, UINT32_MAX);
+    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, UINT16_MAX);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Restore Elements and Rebuild", ret);
