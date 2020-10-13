@@ -342,6 +342,7 @@
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;WIN_API_TARGET_VERSION=100162990L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -359,6 +360,7 @@
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;WIN_API_TARGET_VERSION=100162990L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -376,6 +378,7 @@
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;WIN_API_TARGET_VERSION=100162990L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -394,6 +397,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -412,6 +416,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -430,6 +435,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -447,6 +453,7 @@
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;WIN_API_TARGET_VERSION=100162990L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -465,6 +472,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -484,6 +492,7 @@
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;WIN_API_TARGET_VERSION=100162990L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -505,6 +514,7 @@
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;WIN_API_TARGET_VERSION=100162990L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -526,6 +536,7 @@
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;WIN_API_TARGET_VERSION=100162990L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -548,6 +559,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -570,6 +582,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -592,6 +605,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -613,6 +627,7 @@
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;WIN_API_TARGET_VERSION=100162990L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -635,6 +650,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
