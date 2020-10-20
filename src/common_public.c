@@ -1319,6 +1319,9 @@ bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
 			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
 				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "ZH") == 7))
 			||
+			((strstr(device->drive_info.bridge_info.childDriveMN, "ZP") != NULL)
+				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CV") == 7))
+			||
             ((strstr(device->drive_info.bridge_info.childDriveMN, "YA") != NULL)
                 && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CM") == 7))
             ||
@@ -1362,6 +1365,9 @@ bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
 			||
 			((strstr(device->drive_info.product_identification, "ZA") != NULL)
 				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "ZG") == 7))
+			||
+			((strstr(device->drive_info.product_identification, "ZP") != NULL)
+				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "CV") == 7))
 			||
             ((strstr(device->drive_info.product_identification, "YA") != NULL)
                 && (find_last_occurrence_in_string(device->drive_info.product_identification, "CM") == 7))
