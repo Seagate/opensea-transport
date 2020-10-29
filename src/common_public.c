@@ -4003,6 +4003,34 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 break;
             }
             break;
+        case USB_Vendor_Via_Labs:
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x0715://rev 0148
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 292352;//Bytes
+                //set SCSI hacks
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;//bytes
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 10;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = false;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
+                //NOTE: Does not handle zero length read/write commands
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                break;
+            default:
+                break;
+            }
+            break;
         default: //unknown
             break;
         }
