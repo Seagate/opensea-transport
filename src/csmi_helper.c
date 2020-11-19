@@ -2453,8 +2453,11 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
 #if defined(_WIN32)
     TCHAR device_name[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
     CONST TCHAR *ptrDeviceName = &device_name[0];
+#if defined (_MSC_VER) && _MSC_VER < SEA_MSC_VER_VS2015
+    _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\SCSI") TEXT("%") TEXT("lu") TEXT(":"), controllerNum);
+#else
     _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\SCSI") TEXT("%") TEXT(PRIu32) TEXT(":"), controllerNum);
-
+#endif
     //lets try to open the device.
     device->os_info.fd = CreateFile(ptrDeviceName,
         GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
