@@ -554,18 +554,37 @@ int set_Multiple_Count(uint8_t *satCDB, uint8_t multipleCount, uint8_t protocolO
     return SUCCESS;
 }
 
-int set_Offline_Bits(uint8_t *satCDB, uint32_t timeout, uint8_t transferBitsOffset)
-{
-    uint8_t satTimeout = 0;
-    uint8_t satTotalTime = 1;
-    while (satTotalTime < timeout && satTimeout <= (BIT0 | BIT1))
-    {
-        satTotalTime = satTotalTime << 1;
-        satTimeout++;
-    }
-    satCDB[transferBitsOffset] |= (satTimeout & (BIT0 | BIT1));
-    return SUCCESS;
-}
+/*
+ * NOTE: Setting the off-line field of a SAT command is not really necessary in current cases (SATA).
+ * It was added as a way to work around some issues between certain combinations of PATA devices and HBAs where
+ * there could be an occasional error/glitch where the status register was invalid by reading it too quickly. Setting this field
+ * will resolve this problem on these troublesome combinations. None are currently known in this code, but if you happen to read
+ * this while debugging a really strange error that might be this, add a special case for setting these bits on the HBA this was detected on.
+ */
+//Timeout should be set to 0, 2, 6, or 14 seconds when setting these bits.
+//This is different from the command's timeout to set for the OS.
+//int set_Offline_Bits(uint8_t *satCDB, uint32_t timeout, uint8_t transferBitsOffset)
+//{
+//    uint8_t satTimeout = 0;
+//    switch (timeout)
+//    {
+//    case 0:
+//        break;
+//    case 2:
+//        satTimeout = BIT0;
+//        break;
+//    case 6:
+//        satTimeout = BIT1;
+//        break;
+//    case 14:
+//        satTimeout = BIT0 | BIT1;
+//        break;
+//    default:
+//        break;
+//    }
+//    satCDB[transferBitsOffset] |= (satTimeout << 6);
+//    return SUCCESS;
+//}
 
 int set_Check_Condition_Bit(uint8_t *satCDB, uint8_t transferBitsOffset)
 {
@@ -983,8 +1002,8 @@ int build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, ataPassthr
     {
         return ret;
     }
-    //set offline bits
-    set_Offline_Bits(*satCDB, ataCommandOptions->timeout, transferBitsOffset);
+    //set offline bits - This is currently disabled and not used. It's a workaround for some strange PATA-HBA interactions. See full comment around this function above
+    //set_Offline_Bits(*satCDB, 0, transferBitsOffset);
     //set registers
     ret = set_Registers(*satCDB, ataCommandOptions);
     //set the check condition bit as we need it
