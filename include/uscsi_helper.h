@@ -29,6 +29,12 @@ extern "C"
     #include <string.h>
     #include <unistd.h>
 
+    //This is the maximum timeout a command can use in uscsi passthrough with Solaris...18.2 hours
+#define USCSI_MAX_CMD_TIMEOUT_SECONDS UINT16_MAX
+
+//If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+    bool os_Is_Infinite_Timeout_Supported();
+
     //-----------------------------------------------------------------------------
     //
     //  send_uscsi_io()

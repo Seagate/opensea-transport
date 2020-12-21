@@ -53,6 +53,12 @@
 
 #include "raid_scan_helper.h"
 
+//If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+bool os_Is_Infinite_Timeout_Supported()
+{
+    return false;
+}
+
 //MinGW may or may not have some of these, so there is a need to define these here to build properly when they are otherwise not available.
 //TODO: as mingw changes versions, some of these below may be available. Need to have a way to check mingw preprocessor defines for versions to work around these.
 //NOTE: The device property keys are incomplete in mingw. Need to add similar code using setupapi and some sort of ifdef to switch between for VS and mingw to resolve this better.
@@ -1562,7 +1568,11 @@ int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
     srbControl->HeaderLength = sizeof(SRB_IO_CONTROL);
     srbControl->ControlCode = IOCTL_SCSI_MINIPORT_FIRMWARE;
     RtlMoveMemory(srbControl->Signature, IOCTL_MINIPORT_SIGNATURE_FIRMWARE, 8);
-    srbControl->Timeout = 30;
+    if (nvmeIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+    {
+        return OS_TIMEOUT_TOO_LARGE;
+    }
+    srbControl->Timeout = nvmeIoCtx->timeout; //TODO: use default instead
     srbControl->Length = bufferSize - sizeof(SRB_IO_CONTROL);
 
     firmwareRequest = (PFIRMWARE_REQUEST_BLOCK)(srbControl + 1);
@@ -2736,6 +2746,10 @@ int convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx, ptrSCSIPassTh
         ret = FAILURE;
         break;
     }
+    if (scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || scsiIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+    {
+        return OS_TIMEOUT_TOO_LARGE;
+    }
     if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
     {
         psptd->scsiPassThroughEX.TimeOutValue = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
@@ -2938,6 +2952,10 @@ int convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx, ptrSCS
         }
         ret = FAILURE;
         break;
+    }
+    if (scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || scsiIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+    {
+        return OS_TIMEOUT_TOO_LARGE;
     }
     if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
     {
@@ -3150,6 +3168,10 @@ int convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx, ptrSCSIPa
         ret = FAILURE;
         break;
     }
+    if (scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || scsiIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+    {
+        return OS_TIMEOUT_TOO_LARGE;
+    }
     if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
     {
         psptd->scsiPassthroughDirect.TimeOutValue = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
@@ -3208,6 +3230,10 @@ int convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(ScsiIoCtx *scsiIoCtx, 
         }
         ret = FAILURE;
         break;
+    }
+    if (scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || scsiIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+    {
+        return OS_TIMEOUT_TOO_LARGE;
     }
     if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
     {
@@ -3625,6 +3651,10 @@ int convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx *p_scsiIoCtx, PATA_PASS_THROUGH_
         ret = NOT_SUPPORTED;
         break;
     }
+    if (p_scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+    {
+        return OS_TIMEOUT_TOO_LARGE;
+    }
     if (p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > p_scsiIoCtx->timeout)
     {
         ptrATAPassThroughDirect->TimeOutValue = p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
@@ -3932,6 +3962,10 @@ int convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx *p_scsiIoCtx, ptrATADoubleBufferedIO
         }
         ret = NOT_SUPPORTED;
         break;
+    }
+    if (p_scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+    {
+        return OS_TIMEOUT_TOO_LARGE;
     }
     if (p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > p_scsiIoCtx->timeout)
     {
@@ -5861,6 +5895,12 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
             memcpy(&commandBuffer[protocolCommand->DataToDeviceBufferOffset], nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
         }
         break;
+    }
+
+    if (nvmeIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+    {
+        safe_Free_aligned(commandBuffer);
+        return OS_TIMEOUT_TOO_LARGE;
     }
 
     if (nvmeIoCtx->timeout == 0)

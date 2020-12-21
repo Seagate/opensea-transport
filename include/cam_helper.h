@@ -60,6 +60,13 @@ extern "C"
     #include <cam/ata/ata_all.h>
     #include <camlib.h>
 
+    //This is the maximum timeout a command can use in CAM passthrough with FreeBSD...1193 hours
+    //NOTE: CAM also supports an infinite timeout, but that is checked in a separate function
+#define CAM_MAX_CMD_TIMEOUT_SECONDS 4294967
+
+    //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+    bool os_Is_Infinite_Timeout_Supported();
+
     //-----------------------------------------------------------------------------
     //
     //  send_Scsi_Cam_IO()

@@ -21,6 +21,12 @@ extern bool validate_Device_Struct(versionBlock);
 
 static struct cam_device *cam_dev = NULL;
 
+//If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+bool os_Is_Infinite_Timeout_Supported()
+{
+    return true;
+}
+
 int get_Device( const char *filename, tDevice *device )
 {
     struct ccb_getdev cgd;
@@ -278,7 +284,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
         {
             camTimeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
             //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < 4294966)
+            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < CAM_MAX_CMD_TIMEOUT_SECONDS)
             {
                 camTimeout *= 1000;//convert to milliseconds
             }
@@ -293,7 +299,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
             {
                 camTimeout = scsiIoCtx->timeout;
                 //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-                if (scsiIoCtx->timeout < 4294966)
+                if (scsiIoCtx->timeout < CAM_MAX_CMD_TIMEOUT_SECONDS)
                 {
                     camTimeout *= 1000;//convert to milliseconds
                 }
@@ -543,13 +549,13 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
         {
             camTimeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
             //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < 4294966)
+            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < CAM_MAX_CMD_TIMEOUT_SECONDS)
             {
                 camTimeout *= 1000;//convert to milliseconds
             }
             else
             {
-                camTimeout = UINT32_MAX;//no timeout or maximum timeout
+                camTimeout = CAM_TIME_INFINITY;//no timeout or maximum timeout
             }
         }
         else
@@ -558,13 +564,13 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
             {
                 camTimeout = scsiIoCtx->timeout;
                 //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-                if (scsiIoCtx->timeout < 4294966)
+                if (scsiIoCtx->timeout < CAM_MAX_CMD_TIMEOUT_SECONDS)
                 {
                     camTimeout *= 1000;//convert to milliseconds
                 }
                 else
                 {
-                    camTimeout = UINT32_MAX;//no timeout or maximum timeout
+                    camTimeout = CAM_TIME_INFINITY;//no timeout or maximum timeout
                 }
             }
             else

@@ -1276,6 +1276,26 @@ extern "C"
         ZM_ACTION_RESET_WRITE_POINTERS  = 0x04,//non data-out
     }eZMAction;
 
+    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported();
+
+    //NOTE: This is only possible in some OS's! If you request this and it's not supported, OS_TIMEOUT_TOO_LARGE is returned.
+    #define INFINITE_TIMEOUT_VALUE UINT32_MAX
+
+    //Below, we have nastyness in order to figure out maximum possible timeouts (these may be less than infinite in case you need to know a time that is NOT infinite)
+    #if defined (UEFI_C_SOURCE)
+        #define MAX_CMD_TIMEOUT_SECONDS UINT32_MAX
+    #elif defined (_WIN32)
+        #define MAX_CMD_TIMEOUT_SECONDS 108000
+    #elif defined (__linux__)
+        #define MAX_CMD_TIMEOUT_SECONDS 4294967
+    #elif defined (__FreeBSD__)
+        #define MAX_CMD_TIMEOUT_SECONDS 4294967
+    #elif defined (__sun)
+        #define MAX_CMD_TIMEOUT_SECONDS 65535
+    #else
+        #error "Need to set MAX_CMD_TIMEOUT_SECONDS for this OS"
+    #endif
+
     //-----------------------------------------------------------------------------
     //
     //  get_Opensea_Transport_Version()

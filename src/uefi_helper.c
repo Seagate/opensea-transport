@@ -39,6 +39,12 @@ eConsoleColors uefiDebugMessageColor = BLUE;
 
 #define IS_ALIGNED(addr, size)      (((UINTN) (addr) & (size - 1)) == 0)
 
+//If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+bool os_Is_Infinite_Timeout_Supported()
+{
+    return true;
+}
+
 int get_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void **pPassthru, uint32_t controllerID)
 {
     int ret = SUCCESS;

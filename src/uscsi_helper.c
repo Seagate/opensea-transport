@@ -33,6 +33,12 @@
 
 extern bool validate_Device_Struct(versionBlock);
 
+//If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+bool os_Is_Infinite_Timeout_Supported()
+{
+    return false;//TODO: Documentation does not state if an infinite timeout is supported. If it actually is, need to define the infinite timeout value properly, and set it to the correct value
+}
+
 /*
 Return the device name without the path.
 e.g. return c?t?d? from /dev/rdsk/c?t?d?
@@ -199,6 +205,11 @@ int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
     if(VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
         printf("Sending command with send_IO\n");
+    }
+
+    if (scsiIoCtx->timeout > USCSI_MAX_CMD_TIMEOUT_SECONDS || scsiIoCtx->device->drive_info.defaultTimeoutSeconds > USCSI_MAX_CMD_TIMEOUT_SECONDS)
+    {
+        return OS_TIMEOUT_TOO_LARGE;
     }
 
     uscsi_io.uscsi_timeout = scsiIoCtx->timeout;

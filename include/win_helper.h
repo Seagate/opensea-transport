@@ -52,6 +52,12 @@ extern "C"
 
 #define DOUBLE_BUFFERED_MAX_TRANSFER_SIZE   16384 //Bytes....16KiB to be exact since that is what MS documentation says. - TJE
 
+    //This is the maximum timeout a command can use in Windows...30 hours
+#define WIN_MAX_CMD_TIMEOUT_SECONDS 108000
+
+    //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+    bool os_Is_Infinite_Timeout_Supported();
+
     //Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
     //NOTE: ARM requires 10.0.16299.0 API to get this library!
 #if !defined (__MINGW32__) && !defined (__MINGW64__)
