@@ -6020,7 +6020,7 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     nvmeIoCtx->commandCompletionData.commandSpecific = protocolCommand->FixedProtocolReturnData;
     nvmeIoCtx->commandCompletionData.dw0Valid = true;
     nvmeIoCtx->commandCompletionData.statusAndCID = protocolCommand->ErrorCode;
-    nvmeIoCtx->commandCompletionData.dw1Valid = true;
+    nvmeIoCtx->commandCompletionData.dw3Valid = true;
     //TODO: do we need this error code, or do we look at the error info offset for the provided length???
     //set last command time
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
