@@ -16,10 +16,30 @@
 #include "ata_helper_func.h"
 #include "sat_helper_func.h"
 #include "usb_hacks.h"
+#include <sys/ioctl.h>
+#include <libgen.h>
+#if !defined(DISABLE_NVME_PASSTHROUGH)
+#include "nvme_helper_func.h"
+#include "sntl_helper.h"
+#include <dev/nvme/nvme.h>
+#endif
 
 extern bool validate_Device_Struct(versionBlock);
 
 static struct cam_device *cam_dev = NULL;
+
+bool is_NVMe_Handle(char *handle)
+{
+	bool isNVMeDevice = false;
+	if (handle && strlen(handle))
+	{
+		if (strstr(handle, "nvme"))
+		{
+			isNVMeDevice = true;
+		}
+	}
+	return isNVMeDevice;
+}
 
 int get_Device( const char *filename, tDevice *device )
 {
@@ -29,7 +49,62 @@ int get_Device( const char *filename, tDevice *device )
     int               ret  = SUCCESS, this_drive_type = 0;
     char devName[20] = { 0 };
     int devUnit = 0;
-    
+	char *deviceHandle = NULL;
+	deviceHandle = strdup(filename);
+	struct nvme_get_nsid gnsid;
+
+	if (is_NVMe_Handle(deviceHandle))
+	{
+		if ((device->os_info.fd = open(deviceHandle, O_RDWR | O_NONBLOCK)) < 0)
+		{
+			perror("open");
+			device->os_info.fd = errno;
+			printf("open failure");
+			printf("Error:");
+			print_Errno_To_Screen(errno);
+			if (device->os_info.fd == EACCES)
+			{
+				safe_Free(deviceHandle);
+				return PERMISSION_DENIED;
+			}
+			else
+			{
+				safe_Free(deviceHandle);
+				return FAILURE;
+			}
+		}
+
+		device->os_info.minimumAlignment = sizeof(void *);
+
+#if !defined(DISABLE_NVME_PASSTHROUGH)
+		device->drive_info.drive_type = NVME_DRIVE;
+		device->drive_info.interface_type = NVME_INTERFACE;
+		device->drive_info.media_type = MEDIA_NVM;
+		//ret = ioctl(device->os_info.fd, NVME_IOCTL_ID)
+		//if ( ret < 0 )
+		//{
+		//    perror("nvme_ioctl_id");
+		//	  return ret;
+		//}
+		ioctl(device->os_info.fd, NVME_GET_NSID, &gnsid);
+		device->drive_info.namespaceID = gnsid.nsid;
+		device->os_info.osType = OS_FREEBSD;
+
+		char *baseLink = basename(deviceHandle);
+		// Now we will set up the device name, etc fields in the os_info structure
+		sprintf(device->os_info.name, "/dev/%s", baseLink);
+		sprintf(device->os_info.friendlyName, "%s", baseLink);
+
+		ret = fill_Drive_Info_Data(device);
+
+#else
+		printf("\n cam_helper NVME passthrough disabled.");
+#endif
+
+		safe_Free(deviceHandle);
+		return ret;
+	}
+
     if (cam_get_device(filename, devName, 20, &devUnit) == -1)
     {
         ret = FAILURE;
@@ -196,6 +271,10 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     {
         ret = send_Scsi_Cam_IO(scsiIoCtx);
     }
+	else if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)
+	{
+		ret = sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
+	}
     else if (scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
     {
         if (scsiIoCtx->pAtaCmdOpts)
@@ -753,6 +832,24 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
     return ret;
 }
 
+static int nvme_filter(const struct dirent *entry)
+{
+	int nvmeHandle = strncmp("nvme", entry->d_name, 3);
+	if (nvmeHandle != 0)
+	{
+		return !nvmeHandle;
+	}
+	char* partition = strpbrk(entry->d_name, "pPsS");
+	if (partition != NULL)
+	{
+		return 0;
+	}
+	else
+	{
+		return !nvmeHandle;
+	}
+}
+
 static int da_filter( const struct dirent *entry )
 {
     int daHandle = strncmp("da", entry->d_name, 2);
@@ -817,12 +914,14 @@ int close_Device(tDevice *dev)
 //-----------------------------------------------------------------------------
 int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
-    int  num_da_devs = 0, num_ada_devs = 0;
+    int  num_da_devs = 0, num_ada_devs = 0, num_nvme_devs = 0;
 
     struct dirent **danamelist;
     struct dirent **adanamelist;
+	struct dirent **nvmenamelist;
     num_da_devs = scandir("/dev", &danamelist, da_filter, alphasort);
     num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
+	num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
 
     //free the list of names to not leak memory
     for (int iter = 0; iter < num_da_devs; ++iter)
@@ -836,8 +935,13 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
         safe_Free(adanamelist[iter]);
     }
     safe_Free(adanamelist);
+	//free the list of names to not leak memory
+	for (int iter = 0; iter < num_nvme_devs; ++iter)
+	{
+		safe_Free(nvmenamelist);
+	}
 
-    *numberOfDevices = num_da_devs + num_ada_devs;
+    *numberOfDevices = num_da_devs + num_ada_devs + num_nvme_devs;
     M_USE_UNUSED(flags);  
     return SUCCESS;
 }
@@ -874,15 +978,17 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     char name[80]; //Because get device needs char
     int fd;
     tDevice * d = NULL;
-    int  num_da_devs = 0, num_ada_devs = 0;
-
+    int  num_da_devs = 0, num_ada_devs = 0, num_nvme_devs = 0;
+	
     struct dirent **danamelist;
     struct dirent **adanamelist;
+	struct dirent **nvmenamelist;
     num_da_devs = scandir("/dev", &danamelist, da_filter, alphasort);
     num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
-    
+	num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
+
     char **devs = (char **)calloc(num_da_devs + num_ada_devs + 1, sizeof(char *));
-    int i = 0, j = 0;
+    int i = 0, j = 0, k=0;
     for (i = 0; i < num_da_devs; ++i)
     {
         devs[i] = (char *)malloc((strlen("/dev/") + strlen(danamelist[i]->d_name) + 1) * sizeof(char));
@@ -897,9 +1003,18 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         strcat(devs[i], adanamelist[j]->d_name);
         safe_Free(adanamelist[j]);
     }
+	for (k = 0; i < (num_da_devs + num_ada_devs + num_nvme_devs); ++i, ++j, ++k)
+	{
+		devs[i] = (char *)malloc((strlen("/dev/") + strlen(nvmenamelist[k]->d_name) + 1) * sizeof(char));
+		strcpy(devs[i], "/dev/");
+		strcat(devs[i], nvmenamelist[k]->d_name);
+		safe_Free(nvmenamelist[k]);
+	}
+
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
     safe_Free(danamelist);
     safe_Free(adanamelist);
+	safe_Free(nvmenamelist);
 
     //TODO: Check if sizeInBytes is a multiple of 
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -1012,7 +1127,62 @@ int os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 int send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx *nvmeIoCtx)
 {
-    return NOT_SUPPORTED;
+	int ret = SUCCESS;
+	int32_t ioctlResult = 0;
+	seatimer_t commandTimer;
+	memset(&commandTimer, 0, sizeof(commandTimer));
+	struct nvme_pt_command pt;
+	memset(&pt, 0, sizeof(pt));
+
+	switch (nvmeIoCtx->commandType)
+	{
+	case NVM_ADMIN_CMD:
+		pt.cmd.opc = nvmeIoCtx->cmd.adminCmd.opcode;
+		pt.cmd.cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
+		pt.cmd.nsid = nvmeIoCtx->cmd.adminCmd.nsid;
+		pt.buf = nvmeIoCtx->ptrData;
+		pt.len = nvmeIoCtx->dataSize;
+		if (nvmeIoCtx->commandDirection == 1)
+			pt.is_read = 1;
+		else
+			pt.is_read = 0;
+		//pt.nvme_sqe.flags = nvmeIoCtx->cmd.adminCmd.flags;
+		pt.cpl.rsvd1 = nvmeIoCtx->cmd.adminCmd.rsvd1;
+		pt.cmd.rsvd2 = nvmeIoCtx->cmd.adminCmd.cdw2;
+		pt.cmd.rsvd3 = nvmeIoCtx->cmd.adminCmd.cdw3;
+		pt.cmd.mptr = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.adminCmd.metadata;
+
+		pt.cmd.cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
+		pt.cmd.cdw11 = nvmeIoCtx->cmd.adminCmd.cdw11;
+		pt.cmd.cdw12 = nvmeIoCtx->cmd.adminCmd.cdw12;
+		pt.cmd.cdw13 = nvmeIoCtx->cmd.adminCmd.cdw13;
+		pt.cmd.cdw14 = nvmeIoCtx->cmd.adminCmd.cdw14;
+		pt.cmd.cdw15 = nvmeIoCtx->cmd.adminCmd.cdw15;
+		break;
+	case NVM_CMD:
+
+		break;
+	default:
+		return BAD_PARAMETER;
+		break;
+
+
+	}
+
+	start_Timer(&commandTimer);
+	ioctlResult = ioctl(nvmeIoCtx->device->os_info.fd, NVME_PASSTHROUGH_CMD, &pt);
+	stop_Timer(&commandTimer);
+	nvmeIoCtx->device->os_info.last_error = errno;
+	if (ioctlResult < 0)
+	{
+		ret = OS_PASSTHROUGH_FAILURE;
+		printf("\nError : %d", nvmeIoCtx->device->os_info.last_error);
+		printf("Error %s\n", strerror(nvmeIoCtx->device->os_info.last_error));
+		printf("\n OS_PASSTHROUGH_FAILURE. ");
+		print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
+	}
+
+	return ret;
 }
 
 int os_nvme_Reset(M_ATTR_UNUSED tDevice *device)
