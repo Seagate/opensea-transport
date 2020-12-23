@@ -1160,7 +1160,27 @@ int send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx *nvmeIoCtx)
 		pt.cmd.cdw15 = nvmeIoCtx->cmd.adminCmd.cdw15;
 		break;
 	case NVM_CMD:
+		pt.cmd.opc = nvmeIoCtx->cmd.adminCmd.opcode;
+		pt.cmd.cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
+		pt.cmd.nsid = nvmeIoCtx->cmd.adminCmd.nsid;
+		pt.buf = nvmeIoCtx->ptrData;
+		pt.len = nvmeIoCtx->dataSize;
+		if (nvmeIoCtx->commandDirection == 1)
+			pt.is_read = 1;
+		else
+			pt.is_read = 0;
+		//pt.nvme_sqe.flags = nvmeIoCtx->cmd.adminCmd.flags;
+		pt.cpl.rsvd1 = nvmeIoCtx->cmd.adminCmd.rsvd1;
+		pt.cmd.rsvd2 = nvmeIoCtx->cmd.adminCmd.cdw2;
+		pt.cmd.rsvd3 = nvmeIoCtx->cmd.adminCmd.cdw3;
+		pt.cmd.mptr = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.adminCmd.metadata;
 
+		pt.cmd.cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
+		pt.cmd.cdw11 = nvmeIoCtx->cmd.adminCmd.cdw11;
+		pt.cmd.cdw12 = nvmeIoCtx->cmd.adminCmd.cdw12;
+		pt.cmd.cdw13 = nvmeIoCtx->cmd.adminCmd.cdw13;
+		pt.cmd.cdw14 = nvmeIoCtx->cmd.adminCmd.cdw14;
+		pt.cmd.cdw15 = nvmeIoCtx->cmd.adminCmd.cdw15;
 		break;
 	default:
 		return BAD_PARAMETER;
