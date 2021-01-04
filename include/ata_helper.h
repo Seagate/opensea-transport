@@ -797,6 +797,8 @@ extern "C"
        ATA_LOG_SATA_NCQ_SEND_AND_RECEIVE_LOG            = 0x13,
        ATA_LOG_HYBRID_INFORMATION                       = 0x14,
        ATA_LOG_REBUILD_ASSIST                           = 0x15,
+       ATA_LOG_OUT_OF_BAND_MANAGEMENT_CONTROL_LOG       = 0x16,
+       ATA_LOG_COMMAND_DURATION_LIMITS_LOG              = 0x18,
        ATA_LOG_LBA_STATUS                               = 0x19,
        ATA_LOG_STREAMING_PERFORMANCE                    = 0x20,
        ATA_LOG_WRITE_STREAM_ERROR_LOG                   = 0x21,
