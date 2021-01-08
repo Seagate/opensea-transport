@@ -22,6 +22,7 @@
 #include "nvme_helper_func.h"
 #include "sntl_helper.h"
 #include <dev/nvme/nvme.h>
+#include "common.h"
 #endif
 
 extern bool validate_Device_Struct(versionBlock);
@@ -1232,6 +1233,14 @@ int send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx *nvmeIoCtx)
 		printf("Error %s\n", strerror(nvmeIoCtx->device->os_info.last_error));
 		printf("\n OS_PASSTHROUGH_FAILURE. ");
 		print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
+	}
+	else
+	{
+		//Fill the nvme CommandCompletionData
+		nvmeIoCtx->commandCompletionData.dw0 = pt.cpl.cdw0;
+		nvmeIoCtx->commandCompletionData.dw1 = pt.cpl.rsvd1;
+		nvmeIoCtx->commandCompletionData.dw2 = M_BytesTo2ByteValue(pt.cpl.sqid, pt.cpl.sqhd);
+		nvmeIoCtx->commandCompletionData.dw3 = M_BytesTo2ByteValue(pt.cpl.status, pt.cpl.cid);
 	}
 
 	return ret;
