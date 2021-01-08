@@ -1241,6 +1241,10 @@ int send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx *nvmeIoCtx)
 		nvmeIoCtx->commandCompletionData.dw1 = pt.cpl.rsvd1;
 		nvmeIoCtx->commandCompletionData.dw2 = M_BytesTo2ByteValue(pt.cpl.sqid, pt.cpl.sqhd);
 		nvmeIoCtx->commandCompletionData.dw3 = M_BytesTo2ByteValue(pt.cpl.status, pt.cpl.cid);
+		nvmeIoCtx->commandCompletionData.dw0Valid = true;
+		nvmeIoCtx->commandCompletionData.dw1Valid = true;
+		nvmeIoCtx->commandCompletionData.dw2Valid = true;
+		nvmeIoCtx->commandCompletionData.dw3Valid = true;
 	}
 
 	return ret;
