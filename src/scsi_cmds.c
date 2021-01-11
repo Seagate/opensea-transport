@@ -2608,7 +2608,7 @@ int scsi_Start_Stop_Unit(tDevice *device, bool immediate, uint8_t powerCondition
     cdb[5] = 0;//control
     
     //send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 30);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Start Stop Unit", ret);
