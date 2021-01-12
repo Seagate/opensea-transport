@@ -4791,7 +4791,7 @@ int ata_Restore_Elements_And_Rebuild(tDevice *device)
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
     ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
-    ataCommandOptions.tfr.CommandStatus = ATA_REMOVE_AND_TRUNCATE;
+    ataCommandOptions.tfr.CommandStatus = ATA_RESTORE_AND_REBUILD;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     ataCommandOptions.tfr.SectorCount = RESERVED;
     ataCommandOptions.tfr.SectorCount48 = RESERVED;

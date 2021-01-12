@@ -197,6 +197,7 @@ extern "C"
         ATA_SET_DATE_AND_TIME_EXT               = 0x77,
         ATA_ACCESSABLE_MAX_ADDR                 = 0x78,
         ATA_REMOVE_AND_TRUNCATE                 = 0x7C,
+        ATA_RESTORE_AND_REBUILD                 = 0x7D,
         ATA_CFA_TRANSLATE_SECTOR                = 0x87,
         ATA_EXEC_DRV_DIAG                       = 0x90,
         ATA_INIT_DRV_PARAM                      = 0x91,
