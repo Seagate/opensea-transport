@@ -995,10 +995,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     char name[80]; //Because get device needs char
     int fd;
     tDevice * d = NULL;
-	int  num_da_devs = 0, num_ada_devs = 0;
-#if !defined(DISABLE_NVME_PASSTHROUGH)
-	int num_nvme_devs = 0;
-#endif
+	int num_da_devs = 0, num_ada_devs = 0, num_nvme_devs = 0;
 	
     struct dirent **danamelist;
     struct dirent **adanamelist;
@@ -1014,7 +1011,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 	num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
 #endif
 
-    char **devs = (char **)calloc(num_da_devs + num_ada_devs + 1, sizeof(char *));
+    char **devs = (char **)calloc(num_da_devs + num_ada_devs + num_nvme_devs + 1, sizeof(char *));
     int i = 0, j = 0, k=0;
     for (i = 0; i < num_da_devs; ++i)
     {
@@ -1032,7 +1029,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     }
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-	for (k = 0; i < (num_da_devs + num_ada_devs + num_nvme_devs); ++i, ++j, ++k)
+	for (k = 0; i < (num_da_devs + num_ada_devs + num_nvme_devs) && k < num_nvme_devs; ++i, ++j, ++k)
 	{
 		devs[i] = (char *)malloc((strlen("/dev/") + strlen(nvmenamelist[k]->d_name) + 1) * sizeof(char));
 		strcpy(devs[i], "/dev/");
@@ -1061,7 +1058,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
-        for (driveNumber = 0; ((driveNumber >= 0 && (unsigned int)driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_da_devs + num_ada_devs)) && (found < numberOfDevices)); ++driveNumber)
+        for (driveNumber = 0; ((driveNumber >= 0 && (unsigned int)driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_da_devs + num_ada_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
             if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
             {
@@ -1107,7 +1104,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         {
             returnValue = FAILURE;
         }
-        else if(permissionDeniedCount == (num_da_devs + num_ada_devs))
+        else if(permissionDeniedCount == (num_da_devs + num_ada_devs + num_nvme_devs))
         {
             returnValue = PERMISSION_DENIED;
         }
