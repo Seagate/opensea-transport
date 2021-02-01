@@ -102,7 +102,7 @@ int get_Device( const char *filename, tDevice *device )
 
 		safe_Free(deviceHandle);
 		return ret;
-	}
+	} else
 #endif
 
     if (cam_get_device(filename, devName, 20, &devUnit) == -1)
@@ -861,7 +861,7 @@ static int da_filter( const struct dirent *entry )
     {
       return !daHandle;
     }
-    char* partition = strpbrk(entry->d_name,"pP");
+    char* partition = strpbrk(entry->d_name,"pPsS");
     if(partition != NULL)
     {
         return 0;
@@ -879,7 +879,7 @@ static int ada_filter( const struct dirent *entry )
     {
       return !adaHandle;
     }
-    char* partition = strpbrk(entry->d_name,"pP");
+    char* partition = strpbrk(entry->d_name,"pPsS");
     if(partition != NULL)
     {
         return 0;
