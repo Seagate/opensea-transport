@@ -2487,14 +2487,11 @@ int get_Win_Device(const char *filename, tDevice *device )
                 {
                     if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE  || SUCCESS == open_SCSI_SRB_Handle(device))
                     {
-                        printf("Checking CSMI support\n");
                         if (handle_Supports_CSMI_IO(device->os_info.scsiSRBHandle, device->deviceVerbosity))
                         {
-                            printf("handle %s supports CSMI calls\n", filename);
                             //open up the CSMI handle and populate the pointer to the csmidata structure. This may allow us to work around other commands.
                             if (SUCCESS == jbod_Setup_CSMI_Info(device->os_info.scsiSRBHandle, device, 0, device->os_info.scsi_addr.PortNumber, device->os_info.scsi_addr.PathId, device->os_info.scsi_addr.TargetId, device->os_info.scsi_addr.Lun))
                             {
-                                printf("Successfully setup jbod CSMI support\n");
                                 //TODO: Set flags, or other info?
                             }
                         }
