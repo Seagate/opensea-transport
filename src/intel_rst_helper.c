@@ -477,6 +477,7 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
     {
         seatimer_t commandTimer;
         NVME_IOCTL_PASS_THROUGH *nvmPassthroughCommand = NULL;
+        HANDLE handleToUse = nvmeIoCtx->device->os_info.fd;
         size_t allocationSize = sizeof(NVME_IOCTL_PASS_THROUGH) + nvmeIoCtx->dataSize;
         nvmPassthroughCommand = (NVME_IOCTL_PASS_THROUGH*)calloc_aligned(allocationSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment);
         if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
@@ -528,6 +529,7 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             }
             else
             {
+                handleToUse = nvmeIoCtx->device->os_info.scsiSRBHandle;
                 //use Windows pathId
                 nvmPassthroughCommand->PathId = nvmeIoCtx->device->os_info.scsi_addr.PathId;
                 //TODO: may need to add in remaining scsi address in the future, but for now these other fields are reserved
@@ -584,8 +586,9 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
                 safe_Free(nvmPassthroughCommand);
                 return OS_PASSTHROUGH_FAILURE;
             }
+            SetLastError(ERROR_SUCCESS);//clear out any errors before we begin
             start_Timer(&commandTimer);
-            BOOL success = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
+            BOOL success = DeviceIoControl(handleToUse,
                 IOCTL_SCSI_MINIPORT,
                 nvmPassthroughCommand,
                 (DWORD)allocationSize,
@@ -607,11 +610,27 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             overlappedStruct.hEvent = NULL;
             if (!success)
             {
-                ret = FAILURE;
+                ret = OS_PASSTHROUGH_FAILURE;
             }
             else
             {
                 ret = SUCCESS;
+                //TODO: Handle unsupported commands error codes and others that don't fill in the completion data
+                //      This may not come into this SUCCESS case and instead may need handling elsewhere.
+                //if(nvmPassthroughCommand->Header.ReturnCode)
+                if (nvmeIoCtx->commandDirection == XFER_DATA_IN && nvmeIoCtx->ptrData)
+                {
+                    memcpy(nvmeIoCtx->ptrData, nvmPassthroughCommand->data, nvmeIoCtx->dataSize);
+                }
+                //copy completion data
+                nvmeIoCtx->commandCompletionData.dw0Valid = true;
+                nvmeIoCtx->commandCompletionData.dw1Valid = true;
+                nvmeIoCtx->commandCompletionData.dw2Valid = true;
+                nvmeIoCtx->commandCompletionData.dw3Valid = true;
+                nvmeIoCtx->commandCompletionData.commandSpecific = nvmPassthroughCommand->Parameters.Completion.completion0;
+                nvmeIoCtx->commandCompletionData.dw1Reserved = nvmPassthroughCommand->Parameters.Completion.completion1;
+                nvmeIoCtx->commandCompletionData.sqIDandHeadPtr = nvmPassthroughCommand->Parameters.Completion.completion2;
+                nvmeIoCtx->commandCompletionData.statusAndCID = nvmPassthroughCommand->Parameters.Completion.completion3;
             }
             if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
             {
@@ -619,26 +638,6 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
                 print_Intel_SRB_Status(nvmPassthroughCommand->Header.ReturnCode);
             }
             
-            //TODO: Handle unsupported commands error codes and others that don't fill in the completion data
-            //TODO: Verbose output including windows error codes and the SRB_IO header return code, etc.
-            //now handle error codes and completion and copying back read data
-            //if(nvmPassthroughCommand->Header.ReturnCode)
-            if (ret == SUCCESS)
-            {
-                if (nvmeIoCtx->commandDirection == XFER_DATA_IN && nvmeIoCtx->ptrData)
-                {
-                    memcpy(nvmeIoCtx->ptrData, nvmPassthroughCommand->data, nvmeIoCtx->dataSize);
-                }
-            }
-            //copy completion data
-            nvmeIoCtx->commandCompletionData.dw0Valid = true;
-            nvmeIoCtx->commandCompletionData.dw1Valid = true;
-            nvmeIoCtx->commandCompletionData.dw2Valid = true;
-            nvmeIoCtx->commandCompletionData.dw3Valid = true;
-            nvmeIoCtx->commandCompletionData.commandSpecific = nvmPassthroughCommand->Parameters.Completion.completion0;
-            nvmeIoCtx->commandCompletionData.dw1Reserved = nvmPassthroughCommand->Parameters.Completion.completion1;
-            nvmeIoCtx->commandCompletionData.sqIDandHeadPtr = nvmPassthroughCommand->Parameters.Completion.completion2;
-            nvmeIoCtx->commandCompletionData.statusAndCID = nvmPassthroughCommand->Parameters.Completion.completion3;
             //set command time
             nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
             safe_Free_aligned(nvmPassthroughCommand);

@@ -51,6 +51,10 @@
 #include "of_nvme_helper_func.h"
 #endif
 
+#if defined (ENABLE_INTEL_RST)
+#include "intel_rst_helper.h"
+#endif
+
 #include "raid_scan_helper.h"
 
 //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
@@ -1881,6 +1885,120 @@ int win_Get_Device_Descriptor(HANDLE deviceHandle, PSTORAGE_DEVICE_DESCRIPTOR *d
     return ret;
 }
 
+#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
+int win_SCSI_Get_Inquiry_Data(HANDLE deviceHandle, PSCSI_ADAPTER_BUS_INFO *scsiBusInfo)
+{
+    int ret = SUCCESS;
+    UCHAR busCount = 1, luCount = 1;
+    DWORD inquiryDataSize = sizeof(SCSI_INQUIRY_DATA) + INQUIRYDATABUFFERSIZE;//this is supposed to be rounded up to an alignment boundary??? but that is not well described...
+    DWORD busDataLength = sizeof(SCSI_ADAPTER_BUS_INFO) + busCount * sizeof(SCSI_BUS_DATA) + luCount * inquiryDataSize;//Start with this, but more memory may be necessary.
+    *scsiBusInfo = (PSCSI_ADAPTER_BUS_INFO)calloc_aligned(busDataLength, sizeof(uint8_t), 8);
+    if (scsiBusInfo)
+    {
+        BOOL success = FALSE;
+        DWORD returnedBytes = 0;
+        while (!success)
+        {
+            //try this ioctl and reallocate memory if not enough space error is returned until it can be read!
+            success = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_INQUIRY_DATA, NULL, 0, scsiBusInfo, busDataLength, &returnedBytes, NULL);
+            if (!success)
+            {
+                DWORD error = GetLastError();
+                //figure out what the error was to see if we need to allocate more memory, or exit with errors.
+                if (error == ERROR_INSUFFICIENT_BUFFER)
+                {
+                    //MSFT recommends doubling the buffer size until this passes.
+                    void *tempBuf = NULL;
+                    busDataLength *= 2;
+                    tempBuf = realloc_aligned(scsiBusInfo, busDataLength / 2, busDataLength, 8);
+                    if (tempBuf)
+                    {
+                        scsiBusInfo = tempBuf;
+                    }
+                }
+                else
+                {
+                    print_Windows_Error_To_Screen(error);
+                    ret = FAILURE;
+                    break;
+                }
+            }
+        }
+    }
+    else
+    {
+        ret = MEMORY_FAILURE;
+    }
+    return ret;
+}
+#endif
+
+#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN2K
+//Geom param is required as this allocates memory for this call.
+//partInfo and detectInfo are optional and are meant to be helpful to set these pointers correctly for you from returned data rather than needing to figure it out yourself.
+//geom should be free'd when done with it since it is allocated on the heap.
+//If partinfo or detectinfo are null on completion, then these we not returned in this IOCTL
+/* Example Use:
+    PDISK_GEOMETRY_EX diskGeom = NULL;
+    PDISK_PARTITION_INFO partInfo = NULL;
+    PDISK_DETECTION_INFO diskDetect = NULL;
+
+    if (SUCCESS == win_Get_Drive_Geometry_Ex(device->os_info.fd, &diskGeom, &partInfo, &diskDetect))
+    {
+        //Do stuff with diskGeom, partInfo, & diskDetect
+        safe_Free(diskGeom);
+    }
+*/
+int win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_EX *geom, PDISK_PARTITION_INFO *partInfo, PDISK_DETECTION_INFO *detectInfo)
+{
+    int ret = FAILURE;
+    DWORD bytesReturned = 0;
+    DWORD diskGeomSize = sizeof(DISK_GEOMETRY) + sizeof(LARGE_INTEGER) + sizeof(DISK_PARTITION_INFO) + sizeof(DISK_DETECTION_INFO);
+    *geom = (PDISK_GEOMETRY_EX)malloc(diskGeomSize);
+    if (DeviceIoControl(devHandle,
+        IOCTL_DISK_GET_DRIVE_GEOMETRY_EX,
+        NULL,
+        0,
+        *geom,
+        diskGeomSize,
+        &bytesReturned,
+        NULL
+    ))
+    {
+        ret = SUCCESS;
+        //Setup the other pointers if they were provided.
+        if (partInfo)
+        {
+            *partInfo = C_CAST(PDISK_PARTITION_INFO, (*geom)->Data);
+            if ((*partInfo)->SizeOfPartitionInfo)
+            {
+                if (detectInfo)
+                {
+                    *detectInfo = C_CAST(PDISK_DETECTION_INFO, &(*geom)->Data[(*partInfo)->SizeOfPartitionInfo]);
+                    if (!(*detectInfo)->SizeOfDetectInfo)
+                    {
+                        *detectInfo = NULL;
+                    }
+                }
+            }
+            else
+            {
+                *partInfo = NULL;
+                if (detectInfo)
+                {
+                    *detectInfo = NULL;
+                }
+            }
+        }
+    }
+    else
+    {
+        safe_Free(*geom);
+    }
+    return ret;
+}
+#endif 
+
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
 int get_Win_Device(const char *filename, tDevice *device )
 {
@@ -1930,6 +2048,7 @@ int get_Win_Device(const char *filename, tDevice *device )
     }
     else
     {
+        device->os_info.scsiSRBHandle = INVALID_HANDLE_VALUE;//set this to invalid ahead of anywhere that it might get opened below for discovering additional capabilities.
         //set the handle name
         strncpy_s(device->os_info.name, 30, filename, 30);
 
@@ -2076,7 +2195,7 @@ int get_Win_Device(const char *filename, tDevice *device )
             if(win_ret == SUCCESS)
             {
                 bool checkForCSMI = false;
-
+                bool checkForNVMe = false;
                 get_Adapter_IDs(device, device_desc, device_desc->Size);
 
 #if WINVER >= SEA_WIN32_WINNT_WIN10
@@ -2084,11 +2203,11 @@ int get_Win_Device(const char *filename, tDevice *device )
 #else
                 device->os_info.fwdlIOsupport.fwdlIOSupported = false;//this API is not available before Windows 10
 #endif
-                //#if defined (_DEBUG)
-                //printf("Drive BusType: ");
-                //print_bus_type(device_desc->BusType);
-                //printf(" \n");
-                //#endif
+                #if defined (_DEBUG)
+                printf("Drive BusType: ");
+                print_bus_type(device_desc->BusType);
+                printf(" \n");
+                #endif
 
                 if ((adapter_desc->BusType == BusTypeAta) ||
                     (device_desc->BusType == BusTypeAta)
@@ -2153,7 +2272,7 @@ int get_Win_Device(const char *filename, tDevice *device )
                     if (device_desc->VendorIdOffset)//Open fabrics will set a vendorIDoffset, MSFT driver will not.
                     {
 
-                        if (SUCCESS == open_SCSI_SRB_Handle(device))
+                        if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE || SUCCESS == open_SCSI_SRB_Handle(device))
                         {
                             //now see if the IOCTL is supported or not
 #if defined (ENABLE_OFNVME) || defined (ENABLE_INTEL_RST)
@@ -2182,7 +2301,7 @@ int get_Win_Device(const char *filename, tDevice *device )
                                 //TODO: setup CSMI structure
                                 device->drive_info.drive_type = NVME_DRIVE;
                                 device->drive_info.interface_type = NVME_INTERFACE;
-                                device->os_info.csmiDeviceData->intelRSTSupport.nvmePassthrough = true;
+                                device->os_info.intelNVMePassthroughSupported = true;
                             }
     #endif//ENABLE_INTEL_RST
                             
@@ -2190,6 +2309,7 @@ int get_Win_Device(const char *filename, tDevice *device )
 #endif //ENABLE_OFNVME || ENABLE_INTEL_RST
                             {
                                 //unable to do passthrough, and isn't in normal Win10 mode, this means it's some other driver that we don't know how to use. Treat as SCSI
+                                device->os_info.intelNVMePassthroughSupported = false;
                                 device->os_info.openFabricsNVMePassthroughSupported = false;
                                 device->drive_info.drive_type = SCSI_DRIVE;
                                 device->drive_info.interface_type = SCSI_INTERFACE;
@@ -2200,6 +2320,8 @@ int get_Win_Device(const char *filename, tDevice *device )
                         {
                             //close the handle that was opened. TODO: May need to remove this in the future.
                             close_SCSI_SRB_Handle(device);
+                            device->os_info.intelNVMePassthroughSupported = false;
+                            device->os_info.openFabricsNVMePassthroughSupported = false;
                             //treat as SCSI
                             device->drive_info.drive_type = SCSI_DRIVE;
                             device->drive_info.interface_type = SCSI_INTERFACE;
@@ -2215,6 +2337,7 @@ int get_Win_Device(const char *filename, tDevice *device )
                             device->drive_info.interface_type = NVME_INTERFACE;
                             //set_Namespace_ID_For_Device(device);
                             device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this, althrough SCSI Read/write 16 will work too!
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures = true;
@@ -2222,7 +2345,6 @@ int get_Win_Device(const char *filename, tDevice *device )
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique = true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest = true;//NOTE: probably specific to a certain Win10 update. Not clearly documented when this became available, so need to do some testing before this is perfect
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securitySend = true;
@@ -2258,8 +2380,16 @@ int get_Win_Device(const char *filename, tDevice *device )
                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                     if (device_desc->BusType == BusTypeSas)
                     {
-                        //If this is SAS, check for CSMI capabilities.
-                        //Only do this for SAS since CSMI only mentions SAS and SATA, there is no need to do this for Fibre, RAID, or parallel SCSI since those likely won't be supported or are handled somewhere else. - TJE
+                        //CSMI checks are needed for controllers showing as SAS or RAID.
+                        //RAID must also be considered due to how drivers, especially Intel's shows devices, both RAIDs and individual devices behind controllers in RAID mode.
+                        checkForCSMI = true;
+                    }
+                    else if (device_desc->BusType == BusTypeRAID)
+                    {
+                        //TODO: Need to figure out a better way to decide this.
+                        //      Unfortunately, the Intel RST driver will show NVMe drives as RAID, but no vendor ID, so we need to check them all for this until we can find something else to use.
+                        //      This means issuing an admin identify which should fail gracefully on drivers that don't actually support this since it's vendor unique IOCTL code and signature.
+                        checkForNVMe = true;
                         checkForCSMI = true;
                     }
                 }
@@ -2280,6 +2410,31 @@ int get_Win_Device(const char *filename, tDevice *device )
                 if (device->dFlags & OPEN_HANDLE_ONLY)//This is this far down because there is a lot of other things that need to be saved in order for windows pass-through to work correctly.
                 {
                     return SUCCESS;
+                }
+
+                if (checkForNVMe)
+                {
+                    uint8_t nvmeIdent[4096] = { 0 };
+                    if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE || SUCCESS == open_SCSI_SRB_Handle(device))
+                    {
+                        //Check for Intel NVMe passthrough
+                        device->drive_info.drive_type = NVME_DRIVE;
+                        device->drive_info.interface_type = NVME_INTERFACE;
+                        device->os_info.intelNVMePassthroughSupported = true;
+                        if (SUCCESS == nvme_Identify(device, nvmeIdent, 0, 1))
+                        {
+                            //use OS read/write calls since this driver may not allow these to work since it is limited in capabilities for passthrough.
+                            device->os_info.osReadWriteRecommended = true;
+                            checkForCSMI = false;
+                            //TODO: This passthrough may be limited in commands allowed to be sent. If this is limited, need to fill in the nvme hacks to show what is or is not supported.
+                        }
+                        else
+                        {
+                            device->drive_info.drive_type = SCSI_DRIVE;
+                            device->drive_info.interface_type = SCSI_INTERFACE;
+                            device->os_info.intelNVMePassthroughSupported = false;
+                        }
+                    }
                 }
 
                 // Lets fill out rest of info
@@ -2330,12 +2485,18 @@ int get_Win_Device(const char *filename, tDevice *device )
 
                 if (checkForCSMI)
                 {
-                    if (handle_Supports_CSMI_IO(device->os_info.scsiSRBHandle, device->deviceVerbosity))
+                    if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE  || SUCCESS == open_SCSI_SRB_Handle(device))
                     {
-                        //open up the CSMI handle and populate the pointer to the csmidata structure. This may allow us to work around other commands.
-                        if (SUCCESS == jbod_Setup_CSMI_Info(device->os_info.scsiSRBHandle, device, 0, device->os_info.scsi_addr.PortNumber, device->os_info.scsi_addr.PathId, device->os_info.scsi_addr.TargetId, device->os_info.scsi_addr.Lun))
+                        printf("Checking CSMI support\n");
+                        if (handle_Supports_CSMI_IO(device->os_info.scsiSRBHandle, device->deviceVerbosity))
                         {
-                            //TODO: Set flags, or other info?
+                            printf("handle %s supports CSMI calls\n", filename);
+                            //open up the CSMI handle and populate the pointer to the csmidata structure. This may allow us to work around other commands.
+                            if (SUCCESS == jbod_Setup_CSMI_Info(device->os_info.scsiSRBHandle, device, 0, device->os_info.scsi_addr.PortNumber, device->os_info.scsi_addr.PathId, device->os_info.scsi_addr.TargetId, device->os_info.scsi_addr.Lun))
+                            {
+                                printf("Successfully setup jbod CSMI support\n");
+                                //TODO: Set flags, or other info?
+                            }
                         }
                     }
                 }
@@ -7976,6 +8137,13 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         if (nvmeIoCtx->device->os_info.openFabricsNVMePassthroughSupported)
         {
             ret = send_OFNVME_IO(nvmeIoCtx);
+        }
+        else
+#endif
+#if defined (ENABLE_INTEL_RST)
+        if (nvmeIoCtx->device->os_info.intelNVMePassthroughSupported)
+        {
+            ret = send_Intel_NVM_Command(nvmeIoCtx);
         }
         else
 #endif
