@@ -2335,7 +2335,7 @@ int get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, vers
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
+int get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 {
     //TODO: handle flags
     *numberOfDevices += get_ATA_Device_Count();
@@ -2371,7 +2371,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
+int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, M_ATTR_UNUSED uint64_t flags)
 {
     uint32_t index = 0;
     //TODO: handle flags and validate size of device list and version block
@@ -2384,22 +2384,32 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     return SUCCESS;
 }
 
-int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
+int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool async, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
+int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool async, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
+int os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Flush(tDevice *device)
+int os_Flush(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
+}
+
+int os_Lock_Device(M_ATTR_UNUSED tDevice *device)
+{
+    return SUCCESS;
+}
+
+int os_Unlock_Device(M_ATTR_UNUSED tDevice *device)
+{
+    return SUCCESS;
 }

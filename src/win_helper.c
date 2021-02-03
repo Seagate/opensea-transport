@@ -5823,6 +5823,32 @@ int os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
+//TODO: We may need to switch between locking fd and scsiSrbHandle in some way...for now just locking fd value.
+//https://docs.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_lock_volume
+int os_Lock_Device(tDevice *device)
+{
+    int ret = SUCCESS;
+    DWORD returnedBytes = 0;
+    if (!DeviceIoControl(device->os_info.fd, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, &returnedBytes, NULL))
+    {
+        //This can fail is files are open, it's a system disk, or has a pagefile.
+        ret = FAILURE;
+    }
+    return ret;
+}
+
+int os_Unlock_Device(tDevice *device)
+{
+    int ret = SUCCESS;
+    DWORD returnedBytes = 0;
+    if (!DeviceIoControl(device->os_info.fd, FSCTL_UNLOCK_VOLUME, NULL, 0, NULL, 0, &returnedBytes, NULL))
+    {
+        ret = FAILURE;
+    }
+    return ret;
+}
+
+
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
 int send_IO( ScsiIoCtx *scsiIoCtx )
 {

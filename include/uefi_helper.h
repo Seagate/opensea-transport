@@ -91,6 +91,10 @@ extern "C"
     int os_nvme_Reset(tDevice *device);
     int os_nvme_Subsystem_Reset(tDevice *device);
 
+    int os_Lock_Device(tDevice *device);
+
+    int os_Unlock_Device(tDevice *device);
+
 #endif
 
 

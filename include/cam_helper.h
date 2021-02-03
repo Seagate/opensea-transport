@@ -202,6 +202,36 @@ extern "C"
 
 #endif
 
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Lock_Device(tDevice *device)
+    //
+    //! \brief   Description:  Dummy function since there do not appear to be similar shared vs exclusive access flags to cam device.
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!   
+    //! 
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    int os_Lock_Device(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Unlock_Device(tDevice *device)
+    //
+    //! \brief   Description:  Dummy function since there do not appear to be similar shared vs exclusive access flags to a cam device.
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!   
+    //! 
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    int os_Unlock_Device(tDevice *device);
+
     #if defined (__cplusplus)
 }
     #endif

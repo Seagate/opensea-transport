@@ -1085,3 +1085,15 @@ int pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pDa
     return NOT_SUPPORTED;
 }
 #endif
+
+int os_Lock_Device(M_ATTR_UNUSED tDevice *device)
+{
+    //There is nothing to lock since you cannot open a CAM device with O_NONBLOCK
+    return SUCCESS;
+}
+
+int os_Unlock_Device(M_ATTR_UNUSED tDevice *device)
+{
+    //There is nothing to unlock since you cannot open a CAM device with O_NONBLOCK
+    return SUCCESS;
+}

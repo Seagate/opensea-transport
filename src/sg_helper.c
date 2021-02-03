@@ -2110,3 +2110,27 @@ int os_Flush(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
+
+int os_Lock_Device(tDevice *device)
+{
+    int ret = SUCCESS;
+    //Get flags
+    int flags = fcntl(device->os_info.fd, F_GETFL);
+    //disable O_NONBLOCK
+    flags &= ~O_NONBLOCK;
+    //Set Flags
+    fcntl(device->os_info.fd, F_SETFL, flags);
+    return ret;
+}
+
+int os_Unlock_Device(tDevice *device)
+{
+    int ret = SUCCESS;
+    //Get flags
+    int flags = fcntl(device->os_info.fd, F_GETFL);
+    //enable O_NONBLOCK
+    flags |= O_NONBLOCK;
+    //Set Flags
+    fcntl(device->os_info.fd, F_SETFL, flags);
+    return ret;
+}

@@ -117,6 +117,37 @@ extern "C"
     //-----------------------------------------------------------------------------
     int os_Controller_Reset(tDevice *device);
 
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Lock_Device(tDevice *device)
+    //
+    //! \brief   Description:  Issues the FSCTL_LOCK_VOLUME ioctl on the open handle to prevent any interuptions during a command or sequence of commands.
+    //!                        It is strongly recommended that the unlock is called after this is done to return the device to a "sharing" mode again.
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!   
+    //! 
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    int os_Lock_Device(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Unlock_Device(tDevice *device)
+    //
+    //! \brief   Description:  Issues the FSCTL_UNLOCK_VOLUME ioctl on the open handle to restore shared functionality on the device.
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!   
+    //! 
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    int os_Unlock_Device(tDevice *device);
+
 #if !defined (DISABLE_NVME_PASSTHROUGH)
     //-----------------------------------------------------------------------------
     //

@@ -2072,22 +2072,64 @@ int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
     return ret;
 }
 #endif
-int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
+int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool async, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
+int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool async, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
+int os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Flush(tDevice *device)
+int os_Flush(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
+}
+
+int os_Lock_Device(tDevice *device)
+{
+    int ret = SUCCESS;
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+    if (device->drive_info.drive_type == NVME_DRIVE)
+    {
+        //Not sure what to do
+    }
+    else
+#endif
+    {
+        //Get flags
+        int flags = fcntl(device->os_info.fd, F_GETFL);
+        //disable O_NONBLOCK
+        flags &= ~O_NONBLOCK;
+        //Set Flags
+        fcntl(device->os_info.fd, F_SETFL, flags);
+    }
+    return ret;
+}
+
+int os_Unlock_Device(tDevice *device)
+{
+    int ret = SUCCESS;
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+    if (device->drive_info.drive_type == NVME_DRIVE)
+    {
+        //Not sure what to do
+    }
+    else
+#endif
+    {
+        //Get flags
+        int flags = fcntl(device->os_info.fd, F_GETFL);
+        //enable O_NONBLOCK
+        flags |= O_NONBLOCK;
+        //Set Flags
+        fcntl(device->os_info.fd, F_SETFL, flags);
+    }
+    return ret;
 }
