@@ -16,10 +16,20 @@
 #include "ata_helper_func.h"
 #include "sat_helper_func.h"
 #include "usb_hacks.h"
+#include <sys/param.h>
 
 extern bool validate_Device_Struct(versionBlock);
 
 static struct cam_device *cam_dev = NULL;
+
+#if !defined (CCB_CLEAR_ALL_EXCEPT_HDR)
+//This is defined in newer versions of cam in FreeBSD, and is really useful.
+//This is being redefined here in case it is missing for backwards compatibiity with old FreeBSD versions
+    #define CCB_CLEAR_ALL_EXCEPT_HDR(ccbp)			\
+	    bzero((char *)(ccbp) + sizeof((ccbp)->ccb_h),	\
+	        sizeof(*(ccbp)) - sizeof((ccbp)->ccb_h))
+#endif
+
 
 //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
 bool os_Is_Infinite_Timeout_Supported()
@@ -71,15 +81,14 @@ int get_Device( const char *filename, tDevice *device )
             ccb = cam_getccb(cam_dev);
             if (ccb != NULL)
             {
-                bzero(&(&ccb->ccb_h)[1],
-                      sizeof(struct ccb_pathinq) - sizeof(struct ccb_hdr));
+                CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
                 ccb->ccb_h.func_code = XPT_GDEV_TYPE;
                 if (cam_send_ccb(cam_dev, ccb) >= 0)
                 {
                     if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
                     {
                         bcopy(&ccb->cgd, &cgd, sizeof(struct ccb_getdev));
-                        bcopy(&ccb->cpi, &cpi, sizeof(struct ccb_pathinq));
+                        
                         //default to scsi drive and scsi interface
                         device->drive_info.drive_type = SCSI_DRIVE;
                         device->drive_info.interface_type = SCSI_INTERFACE;
@@ -127,35 +136,75 @@ int get_Device( const char *filename, tDevice *device )
                         {
                             printf("Unsupported interface %d\n", cgd.protocol);
                         }
-                        //set the interface from a ccb_pathing struct
-                        /*
-                        switch (cpi.transport)
+                        //get interface info
+                        CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
+                        ccb->ccb_h.func_code = XPT_PATH_INQ;
+                        if (cam_send_ccb(cam_dev, ccb) >= 0)
                         {
-                        case XPORT_SATA:
-                        case XPORT_ATA:
-                            device->drive_info.interface_type = IDE_INTERFACE;
-                            break;
-                        case XPORT_USB:
-                            device->drive_info.interface_type = USB_INTERFACE;
-                            break;
-                        case XPORT_SAS:
-                        case XPORT_ISCSI:
-                        case XPORT_SSA:
-                        case XPORT_FC:
-                        case XPORT_SPI:
-                        case XPORT_UNSPECIFIED:
-                        case XPORT_UNKNOWN:
-                        default:
-                            device->drive_info.interface_type = SCSI_INTERFACE;
-                            break;
+                            if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
+                            {
+                                bcopy(&ccb->cpi, &cpi, sizeof(struct ccb_pathinq));
+                                //set the interface from a ccb_pathinq struct
+                                switch (cpi.transport)
+                                {
+                                case XPORT_SATA:
+                                case XPORT_ATA:
+                                    device->drive_info.interface_type = IDE_INTERFACE;//Seeing IDE may look strange, but that is how old code was written to identify an ATA interface regardless of parallel or serial.
+                                    break;
+                                case XPORT_USB:
+                                    device->drive_info.interface_type = USB_INTERFACE;
+                                    break;
+                                case XPORT_SPI:
+                                    device->drive_info.interface_type = SCSI_INTERFACE;
+                                    //firewire is reported as SPI.
+                                    //Check hba_vid for "SBP" to tell the difference and set the proper interface
+                                    if (strncmp(cpi.hba_vid, "SBP", 3) == 0 && cpi.hba_misc & (PIM_NOBUSRESET | PIM_NO_6_BYTE))//or check initiator_id? That's defined but not sure if that could be confused with other SPI devices - TJE
+                                    {
+                                        device->drive_info.interface_type = IEEE_1394_INTERFACE;
+                                        //TODO: Figure out where to get device unique firewire IDs for specific device compatibility lookups
+                                    }
+                                    break;
+                                case XPORT_SAS:
+                                case XPORT_ISCSI:
+                                case XPORT_SSA:
+                                case XPORT_FC:
+                                case XPORT_UNSPECIFIED:
+                                case XPORT_UNKNOWN:
+                                default:
+                                    device->drive_info.interface_type = SCSI_INTERFACE;
+                                    break;
+                                }
+                                //TODO: Parse other flags to set hacks and capabilities to help with adapter or interface specific limitations
+                                //       - target flags which may help identify device capabilities (no 6-byte commands, group 6 & 7 command support, ata_ext request support.
+                                //       - target flag that says no 6-byte commands can help uniquly identify IEEE1394 devices
+                                //      These should be saved later when we run into compatibility issues or need to make other improvements. For now, getting the interface is a huge help
+
+#if defined (__FreeBSD__) && __FreeBSD__ >= 9
+                                if (device->drive_info.interface_type != USB_INTERFACE && device->drive_info.interface_type != IEEE_1394_INTERFACE)
+                                {
+                                    //NOTE: Not entirely sure EXACTLY when this was introduced, but this is a best guess from looking through cam_ccb.h history
+                                    if (cpi.hba_vendor != 0 && cpi.hba_device != 0)//try to filter out when information is not available
+                                    {
+                                        device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
+                                        device->drive_info.adapter_info.productIDValid = true;
+                                        device->drive_info.adapter_info.vendorIDValid = true;
+                                        device->drive_info.adapter_info.productID = cpi.hba_device;
+                                        device->drive_info.adapter_info.vendorID = cpi.hba_vendor;
+                                        //NOT: Subvendor and subdevice seem to specify something further up the tree from the adapter itself.
+                                    }
+                                }
+#endif
+                            }
+                            else
+                            {
+                                printf("WARN: XPT_PATH_INQ I/O status failed\n");
+                            }
                         }
-                        /*/
-                        //comment switch-do nothing
-                        //*/
                         //let the library now go out and set up the device struct after sending some commands.
                         if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
                         {
                             //TODO: Actually get the VID and PID set before calling this.
+                            //      This will require some more research, but we should be able to do this now that we know the interface
                             setup_Passthrough_Hacks_By_ID(device);
                         }
                         ret = fill_Drive_Info_Data(device);
@@ -766,7 +815,7 @@ static int da_filter( const struct dirent *entry )
     {
       return !daHandle;
     }
-    char* partition = strpbrk(entry->d_name,"pP");
+    char* partition = strpbrk(entry->d_name,"pPsS");
     if(partition != NULL)
     {
         return 0;
@@ -784,7 +833,7 @@ static int ada_filter( const struct dirent *entry )
     {
       return !adaHandle;
     }
-    char* partition = strpbrk(entry->d_name,"pP");
+    char* partition = strpbrk(entry->d_name,"pPsS");
     if(partition != NULL)
     {
         return 0;
