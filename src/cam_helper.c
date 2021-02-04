@@ -20,8 +20,6 @@
 
 extern bool validate_Device_Struct(versionBlock);
 
-static struct cam_device *cam_dev = NULL;
-
 #if !defined (CCB_CLEAR_ALL_EXCEPT_HDR)
 //This is defined in newer versions of cam in FreeBSD, and is really useful.
 //This is being redefined here in case it is missing for backwards compatibiity with old FreeBSD versions
@@ -45,6 +43,8 @@ int get_Device( const char *filename, tDevice *device )
     int               ret  = SUCCESS, this_drive_type = 0;
     char devName[20] = { 0 };
     int devUnit = 0;
+
+    device->os_info.cam_dev = NULL;//initialize this to NULL (which it already should be) just to make sure everything else functions as expected
     
     if (cam_get_device(filename, devName, 20, &devUnit) == -1)
     {
@@ -55,10 +55,8 @@ int get_Device( const char *filename, tDevice *device )
     else
     {
         //printf("%s fd %d name %s\n",__FUNCTION__, device->os_info.fd, device->os_info.name);
-        // cam_dev = cam_open_device(filename, O_RDWR)
-        // The following API function looks more approriate to call
-        cam_dev = cam_open_spec_device(devName, devUnit, O_RDWR, NULL);
-        if (cam_dev != NULL)
+        device->os_info.cam_dev = cam_open_spec_device(devName, devUnit, O_RDWR, NULL); //O_NONBLOCK is not allowed
+        if (device->os_info.cam_dev != NULL)
         {
             //Set name and friendly name
             //name
@@ -78,12 +76,12 @@ int get_Device( const char *filename, tDevice *device )
             }
 
             //printf("%s Successfully opened\n",__FUNCTION__);
-            ccb = cam_getccb(cam_dev);
+            ccb = cam_getccb(device->os_info.cam_dev);
             if (ccb != NULL)
             {
                 CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
                 ccb->ccb_h.func_code = XPT_GDEV_TYPE;
-                if (cam_send_ccb(cam_dev, ccb) >= 0)
+                if (cam_send_ccb(device->os_info.cam_dev, ccb) >= 0)
                 {
                     if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
                     {
@@ -139,7 +137,7 @@ int get_Device( const char *filename, tDevice *device )
                         //get interface info
                         CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
                         ccb->ccb_h.func_code = XPT_PATH_INQ;
-                        if (cam_send_ccb(cam_dev, ccb) >= 0)
+                        if (cam_send_ccb(device->os_info.cam_dev, ccb) >= 0)
                         {
                             if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
                             {
@@ -295,7 +293,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
     struct ccb_ataio *ataio    = NULL;
     u_int32_t        direction = 0;
 
-    ccb = cam_getccb(cam_dev);
+    ccb = cam_getccb(scsiIoCtx->device->os_info.cam_dev);
 
     if (ccb != NULL)
     {
@@ -449,7 +447,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                 printf("\tData Ptr %p, xfer len %d\n", ataio->data_ptr, ataio->dxfer_len);
                 #endif
                 start_Timer(&commandTimer);
-                ret = cam_send_ccb(cam_dev, ccb);
+                ret = cam_send_ccb(scsiIoCtx->device->os_info.cam_dev, ccb);
                 stop_Timer(&commandTimer);
                 if (ret < 0)
                 {
@@ -568,7 +566,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
     struct ccb_scsiio *csio = NULL;
     union ccb         *ccb  = NULL;
 
-    if (cam_dev == NULL)
+    if (scsiIoCtx->device->os_info.cam_dev == NULL)
     {
         printf("%s dev is NULL\n", __FUNCTION__);
         return FAILURE;
@@ -579,7 +577,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
         return BAD_PARAMETER;
     }
 
-    ccb = cam_getccb(cam_dev);
+    ccb = cam_getccb(scsiIoCtx->device->os_info.cam_dev);
 
     if (ccb != NULL)
     {
@@ -691,7 +689,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
         seatimer_t commandTimer;
         memset(&commandTimer, 0, sizeof(seatimer_t));
         start_Timer(&commandTimer);
-        ret = cam_send_ccb(cam_dev, ccb);
+        ret = cam_send_ccb(scsiIoCtx->device->os_info.cam_dev, ccb);
         stop_Timer(&commandTimer);
         if (ret < 0)
         {
@@ -846,9 +844,10 @@ static int ada_filter( const struct dirent *entry )
 
 int close_Device(tDevice *dev)
 {
-    if (cam_dev)
+    if (dev->os_info.cam_dev)
     {
-        cam_close_device(cam_dev);
+        cam_close_device(dev->os_info.cam_dev);
+        dev->os_info.cam_dev = NULL;
     }
     return SUCCESS;
 }
@@ -927,7 +926,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     int numberOfDevices = 0;
     int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     char name[80]; //Because get device needs char
-    int fd;
+    int fd = 0;
     tDevice * d = NULL;
     int  num_da_devs = 0, num_ada_devs = 0;
 
@@ -982,10 +981,12 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             fd = cam_get_device(name, d->os_info.name, sizeof(d->os_info.name), &d->os_info.fd);
             if (fd >= 0)
             {
-                if (cam_dev)
+                //Not sure this is necessary, but add back in if we find any issues - TJE
+                /*if (d->os_info.cam_dev)
                 {
-                    cam_close_device(cam_dev);
-                }
+                    cam_close_device(d->os_info.cam_dev);
+                    d->os_info.cam_dev = NULL;
+                }*/
                 eVerbosityLevels temp = d->deviceVerbosity;
                 memset(d, 0, sizeof(tDevice));
                 d->deviceVerbosity = temp;

@@ -24,6 +24,11 @@
 #include <Protocol/DevicePath.h> //for device path union/structures
 #endif
 
+#if defined (__FreeBSD__)
+//Not including this here even though I thought I might need to because it causes compilation errors all over...not really sure why, but this worked...-TJE
+//#include <camlib.h> //for cam structure held in tDevice
+#endif
+
 #include "csmi_helper.h" //because the device structure holds some csmi support structure for when we can issue csmi passthrough commands.
 
 #if defined (__cplusplus)
@@ -1039,6 +1044,14 @@ extern "C"
         #else
             uint8_t paddWin[55];
         #endif //Win64 for padding
+        #elif defined (__FreeBSD__)
+        int fd;//used when cam is not being used (legacy ATA or NVMe IO without CAM....which may not be supported, but kept here just in case)
+        struct cam_device *cam_dev;//holds fd inside for CAM devices among other information
+        #if defined (__x86_64__) || defined (__amd64__) || defined (__aarch64__) || defined (__ia64__) || defined (__itanium__) || defined (__powerpc64__) || defined (__ppc64__) || defined (__spark__)
+            uint8_t freeBSDPadding[102];//padding on 64bit OS
+        #else
+            uint8_t freeBSDPadding[106];//padding on 32bit OS
+        #endif
         #else
         int                 fd;//some other nix system that only needs a integer file handle
         uint8_t otherPadd[110];
