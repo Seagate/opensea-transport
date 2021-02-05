@@ -1049,15 +1049,54 @@ int os_Flush(M_ATTR_UNUSED tDevice *device)
     return NOT_SUPPORTED;
 }
 
-//TODO: Add code for CAM resets. There should be XPT function codes to do some amount of resetting
-int os_Device_Reset(M_ATTR_UNUSED tDevice *device)
+int os_Device_Reset(tDevice *device)
 {
-    return OS_COMMAND_NOT_AVAILABLE;
+    int ret = OS_COMMAND_NOT_AVAILABLE;
+    union ccb *ccb = cam_getccb(device->os_info.cam_dev);
+    if (ccb)
+    {
+        CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
+        ccb->ccb_h.func_code = XPT_RESET_DEV;
+        if (cam_send_ccb(device->os_info.cam_dev, ccb) >= 0)
+        {
+            if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)//maybe also this? CAM_SCSI_BUS_RESET
+            {
+                ret = SUCCESS;
+            }
+            //TODO: Do we need other errors? It's probably fine to say OS_COMMAND_NOT_AVAILABLE at least for now.
+        }
+        cam_freeccb(ccb);
+    }
+    else
+    {
+        ret = MEMORY_FAILURE;
+    }
+    return ret;
 }
     
-int os_Bus_Reset(M_ATTR_UNUSED tDevice *device)
+int os_Bus_Reset(tDevice *device)
 {
-    return OS_COMMAND_NOT_AVAILABLE;
+    int ret = OS_COMMAND_NOT_AVAILABLE;
+    union ccb *ccb = cam_getccb(device->os_info.cam_dev);
+    if (ccb)
+    {
+        CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
+        ccb->ccb_h.func_code = XPT_RESET_BUS;
+        if (cam_send_ccb(device->os_info.cam_dev, ccb) >= 0)
+        {
+            if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)//maybe also this? CAM_SCSI_BUS_RESET
+            {
+                ret = SUCCESS;
+            }
+            //TODO: Do we need other errors? It's probably fine to say OS_COMMAND_NOT_AVAILABLE at least for now.
+        }
+        cam_freeccb(ccb);
+    }
+    else
+    {
+        ret = MEMORY_FAILURE;
+    }
+    return ret;
 }
 
 int os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
