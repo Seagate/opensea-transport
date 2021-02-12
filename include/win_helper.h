@@ -56,7 +56,7 @@ extern "C"
 #define WIN_MAX_CMD_TIMEOUT_SECONDS 108000
 
     //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
-    bool os_Is_Infinite_Timeout_Supported();
+    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported();
 
     //Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
     //NOTE: ARM requires 10.0.16299.0 API to get this library!
@@ -131,7 +131,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    int os_Lock_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Lock_Device(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -146,7 +146,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    int os_Unlock_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Unlock_Device(tDevice *device);
 
 #if !defined (DISABLE_NVME_PASSTHROUGH)
     //-----------------------------------------------------------------------------
