@@ -1095,10 +1095,6 @@ int scsi_Receive_Diagnostic_Results(tDevice *device, bool pcv, uint8_t pageCode,
     {
         printf("Sending SCSI Receive Diagnostic Results, page code = 0x%02" PRIX8 "\n",pageCode);
     }
-    if (timeoutSeconds == 0)
-    {
-        timeoutSeconds = 15;
-    }
 
     // Set up the CDB.
     cdb[OPERATION_CODE] = RECEIVE_DIAGNOSTIC_RESULTS;
@@ -2612,7 +2608,7 @@ int scsi_Start_Stop_Unit(tDevice *device, bool immediate, uint8_t powerCondition
     cdb[5] = 0;//control
     
     //send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 30);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Start Stop Unit", ret);
@@ -3486,6 +3482,16 @@ int scsi_Write_Same_10(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
     int       ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
 
+    uint32_t timeout = 0;
+    if (os_Is_Infinite_Timeout_Supported())
+    {
+        timeout = INFINITE_TIMEOUT_VALUE;
+    }
+    else
+    {
+        timeout = MAX_CMD_TIMEOUT_SECONDS;
+    }
+
     if (ptrData == NULL)//write Same 10 requires a data transfer
     {
         return BAD_PARAMETER;
@@ -3516,7 +3522,7 @@ int scsi_Write_Same_10(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
     cdb[9] = 0;//control
 
     //send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Write Same 10", ret);
@@ -3528,6 +3534,16 @@ int scsi_Write_Same_16(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 {
     int       ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
+
+    uint32_t timeout = 0;
+    if (os_Is_Infinite_Timeout_Supported())
+    {
+        timeout = INFINITE_TIMEOUT_VALUE;
+    }
+    else
+    {
+        timeout = MAX_CMD_TIMEOUT_SECONDS;
+    }
 
     if (ptrData == NULL && !noDataOut)
     {
@@ -3571,12 +3587,12 @@ int scsi_Write_Same_16(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
     if (noDataOut)
     {
         //send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     }
     else
     {
         //send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -3589,6 +3605,16 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 {
     int       ret = FAILURE;
     uint8_t   cdb[CDB_LEN_32] = { 0 };
+
+    uint32_t timeout = 0;
+    if (os_Is_Infinite_Timeout_Supported())
+    {
+        timeout = INFINITE_TIMEOUT_VALUE;
+    }
+    else
+    {
+        timeout = MAX_CMD_TIMEOUT_SECONDS;
+    }
 
     if (ptrData == NULL && !noDataOut)
     {
@@ -3648,12 +3674,12 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
     if (!noDataOut)
     {
         //send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     }
     else
     {
         //send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -4200,6 +4226,17 @@ int scsi_Remove_And_Truncate(tDevice *device, uint64_t requestedCapacity, uint32
 {
     int ret = FAILURE;
     uint8_t cdb[CDB_LEN_16] = { 0 };
+
+    uint32_t timeout = 0;
+    if (os_Is_Infinite_Timeout_Supported())
+    {
+        timeout = INFINITE_TIMEOUT_VALUE;
+    }
+    else
+    {
+        timeout = MAX_CMD_TIMEOUT_SECONDS;
+    }
+
     cdb[OPERATION_CODE] = 0x9E;
     //set the service action
     cdb[1] = 0x18;
@@ -4225,7 +4262,7 @@ int scsi_Remove_And_Truncate(tDevice *device, uint64_t requestedCapacity, uint32
         printf("Sending SCSI Remove And Truncate\n");
     }
     //send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, UINT16_MAX);
+    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Remove And Truncate", ret);
@@ -4237,6 +4274,17 @@ int scsi_Restore_Elements_And_Rebuild(tDevice *device)
 {
     int ret = FAILURE;
     uint8_t cdb[CDB_LEN_16] = { 0 };
+
+    uint32_t timeout = 0;
+    if (os_Is_Infinite_Timeout_Supported())
+    {
+        timeout = INFINITE_TIMEOUT_VALUE;
+    }
+    else
+    {
+        timeout = MAX_CMD_TIMEOUT_SECONDS;
+    }
+
     cdb[OPERATION_CODE] = 0x9E;
     //set the service action
     cdb[1] = 0x19;
@@ -4260,7 +4308,7 @@ int scsi_Restore_Elements_And_Rebuild(tDevice *device)
         printf("Sending SCSI Restore Elements and Rebuild\n");
     }
     //send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, UINT16_MAX);
+    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Restore Elements and Rebuild", ret);

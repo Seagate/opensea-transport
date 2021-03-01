@@ -34,6 +34,12 @@
 #include "common_platform.h"
 #endif
 
+    //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+bool os_Is_Infinite_Timeout_Supported()
+{
+    return true;
+}
+
 extern bool validate_Device_Struct(versionBlock);
 
 // Local helper functions for debugging
@@ -1196,7 +1202,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     {
         io_hdr.timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
         //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < 4294966)
+        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < SG_MAX_CMD_TIMEOUT_SECONDS)
         {
             io_hdr.timeout *= 1000;//convert to milliseconds
         }
@@ -1211,7 +1217,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
         {
             io_hdr.timeout = scsiIoCtx->timeout;
             //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-            if (scsiIoCtx->timeout < 4294966)
+            if (scsiIoCtx->timeout < SG_MAX_CMD_TIMEOUT_SECONDS)
             {
                 io_hdr.timeout *= 1000;//convert to milliseconds
             }
@@ -2103,4 +2109,28 @@ int os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_
 int os_Flush(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
+}
+
+int os_Lock_Device(tDevice *device)
+{
+    int ret = SUCCESS;
+    //Get flags
+    int flags = fcntl(device->os_info.fd, F_GETFL);
+    //disable O_NONBLOCK
+    flags &= ~O_NONBLOCK;
+    //Set Flags
+    fcntl(device->os_info.fd, F_SETFL, flags);
+    return ret;
+}
+
+int os_Unlock_Device(tDevice *device)
+{
+    int ret = SUCCESS;
+    //Get flags
+    int flags = fcntl(device->os_info.fd, F_GETFL);
+    //enable O_NONBLOCK
+    flags |= O_NONBLOCK;
+    //Set Flags
+    fcntl(device->os_info.fd, F_SETFL, flags);
+    return ret;
 }

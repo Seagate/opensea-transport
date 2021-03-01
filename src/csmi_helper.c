@@ -2221,6 +2221,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                             device->os_info.csmiDeviceData->portIdentifier = phyInfo.Information.Phy[phyIter].bPortIdentifier;
                             device->os_info.csmiDeviceData->phyIdentifier = phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier;
                             device->os_info.csmiDeviceData->portProtocol = phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol;
+                            memcpy(&device->os_info.csmiDeviceData->sasAddress[0], phyInfo.Information.Phy[phyIter].Attached.bSASAddress, 8);
                             //Attempt passthrough command and compare identifying data.
                             //for this to work, SCSIIoCTX structure must be manually defined for what we want to do right now and call the CSMI IO directly...not great, but don't want to have other force flags elsewhere at the moment- TJE
                             if (phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_SATA || phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_STP)
@@ -2453,8 +2454,11 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
 #if defined(_WIN32)
     TCHAR device_name[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
     CONST TCHAR *ptrDeviceName = &device_name[0];
+#if defined (_MSC_VER) && _MSC_VER < SEA_MSC_VER_VS2015
+    _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\SCSI") TEXT("%") TEXT("lu") TEXT(":"), controllerNum);
+#else
     _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\SCSI") TEXT("%") TEXT(PRIu32) TEXT(":"), controllerNum);
-
+#endif
     //lets try to open the device.
     device->os_info.fd = CreateFile(ptrDeviceName,
         GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 

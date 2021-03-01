@@ -86,6 +86,13 @@ extern "C"
 #define SD_PHYSICAL_DRIVE   "/dev/sd" //followed by a letter
 #define BSG_PHYSICAL_DRIVE  "/dev/bsg/" //remaining part of the handle is h:c:t:l
 
+    //This is the maximum timeout a command can use in SG passthrough with linux...1193 hours
+    //NOTE: SG also supports an infinite timeout, but that is checked in a separate function
+#define SG_MAX_CMD_TIMEOUT_SECONDS 4294967
+
+    //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+    bool os_Is_Infinite_Timeout_Supported();
+
 //SG Driver status's since they are not available through standard includes we're using
 
 #ifndef OPENSEA_SG_ERR_DRIVER_MASK
@@ -305,6 +312,36 @@ int device_Reset(int fd);
 int bus_Reset(int fd);
 
 int host_Reset(int fd);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Lock_Device(tDevice *device)
+    //
+    //! \brief   Description:  removes the O_NONBLOCK flag from the handle to get exclusive access to the device.
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!   
+    //! 
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    int os_Lock_Device(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Unlock_Device(tDevice *device)
+    //
+    //! \brief   Description:  adds the O_NONBLOCK flag to the handle to restore shared access to the device.
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!   
+    //! 
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    int os_Unlock_Device(tDevice *device);
 
     #if defined (__cplusplus)
 }

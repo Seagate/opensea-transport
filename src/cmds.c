@@ -203,7 +203,7 @@ int spin_down_drive(tDevice *device, bool sleepState)
             }
             else
             {
-                ret = scsi_Start_Stop_Unit(device, false, 0, PC_FORCE_STANDBY_0, false, false, false);
+                ret = scsi_Start_Stop_Unit(device, false, 0, PC_STANDBY, false, false, false);
             }
         }
         else
