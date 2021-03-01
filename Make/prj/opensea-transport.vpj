@@ -67,15 +67,28 @@
             Filters=""/>
     </CustomFolders>
     <Files AutoFolders="DirectoryView">
+        <Folder Name="../..">
+            <F N="../../README.md"/>
+        </Folder>
         <Folder Name="../gcc">
             <F
                 N="../gcc/Makefile"
                 Type="Makefile"/>
         </Folder>
-        <Folder Name="../../">
-            <F N="../../README.md"/>
+        <Folder Name="../gccWin">
+            <F
+                N="../gccWin/Makefile.gccWin"
+                Type="Makefile"/>
         </Folder>
         <Folder Name="../../include">
+            <Folder Name="vendor">
+                <Folder Name="seagate">
+                    <F N="../../include/vendor/seagate/seagate_ata_types.h"/>
+                    <F N="../../include/vendor/seagate/seagate_common_types.h"/>
+                    <F N="../../include/vendor/seagate/seagate_scsi_types.h"/>
+                </Folder>
+            </Folder>
+            <F N="../../include/asmedia_nvme_helper.h"/>
             <F N="../../include/ata_helper.h"/>
             <F N="../../include/ata_helper_func.h"/>
             <F N="../../include/cam_helper.h"/>
@@ -85,6 +98,7 @@
             <F N="../../include/csmi_helper_func.h"/>
             <F N="../../include/csmisas.h"/>
             <F N="../../include/cypress_legacy_helper.h"/>
+            <F N="../../include/jmicron_nvme_helper.h"/>
             <F N="../../include/nec_legacy_helper.h"/>
             <F N="../../include/nvme_helper.h"/>
             <F N="../../include/nvme_helper_func.h"/>
@@ -96,19 +110,30 @@
             <F N="../../include/scsi_helper.h"/>
             <F N="../../include/scsi_helper_func.h"/>
             <F N="../../include/sg_helper.h"/>
+            <F N="../../include/sntl_helper.h"/>
             <F N="../../include/ti_legacy_helper.h"/>
+            <F N="../../include/uefi_helper.h"/>
+            <F N="../../include/usb_hacks.h"/>
             <F N="../../include/uscsi_helper.h"/>
             <F N="../../include/version.h"/>
+            <F N="../../include/vm_helper.h"/>
+            <F N="../../include/vm_nvme.h"/>
+            <F N="../../include/vm_nvme_drv_config.h"/>
+            <F N="../../include/vm_nvme_lib.h"/>
+            <F N="../../include/vm_nvme_mgmt.h"/>
             <F N="../../include/win_helper.h"/>
         </Folder>
         <Folder Name="../../src">
+            <F N="../../src/asmedia_nvme_helper.c"/>
             <F N="../../src/ata_cmds.c"/>
             <F N="../../src/ata_helper.c"/>
+            <F N="../../src/ata_legacy_cmds.c"/>
             <F N="../../src/cam_helper.c"/>
             <F N="../../src/cmds.c"/>
             <F N="../../src/common_public.c"/>
             <F N="../../src/csmi_helper.c"/>
             <F N="../../src/cypress_legacy_helper.c"/>
+            <F N="../../src/jmicron_nvme_helper.c"/>
             <F N="../../src/nec_legacy_helper.c"/>
             <F N="../../src/nvme_cmds.c"/>
             <F N="../../src/nvme_helper.c"/>
@@ -118,9 +143,25 @@
             <F N="../../src/scsi_cmds.c"/>
             <F N="../../src/scsi_helper.c"/>
             <F N="../../src/sg_helper.c"/>
+            <F N="../../src/sntl_helper.c"/>
             <F N="../../src/ti_legacy_helper.c"/>
+            <F N="../../src/uefi_helper.c"/>
+            <F N="../../src/usb_hacks.c"/>
             <F N="../../src/uscsi_helper.c"/>
+            <F N="../../src/vm_helper.c"/>
+            <F N="../../src/vm_nvme_lib.c"/>
+            <F N="../../src/vm_nvme_mgmt_common.c"/>
             <F N="../../src/win_helper.c"/>
+        </Folder>
+        <Folder Name="../UEFI">
+            <F N="../UEFI/opensea-transport.dec"/>
+            <F N="../UEFI/opensea-transport.dsc"/>
+            <F N="../UEFI/opensea-transport.inf"/>
+        </Folder>
+        <Folder Name="../vmware">
+            <F
+                N="../vmware/Makefile"
+                Type="Makefile"/>
         </Folder>
     </Files>
 </Project>

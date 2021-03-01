@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -22,6 +22,10 @@
 extern "C"
 {
 #endif
+
+    //This is a private function that is used by the send CDB function below in order to contain printing debug output in one location instead of multiple so that the ATA layer can also call this.
+    //Do not use this directly to send a CDB. Use the scsi_Send_Cdb function instead.
+    int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields);
 
     //-----------------------------------------------------------------------------
     //
@@ -101,7 +105,7 @@ extern "C"
     //
     //  Entry:
     //!   \param pbuf - pointer to the sense buffer to analyze
-    //!   \param pbufSize - size of the send buffer pointed to by pbuf
+    //!   \param pbufSize - size of the sense buffer pointed to by pbuf
     //!   \param senseKey - pointer to the variable to hold the senseKey
     //!   \param asc - pointer to the variable to hold the additional code qualifier
     //!   \param ascq - pointer to the variable to hold the additional code sense qualifier
@@ -113,6 +117,35 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void get_Sense_Key_ASC_ASCQ_FRU(uint8_t *pbuf, uint32_t pbufSize, uint8_t *senseKey, uint8_t *asc, uint8_t *ascq, uint8_t *fru);
 
+
+    OPENSEA_TRANSPORT_API void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseDataFields senseFields);
+
+    OPENSEA_TRANSPORT_API void print_Sense_Fields(ptrSenseDataFields senseFields);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp)
+    //
+    //! \brief   Description:  Will get the sense key specific information from a sense data buffer if one is available.
+    //
+    //  Entry:
+    //!   \param ptrSenseData - pointer to the sense buffer to analyze
+    //!   \param senseDataLength - size of the sense buffer pointed to by ptrSenseData
+    //!   \param sksp - pointer to the structure that will hold the returned data. check the valid bit to make sure something was filled in, use the type to parse the info out correctly
+    //!
+    //  Exit:
+    //!   \return none
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API void get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp);
+
+    OPENSEA_TRANSPORT_API void get_Information_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *valid, uint64_t *information);
+
+    OPENSEA_TRANSPORT_API void get_Illegal_Length_Indicator_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *illegalLengthIndicator);
+
+    OPENSEA_TRANSPORT_API void get_Stream_Command_Bits_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, bool *filemark, bool *endOfMedia, bool *illegalLengthIndicator);
+
+    OPENSEA_TRANSPORT_API void get_Command_Specific_Information_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLength, uint64_t *commandSpecificInformation);
     //-----------------------------------------------------------------------------
     //
     //  uint16_t get_Returned_Sense_Data_Length(uint8_t *pbuf)
@@ -240,6 +273,7 @@ extern "C"
     //!   \param[in] device - pointer to the device structure
     //!   \param[in] sanitizeFeature - enum value specifying the sanitize service action to perform
     //!   \param[in] immediate - set to true to set the immediate bit
+    //!   \param[in] znr - zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!   \param[in] ause - set to true to set the allow unrestricted sanitize exit bit
     //!   \param[in] parameterListLength - this should be 0 for all features that are not an overwrite
     //!   \param[in] ptrData - should be NULL for all features that are not an overwrite
@@ -248,7 +282,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Sanitize_Cmd(tDevice *device, eScsiSanitizeFeature sanitizeFeature, bool immediate, bool ause, uint16_t parameterListLength, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API int scsi_Sanitize_Cmd(tDevice *device, eScsiSanitizeFeature sanitizeFeature, bool immediate, bool znr, bool ause, uint16_t parameterListLength, uint8_t *ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -259,6 +293,7 @@ extern "C"
     //  Entry:
     //!   \param[in] device - pointer to the device structure
     //!   \param[in] allowUnrestrictedSanitizeExit = set to true to set the allow unrestricted sanitize exit bit
+    //!   \param[in] znr - zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!   \param[in] immediate = set to true to set the immediate bit
     //!   \param[in] invertBetweenPasses = set to true to set the invert between passes in the transferred buffer
     //!   \param[in] test = enum value specifying the test bits. Should be SANITIZE_OVERWRITE_NO_CHANGES unless you know what a vendor is expecting
@@ -270,7 +305,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate, bool invertBetweenPasses, eScsiSanitizeOverwriteTest test, uint8_t overwritePasses, uint8_t *pattern, uint16_t patternLengthBytes);
+    OPENSEA_TRANSPORT_API int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit, bool znr, bool immediate, bool invertBetweenPasses, eScsiSanitizeOverwriteTest test, uint8_t overwritePasses, uint8_t *pattern, uint16_t patternLengthBytes);
     
     //-----------------------------------------------------------------------------
     //
@@ -297,12 +332,13 @@ extern "C"
     //!   \param[in] device - pointer to the device structure
     //!   \param[in] allowUnrestrictedSanitizeExit = set to true to set the allow unrestricted sanitize exit bit
     //!   \param[in] immediate = set to true to set the immediate bit
+    //!   \param[in] znr - zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Sanitize_Cryptographic_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate);
+    OPENSEA_TRANSPORT_API int scsi_Sanitize_Cryptographic_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate, bool znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -314,12 +350,13 @@ extern "C"
     //!   \param[in] device - pointer to the device structure
     //!   \param[in] allowUnrestrictedSanitizeExit = set to true to set the allow unrestricted sanitize exit bit
     //!   \param[in] immediate = set to true to set the immediate bit
+    //!   \param[in] znr - zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Sanitize_Block_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate);
+    OPENSEA_TRANSPORT_API int scsi_Sanitize_Block_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate, bool znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -390,8 +427,8 @@ extern "C"
     //
     //  Entry:
     //!   \param device - pointer to the device structure
-    //!   \param pcr - set the pcr bit
-    //!   \param sp - set the sp bit
+    //!   \param pcr - set the pcr bit (parameter code reset)
+    //!   \param sp - set the sp bit (save parameters)
     //!   \param pageControl - the value of the page control field. Only bits 1:0 are valid 
     //!   \param pageCode - the logpage you wish to read
     //!   \param subpageCode - the subpage you wish to read
@@ -517,8 +554,9 @@ extern "C"
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param parameterListLength - 
-    //!   \param PF - set the PF bit
-    //!   \param SP - set the SP bit
+    //!   \param pageFormat - set to false when reading page 0 if it is not formatted in page zero format.
+    //!   \param savePages - set to true to save the mode page(s) to non-volatile memory. This may or may not be supported on some drives. Some may only support saved pages
+    //!   \param resetToDefaults - set to true when resetting all pages to defaults. No data shall be transferred with this bit set, or an error will occur
     //!   \param ptrData - pointer to the data buffer to send
     //!   \param dataSize - value describing length of the data buffer being passed in
     //!
@@ -526,7 +564,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Mode_Select_10(tDevice *device, uint16_t parameterListLength, bool PF, bool SP, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int scsi_Mode_Select_10(tDevice *device, uint16_t parameterListLength, bool pageFormat, bool savePages, bool resetToDefaults, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -537,8 +575,9 @@ extern "C"
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param parameterListLength - 
-    //!   \param PF - set the PF bit
-    //!   \param SP - set the SP bit
+    //!   \param pageFormat - set to false when reading page 0 if it is not formatted in page zero format.
+    //!   \param savePages - set to true to save the mode page(s) to non-volatile memory. This may or may not be supported on some drives. Some may only support saved pages
+    //!   \param resetToDefaults - set to true when resetting all pages to defaults. No data shall be transferred with this bit set, or an error will occur
     //!   \param ptrData - pointer to the data buffer to send
     //!   \param dataSize - value describing length of the data buffer being passed in
     //!
@@ -546,7 +585,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Mode_Select_6(tDevice *device, uint8_t parameterListLength, bool PF, bool SP, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int scsi_Mode_Select_6(tDevice *device, uint8_t parameterListLength, bool pageFormat, bool savePages, bool resetToDefaults, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -562,12 +601,15 @@ extern "C"
     //!   \param bufferOffset -
     //!   \param parameterListLength - 
     //!   \param ptrData - pointer to the data buffer to send to the tDevice
+    //!   \param[in] firstSegment = Flag to help some low-level OSs know when the first segment of a firmware download is happening...specifically Windows
+    //!   \param[in] lastSegment = Flag to help some low-level OSs know when the last segment of a firmware download is happening...specifrically Windows
+    //!   \param[in] timeoutSeconds = set a timeout in seconds for the command. This can be useful if some FWDL commands take longer (code activation for example)
     //!   
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Write_Buffer(tDevice *device, eWriteBufferMode mode, uint8_t modeSpecific, uint8_t bufferID, uint32_t bufferOffset, uint32_t parameterListLength, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API int scsi_Write_Buffer(tDevice *device, eWriteBufferMode mode, uint8_t modeSpecific, uint8_t bufferID, uint32_t bufferOffset, uint32_t parameterListLength, uint8_t *ptrData, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -661,12 +703,13 @@ extern "C"
     //!   \param pageCode - 
     //!   \param allocationLength - length of the data buffer being sent to the device and length being requested from the device
     //!   \param ptrData - pointer to the data buffer to fill upon command completion
+    //!   \param timeoutSeconds - number of seconds to wait for this command (at most) to complete. If not sure, 0 will set the default of 15 seconds
     //!   
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Receive_Diagnostic_Results(tDevice *device, bool pcv, uint8_t pageCode, uint16_t allocationLength, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API int scsi_Receive_Diagnostic_Results(tDevice *device, bool pcv, uint8_t pageCode, uint16_t allocationLength, uint8_t *ptrData, uint32_t timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -2089,6 +2132,21 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int scsi_Remove_And_Truncate(tDevice *device, uint64_t requestedCapacity, uint32_t elementIdentifier);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  scsi_Restore_Elements_And_Rebuild(tDevice *device)
+    //
+    //! \brief   Description:  Sends the SCSI Restore Elements and Rebuild command
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to device structure
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int scsi_Restore_Elements_And_Rebuild(tDevice *device);
 
     typedef enum _ePersistentReserveInServiceActions
     {

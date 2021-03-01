@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -52,7 +52,7 @@ int build_PSP_Legacy_CDB(uint8_t *cdb, uint8_t *cdbLen, ataPassthroughCommand *a
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
         *cdbLen = PSP_EXT_COMMAND_CDB_LEN;
-		cdb[0] = PSP_OPCODE;
+        cdb[0] = PSP_OPCODE;
         switch (ataCommandOptions->commandDirection)
         {
         case XFER_NO_DATA:
@@ -88,7 +88,7 @@ int build_PSP_Legacy_CDB(uint8_t *cdb, uint8_t *cdbLen, ataPassthroughCommand *a
     else //assume 28bit command
     {
         *cdbLen = CDB_LEN_12;
-		cdb[0] = PSP_OPCODE;
+        cdb[0] = PSP_OPCODE;
         switch (ataCommandOptions->commandDirection)
         {
         case XFER_NO_DATA:
@@ -131,7 +131,7 @@ int get_RTFRs_From_PSP_Legacy(tDevice *device, ataPassthroughCommand *ataCommand
     uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
     cdb[OPERATION_CODE] = PSP_OPCODE;
     cdb[1] |= PSP_FUNC_RETURN_TASK_FILE_REGISTERS;
-    //Set the device register in offset 7 for selecting master vs slave drive....we won't do that at this time - TJE
+    //Set the device register in offset 7 for selecting device 0 vs device 1...we won't do that at this time - TJE
     //send the command
     ret = scsi_Send_Cdb(device, cdb, CDB_LEN_16, returnData, 14, XFER_DATA_IN, senseData, SPC3_SENSE_LEN, 0);
     //now get the RTFRs
@@ -164,7 +164,7 @@ int send_PSP_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *
     bool localSenseData = false;
     if (!ataCommandOptions->ptrSenseData)
     {
-        senseData = (uint8_t*)calloc(SPC3_SENSE_LEN, sizeof(uint8_t));
+        senseData = (uint8_t*)calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
         if (!senseData)
         {
             return MEMORY_FAILURE;
@@ -177,14 +177,20 @@ int send_PSP_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *
     ret = build_PSP_Legacy_CDB(pspCDB, &cdbLen, ataCommandOptions);
     if (ret == SUCCESS)
     {
-        //print verbose tfr info
-        print_Verbose_ATA_Command_Information(ataCommandOptions);
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            //print verbose tfr info
+            print_Verbose_ATA_Command_Information(ataCommandOptions);
+        }
         //send it
         ret = scsi_Send_Cdb(device, pspCDB, cdbLen, ataCommandOptions->ptrData, ataCommandOptions->dataSize, ataCommandOptions->commandDirection, ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, 0);
         //get the RTFRs
         ret = get_RTFRs_From_PSP_Legacy(device, ataCommandOptions, ret);
-        //print RTFRs
-        print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            //print RTFRs
+            print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+        }
         //set return code
         //Based on the RTFRs or sense data, generate a return value
         if (ataCommandOptions->rtfr.status == (ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE))
@@ -209,11 +215,15 @@ int send_PSP_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *
     memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);//clear before copying over data
     memcpy(&device->drive_info.lastCommandSenseData[0], &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
     memcpy(&device->drive_info.lastCommandRTFRs, &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
-    safe_Free(senseData);
+    safe_Free_aligned(senseData);
     if (localSenseData)
     {
         ataCommandOptions->ptrSenseData = NULL;
         ataCommandOptions->senseDataSize = 0;
+    }
+    if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)
+    {
+        ret = COMMAND_TIMEOUT;
     }
     return ret;
 }

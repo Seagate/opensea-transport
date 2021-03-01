@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,9 +14,14 @@
 
 //This file just helps with platform specific stuff.
 
-
-#if defined (__linux__) || defined (__DragonFly__)
+#if defined (UEFI_C_SOURCE)
+#include "uefi_helper.h"
+#elif defined (__linux__) || defined (__DragonFly__)
+#if defined (VMK_CROSS_COMP)
+#include "vm_helper.h"
+#else
 #include "sg_helper.h"
+#endif
 #elif defined (__FreeBSD__)
 #include "cam_helper.h"
 #elif defined (__NetBSD__)
@@ -42,7 +47,11 @@
 #error "Need a TRU64 passthrough helper file"
 #elif defined (__CYGWIN__) && !defined (_WIN32)
 //this is using CYGWIN with POSIX under Windows. This means that the Win API is not available, so attempt to use the sg passthrough file
+#if defined (VMK_CROSS_COMP)
+#include "vm_helper.h"
+#else
 #include <sg_helper.h>
+#endif
 #else
 #error "Unknown OS. Need to specify helper.h to use\n"
 #endif

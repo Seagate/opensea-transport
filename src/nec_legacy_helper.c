@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -127,7 +127,7 @@ int send_NEC_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *
     bool localSenseData = false;
     if (!ataCommandOptions->ptrSenseData)
     {
-        senseData = (uint8_t*)calloc(SPC3_SENSE_LEN, sizeof(uint8_t));
+        senseData = (uint8_t*)calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
         if (!senseData)
         {
             return MEMORY_FAILURE;
@@ -140,14 +140,20 @@ int send_NEC_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *
     ret = build_NEC_Legacy_CDB(necCDB, ataCommandOptions);
     if (ret == SUCCESS)
     {
-        //print verbose tfr info
-        print_Verbose_ATA_Command_Information(ataCommandOptions);
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            //print verbose tfr info
+            print_Verbose_ATA_Command_Information(ataCommandOptions);
+        }
         //send it
         ret = scsi_Send_Cdb(device, necCDB, CDB_LEN_16, ataCommandOptions->ptrData, ataCommandOptions->dataSize, ataCommandOptions->commandDirection, ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, 0);
         //get the RTFRs
         ret = get_RTFRs_From_NEC_Legacy(device, ataCommandOptions, ret);
-        //print RTFRs
-        print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            //print RTFRs
+            print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+        }
         //set return code
         //Based on the RTFRs or sense data, generate a return value
         if (ataCommandOptions->rtfr.status == (ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE))
@@ -172,11 +178,15 @@ int send_NEC_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *
     memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);//clear before copying over data
     memcpy(&device->drive_info.lastCommandSenseData[0], &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
     memcpy(&device->drive_info.lastCommandRTFRs, &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
-    safe_Free(senseData);
+    safe_Free_aligned(senseData);
     if (localSenseData)
     {
         ataCommandOptions->ptrSenseData = NULL;
         ataCommandOptions->senseDataSize = 0;
+    }
+    if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)
+    {
+        ret = COMMAND_TIMEOUT;
     }
     return ret;
 }

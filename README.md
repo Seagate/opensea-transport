@@ -1,5 +1,5 @@
 # opensea-transport
-#### Copyright (c) 2014-2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+#### Copyright (c) 2014-2019 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 
 Welcome to opensea-transport, part of the openSeaChest open source project!
 
@@ -9,9 +9,9 @@ openSeaChest project repository is maintained at
 https://github.com/Seagate/openSeaChest.
 
 ### opensea-transport
-Cross platform library containing common set of functions to issue standard commands to storage devices. 
+Cross platform library containing common set of functions to issue standard commands to storage devices.
 
-#### Overview 
+#### Overview
 
 The opensea-transport library has common set of defines and functions
 that allow upper layers to send standard ATA, SCSI & NVMe commands to
@@ -19,7 +19,7 @@ storage devices connected through SATA, SAS, PCIe or USB interfaces.
 This includes support for SATA devices attached to SAS HBAs.
 
 The transport layer encapsulates the nuances of OS specific structures
-by exposing a common API to send a command set to a particular device. 
+by exposing a common API to send a command set to a particular device.
 
 #### Source
 
@@ -28,47 +28,47 @@ https://github.com/Seagate/opensea-transport.git
 #### Building
 
 opensea-transport depends on the opensea-common library and the two should
-be cloned to the same folder for Makefiles to build the libraries. 
+be cloned to the same folder for Makefiles to build the libraries.
 
 All Makefile and Visual Studio project & solution files are part of Make folder.
 
 The following will build the debug version of the library by default.
 
 cd Make/gcc
-make 
+make
 
-To build under Microsoft Windows, open the correspoinding 
+To build under Microsoft Windows, open the correspoinding
 Visual Studio Solution files for VS 2013 or 2015
 
 #### Documentation
 
-Header files & functions have doxygen documentation. 
+Header files & functions have doxygen documentation.
 
 #### Platforms
 
-Under Linux this libraries can be built on the following platforms using 
-a cross platform compiler: 
+Under Linux this library can be built on the following platforms using
+a cross platform compiler:
 
         aarch64
-        alpha 
-        arm 
-        armhf 
-        hppa 
-        m68k 
-        mips 
-        mips64 
+        alpha
+        arm
+        armhf
+        hppa
+        m68k
+        mips
+        mips64
         mips64el
-        mipsel 
-        powerpc 
-        powerpc64 
+        mipsel
+        powerpc
+        powerpc64
         powerpc64le
-        s390x 
-        sh4 
-        x86 
-        x86_64 
-        
-This project can be build under Windows Visual Studio 2013 & 2015 solution
-files for x86 and x64 targets. 
+        s390x
+        sh4
+        x86
+        x86_64
+
+This project can be built under Windows Visual Studio 2013 & 2015 solution
+files for x86 and x64 targets.
 
 ### Names, Logos, and Brands
 
@@ -79,30 +79,26 @@ imply endorsement.
 
 ### Support and Open Source Statement
 
-Seagate offers technical support for disk drive installation.  If you have any
-questions related to Seagate products and technologies, feel free to submit
-your request on our web site. See the web site for a list of world-wide
-telephone numbers.
+Support from Seagate Technology for open source projects is different than traditional Technical Support.  If possible, please use the **Issues tab** in the individual software projects so that others may benefit from the questions and answers.  Include the output of --version information in the message. See the user guide section 'General Usage Hints' for information about saving output to a log file.
 
-Seagate Support:
-http://www.seagate.com/support-home/
-Contact Us:
+
+If you need to contact us through email, please choose one of these
+two email addresses:
+
+- opensource@seagate.com   for general questions and bug reports
+- opensea-build@seagate.com   for specific questions about programming and building the software
+
+Seagate offers technical support for drive installation.  If you have any questions related to Seagate products and technologies, feel free to submit your request on our web site. See the web site for a list of world-wide telephone numbers.
+
+- http://www.seagate.com/support-home/
+- Contact Us:
 http://www.seagate.com/contacts/
 
-Please report bugs/suggestions to https://github.com/Seagate/openSeaChest.
-Include the output of --version information in the email. See the user guide
-section 'General Usage Hints' for information about saving output to a log file.
+This software uses open source packages obtained with permission from the relevant parties. For a complete list of open source components, sources and licenses, please see our Linux USB Boot Maker Utility FAQ for additional information.
 
-This software uses open source packages obtained with permission from the
-relevant parties. For a complete list of open source components, sources and
-licenses, please see our Linux USB Boot Maker Utility FAQ for additional
-information.
+The newest online version of the openSeaChest Utilities documentation, open source usage and acknowledgement licenses, and our Linux USB Boot Maker FAQ can be found at: https://github.com/Seagate/openSeaChest.
 
-The newest online version of the openSeaChest Utilities documentation, open
-source usage and acknowledgement licenses, and our Linux USB Boot Maker FAQ can
-be found at: https://github.com/Seagate/openSeaChest.
-
-Copyright (c) 2014-2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+Copyright (c) 2014-2019 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 
 -----------------------------------------
 
@@ -148,7 +144,7 @@ Mozilla Public License Version 2.0
     means any form of the work other than Source Code Form.
 
 **1.7. “Larger Work”**  
-    means a work that combines Covered Software with other material, in 
+    means a work that combines Covered Software with other material, in
     a separate file or files, that is not Covered Software.
 
 **1.8. “License”**  

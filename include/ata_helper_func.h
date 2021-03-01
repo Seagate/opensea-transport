@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -21,6 +21,8 @@ extern "C"
 {
 #endif
 
+    //swaps all words of ATA ID Data...used only in big endian right now for compatibility.
+    void byte_Swap_ID_Data_Buffer(uint16_t *idData);
 
     //-----------------------------------------------------------------------------
     //
@@ -81,12 +83,13 @@ extern "C"
     //  Entry:
     //!   \param[in] device = file descriptor
     //!   \param[in] failureModeBit = when set to true, set the Failure Mode bit
+    //!   \param[in] znr = zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Sanitize_Crypto_Scramble(tDevice *device, bool failureModeBit);
+    OPENSEA_TRANSPORT_API int ata_Sanitize_Crypto_Scramble(tDevice *device, bool failureModeBit, bool znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -97,12 +100,13 @@ extern "C"
     //  Entry:
     //!   \param[in] device = file descriptor
     //!   \param[in] failureModeBit = when set to true, set the Failure Mode bit
+    //!   \param[in] znr = zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Sanitize_Block_Erase(tDevice *device, bool failureModeBit);
+    OPENSEA_TRANSPORT_API int ata_Sanitize_Block_Erase(tDevice *device, bool failureModeBit, bool znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -116,12 +120,14 @@ extern "C"
     //!   \param[in] invertBetweenPasses = set to true to set the bit specifying to invert the pattern between passes
     //!   \param[in] numberOfPasses = this will contain the number of passes to perform. A value of 0 means 16 passes.
     //!   \param[in] overwritePattern = this specifies the pattern to use during overwrite
+    //!   \param[in] znr = zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
+    //!   \param[in] definitiveEndingPattern = if the drive supports this bit, it will make sure that the specified pattern is the pattern upon completion between each pass and the invert between passes bit.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Sanitize_Overwrite_Erase(tDevice *device, bool failureModeBit, bool invertBetweenPasses, uint8_t numberOfPasses, uint32_t overwritePattern);
+    OPENSEA_TRANSPORT_API int ata_Sanitize_Overwrite_Erase(tDevice *device, bool failureModeBit, bool invertBetweenPasses, uint8_t numberOfPasses, uint32_t overwritePattern, bool znr, bool definitiveEndingPattern);
 
     //-----------------------------------------------------------------------------
     //
@@ -252,7 +258,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *ptrData, uint32_t dataSize, uint16_t timeout, bool forceRTFRs, uint8_t countReg);
+    OPENSEA_TRANSPORT_API int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *ptrData, uint32_t dataSize, uint32_t timeout, bool forceRTFRs, uint8_t countReg);
 
     //-----------------------------------------------------------------------------
     //
@@ -286,7 +292,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SMART_Offline(tDevice *device, uint8_t subcommand, uint16_t timeout);
+    OPENSEA_TRANSPORT_API int ata_SMART_Offline(tDevice *device, uint8_t subcommand, uint32_t timeout);
 
     //-----------------------------------------------------------------------------
     //
@@ -523,12 +529,15 @@ extern "C"
     //!   \param[in] useDMA = use download Microcode DMA command (device must support this command or this will return an error)
     //!   \param[in] pData = pointer to the data buffer to send to the device
     //!   \param[in] dataLen = length of data to transfer
+    //!   \param[in] firstSegment = Flag to help some low-level OSs know when the first segment of a firmware download is happening...specifically Windows
+    //!   \param[in] lastSegment = Flag to help some low-level OSs know when the last segment of a firmware download is happening...specifrically Windows
+    //!   \param[in] timeoutSeconds = set a timeout in seconds for the command. This can be useful if some FWDL commands take longer (code activation for example)
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, bool useDMA, uint8_t *pData, uint32_t dataLen);
+    OPENSEA_TRANSPORT_API int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, bool useDMA, uint8_t *pData, uint32_t dataLen, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -842,6 +851,31 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_SCT_Data_Transfer(tDevice *device, bool useGPL, bool useDMA, eDataTransferDirection direction, uint8_t *dataBuf, uint32_t dataSize);
 
+    OPENSEA_TRANSPORT_API int ata_SCT_Check_Status(tDevice *device, uint32_t retries, uint16_t actionCode, uint16_t functionCode);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  ata_SCT_Read_Write_Long(tDevice *device, bool useGPL, bool useDMA, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested)
+    //
+    //! \brief   Description:  This command sends a SCT (SMART Command Transport) read long or write long command to a device
+    //
+    //  Entry:
+    //!   \param device - device handle
+    //!   \param useGPL - Use the GPL feature set instead of the SMART feature set (max number of bytes transported: SMART-130,560 B    GPL-33,553,920 B)
+    //!   \param useDMA - This bool specifies to use the readlogextDMA/writelogextDMA commands. This only applies when useGPL is set to true.
+    //!   \param mode - set to read long or write long
+    //!   \param lba - set the LBA to read or write long
+    //!   \param dataBuf - pointer to data buffer to use for read or write long data transfer
+    //!   \param dataSize - length of data buffer
+    //!   \param numberOfECCCRCBytes - (optional) if successful at getting RTFRs, this will be set to the number of ECC or CRC bytes returned by the device
+    //!   \param numberOfBlocksRequested - (optional) if successful at getting RTFRs, this will be set to the number of 512B sectors the device expects to be transferred
+    //
+    //  Exit:
+    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int ata_SCT_Read_Write_Long(tDevice *device, bool useGPL, bool useDMA, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested);
+
     //-----------------------------------------------------------------------------
     //
     //  ata_SCT_Write_Same()
@@ -927,74 +961,75 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_SCT_Data_Table(tDevice *device, bool useGPL, bool useDMA, uint16_t functionCode, uint16_t tableID, uint8_t *dataBuf, uint32_t dataSize);
 
-	//-----------------------------------------------------------------------------
-	//
-	//  ata_Check_Power_Mode()
-	//
-	//! \brief   Description:  This command sends a ATA Check Power Mode command to the device
-	//
-	//  Entry:
-	//!   \param device - device handle
-	//!   \param powerMode - pointer to a variable that will contain the value of the power mode. Check the spec to see how to determine what the power mode is.
-	//
-	//  Exit:
-	//!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-	//
-	//-----------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------
+    //
+    //  ata_Check_Power_Mode()
+    //
+    //! \brief   Description:  This command sends a ATA Check Power Mode command to the device
+    //
+    //  Entry:
+    //!   \param device - device handle
+    //!   \param powerMode - pointer to a variable that will contain the value of the power mode. Check the spec to see how to determine what the power mode is.
+    //
+    //  Exit:
+    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
+    //
+    //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_Check_Power_Mode(tDevice *device, uint8_t *powerMode);
 
-	//-----------------------------------------------------------------------------
-	//
-	//  ata_Configure_Stream()
-	//
-	//! \brief   Description:  This command sends a ATA Configure Stream command to the device
-	//
-	//  Entry:
-	//!   \param device - device handle
-	//!   \param streamID - set this to the stream ID. only bits 2:0 are valid
-	//!   \param addRemoveStreamBit - set to true to set this bit (meaning add stream). Set to false to leave this bit at 0 (meaning remove stream)
-	//!   \param readWriteStreamBit - This bit is obsolete since ACS so set this to false for new devices. Only set this for old devices. (see ATA/ATAPI 7 for details on this bit)
-	//!   \param defaultCCTL - time in which the device will return command completion for read stream command or a write stream command with COMMAND CCTL field set to 0. See spec for formula
-	//!   \param allocationUnit - number of logical blocks the device should use for read look-ahead and write cache operations for the stream being configured
-	//
-	//  Exit:
-	//!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-	//
-	//-----------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------
+    //
+    //  ata_Configure_Stream()
+    //
+    //! \brief   Description:  This command sends a ATA Configure Stream command to the device
+    //
+    //  Entry:
+    //!   \param device - device handle
+    //!   \param streamID - set this to the stream ID. only bits 2:0 are valid
+    //!   \param addRemoveStreamBit - set to true to set this bit (meaning add stream). Set to false to leave this bit at 0 (meaning remove stream)
+    //!   \param readWriteStreamBit - This bit is obsolete since ACS so set this to false for new devices. Only set this for old devices. (see ATA/ATAPI 7 for details on this bit)
+    //!   \param defaultCCTL - time in which the device will return command completion for read stream command or a write stream command with COMMAND CCTL field set to 0. See spec for formula
+    //!   \param allocationUnit - number of logical blocks the device should use for read look-ahead and write cache operations for the stream being configured
+    //
+    //  Exit:
+    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
+    //
+    //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_Configure_Stream(tDevice *device, uint8_t streamID, bool addRemoveStreamBit, bool readWriteStreamBit, uint8_t defaultCCTL, uint16_t allocationUnit);
 
-	//-----------------------------------------------------------------------------
-	//
-	//  ata_Data_Set_Management()
-	//
-	//! \brief   Description:  This command sends a ATA Data Set Management command to the device
-	//
-	//  Entry:
-	//!   \param device - device handle
-	//!   \param trimBit - set the TRIM bit. (Since this is currently the only available operation with this command, this should be set to true)
-	//!   \param ptrData - pointer to the data buffer that will be sent to the device
-	//!   \param dataSize - the size of the data buffer to send.
-	//
-	//  Exit:
-	//!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-	//
-	//-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uint32_t dataSize);
+    //-----------------------------------------------------------------------------
+    //
+    //  ata_Data_Set_Management()
+    //
+    //! \brief   Description:  This command sends a ATA Data Set Management (XL) command to the device
+    //
+    //  Entry:
+    //!   \param device - device handle
+    //!   \param trimBit - set the TRIM bit. (Since this is currently the only available operation with this command, this should be set to true)
+    //!   \param ptrData - pointer to the data buffer that will be sent to the device
+    //!   \param dataSize - the size of the data buffer to send.
+    //!   \param xl - set to true to issue data set management XL command instead of standard command. Support for this is shown in ID Data log - supported features subpage. NOTE: This uses a different data range format, so only set this when the buffer is setup correctly!
+    //
+    //  Exit:
+    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int ata_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uint32_t dataSize, bool xl);
 
-	//-----------------------------------------------------------------------------
-	//
-	//  ata_execute_Device_Diagnostic()
-	//
-	//! \brief   Description:  This command sends a ATA Execute Device Diagnostic command to the device
-	//
-	//  Entry:
-	//!   \param device - device handle
-	//!   \param diagnosticCode - returned diagnostic code value
-	//
-	//  Exit:
-	//!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-	//
-	//-----------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------
+    //
+    //  ata_execute_Device_Diagnostic()
+    //
+    //! \brief   Description:  This command sends a ATA Execute Device Diagnostic command to the device
+    //
+    //  Entry:
+    //!   \param device - device handle
+    //!   \param diagnosticCode - returned diagnostic code value
+    //
+    //  Exit:
+    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
+    //
+    //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_Execute_Device_Diagnostic(tDevice *device, uint8_t* diagnosticCode);
 
     //-----------------------------------------------------------------------------
@@ -1121,6 +1156,25 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_Read_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  ata_Read_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize)
+    //
+    //! \brief   Description:  This command sends a ATA Read Sectors(No Retry) command to the device
+    //
+    //  Entry:
+    //!   \param device - device handle
+    //!   \param LBA - the starting LBA to read
+    //!   \param ptrData - pointer to the data buffer to fill in with the result of this command. 
+    //!   \param sectorCount - number of sectors to read
+    //!   \param dataSize - the Size of your buffer. This will be used to determine the sector count for how many sectors to read
+    //
+    //  Exit:
+    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int ata_Read_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1393,6 +1447,23 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_Write_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd);
 
+    //
+    //  ata_Write_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize)
+    //
+    //! \brief   Description:  This command sends a ATA Write Sectors(No Retry) command to the device
+    //
+    //  Entry:
+    //!   \param device - device handle
+    //!   \param LBA - the starting LBA to read
+    //!   \param ptrData - pointer to the data buffer to send to the device
+    //!   \param dataSize - the Size of your buffer. This will be used to determine the sector count for how many sectors to write
+    //
+    //  Exit:
+    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int ata_Write_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
+
     //-----------------------------------------------------------------------------
     //
     //  ata_Write_Stream_Ext()
@@ -1579,7 +1650,7 @@ extern "C"
     //
     //  Entry:
     //!   \param device - device handle
-    //!   \param subcommand - set to the subcommand/feature you want to configure
+    //!   \param subcommand - set to the subcommand/feature you want to configure. Can be a hex value, or from eATASetFeaturesSubcommands
     //!   \param subcommandCountField - subcommand specific
     //!   \param subcommandLBALo - subcommand specific
     //!   \param subcommandLBAMid - subcommand specific
@@ -1589,7 +1660,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Set_Features(tDevice *device, eATASetFeaturesSubcommands subcommand, uint8_t subcommandCountField, uint8_t subcommandLBALo, uint8_t subcommandLBAMid, uint16_t subcommandLBAHi);
+    OPENSEA_TRANSPORT_API int ata_Set_Features(tDevice *device, uint8_t subcommand, uint8_t subcommandCountField, uint8_t subcommandLBALo, uint8_t subcommandLBAMid, uint16_t subcommandLBAHi);
 
     OPENSEA_TRANSPORT_API int ata_EPC_Restore_Power_Condition_Settings(tDevice *device, uint8_t powerConditionID, bool defaultBit, bool save);
 
@@ -1773,7 +1844,7 @@ extern "C"
     //  fill_In_ATA_Drive_Info()
     //
     //! \brief   Description:  Function to send a ATA identify command and fill in 
-    //						   some ATA specific data to the device structure
+    //                         some ATA specific data to the device structure
     //
     //  Entry:
     //!   \param[in] device = file descriptor
@@ -2038,33 +2109,18 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* device)
+    //  ata_Restore_Elements_And_Rebuild(tDevice *device)
     //
-    //! \brief   Description:  Attempts to figure out the ATA passthrough method of external (USB and IEEE1394) products by issueing identify commands with different passthrough types until success is found
-    //
-    //  Entry:
-    //!   \param[in] device = file descriptor
-    //!
-    //  Exit:
-    //!   \return VOID
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* device);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  set_ATA_Passthrough_Type_By_PID_and_VID(tDevice* device)
-    //
-    //! \brief   Description:  Sets the passthrough type based off theVID/PID combo. If no match is found, set_ATA_Passthrough_Type_By_Trial_And_Error(device) is called to set the passthrough type.
+    //! \brief   Description:  Sends the ATA Restore Elements and Rebuild command
     //
     //  Entry:
-    //!   \param[in] device = file descriptor
+    //!   \param[in] device = pointer to device structure
     //!
     //  Exit:
-    //!   \return VOID
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void set_ATA_Passthrough_Type_By_PID_and_VID(tDevice *device);
+    OPENSEA_TRANSPORT_API int ata_Restore_Elements_And_Rebuild(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2115,6 +2171,14 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize);
 
+    //A couple helper functions to help with Legacu drives
+    bool is_LBA_Mode_Supported(tDevice *device);
+
+    bool is_CHS_Mode_Supported(tDevice *device);
+
+    OPENSEA_TRANSPORT_API int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t *lba);
+
+    OPENSEA_TRANSPORT_API int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_t *head, uint8_t *sector);
 
     /////////////////////////////////////////////////////////////////////////////////
     /// Obsolete ATA Commands. These commands are from specs prior to ATA-ATAPI 7 ///
@@ -2123,27 +2187,76 @@ extern "C"
     //Last seen in ATA-3. All inputs are vendor specific and outputs are vendor specific. Protocol is vendor specific.
     OPENSEA_TRANSPORT_API int ata_Legacy_Format_Track(tDevice *device, uint8_t feature, uint8_t sectorCount, uint8_t sectorNumber, uint8_t cylinderLow, uint8_t cylinderHigh, uint8_t *ptrData, uint32_t dataSize, eAtaProtocol protocol, bool lbaMode);
 
-    //Last seen in ATA-3. Prior to ATA3, the lower nibble of the command could be 0 - F. This is not supported right now
-    OPENSEA_TRANSPORT_API int ata_Legacy_Recalibrate(tDevice *device);
+    //Last seen in ATA-3. Prior to ATA3, the lower nibble of the command could be 0 - F.
+    OPENSEA_TRANSPORT_API int ata_Legacy_Recalibrate(tDevice *device, uint8_t lowCmdNibble, bool chsMode);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Set_Max_Address_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volitileValue);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Set_Max_Address_Ext_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volatileValue);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Verify_Sectors_CHS(tDevice *device, bool extendedCmd, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t lowCmdNibble);
 
     //last seen in ATA-ATAPI 6.
-    OPENSEA_TRANSPORT_API int ata_Legacy_Seek(tDevice *device, uint32_t lba);
+    OPENSEA_TRANSPORT_API int ata_Legacy_Seek(tDevice *device, uint32_t lba, uint8_t lowCmdNibble);
 
     //last seen in ATA-3
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
     OPENSEA_TRANSPORT_API int ata_Legacy_Read_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
     //last seen in ATA-3
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
     OPENSEA_TRANSPORT_API int ata_Legacy_Write_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
 
     //last seen in ATA-2
     //Sub command 22h = LBA (or Cyl lo, hi, head#), and sec number specify where to start. count specifies how many sectors to write. Taking in lba mode by default since CHS is dead. (528MB and higher are recommended to implement LBA)
     //Sub command DDh = initialize all usable sectors. Number of sectors field is ignored
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Same_CHS(tDevice *device, uint8_t subcommand, uint8_t numberOfSectorsToWrite, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
     OPENSEA_TRANSPORT_API int ata_Legacy_Write_Same(tDevice *device, uint8_t subcommand, uint8_t numberOfSectorsToWrite, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
 
     //last seen in ATA-3
+    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Verify_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
     OPENSEA_TRANSPORT_API int ata_Legacy_Write_Verify(tDevice *device, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
 
     //last seen in ATA-3
     OPENSEA_TRANSPORT_API int ata_Legacy_Identify_Device_DMA(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
+
+
+    //These functions below are commands that can be sent in PIO or DMA Mode.
+    //They will automatically try DMA if it is supported, then retry with PIO mode if the Translator or Driver doesn't support issuing DMA mode commands.
+    OPENSEA_TRANSPORT_API int send_ATA_Read_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint16_t featureRegister);
+    OPENSEA_TRANSPORT_API int send_ATA_Write_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, bool forceRTFRs);
+    OPENSEA_TRANSPORT_API int send_ATA_Download_Microcode_Cmd(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, uint8_t *pData, uint32_t dataLen, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds);
+    OPENSEA_TRANSPORT_API int send_ATA_Trusted_Send_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int send_ATA_Trusted_Receive_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int send_ATA_Read_Buffer_Cmd(tDevice *device, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API int send_ATA_Write_Buffer_Cmd(tDevice *device, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API int send_ATA_Read_Stream_Cmd(tDevice *device, uint8_t streamID, bool notSequential, bool readContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int send_ATA_Write_Stream_Cmd(tDevice *device, uint8_t streamID, bool flush, bool writeContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
+
+    //Similar to above, but for SCT stuff. This will automatically retry from DMA to PIO mode. Also removes GPL flag. Now depends on if device supports GPL or not internally (can be flipped in device->drive_info.ata_Options.generalPurposeLoggingSupported if you want to force a SMART command)
+    OPENSEA_TRANSPORT_API int send_ATA_SCT(tDevice *device, eDataTransferDirection direction, uint8_t logAddress, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs);
+    OPENSEA_TRANSPORT_API int send_ATA_SCT_Status(tDevice *device, uint8_t *dataBuf, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int send_ATA_SCT_Command(tDevice *device, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs);
+    OPENSEA_TRANSPORT_API int send_ATA_SCT_Data_Transfer(tDevice *device, eDataTransferDirection direction, uint8_t *dataBuf, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int send_ATA_SCT_Read_Write_Long(tDevice *device, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested);
+    OPENSEA_TRANSPORT_API int send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode, uint64_t startLBA, uint64_t fillCount, uint8_t *pattern, uint64_t patternLength);
+    OPENSEA_TRANSPORT_API int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit);
+    OPENSEA_TRANSPORT_API int send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags);
+    OPENSEA_TRANSPORT_API int send_ATA_SCT_Data_Table(tDevice *device, uint16_t functionCode, uint16_t tableID, uint8_t *dataBuf, uint32_t dataSize);
+
 
     #if defined (__cplusplus)
 }

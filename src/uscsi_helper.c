@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -26,12 +26,18 @@
 #include "cmds.h"
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
-
+#include "usb_hacks.h"
 
 
 
 
 extern bool validate_Device_Struct(versionBlock);
+
+//If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+bool os_Is_Infinite_Timeout_Supported()
+{
+    return false;//TODO: Documentation does not state if an infinite timeout is supported. If it actually is, need to define the infinite timeout value properly, and set it to the correct value
+}
 
 /*
 Return the device name without the path.
@@ -55,6 +61,9 @@ int get_Device(const char *filename, tDevice *device)
         ret = FAILURE;
     }
 
+    device->os_info.osType = OS_SOLARIS;
+    device->os_info.minimumAlignment = sizeof(void *);//setting to be compatible with certain aligned memory allocation functions.
+
     //Adding support for different device discovery options. 
     if (device->dFlags == OPEN_HANDLE_ONLY)
     {
@@ -63,8 +72,10 @@ int get_Device(const char *filename, tDevice *device)
 
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
-        //set the handle name
-        set_Device_Name(filename, device->os_info.name, sizeof(device->os_info.name));
+        //set the name
+        strcpy(device->os_info.name, filename);
+        //set the friendly name
+        set_Device_Name(filename, device->os_info.friendlyName, sizeof(device->os_info.friendlyName));
 
         //set the OS Type
         device->os_info.osType = OS_SOLARIS;
@@ -74,8 +85,8 @@ int get_Device(const char *filename, tDevice *device)
         device->drive_info.drive_type = SCSI_DRIVE;
         if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
         {
-            //TODO: Actually get the VID and PID set before calling this...currently it just issues an identify command to test which passthrough to use until it works. - TJE
-            set_ATA_Passthrough_Type_By_PID_and_VID(device);
+            //TODO: Actually get the VID and PID set before calling this.
+            setup_Passthrough_Hacks_By_ID(device);
         }
         //fill in the device info
         ret = fill_Drive_Info_Data(device);
@@ -109,15 +120,43 @@ int get_Device(const char *filename, tDevice *device)
     return ret;
 }
 
-int device_Reset(ScsiIoCtx *scsiIoCtx)
+int uscsi_Reset(int fd, int resetFlag)
 {
-    //need to investigate if there is a way to do this in solaris
-    return NOT_SUPPORTED;
+    struct uscsi_cmd uscsi_io;
+    int ret = SUCCESS;
+
+    memset(&uscsi_io, 0, sizeof(uscsi_io));
+
+    uscsi_io.uscsi_flags |= resetFlag;
+    ret = ioctl(fd, USCSICMD, &uscsi_io);
+    if (ret < 0)
+    {
+        //TODO: check errno to figure out failure versus not supported???
+        ret = OS_COMMAND_NOT_AVAILABLE;
+    }
+    else
+    {
+        ret = SUCCESS;
+    }
+    return ret;
 }
-int bus_Reset(ScsiIoCtx *scsiIoCtx)
+
+int os_Device_Reset(tDevice *device)
 {
-    //need to investigate if there is a way to do this in solaris
-    return NOT_SUPPORTED;
+    //NOTE: USCSI_RESET is the same thing, but for legacy versions
+    //TODO: is USCSI_RESET_LUN better???
+    return uscsi_Reset(device->os_info.fd, USCSI_RESET_TARGET);
+}
+    
+int os_Bus_Reset(tDevice *device)
+{
+    //USCSI_RESET_ALL seems to imply a bus reset
+    return uscsi_Reset(device->os_info.fd, USCSI_RESET_ALL);
+}
+
+int os_Controller_Reset(tDevice *device)
+{
+    return OS_COMMAND_NOT_AVAILABLE;
 }
 
 int send_IO (ScsiIoCtx *scsiIoCtx)
@@ -137,7 +176,7 @@ int send_IO (ScsiIoCtx *scsiIoCtx)
         }
         else
         {
-            if (VERBOSITY_QUIET < g_verbosity)
+            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("No Raid PassThrough IO Routine present for this device\n");
             }
@@ -148,7 +187,7 @@ int send_IO (ScsiIoCtx *scsiIoCtx)
         ret = send_uscsi_io(scsiIoCtx);
         break;
     default:
-        if(VERBOSITY_QUIET < g_verbosity)
+        if(VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
             printf("Target Device does not have a valid interface %d\n", scsiIoCtx->device->drive_info.interface_type);
         }
@@ -163,12 +202,32 @@ int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
     int ret = SUCCESS;
 
     memset(&uscsi_io, 0, sizeof(uscsi_io));
-    if(VERBOSITY_BUFFERS <= g_verbosity)
+    if(VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
         printf("Sending command with send_IO\n");
     }
 
+    if (scsiIoCtx->timeout > USCSI_MAX_CMD_TIMEOUT_SECONDS || scsiIoCtx->device->drive_info.defaultTimeoutSeconds > USCSI_MAX_CMD_TIMEOUT_SECONDS)
+    {
+        return OS_TIMEOUT_TOO_LARGE;
+    }
+
     uscsi_io.uscsi_timeout = scsiIoCtx->timeout;
+    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    {
+        uscsi_io.uscsi_timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+    }
+    else
+    {
+        if (scsiIoCtx->timeout != 0)
+        {
+            uscsi_io.uscsi_timeout = scsiIoCtx->timeout;
+        }
+        else
+        {
+            uscsi_io.uscsi_timeout = 15;//default to 15 second timeout
+        }
+    }
     uscsi_io.uscsi_cdb = (caddr_t)scsiIoCtx->cdb;
     uscsi_io.uscsi_cdblen = scsiIoCtx->cdbLength;
     uscsi_io.uscsi_rqbuf = (caddr_t)scsiIoCtx->psense;
@@ -189,7 +248,7 @@ int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
         uscsi_io.uscsi_flags |= USCSI_WRITE;
         break;
     default:
-        if(VERBOSITY_QUIET < g_verbosity)
+        if(VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
             printf("%s Didn't understand direction\n",__FUNCTION__);
         }
@@ -199,7 +258,7 @@ int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
     // \revisit: should this be FF or something invalid than 0?
     scsiIoCtx->returnStatus.format = 0xFF;
     scsiIoCtx->returnStatus.senseKey = 0;
-    scsiIoCtx->returnStatus.acq = 0;
+    scsiIoCtx->returnStatus.asc = 0;
     scsiIoCtx->returnStatus.ascq = 0;
 
     seatimer_t commandTimer;
@@ -212,7 +271,7 @@ int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
     if( ret < 0)
     {
         ret = FAILURE;
-        if(VERBOSITY_BUFFERS <= g_verbosity)
+        if(VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
         {
             perror("send_IO");
         }
@@ -275,7 +334,7 @@ int close_Device(tDevice *device)
 //  Entry:
 //!   \param[out] numberOfDevices = integer to hold the number of devices found. 
 //!   \param[in] flags = eScanFlags based mask to let application control. 
-//!						 NOTE: currently flags param is not being used.  
+//!                      NOTE: currently flags param is not being used.  
 //!
 //  Exit:
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -287,10 +346,14 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 
     struct dirent **namelist;
     num_devs = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
-
+    for (int iter = 0; iter < num_devs; ++iter)
+    {
+        safe_Free(namelist[iter]);
+    }
+    safe_Free(namelist);
     *numberOfDevices = num_devs;
-	
-	return SUCCESS;
+    M_USE_UNUSED(flags); 
+    return SUCCESS;
 }
 
 //-----------------------------------------------------------------------------
@@ -300,18 +363,18 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //! \brief   Description:  Get a list of devices that the library supports. 
 //!                        Use get_Device_Count to figure out how much memory is
 //!                        needed to be allocated for the device list. The memory 
-//!						   allocated must be the multiple of device structure. 
-//!						   The application can pass in less memory than needed 
-//!						   for all devices in the system, in which case the library 
+//!                        allocated must be the multiple of device structure. 
+//!                        The application can pass in less memory than needed 
+//!                        for all devices in the system, in which case the library 
 //!                        will fill the provided memory with how ever many device 
-//!						   structures it can hold. 
+//!                        structures it can hold. 
 //  Entry:
 //!   \param[out] ptrToDeviceList = pointer to the allocated memory for the device list
 //!   \param[in]  sizeInBytes = size of the entire list in bytes. 
 //!   \param[in]  versionBlock = versionBlock structure filled in by application for 
-//!								 sanity check by library. 
+//!                              sanity check by library. 
 //!   \param[in] flags = eScanFlags based mask to let application control. 
-//!						 NOTE: currently flags param is not being used.  
+//!                      NOTE: currently flags param is not being used.  
 //!
 //  Exit:
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -319,102 +382,159 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //-----------------------------------------------------------------------------
 int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
 {
-	int returnValue = SUCCESS;
-	int numberOfDevices = 0;
-    int driveNumber = 0, found = 0, failedGetDeviceCount = 0;
-	char	name[80]; //Because get device needs char
-	int fd;
-	tDevice * d = NULL;
-	
-	struct dirent **namelist;
+    int returnValue = SUCCESS;
+    int numberOfDevices = 0;
+    int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
+    char name[80] = { 0 }; //Because get device needs char
+    int fd;
+    tDevice * d = NULL;
+    
+    struct dirent **namelist;
     int num_devs = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
     
-    char **devs = (char **)calloc(MAX_DEVICES_PER_CONTROLLER, sizeof(char *));
+    char **devs = (char **)calloc(num_devs + 1, sizeof(char *));
     int i = 0;
     for(; i < num_devs; i++)
     {
         devs[i] = (char *)malloc((strlen("/dev/rdsk/") + strlen(namelist[i]->d_name) + 1) * sizeof(char));
         strcpy(devs[i], "/dev/rdsk/");
         strcat(devs[i], namelist[i]->d_name);
-        free(namelist[i]);
+        safe_Free(namelist[i]);
     }
     devs[i] = NULL;
-    free(namelist);
+    safe_Free(namelist);
 
-	//TODO: Check if sizeInBytes is a multiple of 
-	if (!(ptrToDeviceList) || (!sizeInBytes))
-	{
-		returnValue = BAD_PARAMETER;
-	}
+    //TODO: Check if sizeInBytes is a multiple of 
+    if (!(ptrToDeviceList) || (!sizeInBytes))
+    {
+        returnValue = BAD_PARAMETER;
+    }
     else if ((!(validate_Device_Struct(ver))))
     {
         returnValue = LIBRARY_MISMATCH;
     }
-	else
-	{
-		numberOfDevices = sizeInBytes / sizeof(tDevice);
-		d = ptrToDeviceList;
-		for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_devs)) || (found < numberOfDevices)); driveNumber++)
-		{
-		    strncpy(name, devs[driveNumber], M_Min(sizeof(name), devs[driveNumber]));
+    else
+    {
+        numberOfDevices = sizeInBytes / sizeof(tDevice);
+        d = ptrToDeviceList;
+        for (driveNumber = 0; ((driveNumber >= 0 && (unsigned int)driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_devs)) && (found < numberOfDevices)); ++driveNumber)
+        {
+            if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
+            {
+                continue;
+            }
+            memset(name, 0, sizeof(name));//clear name before reusing it
+            strcpy(name, devs[driveNumber]);
             fd = -1;
-            //lets try to open the device.		
+            //lets try to open the device.      
             fd = open(name, O_RDWR | O_NONBLOCK);
             if (fd >= 0)
             {
-				close(fd);
-				memset(d, 0, sizeof(tDevice));
-				d->sanity.size = ver.size;
-				d->sanity.version = ver.version;
-				returnValue = get_Device(name, d);
-				if (returnValue != SUCCESS)
-				{
+                close(fd);
+                eVerbosityLevels temp = d->deviceVerbosity;
+                memset(d, 0, sizeof(tDevice));
+                d->deviceVerbosity = temp;
+                d->sanity.size = ver.size;
+                d->sanity.version = ver.version;
+                int ret = get_Device(name, d);
+                if (ret != SUCCESS)
+                {
                     failedGetDeviceCount++;
-				}
-				found++;
-				d++;
-			}
-		}
+                }
+                found++;
+                d++;
+            }
+            else if (errno == EACCES) //quick fix for opening drives without sudo
+            {
+                ++permissionDeniedCount;
+                failedGetDeviceCount++;
+            }
+            else
+            {
+                failedGetDeviceCount++;
+            }
+            //free the dev[deviceNumber] since we are done with it now.
+            safe_Free(devs[driveNumber]);
+        }
         if (found == failedGetDeviceCount)
         {
             returnValue = FAILURE;
         }
-        else if (failedGetDeviceCount)
+        else if(permissionDeniedCount == (num_devs))
+        {
+            returnValue = PERMISSION_DENIED;
+        }
+	    else if (failedGetDeviceCount && returnValue != PERMISSION_DENIED)
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
-	}
+    }
     safe_Free(devs);
-	return returnValue;
+    return returnValue;
 }
 
-int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
+int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool async, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
+int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool async, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
+int os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Flush(tDevice *device)
+int os_Flush(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
+
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
+int send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx *nvmeIoCtx)
 {
     return NOT_SUPPORTED;
 }
 
-int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize)
+int pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pData, M_ATTR_UNUSED uint32_t dataSize)
+{
+    return NOT_SUPPORTED;
+}
+
+int os_nvme_Reset(M_ATTR_UNUSED tDevice *device)
+{
+    return NOT_SUPPORTED;
+}
+
+int os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 #endif
+
+int os_Lock_Device(tDevice *device)
+{
+    int ret = SUCCESS;
+    //Get flags
+    int flags = fcntl(device->os_info.fd, F_GETFL);
+    //disable O_NONBLOCK
+    flags &= ~O_NONBLOCK;
+    //Set Flags
+    fcntl(device->os_info.fd, F_SETFL, flags);
+    return ret;
+}
+
+int os_Unlock_Device(tDevice *device)
+{
+    int ret = SUCCESS;
+    //Get flags
+    int flags = fcntl(device->os_info.fd, F_GETFL);
+    //enable O_NONBLOCK
+    flags |= O_NONBLOCK;
+    //Set Flags
+    fcntl(device->os_info.fd, F_SETFL, flags);
+    return ret;
+}

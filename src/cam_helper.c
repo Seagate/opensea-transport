@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -15,24 +15,24 @@
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
 #include "sat_helper_func.h"
+#include "usb_hacks.h"
+#include <sys/param.h>
 
 extern bool validate_Device_Struct(versionBlock);
 
-static struct cam_device *cam_dev = NULL;
+#if !defined (CCB_CLEAR_ALL_EXCEPT_HDR)
+//This is defined in newer versions of cam in FreeBSD, and is really useful.
+//This is being redefined here in case it is missing for backwards compatibiity with old FreeBSD versions
+    #define CCB_CLEAR_ALL_EXCEPT_HDR(ccbp)			\
+	    bzero((char *)(ccbp) + sizeof((ccbp)->ccb_h),	\
+	        sizeof(*(ccbp)) - sizeof((ccbp)->ccb_h))
+#endif
 
-/*
-Return the device name without the path.
-e.g. return da0 from /dev/da0
-*/
-static void set_Device_Name(const char* filename, char * name, int sizeOfName)
+
+//If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+bool os_Is_Infinite_Timeout_Supported()
 {
-    //TODO: use strrstr...avoiding it now for some include issues on compilers. 
-    char * s = strstr(filename, "/");
-    while (s != NULL)
-    {
-        strncpy(name, ++s, sizeOfName);
-        s = strstr(s, "/");
-    }
+    return true;
 }
 
 int get_Device( const char *filename, tDevice *device )
@@ -41,8 +41,12 @@ int get_Device( const char *filename, tDevice *device )
     struct ccb_pathinq cpi;
     union ccb         *ccb = NULL;
     int               ret  = SUCCESS, this_drive_type = 0;
+    char devName[20] = { 0 };
+    int devUnit = 0;
+
+    device->os_info.cam_dev = NULL;//initialize this to NULL (which it already should be) just to make sure everything else functions as expected
     
-    if ( cam_get_device(filename, device->os_info.name, sizeof(device->os_info.name), &device->os_info.fd) == -1 )
+    if (cam_get_device(filename, devName, 20, &devUnit) == -1)
     {
         ret = FAILURE;
         device->os_info.fd = -1;
@@ -51,16 +55,20 @@ int get_Device( const char *filename, tDevice *device )
     else
     {
         //printf("%s fd %d name %s\n",__FUNCTION__, device->os_info.fd, device->os_info.name);
-        // cam_dev = cam_open_device(filename, O_RDWR)
-        // The following API function looks more approriate to call
-        cam_dev = cam_open_spec_device(device->os_info.name, device->os_info.fd, O_RDWR, NULL);
-        if (cam_dev != NULL)
+        device->os_info.cam_dev = cam_open_spec_device(devName, devUnit, O_RDWR, NULL); //O_NONBLOCK is not allowed
+        if (device->os_info.cam_dev != NULL)
         {
-            //set the handle name
-            set_Device_Name(filename, device->os_info.name, sizeof(device->os_info.name));
+            //Set name and friendly name
+            //name
+            strcpy(device->os_info.name, filename);
+            //friendly name
+            sprintf(device->os_info.friendlyName, "%s%d", devName, devUnit);
+
+            device->os_info.fd = devUnit;
 
             //set the OS Type
             device->os_info.osType = OS_FREEBSD;
+            device->os_info.minimumAlignment = sizeof(void *);
             
             if (device->dFlags == OPEN_HANDLE_ONLY)
             {
@@ -68,18 +76,17 @@ int get_Device( const char *filename, tDevice *device )
             }
 
             //printf("%s Successfully opened\n",__FUNCTION__);
-            ccb = cam_getccb(cam_dev);
+            ccb = cam_getccb(device->os_info.cam_dev);
             if (ccb != NULL)
             {
-                bzero(&(&ccb->ccb_h)[1],
-                      sizeof(struct ccb_pathinq) - sizeof(struct ccb_hdr));
+                CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
                 ccb->ccb_h.func_code = XPT_GDEV_TYPE;
-                if (cam_send_ccb(cam_dev, ccb) >= 0)
+                if (cam_send_ccb(device->os_info.cam_dev, ccb) >= 0)
                 {
                     if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
                     {
                         bcopy(&ccb->cgd, &cgd, sizeof(struct ccb_getdev));
-                        bcopy(&ccb->cpi, &cpi, sizeof(struct ccb_pathinq));
+                        
                         //default to scsi drive and scsi interface
                         device->drive_info.drive_type = SCSI_DRIVE;
                         device->drive_info.interface_type = SCSI_INTERFACE;
@@ -111,7 +118,7 @@ int get_Device( const char *filename, tDevice *device )
                         {
                             device->drive_info.interface_type = IDE_INTERFACE;
                             device->drive_info.drive_type = ATA_DRIVE;
-                            if (cgd.protocol == PROTO_ATA)
+                            if (cgd.protocol == PROTO_ATAPI)
                             {
                                 device->drive_info.drive_type = ATAPI_DRIVE;
                             }
@@ -127,36 +134,76 @@ int get_Device( const char *filename, tDevice *device )
                         {
                             printf("Unsupported interface %d\n", cgd.protocol);
                         }
-                        //set the interface from a ccb_pathing struct
-                        /*
-                        switch (cpi.transport)
+                        //get interface info
+                        CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
+                        ccb->ccb_h.func_code = XPT_PATH_INQ;
+                        if (cam_send_ccb(device->os_info.cam_dev, ccb) >= 0)
                         {
-                        case XPORT_SATA:
-                        case XPORT_ATA:
-                            device->drive_info.interface_type = IDE_INTERFACE;
-                            break;
-                        case XPORT_USB:
-                            device->drive_info.interface_type = USB_INTERFACE;
-                            break;
-                        case XPORT_SAS:
-                        case XPORT_ISCSI:
-                        case XPORT_SSA:
-                        case XPORT_FC:
-                        case XPORT_SPI:
-                        case XPORT_UNSPECIFIED:
-                        case XPORT_UNKNOWN:
-                        default:
-                            device->drive_info.interface_type = SCSI_INTERFACE;
-                            break;
+                            if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
+                            {
+                                bcopy(&ccb->cpi, &cpi, sizeof(struct ccb_pathinq));
+                                //set the interface from a ccb_pathinq struct
+                                switch (cpi.transport)
+                                {
+                                case XPORT_SATA:
+                                case XPORT_ATA:
+                                    device->drive_info.interface_type = IDE_INTERFACE;//Seeing IDE may look strange, but that is how old code was written to identify an ATA interface regardless of parallel or serial.
+                                    break;
+                                case XPORT_USB:
+                                    device->drive_info.interface_type = USB_INTERFACE;
+                                    break;
+                                case XPORT_SPI:
+                                    device->drive_info.interface_type = SCSI_INTERFACE;
+                                    //firewire is reported as SPI.
+                                    //Check hba_vid for "SBP" to tell the difference and set the proper interface
+                                    if (strncmp(cpi.hba_vid, "SBP", 3) == 0 && cpi.hba_misc & (PIM_NOBUSRESET | PIM_NO_6_BYTE))//or check initiator_id? That's defined but not sure if that could be confused with other SPI devices - TJE
+                                    {
+                                        device->drive_info.interface_type = IEEE_1394_INTERFACE;
+                                        //TODO: Figure out where to get device unique firewire IDs for specific device compatibility lookups
+                                    }
+                                    break;
+                                case XPORT_SAS:
+                                case XPORT_ISCSI:
+                                case XPORT_SSA:
+                                case XPORT_FC:
+                                case XPORT_UNSPECIFIED:
+                                case XPORT_UNKNOWN:
+                                default:
+                                    device->drive_info.interface_type = SCSI_INTERFACE;
+                                    break;
+                                }
+                                //TODO: Parse other flags to set hacks and capabilities to help with adapter or interface specific limitations
+                                //       - target flags which may help identify device capabilities (no 6-byte commands, group 6 & 7 command support, ata_ext request support.
+                                //       - target flag that says no 6-byte commands can help uniquly identify IEEE1394 devices
+                                //      These should be saved later when we run into compatibility issues or need to make other improvements. For now, getting the interface is a huge help
+
+#if defined (__FreeBSD__) && __FreeBSD__ >= 9
+                                if (device->drive_info.interface_type != USB_INTERFACE && device->drive_info.interface_type != IEEE_1394_INTERFACE)
+                                {
+                                    //NOTE: Not entirely sure EXACTLY when this was introduced, but this is a best guess from looking through cam_ccb.h history
+                                    if (cpi.hba_vendor != 0 && cpi.hba_device != 0)//try to filter out when information is not available
+                                    {
+                                        device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
+                                        device->drive_info.adapter_info.productIDValid = true;
+                                        device->drive_info.adapter_info.vendorIDValid = true;
+                                        device->drive_info.adapter_info.productID = cpi.hba_device;
+                                        device->drive_info.adapter_info.vendorID = cpi.hba_vendor;
+                                        //NOT: Subvendor and subdevice seem to specify something further up the tree from the adapter itself.
+                                    }
+                                }
+#endif
+                            }
+                            else
+                            {
+                                printf("WARN: XPT_PATH_INQ I/O status failed\n");
+                            }
                         }
-                        /*/
-                        //comment switch-do nothing
-                        //*/
                         //let the library now go out and set up the device struct after sending some commands.
                         if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
                         {
-                            //TODO: Actually get the VID and PID set before calling this...currently it just issues an identify command to test which passthrough to use until it works. - TJE
-                            set_ATA_Passthrough_Type_By_PID_and_VID(device);
+                            //TODO: Actually get the VID and PID set before calling this.
+                            //      This will require some more research, but we should be able to do this now that we know the interface
+                            setup_Passthrough_Hacks_By_ID(device);
                         }
                         ret = fill_Drive_Info_Data(device);
                     }
@@ -198,11 +245,11 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     int ret = FAILURE;
     //printf("%s -->\n",__FUNCTION__);
 
-	if (scsiIoCtx->device->drive_info.interface_type == SCSI_INTERFACE)
+    if (scsiIoCtx->device->drive_info.interface_type == SCSI_INTERFACE)
     {
         ret = send_Scsi_Cam_IO(scsiIoCtx);
     }
-	else if (scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
+    else if (scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
     {
         if (scsiIoCtx->pAtaCmdOpts)
         {
@@ -213,15 +260,15 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
             ret = translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
         }
     }
-	else if (scsiIoCtx->device->drive_info.interface_type == RAID_INTERFACE)
+    else if (scsiIoCtx->device->drive_info.interface_type == RAID_INTERFACE)
     {
-		if (scsiIoCtx->device->issue_io != NULL)
+        if (scsiIoCtx->device->issue_io != NULL)
         {
             ret = scsiIoCtx->device->issue_io(scsiIoCtx);
         }
         else
         {
-            if (VERBOSITY_QUIET < g_verbosity)
+            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("No Raid PassThrough IO Routine present for this device\n");
             }
@@ -229,7 +276,7 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     }
     else
     {
-        if (VERBOSITY_QUIET < g_verbosity)
+        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
             printf("Target Device does not have a valid interface %d\n",\
                        scsiIoCtx->device->drive_info.interface_type);
@@ -246,7 +293,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
     struct ccb_ataio *ataio    = NULL;
     u_int32_t        direction = 0;
 
-    ccb = cam_getccb(cam_dev);
+    ccb = cam_getccb(scsiIoCtx->device->os_info.cam_dev);
 
     if (ccb != NULL)
     {
@@ -272,7 +319,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
             direction = CAM_DIR_BOTH;
             break;
         default:
-            if (VERBOSITY_QUIET < g_verbosity)
+            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("%s Didn't understand I/O direction\n", __FUNCTION__);
             }
@@ -280,14 +327,38 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
         }
 
         uint32_t camTimeout = scsiIoCtx->timeout;
-        if (camTimeout == 0)
+        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
         {
-            camTimeout = 15;
+            camTimeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+            //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
+            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < CAM_MAX_CMD_TIMEOUT_SECONDS)
+            {
+                camTimeout *= 1000;//convert to milliseconds
+            }
+            else
+            {
+                camTimeout = UINT32_MAX;//no timeout or maximum timeout
+            }
         }
-        //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-        if (camTimeout < 4294966)
+        else
         {
-            camTimeout *= 1000;//convert to milliseconds.
+            if (scsiIoCtx->timeout != 0)
+            {
+                camTimeout = scsiIoCtx->timeout;
+                //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
+                if (scsiIoCtx->timeout < CAM_MAX_CMD_TIMEOUT_SECONDS)
+                {
+                    camTimeout *= 1000;//convert to milliseconds
+                }
+                else
+                {
+                    camTimeout = UINT32_MAX;//no timeout or maximum timeout
+                }
+            }
+            else
+            {
+                camTimeout = 15 * 1000;//default to 15 second timeout
+            }
         }
 
         cam_fill_ataio(&ccb->ataio,
@@ -367,16 +438,16 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                 memset(&commandTimer, 0, sizeof(seatimer_t));
                 #if defined (_DEBUG)
                 printf("ATAIO: cmd=0x%02"PRIX8" feat=0x%02"PRIX8" lbalow=0x%02"PRIX8" lbamid=0x%02"PRIX8" lbahi=0x%02"PRIX8" sc=0x%02"PRIX8"\n",\
-                           ataio->cmd.command, ataio->cmd.features, ataio->cmd.lbaLow, ataio->cmd.lbaMid,\
-                           ataio->cmd.lbaHigh, ataio->cmd.sector_count);
+                           ataio->cmd.command, ataio->cmd.features, ataio->cmd.lba_low, ataio->cmd.lba_mid,\
+                           ataio->cmd.lba_high, ataio->cmd.sector_count);
                 printf("\tfeatext=0x%02"PRIX8" lbalowExp=0x%02"PRIX8" lbamidExp=0x%02"PRIX8" lbahiExp=0x%02"PRIX8" scExp=0x%02"PRIX8"\n",\
-                           ataio->cmd.features_exp, ataio->cmd.lbaLow_exp, ataio->cmd.lbaMid_exp,\
-                           ataio->cmd.lbaHigh_exp, ataio->cmd.sector_count_exp);
+                           ataio->cmd.features_exp, ataio->cmd.lba_low_exp, ataio->cmd.lba_mid_exp,\
+                           ataio->cmd.lba_high_exp, ataio->cmd.sector_count_exp);
 
                 printf("\tData Ptr %p, xfer len %d\n", ataio->data_ptr, ataio->dxfer_len);
                 #endif
                 start_Timer(&commandTimer);
-                ret = cam_send_ccb(cam_dev, ccb);
+                ret = cam_send_ccb(scsiIoCtx->device->os_info.cam_dev, ccb);
                 stop_Timer(&commandTimer);
                 if (ret < 0)
                 {
@@ -390,7 +461,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                         if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_ATA_STATUS_ERROR)
                         {
                             ret = COMMAND_FAILURE;
-                            if (VERBOSITY_QUIET < g_verbosity)
+                            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
                             {
                                 printf("WARN: I/O went through but drive returned status=0x%02"PRIX8" error=0x%02"PRIX8"\n",\
                                            ataio->res.status, ataio->res.error);
@@ -398,14 +469,14 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                         }
                         else if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_CMD_TIMEOUT)
                         {
-                            if (VERBOSITY_QUIET < g_verbosity)
+                            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
                             {
                                 printf("WARN: I/O CAM_CMD_TIMEOUT occured\n");
                             }
                         }
                         else
                         {
-                            if (VERBOSITY_QUIET < g_verbosity)
+                            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
                             {
                                 printf("WARN: I/O error occurred %d\n", (ccb->ccb_h.status & CAM_STATUS_MASK));
                             }
@@ -428,7 +499,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                             scsiIoCtx->returnStatus.format = 0x72;
                             scsiIoCtx->returnStatus.senseKey = 0x01;//Not setting check condition since the IO was in fact successful
                             //setting ASC/ASCQ to ATA Passthrough Information Available
-                            scsiIoCtx->returnStatus.acq = 0x00;
+                            scsiIoCtx->returnStatus.asc = 0x00;
                             scsiIoCtx->returnStatus.ascq = 0x1D;
                             //now fill in the sens buffer
                             scsiIoCtx->psense[0] = 0x72;
@@ -468,7 +539,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
         }
         else
         {
-            if (VERBOSITY_DEFAULT < g_verbosity)
+            if (VERBOSITY_DEFAULT < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("WARN: Sending non-ATA commnad to ATA Drive [FreeBSD CAM driver does not support SAT Specification]\n");
             }
@@ -495,7 +566,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
     struct ccb_scsiio *csio = NULL;
     union ccb         *ccb  = NULL;
 
-    if (cam_dev == NULL)
+    if (scsiIoCtx->device->os_info.cam_dev == NULL)
     {
         printf("%s dev is NULL\n", __FUNCTION__);
         return FAILURE;
@@ -506,7 +577,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
         return BAD_PARAMETER;
     }
 
-    ccb = cam_getccb(cam_dev);
+    ccb = cam_getccb(scsiIoCtx->device->os_info.cam_dev);
 
     if (ccb != NULL)
     {
@@ -521,14 +592,38 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
         csio->ccb_h.retry_count = 0; // should we change it to 1?
         csio->ccb_h.cbfcnp = NULL;
         uint32_t camTimeout = scsiIoCtx->timeout;
-        if (camTimeout == 0)
+        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
         {
-            camTimeout = 15;
+            camTimeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+            //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
+            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < CAM_MAX_CMD_TIMEOUT_SECONDS)
+            {
+                camTimeout *= 1000;//convert to milliseconds
+            }
+            else
+            {
+                camTimeout = CAM_TIME_INFINITY;//no timeout or maximum timeout
+            }
         }
-        //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-        if (camTimeout < 4294966)
+        else
         {
-            camTimeout *= 1000;//convert to milliseconds.
+            if (scsiIoCtx->timeout != 0)
+            {
+                camTimeout = scsiIoCtx->timeout;
+                //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
+                if (scsiIoCtx->timeout < CAM_MAX_CMD_TIMEOUT_SECONDS)
+                {
+                    camTimeout *= 1000;//convert to milliseconds
+                }
+                else
+                {
+                    camTimeout = CAM_TIME_INFINITY;//no timeout or maximum timeout
+                }
+            }
+            else
+            {
+                camTimeout = 15 * 1000;//default to 15 second timeout
+            }
         }
         csio->ccb_h.timeout = camTimeout;
         csio->cdb_len = scsiIoCtx->cdbLength;
@@ -554,7 +649,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
             //io_hdr.dxfer_direction = SG_DXFER_UNKNOWN;
             //break;
         default:
-            if (VERBOSITY_QUIET < g_verbosity)
+            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("%s Didn't understand direction\n", __FUNCTION__);
             }
@@ -571,7 +666,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
         memcpy(&csio->cdb_io.cdb_bytes[0], &scsiIoCtx->cdb[0], IOCDBLEN);
         #if defined (_DEBUG)
         printf("%s cdb [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x] \n\t \
-			   [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",\
+               [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",\
                    __FUNCTION__,\
                    csio->cdb_io.cdb_bytes[0],\
                    csio->cdb_io.cdb_bytes[1],\
@@ -594,7 +689,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
         seatimer_t commandTimer;
         memset(&commandTimer, 0, sizeof(seatimer_t));
         start_Timer(&commandTimer);
-        ret = cam_send_ccb(cam_dev, ccb);
+        ret = cam_send_ccb(scsiIoCtx->device->os_info.cam_dev, ccb);
         stop_Timer(&commandTimer);
         if (ret < 0)
         {
@@ -607,7 +702,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
             printf("%s success with ret %d & valid sense=%d\n",\
                        __FUNCTION__, ret, (ccb->ccb_h.status & CAM_AUTOSNS_VALID));
             printf("%s error code %d, sense [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x] \n\t \
-			   [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",\
+               [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",\
                        __FUNCTION__,\
                        csio->sense_data.error_code,\
                        csio->sense_data.sense_buf[0],\
@@ -656,7 +751,7 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
         {
             ret = COMMAND_FAILURE;
 
-            if (VERBOSITY_DEFAULT < g_verbosity)
+            if (VERBOSITY_DEFAULT < scsiIoCtx->device->deviceVerbosity)
             {
                 printf("%s cam error %d, scsi error %d\n",\
                            __FUNCTION__, (ccb->ccb_h.status & CAM_STATUS_MASK), ccb->csio.scsi_status);
@@ -666,10 +761,12 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
                 && (ccb->csio.scsi_status == SCSI_STATUS_CHECK_COND)
                 && ((ccb->ccb_h.status & CAM_AUTOSNS_VALID) != 0))
             {
-                memcpy(scsiIoCtx->psense, &csio->sense_data.sense_buf[0], scsiIoCtx->senseDataSize);
+                //memcpy(scsiIoCtx->psense, &csio->sense_data.sense_buf[0], scsiIoCtx->senseDataSize);
+                memcpy(scsiIoCtx->psense, &csio->sense_data.error_code, sizeof(uint8_t));
+                memcpy(scsiIoCtx->psense+1, &csio->sense_data.sense_buf[0], (scsiIoCtx->senseDataSize)-1);
                 #if defined (_DEBUG)  
                 printf("%s error code %d, sense [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x] \n\t \
-				   [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",\
+                   [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",\
                            __FUNCTION__,\
                            csio->sense_data.error_code,\
                            csio->sense_data.sense_buf[0],\
@@ -716,7 +813,7 @@ static int da_filter( const struct dirent *entry )
     {
       return !daHandle;
     }
-    char* partition = strpbrk(entry->d_name,"pP");
+    char* partition = strpbrk(entry->d_name,"pPsS");
     if(partition != NULL)
     {
         return 0;
@@ -734,7 +831,7 @@ static int ada_filter( const struct dirent *entry )
     {
       return !adaHandle;
     }
-    char* partition = strpbrk(entry->d_name,"pP");
+    char* partition = strpbrk(entry->d_name,"pPsS");
     if(partition != NULL)
     {
         return 0;
@@ -747,9 +844,10 @@ static int ada_filter( const struct dirent *entry )
 
 int close_Device(tDevice *dev)
 {
-    if (cam_dev)
+    if (dev->os_info.cam_dev)
     {
-        cam_close_device(cam_dev);
+        cam_close_device(dev->os_info.cam_dev);
+        dev->os_info.cam_dev = NULL;
     }
     return SUCCESS;
 }
@@ -765,7 +863,7 @@ int close_Device(tDevice *dev)
 //  Entry:
 //!   \param[out] numberOfDevices = integer to hold the number of devices found. 
 //!   \param[in] flags = eScanFlags based mask to let application control. 
-//!						 NOTE: currently flags param is not being used.  
+//!                      NOTE: currently flags param is not being used.  
 //!
 //  Exit:
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -780,9 +878,22 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     num_da_devs = scandir("/dev", &danamelist, da_filter, alphasort);
     num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
 
+    //free the list of names to not leak memory
+    for (int iter = 0; iter < num_da_devs; ++iter)
+    {
+        safe_Free(danamelist[iter]);
+    }
+    safe_Free(danamelist);
+    //free the list of names to not leak memory
+    for (int iter = 0; iter < num_ada_devs; ++iter)
+    {
+        safe_Free(adanamelist[iter]);
+    }
+    safe_Free(adanamelist);
+
     *numberOfDevices = num_da_devs + num_ada_devs;
-	
-	return SUCCESS;
+    M_USE_UNUSED(flags);  
+    return SUCCESS;
 }
 
 //-----------------------------------------------------------------------------
@@ -792,18 +903,18 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //! \brief   Description:  Get a list of devices that the library supports. 
 //!                        Use get_Device_Count to figure out how much memory is
 //!                        needed to be allocated for the device list. The memory 
-//!						   allocated must be the multiple of device structure. 
-//!						   The application can pass in less memory than needed 
-//!						   for all devices in the system, in which case the library 
+//!                        allocated must be the multiple of device structure. 
+//!                        The application can pass in less memory than needed 
+//!                        for all devices in the system, in which case the library 
 //!                        will fill the provided memory with how ever many device 
-//!						   structures it can hold. 
+//!                        structures it can hold. 
 //  Entry:
 //!   \param[out] ptrToDeviceList = pointer to the allocated memory for the device list
 //!   \param[in]  sizeInBytes = size of the entire list in bytes. 
 //!   \param[in]  versionBlock = versionBlock structure filled in by application for 
-//!								 sanity check by library. 
+//!                              sanity check by library. 
 //!   \param[in] flags = eScanFlags based mask to let application control. 
-//!						 NOTE: currently flags param is not being used.  
+//!                      NOTE: currently flags param is not being used.  
 //!
 //  Exit:
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -813,9 +924,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 {
     int returnValue = SUCCESS;
     int numberOfDevices = 0;
-    int driveNumber = 0, found = 0, failedGetDeviceCount = 0;
+    int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     char name[80]; //Because get device needs char
-    int fd;
+    int fd = 0;
     tDevice * d = NULL;
     int  num_da_devs = 0, num_ada_devs = 0;
 
@@ -824,104 +935,205 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     num_da_devs = scandir("/dev", &danamelist, da_filter, alphasort);
     num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
     
-    char **devs = (char **)calloc(MAX_DEVICES_PER_CONTROLLER, sizeof(char *));
+    char **devs = (char **)calloc(num_da_devs + num_ada_devs + 1, sizeof(char *));
     int i = 0, j = 0;
     for (i = 0; i < num_da_devs; ++i)
     {
         devs[i] = (char *)malloc((strlen("/dev/") + strlen(danamelist[i]->d_name) + 1) * sizeof(char));
         strcpy(devs[i], "/dev/");
         strcat(devs[i], danamelist[i]->d_name);
-        free(danamelist[i]);
+        safe_Free(danamelist[i]);
     }
-    for (j = 0; i < (num_da_devs + num_ada_devs); ++i, j++)
+    for (j = 0; i < (num_da_devs + num_ada_devs) && j < num_ada_devs; ++i, j++)
     {
         devs[i] = (char *)malloc((strlen("/dev/") + strlen(adanamelist[j]->d_name) + 1) * sizeof(char));
         strcpy(devs[i], "/dev/");
         strcat(devs[i], adanamelist[j]->d_name);
-        free(adanamelist[j]);
+        safe_Free(adanamelist[j]);
     }
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
-    free(danamelist);
-    free(adanamelist);
+    safe_Free(danamelist);
+    safe_Free(adanamelist);
 
-	//TODO: Check if sizeInBytes is a multiple of 
-	if (!(ptrToDeviceList) || (!sizeInBytes))
-	{
-		returnValue = BAD_PARAMETER;
-	}
+    //TODO: Check if sizeInBytes is a multiple of 
+    if (!(ptrToDeviceList) || (!sizeInBytes))
+    {
+        returnValue = BAD_PARAMETER;
+    }
     else if ((!(validate_Device_Struct(ver))))
     {
         returnValue = LIBRARY_MISMATCH;
     }
-	else
-	{
-		numberOfDevices = sizeInBytes / sizeof(tDevice);
-		d = ptrToDeviceList;
-		for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_da_devs + num_ada_devs)) || (found < numberOfDevices)); driveNumber++)
-		{
-		    strncpy(name, devs[driveNumber], M_Min(sizeof(name), devs[driveNumber]));
+    else
+    {
+        numberOfDevices = sizeInBytes / sizeof(tDevice);
+        d = ptrToDeviceList;
+        for (driveNumber = 0; ((driveNumber >= 0 && (unsigned int)driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_da_devs + num_ada_devs)) && (found < numberOfDevices)); ++driveNumber)
+        {
+            if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
+            {
+                continue;
+            }
+            memset(name, 0, sizeof(name));//clear name before reusing it
+            strcpy(name, devs[driveNumber]);
             fd = -1;
-            //lets try to open the device.		
+            //lets try to open the device.      
             fd = cam_get_device(name, d->os_info.name, sizeof(d->os_info.name), &d->os_info.fd);
             if (fd >= 0)
             {
-				if (cam_dev)
+                //Not sure this is necessary, but add back in if we find any issues - TJE
+                /*if (d->os_info.cam_dev)
                 {
-                    cam_close_device(cam_dev);
-                }
-				memset(d, 0, sizeof(tDevice));
-				d->sanity.size = ver.size;
-				d->sanity.version = ver.version;
-				returnValue = get_Device(name, d);
-				if (returnValue != SUCCESS)
-				{
+                    cam_close_device(d->os_info.cam_dev);
+                    d->os_info.cam_dev = NULL;
+                }*/
+                eVerbosityLevels temp = d->deviceVerbosity;
+                memset(d, 0, sizeof(tDevice));
+                d->deviceVerbosity = temp;
+                d->sanity.size = ver.size;
+                d->sanity.version = ver.version;
+                int ret = get_Device(name, d);
+                if (ret != SUCCESS)
+                {
                     failedGetDeviceCount++;
-				}
-				found++;
-				d++;
-			}
-		}
+                }
+                found++;
+                d++;
+            }
+            else if (errno == EACCES) //quick fix for opening drives without sudo
+            {
+                ++permissionDeniedCount;
+                failedGetDeviceCount++;
+            }
+            else
+            {
+                failedGetDeviceCount++;
+            }
+            //free the dev[deviceNumber] since we are done with it now.
+            safe_Free(devs[driveNumber]);
+        }
         if (found == failedGetDeviceCount)
         {
             returnValue = FAILURE;
         }
-        else if (failedGetDeviceCount)
+        else if(permissionDeniedCount == (num_da_devs + num_ada_devs))
+        {
+            returnValue = PERMISSION_DENIED;
+        }
+	    else if (failedGetDeviceCount && returnValue != PERMISSION_DENIED)
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
-	}
+    }
     safe_Free(devs);
-	return returnValue;
+    return returnValue;
 }
 
-int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
+int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool async, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
+int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool async, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
+int os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Flush(tDevice *device)
+int os_Flush(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
+}
+
+int os_Device_Reset(tDevice *device)
+{
+    int ret = OS_COMMAND_NOT_AVAILABLE;
+    union ccb *ccb = cam_getccb(device->os_info.cam_dev);
+    if (ccb)
+    {
+        CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
+        ccb->ccb_h.func_code = XPT_RESET_DEV;
+        if (cam_send_ccb(device->os_info.cam_dev, ccb) >= 0)
+        {
+            if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)//maybe also this? CAM_SCSI_BUS_RESET
+            {
+                ret = SUCCESS;
+            }
+            //TODO: Do we need other errors? It's probably fine to say OS_COMMAND_NOT_AVAILABLE at least for now.
+        }
+        cam_freeccb(ccb);
+    }
+    else
+    {
+        ret = MEMORY_FAILURE;
+    }
+    return ret;
+}
+    
+int os_Bus_Reset(tDevice *device)
+{
+    int ret = OS_COMMAND_NOT_AVAILABLE;
+    union ccb *ccb = cam_getccb(device->os_info.cam_dev);
+    if (ccb)
+    {
+        CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
+        ccb->ccb_h.func_code = XPT_RESET_BUS;
+        if (cam_send_ccb(device->os_info.cam_dev, ccb) >= 0)
+        {
+            if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)//maybe also this? CAM_SCSI_BUS_RESET
+            {
+                ret = SUCCESS;
+            }
+            //TODO: Do we need other errors? It's probably fine to say OS_COMMAND_NOT_AVAILABLE at least for now.
+        }
+        cam_freeccb(ccb);
+    }
+    else
+    {
+        ret = MEMORY_FAILURE;
+    }
+    return ret;
+}
+
+int os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
+{
+    return OS_COMMAND_NOT_AVAILABLE;
 }
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
+int send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx *nvmeIoCtx)
 {
     return NOT_SUPPORTED;
 }
 
-int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize)
+int os_nvme_Reset(M_ATTR_UNUSED tDevice *device)
+{
+    return NOT_SUPPORTED;
+}
+
+int os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice *device)
+{
+    return NOT_SUPPORTED;
+}
+
+int pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 #endif
+
+int os_Lock_Device(M_ATTR_UNUSED tDevice *device)
+{
+    //There is nothing to lock since you cannot open a CAM device with O_NONBLOCK
+    return SUCCESS;
+}
+
+int os_Unlock_Device(M_ATTR_UNUSED tDevice *device)
+{
+    //There is nothing to unlock since you cannot open a CAM device with O_NONBLOCK
+    return SUCCESS;
+}

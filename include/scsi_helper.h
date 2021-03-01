@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -26,6 +26,19 @@ extern "C"
     #define INQ_DATA_T10_VENDOR_ID_LEN  (8) //bytes
     #define INQ_DATA_PRODUCT_ID_LEN     (16)
     #define INQ_DATA_PRODUCT_REV_LEN    (4)
+
+    typedef enum _eSCSIVersion 
+    {
+        SCSI_VERSION_SASI           = 0,
+        SCSI_VERSION_NO_STANDARD    = 0,
+        SCSI_VERSION_SCSI           = 1,
+        SCSI_VERSION_SCSI2          = 2,
+        SCSI_VERSION_SPC            = 3,
+        SCSI_VERSION_SPC_2          = 4,
+        SCSI_VERSION_SPC_3          = 5,
+        SCSI_VERSION_SPC_4          = 6,
+        SCSI_VERSION_SPC_5          = 7,
+    }eSCSIVersion;
 
     typedef enum _eCDBLen{
         CDB_LEN_6  = 6,
@@ -81,7 +94,9 @@ extern "C"
         SENSE_DESCRIPTOR_USER_DATA_SEGMENT_REFERRAL         = 0x0B,
         SENSE_DESCRIPTOR_FORWAREDED_SENSE_DATA              = 0x0C,
         SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE         = 0x0D,
-        //0x0E - 0x7F are reserved
+        SENSE_DESCRIPTOR_DEVICE_DESIGNATION                 = 0x0E,
+        SENSE_DESCRIPTOR_MICROCODE_ACTIVATION               = 0x0F,
+        //0x10 - 0x7F are reserved
         //0x80 - 0xFF are vendor specific
     }eSenseDescriptorType;
 
@@ -93,6 +108,66 @@ extern "C"
     #define SCSI_SENSE_INFO_FIELD_MSB_INDEX  (3)
     #define SCSI_FIXED_FORMAT_CMD_INFO_INDEX (8)
 
+    #define SCSI_MAX_21_LBA 0x001FFFFF //read/write 6byte commands
+    #define SCSI_MAX_32_LBA UINT32_MAX
+    #define SCSI_MAX_64_LBA UINT64_MAX
+
+    typedef enum _eSenseKeySpecificType
+    {
+        SENSE_KEY_SPECIFIC_UNKNOWN,
+        SENSE_KEY_SPECIFIC_FIELD_POINTER,
+        SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT,
+        SENSE_KEY_SPECIFIC_PROGRESS_INDICATION,
+        SENSE_KEY_SPECIFIC_SEGMENT_POINTER,
+        SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW
+    }eSenseKeySpecificType;
+
+    typedef struct _senseKeySpecificFieldPointer
+    {
+        bool cdbOrData;//true = cdb, false = data
+        bool bitPointerValid;
+        uint8_t bitPointer;
+        uint16_t fieldPointer;
+    }senseKeySpecificFieldPointer;
+
+    typedef struct _senseKeySpecificActualRetryCount
+    {
+        uint16_t actualRetryCount;
+    }senseKeySpecificActualRetryCount;
+
+    typedef struct _senseKeySpecificProgressIndication
+    {
+        uint16_t progressIndication;
+    }senseKeySpecificProgressIndication;
+
+    typedef struct _senseKeySpecificSegmentPointer
+    {
+        bool segmentDescriptor;
+        bool bitPointerValid;
+        uint8_t bitPointer;
+        uint16_t fieldPointer;
+    }senseKeySpecificSegmentPointer;
+
+    typedef struct _senseKeySpecificUnitAttentionQueueOverflow
+    {
+        bool overflow;
+    }senseKeySpecificUnitAttentionQueueOverflow;
+
+    typedef struct _senseKeySpecific
+    {
+        bool senseKeySpecificValid; //Will be set when the sense data contains sense key specific information
+        eSenseKeySpecificType type; //use this to parse the correct structure from the union below.
+        union
+        {
+            uint8_t unknownDataType[3];
+            senseKeySpecificFieldPointer field;
+            senseKeySpecificActualRetryCount retryCount;
+            senseKeySpecificProgressIndication progress;
+            senseKeySpecificSegmentPointer segment;
+            senseKeySpecificUnitAttentionQueueOverflow unitAttention;
+        };
+    }senseKeySpecific, *ptrSenseKeySpecific;
+
 // \struct scsiStatus
 // \param senseKey
 // \param acq
@@ -101,10 +176,72 @@ extern "C"
     {
         uint8_t         format;
         uint8_t         senseKey;
-        uint8_t         acq;
+        uint8_t         asc;
         uint8_t         ascq;
         uint8_t         fru;
     } scsiStatus;
+
+    #define MAX_PROGRESS_INDICATION_DESCRIPTORS UINT8_C(32)
+    #define MAX_FORWARDED_SENSE_DATA_DESCRIPTORS UINT8_C(2)
+
+    typedef struct _senseDataFields
+    {
+        bool validStructure;//Set to true if the rest of this structure was able to be parsed/filled in. This will only be false if we do not get 70h - 73h response codes
+        bool fixedFormat;//This will tell you if some fields, like information and command-specific information, are limited to 32bits or not
+        bool deferredError;//Set to true for response codes 71h & 73h
+        scsiStatus scsiStatusCodes;//sense key, asc, ascq, fru
+        bool senseDataOverflow;//gets set if the sense buffer is not big enough to return all necessary fields of the sense data. Request sense command is needed to get all the data.
+        bool valid;//valid bit. Used to know when the information field contains valid information
+        bool filemark;//filemark bit is set (stream commands)
+        bool endOfMedia;//end of media bit is set (stream commands)
+        bool illegalLengthIndication;//illegal length indicator bit is set (stream commands or read/write long SBC commands)
+        union {
+            uint32_t fixedInformation;
+            uint64_t descriptorInformation;
+        };
+        union {
+            uint32_t fixedCommandSpecificInformation;
+            uint64_t descriptorCommandSpecificInformation;
+        };
+        senseKeySpecific senseKeySpecificInformation;
+        //bools below can be used to know if other fields that are only available in some cases/commands are found. 
+        //If so, the caller can interpret these themselves. 
+        //We'll supply the offset in the sense data for them.
+        //The offset myst be > 7 to be valid.
+        uint8_t osdObjectIdentificationDescriptorOffset;
+        uint8_t osdResponseIntegrityCheckValueDescriptorOffset;
+        uint8_t osdAttributeIdentificationDescriptorOffset;
+        struct _ataStatusReturnDescriptor
+        {
+            bool valid;//must be set for this data to be valid. Means we found this in the sense data.
+            bool extend;
+            uint8_t error;
+            uint8_t sectorCountExt;
+            uint8_t sectorCount;
+            uint8_t lbaLowExt;
+            uint8_t lbaLow;
+            uint8_t lbaMidExt;
+            uint8_t lbaMid;
+            uint8_t lbaHiExt;
+            uint8_t lbaHi;
+            uint8_t device;
+            uint8_t status;
+        }ataStatusReturnDescriptor;
+        uint8_t anotherProgressIndicationDescriptorOffset[MAX_PROGRESS_INDICATION_DESCRIPTORS];
+        uint8_t userDataSegmentReferralDescriptorOffset;
+        uint8_t forwardedSenseDataDescriptorOffset[MAX_FORWARDED_SENSE_DATA_DESCRIPTORS];
+        uint8_t deviceDesignationDescriptorOffset;
+        struct _microCodeActivation
+        {
+            bool valid;
+            uint16_t microcodeActivationTimeSeconds;
+        }microCodeActivation;
+        //This will be set to true for any descriptors that could not be parsed (vendor unique or not part of the above output) or if the additional sense bytes field of fixed format is non-zero
+        //If this happens, the caller should check the sense data buffer themselves for the additional data that they could find useful
+        bool additionalDataAvailable;
+        uint8_t additionalDataOffset;//if bool above is set, then this will be set to the offset of the additional data that couldn't be parsed
+    }senseDataFields, *ptrSenseDataFields;
+
 
     typedef struct _biDirectionalCommandBuffers
     {
@@ -136,14 +273,15 @@ extern "C"
         uint8_t         *pdata;
         uint32_t        dataLength;
         uint8_t         *psense;
-        uint32_t        senseDataSize;
+        uint32_t        senseDataSize;//should be reduced to uint8 in the future as sense data maxes at 252Bytes
         uint32_t        timeout; //seconds
         uint8_t         verbose;
         scsiStatus     returnStatus;
         ataPassthroughCommand *pAtaCmdOpts;
-        biDirectionalCommandBuffers biDirectionalBuffers;
         bool            isSoftReset;
         bool            isHardReset;
+        bool            fwdlFirstSegment;
+        bool            fwdlLastSegment;
     } ScsiIoCtx;
 
 
@@ -170,21 +308,21 @@ extern "C"
 
     typedef enum _eWriteBufferMode
     {
-        SCSI_WB_OBSOLETE1                                           = 0x00,
-        SCSI_WB_VENDOR_SPECIFIC                                     = 0x01,
-        SCSI_WB_DATA                                                = 0x02,
-        SCSI_WB_RESERVED                                            = 0x03,
-        SCSI_WB_DL_MICROCODE_TEMP_ACTIVATE                          = 0x04,
-        SCSI_WB_DL_MICROCODE_SAVE_ACTIVATE                          = 0x05,
-        SCSI_WB_DL_MICROCODE_OFFSETS_ACTIVATE                       = 0x06,
-        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_ACTIVATE                  = 0x07,
-        SCSI_WB_WRITE_DATA_TO_ECHO_BUFFER                           = 0x0A,
-        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_SELECT_ACTIVATE_DEFER     = 0x0D,
-        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER                     = 0x0E,
-        SCSI_WB_ACTIVATE_DEFERRED_MICROCODE                         = 0x0F,
-        SCSI_WB_OBSOLETE2                                           = 0x1A,
-        SCSI_WB_OBSOLETE3                                           = 0x1B,
-        SCSI_WB_DOWNLOAD_APPLICATION_CLIENT_ERROR_HISTORY           = 0x1C,
+        SCSI_WB_COMBINED_HEADER_AND_DATA                                = 0x00,//obsolete (see SPC or SCSI2)
+        SCSI_WB_VENDOR_SPECIFIC                                         = 0x01,
+        SCSI_WB_DATA                                                    = 0x02,
+        SCSI_WB_RESERVED                                                = 0x03,
+        SCSI_WB_DL_MICROCODE_TEMP_ACTIVATE                              = 0x04,
+        SCSI_WB_DL_MICROCODE_SAVE_ACTIVATE                              = 0x05,
+        SCSI_WB_DL_MICROCODE_OFFSETS_ACTIVATE                           = 0x06,
+        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_ACTIVATE                      = 0x07,
+        SCSI_WB_WRITE_DATA_TO_ECHO_BUFFER                               = 0x0A,
+        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_SELECT_ACTIVATE_DEFER         = 0x0D,
+        SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER                         = 0x0E,
+        SCSI_WB_ACTIVATE_DEFERRED_MICROCODE                             = 0x0F,
+        SCSI_WB_ENABLE_EXPANDER_COMMUNICATIONS_PROTOCOL_AND_ECHO_BUFFER = 0x1A,//obsolete (see SPC2)
+        SCSI_WB_DISABLE_EXPANDER_COMMUNICATIONS_PROTOCOL                = 0x1B,//obsolete (see SPC2)
+        SCSI_WB_DOWNLOAD_APPLICATION_CLIENT_ERROR_HISTORY               = 0x1C,
     }eWriteBufferMode;
 
 
@@ -246,7 +384,7 @@ extern "C"
         REPORT_LUNS_CMD                             = 0xA0,
         REPORT_PRIORITY_CMD                         = 0xA3,
         REPORT_SUPPORTED_OPERATION_CODES_CMD        = 0xA3,
-        REPORT_SUPPORTED_TASK_MANAGEMENT_FUNCS  	= 0xA3,
+        REPORT_SUPPORTED_TASK_MANAGEMENT_FUNCS      = 0xA3,
         REPORT_TARGET_PORT_GROUPS_CMD               = 0xA3,
         REQUEST_SENSE_CMD                           = 0x03,
         SANITIZE_CMD                                = 0x48,
@@ -299,7 +437,10 @@ extern "C"
     {
         SUPPORTED_VPD_PAGES                             = 0x00,
         STANDARD_INQUIRY                                = 0x00,
+        //01h - 7Fh - ASCII Information
         UNIT_SERIAL_NUMBER                              = 0x80,
+        IMPLEMENTED_OPERATING_DEFINITIONS               = 0x81,//Obsolete. Used to tell what can be sent with the change definition command (scsi 2 vs scsi 3, etc)
+        ASCII_IMPLEMENTED_OPERATING_DEFINITION          = 0x82,//Obsolete
         DEVICE_IDENTIFICATION                           = 0x83,
         SOFTWARE_INTERFACE_IDENTIFICATION               = 0x84,
         MANAGEMENT_NETWORK_ADDRESSES                    = 0x85,
@@ -314,6 +455,7 @@ extern "C"
         THIRD_PARTY_COPY                                = 0x8F,
         PROTOCOL_SPECIFIC_LU_INFO                       = 0x90,
         PROTOCOL_SPECIFIC_PORT_INFO                     = 0x91,
+        SCSI_FEATURE_SETS                               = 0x92,
         BLOCK_LIMITS                                    = 0xB0,
         BLOCK_DEVICE_CHARACTERISTICS                    = 0xB1,
         LOGICAL_BLOCK_PROVISIONING                      = 0xB2,
@@ -321,6 +463,8 @@ extern "C"
         SUPPORTED_BLOCK_LENGTHS_AND_PROTECTION_TYPES    = 0xB4,
         BLOCK_DEVICE_CHARACTERISTISCS_EXT               = 0xB5,
         ZONED_BLOCK_DEVICE_CHARACTERISTICS              = 0xB6,
+        BLOCK_LIMITS_EXTENSION                          = 0xB7,
+        //C0h - FFh are Vendor specific
     }eScsiVpdPages;
 
     //these enums are only for VPD pages with fixed lengths..add onto this as we need more things in here
@@ -347,7 +491,8 @@ extern "C"
         LPC_THRESHOLD_VALUES          = 0x0,
         LPC_CUMULATIVE_VALUES         = 0x1,
         LPC_DEFAULT_THRESHOLD_VALUES  = 0x2,
-        LPC_DEFAULT_CUMULATIVE_VALUES = 0x3
+        LPC_DEFAULT_CUMULATIVE_VALUES = 0x3,
+        LPC_DEFAULT_ALL_VALUES        = 0x4,
     }eScsiLogPageControl;
 
     typedef enum _eScsiModeParameters//does not do subpage codes...only page codes. Add more as needed
@@ -355,9 +500,16 @@ extern "C"
         MP_READ_WRITE_ERROR_RECOVERY      = 0x01,
         MP_DISCONNECT_RECONNECT           = 0x02,
         MP_RIGID_DISK_GEOMETRY            = 0x04,//This is long obsolete.
+        MP_FLEXIBLE_DISK_GEOMETRY         = 0x05,//Long obsolete
         MP_VERIFY_ERROR_RECOVERY          = 0x07,
         MP_CACHING                        = 0x08,
+        MP_PERIPHERAL_DEVICE              = 0x09,//Obsolete
         MP_CONTROL                        = 0x0A,
+        MP_MEDIUM_TYPES_SUPPORTED         = 0x0B,//Obsolete
+        MP_NOTCH_AND_PARTITION            = 0x0C,//Obsolete
+        MP_OBS_POWER_CONDITION            = 0x0D,//Obsolete page. Named different than power condition page below.
+        MP_XOR_CONTROL                    = 0x10,//Obsolete
+        MP_ENCLOSURE_SERVICES_MANAGEMENT  = 0x14,
         MP_EXTENDED                       = 0x15,
         MP_EXTENDED_DEVICE_TYPE_SPECIFIC  = 0x16,
         MP_PROTOCOL_SPECIFIC_LOGICAL_UNIT = 0x18,
@@ -370,6 +522,9 @@ extern "C"
         MP_RETURN_ALL_PAGES               = 0x3F,
         MP_UNKNOWN_PARAMETER
     }eScsiModeParameters;
+
+    //This is for returning all subpages of a specified mode page
+    #define MP_SP_ALL_SUBPAGES 0xFF
 
     //put defined lengths in here....not all mode pages/parameters have defined lengths so only the ones that do are in here
     //This is TOTAL length, not necessarily the length field in the page
@@ -385,14 +540,16 @@ extern "C"
         MP_INFORMATION_EXCEPTIONS_LEN    = 12,
         MP_READ_WRITE_ERROR_RECOVERY_LEN = 12,
         MP_VERIFY_ERROR_RECOVERY_LEN     = 12,
+        MP_RIGID_DISK_GEOMETRY_LEN       = 24,
     }eScsiModeParameterLengths;
 
     typedef enum _eScsiPowerConditionValues
     {
-        PC_START_VALID     = 0x0,
+        PC_START_VALID     = 0x0,//process START and LOEJ bits
         PC_ACTIVE          = 0x1,
         PC_IDLE            = 0x2,
         PC_STANDBY         = 0x3,
+        PC_SLEEP           = 0x5, //Obsolete since SBC2. Requires a reset to wake
         PC_LU_CONTROL      = 0x7,
         PC_FORCE_IDLE_0    = 0xA,
         PC_FORCE_STANDBY_0 = 0xB,
@@ -421,6 +578,7 @@ extern "C"
         LP_APPLICATION_CLIENT                             = 0x0F,
         LP_SELF_TEST_RESULTS                              = 0x10,
         LP_SOLID_STATE_MEDIA                              = 0x11,
+        LP_ZONED_DEVICE_STATISTICS                        = 0x14,//subpage 01
         LP_BACKGROUND_SCAN_RESULTS                        = 0x15,
         LP_PENDING_DEFECTS                                = 0x15,
         LP_LPS_MISALLIGNMENT                              = 0x15,
@@ -445,6 +603,9 @@ extern "C"
     #define MODE_PARAMETER_HEADER_6_LEN 4
     #define MODE_PARAMETER_HEADER_10_LEN 8
 
+    #define SHORT_LBA_BLOCK_DESCRIPTOR_LEN 8 //for mode sense/select 6
+    #define LONG_LBA_BLOCK_DESCRIPTOR_LEN 16 //for mode sense/select 10
+
     #define LOG_PAGE_HEADER_LENGTH 4
 
     #define READ_CAPACITY_10_LEN 8
@@ -462,8 +623,8 @@ extern "C"
         PERIPHERAL_OPTICAL_MEMORY_DEVICE                = 0x07,
         PERIPHERAL_MEDIUM_CHANGER_DEVICE                = 0x08,
         PERIPHERAL_COMMUNICATIONS_DEVICE                = 0x09,
-        PERIPHERAL_OBSOLETE1                            = 0x0A,
-        PERIPHERAL_OBSOLETE2                            = 0x0B,
+        PERIPHERAL_ASC_IT8_1                            = 0x0A,//ASC IT8 (Graphic arts pre-press devices)
+        PERIPHERAL_ASC_IT8_2                            = 0x0B,//ASC IT8 (Graphic arts pre-press devices)
         PERIPHERAL_STORAGE_ARRAY_CONTROLLER_DEVICE      = 0x0C,
         PERIPHERAL_ENCLOSURE_SERVICES_DEVICE            = 0x0D,
         PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE      = 0x0E,
@@ -498,14 +659,14 @@ extern "C"
         AD_RESERVED                                             = 0x07
     }eSCSIAddressDescriptors;
 
-	//for the report supported operations command
-	typedef enum _eSCSIReportingOptions
-	{
-		REPORT_ALL													= 0x0,
-		REPORT_OPERATION_CODE										= 0x1,
-		REPORT_OPERATION_CODE_AND_SERVICE_ACTION					= 0x2,
-		REPORT_OPERATION_CODE_AND_SERVICE_ACTION_ONE_COMMAND_FORMAT	= 0x3,
-	}eSCSIReportingOptions;
+    //for the report supported operations command
+    typedef enum _eSCSIReportingOptions
+    {
+        REPORT_ALL                                                  = 0x0,
+        REPORT_OPERATION_CODE                                       = 0x1,
+        REPORT_OPERATION_CODE_AND_SERVICE_ACTION                    = 0x2,
+        REPORT_OPERATION_CODE_AND_SERVICE_ACTION_ONE_COMMAND_FORMAT = 0x3,
+    }eSCSIReportingOptions;
 
     //for SCSI send/receive diagnostics commands
     typedef enum _eSCSIDiagnosticPages
@@ -592,6 +753,7 @@ extern "C"
         STANDARD_CODE_ZBC = 49,
         STANDARD_CODE_ADC4 = 50,
         STANDARD_CODE_ZBC2 = 51,
+        STANDARD_CODE_SES4 = 52,
         //65 - 84 Physical Mapping protocol
         STANDARD_CODE_SSA_TL2 = 65,
         STANDARD_CODE_SSA_TL1 = 66,
@@ -611,7 +773,7 @@ extern "C"
         STANDARD_CODE_FCP3 = 80,
         STANDARD_CODE_ADT2 = 81,
         STANDARD_CODE_FCP4 = 82,
-        STANDARD_CODE_ADT3 = 83,//SPC5 says 82, but I think this is wrong - TJE
+        STANDARD_CODE_ADT3 = 83,
         //85 - 94 Parallel SCSI Physical
         STANDARD_CODE_SPI = 85,
         STANDARD_CODE_FAST20 = 86,
@@ -690,6 +852,34 @@ extern "C"
         STANDARD_CODE_IEEE_1667 = 2046,
         STANDARD_CODE_RESERVED = 2047
     }eStandardCode;
+
+    typedef enum _eMRIEModes
+    {
+        SCSI_MRIE_NO_REPORTING                                  = 0,
+        SCSI_MRIE_ASYNCHRONOUS_EVENT_REPORTING                  = 1,//obsolete
+        SCSI_MRIE_GENERATE_UNIT_ATTENTION                       = 2,
+        SCSI_MRIE_CONDITIONALLY_GENERATE_RECOVERED_ERROR        = 3,
+        SCSI_MRIE_UNCONDITIONALLY_GENERATE_RECOVERED_ERROR      = 4,
+        SCSI_MRIE_GENERATE_NO_SENSE                             = 5,
+        SCSI_MRIE_ONLY_REPORT_ON_EXCEPTION_CONDITION_ON_REQUEST = 6,
+        //modes 7h - Bh are reserved
+        //modes Ch - Fh are vendor specific
+    }eMRIEModes;
+
+    #define SAT_SECURITY_INFO_LEN UINT8_C(16) //security protocol in to receive ATA security information is 16bytes in length from SAT
+    #define SAT_SECURITY_PASS_LEN UINT8_C(36) //all security protocol out commands that send the password must be 36 bytes in length according to SAT
+    //SECURITY_PROTOCOL_ATA_DEVICE_SERVER_PASSWORD = 0xEF (defined in cmds.h for common use)
+    typedef enum _eSATSecurityDevicePassword
+    {
+        SAT_SECURITY_PROTOCOL_SPECIFIC_READ_INFO        = 0x0000, //should only be used to read security protocol information (ATA security info)
+        SAT_SECURITY_PROTOCOL_SPECIFIC_SET_PASSWORD     = 0x0001, //setting password and sending data to device
+        SAT_SECURITY_PROTOCOL_SPECIFIC_UNLOCK           = 0x0002, //unlocking the drive with a provided password
+        SAT_SECURITY_PROTOCOL_SPECIFIC_ERASE_PREPARE    = 0x0003, //erase prepare command. Non-data
+        SAT_SECURITY_PROTOCOL_SPECIFIC_ERASE_UNIT       = 0x0004, //erase unit command with provided password
+        SAT_SECURITY_PROTOCOL_SPECIFIC_FREEZE_LOCK      = 0x0005, //freeze lock command. Non-data
+        SAT_SECURITY_PROTOCOL_SPECIFIC_DISABLE_PASSWORD = 0x0006, //disable password command with provided password
+        //All others are reserved
+    }eSATSecurityDevicePassword;
 
     #if defined (__cplusplus)
 } //extern "C"

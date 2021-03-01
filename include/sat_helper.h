@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -20,7 +20,7 @@ extern "C"
 {
 #endif
 
-    #define SAT_VPD_CMD_CODE_IDX	(56)
+    #define SAT_VPD_CMD_CODE_IDX    (56)
     #define SAT_VPD_PAGE_HEADER     (60)
 
     #define SAT_DESCRIPTOR_CODE     (0x09)

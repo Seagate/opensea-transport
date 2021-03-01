@@ -43,53 +43,53 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -165,8 +165,8 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -180,8 +180,8 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -196,8 +196,8 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -211,8 +211,8 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -229,11 +229,11 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -248,12 +248,12 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -268,11 +268,11 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -287,12 +287,12 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;WIN_API_TARGET_VERSION=81000000L;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -300,6 +300,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\..\include\asmedia_nvme_helper.h" />
     <ClInclude Include="..\..\..\..\include\ata_helper.h" />
     <ClInclude Include="..\..\..\..\include\ata_helper_func.h" />
     <ClInclude Include="..\..\..\..\include\cam_helper.h">
@@ -317,13 +318,23 @@
     <ClInclude Include="..\..\..\..\include\csmisas.h" />
     <ClInclude Include="..\..\..\..\include\csmi_helper.h" />
     <ClInclude Include="..\..\..\..\include\csmi_helper_func.h" />
+    <ClInclude Include="..\..\..\..\include\csmi_legacy_pt_cdb_helper.h" />
     <ClInclude Include="..\..\..\..\include\cypress_legacy_helper.h" />
+    <ClInclude Include="..\..\..\..\include\intel_rst_defs.h" />
+    <ClInclude Include="..\..\..\..\include\intel_rst_helper.h" />
+    <ClInclude Include="..\..\..\..\include\jmicron_nvme_helper.h" />
     <ClInclude Include="..\..\..\..\include\nec_legacy_helper.h" />
     <ClInclude Include="..\..\..\..\include\nvme_helper.h" />
     <ClInclude Include="..\..\..\..\include\nvme_helper_func.h" />
+    <ClInclude Include="..\..\..\..\include\of_nvmeIoctl.h" />
+    <ClInclude Include="..\..\..\..\include\of_nvme_helper.h" />
+    <ClInclude Include="..\..\..\..\include\of_nvme_helper_func.h" />
     <ClInclude Include="..\..\..\..\include\platform_helper.h" />
     <ClInclude Include="..\..\..\..\include\prolific_legacy_helper.h" />
     <ClInclude Include="..\..\..\..\include\psp_legacy_helper.h" />
+    <ClInclude Include="..\..\..\..\include\raid_scan_helper.h" />
+    <ClInclude Include="..\..\..\..\include\sata_helper_func.h" />
+    <ClInclude Include="..\..\..\..\include\sata_types.h" />
     <ClInclude Include="..\..\..\..\include\sat_helper.h" />
     <ClInclude Include="..\..\..\..\include\sat_helper_func.h" />
     <ClInclude Include="..\..\..\..\include\scsi_helper.h" />
@@ -338,8 +349,19 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\include\tcg_helper.h" />
+    <ClInclude Include="..\..\..\..\include\sntl_helper.h" />
     <ClInclude Include="..\..\..\..\include\ti_legacy_helper.h" />
+    <ClInclude Include="..\..\..\..\include\uefi_helper.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\usb_hacks.h" />
     <ClInclude Include="..\..\..\..\include\uscsi_helper.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
@@ -350,12 +372,65 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\include\vendor\seagate\seagate_ata_types.h" />
     <ClInclude Include="..\..\..\..\include\version.h" />
+    <ClInclude Include="..\..\..\..\include\vm_helper.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\vm_nvme.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\vm_nvme_drv_config.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\vm_nvme_lib.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\vm_nvme_mgmt.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="..\..\..\..\include\win_helper.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\..\src\asmedia_nvme_helper.c" />
     <ClCompile Include="..\..\..\..\src\ata_cmds.c" />
     <ClCompile Include="..\..\..\..\src\ata_helper.c" />
+    <ClCompile Include="..\..\..\..\src\ata_legacy_cmds.c" />
     <ClCompile Include="..\..\..\..\src\cam_helper.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
@@ -369,12 +444,18 @@
     <ClCompile Include="..\..\..\..\src\cmds.c" />
     <ClCompile Include="..\..\..\..\src\common_public.c" />
     <ClCompile Include="..\..\..\..\src\csmi_helper.c" />
+    <ClCompile Include="..\..\..\..\src\csmi_legacy_pt_cdb_helper.c" />
     <ClCompile Include="..\..\..\..\src\cypress_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\intel_rst_helper.c" />
+    <ClCompile Include="..\..\..\..\src\jmicron_nvme_helper.c" />
     <ClCompile Include="..\..\..\..\src\nec_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\nvme_cmds.c" />
     <ClCompile Include="..\..\..\..\src\nvme_helper.c" />
+    <ClCompile Include="..\..\..\..\src\of_nvme_helper.c" />
     <ClCompile Include="..\..\..\..\src\prolific_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\psp_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\raid_scan_helper.c" />
+    <ClCompile Include="..\..\..\..\src\sata_helper_func.c" />
     <ClCompile Include="..\..\..\..\src\sat_helper.c" />
     <ClCompile Include="..\..\..\..\src\scsi_cmds.c" />
     <ClCompile Include="..\..\..\..\src\scsi_helper.c" />
@@ -388,8 +469,50 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\src\sntl_helper.c" />
     <ClCompile Include="..\..\..\..\src\ti_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\uefi_helper.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\usb_hacks.c" />
     <ClCompile Include="..\..\..\..\src\uscsi_helper.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\vm_helper.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\vm_nvme_lib.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\vm_nvme_mgmt_common.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>

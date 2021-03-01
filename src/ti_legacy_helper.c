@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -72,7 +72,7 @@ int send_TI_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *a
     }
     if (!ataCommandOptions->ptrSenseData)
     {
-        senseData = (uint8_t*)calloc(SPC3_SENSE_LEN, sizeof(uint8_t));
+        senseData = (uint8_t*)calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
         if (!senseData)
         {
             return MEMORY_FAILURE;
@@ -85,8 +85,11 @@ int send_TI_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *a
     ret = build_TI_Legacy_CDB(tiCDB, ataCommandOptions, false, false, 0);
     if (ret == SUCCESS)
     {
-        //printf out register verbose information
-        print_Verbose_ATA_Command_Information(ataCommandOptions);
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            //printf out register verbose information
+            print_Verbose_ATA_Command_Information(ataCommandOptions);
+        }
         //send the CDB
         ret = scsi_Send_Cdb(device, tiCDB, CDB_LEN_16, ataCommandOptions->ptrData, ataCommandOptions->dataSize, ataCommandOptions->commandDirection, ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, 0);
         //dummy up RTFRs since the TI documentation doesn't have a way to show them.
@@ -112,16 +115,23 @@ int send_TI_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *a
             ataCommandOptions->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
             break;
         }
-        //print out RTFRs
-        print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            //print out RTFRs
+            print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+        }
     }
     memcpy(&device->drive_info.lastCommandSenseData[0], &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
     memcpy(&device->drive_info.lastCommandRTFRs, &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
-    safe_Free(senseData);
+    safe_Free_aligned(senseData);
     if (localSenseData)
     {
         ataCommandOptions->ptrSenseData = NULL;
         ataCommandOptions->senseDataSize = 0;
+    }
+    if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)
+    {
+        ret = COMMAND_TIMEOUT;
     }
     return ret;
 }
