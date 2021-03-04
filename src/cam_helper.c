@@ -968,7 +968,7 @@ int close_Device(tDevice *dev)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
+int get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 {
 	int  num_da_devs = 0, num_ada_devs = 0;
 #if !defined(DISABLE_NVME_PASSTHROUGH)
@@ -1011,7 +1011,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 #else
   *numberOfDevices = num_da_devs + num_ada_devs;
 #endif
-    M_USE_UNUSED(flags);  
+    
     return SUCCESS;
 }
 
@@ -1039,7 +1039,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
+int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, M_ATTR_UNUSED uint64_t flags)
 {
     int returnValue = SUCCESS;
     int numberOfDevices = 0;
@@ -1247,7 +1247,7 @@ int os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
 }
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-int send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx *nvmeIoCtx)
+int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
 	int ret = SUCCESS;
 	int32_t ioctlResult = 0;
@@ -1329,8 +1329,19 @@ int send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx *nvmeIoCtx)
 		//Fill the nvme CommandCompletionData
 		nvmeIoCtx->commandCompletionData.dw0 = pt.cpl.cdw0;
 		nvmeIoCtx->commandCompletionData.dw1 = pt.cpl.rsvd1;
-		nvmeIoCtx->commandCompletionData.dw2 = M_BytesTo2ByteValue(pt.cpl.sqid, pt.cpl.sqhd);
-		nvmeIoCtx->commandCompletionData.dw3 = M_BytesTo2ByteValue(pt.cpl.status, pt.cpl.cid);
+		nvmeIoCtx->commandCompletionData.dw2 = M_WordsTo4ByteValue(pt.cpl.sqid, pt.cpl.sqhd);
+        //NOTE: This ifdef may require more finite tuning using these version values: https://docs.freebsd.org/en_US.ISO8859-1/books/porters-handbook/versions-11.html
+#if defined (__FreeBSD_version) && (__FreeBSD_version >= 1104000)
+        //FreeBSD 11.4 and later didn't use a structure for the status completion data, but a uint16 type which made this easy
+        nvmeIoCtx->commandCompletionData.dw3 = M_WordsTo4ByteValue(pt.cpl.status, pt.cpl.cid);
+#else
+        //FreeBSD 11.3 or earlier with NVMe support used a structure, so we need to copy to a temp variable to get around this compiler error.
+        //This is not portable, but according to the FreeBSD source tree, the change away from a bitfield struct was done to support big endian
+        //FreeBSD, so this SHOULD be ok to keep like this.
+        uint16_t temp = 0;
+        memcpy(&temp, pt.cpl.status, sizeof(uint16_t));
+		nvmeIoCtx->commandCompletionData.dw3 = M_WordsTo4ByteValue(temp, pt.cpl.cid);
+#endif
 		nvmeIoCtx->commandCompletionData.dw0Valid = true;
 		nvmeIoCtx->commandCompletionData.dw1Valid = true;
 		nvmeIoCtx->commandCompletionData.dw2Valid = true;
