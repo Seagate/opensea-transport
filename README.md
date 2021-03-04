@@ -27,7 +27,7 @@ You can find the openSeaChest project [here](https://github.com/Seagate/openSeaC
 
 ### Source
 
-Source code for opensea-common is available in this repo at [https://github.com/Seagate/opensea-common](https://github.com/Seagate/opensea-common).
+Source code for opensea-transport is available in this repo at [https://github.com/Seagate/opensea-transport](https://github.com/Seagate/opensea-transport).
 
 ### Building
 
