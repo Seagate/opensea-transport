@@ -1339,7 +1339,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         //This is not portable, but according to the FreeBSD source tree, the change away from a bitfield struct was done to support big endian
         //FreeBSD, so this SHOULD be ok to keep like this.
         uint16_t temp = 0;
-        memcpy(&temp, pt.cpl.status, sizeof(uint16_t));
+        memcpy(&temp, &pt.cpl.status, sizeof(uint16_t));
 		nvmeIoCtx->commandCompletionData.dw3 = M_WordsTo4ByteValue(temp, pt.cpl.cid);
 #endif
 		nvmeIoCtx->commandCompletionData.dw0Valid = true;
