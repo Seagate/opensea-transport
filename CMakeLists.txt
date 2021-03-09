@@ -1,4 +1,21 @@
-cmake_minimum_required(VERSION "2.8")
+cmake_minimum_required(VERSION "3.12")
+
+project(opensea-transport)
+set(CMAKE_CONFIGURATION_TYPES "Debug" "Release" "Static-Debug" "Static-Release")
+
+if (CMAKE_GENERATOR_PLATFORM MATCHES "ARM")
+	set(CMAKE_C_FLAGS_DEBUG "/Zi /Wall /diagnostics:caret /JMC /Od /Od /EHsc /RTC1 /MDd")
+	set(CMAKE_C_FLAGS_STATIC-DEBUG "/Zi /Wall /diagnostics:caret /JMC /Od /Od /EHsc /RTC1 /MTd")
+elseif (CMAKE_GENERATOR_PLATFORM MATCHES "ARM64")
+	set(CMAKE_C_FLAGS_DEBUG "/Zi /Wall /diagnostics:caret /JMC /Od /Od /EHsc /RTC1 /MDd")
+	set(CMAKE_C_FLAGS_STATIC-DEBUG "/Zi /Wall /diagnostics:caret /JMC /Od /Od /EHsc /RTC1 /MTd")
+else()
+	set(CMAKE_C_FLAGS_DEBUG "/ZI /JMC /Wall /diagnostics:caret /Oy- /Od /Od /EHsc /RTC1 /MDd")
+	set(CMAKE_C_FLAGS_STATIC-DEBUG "/ZI /JMC /Wall /diagnostics:caret /Od /Od /EHsc /RTC1 /MTd")
+endif()
+
+set(CMAKE_C_FLAGS_RELEASE "/LTCG /Wall /diagnostics:caret /GL /Gy /Oi /EHsc /O2 /Zi ")
+set(CMAKE_C_FLAGS_STATIC-RELEASE "/LTCG /Wall /diagnostics:caret /GL  /Gy /Zi /Oi /EHsc /MT")
 
 file (GLOB SOURCES src/asmedia_nvme_helper.c
 				src/ata_cmds.c
@@ -53,6 +70,13 @@ file (GLOB SOURCES src/asmedia_nvme_helper.c
 				include/ti_legacy_helper.h 
 				include/usb_hacks.h 
 				include/version.h)
+
+add_definitions(-D_UNICODE)
+
+set(CMAKE_SYSTEM_VERSION "${10.0.16299.0}")
+set(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION "${10.0.16299.0}")
+set(CMAKE_SUPPRESS_REGENERATION true)
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 if(MSVC)
     file(GLOB ADD_SRCS src/win_helper.c include/win_helper.h)
