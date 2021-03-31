@@ -241,6 +241,9 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
     bool localTimer = false;
 #if defined (_WIN32)
     OVERLAPPED overlappedStruct;
+    DWORD lastError = 0;
+#else
+    int lastError = 0;
 #endif
     PIOCTL_HEADER ioctlHeader = csmiIoInParams->ioctlBuffer;//ioctl buffer should point to the beginning where the header will be.
     if (!(csmiIoInParams && csmiIoOutParams && ioctlHeader))
@@ -295,9 +298,10 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
     stop_Timer(timer);
     CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
     overlappedStruct.hEvent = NULL;
+    lastError = GetLastError();
     if (csmiIoOutParams->lastError)
     {
-        *csmiIoOutParams->lastError = GetLastError();
+        *csmiIoOutParams->lastError = lastError;
     }
     //print_Windows_Error_To_Screen(GetLastError());
 #else //Linux or other 'nix systems
@@ -308,15 +312,18 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
     start_Timer(timer);
     localIoctlReturn = ioctl(csmiIoInParams->deviceHandle, csmiIoInParams->ioctlCode, csmiIoInParams->ioctlBuffer);
     stop_Timer(timer);
+    lastError = errno;
     if (csmiIoOutParams->lastError)
     {
-        *csmiIoOutParams->lastError = errno;
+        *csmiIoOutParams->lastError = lastError;
     }
 #endif
     if (VERBOSITY_COMMAND_NAMES <= csmiIoInParams->csmiVerbosity)
     {
         printf("\tCSMI IO results:\n");
         printf("\t\tIO returned: %d\n", localIoctlReturn);
+        printf("\t\tLast error meaning: ");
+        print_Last_Error(lastError);
         printf("\t\tCSMI Error Code: ");
         print_IOCTL_Return_Code(ioctlHeader->ReturnCode);
         printf("\t\tCompletion time: ");
