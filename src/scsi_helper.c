@@ -7769,7 +7769,7 @@ void get_Sense_Key_ASC_ASCQ_FRU(uint8_t *pbuf, uint32_t pbufSize, uint8_t *sense
 {
     uint8_t format = pbuf[0] & 0x7F; //Stripping the last bit.
     uint8_t additionalSenseLength = pbuf[7];//total sense data length
-    uint16_t iter = 8;//set to beginning of the descriptors
+    uint32_t iter = 8;//set to beginning of the descriptors
     //clear everything to zero first
     *senseKey = 0;
     *asc = 0;
@@ -7793,7 +7793,7 @@ void get_Sense_Key_ASC_ASCQ_FRU(uint8_t *pbuf, uint32_t pbufSize, uint8_t *sense
         *asc = pbuf[2];
         *ascq = pbuf[3];
         //for descriptor format we have to loop through the buffer until we find the FRU descriptor (if available)
-        while (iter < pbufSize && iter < (additionalSenseLength + 8))
+        while (iter < SPC3_SENSE_LEN && iter < pbufSize && iter < (C_CAST(uint16_t, additionalSenseLength) + UINT16_C(8)))
         {
             bool gotFRU = false;
             uint8_t descriptorType = pbuf[iter];
@@ -7847,7 +7847,7 @@ void get_Information_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLe
         case SCSI_SENSE_DEFER_ERR_DESC:
             returnedLength += ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
             //loop through the descriptors to see if a sense key specific descriptor was provided
-            for (uint8_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
+            for (uint32_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < SPC3_SENSE_LEN && offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
             {
                 bool gotInformation = false;
                 uint8_t descriptorType = ptrSenseData[offset];
@@ -7898,7 +7898,7 @@ void get_Illegal_Length_Indicator_From_Sense_Data(uint8_t *ptrSenseData, uint32_
         case SCSI_SENSE_CUR_INFO_DESC:
         case SCSI_SENSE_DEFER_ERR_DESC:
             //loop through the descriptors to see if a sense key specific descriptor was provided
-            for (uint8_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
+            for (uint32_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < SPC3_SENSE_LEN && offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
             {
                 bool gotILI = false;
                 uint8_t descriptorType = ptrSenseData[offset];
@@ -7953,7 +7953,7 @@ void get_Stream_Command_Bits_From_Sense_Data(uint8_t *ptrSenseData, uint32_t sen
         case SCSI_SENSE_CUR_INFO_DESC:
         case SCSI_SENSE_DEFER_ERR_DESC:
             //loop through the descriptors to see if a sense key specific descriptor was provided
-            for (uint8_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
+            for (uint32_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < SPC3_SENSE_LEN && offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
             {
                 bool gotbits = false;
                 uint8_t descriptorType = ptrSenseData[offset];
@@ -8003,7 +8003,7 @@ void get_Command_Specific_Information_From_Sense_Data(uint8_t *ptrSenseData, uin
         case SCSI_SENSE_CUR_INFO_DESC:
         case SCSI_SENSE_DEFER_ERR_DESC:
             //loop through the descriptors to see if a sense key specific descriptor was provided
-            for (uint8_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
+            for (uint32_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < SPC3_SENSE_LEN && offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
             {
                 bool gotCommandInformation = false;
                 uint8_t descriptorType = ptrSenseData[offset];
@@ -8059,7 +8059,7 @@ void get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDat
             returnedLength += ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
             senseKey = M_Nibble0(ptrSenseData[2]);
             //loop through the descriptors to see if a sense key specific descriptor was provided
-            for (uint8_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
+            for (uint32_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < SPC3_SENSE_LEN && offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
             {
                 bool senseKeySpecificFound = false;
                 uint8_t descriptorType = ptrSenseData[offset];
@@ -8236,7 +8236,7 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
             senseFields->scsiStatusCodes.ascq = ptrSenseData[3];
             senseFields->senseDataOverflow = ptrSenseData[4] & BIT7;
             //now we need to loop through the returned descriptors
-            for (uint8_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
+            for (uint32_t offset = SCSI_DESC_FORMAT_DESC_INDEX; offset < SPC3_SENSE_LEN && offset < returnedLength && offset < senseDataLength; offset += descriptorLength + 2)
             {
                 uint8_t descriptorType = ptrSenseData[offset];
                 descriptorLength = ptrSenseData[offset + 1];
@@ -8412,6 +8412,7 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
             break;
         }
     }
+    return;
 }
 
 void print_Sense_Fields(ptrSenseDataFields senseFields)
@@ -9521,7 +9522,7 @@ int fill_In_Device_Info(tDevice *device)
                                 memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
                                 device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
                                 remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
-                                for (uint8_t iter = 0; iter < SERIAL_NUM_LEN && iter < strlen(device->drive_info.serialNumber); ++iter)
+                                for (size_t iter = 0; iter < SERIAL_NUM_LEN && iter < strlen(device->drive_info.serialNumber); ++iter)
                                 {
                                     if (!isprint(device->drive_info.serialNumber[iter]))
                                     {

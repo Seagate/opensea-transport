@@ -52,6 +52,7 @@ extern "C"
     //DATA fis is variable length depending on the data transfer length
     #define DATA_FIS_LENGTH_MIN         UINT16_C(8)
     #define DATA_FIS_LENGTH_MAX         UINT16_C(8196)
+    #define DATA_FIS_MAX_DWORDS         UINT16_C(2048)
 
     //Bit masks for H2D Fis. use these instead of the bit fields for portability. Bitfields are more informational and useful in debugging environments that pack them in the order they are specified below (mostly checked in MSFT compilers)
     #define H2D_COMMAND_BIT_MASK (0x80)

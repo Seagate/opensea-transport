@@ -217,7 +217,7 @@ void print_FIS(void *fis, uint32_t fisLengthBytes)
             printf("\tR_PORT:\t%02" PRIX8 "\n", dataFis->byte1);
             printf("\t\tReserved:\t%" PRIu8 "\n", dataFis->reserved_port.reserved);
             printf("\t\tPort Multiplier Port:\t%" PRIu8 "\n", dataFis->reserved_port.pmport);
-            for (uint16_t dwordIter = 0; dwordIter < (fisLengthBytes - sizeof(uint32_t)); ++dwordIter)
+            for (uint32_t dwordIter = 0; dwordIter < DATA_FIS_MAX_DWORDS && dwordIter < (fisLengthBytes - sizeof(uint32_t)); ++dwordIter)
             {
                 printf("\tDWORD %" PRIu16 ":\t%08" PRIX32 "\n", dwordIter + 1, dataFis->nDWordsData[dwordIter]);
             }
