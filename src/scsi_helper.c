@@ -7793,7 +7793,7 @@ void get_Sense_Key_ASC_ASCQ_FRU(uint8_t *pbuf, uint32_t pbufSize, uint8_t *sense
         *asc = pbuf[2];
         *ascq = pbuf[3];
         //for descriptor format we have to loop through the buffer until we find the FRU descriptor (if available)
-        while (iter < SPC3_SENSE_LEN && iter < pbufSize && iter < (C_CAST(uint16_t, additionalSenseLength) + UINT16_C(8)))
+        while (iter < SPC3_SENSE_LEN && iter < pbufSize && iter < (C_CAST(uint32_t, additionalSenseLength) + UINT16_C(8)))
         {
             bool gotFRU = false;
             uint8_t descriptorType = pbuf[iter];
@@ -8067,11 +8067,11 @@ void get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDat
                 switch (descriptorType)
                 {
                 case SENSE_DESCRIPTOR_SENSE_KEY_SPECIFIC:
-                    senseKeySpecificOffset = offset + 4;
+                    senseKeySpecificOffset = C_CAST(uint8_t, offset + 4);//This shouldn't be a problem as offset should never be larger than 252 in the first place.
                     senseKeySpecificFound = true;
                     break;
                 case SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE:
-                    senseKeySpecificOffset = offset + 4;
+                    senseKeySpecificOffset = C_CAST(uint8_t, offset + 4);//This shouldn't be a problem as offset should never be larger than 252 in the first place.
                     senseKeySpecificFound = true;
                     break;
                 default: //not a descriptor we care about, so skip it
@@ -8301,13 +8301,13 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
                     senseFields->illegalLengthIndication = ptrSenseData[offset + 3] & BIT5;
                     break;
                 case SENSE_DESCRIPTOR_OSD_OBJECT_IDENTIFICATION:
-                    senseFields->osdObjectIdentificationDescriptorOffset = offset;
+                    senseFields->osdObjectIdentificationDescriptorOffset = C_CAST(uint8_t, offset);//This shouldn't be a problem as offset should never be larger than 252 in the first place.
                     break;
                 case SENSE_DESCRIPTOR_OSD_RESPONSE_INTEGRITY_CHECK_VALUE:
-                    senseFields->osdResponseIntegrityCheckValueDescriptorOffset = offset;
+                    senseFields->osdResponseIntegrityCheckValueDescriptorOffset = C_CAST(uint8_t, offset);//This shouldn't be a problem as offset should never be larger than 252 in the first place.
                     break;
                 case SENSE_DESCRIPTOR_OSD_ATTRIBUTE_IDENTIFICATION:
-                    senseFields->osdAttributeIdentificationDescriptorOffset = offset;
+                    senseFields->osdAttributeIdentificationDescriptorOffset = C_CAST(uint8_t, offset);//This shouldn't be a problem as offset should never be larger than 252 in the first place.
                     break;
                 case SENSE_DESCRIPTOR_ATA_STATUS_RETURN:
                     senseFields->ataStatusReturnDescriptor.valid = true;
@@ -8327,17 +8327,17 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
                 case SENSE_DESCRIPTOR_ANOTHER_PROGRESS_INDICATION:
                     if (numOfProgressIndications < MAX_PROGRESS_INDICATION_DESCRIPTORS)
                     {
-                        senseFields->anotherProgressIndicationDescriptorOffset[numOfProgressIndications] = offset;
+                        senseFields->anotherProgressIndicationDescriptorOffset[numOfProgressIndications] = C_CAST(uint8_t, offset);//This shouldn't be a problem as offset should never be larger than 252 in the first place.;
                         ++numOfProgressIndications;
                     }
                     break;
                 case SENSE_DESCRIPTOR_USER_DATA_SEGMENT_REFERRAL:
-                    senseFields->userDataSegmentReferralDescriptorOffset = offset;
+                    senseFields->userDataSegmentReferralDescriptorOffset = C_CAST(uint8_t, offset);//This shouldn't be a problem as offset should never be larger than 252 in the first place.
                     break;
                 case SENSE_DESCRIPTOR_FORWAREDED_SENSE_DATA:
                     if (numOfForwardedSenseData < MAX_FORWARDED_SENSE_DATA_DESCRIPTORS)
                     {
-                        senseFields->forwardedSenseDataDescriptorOffset[numOfForwardedSenseData] = offset;
+                        senseFields->forwardedSenseDataDescriptorOffset[numOfForwardedSenseData] = C_CAST(uint8_t, offset);//This shouldn't be a problem as offset should never be larger than 252 in the first place.;
                         ++numOfForwardedSenseData;
                     }
                     break;
@@ -8387,7 +8387,7 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
                     senseFields->descriptorCommandSpecificInformation = M_BytesTo8ByteValue(ptrSenseData[offset + 16], ptrSenseData[offset + 17], ptrSenseData[offset + 18], ptrSenseData[offset + 19], ptrSenseData[offset + 20], ptrSenseData[offset + 21], ptrSenseData[offset + 22], ptrSenseData[offset + 23]);
                     break;
                 case SENSE_DESCRIPTOR_DEVICE_DESIGNATION:
-                    senseFields->deviceDesignationDescriptorOffset = offset;
+                    senseFields->deviceDesignationDescriptorOffset = C_CAST(uint8_t, offset);//This shouldn't be a problem as offset should never be larger than 252 in the first place.
                     break;
                 case SENSE_DESCRIPTOR_MICROCODE_ACTIVATION:
                     senseFields->microCodeActivation.valid = true;
@@ -8396,7 +8396,7 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
                 default: //not a known descriptor
                     if (!senseFields->additionalDataAvailable)
                     {
-                        senseFields->additionalDataOffset = offset;
+                        senseFields->additionalDataOffset = C_CAST(uint8_t, offset);//This shouldn't be a problem as offset should never be larger than 252 in the first place.
                     }
                     senseFields->additionalDataAvailable = true;
                     break;
