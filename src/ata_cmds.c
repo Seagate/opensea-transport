@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -4645,7 +4645,14 @@ int ata_Set_Sector_Configuration_Ext(tDevice *device, uint16_t commandCheck, uin
     ataCommandOptions.tfr.Feature48 = M_Byte1(commandCheck);
     ataCommandOptions.tfr.ErrorFeature = M_Byte0(commandCheck);
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
-    ataCommandOptions.timeout = 3600;//changing timeout to 1 hour since it should take less than that by a lot...usually only a couple minutes
+    if (os_Is_Infinite_Timeout_Supported())
+    {
+        ataCommandOptions.timeout = INFINITE_TIMEOUT_VALUE;
+    }
+    else
+    {
+        ataCommandOptions.timeout = MAX_CMD_TIMEOUT_SECONDS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -4738,7 +4745,14 @@ int ata_Remove_Element_And_Truncate(tDevice *device, uint32_t elementIdentifier,
     ataCommandOptions.tfr.SectorCount48 = M_Byte1(elementIdentifier);
     ataCommandOptions.tfr.ErrorFeature = M_Byte2(elementIdentifier);
     ataCommandOptions.tfr.Feature48 = M_Byte3(elementIdentifier);
-    ataCommandOptions.timeout = UINT16_MAX;//This may take a few minutes...or hours
+    if (os_Is_Infinite_Timeout_Supported())
+    {
+        ataCommandOptions.timeout = INFINITE_TIMEOUT_VALUE;
+    }
+    else
+    {
+        ataCommandOptions.timeout = MAX_CMD_TIMEOUT_SECONDS;
+    }
     ataCommandOptions.tfr.LbaLow = M_Byte0(requestedMaxLBA);
     ataCommandOptions.tfr.LbaMid = M_Byte1(requestedMaxLBA);
     ataCommandOptions.tfr.LbaHi = M_Byte3(requestedMaxLBA);
@@ -4777,13 +4791,20 @@ int ata_Restore_Elements_And_Rebuild(tDevice *device)
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
     ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
-    ataCommandOptions.tfr.CommandStatus = ATA_REMOVE_AND_TRUNCATE;
+    ataCommandOptions.tfr.CommandStatus = ATA_RESTORE_AND_REBUILD;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     ataCommandOptions.tfr.SectorCount = RESERVED;
     ataCommandOptions.tfr.SectorCount48 = RESERVED;
     ataCommandOptions.tfr.ErrorFeature = RESERVED;
     ataCommandOptions.tfr.Feature48 = RESERVED;
-    ataCommandOptions.timeout = UINT16_MAX;//This may take a few minutes...or hours
+    if (os_Is_Infinite_Timeout_Supported())
+    {
+        ataCommandOptions.timeout = INFINITE_TIMEOUT_VALUE;
+    }
+    else
+    {
+        ataCommandOptions.timeout = MAX_CMD_TIMEOUT_SECONDS;
+    }
     ataCommandOptions.tfr.LbaLow = RESERVED;
     ataCommandOptions.tfr.LbaMid = RESERVED;
     ataCommandOptions.tfr.LbaHi = RESERVED;

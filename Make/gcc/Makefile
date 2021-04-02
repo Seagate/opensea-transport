@@ -26,22 +26,6 @@ INC_DIR=-I../../include -I../../include/vendor -I../../../opensea-common/include
 CC ?= gcc
 AR ?= ar
 
-#determine the proper NVMe include file. SEA_NVME_IOCTL_H, SEA_NVME_H, or SEA_UAPI_NVME_H
-NVME_IOCTL_H = /usr/include/linux/nvme_ioctl.h 
-NVME_H = /usr/include/linux/nvme.h 
-UAPI_NVME_H = /usr/include/uapi/nvme.h 
-
-ifeq ($(shell test -f $(NVME_IOCTL_H) && echo -n yes),yes)
-	PROJECT_DEFINES += -DSEA_NVME_IOCTL_H
-else
-	ifeq ($(shell test -f $(NVME_H) && echo -n yes),yes)
-		PROJECT_DEFINES += -DSEA_NVME_H
-	else
-		ifeq ($(shell test -f $(UAPI_NVME_H) && echo -n yes),yes)
-			PROJECT_DEFINES += -DSEA_UAPI_NVME_H
-		endif
-	endif
-endif
 #override CFLAGS = -Wall -c -fPIC -I. -std=gnu99
 CFLAGS ?= -Wall -Wextra 
 #setting std=c99 instead of std-gnu99 because we want __has_include to work. This means we must add -D_GNU_SOURCE to the project defines to keep the same functionality in Linux. NOTE: This seems to work in newGCC, but if you are unfortunate enough to HAVE to use old GCC within somehting like CentOS6, you must change back to gnu99.
@@ -73,14 +57,40 @@ LIB_SRC_FILES = \
 	$(SRC_DIR)csmi_helper.c
 
 UNAME := $(shell uname)
+
 ifeq ($(UNAME),Linux)
 	LIB_SRC_FILES += $(SRC_DIR)sg_helper.c
+	#determine the proper NVMe include file. SEA_NVME_IOCTL_H, SEA_NVME_H, or SEA_UAPI_NVME_H
+	NVME_IOCTL_H = /usr/include/linux/nvme_ioctl.h 
+	NVME_H = /usr/include/linux/nvme.h 
+	UAPI_NVME_H = /usr/include/uapi/nvme.h 
+
+	ifeq ($(shell test -f $(NVME_IOCTL_H) && printf "yes"),yes)
+		PROJECT_DEFINES += -DSEA_NVME_IOCTL_H
+	else
+		ifeq ($(shell test -f $(NVME_H) && printf "yes"),yes)
+			PROJECT_DEFINES += -DSEA_NVME_H
+		else
+			ifeq ($(shell test -f $(UAPI_NVME_H) && printf "yes"),yes)
+				PROJECT_DEFINES += -DSEA_UAPI_NVME_H
+			else
+				PROJECT_DEFINES += -DDISABLE_NVME_PASSTHROUGH
+			endif
+		endif
+	endif
 endif
+
 ifeq ($(UNAME),SunOS)
     LIB_SRC_FILES += $(SRC_DIR)uscsi_helper.c
+	PROJECT_DEFINES += -DDISABLE_NVME_PASSTHROUGH
 endif
+
 ifeq ($(UNAME),FreeBSD)
     LIB_SRC_FILES += $(SRC_DIR)cam_helper.c
+	FREEBSD_NVME_H = /usr/include/dev/nvme/nvme.h
+	ifneq ($(shell test -f $(FREEBSD_NVME_H) && printf "yes"),yes)
+		PROJECT_DEFINES += -DDISABLE_NVME_PASSTHROUGH
+	endif
 endif
 
 #setting std=c99 instead of std-gnu99 because we want __has_include to work. This means we must add -D_GNU_SOURCE to the project defines to keep the same functionality in Linux

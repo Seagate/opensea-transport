@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2020 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2020-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -217,7 +217,7 @@ void print_FIS(void *fis, uint32_t fisLengthBytes)
             printf("\tR_PORT:\t%02" PRIX8 "\n", dataFis->byte1);
             printf("\t\tReserved:\t%" PRIu8 "\n", dataFis->reserved_port.reserved);
             printf("\t\tPort Multiplier Port:\t%" PRIu8 "\n", dataFis->reserved_port.pmport);
-            for (uint16_t dwordIter = 0; dwordIter < (fisLengthBytes - sizeof(uint32_t)); ++dwordIter)
+            for (uint32_t dwordIter = 0; dwordIter < DATA_FIS_MAX_DWORDS && dwordIter < (fisLengthBytes - sizeof(uint32_t)); ++dwordIter)
             {
                 printf("\tDWORD %" PRIu16 ":\t%08" PRIX32 "\n", dwordIter + 1, dataFis->nDWordsData[dwordIter]);
             }

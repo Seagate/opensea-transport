@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -22,6 +22,11 @@
 #if defined (UEFI_C_SOURCE)
 #include <Protocol/ScsiPassThruExt.h> //for TARGET_MAX_BYTES definition
 #include <Protocol/DevicePath.h> //for device path union/structures
+#endif
+
+#if defined (__FreeBSD__)
+//Not including this here even though I thought I might need to because it causes compilation errors all over...not really sure why, but this worked...-TJE
+//#include <camlib.h> //for cam structure held in tDevice
 #endif
 
 #include "csmi_helper.h" //because the device structure holds some csmi support structure for when we can issue csmi passthrough commands.
@@ -1030,14 +1035,23 @@ extern "C"
         }fwdlIOsupport;
         uint32_t adapterMaxTransferSize;//Bytes. Returned by querying for adapter properties. Can be used to know when trying to request more than the adapter or driver supports.
         bool openFabricsNVMePassthroughSupported;//If true, then nvme commands can be issued using the open fabrics NVMe passthrough IOCTL
+        bool intelNVMePassthroughSupported;//if true, this is a device that supports intel's nvme passthrough, but doesn't show up as full features with CSMI as expected otherwise.
         //TODO: Store the device path! This may occasionally be useful to have. Longest one will probably be no more that MAX_DEVICE_ID_LEN characters. (This is defined as 200)
         //padding to keep same size as other OSs. This is to keep things similar across OSs.
         //Variable sizes based on 32 vs 64bit since handle is a void*
         #if defined (_WIN64)
-            uint8_t paddWin[48];
+            uint8_t paddWin[47];
         #else
-            uint8_t paddWin[56];
+            uint8_t paddWin[55];
         #endif //Win64 for padding
+        #elif defined (__FreeBSD__)
+        int fd;//used when cam is not being used (legacy ATA or NVMe IO without CAM....which may not be supported, but kept here just in case)
+        struct cam_device *cam_dev;//holds fd inside for CAM devices among other information
+        #if defined (__x86_64__) || defined (__amd64__) || defined (__aarch64__) || defined (__ia64__) || defined (__itanium__) || defined (__powerpc64__) || defined (__ppc64__) || defined (__spark__)
+            uint8_t freeBSDPadding[102];//padding on 64bit OS
+        #else
+            uint8_t freeBSDPadding[106];//padding on 32bit OS
+        #endif
         #else
         int                 fd;//some other nix system that only needs a integer file handle
         uint8_t otherPadd[110];
@@ -1275,6 +1289,26 @@ extern "C"
         ZM_ACTION_OPEN_ZONE             = 0x03,//non data-out
         ZM_ACTION_RESET_WRITE_POINTERS  = 0x04,//non data-out
     }eZMAction;
+
+    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported();
+
+    //NOTE: This is only possible in some OS's! If you request this and it's not supported, OS_TIMEOUT_TOO_LARGE is returned.
+    #define INFINITE_TIMEOUT_VALUE UINT32_MAX
+
+    //Below, we have nastyness in order to figure out maximum possible timeouts (these may be less than infinite in case you need to know a time that is NOT infinite)
+    #if defined (UEFI_C_SOURCE)
+        #define MAX_CMD_TIMEOUT_SECONDS UINT32_MAX
+    #elif defined (_WIN32)
+        #define MAX_CMD_TIMEOUT_SECONDS 108000
+    #elif defined (__linux__)
+        #define MAX_CMD_TIMEOUT_SECONDS 4294967
+    #elif defined (__FreeBSD__)
+        #define MAX_CMD_TIMEOUT_SECONDS 4294967
+    #elif defined (__sun)
+        #define MAX_CMD_TIMEOUT_SECONDS 65535
+    #else
+        #error "Need to set MAX_CMD_TIMEOUT_SECONDS for this OS"
+    #endif
 
     //-----------------------------------------------------------------------------
     //

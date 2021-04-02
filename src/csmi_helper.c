@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -241,6 +241,9 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
     bool localTimer = false;
 #if defined (_WIN32)
     OVERLAPPED overlappedStruct;
+    DWORD lastError = 0;
+#else
+    int lastError = 0;
 #endif
     PIOCTL_HEADER ioctlHeader = csmiIoInParams->ioctlBuffer;//ioctl buffer should point to the beginning where the header will be.
     if (!(csmiIoInParams && csmiIoOutParams && ioctlHeader))
@@ -295,9 +298,10 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
     stop_Timer(timer);
     CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
     overlappedStruct.hEvent = NULL;
+    lastError = GetLastError();
     if (csmiIoOutParams->lastError)
     {
-        *csmiIoOutParams->lastError = GetLastError();
+        *csmiIoOutParams->lastError = lastError;
     }
     //print_Windows_Error_To_Screen(GetLastError());
 #else //Linux or other 'nix systems
@@ -308,15 +312,18 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
     start_Timer(timer);
     localIoctlReturn = ioctl(csmiIoInParams->deviceHandle, csmiIoInParams->ioctlCode, csmiIoInParams->ioctlBuffer);
     stop_Timer(timer);
+    lastError = errno;
     if (csmiIoOutParams->lastError)
     {
-        *csmiIoOutParams->lastError = errno;
+        *csmiIoOutParams->lastError = lastError;
     }
 #endif
     if (VERBOSITY_COMMAND_NAMES <= csmiIoInParams->csmiVerbosity)
     {
         printf("\tCSMI IO results:\n");
         printf("\t\tIO returned: %d\n", localIoctlReturn);
+        printf("\t\tLast error meaning: ");
+        print_Last_Error(lastError);
         printf("\t\tCSMI Error Code: ");
         print_IOCTL_Return_Code(ioctlHeader->ReturnCode);
         printf("\t\tCompletion time: ");
@@ -2221,6 +2228,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                             device->os_info.csmiDeviceData->portIdentifier = phyInfo.Information.Phy[phyIter].bPortIdentifier;
                             device->os_info.csmiDeviceData->phyIdentifier = phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier;
                             device->os_info.csmiDeviceData->portProtocol = phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol;
+                            memcpy(&device->os_info.csmiDeviceData->sasAddress[0], phyInfo.Information.Phy[phyIter].Attached.bSASAddress, 8);
                             //Attempt passthrough command and compare identifying data.
                             //for this to work, SCSIIoCTX structure must be manually defined for what we want to do right now and call the CSMI IO directly...not great, but don't want to have other force flags elsewhere at the moment- TJE
                             if (phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_SATA || phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_STP)
@@ -2453,8 +2461,11 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
 #if defined(_WIN32)
     TCHAR device_name[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
     CONST TCHAR *ptrDeviceName = &device_name[0];
+#if defined (_MSC_VER) && _MSC_VER < SEA_MSC_VER_VS2015
+    _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\SCSI") TEXT("%") TEXT("lu") TEXT(":"), controllerNum);
+#else
     _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\SCSI") TEXT("%") TEXT(PRIu32) TEXT(":"), controllerNum);
-
+#endif
     //lets try to open the device.
     device->os_info.fd = CreateFile(ptrDeviceName,
         GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 

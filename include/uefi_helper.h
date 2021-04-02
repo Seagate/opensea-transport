@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2017 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2017-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -29,6 +29,13 @@ extern "C"
     // \param ScsiIoCtx
     // \return SUCCESS - pass, !SUCCESS fail or something went wrong
     int send_IO(ScsiIoCtx *scsiIoCtx);
+
+    //This is the maximum timeout a command can use in UEFI...which is nearly infinite to begin with
+    //NOTE: UEFI also supports an infinite timeout, but that is checked in a separate function
+#define UEFI_MAX_CMD_TIMEOUT_SECONDS UINT32_MAX //Technically, max seconds is 18446744074, but I don't want to switch to a 64bit for the timeout. Anything with this value will round up to infinite in UEFI...where a timeout this long may as well be infinite
+
+    //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+    bool os_Is_Infinite_Timeout_Supported();
 
 #if !defined (DISABLE_NVME_PASSTHROUGH)
     //-----------------------------------------------------------------------------
@@ -83,6 +90,10 @@ extern "C"
 
     int os_nvme_Reset(tDevice *device);
     int os_nvme_Subsystem_Reset(tDevice *device);
+
+    int os_Lock_Device(tDevice *device);
+
+    int os_Unlock_Device(tDevice *device);
 
 #endif
 

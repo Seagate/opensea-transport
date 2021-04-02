@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -34,14 +34,22 @@
 #include "common_platform.h"
 #endif
 
+    //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+bool os_Is_Infinite_Timeout_Supported()
+{
+    return true;
+}
+
 extern bool validate_Device_Struct(versionBlock);
 
 // Local helper functions for debugging
 void print_io_hdr( sg_io_hdr_t *pIo )
 {
     time_t time_now;
+    char timeFormat[TIME_STRING_LENGTH];
+    memset(timeFormat, 0, TIME_STRING_LENGTH);//clear this again before reusing it
     time_now = time(NULL);
-    printf("\n%s: %s---------------------------------\n", __FUNCTION__, ctime(&time_now));
+    printf("\n%s: %s---------------------------------\n", __FUNCTION__, get_Current_Time_String(&time_now, timeFormat, TIME_STRING_LENGTH));
     printf("type int interface_id %d\n", pIo->interface_id);           /* [i] 'S' (required) */
     printf("type int  dxfer_direction %d\n", pIo->dxfer_direction);        /* [i] */
     printf("type unsigned char cmd_len 0x%x\n", pIo->cmd_len);      /* [i] */
@@ -1196,7 +1204,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     {
         io_hdr.timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
         //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < 4294966)
+        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < SG_MAX_CMD_TIMEOUT_SECONDS)
         {
             io_hdr.timeout *= 1000;//convert to milliseconds
         }
@@ -1211,7 +1219,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
         {
             io_hdr.timeout = scsiIoCtx->timeout;
             //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-            if (scsiIoCtx->timeout < 4294966)
+            if (scsiIoCtx->timeout < SG_MAX_CMD_TIMEOUT_SECONDS)
             {
                 io_hdr.timeout *= 1000;//convert to milliseconds
             }
@@ -2103,4 +2111,28 @@ int os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_
 int os_Flush(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
+}
+
+int os_Lock_Device(tDevice *device)
+{
+    int ret = SUCCESS;
+    //Get flags
+    int flags = fcntl(device->os_info.fd, F_GETFL);
+    //disable O_NONBLOCK
+    flags &= ~O_NONBLOCK;
+    //Set Flags
+    fcntl(device->os_info.fd, F_SETFL, flags);
+    return ret;
+}
+
+int os_Unlock_Device(tDevice *device)
+{
+    int ret = SUCCESS;
+    //Get flags
+    int flags = fcntl(device->os_info.fd, F_GETFL);
+    //enable O_NONBLOCK
+    flags |= O_NONBLOCK;
+    //Set Flags
+    fcntl(device->os_info.fd, F_SETFL, flags);
+    return ret;
 }
