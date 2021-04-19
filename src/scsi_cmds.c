@@ -3587,12 +3587,12 @@ int scsi_Write_Same_16(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
     if (noDataOut)
     {
         //send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
+        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     }
     else
     {
         //send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
+        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
