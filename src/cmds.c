@@ -707,7 +707,7 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
         break;
     case SCSI_DRIVE:
         //todo: if there is no data transfer and the drive doesn't support that feature, we need to allocate local zeroed memory to send as the pattern
-        if (device->drive_info.scsiVersion > SCSI_VERSION_SPC && device->drive_info.deviceMaxLba > SCSI_MAX_32_LBA)
+        if (device->drive_info.scsiVersion > SCSI_VERSION_SPC && (device->drive_info.deviceMaxLba > SCSI_MAX_32_LBA || numberOfLogicalBlocks > UINT16_MAX))
         {
             //write same 16 was made in SBC2 so need to report conformance to version greater than SPC (3) to do this.
             ret = scsi_Write_Same_16(device, 0, false, false, noDataTransfer, startingLba, 0, (uint32_t)numberOfLogicalBlocks, pattern, device->drive_info.deviceBlockSize);
