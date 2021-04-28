@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -696,8 +696,8 @@ extern "C"
         DIAG_PAGE_REBUILD_ASSIST                        = 0x42,
     }eSCSIDiagnosticPages;
 
-    #define SCSI_LOG_PARAMETER_HEADER_LENGTH 4//bytes
-    #define SCSI_VPD_PAGE_HEADER_LENGTH 4//bytes
+    #define SCSI_LOG_PARAMETER_HEADER_LENGTH UINT8_C(4)//bytes
+    #define SCSI_VPD_PAGE_HEADER_LENGTH UINT8_C(4)//bytes
 
     //The values in here may be incomplete. They are from the SPC5 spec, Table E.19 - Standard Code value guidelines
     typedef enum _eStandardCode

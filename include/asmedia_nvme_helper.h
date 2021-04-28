@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2019 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2019-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -18,7 +18,7 @@
 //      This file contains both. It is not clear how to determine if the full packet passthrough is supported other than trying it.
 
 #pragma once
-
+#include <inttypes.h>
 #if !defined (DISABLE_NVME_PASSTHROUGH)
 
 #include "nvme_helper.h"

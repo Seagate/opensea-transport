@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012 - 2020 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -46,8 +46,10 @@ extern bool validate_Device_Struct(versionBlock);
 void print_io_hdr( sg_io_hdr_t *pIo )
 {
     time_t time_now;
+    char timeFormat[TIME_STRING_LENGTH];
+    memset(timeFormat, 0, TIME_STRING_LENGTH);//clear this again before reusing it
     time_now = time(NULL);
-    printf("\n%s: %s---------------------------------\n", __FUNCTION__, ctime(&time_now));
+    printf("\n%s: %s---------------------------------\n", __FUNCTION__, get_Current_Time_String(&time_now, timeFormat, TIME_STRING_LENGTH));
     printf("type int interface_id %d\n", pIo->interface_id);           /* [i] 'S' (required) */
     printf("type int  dxfer_direction %d\n", pIo->dxfer_direction);        /* [i] */
     printf("type unsigned char cmd_len 0x%x\n", pIo->cmd_len);      /* [i] */
