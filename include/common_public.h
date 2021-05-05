@@ -732,6 +732,28 @@ extern "C"
         //SCSI hacks are those that relate to things to handle when issuing SCSI commands that may be translated improperly in some cases.
         struct
         {
+            /*This comment breaks down each ATA passthrough hack based on the output short-names from openSeaChest_PassthroughTest
+            UNA - unitSNAvailable
+            RW6 - readWrite.rw6
+            RW10 - readWrite.rw10
+            RW12 - readWrite.rw12
+            RW16 - readWrite.rw16
+            NVPD - noVPDPages
+            NMP - noModePages
+            NLP - noLogPages
+            NLPS - noLogSubPages
+            MP6 - mode6bytes
+            NMSP - noModeSubPages
+            NRSUPOP - noReportSupportedOperations
+            SUPSOP - reportSingleOpCodes
+            REPALLOP - reportAllOpCodes
+            SECPROT - securityProtocolSupported
+            SECPROTI512 - securityProtocolWithInc512
+            PRESCSI2 - preSCSI2InqData (uncommon and the fields to specify offsets and lengths must be handled manually as the software cannot report this by itself)
+            //NORWZ - not currently handled. No zero length on read or write commands since adapter doesn't handle these properly.
+            MXFER - maxTransferLength (bytes)
+            TODO: More hacks for strange adapters as needed can be added in here.
+            */
             bool unitSNAvailable;//This means we can request this page even if other VPD pages don't work.
             struct {
                 bool available;//means that the bools below have been set. If not, need to use default read/write settings in the library.
@@ -769,6 +791,27 @@ extern "C"
         union {
             //ATA Hacks refer to SAT translation issues or workarounds.
             struct {
+                /*This comment breaks down each ATA passthrough hack based on the output short-names from openSeaChest_PassthroughTest
+                SCTSM - smartCommandTransportWithSMARTLogCommandsOnly
+                A1 - useA1SATPassthroughWheneverPossible (This hack is obsolete now as A1 is the default with an automatic software retry now)
+                NA1 - a1NeverSupported
+                A1EXT - a1ExtCommandWhenPossible
+                RS - returnResponseInfoSupported
+                RSTD - returnResponseInfoNeedsTDIR
+                RSIE - returnResponseIgnoreExtendBit
+                TSPIU - alwaysUseTPSIUForSATPassthrough
+                CHK - alwaysCheckConditionAvailable
+                FDMA - alwaysUseDMAInsteadOfUDMA
+                NDMA - dmaNotSupported
+                PARTRTFR - partialRTFRs
+                NORTFR - noRTFRsPossible
+                MMPIO - multiSectorPIOWithMultipleMode
+                SPIO - singleSectorPIOOnly
+                ATA28 - ata28BitOnly
+                NOMMPIO - noMultipleModeCommands
+                MPTXFER - maxTransferLength (bytes)
+                //TODO: Add more hacks below as needed to workaround other weird behavior for ATA passthrough.
+                */
                 bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
                 //bool useA1SATPassthroughWheneverPossible;//For USB adapters that will only process 28bit commands with A1 and will NOT issue them with 85h
                 bool a1NeverSupported;//prevent retrying with 12B command since it isn't supported anyways.
@@ -794,6 +837,13 @@ extern "C"
             struct {
                 //This is here mostly for vendor unique NVMe passthrough capabilities.
                 //This structure may also be useful for OSs that have limited capabilities
+                /* This comment describes the translation of fields from openSeaChest_PassthroughTest to the hacks in the structure below
+                LIMPT - limitedPassthroughCapabilities
+                IDGLP - this means setting the bools for identify and getLotpage to true, but none of the other commands.
+                TODO: This part of the passthrough test is far from complete. Many of the listed commands are based on looking at limited IOCTLs in some OSs or other documentation that indicates not all commands
+                      are possible in a given OS. These were added to ensure it is easier to add support in the future, but are not fully implemented at this time. Some of the limited commands are setup properly in Windows 10 vs Windows PE/RE since
+                      there are different capabilities between these OS configurations as documented by MSFT.
+                */
                 bool limitedPassthroughCapabilities;//If this is set to true, this means only certain commands can be passed through to the device. (See below struct, only populated when this is true, otherwise assume all commands work)
                 struct { //This structure will hold which commands are available to passthrough if the above "limitedPassthroughCapabilities" boolean is true, otherwise this structure should be ignored.
                     bool identifyGeneric;//can "generically" send any identify command with any cns value. This typically means any identify can be sent, not just controller and namespace. Basically CNS field is available.
