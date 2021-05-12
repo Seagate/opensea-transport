@@ -2685,20 +2685,20 @@ struct iden_namespace
      *
      * Bit 7 is reserved
      * Bit 6 if set to ‘1’ indicates that the namespace supports the Exclusive Access
-     *       – All Registrants reservation type. If this bit is cleared to ‘0’, then the
-     *       namespace does not support the Exclusive Access – All Registrants
+     *       - All Registrants reservation type. If this bit is cleared to ‘0’, then the
+     *       namespace does not support the Exclusive Access - All Registrants
      *       reservation type.
      * Bit 5 if set to ‘1’ indicates that the namespace supports the Write Exclusive
-     *       – All Registrants reservation type. If this bit is cleared to ‘0’, then the
-     *       namespace does not support the Write Exclusive – All Registrants reservation
+     *       - All Registrants reservation type. If this bit is cleared to ‘0’, then the
+     *       namespace does not support the Write Exclusive - All Registrants reservation
      *       type.
      * Bit 4 if set to ‘1’ indicates that the namespace supports the Exclusive Access
-     *       – Registrants Only reservation type. If this bit is cleared to ‘0’, then the
-     *       namespace does not support the Exclusive Access – Registrants Only
+     *       - Registrants Only reservation type. If this bit is cleared to ‘0’, then the
+     *       namespace does not support the Exclusive Access - Registrants Only
      *       reservation type.
      * Bit 3 if set to ‘1’ indicates that the namespace supports the Write Exclusive
-     *       – Registrants Only reservation type. If this bit is cleared to ‘0’, then the
-     *       namespace does not support the Write Exclusive – Registrants Only
+     *       - Registrants Only reservation type. If this bit is cleared to ‘0’, then the
+     *       namespace does not support the Write Exclusive - Registrants Only
      *       reservation type.
      * Bit 2 if set to ‘1’ indicates that the namespace supports the Exclusive Access
      *       reservation type. If this bit is cleared to ‘0’, then the namespace does not
