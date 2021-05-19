@@ -809,6 +809,9 @@ extern "C"
        ATA_LOG_SAVED_DEVICE_INTERNAL_STATUS_DATA_LOG    = 0x25,
        ATA_LOG_SECTOR_CONFIGURATION_LOG                 = 0x2F, //ACS4
        ATA_LOG_IDENTIFY_DEVICE_DATA                     = 0x30,
+       ATA_LOG_MUTATE_CONFIGURATIONS                    = 0x42,
+       ATA_LOG_CONCURRENT_POSITIONING_RANGES            = 0x47,
+       ATA_LOG_SENSE_DATA                               = 0x53,
        //80h - 9F are host specific logs
        //A0-DF are vendor specific logs
        ATA_SCT_COMMAND_STATUS                           = 0xE0,
