@@ -750,7 +750,7 @@ extern "C"
             SECPROT - securityProtocolSupported
             SECPROTI512 - securityProtocolWithInc512
             PRESCSI2 - preSCSI2InqData (uncommon and the fields to specify offsets and lengths must be handled manually as the software cannot report this by itself)
-            //NORWZ - not currently handled. No zero length on read or write commands since adapter doesn't handle these properly.
+            //NORWZ/NZTL - not currently handled. No zero length on read or write commands since adapter doesn't handle these properly.
             MXFER - maxTransferLength (bytes)
             TODO: More hacks for strange adapters as needed can be added in here.
             */
