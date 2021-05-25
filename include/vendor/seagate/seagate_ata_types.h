@@ -73,6 +73,7 @@ extern "C"
     {
         SEAGATE_ATA_LOG_FIELD_ACCESSIBLE_RELIABILITY_METRICS    = 0xA6,//a.k.a. FARM
         SEAGATE_ATA_LOG_POWER_TELEMETRY                         = 0xB4,
+        SEAGATE_ATA_LOG_FARM_TIME_SERIES = 0xC6,
         //Define other Seagate log pages here as necessary
     }eSeagateLogs;
 
@@ -84,6 +85,14 @@ extern "C"
         SEAGATE_FARM_REPORT_SAVED           = 0x02,
         SEAGATE_FARM_REPORT_FACTORY_DATA    = 0x03,
     }eSeagateFARMSublogs;
+
+    //sublogs are the feature registers in this case
+    typedef enum _eSeagateFARMTimeSeriesSublogs
+    {
+        SEAGATE_FARM_TIME_SERIES_DISC  = 0x00,
+        SEAGATE_FARM_TIME_SERIES_FLASH = 0x01,
+        SEAGATE_FARM_TIME_SERIES_WLTR  = 0x02,
+    }eSeagateFARMTimeSeriesSublogs;
 
     typedef enum _eSeagateSelfTests
     {
