@@ -325,6 +325,26 @@ extern "C"
         SCSI_WB_DOWNLOAD_APPLICATION_CLIENT_ERROR_HISTORY               = 0x1C,
     }eWriteBufferMode;
 
+    typedef enum _ePersistentReserveInServiceActions
+    {
+        SCSI_PERSISTENT_RESERVE_IN_READ_KEYS             = 0,//SPC
+        SCSI_PERSISTENT_RESERVE_IN_READ_RESERVATION      = 1,//SPC
+        SCSI_PERSISTENT_RESERVE_IN_REPORT_CAPABILITIES   = 2,//SPC3
+        SCSI_PERSISTENT_RESERVE_IN_READ_FULL_STATUS      = 3,//SPC3
+    }ePersistentReserveInServiceActions;
+
+    typedef enum _ePersistentReserveOutServiceActions
+    {
+        SCSI_PERSISTENT_RESERVE_OUT_REGISTER                            = 0,//SPC
+        SCSI_PERSISTENT_RESERVE_OUT_RESERVE                             = 1,//SPC
+        SCSI_PERSISTENT_RESERVE_OUT_RELEASE                             = 2,//SPC
+        SCSI_PERSISTENT_RESERVE_OUT_CLEAR                               = 3,//SPC
+        SCSI_PERSISTENT_RESERVE_OUT_PREEMPT                             = 4,//SPC
+        SCSI_PERSISTENT_RESERVE_OUT_PREEMPT_AND_ABORT                   = 5,//SPC
+        SCSI_PERSISTENT_RESERVE_OUT_REGISTER_AND_IGNORE_EXISTING_KEY    = 6,//SPC2
+        SCSI_PERSISTENT_RESERVE_OUT_REGISTER_AND_MOVE                   = 7,//SPC3
+        SCSI_PERSISTENT_RESERVE_OUT_REPLACE_LOST_RESERVATION            = 8,//SPC4
+    }ePersistentReserveOutServiceActions;
 
 //some of these commands have something like _CMD in the name or a missing underscore in order
 //to avoid conflict with a system header somewhere in linux or windows. - TJE
