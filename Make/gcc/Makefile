@@ -15,11 +15,11 @@
 NAME=opensea-transport
 FILE_OUTPUT_DIR=lib
 #Change the Major version when major interface changes are made. E.g. tDevice changes
-MAJOR=1
+MAJOR=2
 #Change the Minor version when new features are added. 
-MINOR=21
+MINOR=2
 #Change the patch version when only bug fixes are made.
-PATCH=44
+PATCH=3
 VERSION=$(MAJOR).$(MINOR).$(PATCH)
 SRC_DIR=../../src/
 INC_DIR=-I../../include -I../../include/vendor -I../../../opensea-common/include  
