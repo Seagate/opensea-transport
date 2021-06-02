@@ -464,6 +464,8 @@ extern "C"
         BLOCK_DEVICE_CHARACTERISTISCS_EXT               = 0xB5,
         ZONED_BLOCK_DEVICE_CHARACTERISTICS              = 0xB6,
         BLOCK_LIMITS_EXTENSION                          = 0xB7,
+        FORMAT_PRESETS                                  = 0xB8,
+        CONCURRENT_POSITIONING_RANGES                   = 0xB9,
         //C0h - FFh are Vendor specific
     }eScsiVpdPages;
 
