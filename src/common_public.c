@@ -1308,7 +1308,7 @@ bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
 				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "MC") == 7))
 			||
 			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "NM") == 7))
+				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "NM10002") == 7)) //Vendor_F and Vendor_G has same model# except for last part, so need more chars for comparison
 			||
 			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
 				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "NX") == 7))
@@ -1355,7 +1355,7 @@ bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
 				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "MC") == 7))
 			||
 			((strstr(device->drive_info.product_identification, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "NM") == 7))
+				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "NM10002") == 7)) //Vendor_F and Vendor_G has same model# except for last part, so need more chars for comparison
 			||
 			((strstr(device->drive_info.product_identification, "ZA") != NULL)
 				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "NX") == 7))
@@ -1398,7 +1398,7 @@ bool is_Seagate_Model_Number_Vendor_G(tDevice *device, bool USBchildDrive)
                 || (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "ME") == 7)))
             ||
             ((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
-                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "NM") == 7))
+                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "NM10001") == 7)) //Vendor_F and Vendor_G has same model# except for last part, so need more chars for comparison
             )
         {
             isSeagateVendor = true;
@@ -1411,7 +1411,7 @@ bool is_Seagate_Model_Number_Vendor_G(tDevice *device, bool USBchildDrive)
                 || (find_last_occurrence_in_string(device->drive_info.product_identification, "ME") == 7)))
             ||
             ((strstr(device->drive_info.product_identification, "ZA") != NULL)
-                && (find_last_occurrence_in_string(device->drive_info.product_identification, "NM") == 7))
+                && (find_last_occurrence_in_string(device->drive_info.product_identification, "NM10001") == 7)) //Vendor_F and Vendor_G has same model# except for last part, so need more chars for comparison
             )
         {
             isSeagateVendor = true;
