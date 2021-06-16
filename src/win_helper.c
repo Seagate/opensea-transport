@@ -1218,13 +1218,14 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                                             cmRet = CM_Get_DevNode_PropertyW(propInst, devproperty, &propertyType, propertyBuf, &propertyBufLen, 0);
                                                                             if (CR_SUCCESS == cmRet)
                                                                             {
-                                                                                switch (propertyType)
+                                                                                DEVPROPTYPE propertyModifier = propertyType & DEVPROP_MASK_TYPEMOD;
+                                                                                switch (propertyType & DEVPROP_MASK_TYPE)//need to mask as there may also be modifiers to notate lists, etc
                                                                                 {
                                                                                 case DEVPROP_TYPE_STRING:
                                                                                     // Fall-through //
                                                                                 case DEVPROP_TYPE_STRING_LIST:
                                                                                     //setup to handle multiple strings
-                                                                                    for (LPWSTR property = (LPWSTR)propertyBuf; *property; property += wcslen(property) + 1)
+                                                                                    for (LPWSTR property = (LPWSTR)propertyBuf; *property; property += wcslen(property))
                                                                                     {
                                                                                         if (property && ((uintptr_t)property - (uintptr_t)propertyBuf) < propertyBufLen && wcslen(property))
                                                                                         {
