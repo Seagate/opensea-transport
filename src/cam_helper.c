@@ -1331,7 +1331,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 		nvmeIoCtx->commandCompletionData.dw1 = pt.cpl.rsvd1;
 		nvmeIoCtx->commandCompletionData.dw2 = M_WordsTo4ByteValue(pt.cpl.sqid, pt.cpl.sqhd);
         //NOTE: This ifdef may require more finite tuning using these version values: https://docs.freebsd.org/en_US.ISO8859-1/books/porters-handbook/versions-11.html
-#if defined (__FreeBSD_version) && (__FreeBSD_version >= 1104000)
+#if defined (__FreeBSD_version) && (__FreeBSD_version >= 1200000)
         //FreeBSD 11.4 and later didn't use a structure for the status completion data, but a uint16 type which made this easy
         nvmeIoCtx->commandCompletionData.dw3 = M_WordsTo4ByteValue(pt.cpl.status, pt.cpl.cid);
 #else
