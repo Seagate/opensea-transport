@@ -2150,7 +2150,7 @@ extern "C"
 
     OPENSEA_TRANSPORT_API int scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t allocationLength, uint8_t *ptrData);
 
-    OPENSEA_TRANSPORT_API int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t scope, uint8_t type,  uint16_t parameterListLength, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t scope, uint8_t type,  uint32_t parameterListLength, uint8_t *ptrData);
 
 #if defined(__cplusplus)
 }
