@@ -4320,7 +4320,7 @@ int scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t 
 {
     int ret = FAILURE;
     uint8_t cdb[CDB_LEN_10] = { 0 };
-    cdb[OPERATION_CODE] = 0x5E;
+    cdb[OPERATION_CODE] = PERSISTENT_RESERVE_IN_CMD;
     //set the service action
     cdb[1] = M_GETBITRANGE(serviceAction, 4, 0);
     //reserved
@@ -4359,7 +4359,7 @@ int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t 
 {
     int ret = FAILURE;
     uint8_t cdb[CDB_LEN_10] = { 0 };
-    cdb[OPERATION_CODE] = 0x5E;
+    cdb[OPERATION_CODE] = PERSISTENT_RESERVE_OUT_CMD;
     //set the service action
     cdb[1] = M_GETBITRANGE(serviceAction, 4, 0);
     //scope & type
