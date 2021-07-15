@@ -606,6 +606,7 @@ extern "C"
         uint8_t     sel; // Select Value SEL Bit 10:08 are used in Get Features. 
         uint8_t     fid; // Feature Identifier used for both Get/Set
         uint32_t    featSetGetValue; //Value returned or to be set as Dword11
+        uint32_t    nsid;
     } nvmeFeaturesCmdOpt;
 
 #if 0
