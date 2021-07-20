@@ -810,6 +810,7 @@ extern "C"
                 ATA28 - ata28BitOnly
                 NOMMPIO - noMultipleModeCommands
                 MPTXFER - maxTransferLength (bytes)
+                TPID - tpsiu on identify (limited use tpsiu)
                 //TODO: Add more hacks below as needed to workaround other weird behavior for ATA passthrough.
                 */
                 bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
@@ -831,7 +832,8 @@ extern "C"
                 bool noMultipleModeCommands;//This is to disable use read/write multiple commands if a bridge chip doesn't handle them correctly.
                 //uint8_t reserved[1];//padd byte for 8 byte boundary with above bools.
                 uint32_t maxTransferLength;//ATA Passthrough max transfer length in bytes. This may be different than the scsi translation max.
-                uint32_t atapadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
+                bool limitedUseTPSIU;//This might work for certain other commands, but only identify device has been found to show this. Using TPSIU on identify works as expected, but other data transfers abort this.
+                uint8_t atapadding[3];//padd 4 more bytes after transfer length to keep 8 byte boundaries
             }ataPTHacks;
             //NVMe Hacks
             struct {
