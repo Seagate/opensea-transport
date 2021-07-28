@@ -655,7 +655,7 @@ extern "C"
        SF_LONG_PHYSICAL_SECTOR_ALIGNMENT_ERROR_REPORTING                = 0x62,
        SF_ENABLE_DISABLE_DSN_FEATURE                                    = 0x63,
        SF_DISABLE_REVERTING_TO_POWERON_DEFAULTS                         = 0x66,
-       SF_CFA_NOP_ACCEPTED_FOR_BACKWARDS_COMPATIBILITY                  = 0x69,
+       SF_CFA_NOP_ACCEPTED_FOR_BACKWARDS_COMPATIBILITY                  = 0x69,//Likely defined in old manual if you can find it: SanDisk SDP Series OEM Manual, 1993
        SF_DISABLE_ECC                                                   = 0x77,//defined in ATA3, obsolete in ATA4
        SF_DISABLE_8_BIT_DATA_TRANSFERS                                  = 0x81,//defined in ATA, obsolete in ATA3
        SF_DISABLE_VOLITILE_WRITE_CACHE                                  = 0x82,
@@ -669,8 +669,8 @@ extern "C"
        SF_DISABLE_DEVICE_LIFE_CONTROL                                   = 0x8C,
        SF_DISABLE_SATA_FEATURE                                          = 0x90,
        SF_ENABLE_MEDIA_STATUS_NOTIFICATION                              = 0x95,
-       SF_CFA_NOP_ACCEPTED_FOR_BACKWARDS_COMPATIBILITY_1                = 0x96,
-       SF_CFA_ACCEPTED_FOR_BACKWARDS_COMPATIBILITY                      = 0x97,
+       SF_CFA_NOP_ACCEPTED_FOR_BACKWARDS_COMPATIBILITY_1                = 0x96,//Likely defined in old manual if you can find it: SanDisk SDP Series OEM Manual, 1993
+       SF_CFA_ACCEPTED_FOR_BACKWARDS_COMPATIBILITY                      = 0x97,//In one old vendor unique CFA spec, this is set clock speed per sector cnt reg. Valid codes are 0 - divide by 4, A&B - divide by 2, E&F - divide by 1. I have never found a description of this any where else and I found this on accident looking for something completely different. - TJE
        SF_ENABLE_RETIRES                                                = 0x99,
        SF_SET_DEVICE_MAXIMUM_AVERAGE_CURRENT                            = 0x9A,//Defined in ATA3, obsolete in ATA4
        SF_ENABLE_READ_LOOK_AHEAD_FEATURE                                = 0xAA,
@@ -809,6 +809,9 @@ extern "C"
        ATA_LOG_SAVED_DEVICE_INTERNAL_STATUS_DATA_LOG    = 0x25,
        ATA_LOG_SECTOR_CONFIGURATION_LOG                 = 0x2F, //ACS4
        ATA_LOG_IDENTIFY_DEVICE_DATA                     = 0x30,
+       ATA_LOG_MUTATE_CONFIGURATIONS                    = 0x42,
+       ATA_LOG_CONCURRENT_POSITIONING_RANGES            = 0x47,
+       ATA_LOG_SENSE_DATA                               = 0x53,
        //80h - 9F are host specific logs
        //A0-DF are vendor specific logs
        ATA_SCT_COMMAND_STATUS                           = 0xE0,

@@ -2148,30 +2148,9 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int scsi_Restore_Elements_And_Rebuild(tDevice *device);
 
-    typedef enum _ePersistentReserveInServiceActions
-    {
-        SCSI_PERSISTENT_RESERVE_IN_READ_KEYS = 0,
-        SCSI_PERSISTENT_RESERVE_IN_READ_RESERVATION = 1,
-        SCSI_PERSISTENT_RESERVE_IN_REPORT_CAPABILITIES = 2,
-        SCSI_PERSISTENT_RESERVE_IN_READ_FULL_STATUS = 3,
-    }ePersistentReserveInServiceActions;
-
     OPENSEA_TRANSPORT_API int scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t allocationLength, uint8_t *ptrData);
 
-    typedef enum _ePersistentReserveOutServiceActions
-    {
-        SCSI_PERSISTENT_RESERVE_OUT_REGISTER = 0,
-        SCSI_PERSISTENT_RESERVE_OUT_RESERVE = 1,
-        SCSI_PERSISTENT_RESERVE_OUT_RELEASE = 2,
-        SCSI_PERSISTENT_RESERVE_OUT_CLEAR = 3,
-        SCSI_PERSISTENT_RESERVE_OUT_PREEMPT = 4,
-        SCSI_PERSISTENT_RESERVE_OUT_PREEMPT_AND_ABORT = 5,
-        SCSI_PERSISTENT_RESERVE_OUT_REGISTER_AND_IGNORE_EXISTING_KEY = 6,
-        SCSI_PERSISTENT_RESERVE_OUT_REGISTER_AND_MOVE = 7,
-        SCSI_PERSISTENT_RESERVE_OUT_REPLACE_LOST_RESERVATION = 8,
-    }ePersistentReserveOutServiceActions;
-
-    OPENSEA_TRANSPORT_API int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t scope, uint8_t type,  uint16_t parameterListLength, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t scope, uint8_t type,  uint32_t parameterListLength, uint8_t *ptrData);
 
 #if defined(__cplusplus)
 }

@@ -9179,7 +9179,7 @@ int fill_In_Device_Info(tDevice *device)
             //other bits we may or may not want to check for are multip, aerc, trmtsk, any vendor specific bits, sccs, protect, 3pc
             //each of these are technically not specified in SAT, but are not likely to be suppored anyways.
             //We can add these in overtime if we find them useful for the filter. Most likely, protect and 3pc will be most useful. Not sure about the others, but I doubt many controllers will set them...certainly no USB device will.
-            if (inq_buf[6] & BIT5 || inq_buf[7] & BIT0)//vendor specific bits.
+            if ((inq_buf[6] & BIT5 || inq_buf[7] & BIT0) && (device->drive_info.interface_type != USB_INTERFACE))//vendor specific bits. Ignore USB Interface
             {
                 checkForSAT = false;
             }

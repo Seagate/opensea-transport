@@ -3587,12 +3587,12 @@ int scsi_Write_Same_16(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
     if (noDataOut)
     {
         //send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
+        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     }
     else
     {
         //send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
+        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -4320,7 +4320,7 @@ int scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t 
 {
     int ret = FAILURE;
     uint8_t cdb[CDB_LEN_10] = { 0 };
-    cdb[OPERATION_CODE] = 0x5E;
+    cdb[OPERATION_CODE] = PERSISTENT_RESERVE_IN_CMD;
     //set the service action
     cdb[1] = M_GETBITRANGE(serviceAction, 4, 0);
     //reserved
@@ -4355,11 +4355,11 @@ int scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t 
     return ret;
 }
 
-int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t scope, uint8_t type, uint16_t parameterListLength, uint8_t *ptrData)
+int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t scope, uint8_t type, uint32_t parameterListLength, uint8_t *ptrData)
 {
     int ret = FAILURE;
     uint8_t cdb[CDB_LEN_10] = { 0 };
-    cdb[OPERATION_CODE] = 0x5E;
+    cdb[OPERATION_CODE] = PERSISTENT_RESERVE_OUT_CMD;
     //set the service action
     cdb[1] = M_GETBITRANGE(serviceAction, 4, 0);
     //scope & type
@@ -4367,9 +4367,9 @@ int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t 
     //reserved
     cdb[3] = RESERVED;
     cdb[4] = RESERVED;
-    cdb[5] = RESERVED;
-    cdb[6] = RESERVED;
     //allocation length
+    cdb[5] = M_Byte3(parameterListLength);
+    cdb[6] = M_Byte2(parameterListLength);
     cdb[7] = M_Byte1(parameterListLength);
     cdb[8] = M_Byte0(parameterListLength);
     //control
