@@ -189,7 +189,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
             overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
             if (overlappedStruct.hEvent == NULL)
             {
-                safe_Free(raidFirmwareRequest);
+                safe_Free_aligned(raidFirmwareRequest);
                 return OS_PASSTHROUGH_FAILURE;
             }
             start_Timer(&commandTimer);
