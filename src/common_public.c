@@ -3740,6 +3740,8 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
             case 0x5106://Seen in ThermalTake BlackX 5G
                 //Results are for revision 0001h
                 //Does not seem to handle drives with a 4k logical sector size well.
+                //7/29/2021 - retested manually. TPSIU seems to work better only for identify. UDMA mode definitely doesn't work.
+                //            but DMA mode works fine. Remaining hacks seem appropriate overall
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
                 passthroughHacksSet = true;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
@@ -3754,12 +3756,13 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.reportSingleOpCodes = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 122880;//This seems to vary with each time this device is tested
                 //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
-                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
-                device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
-                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 36864;//This seems to vary with each time this device is tested.
+                device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;//NOTE: Can use PIO read log ext just fine, but DMA is the problem. THis still works with SMART though, but a future hack may be needed.-TJE
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 524288;
                 break;
             case 0x55AA://ASMT 2105
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
