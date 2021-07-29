@@ -1018,7 +1018,10 @@ int build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, ataPassthr
         switch (ataCommandOptions->commandDirection)
         {
         case XFER_NO_DATA:
-            set_Check_Condition_Bit(*satCDB, transferBitsOffset);
+            if (!device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition)//don't set check condition if it will cause a problem with the adapter
+            {
+                set_Check_Condition_Bit(*satCDB, transferBitsOffset);
+            }
             break;
         default:
             //don't set the bit...unless we're being forced to do so
