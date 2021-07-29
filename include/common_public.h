@@ -1249,6 +1249,7 @@ extern "C"
         USB_Vendor_ChipsBank                            = 0x1E3D,
         USB_Vendor_Via_Labs                             = 0x2109,
         USB_Vendor_Dell                                 = 0x413C,
+        USB_Vendor_Kingston_Generic                     = 0x8888,
         // Add new enumerations above this line!
         USB_Vendor_MaxValue                             = 0xFFFF
     } eUSBVendorIDs;
