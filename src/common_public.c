@@ -4280,6 +4280,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
                 device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;//Attempting any DMA passthrough fails for invalid field in CDB. UDMA mode crashes the firmware entirely.
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 125440;//Bytes
+                device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty = true;//returns empty sense data in return for check condition, when a result is expected to come back
                 break;
             default:
                 break;

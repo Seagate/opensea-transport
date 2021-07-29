@@ -834,7 +834,9 @@ extern "C"
                 //uint8_t reserved[1];//padd byte for 8 byte boundary with above bools.
                 uint32_t maxTransferLength;//ATA Passthrough max transfer length in bytes. This may be different than the scsi translation max.
                 bool limitedUseTPSIU;//This might work for certain other commands, but only identify device has been found to show this. Using TPSIU on identify works as expected, but other data transfers abort this.
-                uint8_t atapadding[3];//padd 4 more bytes after transfer length to keep 8 byte boundaries
+                bool disableCheckCondition;//Set when check condition bit cannot be used because it causes problems
+                bool checkConditionEmpty;//Accepts the check condition bit, but returns empty data.
+                uint8_t atapadding[1];//padd 4 more bytes after transfer length to keep 8 byte boundaries
             }ataPTHacks;
             //NVMe Hacks
             struct {
