@@ -2131,7 +2131,7 @@ int win_Get_Device_Descriptor(HANDLE deviceHandle, PSTORAGE_DEVICE_DESCRIPTOR *d
     {
         if (storage_Property_Exists(deviceHandle, StorageDeviceProperty, &deviceDataSize))
         {
-            DWORD deviceDataLength = M_Max(sizeof(PSTORAGE_DEVICE_DESCRIPTOR), deviceDataSize);
+            DWORD deviceDataLength = M_Max(sizeof(STORAGE_DEVICE_DESCRIPTOR), deviceDataSize);
             *deviceData = (PSTORAGE_DEVICE_DESCRIPTOR)calloc(deviceDataLength, sizeof(uint8_t));
             if (*deviceData)
             {
