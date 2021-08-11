@@ -1,0 +1,41 @@
+diff --git a/src/sg_helper.c b/src/sg_helper.c
+index 38b0783..47a4b0c 100644
+--- a/src/sg_helper.c
++++ b/src/sg_helper.c
+@@ -695,10 +695,12 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
+                 }
+                 //now we need to loop through each think in the class folder, read the link, and check if we match.
+                 struct dirent **classList;
++		int remains;
+                 int numberOfItems = scandir(classPath, &classList, NULL /*not filtering anything. Just go through each item*/, alphasort);
+-                for (int iter = 0; iter < numberOfItems; ++iter)
++                for (int iter = 0; iter < numberOfItems; iter++)
++                //for (int iter = 0; iter < numberOfItems; ++iter)
+                 {
+-                    //printf("item = %s\n", classList[iter]->d_name);
++                    //printf("item = %s: %d of %d\n", classList[iter]->d_name,iter,numberOfItems);
+                     //now we need to read the link for classPath/d_name into a buffer...then compare it to the one we read earlier.
+                     char temp[PATH_MAX] = { 0 };
+                     strcpy(temp, classPath);
+@@ -757,6 +759,13 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
+                                     }
+                                     safe_Free(className);
+                                     safe_Free(incomingClassName);
++				    // start PRH valgrind fixes
++				    // this is causing a mem leak... when we bail the loop, there are a string of classList[] items 
++				    // still allocated. 
++				    for(remains = iter;remains<numberOfItems;remains++)
++					safe_Free(classList[remains]);
++				    safe_Free(classList);
++				    // end PRH valgrind fixes.
+                                     return SUCCESS;
+                                     break;//found a match, exit the loop
+                                 }
+@@ -764,6 +773,7 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
+                             safe_Free(className);
+                         }
+                     }
++                    safe_Free(classList[iter]);		// PRH - valgrind
+                 }
+                 safe_Free(classList);
+             }
