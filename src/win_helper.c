@@ -387,7 +387,7 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                         OPEN_EXISTING,
                                         0,
                                         NULL);
-                                    if (deviceHandle != INVALID_HANDLE_VALUE)
+                                    if (deviceHandle && deviceHandle != INVALID_HANDLE_VALUE)
                                     {
                                         //If the storage device number matches, get the parent device instance, then the parent device ID. This will contain the USB VID/PID and PCI Vendor, product, and revision numbers.
                                         STORAGE_DEVICE_NUMBER deviceNumber;
@@ -2062,6 +2062,17 @@ int open_SCSI_SRB_Handle(tDevice *device)
     }
     return ret;
 }
+
+//////////////////////////////////
+// IOCTL_STORAGE_QUERY_PROPERTY //
+//////////////////////////////////
+
+//Best I can find right now is that this IOCTL is available in XP and up. Change the definition below as needed.
+//Many of the IOCTLs are wrapped for the version of Win API that they appeared in but may not be perfect.
+//Using MSFT's documentation on them as best we can find. - TJE
+//TODO: IOCTL_STORAGE_SET_PROPERTY
+#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WINXP 
+
 //This is a basic way of getting storage properties and cannot account for some which require additional input parameters
 //Others with additional parameters should be in their own function since the additional parameters will vary!
 int win_Get_Property_Data(HANDLE deviceHandle, STORAGE_PROPERTY_ID propertyID, void *outputData, DWORD outputDataLength)
@@ -2089,12 +2100,14 @@ int win_Get_Property_Data(HANDLE deviceHandle, STORAGE_PROPERTY_ID propertyID, v
 }
 
 //Determines if a property exists (true if it does) and optionally returns the length of the property
+//NOTE: This does works by requesting only the header to get the size.
+//      Trying to setup a query with PropertyExistsQuery results in strange results that aren't always true, so this was the best way I found to handle this - TJE
 bool storage_Property_Exists(HANDLE deviceHandle, STORAGE_PROPERTY_ID propertyID, DWORD *propertySize)
 {
     bool exists = false;
     STORAGE_DESCRIPTOR_HEADER header;
     memset(&header, 0, sizeof(STORAGE_DESCRIPTOR_HEADER));
-    if(SUCCESS == win_Get_Property_Data(deviceHandle, propertyID, &header, sizeof(STORAGE_DESCRIPTOR_HEADER)))
+    if (SUCCESS == win_Get_Property_Data(deviceHandle, propertyID, &header, sizeof(STORAGE_DESCRIPTOR_HEADER)))
     {
         if (header.Size > 0)
         {
@@ -2108,19 +2121,22 @@ bool storage_Property_Exists(HANDLE deviceHandle, STORAGE_PROPERTY_ID propertyID
     return exists;
 }
 
-int win_Get_Adapter_Descriptor(HANDLE deviceHandle, PSTORAGE_ADAPTER_DESCRIPTOR *adapterData)
+//This is used internally by many of the pieces of code to read properties since it's very similar in how it gets requested for each of them.
+//the "sizeOfExpectedPropertyStructure" is meant to be a sizeof(MSFT_STORAGE_STRUCT) output. This exists because some devices or drivers don't
+//necessarily report accurate sizes for certain calls which can result in really weird data if not at least a minimum expected size.
+int check_And_Get_Storage_Property(HANDLE deviceHandle, STORAGE_PROPERTY_ID propertyID, void **outputData, size_t sizeOfExpectedPropertyStructure)
 {
     int ret = NOT_SUPPORTED;
-    DWORD adapterDataSize = 0;
-    if (adapterData)
+    DWORD propertyDataSize = 0;
+    if (outputData)
     {
-        if (storage_Property_Exists(deviceHandle, StorageAdapterProperty, &adapterDataSize))
+        if (storage_Property_Exists(deviceHandle, propertyID, &propertyDataSize))
         {
-            DWORD adapterDataLength = M_Max(sizeof(STORAGE_ADAPTER_DESCRIPTOR), adapterDataSize);
-            *adapterData = (PSTORAGE_ADAPTER_DESCRIPTOR)calloc(adapterDataLength, sizeof(uint8_t));
-            if (*adapterData)
+            propertyDataSize = C_CAST(DWORD, M_Max(sizeOfExpectedPropertyStructure, propertyDataSize));
+            *outputData = calloc(propertyDataSize, sizeof(uint8_t));
+            if (*outputData)
             {
-                ret = win_Get_Property_Data(deviceHandle, StorageAdapterProperty, *adapterData, adapterDataLength);
+                ret = win_Get_Property_Data(deviceHandle, propertyID, *outputData, propertyDataSize);
             }
             else
             {
@@ -2137,78 +2153,238 @@ int win_Get_Adapter_Descriptor(HANDLE deviceHandle, PSTORAGE_ADAPTER_DESCRIPTOR 
 
 int win_Get_Device_Descriptor(HANDLE deviceHandle, PSTORAGE_DEVICE_DESCRIPTOR *deviceData)
 {
-    int ret = NOT_SUPPORTED;
-    DWORD deviceDataSize = 0;
-    if (deviceData)
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceProperty, C_CAST(void**, deviceData), sizeof(STORAGE_DEVICE_DESCRIPTOR));
+}
+
+int win_Get_Adapter_Descriptor(HANDLE deviceHandle, PSTORAGE_ADAPTER_DESCRIPTOR *adapterData)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageAdapterProperty, C_CAST(void**, adapterData), sizeof(STORAGE_ADAPTER_DESCRIPTOR));
+}
+
+//SCSI VPD device IDs
+int win_Get_Device_ID_Property(HANDLE deviceHandle, PSTORAGE_DEVICE_ID_DESCRIPTOR *deviceIdData)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceIdProperty, C_CAST(void**, deviceIdData), sizeof(STORAGE_DEVICE_ID_DESCRIPTOR));
+}
+
+#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_VISTA
+int win_Get_Write_Cache_Info(HANDLE *deviceHandle, PSTORAGE_WRITE_CACHE_PROPERTY *writeCacheInfo)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceWriteCacheProperty, C_CAST(void**, writeCacheInfo), sizeof(STORAGE_WRITE_CACHE_PROPERTY));
+}
+
+int win_Get_Access_Alignment_Descriptor(HANDLE *deviceHandle, PSTORAGE_ACCESS_ALIGNMENT_DESCRIPTOR *alignmentDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageAccessAlignmentProperty, C_CAST(void**, alignmentDescriptor), sizeof(STORAGE_ACCESS_ALIGNMENT_DESCRIPTOR));
+}
+#endif //SEA_WIN32_WINNT_VISTA
+
+#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN7
+int win_Get_Seek_Time_Penalty(HANDLE *deviceHandle, PDEVICE_SEEK_PENALTY_DESCRIPTOR *seekTimePenaltyDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceSeekPenaltyProperty, C_CAST(void**, seekTimePenaltyDescriptor), sizeof(DEVICE_SEEK_PENALTY_DESCRIPTOR));
+}
+
+int win_Get_Trim(HANDLE *deviceHandle, PDEVICE_TRIM_DESCRIPTOR *trimDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceTrimProperty, C_CAST(void**, trimDescriptor), sizeof(DEVICE_TRIM_DESCRIPTOR));
+}
+#endif //SEA_WIN32_WINNT_WIN7
+
+#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
+int win_Get_Logical_Block_Provisioning(HANDLE *deviceHandle, PDEVICE_LB_PROVISIONING_DESCRIPTOR *lbProvisioningDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceLBProvisioningProperty, C_CAST(void**, lbProvisioningDescriptor), sizeof(DEVICE_LB_PROVISIONING_DESCRIPTOR));
+}
+
+int win_Get_Power_Property(HANDLE *deviceHandle, PDEVICE_POWER_DESCRIPTOR *powerDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDevicePowerProperty, C_CAST(void**, powerDescriptor), sizeof(DEVICE_POWER_DESCRIPTOR));
+}
+
+int win_Get_Copy_Offload(HANDLE *deviceHandle, PDEVICE_COPY_OFFLOAD_DESCRIPTOR *copyOffloadDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceCopyOffloadProperty, C_CAST(void**, copyOffloadDescriptor), sizeof(DEVICE_COPY_OFFLOAD_DESCRIPTOR));
+}
+
+int win_Get_Resiliency_Descriptor(HANDLE *deviceHandle, PSTORAGE_DEVICE_RESILIENCY_DESCRIPTOR *resiliencyDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceResiliencyProperty, C_CAST(void**, resiliencyDescriptor), sizeof(STORAGE_DEVICE_RESILIENCY_DESCRIPTOR));
+}
+#endif //#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
+
+#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WINBLUE
+int win_Get_Medium_Product_Type(HANDLE *deviceHandle, PSTORAGE_MEDIUM_PRODUCT_TYPE_DESCRIPTOR  *mediumType)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceMediumProductType, C_CAST(void**, mediumType), sizeof(STORAGE_MEDIUM_PRODUCT_TYPE_DESCRIPTOR));
+}
+#endif //SEA_WIN32_WINNT_WINBLUE a.k.a. 8.1
+
+#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN10
+int win_Get_IO_Capability(HANDLE *deviceHandle, PSTORAGE_DEVICE_IO_CAPABILITY_DESCRIPTOR *capabilityDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceIoCapabilityProperty, C_CAST(void**, capabilityDescriptor), sizeof(STORAGE_DEVICE_IO_CAPABILITY_DESCRIPTOR));
+}
+
+int win_Get_Adapter_Temperature(HANDLE *deviceHandle, PSTORAGE_TEMPERATURE_DATA_DESCRIPTOR *temperatureDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageAdapterTemperatureProperty, C_CAST(void**, temperatureDescriptor), sizeof(STORAGE_TEMPERATURE_DATA_DESCRIPTOR));
+}
+
+int win_Get_Device_Temperature(HANDLE *deviceHandle, PSTORAGE_TEMPERATURE_DATA_DESCRIPTOR *temperatureDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceTemperatureProperty, C_CAST(void**, temperatureDescriptor), sizeof(STORAGE_TEMPERATURE_DATA_DESCRIPTOR));
+}
+
+int win_Get_Adapter_Physical_Topology(HANDLE *deviceHandle, PSTORAGE_PHYSICAL_TOPOLOGY_DESCRIPTOR  *topologyDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageAdapterPhysicalTopologyProperty, C_CAST(void**, topologyDescriptor), sizeof(STORAGE_PHYSICAL_TOPOLOGY_DESCRIPTOR));
+}
+
+int win_Get_Device_Physical_Topology(HANDLE *deviceHandle, PSTORAGE_PHYSICAL_TOPOLOGY_DESCRIPTOR  *topologyDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDevicePhysicalTopologyProperty, C_CAST(void**, topologyDescriptor), sizeof(STORAGE_PHYSICAL_TOPOLOGY_DESCRIPTOR));
+}
+
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_10586
+/*
+#define STORAGE_ATTRIBUTE_BYTE_ADDRESSABLE_IO       0x01
+#define STORAGE_ATTRIBUTE_BLOCK_IO                  0x02
+#define STORAGE_ATTRIBUTE_DYNAMIC_PERSISTENCE       0x04
+#define STORAGE_ATTRIBUTE_VOLATILE                  0x08
+#define STORAGE_ATTRIBUTE_ASYNC_EVENT_NOTIFICATION  0x10
+#define STORAGE_ATTRIBUTE_PERF_SIZE_INDEPENDENT     0x20
+*/
+int win_Get_Device_Attributes(HANDLE *deviceHandle, PSTORAGE_DEVICE_ATTRIBUTES_DESCRIPTOR *deviceAttributes)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceAttributesProperty, C_CAST(void**, deviceAttributes), sizeof(STORAGE_DEVICE_ATTRIBUTES_DESCRIPTOR));
+}
+#endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_10586
+
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
+int win_Get_Rpmb(HANDLE *deviceHandle, PSTORAGE_RPMB_DESCRIPTOR *rpmbDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageAdapterRpmbProperty, C_CAST(void**, rpmbDescriptor), sizeof(STORAGE_RPMB_DESCRIPTOR));
+}
+
+int win_Get_Device_Management_Status(HANDLE *deviceHandle, PSTORAGE_DEVICE_MANAGEMENT_STATUS *managementStatus)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceManagementStatus, C_CAST(void**, managementStatus), sizeof(STORAGE_DEVICE_MANAGEMENT_STATUS));
+}
+
+int win_Get_Adapter_Serial_Number(HANDLE *deviceHandle, PSTORAGE_ADAPTER_SERIAL_NUMBER *adapterSerialNumber)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageAdapterSerialNumberProperty, C_CAST(void**, adapterSerialNumber), sizeof(STORAGE_ADAPTER_SERIAL_NUMBER));
+}
+
+int win_Get_Device_Location(HANDLE *deviceHandle, PSTORAGE_DEVICE_LOCATION_DESCRIPTOR *deviceLocation)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceLocationProperty, C_CAST(void**, deviceLocation), sizeof(STORAGE_DEVICE_LOCATION_DESCRIPTOR));
+}
+#endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
+
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
+int win_Get_Crypto_Property(HANDLE *deviceHandle, PSTORAGE_CRYPTO_DESCRIPTOR *cryptoDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageAdapterCryptoProperty, C_CAST(void**, cryptoDescriptor), sizeof(STORAGE_CRYPTO_DESCRIPTOR));
+}
+
+//STORAGE_DEVICE_NUMA_NODE_UNKNOWN
+int win_Get_Device_Numa_Property(HANDLE *deviceHandle, PSTORAGE_DEVICE_NUMA_PROPERTY *numaProperty)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceNumaProperty, C_CAST(void**, numaProperty), sizeof(STORAGE_DEVICE_NUMA_PROPERTY));
+}
+#endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
+
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+int win_Get_Device_Zoned_Property(HANDLE *deviceHandle, PSTORAGE_ZONED_DEVICE_DESCRIPTOR *zonedProperty)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceZonedDeviceProperty, C_CAST(void**, zonedProperty), sizeof(STORAGE_ZONED_DEVICE_DESCRIPTOR));
+}
+
+int win_Get_Device_Unsafe_Shutdown_Count(HANDLE *deviceHandle, PSTORAGE_DEVICE_UNSAFE_SHUTDOWN_COUNT *unsafeShutdownCount)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceUnsafeShutdownCount, C_CAST(void**, unsafeShutdownCount), sizeof(STORAGE_DEVICE_UNSAFE_SHUTDOWN_COUNT));
+}
+#endif //#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_18362
+int win_Get_Device_Endurance(HANDLE *deviceHandle, PSTORAGE_HW_ENDURANCE_DATA_DESCRIPTOR *enduranceProperty)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceEnduranceProperty, C_CAST(void**, enduranceProperty), sizeof(STORAGE_HW_ENDURANCE_DATA_DESCRIPTOR));
+}
+#endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_18362
+
+#endif //SEA_WIN32_WINNT_WIN10
+
+#endif //SEA_WIN32_WINNT_WINXP for storage query property calls.
+
+//WinVer not wrapping this IOCTL...so it's probably old enough not to need it - TJE
+int win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *geom)
+{
+    int ret = FAILURE;
+    DWORD bytesReturned = 0;
+    DWORD diskGeomSize = sizeof(DISK_GEOMETRY);
+    *geom = (PDISK_GEOMETRY)malloc(diskGeomSize);
+    if (DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, *geom, diskGeomSize, &bytesReturned, NULL))
     {
-        if (storage_Property_Exists(deviceHandle, StorageDeviceProperty, &deviceDataSize))
-        {
-            DWORD deviceDataLength = M_Max(sizeof(STORAGE_DEVICE_DESCRIPTOR), deviceDataSize);
-            *deviceData = (PSTORAGE_DEVICE_DESCRIPTOR)calloc(deviceDataLength, sizeof(uint8_t));
-            if (*deviceData)
-            {
-                ret = win_Get_Property_Data(deviceHandle, StorageDeviceProperty, *deviceData, deviceDataLength);
-            }
-            else
-            {
-                ret = MEMORY_FAILURE;
-            }
-        }
+        ret = SUCCESS;
     }
     else
     {
-        return BAD_PARAMETER;
+        safe_Free(*geom);
     }
     return ret;
 }
 
-#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
-int win_SCSI_Get_Inquiry_Data(HANDLE deviceHandle, PSCSI_ADAPTER_BUS_INFO *scsiBusInfo)
+int win_Disk_Is_Writable(HANDLE devHandle, bool *writable)
 {
     int ret = SUCCESS;
-    UCHAR busCount = 1, luCount = 1;
-    DWORD inquiryDataSize = sizeof(SCSI_INQUIRY_DATA) + INQUIRYDATABUFFERSIZE;//this is supposed to be rounded up to an alignment boundary??? but that is not well described...
-    DWORD busDataLength = sizeof(SCSI_ADAPTER_BUS_INFO) + C_CAST(DWORD, busCount) * sizeof(SCSI_BUS_DATA) + C_CAST(DWORD, luCount) * inquiryDataSize;//Start with this, but more memory may be necessary.
-    *scsiBusInfo = (PSCSI_ADAPTER_BUS_INFO)calloc_aligned(busDataLength, sizeof(uint8_t), 8);
-    if (scsiBusInfo)
+    DWORD bytesReturned = 0;
+    if (!writable)
     {
-        BOOL success = FALSE;
-        DWORD returnedBytes = 0;
-        while (!success)
-        {
-            //try this ioctl and reallocate memory if not enough space error is returned until it can be read!
-            success = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_INQUIRY_DATA, NULL, 0, scsiBusInfo, busDataLength, &returnedBytes, NULL);
-            if (!success)
-            {
-                DWORD error = GetLastError();
-                //figure out what the error was to see if we need to allocate more memory, or exit with errors.
-                if (error == ERROR_INSUFFICIENT_BUFFER)
-                {
-                    //MSFT recommends doubling the buffer size until this passes.
-                    void *tempBuf = NULL;
-                    busDataLength *= 2;
-                    tempBuf = realloc_aligned(scsiBusInfo, busDataLength / 2, busDataLength, 8);
-                    if (tempBuf)
-                    {
-                        scsiBusInfo = tempBuf;
-                    }
-                }
-                else
-                {
-                    print_Windows_Error_To_Screen(error);
-                    ret = FAILURE;
-                    break;
-                }
-            }
-        }
+        return BAD_PARAMETER;
+    }
+    if (DeviceIoControl(devHandle, IOCTL_DISK_IS_WRITABLE, NULL, 0, NULL, 0, &bytesReturned, NULL))
+    {
+        *writable = true;
     }
     else
     {
-        ret = MEMORY_FAILURE;
+        *writable = false;
+        DWORD lastError = GetLastError();
+        switch (lastError)
+        {
+        case ERROR_WRITE_PROTECT:
+            *writable = false;
+            break;
+        default:
+            *writable = true;
+            break;
+        }
+        print_Windows_Error_To_Screen(lastError);
     }
     return ret;
 }
-#endif
+
+#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN2K
+int win_Get_IDE_Disk_Controller_Number_And_Disk_Number(HANDLE *devHandle, PDISK_CONTROLLER_NUMBER *numbers)
+{
+    int ret = FAILURE;
+    DWORD bytesReturned = 0;
+    DWORD controllerNumberSize = sizeof(DISK_CONTROLLER_NUMBER);
+    *numbers = (PDISK_CONTROLLER_NUMBER)malloc(controllerNumberSize);
+    if (DeviceIoControl(devHandle, IOCTL_DISK_CONTROLLER_NUMBER, NULL, 0, *numbers, controllerNumberSize, &bytesReturned, NULL))
+    {
+        ret = SUCCESS;
+    }
+    else
+    {
+        safe_Free(*numbers);
+    }
+    return ret;
+}
+#endif //SEA_WIN32_WINNT_NT4
 
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN2K
 //Geom param is required as this allocates memory for this call.
@@ -2288,7 +2464,73 @@ int win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_EX *geom, PDISK_P
     }
     return ret;
 }
-#endif 
+
+int win_Get_Length_Information(HANDLE *devHandle, PGET_LENGTH_INFORMATION *length)
+{
+    int ret = FAILURE;
+    DWORD bytesReturned = 0;
+    DWORD lengthInfoSize = sizeof(GET_LENGTH_INFORMATION);
+    *length = (PGET_LENGTH_INFORMATION)malloc(lengthInfoSize);
+    if (DeviceIoControl(devHandle, IOCTL_DISK_GET_LENGTH_INFO, NULL, 0, *length, lengthInfoSize, &bytesReturned, NULL))
+    {
+        ret = SUCCESS;
+    }
+    else
+    {
+        safe_Free(*length);
+    }
+    return ret;
+}
+
+#endif //SEA_WIN32_WINNT_WIN2K
+
+#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
+int win_SCSI_Get_Inquiry_Data(HANDLE deviceHandle, PSCSI_ADAPTER_BUS_INFO *scsiBusInfo)
+{
+    int ret = SUCCESS;
+    UCHAR busCount = 1, luCount = 1;
+    DWORD inquiryDataSize = sizeof(SCSI_INQUIRY_DATA) + INQUIRYDATABUFFERSIZE;//this is supposed to be rounded up to an alignment boundary??? but that is not well described...
+    DWORD busDataLength = sizeof(SCSI_ADAPTER_BUS_INFO) + busCount * sizeof(SCSI_BUS_DATA) + luCount * inquiryDataSize;//Start with this, but more memory may be necessary.
+    *scsiBusInfo = (PSCSI_ADAPTER_BUS_INFO)calloc_aligned(busDataLength, sizeof(uint8_t), 8);
+    if (scsiBusInfo)
+    {
+        BOOL success = FALSE;
+        DWORD returnedBytes = 0;
+        while (!success)
+        {
+            //try this ioctl and reallocate memory if not enough space error is returned until it can be read!
+            success = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_INQUIRY_DATA, NULL, 0, scsiBusInfo, busDataLength, &returnedBytes, NULL);
+            if (!success)
+            {
+                DWORD error = GetLastError();
+                //figure out what the error was to see if we need to allocate more memory, or exit with errors.
+                if (error == ERROR_INSUFFICIENT_BUFFER)
+                {
+                    //MSFT recommends doubling the buffer size until this passes.
+                    void *tempBuf = NULL;
+                    busDataLength *= 2;
+                    tempBuf = realloc_aligned(scsiBusInfo, busDataLength / 2, busDataLength, 8);
+                    if (tempBuf)
+                    {
+                        scsiBusInfo = tempBuf;
+                    }
+                }
+                else
+                {
+                    print_Windows_Error_To_Screen(error);
+                    ret = FAILURE;
+                    break;
+                }
+            }
+        }
+    }
+    else
+    {
+        ret = MEMORY_FAILURE;
+    }
+    return ret;
+}
+#endif //SEA_WIN32_WINNT_WIN8
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
 int get_Win_Device(const char *filename, tDevice *device )
@@ -2457,7 +2699,7 @@ int get_Win_Device(const char *filename, tDevice *device )
         
         // Lets get some properties.
         win_ret = win_Get_Adapter_Descriptor(device->os_info.fd, &adapter_desc);
-        
+
         if (win_ret == SUCCESS)
         {
             // TODO: Copy any of the adapter stuff.
@@ -2500,7 +2742,22 @@ int get_Win_Device(const char *filename, tDevice *device )
                 printf(" \n");
                 #endif
 
-                if ((adapter_desc->BusType == BusTypeAta) ||
+                if (device_desc->BusType == BusTypeUnknown)//Add other device types that can't be handled with other methods of SCSI or ATA passthrough among other options below.
+                {
+                    //TODO: Need a special case to handle unknown device types!
+                    device->drive_info.drive_type = SCSI_DRIVE;
+                    device->drive_info.interface_type = SCSI_INTERFACE;
+                    device->os_info.ioType = WIN_IOCTL_BASIC;
+                    checkForCSMI = false;
+                    checkForNVMe = false;
+                    device->os_info.winSMARTCmdSupport.ataIDsupported = false;
+                    device->os_info.winSMARTCmdSupport.atapiIDsupported = false;
+                    device->os_info.winSMARTCmdSupport.deviceBitmap = 0;
+                    device->os_info.winSMARTCmdSupport.smartIOSupported = false;
+                    device->os_info.winSMARTCmdSupport.smartSupported = false;
+                    device->os_info.osReadWriteRecommended = true;//recommend calling this to reduce any translation of calls that are received. - TJE
+                }
+                else if ((adapter_desc->BusType == BusTypeAta) ||
                     (device_desc->BusType == BusTypeAta)
                     )
                 {
@@ -4736,7 +4993,7 @@ int send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
     int ret = FAILURE;
     if (scsiIoCtx->pAtaCmdOpts->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
-        return OS_PASSTHROUGH_FAILURE;//or NOT_SUPPORTED ? - TJE
+        return OS_COMMAND_NOT_AVAILABLE;//or NOT_SUPPORTED ? - TJE
     }
     BOOL success;
     ULONG returned_data = 0;
@@ -4907,6 +5164,47 @@ int send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
     safe_Free(doubleBufferedIO);
     return ret;
 }
+
+//This is untested code, but may work if an old system needed it.
+//https://community.osr.com/discussion/64468/scsiop-ata-passthrough-0xcc
+#define UNDOCUMENTED_SCSI_IDE_PT_OP_CODE 0xCC
+int send_SCSI_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
+{
+    int ret = FAILURE;
+    ScsiIoCtx ideCtx;
+    memset(&ideCtx, 0, sizeof(ScsiIoCtx));
+    if (scsiIoCtx->pAtaCmdOpts->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
+    {
+        return OS_COMMAND_NOT_AVAILABLE;
+    }
+    
+    ideCtx.cdb[0] = UNDOCUMENTED_SCSI_IDE_PT_OP_CODE;
+    ideCtx.cdb[1] = RESERVED;
+    ideCtx.cdb[2] = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature; // Features Register
+    ideCtx.cdb[3] = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount; // Sector Count Reg
+    ideCtx.cdb[4] = scsiIoCtx->pAtaCmdOpts->tfr.LbaLow; // Sector Number ( or LBA Lo )
+    ideCtx.cdb[5] = scsiIoCtx->pAtaCmdOpts->tfr.LbaMid; // Cylinder Low ( or LBA Mid )
+    ideCtx.cdb[6] = scsiIoCtx->pAtaCmdOpts->tfr.LbaHi; // Cylinder High (or LBA Hi)
+    ideCtx.cdb[7] = scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead; // Device/Head Register
+    ideCtx.cdb[8] = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus; // Command Register
+    ideCtx.cdb[9] = 0;//control register
+
+    ideCtx.cdbLength = 10;
+    ideCtx.dataLength = scsiIoCtx->dataLength;
+    ideCtx.device = scsiIoCtx->device;
+    ideCtx.direction = scsiIoCtx->direction;
+    ideCtx.pdata = scsiIoCtx->pdata;
+    ideCtx.psense = scsiIoCtx->psense;
+    ideCtx.senseDataSize = scsiIoCtx->senseDataSize;
+    ideCtx.timeout = scsiIoCtx->timeout;
+
+    ret = send_SCSI_Pass_Through(&ideCtx);
+
+    //TODO: Turn sense data into RTFRs
+
+    return ret;
+}
+
 #if WINVER >= SEA_WIN32_WINNT_WIN10
 /*
 This API only supported deferred download and activate commands as defined in ACS3+ and SPC4+
@@ -6154,6 +6452,1370 @@ int os_Unlock_Device(tDevice *device)
     return ret;
 }
 
+//This basic translation is for odd or old devices that aren't supporting passthrough.
+//It is set to be more basic, while still fulfilling some required SCSI commands to make
+//sure that upper layer code is happy with what this is reporting.
+//This may be able to be expanded, but don't count on it too much.
+//Expansion could come in VPD pages, maybe mode pages (read only most likely). But that is more than needed for now.
+static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
+{
+    int ret = SUCCESS;
+    bool setSenseData = false;
+    bool fua = false;//for read/write only
+    uint8_t senseKey = 0, asc = 0, ascq = 0;
+    switch (scsiIoCtx->cdb[OPERATION_CODE])
+    {
+    case INQUIRY_CMD:
+        //Check to make sure cmdDT and reserved bits aren't set
+        if (scsiIoCtx->cdb[1] & 0xFE)
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            //check EVPD bit
+            if (scsiIoCtx->cdb[1] & BIT0)
+            {
+                uint8_t vpdPage[96] = { 0 };//this should be more than big enough for the pages supported on this basic device - TJE
+                uint8_t peripheralDevice = 0;
+                PSTORAGE_DEVICE_DESCRIPTOR deviceDesc = NULL;//needed for scsi device type on all VPD pages - TJE
+                vpdPage[0] = peripheralDevice;
+                if (SUCCESS == win_Get_Device_Descriptor(scsiIoCtx->device->os_info.fd, &deviceDesc))
+                {
+                    uint8_t vpdPageLen = 0;
+                    //set device type again from descriptor data
+                    vpdPage[0] = deviceDesc->DeviceType;
+                    //TODO: check the VPD page to set up that data correctly
+                    //      the vpd pagecodes below are probably the only ones that could be implemented with the 
+                    //      limited capabilities we have at this point
+                    switch (scsiIoCtx->cdb[2])
+                    {
+                    case SUPPORTED_VPD_PAGES:
+                        vpdPage[4 + vpdPageLen] = SUPPORTED_VPD_PAGES;
+                        vpdPageLen++;
+                        vpdPage[4 + vpdPageLen] = UNIT_SERIAL_NUMBER;
+                        vpdPageLen++;
+                        //TODO: add more pages here as they are supported
+                        vpdPage[3] = vpdPageLen;
+                        break;
+                    case UNIT_SERIAL_NUMBER:
+                        vpdPage[1] = UNIT_SERIAL_NUMBER;
+                        if (deviceDesc->RawPropertiesLength > 0)
+                        {
+                            char *devSerial = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->SerialNumberOffset);
+                            if (deviceDesc->SerialNumberOffset && deviceDesc->SerialNumberOffset != UINT32_MAX)
+                            {
+                                memcpy(&vpdPage[4], devSerial, M_Min(strlen(devSerial), 92));//92 for maximum size of current remaining memory for this page
+                                vpdPageLen = vpdPage[3] = C_CAST(uint8_t, M_Min(strlen(devSerial), 92));
+                            }
+                            else
+                            {
+                                vpdPageLen = vpdPage[3] = 18;
+                                vpdPage[4] = 'N';
+                                vpdPage[5] = 'O';
+                                vpdPage[6] = ' ';
+                                vpdPage[7] = 'I';
+                                vpdPage[8] = 'D';
+                                vpdPage[9] = 'E';
+                                vpdPage[10] = 'A';
+                                vpdPage[11] = ' ';
+                                vpdPage[12] = 'W';
+                                vpdPage[13] = 'H';
+                                vpdPage[14] = 'A';
+                                vpdPage[15] = 'T';
+                                vpdPage[16] = ' ';
+                                vpdPage[17] = 'I';
+                                vpdPage[18] = 'T';
+                                vpdPage[19] = ' ';
+                                vpdPage[20] = 'I';
+                                vpdPage[21] = 'S';
+                            }
+                        }
+                        else
+                        {
+                            vpdPageLen = vpdPage[3] = 18;
+                            vpdPage[4] = 'N';
+                            vpdPage[5] = 'O';
+                            vpdPage[6] = ' ';
+                            vpdPage[7] = 'I';
+                            vpdPage[8] = 'D';
+                            vpdPage[9] = 'E';
+                            vpdPage[10] = 'A';
+                            vpdPage[11] = ' ';
+                            vpdPage[12] = 'W';
+                            vpdPage[13] = 'H';
+                            vpdPage[14] = 'A';
+                            vpdPage[15] = 'T';
+                            vpdPage[16] = ' ';
+                            vpdPage[17] = 'I';
+                            vpdPage[18] = 'T';
+                            vpdPage[19] = ' ';
+                            vpdPage[20] = 'I';
+                            vpdPage[21] = 'S';
+                        }
+                        break;
+                    case DEVICE_IDENTIFICATION:
+                    case BLOCK_LIMITS:
+                    case BLOCK_DEVICE_CHARACTERISTICS:
+                    default:
+                        //invalid field in CDB
+                        senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                        asc = 0x24;
+                        ascq = 0x00;
+                        setSenseData = true;
+                        break;
+                    }
+                    if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
+                    {
+                        memcpy(scsiIoCtx->pdata, vpdPage, M_Min(96U, M_Min(vpdPageLen + 4U, scsiIoCtx->dataLength)));
+                    }
+                    safe_Free(deviceDesc);
+                }
+                else
+                {
+                    //aborted command. TODO: Use windows errors to set more accurate sense data
+                    senseKey = SENSE_KEY_ABORTED_COMMAND;
+                    asc = 0x00;
+                    ascq = 0x00;
+                    setSenseData = true;
+                }
+            }
+            else
+            {
+                //standard inquiry data - use device descriptor data
+                uint8_t inquiryData[96] = { 0 };
+                uint8_t peripheralDevice = 0;
+                PSTORAGE_DEVICE_DESCRIPTOR deviceDesc = NULL;
+                if (scsiIoCtx->cdb[2] == 0)
+                {
+                    inquiryData[0] = peripheralDevice;
+                    inquiryData[2] = 0x05;//SPC3
+                    //response format
+                    inquiryData[3] = 2;
+                    //additional length
+                    inquiryData[3] = 92;
+                    if (SUCCESS == win_Get_Device_Descriptor(scsiIoCtx->device->os_info.fd, &deviceDesc))
+                    {
+                        //set device type again from descriptor data
+                        inquiryData[0] = deviceDesc->DeviceType;
+                        //TODO: Device type modifier
+                        if (deviceDesc->RemovableMedia)
+                        {
+                            inquiryData[1] |= BIT7;
+                        }
+                        if (deviceDesc->RawPropertiesLength > 0)
+                        {
+                            char *devVendor = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->VendorIdOffset);
+                            char *devModel = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->ProductIdOffset);
+                            char *devRev = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->ProductRevisionOffset);
+                            char *devSerial = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->SerialNumberOffset);
+                            if (deviceDesc->VendorIdOffset && deviceDesc->VendorIdOffset != UINT32_MAX)
+                            {
+                                memset(&inquiryData[8], ' ', 8);//space pad first as spec says ASCII data should be space padded
+                                memcpy(&inquiryData[8], devVendor, M_Min(strlen(devVendor), 8));//maximum of 8 characters in length
+                            }
+                            else
+                            {
+                                //unknown vendor ID
+                                inquiryData[8] = 'U';
+                                inquiryData[9] = 'N';
+                                inquiryData[10] = 'K';
+                                inquiryData[11] = 'N';
+                                inquiryData[12] = 'O';
+                                inquiryData[13] = 'W';
+                                inquiryData[14] = 'N';
+                                inquiryData[15] = ' ';
+                            }
+                            if (deviceDesc->ProductIdOffset && deviceDesc->ProductIdOffset != UINT32_MAX)
+                            {
+                                memset(&inquiryData[16], ' ', 16);//space pad first as spec says ASCII data should be space padded
+                                memcpy(&inquiryData[16], devModel, M_Min(strlen(devModel), 16));
+                            }
+                            else
+                            {
+                                inquiryData[16] = 'N';
+                                inquiryData[17] = 'O';
+                                inquiryData[18] = 'T';
+                                inquiryData[19] = ' ';
+                                inquiryData[20] = 'A';
+                                inquiryData[21] = 'V';
+                                inquiryData[22] = 'A';
+                                inquiryData[23] = 'I';
+                                inquiryData[24] = 'L';
+                                inquiryData[25] = 'A';
+                                inquiryData[26] = 'B';
+                                inquiryData[27] = 'L';
+                                inquiryData[28] = 'E';
+                                inquiryData[29] = ' ';
+                                inquiryData[30] = ' ';
+                                inquiryData[31] = ' ';
+                            }
+                            if (deviceDesc->ProductRevisionOffset && deviceDesc->ProductRevisionOffset != UINT32_MAX)
+                            {
+                                memset(&inquiryData[32], ' ', 4);//space pad first as spec says ASCII data should be space padded
+                                memcpy(&inquiryData[32], devRev, M_Min(strlen(devRev), 4));
+                            }
+                            else
+                            {
+                                inquiryData[32] = 'F';
+                                inquiryData[33] = 'A';
+                                inquiryData[34] = 'K';
+                                inquiryData[35] = 'E';
+                            }
+                            //SN is not described in spec to be here, but it is listed as "Vendor Specific", so we're putting it here since it is
+                            //a fairly common practice overall. - TJE
+                            if (deviceDesc->SerialNumberOffset && deviceDesc->SerialNumberOffset != UINT32_MAX)
+                            {
+                                memcpy(&inquiryData[36], devSerial, M_Min(strlen(devSerial), 20));
+                            }
+                        }
+                        else
+                        {
+                            //did not return the properties. Set "Unknown" for vendor and nothing else.
+                            //vendorID
+                            inquiryData[8] = 'U';
+                            inquiryData[9] = 'N';
+                            inquiryData[10] = 'K';
+                            inquiryData[11] = 'N';
+                            inquiryData[12] = 'O';
+                            inquiryData[13] = 'W';
+                            inquiryData[14] = 'N';
+                            inquiryData[15] = ' ';
+                            inquiryData[16] = 'N';
+                            inquiryData[17] = 'O';
+                            inquiryData[18] = 'T';
+                            inquiryData[19] = ' ';
+                            inquiryData[20] = 'A';
+                            inquiryData[21] = 'V';
+                            inquiryData[22] = 'A';
+                            inquiryData[23] = 'I';
+                            inquiryData[24] = 'L';
+                            inquiryData[25] = 'A';
+                            inquiryData[26] = 'B';
+                            inquiryData[27] = 'L';
+                            inquiryData[28] = 'E';
+                            inquiryData[29] = ' ';
+                            inquiryData[30] = ' ';
+                            inquiryData[31] = ' ';
+                            inquiryData[32] = 'F';
+                            inquiryData[33] = 'A';
+                            inquiryData[34] = 'K';
+                            inquiryData[35] = 'E';
+                        }
+                        safe_Free(deviceDesc);
+                    }
+                    else
+                    {
+                        //Nothing came back, so fill in with emptyness...just generate a response of any kind.
+                        //vendorID
+                        inquiryData[8] = 'U';
+                        inquiryData[9] = 'N';
+                        inquiryData[10] = 'K';
+                        inquiryData[11] = 'N';
+                        inquiryData[12] = 'O';
+                        inquiryData[13] = 'W';
+                        inquiryData[14] = 'N';
+                        inquiryData[15] = ' ';
+                    }
+                    if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
+                    {
+                        memcpy(scsiIoCtx->pdata, inquiryData, M_Min(96, scsiIoCtx->dataLength));
+                    }
+                }
+                else
+                {
+                    //invalid field in CDB
+                    senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                    asc = 0x24;
+                    ascq = 0x00;
+                    setSenseData = true;
+                }
+            }
+        }
+        break;
+    case READ_CAPACITY_10:
+        if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0 || scsiIoCtx->cdb[4] != 0 || scsiIoCtx->cdb[5] != 0 || scsiIoCtx->cdb[6] != 0 || scsiIoCtx->cdb[7] != 0 || scsiIoCtx->cdb[8] != 0)
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            //device geometry IOCTLs for remaining data
+            uint8_t readCapacityData[8] = { 0 };
+#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN2K
+            PDISK_GEOMETRY_EX geometryEx = NULL;
+            PDISK_PARTITION_INFO partition = NULL;
+            PDISK_DETECTION_INFO detection = NULL;
+            if (SUCCESS == win_Get_Drive_Geometry_Ex(scsiIoCtx->device->os_info.fd, &geometryEx, &partition, &detection))
+            {
+                if ((geometryEx->DiskSize.QuadPart / geometryEx->Geometry.BytesPerSector) > UINT32_MAX)
+                {
+                    readCapacityData[0] = 0xFF;
+                    readCapacityData[1] = 0xFF;
+                    readCapacityData[2] = 0xFF;
+                    readCapacityData[3] = 0xFF;
+
+                }
+                else
+                {
+                    readCapacityData[0] = M_Byte3(geometryEx->DiskSize.QuadPart / geometryEx->Geometry.BytesPerSector);
+                    readCapacityData[1] = M_Byte2(geometryEx->DiskSize.QuadPart / geometryEx->Geometry.BytesPerSector);
+                    readCapacityData[2] = M_Byte1(geometryEx->DiskSize.QuadPart / geometryEx->Geometry.BytesPerSector);
+                    readCapacityData[3] = M_Byte0(geometryEx->DiskSize.QuadPart / geometryEx->Geometry.BytesPerSector);
+                }
+                readCapacityData[4] = M_Byte3(geometryEx->Geometry.BytesPerSector);
+                readCapacityData[5] = M_Byte2(geometryEx->Geometry.BytesPerSector);
+                readCapacityData[6] = M_Byte1(geometryEx->Geometry.BytesPerSector);
+                readCapacityData[7] = M_Byte0(geometryEx->Geometry.BytesPerSector);
+                safe_Free(geometryEx);
+            }
+            else
+#endif //WINVER >= SEA_WIN32_WINNT_WIN2K
+            {
+                PDISK_GEOMETRY geometry = NULL;
+                if (SUCCESS == win_Get_Drive_Geometry(scsiIoCtx->device->os_info.fd, &geometry))
+                {
+                    uint64_t maxLBA = geometry->Cylinders.QuadPart * geometry->TracksPerCylinder * geometry->SectorsPerTrack;
+                    if (maxLBA > UINT32_MAX)
+                    {
+                        readCapacityData[0] = 0xFF;
+                        readCapacityData[1] = 0xFF;
+                        readCapacityData[2] = 0xFF;
+                        readCapacityData[3] = 0xFF;
+
+                    }
+                    else
+                    {
+                        readCapacityData[0] = M_Byte3(maxLBA);
+                        readCapacityData[1] = M_Byte2(maxLBA);
+                        readCapacityData[2] = M_Byte1(maxLBA);
+                        readCapacityData[3] = M_Byte0(maxLBA);
+                    }
+                    readCapacityData[4] = M_Byte3(geometry->BytesPerSector);
+                    readCapacityData[5] = M_Byte2(geometry->BytesPerSector);
+                    readCapacityData[6] = M_Byte1(geometry->BytesPerSector);
+                    readCapacityData[7] = M_Byte0(geometry->BytesPerSector);
+                    safe_Free(geometry);
+                }
+                else
+                {
+                    //set aborted command. Something really went wrong
+                    senseKey = SENSE_KEY_ABORTED_COMMAND;
+                    asc = 0x00;
+                    ascq = 0x00;
+                    setSenseData = true;
+                }
+            }
+            if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
+            {
+                memcpy(scsiIoCtx->pdata, readCapacityData, M_Min(8, scsiIoCtx->dataLength));
+            }
+        }
+        break;
+    case READ_CAPACITY_16:
+        //first check the service action
+        if (M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0) == 0x10)
+        {
+            uint32_t allocationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
+            //bytes 2 - 9 are not allowed, same with 14
+            if (scsiIoCtx->cdb[14] != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0 || scsiIoCtx->cdb[4] != 0 || scsiIoCtx->cdb[5] != 0 || scsiIoCtx->cdb[6] != 0 || scsiIoCtx->cdb[7] != 0 || scsiIoCtx->cdb[8] != 0 || scsiIoCtx->cdb[9] != 0)
+            {
+                //invalid field in CDB
+                senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                asc = 0x24;
+                ascq = 0x00;
+                setSenseData = true;
+            }
+            else
+            {
+                //device geometry IOCTLs for remaining data
+                //If Win version great enough, use the access alignment descriptor for block sizes and alignment requirements
+#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_VISTA
+                PSTORAGE_ACCESS_ALIGNMENT_DESCRIPTOR accessAlignment = NULL;
+#endif //WINVER >= SEA_WIN32_WINNT_VISTA
+                uint8_t readCapacityData[32] = { 0 };
+#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN2K
+                PDISK_GEOMETRY_EX geometryEx = NULL;
+                PDISK_PARTITION_INFO partition = NULL;
+                PDISK_DETECTION_INFO detection = NULL;
+                if (SUCCESS == win_Get_Drive_Geometry_Ex(scsiIoCtx->device->os_info.fd, &geometryEx, &partition, &detection))
+                {
+                    readCapacityData[0] = M_Byte7(geometryEx->DiskSize.QuadPart / geometryEx->Geometry.BytesPerSector);
+                    readCapacityData[1] = M_Byte6(geometryEx->DiskSize.QuadPart / geometryEx->Geometry.BytesPerSector);
+                    readCapacityData[2] = M_Byte5(geometryEx->DiskSize.QuadPart / geometryEx->Geometry.BytesPerSector);
+                    readCapacityData[3] = M_Byte4(geometryEx->DiskSize.QuadPart / geometryEx->Geometry.BytesPerSector);
+                    readCapacityData[4] = M_Byte3(geometryEx->DiskSize.QuadPart / geometryEx->Geometry.BytesPerSector);
+                    readCapacityData[5] = M_Byte2(geometryEx->DiskSize.QuadPart / geometryEx->Geometry.BytesPerSector);
+                    readCapacityData[6] = M_Byte1(geometryEx->DiskSize.QuadPart / geometryEx->Geometry.BytesPerSector);
+                    readCapacityData[7] = M_Byte0(geometryEx->DiskSize.QuadPart / geometryEx->Geometry.BytesPerSector);
+                    readCapacityData[8] = M_Byte3(geometryEx->Geometry.BytesPerSector);
+                    readCapacityData[9] = M_Byte2(geometryEx->Geometry.BytesPerSector);
+                    readCapacityData[10] = M_Byte1(geometryEx->Geometry.BytesPerSector);
+                    readCapacityData[11] = M_Byte0(geometryEx->Geometry.BytesPerSector);
+                    //don't set any other fields unless we can get the access alignment descriptor
+                    safe_Free(geometryEx);
+                }
+                else
+#endif //WINVER >= SEA_WIN32_WINNT_WIN2K
+                {
+                    PDISK_GEOMETRY geometry = NULL;
+                    if (SUCCESS == win_Get_Drive_Geometry(scsiIoCtx->device->os_info.fd, &geometry))
+                    {
+                        uint64_t maxLBA = geometry->Cylinders.QuadPart * geometry->TracksPerCylinder * geometry->SectorsPerTrack;
+                        readCapacityData[0] = M_Byte7(maxLBA);
+                        readCapacityData[1] = M_Byte6(maxLBA);
+                        readCapacityData[2] = M_Byte5(maxLBA);
+                        readCapacityData[3] = M_Byte4(maxLBA);
+                        readCapacityData[4] = M_Byte3(maxLBA);
+                        readCapacityData[5] = M_Byte2(maxLBA);
+                        readCapacityData[6] = M_Byte1(maxLBA);
+                        readCapacityData[7] = M_Byte0(maxLBA);
+                        readCapacityData[8] = M_Byte3(geometry->BytesPerSector);
+                        readCapacityData[9] = M_Byte2(geometry->BytesPerSector);
+                        readCapacityData[10] = M_Byte1(geometry->BytesPerSector);
+                        readCapacityData[11] = M_Byte0(geometry->BytesPerSector);
+                        safe_Free(geometry);
+                    }
+                    else
+                    {
+                        //set aborted command. Something really went wrong
+                        senseKey = SENSE_KEY_ABORTED_COMMAND;
+                        asc = 0x00;
+                        ascq = 0x00;
+                        setSenseData = true;
+                    }
+                }
+#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_VISTA
+                if (SUCCESS == win_Get_Access_Alignment_Descriptor(scsiIoCtx->device->os_info.fd, &accessAlignment))
+                {
+                    if (accessAlignment->BytesPerLogicalSector > 0)//making sure we don't divide by zero on bad reports from the system
+                    {
+                        uint8_t logicalBlockPerPhysicalExponent = 0;
+                        uint16_t lowestAlignedLBA = C_CAST(uint16_t, accessAlignment->BytesOffsetForSectorAlignment / accessAlignment->BytesPerLogicalSector);
+                        //convert physical sector size to power of 2
+                        switch (accessAlignment->BytesPerPhysicalSector / accessAlignment->BytesPerLogicalSector)
+                        {
+                        case 1:
+                            logicalBlockPerPhysicalExponent = 0;
+                            break;
+                        case 2:
+                            logicalBlockPerPhysicalExponent = 1;
+                            break;
+                        case 4:
+                            logicalBlockPerPhysicalExponent = 2;
+                            break;
+                        case 8:
+                            logicalBlockPerPhysicalExponent = 3;
+                            break;
+                        case 16:
+                            logicalBlockPerPhysicalExponent = 4;
+                            break;
+                        default:
+                            //unknown, do nothing.
+                            break;
+                        }
+                        readCapacityData[13] = logicalBlockPerPhysicalExponent;
+                        readCapacityData[14] = M_Byte1(lowestAlignedLBA) & 0x3F;//shouldn't cause a problem as alignment shouldn't be higher than this
+                        readCapacityData[15] = M_Byte0(lowestAlignedLBA);
+                    }
+                    safe_Free(accessAlignment);
+                }
+#endif //WINVER >= SEA_WIN32_WINNT_VISTA
+                if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
+                {
+                    memcpy(scsiIoCtx->pdata, readCapacityData, M_Min(32, allocationLength));
+                }
+            }
+        }
+        else
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        break;
+    case READ6:
+        if (M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0)
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            uint64_t lba = M_BytesTo4ByteValue(0, (scsiIoCtx->cdb[1] & 0x1F), scsiIoCtx->cdb[2], scsiIoCtx->cdb[3]);
+            uint32_t transferLength = scsiIoCtx->cdb[4];
+            if (transferLength == 0)
+            {
+                transferLength = 256;
+            }
+            ret = os_Read(scsiIoCtx->device, lba, 0, scsiIoCtx->pdata, transferLength * scsiIoCtx->device->drive_info.deviceBlockSize);
+            if (ret != SUCCESS)
+            {
+                //aborted command. TODO: Use windows errors to set more accurate sense data
+                senseKey = SENSE_KEY_ABORTED_COMMAND;
+                asc = 0x00;
+                ascq = 0x00;
+                setSenseData = true;
+            }
+        }
+    case READ10:
+        if (scsiIoCtx->cdb[1] & BIT3)
+        {
+            fua = true;
+        }
+        if ((scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete.
+            //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+            || (scsiIoCtx->cdb[1] & BIT2)//cannot support RACR bit in this translation since we cannot do fpdma
+            || (M_GETBITRANGE(scsiIoCtx->cdb[6], 7, 6) != 0)
+            )
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            uint64_t lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+            uint32_t transferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            if (transferLength != 0)//if zero, do nothing
+            {
+                if (transferLength > 65536)
+                {
+                    //invalid field in CDB
+                    senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                    asc = 0x24;
+                    ascq = 0x00;
+                    setSenseData = true;
+                }
+                else
+                {
+                    ret = SUCCESS;
+                    if (fua)
+                    {
+                        ret = os_Verify(scsiIoCtx->device, lba, transferLength);
+                    }
+                    if (ret == SUCCESS)
+                    {
+                        ret = os_Read(scsiIoCtx->device, lba, 0, scsiIoCtx->pdata, transferLength * scsiIoCtx->device->drive_info.deviceBlockSize);
+                    }
+                    if (ret != SUCCESS)
+                    {
+                        //aborted command. TODO: Use windows errors to set more accurate sense data
+                        senseKey = SENSE_KEY_ABORTED_COMMAND;
+                        asc = 0x00;
+                        ascq = 0x00;
+                        setSenseData = true;
+                    }
+                }
+            }
+        }
+        break;
+    case READ12:
+        if (scsiIoCtx->cdb[1] & BIT3)
+        {
+            fua = true;
+        }
+        if ((scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete.
+            //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+            || (scsiIoCtx->cdb[1] & BIT2)//cannot support RACR bit in this translation since we cannot do fpdma
+            || (M_GETBITRANGE(scsiIoCtx->cdb[10], 7, 6) != 0)
+            )
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            uint64_t lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+            uint32_t transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+            if (transferLength != 0)//if zero, do nothing
+            {
+                if (transferLength > 65536)
+                {
+                    //invalid field in CDB
+                    senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                    asc = 0x24;
+                    ascq = 0x00;
+                    setSenseData = true;
+                }
+                else
+                {
+                    ret = SUCCESS;
+                    if (fua)
+                    {
+                        ret = os_Verify(scsiIoCtx->device, lba, transferLength);
+                    }
+                    if (ret == SUCCESS)
+                    {
+                        ret = os_Read(scsiIoCtx->device, lba, false, scsiIoCtx->pdata, transferLength * scsiIoCtx->device->drive_info.deviceBlockSize);
+                    }
+                    if (ret != SUCCESS)
+                    {
+                        //aborted command. TODO: Use windows errors to set more accurate sense data
+                        senseKey = SENSE_KEY_ABORTED_COMMAND;
+                        asc = 0x00;
+                        ascq = 0x00;
+                        setSenseData = true;
+                    }
+                }
+            }
+        }
+        break;
+    case READ16:
+        if (scsiIoCtx->cdb[1] & BIT3)
+        {
+            fua = true;
+        }
+        //sbc2 fua_nv bit can be ignored according to SAT. 
+        //We don't support RARC since was cannot do FPDMA in software SAT
+        //We don't support DLD bits either
+        if ((scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete.
+            //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+            || (scsiIoCtx->cdb[1] & BIT2)//cannot support RACR bit in this translation since we cannot do fpdma
+            || (M_GETBITRANGE(scsiIoCtx->cdb[14], 7, 6) != 0)
+            )
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            uint64_t lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5], scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+            uint32_t transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
+            if (transferLength != 0)//if zero, do nothing
+            {
+                if (transferLength > 65536)
+                {
+                    //invalid field in CDB
+                    senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                    asc = 0x24;
+                    ascq = 0x00;
+                    setSenseData = true;
+                }
+                else
+                {
+                    ret = SUCCESS;
+                    if (fua)
+                    {
+                        ret = os_Verify(scsiIoCtx->device, lba, transferLength);
+                    }
+                    if (ret == SUCCESS)
+                    {
+                        ret = os_Read(scsiIoCtx->device, lba, false, scsiIoCtx->pdata, transferLength * scsiIoCtx->device->drive_info.deviceBlockSize);
+                    }
+                    if (ret != SUCCESS)
+                    {
+                        //aborted command. TODO: Use windows errors to set more accurate sense data
+                        senseKey = SENSE_KEY_ABORTED_COMMAND;
+                        asc = 0x00;
+                        ascq = 0x00;
+                        setSenseData = true;
+                    }
+                }
+            }
+        }
+        break;
+    case WRITE6:
+        if (M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0)
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            uint64_t lba = M_BytesTo4ByteValue(0, (scsiIoCtx->cdb[1] & 0x1F), scsiIoCtx->cdb[2], scsiIoCtx->cdb[3]);
+            uint32_t transferLength = scsiIoCtx->cdb[4];
+            if (transferLength == 0)//write 6, zero means a maximum possible transfer size, which is 256
+            {
+                transferLength = 256;
+            }
+            if (transferLength > 65536)
+            {
+                //invalid field in CDB
+                senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                asc = 0x24;
+                ascq = 0x00;
+                setSenseData = true;
+            }
+            else
+            {
+                ret = os_Write(scsiIoCtx->device, lba, false, scsiIoCtx->pdata, transferLength * scsiIoCtx->device->drive_info.deviceBlockSize);
+                if (ret != SUCCESS)
+                {
+                    //aborted command. TODO: Use windows errors to set more accurate sense data
+                    senseKey = SENSE_KEY_ABORTED_COMMAND;
+                    asc = 0x00;
+                    ascq = 0x00;
+                    setSenseData = true;
+                }
+            }
+        }
+        break;
+    case WRITE10:
+        if (scsiIoCtx->cdb[1] & BIT3)
+        {
+            fua = true;
+        }
+        if ((scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete.
+            //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+            || (scsiIoCtx->cdb[1] & BIT2)//reserved bit
+            || (M_GETBITRANGE(scsiIoCtx->cdb[6], 7, 6) != 0)
+            )
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            uint64_t lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+            uint32_t transferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            if (transferLength != 0)//0 length, means do nothing
+            {
+                if (transferLength > 65536)
+                {
+                    //invalid field in CDB
+                    senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                    asc = 0x24;
+                    ascq = 0x00;
+                    setSenseData = true;
+                }
+                else
+                {
+                    ret = os_Write(scsiIoCtx->device, lba, false, scsiIoCtx->pdata, transferLength * scsiIoCtx->device->drive_info.deviceBlockSize);
+                    if (fua && ret == SUCCESS)
+                    {
+                        ret = os_Verify(scsiIoCtx->device, lba, transferLength);
+                    }
+                    if (ret != SUCCESS)
+                    {
+                        //aborted command. TODO: Use windows errors to set more accurate sense data
+                        senseKey = SENSE_KEY_ABORTED_COMMAND;
+                        asc = 0x00;
+                        ascq = 0x00;
+                        setSenseData = true;
+                    }
+                }
+            }
+        }
+        break;
+    case WRITE12:
+        if (scsiIoCtx->cdb[1] & BIT3)
+        {
+            fua = true;
+        }
+        if ((scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete.
+            //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+            || (scsiIoCtx->cdb[1] & BIT2)//reserved bit
+            || (M_GETBITRANGE(scsiIoCtx->cdb[10], 7, 6) != 0)
+            )
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            uint64_t lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+            uint32_t transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+            if (transferLength != 0)//0 length, means do nothing
+            {
+                if (transferLength > 65536)
+                {
+                    //invalid field in CDB
+                    senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                    asc = 0x24;
+                    ascq = 0x00;
+                    setSenseData = true;
+                }
+                else
+                {
+                    ret = os_Write(scsiIoCtx->device, lba, false, scsiIoCtx->pdata, transferLength * scsiIoCtx->device->drive_info.deviceBlockSize);
+                    if (fua && ret == SUCCESS)
+                    {
+                        ret = os_Verify(scsiIoCtx->device, lba, transferLength);
+                    }
+                    if (ret != SUCCESS)
+                    {
+                        //aborted command. TODO: Use windows errors to set more accurate sense data
+                        senseKey = SENSE_KEY_ABORTED_COMMAND;
+                        asc = 0x00;
+                        ascq = 0x00;
+                        setSenseData = true;
+                    }
+                }
+            }
+        }
+        break;
+    case WRITE16:
+        if (scsiIoCtx->cdb[1] & BIT3)
+        {
+            fua = true;
+        }
+        //sbc2 fua_nv bit can be ignored according to SAT. 
+        //We don't support DLD bits either
+        if ((scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete. also now the DLD2 bit
+            //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+            || (scsiIoCtx->cdb[1] & BIT2)//reserved bit
+            || (M_GETBITRANGE(scsiIoCtx->cdb[14], 7, 6) != 0)
+            )
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            uint64_t lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5], scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+            uint32_t transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
+            if (transferLength != 0)//0 length, means do nothing
+            {
+                if (transferLength > 65536)
+                {
+                    //invalid field in CDB
+                    senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                    asc = 0x24;
+                    ascq = 0x00;
+                    setSenseData = true;
+                }
+                else
+                {
+                    ret = os_Write(scsiIoCtx->device, lba, false, scsiIoCtx->pdata, transferLength * scsiIoCtx->device->drive_info.deviceBlockSize);
+                    if (fua && ret == SUCCESS)
+                    {
+                        ret = os_Verify(scsiIoCtx->device, lba, transferLength);
+                    }
+                    if (ret != SUCCESS)
+                    {
+                        //aborted command. TODO: Use windows errors to set more accurate sense data
+                        senseKey = SENSE_KEY_ABORTED_COMMAND;
+                        asc = 0x00;
+                        ascq = 0x00;
+                        setSenseData = true;
+                    }
+                }
+            }
+        }
+        break;
+    case VERIFY10:
+        if ((scsiIoCtx->cdb[1] & BIT3)
+            || (scsiIoCtx->cdb[1] & BIT0)
+            || (M_GETBITRANGE(scsiIoCtx->cdb[6], 7, 6) != 0)
+            )
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            uint8_t byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
+            uint64_t lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+            uint32_t verificationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            if (verificationLength != 0)//this is allowed and it means to validate inputs and return success
+            {
+                if (verificationLength > 65536 || byteCheck != 0)//limit transfer size, and only support a normal verify. Not supporting compare commands - TJE
+                {
+                    //invalid field in CDB
+                    senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                    asc = 0x24;
+                    ascq = 0x00;
+                    setSenseData = true;
+                }
+                else
+                {
+                    ret = os_Verify(scsiIoCtx->device, lba, verificationLength);
+                    if (ret != SUCCESS)
+                    {
+                        //aborted command. TODO: Use windows errors to set more accurate sense data
+                        senseKey = SENSE_KEY_ABORTED_COMMAND;
+                        asc = 0x00;
+                        ascq = 0x00;
+                        setSenseData = true;
+                    }
+                }
+            }
+        }
+        break;
+    case VERIFY12:
+        if ((scsiIoCtx->cdb[1] & BIT3)
+            || (scsiIoCtx->cdb[1] & BIT0)
+            || (M_GETBITRANGE(scsiIoCtx->cdb[10], 7, 6) != 0)
+            )
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            uint8_t byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
+            uint64_t lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+            uint32_t verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+            if (verificationLength != 0)//this is allowed and it means to validate inputs and return success
+            {
+                if (verificationLength > 65536 || byteCheck != 0)//limit transfer size, and only support a normal verify. Not supporting compare commands - TJE
+                {
+                    //invalid field in CDB
+                    senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                    asc = 0x24;
+                    ascq = 0x00;
+                    setSenseData = true;
+                }
+                else
+                {
+                    ret = os_Verify(scsiIoCtx->device, lba, verificationLength);
+                    if (ret != SUCCESS)
+                    {
+                        //aborted command. TODO: Use windows errors to set more accurate sense data
+                        senseKey = SENSE_KEY_ABORTED_COMMAND;
+                        asc = 0x00;
+                        ascq = 0x00;
+                        setSenseData = true;
+                    }
+                }
+            }
+        }
+        break;
+    case VERIFY16:
+        if ((scsiIoCtx->cdb[1] & BIT3)
+            || (scsiIoCtx->cdb[1] & BIT0)
+            || (M_GETBITRANGE(scsiIoCtx->cdb[14], 7, 6) != 0)
+            )
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            uint8_t byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
+            uint64_t lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5], scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+            uint32_t verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
+            if (verificationLength != 0)//this is allowed and it means to validate inputs and return success
+            {
+                if (verificationLength > 65536 || byteCheck != 0)//limit transfer size, and only support a normal verify. Not supporting compare commands - TJE
+                {
+                    //invalid field in CDB
+                    senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                    asc = 0x24;
+                    ascq = 0x00;
+                    setSenseData = true;
+                }
+                else
+                {
+                    ret = os_Verify(scsiIoCtx->device, lba, verificationLength);
+                    if (ret != SUCCESS)
+                    {
+                        //aborted command. TODO: Use windows errors to set more accurate sense data
+                        senseKey = SENSE_KEY_ABORTED_COMMAND;
+                        asc = 0x00;
+                        ascq = 0x00;
+                        setSenseData = true;
+                    }
+                }
+            }
+        }
+        break;
+    case TEST_UNIT_READY_CMD:
+        if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0 || scsiIoCtx->cdb[4] != 0)
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            //Do nothing. Just return ready unless we find some IO we can send that does a TUR type of check - TJE
+        }
+        break;
+    case REQUEST_SENSE_CMD:
+        if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0)
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            //Do nothing. Return good sense (all zeros) to the call since there is nothing that can really be checked here.
+            if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
+            {
+                memset(scsiIoCtx->pdata, 0, M_Min(scsiIoCtx->cdb[4], scsiIoCtx->dataLength));
+            }
+        }
+        break;
+    case SEND_DIAGNOSTIC_CMD:
+        //only allow self-test bit set to one, and return good status.
+        if (scsiIoCtx->cdb[1] & 0xFB //only allow self-test bit to be set to 1. All others are not supported.
+            || scsiIoCtx->cdb[2] != 0 //reserved
+            || scsiIoCtx->cdb[3] != 0 //parameter list length
+            || scsiIoCtx->cdb[4] != 0 //parameter list length
+            )
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            //regardless of the self test bit being 1 or 0, return good status since there is nothing that can be done right here
+        }
+        break;
+    case REPORT_LUNS_CMD:
+        //filter out unsupported fields first
+        if (scsiIoCtx->cdb[1] != 0
+            || scsiIoCtx->cdb[3] != 0
+            || scsiIoCtx->cdb[4] != 0
+            || scsiIoCtx->cdb[5] != 0
+            || scsiIoCtx->cdb[10] != 0
+            )
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            uint8_t reportLunsData[16] = { 0 };
+            uint32_t allocationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+            switch (scsiIoCtx->cdb[2])
+            {
+            case 0x00:
+                //set list length to 16 bytes
+                reportLunsData[0] = M_Byte3(16);
+                reportLunsData[1] = M_Byte2(16);
+                reportLunsData[2] = M_Byte1(16);
+                reportLunsData[3] = M_Byte0(16);
+                //set lun to zero since it's zero indexed
+                reportLunsData[15] = 0;
+                if (scsiIoCtx->pdata)
+                {
+                    memcpy(scsiIoCtx->pdata, reportLunsData, M_Min(16, allocationLength));
+                }
+                break;
+            case 0x01:
+            case 0x02:
+            case 0x10:
+            case 0x11:
+            case 0x12:
+                //nothing to report, so just copy back the data buffer as it is
+                if (scsiIoCtx->pdata)
+                {
+                    memcpy(scsiIoCtx->pdata, reportLunsData, M_Min(16, allocationLength));
+                }
+                break;
+            default:
+                //logical unit not supported
+                senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                asc = 0x25;
+                ascq = 0x00;
+                setSenseData = true;
+                break;
+            }
+        }
+        break;
+    case SCSI_FORMAT_UNIT_CMD:
+        //NOTE: There is a format IOCTL not implemented, but it is likely only for floppy drives.
+        //      It may be worth implementing if they ever return from beyond the grave...or if we can test and prove it works on HDDs
+        //Ideally this is a nop and it returns that it's ready without actually doing anything
+        if (M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 6)
+            || scsiIoCtx->cdb[1] & BIT3
+            || scsiIoCtx->cdb[2]
+            || scsiIoCtx->cdb[3]
+            || scsiIoCtx->cdb[4]
+            )
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x20;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            bool longList = scsiIoCtx->cdb[1] & BIT5;
+            bool formatData = scsiIoCtx->cdb[1] & BIT4;
+            uint8_t defectListFormat = M_GETBITRANGE(scsiIoCtx->cdb[1], 2, 0);
+            if (formatData)
+            {
+                //Parameter header information
+                //uint8_t protectionFieldUsage = M_GETBITRANGE(scsiIoCtx->pdata[0], 2, 0);
+                bool formatOptionsValid = scsiIoCtx->pdata[1] & BIT7;
+                //bool disablePrimary = scsiIoCtx->pdata[1] & BIT6; //ignore this bit. Commented out so we can use it if we ever need to.
+                bool disableCertification = scsiIoCtx->pdata[1] & BIT5;
+                bool stopFormat = scsiIoCtx->pdata[1] & BIT4;
+                bool initializationPattern = scsiIoCtx->pdata[1] & BIT3;
+                uint8_t initializationPatternOffset = 0;
+                bool disableSaveParameters = scsiIoCtx->pdata[1] & BIT2;//long obsolete
+                bool immediate = scsiIoCtx->pdata[1] & BIT1;
+                bool vendorSpecific = scsiIoCtx->pdata[1] & BIT0;
+                uint8_t p_i_information = 0;
+                uint8_t protectionIntervalExponent = 0;
+                uint32_t defectListLength = 0;
+                if (longList)
+                {
+                    p_i_information = M_Nibble1(scsiIoCtx->pdata[3]);
+                    protectionIntervalExponent = M_Nibble0(scsiIoCtx->pdata[3]);
+                    defectListLength = M_BytesTo4ByteValue(scsiIoCtx->pdata[4], scsiIoCtx->pdata[5], scsiIoCtx->pdata[6], scsiIoCtx->pdata[7]);
+                    if (initializationPattern)
+                    {
+                        initializationPatternOffset = 8;
+                    }
+                }
+                else
+                {
+                    defectListLength = M_BytesTo2ByteValue(scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]);
+                    if (initializationPattern)
+                    {
+                        initializationPatternOffset = 4;
+                    }
+                }
+                //check parameter data
+                if (/*check all combinations that we don't support*/
+                    (scsiIoCtx->pdata[0] != 0) //we don't support protection information and reserved bytes should also be zeroed out
+                    || (formatOptionsValid && stopFormat) //Doesn't make sense to support since we cannot accept a defect list. We could also ignore this, but this should be fine
+                    || (disableSaveParameters)//check that this obsolete bit isn't set
+                    || (immediate) //we cannot support the immediate bit in this implementation right now. We would need multi-threading to do this...
+                    || (vendorSpecific) //We don't have a vendor specific functionality in here
+                    || (longList && scsiIoCtx->pdata[2] != 0)//checking if reserved byte in long header is set
+                    || (longList && p_i_information != 0)
+                    || (longList && protectionIntervalExponent != 0)
+                    || ((defectListFormat == 0 || defectListFormat == 6) && defectListLength != 0) //See SAT spec CDB field definitions
+                    || (defectListFormat != 0 && defectListFormat != 6) //See SAT spec CDB field definitions
+                    )
+                {
+                    //invalid field in parameter list
+                    senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                    asc = 0x26;
+                    ascq = 0x00;
+                    setSenseData = true;
+                }
+                else
+                {
+                    //need to check a few more combinations. This code will NOT support certify unlike the SATL software translation code to simplify this a bit more. - TJE
+                    //Check FOV bit combinations
+                    if (formatOptionsValid)
+                    {
+                        bool performWriteOperation = false;
+                        bool performCertifyOperation = false;
+                        //Initialization pattern information. Check that initializationPattern bool is set to true!
+                        bool securityInitialize = false;
+                        uint8_t initializationPatternModifier = 0;//This is obsolete since SBC2...we will just return an error
+                        uint8_t initializationPatternByte0ReservedBits = 0;//so we can make sure no invalid field was set.
+                        uint8_t initializationPatternType = 0;
+                        uint16_t initializationPatternLength = 0;
+                        uint8_t *initializationPatternPtr = NULL;
+                        if (initializationPattern)
+                        {
+                            //Set up the initialization pattern information since we were given one
+                            initializationPatternModifier = M_GETBITRANGE(scsiIoCtx->pdata[initializationPatternOffset + 0], 7, 6);
+                            securityInitialize = scsiIoCtx->pdata[initializationPatternOffset + 1] & BIT5;
+                            initializationPatternByte0ReservedBits = M_GETBITRANGE(scsiIoCtx->pdata[initializationPatternOffset + 0], 4, 0);
+                            initializationPatternType = scsiIoCtx->pdata[initializationPatternOffset + 1];
+                            initializationPatternLength = M_BytesTo2ByteValue(scsiIoCtx->pdata[initializationPatternOffset + 2], scsiIoCtx->pdata[initializationPatternOffset + 3]);
+                            if (initializationPatternLength > 0)
+                            {
+                                initializationPatternPtr = &scsiIoCtx->pdata[initializationPatternOffset + 4];
+                            }
+                        }
+                        //Check bit combinations to make sure we can do things the right way!
+                        if (disableCertification && !initializationPattern)
+                        {
+                            //return good status and do nothing else
+                        }
+                        else if (!initializationPattern && !disableCertification)
+                        {
+                            //SATL may or may not support media certification. If not supported, then return invalid field in parameter list...otherwise we have stuff to do
+                            performCertifyOperation = true;
+                        }
+                        else if (!disableCertification && initializationPattern)
+                        {
+                            //SATL may or may not support media certification
+                            performCertifyOperation = true;
+                            //SATL may or may not support write operation described by the initialization pattern descriptor to perform this translation
+                            performWriteOperation = true;
+                        }
+                        else if (disableCertification && initializationPattern)
+                        {
+                            //SATL may or may not support write operation described by the initialization pattern descriptor to perform this translation
+                            performWriteOperation = true;
+                        }
+                        //Before we begin writing or certification, we need to check some flags to make sure nothing invalid is set.
+                        if (initializationPattern && //this must be set for us to care about any of these other fields...
+                            (
+                            (initializationPatternModifier) //check if obsolete bits are set
+                                || (securityInitialize) /*not supporting this since we cannot write to the reallocated sectors on the drive like this asks*/
+                                || (initializationPatternByte0ReservedBits != 0)
+                                || ((initializationPatternType != 0x00 && initializationPatternType != 0x01))
+                                )
+                            || performCertifyOperation //certify operation is not supported in this translation, only writes. -TJE
+                            )
+                        {
+                            //invalid field in parameter list
+                            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                            asc = 0x26;
+                            ascq = 0x00;
+                            setSenseData = true;
+                        }
+                        else
+                        {
+                            //If we need to do a write operation, we need to do it first!
+                            if (performWriteOperation)
+                            {
+                                //make sure the initialization pattern is less than or equal to the logical block length
+                                if (initializationPatternLength > scsiIoCtx->device->drive_info.deviceBlockSize)
+                                {
+                                    //invalid field in parameter list
+                                    senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                                    asc = 0x26;
+                                    ascq = 0x00;
+                                    setSenseData = true;
+                                }
+                                else
+                                {
+                                    uint32_t writeSectors64K = 65535 / scsiIoCtx->device->drive_info.deviceBlockSize;
+                                    //Write commands
+                                    uint32_t writeDataLength = writeSectors64K * scsiIoCtx->device->drive_info.deviceBlockSize;
+                                    uint8_t *writePattern = (uint8_t*)calloc_aligned(writeSectors64K, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment);
+                                    if (writePattern)
+                                    {
+                                        uint32_t numberOfLBAs = writeDataLength / scsiIoCtx->device->drive_info.deviceBlockSize;
+                                        if (initializationPatternLength > 0)
+                                        {
+                                            //copy the provided pattern into our buffer
+                                            for (uint32_t copyIter = 0; copyIter < writeDataLength; copyIter += scsiIoCtx->device->drive_info.deviceBlockSize)
+                                            {
+                                                memcpy(&writePattern[copyIter], initializationPatternPtr, initializationPatternLength);
+                                            }
+                                        }
+                                        for (uint64_t lba = 0; lba < scsiIoCtx->device->drive_info.deviceMaxLba; lba += numberOfLBAs)
+                                        {
+                                            if ((lba + numberOfLBAs) > scsiIoCtx->device->drive_info.deviceMaxLba)
+                                            {
+                                                //end of range...don't over do it!
+                                                numberOfLBAs = (uint32_t)(scsiIoCtx->device->drive_info.deviceMaxLba - lba);
+                                                writeDataLength = numberOfLBAs * scsiIoCtx->device->drive_info.deviceBlockSize;
+                                            }
+                                            ret = os_Write(scsiIoCtx->device, lba, false, writePattern, writeDataLength);
+                                            if (ret != SUCCESS)
+                                            {
+                                                break;
+                                            }
+                                        }
+                                        if (ret != SUCCESS)
+                                        {
+                                            //invalid field in parameter list
+                                            senseKey = SENSE_KEY_MEDIUM_ERROR;
+                                            asc = 0x03;
+                                            ascq = 0x00;
+                                            setSenseData = true;
+                                        }
+                                        safe_Free_aligned(writePattern);
+                                    }
+                                    else
+                                    {
+                                        //Fatal Error!
+                                        ret = FAILURE;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        //Not checking disablePrimary below because the SATL ignores this bit
+                        if (!initializationPattern && !disableCertification)
+                        {
+                            //return good status and do nothing else
+                        }
+                        else
+                        {
+                            //invalid field in parameter list
+                            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+                            asc = 0x26;
+                            ascq = 0x00;
+                            setSenseData = true;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                //just return success. This is similar to SAT translation, which influenced this decision
+            }
+        }
+        break;
+    default:
+        //invalid operation code
+        senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+        asc = 0x20;
+        ascq = 0x00;
+        setSenseData = true;
+        break;
+    }
+    if (setSenseData && scsiIoCtx->psense)
+    {
+        scsiIoCtx->psense[0] = 0x70;
+        //sense key
+        scsiIoCtx->psense[2] |= M_Nibble0(senseKey);
+        //asc
+        scsiIoCtx->psense[12] = asc;
+        //ascq
+        scsiIoCtx->psense[13] = ascq;
+        //additional sense length
+        scsiIoCtx->psense[7] = 10;
+    }
+    else if(scsiIoCtx->psense)
+    {
+        memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
+    }
+    return ret;
+}
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
 int send_IO( ScsiIoCtx *scsiIoCtx )
@@ -6268,9 +7930,16 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
             break;
         case USB_INTERFACE:
         case IEEE_1394_INTERFACE:
-        case NVME_INTERFACE://for now send it as a SCSI command. Later we made need to define a different method of talking to the NVMe device
+        case NVME_INTERFACE://If on this path for NVMe, then let the driver do SCSI translation
         case SCSI_INTERFACE:
-            ret = send_SCSI_Pass_Through_IO(scsiIoCtx);
+            if (scsiIoCtx->device->os_info.ioType == WIN_IOCTL_BASIC)
+            {
+                ret = win_Basic_SCSI_Translation(scsiIoCtx);
+            }
+            else
+            {
+                ret = send_SCSI_Pass_Through_IO(scsiIoCtx);
+            }
             break;
         case RAID_INTERFACE:
             if (scsiIoCtx->device->issue_io != NULL)
