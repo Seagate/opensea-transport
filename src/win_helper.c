@@ -6971,6 +6971,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 setSenseData = true;
             }
         }
+        break;
     case READ10:
         if (scsiIoCtx->cdb[1] & BIT3)
         {
@@ -7686,13 +7687,12 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                             performWriteOperation = true;
                         }
                         //Before we begin writing or certification, we need to check some flags to make sure nothing invalid is set.
-                        if (initializationPattern && //this must be set for us to care about any of these other fields...
-                            (
-                            (initializationPatternModifier) //check if obsolete bits are set
-                                || (securityInitialize) /*not supporting this since we cannot write to the reallocated sectors on the drive like this asks*/
+                        if ((initializationPattern && //this must be set for us to care about any of these other fields...
+                            (initializationPatternModifier //check if obsolete bits are set
+                                || securityInitialize /*not supporting this since we cannot write to the reallocated sectors on the drive like this asks*/
                                 || (initializationPatternByte0ReservedBits != 0)
                                 || ((initializationPatternType != 0x00 && initializationPatternType != 0x01))
-                                )
+                                ))
                             || performCertifyOperation //certify operation is not supported in this translation, only writes. -TJE
                             )
                         {
