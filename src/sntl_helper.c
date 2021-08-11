@@ -1117,45 +1117,47 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         //1 descriptor for eui64 and 1 for nguid
         SCSINameStringDesignatorLength = 64;
         SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength, sizeof(uint8_t));
-        //NGUID first!
-        SCSINameStringDesignator[0] = 3;//codes set 3 (UTF-8)
-        SCSINameStringDesignator[1] = 1;//designator type 1, associated with logical unit
-        SCSINameStringDesignator[2] = RESERVED;
-        SCSINameStringDesignator[3] = 36;
-        //set "eui."
-        SCSINameStringDesignator[4] = 'e';
-        SCSINameStringDesignator[5] = 'u';
-        SCSINameStringDesignator[6] = 'i';
-        SCSINameStringDesignator[7] = '.';
-        //now nguid
-        while (counter < 16 && offset < t10VendorIdDesignatorLength)
+        if (SCSINameStringDesignator)
         {
-            t10VendorIdDesignator[offset] = M_Nibble1(device->drive_info.IdentifyData.nvme.ns.nguid[counter]) + '0';
-            t10VendorIdDesignator[offset + 1] = M_Nibble0(device->drive_info.IdentifyData.nvme.ns.nguid[counter]) + '0';
-            offset += 2;
-            ++counter;
+            //NGUID first!
+            SCSINameStringDesignator[0] = 3;//codes set 3 (UTF-8)
+            SCSINameStringDesignator[1] = 1;//designator type 1, associated with logical unit
+            SCSINameStringDesignator[2] = RESERVED;
+            SCSINameStringDesignator[3] = 36;
+            //set "eui."
+            SCSINameStringDesignator[4] = 'e';
+            SCSINameStringDesignator[5] = 'u';
+            SCSINameStringDesignator[6] = 'i';
+            SCSINameStringDesignator[7] = '.';
+            //now nguid
+            while (counter < 16 && offset < t10VendorIdDesignatorLength)
+            {
+                SCSINameStringDesignator[offset] = M_Nibble1(device->drive_info.IdentifyData.nvme.ns.nguid[counter]) + '0';
+                SCSINameStringDesignator[offset + 1] = M_Nibble0(device->drive_info.IdentifyData.nvme.ns.nguid[counter]) + '0';
+                offset += 2;
+                ++counter;
+            }
+            //now EUI 64!
+            SCSINameStringDesignator[40] = 3;//codes set 3 (UTF-8)
+            SCSINameStringDesignator[41] = 1;//designator type 1, associated with logical unit
+            SCSINameStringDesignator[42] = RESERVED;
+            SCSINameStringDesignator[43] = 20;
+            //set "eui."
+            SCSINameStringDesignator[44] = 'e';
+            SCSINameStringDesignator[45] = 'u';
+            SCSINameStringDesignator[46] = 'i';
+            SCSINameStringDesignator[47] = '.';
+            //now eui64
+            counter = 0;
+            offset = 48;
+            while (counter < 8 && offset < t10VendorIdDesignatorLength)
+            {
+                SCSINameStringDesignator[offset] = M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[counter]) + '0';
+                SCSINameStringDesignator[offset + 1] = M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[counter]) + '0';
+                offset += 2;
+                ++counter;
+            }
         }
-        //now EUI 64!
-        SCSINameStringDesignator[40] = 3;//codes set 3 (UTF-8)
-        SCSINameStringDesignator[41] = 1;//designator type 1, associated with logical unit
-        SCSINameStringDesignator[42] = RESERVED;
-        SCSINameStringDesignator[43] = 20;
-        //set "eui."
-        SCSINameStringDesignator[44] = 'e';
-        SCSINameStringDesignator[45] = 'u';
-        SCSINameStringDesignator[46] = 'i';
-        SCSINameStringDesignator[47] = '.';
-        //now eui64
-        counter = 0;
-        offset = 48;
-        while (counter < 8 && offset < t10VendorIdDesignatorLength)
-        {
-            SCSINameStringDesignator[offset] = M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[counter]) + '0';
-            SCSINameStringDesignator[offset + 1] = M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[counter]) + '0';
-            offset += 2;
-            ++counter;
-        }
-        
     }
     else if (nguidnonZero)
     {
