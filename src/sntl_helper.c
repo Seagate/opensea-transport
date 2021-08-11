@@ -911,40 +911,43 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     {
         naaDesignatorLength = 20 /*ext*/ + 12 /*locally assigned*/;
         naaDesignator = (uint8_t*)calloc(naaDesignatorLength, sizeof(uint8_t));
-        //NAA extended format (6 + OUI + 64bitsEUI64 + 32bits of zeros)
-        naaDesignator[0] = 1;//codes set 1
-        naaDesignator[1] = 3;//designator type 3, associated with logical unit
-        naaDesignator[2] = RESERVED;
-        naaDesignator[3] = 16;//16 bytes for the ext designator
-        naaDesignator[4] = M_NibblesTo1ByteValue(6, M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.ieee[0]));
-        naaDesignator[5] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.ieee[0]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.ieee[1]));
-        naaDesignator[6] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.ieee[1]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.ieee[2]));
-        naaDesignator[7] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.ieee[2]), M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[0]));
-        naaDesignator[8] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[0]), M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[1]));
-        naaDesignator[9] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[1]), M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[2]));
-        naaDesignator[10] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[2]), M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[3]));
-        naaDesignator[11] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[3]), M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[4]));
-        naaDesignator[12] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[4]), M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[5]));
-        naaDesignator[13] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[5]), M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[6]));
-        naaDesignator[14] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[6]), M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[7]));
-        naaDesignator[15] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[7]), 0);
-        naaDesignator[16] = 0;
-        naaDesignator[17] = 0;
-        naaDesignator[18] = 0;
-        naaDesignator[19] = 0;
-        //NAA locally assigned designator (3 + first 60bits of EUI64)
-        naaDesignator[20] = 1;//codes set 1
-        naaDesignator[21] = 3;//designator type 3, associated with logical unit
-        naaDesignator[22] = RESERVED;
-        naaDesignator[23] = 8;//8 bytes for the local designator
-        naaDesignator[24] = M_NibblesTo1ByteValue(3, M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[0]));
-        naaDesignator[25] = device->drive_info.IdentifyData.nvme.ns.eui64[1];
-        naaDesignator[26] = device->drive_info.IdentifyData.nvme.ns.eui64[2];
-        naaDesignator[27] = device->drive_info.IdentifyData.nvme.ns.eui64[3];
-        naaDesignator[28] = device->drive_info.IdentifyData.nvme.ns.eui64[4];
-        naaDesignator[29] = device->drive_info.IdentifyData.nvme.ns.eui64[5];
-        naaDesignator[30] = device->drive_info.IdentifyData.nvme.ns.eui64[6];
-        naaDesignator[31] = device->drive_info.IdentifyData.nvme.ns.eui64[7];
+        if (naaDesignator)
+        {
+            //NAA extended format (6 + OUI + 64bitsEUI64 + 32bits of zeros)
+            naaDesignator[0] = 1;//codes set 1
+            naaDesignator[1] = 3;//designator type 3, associated with logical unit
+            naaDesignator[2] = RESERVED;
+            naaDesignator[3] = 16;//16 bytes for the ext designator
+            naaDesignator[4] = M_NibblesTo1ByteValue(6, M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.ieee[0]));
+            naaDesignator[5] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.ieee[0]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.ieee[1]));
+            naaDesignator[6] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.ieee[1]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.ieee[2]));
+            naaDesignator[7] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.ieee[2]), M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[0]));
+            naaDesignator[8] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[0]), M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[1]));
+            naaDesignator[9] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[1]), M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[2]));
+            naaDesignator[10] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[2]), M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[3]));
+            naaDesignator[11] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[3]), M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[4]));
+            naaDesignator[12] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[4]), M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[5]));
+            naaDesignator[13] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[5]), M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[6]));
+            naaDesignator[14] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[6]), M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[7]));
+            naaDesignator[15] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[7]), 0);
+            naaDesignator[16] = 0;
+            naaDesignator[17] = 0;
+            naaDesignator[18] = 0;
+            naaDesignator[19] = 0;
+            //NAA locally assigned designator (3 + first 60bits of EUI64)
+            naaDesignator[20] = 1;//codes set 1
+            naaDesignator[21] = 3;//designator type 3, associated with logical unit
+            naaDesignator[22] = RESERVED;
+            naaDesignator[23] = 8;//8 bytes for the local designator
+            naaDesignator[24] = M_NibblesTo1ByteValue(3, M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[0]));
+            naaDesignator[25] = device->drive_info.IdentifyData.nvme.ns.eui64[1];
+            naaDesignator[26] = device->drive_info.IdentifyData.nvme.ns.eui64[2];
+            naaDesignator[27] = device->drive_info.IdentifyData.nvme.ns.eui64[3];
+            naaDesignator[28] = device->drive_info.IdentifyData.nvme.ns.eui64[4];
+            naaDesignator[29] = device->drive_info.IdentifyData.nvme.ns.eui64[5];
+            naaDesignator[30] = device->drive_info.IdentifyData.nvme.ns.eui64[6];
+            naaDesignator[31] = device->drive_info.IdentifyData.nvme.ns.eui64[7];
+        }
     }
     else if (!eui64nonZero && !nguidnonZero) //NVMe 1.0 devices won't support EUI or NGUID, so we should be able to detect them like this
     {
@@ -1007,45 +1010,48 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
             t10VendorIdDesignatorLength += 16;//16 characters to hold the EUI64 as a string
         }
         t10VendorIdDesignator = (uint8_t*)calloc(t10VendorIdDesignatorLength, sizeof(uint8_t));
-        t10VendorIdDesignator[0] = 2;//codes set 2
-        t10VendorIdDesignator[1] = 1;//designator type 1, associated with logical unit
-        t10VendorIdDesignator[2] = RESERVED;
-        t10VendorIdDesignator[3] = t10VendorIdDesignatorLength - 4;
-        //first set the t10 vendor id in the buffer
-        t10VendorIdDesignator[4] = 'N';
-        t10VendorIdDesignator[5] = 'V';
-        t10VendorIdDesignator[6] = 'M';
-        t10VendorIdDesignator[7] = 'e';
-        t10VendorIdDesignator[8] = ' ';
-        t10VendorIdDesignator[9] = ' ';
-        t10VendorIdDesignator[10] = ' ';
-        t10VendorIdDesignator[11] = ' ';
-        //Need to set product ID here (16 bytes)
-        for (uint8_t mnOffset = 0; mnOffset < 16; ++mnOffset, ++offset)
+        if (t10VendorIdDesignator)
         {
-            t10VendorIdDesignator[offset] = device->drive_info.IdentifyData.nvme.ctrl.mn[mnOffset];
-        }
-        //now either NGUID or EUI64
-        if (nguidnonZero)
-        {
-            uint8_t counter = 0;
-            while (counter < 16 && offset < t10VendorIdDesignatorLength)
+            t10VendorIdDesignator[0] = 2;//codes set 2
+            t10VendorIdDesignator[1] = 1;//designator type 1, associated with logical unit
+            t10VendorIdDesignator[2] = RESERVED;
+            t10VendorIdDesignator[3] = t10VendorIdDesignatorLength - 4;
+            //first set the t10 vendor id in the buffer
+            t10VendorIdDesignator[4] = 'N';
+            t10VendorIdDesignator[5] = 'V';
+            t10VendorIdDesignator[6] = 'M';
+            t10VendorIdDesignator[7] = 'e';
+            t10VendorIdDesignator[8] = ' ';
+            t10VendorIdDesignator[9] = ' ';
+            t10VendorIdDesignator[10] = ' ';
+            t10VendorIdDesignator[11] = ' ';
+            //Need to set product ID here (16 bytes)
+            for (uint8_t mnOffset = 0; mnOffset < 16; ++mnOffset, ++offset)
             {
-                t10VendorIdDesignator[offset] = M_Nibble1(device->drive_info.IdentifyData.nvme.ns.nguid[counter]);
-                t10VendorIdDesignator[offset + 1] = M_Nibble0(device->drive_info.IdentifyData.nvme.ns.nguid[counter]);
-                offset += 2;
-                ++counter;
+                t10VendorIdDesignator[offset] = device->drive_info.IdentifyData.nvme.ctrl.mn[mnOffset];
             }
-        }
-        else
-        {
-            uint8_t counter = 0;
-            while (counter < 8 && offset < t10VendorIdDesignatorLength)
+            //now either NGUID or EUI64
+            if (nguidnonZero)
             {
-                t10VendorIdDesignator[offset] = M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[counter]);
-                t10VendorIdDesignator[offset + 1] = M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[counter]);
-                offset += 2;
-                ++counter;
+                uint8_t counter = 0;
+                while (counter < 16 && offset < t10VendorIdDesignatorLength)
+                {
+                    t10VendorIdDesignator[offset] = M_Nibble1(device->drive_info.IdentifyData.nvme.ns.nguid[counter]);
+                    t10VendorIdDesignator[offset + 1] = M_Nibble0(device->drive_info.IdentifyData.nvme.ns.nguid[counter]);
+                    offset += 2;
+                    ++counter;
+                }
+            }
+            else
+            {
+                uint8_t counter = 0;
+                while (counter < 8 && offset < t10VendorIdDesignatorLength)
+                {
+                    t10VendorIdDesignator[offset] = M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[counter]);
+                    t10VendorIdDesignator[offset + 1] = M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[counter]);
+                    offset += 2;
+                    ++counter;
+                }
             }
         }
     }
