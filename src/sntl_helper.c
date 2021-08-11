@@ -1150,8 +1150,8 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         offset = 48;
         while (counter < 8 && offset < t10VendorIdDesignatorLength)
         {
-            t10VendorIdDesignator[offset] = M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[counter]) + '0';
-            t10VendorIdDesignator[offset + 1] = M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[counter]) + '0';
+            SCSINameStringDesignator[offset] = M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[counter]) + '0';
+            SCSINameStringDesignator[offset + 1] = M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[counter]) + '0';
             offset += 2;
             ++counter;
         }
@@ -1164,22 +1164,25 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         //eui. + 32 hex digits from nguid (msb to lsb) 36Bytes total length
         SCSINameStringDesignatorLength = 40;
         SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength, sizeof(uint8_t));
-        SCSINameStringDesignator[0] = 3;//codes set 3 (UTF-8)
-        SCSINameStringDesignator[1] = 1;//designator type 1, associated with logical unit
-        SCSINameStringDesignator[2] = RESERVED;
-        SCSINameStringDesignator[3] = SCSINameStringDesignatorLength - 4;
-        //set "eui."
-        SCSINameStringDesignator[4] = 'e';
-        SCSINameStringDesignator[5] = 'u';
-        SCSINameStringDesignator[6] = 'i';
-        SCSINameStringDesignator[7] = '.';
-        //now nguid
-        while (counter < 16 && offset < t10VendorIdDesignatorLength)
+        if (SCSINameStringDesignator)
         {
-            t10VendorIdDesignator[offset] = M_Nibble1(device->drive_info.IdentifyData.nvme.ns.nguid[counter]) + '0';
-            t10VendorIdDesignator[offset + 1] = M_Nibble0(device->drive_info.IdentifyData.nvme.ns.nguid[counter]) + '0';
-            offset += 2;
-            ++counter;
+            SCSINameStringDesignator[0] = 3;//codes set 3 (UTF-8)
+            SCSINameStringDesignator[1] = 1;//designator type 1, associated with logical unit
+            SCSINameStringDesignator[2] = RESERVED;
+            SCSINameStringDesignator[3] = SCSINameStringDesignatorLength - 4;
+            //set "eui."
+            SCSINameStringDesignator[4] = 'e';
+            SCSINameStringDesignator[5] = 'u';
+            SCSINameStringDesignator[6] = 'i';
+            SCSINameStringDesignator[7] = '.';
+            //now nguid
+            while (counter < 16 && offset < t10VendorIdDesignatorLength)
+            {
+                SCSINameStringDesignator[offset] = M_Nibble1(device->drive_info.IdentifyData.nvme.ns.nguid[counter]) + '0';
+                SCSINameStringDesignator[offset + 1] = M_Nibble0(device->drive_info.IdentifyData.nvme.ns.nguid[counter]) + '0';
+                offset += 2;
+                ++counter;
+            }
         }
     }
     else if (eui64nonZero)
@@ -1189,22 +1192,25 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         //eui. + 32 hex digits from nguid (msb to lsb) 36Bytes total length
         SCSINameStringDesignatorLength = 24;
         SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength, sizeof(uint8_t));
-        SCSINameStringDesignator[0] = 3;//codes set 3 (UTF-8)
-        SCSINameStringDesignator[1] = 1;//designator type 1, associated with logical unit
-        SCSINameStringDesignator[2] = RESERVED;
-        SCSINameStringDesignator[3] = SCSINameStringDesignatorLength - 4;
-        //set "eui."
-        SCSINameStringDesignator[4] = 'e';
-        SCSINameStringDesignator[5] = 'u';
-        SCSINameStringDesignator[6] = 'i';
-        SCSINameStringDesignator[7] = '.';
-        //now eui64
-        while (counter < 8 && offset < t10VendorIdDesignatorLength)
+        if (SCSINameStringDesignator)
         {
-            t10VendorIdDesignator[offset] = M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[counter]) + '0';
-            t10VendorIdDesignator[offset + 1] = M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[counter]) + '0';
-            offset += 2;
-            ++counter;
+            SCSINameStringDesignator[0] = 3;//codes set 3 (UTF-8)
+            SCSINameStringDesignator[1] = 1;//designator type 1, associated with logical unit
+            SCSINameStringDesignator[2] = RESERVED;
+            SCSINameStringDesignator[3] = SCSINameStringDesignatorLength - 4;
+            //set "eui."
+            SCSINameStringDesignator[4] = 'e';
+            SCSINameStringDesignator[5] = 'u';
+            SCSINameStringDesignator[6] = 'i';
+            SCSINameStringDesignator[7] = '.';
+            //now eui64
+            while (counter < 8 && offset < t10VendorIdDesignatorLength)
+            {
+                SCSINameStringDesignator[offset] = M_Nibble1(device->drive_info.IdentifyData.nvme.ns.eui64[counter]) + '0';
+                SCSINameStringDesignator[offset + 1] = M_Nibble0(device->drive_info.IdentifyData.nvme.ns.eui64[counter]) + '0';
+                offset += 2;
+                ++counter;
+            }
         }
     }
     else //nvme 1.0 - //2bytes of PCI Vendor ID (utf8) + 40 bytes of MN + 4 bytes of NSID (utf8) + 20 bytes of SN
@@ -1253,24 +1259,27 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         uint8_t offset = 4;
         eui64DesignatorLength = 32;
         eui64Designator = (uint8_t*)calloc(eui64DesignatorLength, sizeof(uint8_t));
-        //NGUID first
-        eui64Designator[0] = 1;//codes set 1 (binary)
-        eui64Designator[1] = 2;//designator type 2, associated with logical unit
-        eui64Designator[2] = RESERVED;
-        eui64Designator[3] = 16;//16 for nguid
-        for (uint8_t nguidCounter = 0; nguidCounter < 16; ++nguidCounter, ++offset)
+        if (eui64Designator)
         {
-            eui64Designator[offset] = device->drive_info.IdentifyData.nvme.ns.nguid[nguidCounter];
-        }
-        //EUI64 next
-        eui64Designator[20] = 1;//codes set 1 (binary)
-        eui64Designator[21] = 2;//designator type 2, associated with logical unit
-        eui64Designator[22] = RESERVED;
-        eui64Designator[23] = 8;//8 for eui64
-        offset = 24;
-        for (uint8_t euiCounter = 0; euiCounter < 8; ++euiCounter, ++offset)
-        {
-            eui64Designator[offset] = device->drive_info.IdentifyData.nvme.ns.eui64[euiCounter];
+            //NGUID first
+            eui64Designator[0] = 1;//codes set 1 (binary)
+            eui64Designator[1] = 2;//designator type 2, associated with logical unit
+            eui64Designator[2] = RESERVED;
+            eui64Designator[3] = 16;//16 for nguid
+            for (uint8_t nguidCounter = 0; nguidCounter < 16; ++nguidCounter, ++offset)
+            {
+                eui64Designator[offset] = device->drive_info.IdentifyData.nvme.ns.nguid[nguidCounter];
+            }
+            //EUI64 next
+            eui64Designator[20] = 1;//codes set 1 (binary)
+            eui64Designator[21] = 2;//designator type 2, associated with logical unit
+            eui64Designator[22] = RESERVED;
+            eui64Designator[23] = 8;//8 for eui64
+            offset = 24;
+            for (uint8_t euiCounter = 0; euiCounter < 8; ++euiCounter, ++offset)
+            {
+                eui64Designator[offset] = device->drive_info.IdentifyData.nvme.ns.eui64[euiCounter];
+            }
         }
     }
     else if (nguidnonZero)
@@ -1278,13 +1287,16 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         uint8_t offset = 4;
         eui64DesignatorLength = 20;
         eui64Designator = (uint8_t*)calloc(eui64DesignatorLength, sizeof(uint8_t));
-        eui64Designator[0] = 1;//codes set 1 (binary)
-        eui64Designator[1] = 2;//designator type 2, associated with logical unit
-        eui64Designator[2] = RESERVED;
-        eui64Designator[3] = 16;//16 for nguid
-        for (uint8_t nguidCounter = 0; nguidCounter < 16; ++nguidCounter, ++offset)
+        if (eui64Designator)
         {
-            eui64Designator[offset] = device->drive_info.IdentifyData.nvme.ns.nguid[nguidCounter];
+            eui64Designator[0] = 1;//codes set 1 (binary)
+            eui64Designator[1] = 2;//designator type 2, associated with logical unit
+            eui64Designator[2] = RESERVED;
+            eui64Designator[3] = 16;//16 for nguid
+            for (uint8_t nguidCounter = 0; nguidCounter < 16; ++nguidCounter, ++offset)
+            {
+                eui64Designator[offset] = device->drive_info.IdentifyData.nvme.ns.nguid[nguidCounter];
+            }
         }
     }
     else if (eui64nonZero)
@@ -1292,13 +1304,16 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
         uint8_t offset = 4;
         eui64DesignatorLength = 12;
         eui64Designator = (uint8_t*)calloc(eui64DesignatorLength, sizeof(uint8_t));
-        eui64Designator[0] = 1;//codes set 1 (binary)
-        eui64Designator[1] = 2;//designator type 2, associated with logical unit
-        eui64Designator[2] = RESERVED;
-        eui64Designator[3] = 8;//8 for eui64
-        for (uint8_t euiCounter = 0; euiCounter < 8; ++euiCounter, ++offset)
+        if (eui64Designator)
         {
-            eui64Designator[offset] = device->drive_info.IdentifyData.nvme.ns.eui64[euiCounter];
+            eui64Designator[0] = 1;//codes set 1 (binary)
+            eui64Designator[1] = 2;//designator type 2, associated with logical unit
+            eui64Designator[2] = RESERVED;
+            eui64Designator[3] = 8;//8 for eui64
+            for (uint8_t euiCounter = 0; euiCounter < 8; ++euiCounter, ++offset)
+            {
+                eui64Designator[offset] = device->drive_info.IdentifyData.nvme.ns.eui64[euiCounter];
+            }
         }
     }
     //else NVMe 1.0 will not support this designator!
@@ -1317,31 +1332,47 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     deviceIdentificationPage[2] = M_Byte1(eui64DesignatorLength + t10VendorIdDesignatorLength + naaDesignatorLength + SCSINameStringDesignatorLength);
     deviceIdentificationPage[3] = M_Byte0(eui64DesignatorLength + t10VendorIdDesignatorLength + naaDesignatorLength + SCSINameStringDesignatorLength);
     //copy naa first
-    if (naaDesignatorLength > 0)
+    if (naaDesignatorLength > 0 && naaDesignator)
     {
         memcpy(&deviceIdentificationPage[4], naaDesignator, naaDesignatorLength);
     }
+    else
+    {
+        naaDesignatorLength = 0;
+    }
     safe_Free(naaDesignator);
     //t10 second
-    if (t10VendorIdDesignatorLength > 0)
+    if (t10VendorIdDesignatorLength > 0 && t10VendorIdDesignator)
     {
         memcpy(&deviceIdentificationPage[4 + naaDesignatorLength], t10VendorIdDesignator, t10VendorIdDesignatorLength);
     }
+    else
+    {
+        t10VendorIdDesignatorLength = 0;
+    }
     safe_Free(t10VendorIdDesignator);
     //scsi name string third
-    if (SCSINameStringDesignatorLength > 0)
+    if (SCSINameStringDesignatorLength > 0 && SCSINameStringDesignator)
     {
         memcpy(&deviceIdentificationPage[4 + naaDesignatorLength + t10VendorIdDesignatorLength], SCSINameStringDesignator, SCSINameStringDesignatorLength);
     }
+    else
+    {
+        SCSINameStringDesignatorLength = 0;
+    }
     safe_Free(SCSINameStringDesignator);
     //eui64 last
-    if (eui64DesignatorLength > 0)
+    if (eui64DesignatorLength > 0 && eui64Designator)
     {
         memcpy(&deviceIdentificationPage[4 + naaDesignatorLength + t10VendorIdDesignatorLength + SCSINameStringDesignatorLength], eui64Designator, eui64DesignatorLength);
     }
+    else
+    {
+        eui64DesignatorLength = 0;
+    }
     safe_Free(eui64Designator);
     //copy the final data back for the command
-    if (scsiIoCtx->pdata)
+    if (scsiIoCtx->pdata && deviceIdentificationPage)
     {
         memcpy(scsiIoCtx->pdata, deviceIdentificationPage, M_Min(4U + eui64DesignatorLength + t10VendorIdDesignatorLength + naaDesignatorLength + SCSINameStringDesignatorLength, scsiIoCtx->dataLength));
     }
@@ -2469,7 +2500,7 @@ int sntl_Translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx *scsiIo
     }
     //convert NVMe DST log to SCSI DST Log
     uint16_t nvmDSTOffset = 4 + (parameterCode * 28);//each NVM DST entry is 28B long and the first starts at byte 4. Set this to match the parameter code since that can select an "offset" in the log
-    for (uint16_t selfTestOffset = 4; parameterCode <= 0x0014 && nvmDSTOffset <= 564 && selfTestOffset <= 404U; ++parameterCode, nvmDSTOffset += 28, selfTestOffset += 20)
+    for (uint16_t selfTestOffset = 4; parameterCode <= 0x0014 && nvmDSTOffset < 564 && selfTestOffset <= 404U; ++parameterCode, nvmDSTOffset += 28, selfTestOffset += 20)
     {
         selfTestResults[selfTestOffset] = M_Byte1(parameterCode);
         selfTestResults[selfTestOffset + 1] = M_Byte0(parameterCode);
@@ -6953,7 +6984,7 @@ int sntl_Translate_Persistent_Reserve_Out(tDevice * device, ScsiIoCtx * scsiIoCt
             return ret;
         }
     }
-    if (scsiIoCtx->pdata)
+    if (scsiIoCtx->pdata && persistentReserveData)
     {
         memcpy(scsiIoCtx->pdata, persistentReserveData, M_Min(persistentReserveDataLength, parameterListLength));
     }

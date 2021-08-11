@@ -81,8 +81,11 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
             supported = false;;
         }
         stop_Timer(&commandTimer);
-        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        if (overlappedStruct.hEvent)
+        {
+            CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+            overlappedStruct.hEvent = NULL;
+        }
         if (success)
         {
             supported = true;
@@ -131,8 +134,11 @@ int send_OFNVME_Reset(tDevice * device)
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
-    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
+    if (overlappedStruct.hEvent)
+    {
+        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        overlappedStruct.hEvent = NULL;
+    }
     if (success)
     {
         //TODO: Check the SRB_IO_CONTROL return code and check if it was successful or not. For now, if it reports success, we'll call it done. - TJE
@@ -187,8 +193,11 @@ int send_OFNVME_Add_Namespace(tDevice * device)
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
-    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
+    if (overlappedStruct.hEvent)
+    {
+        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        overlappedStruct.hEvent = NULL;
+    }
     if (success)
     {
         //TODO: Check the SRB_IO_CONTROL return code and check if it was successful or not. For now, if it reports success, we'll call it done. - TJE
@@ -243,8 +252,11 @@ int send_OFNVME_Remove_Namespace(tDevice * device)
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
-    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
+    if (overlappedStruct.hEvent)
+    {
+        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        overlappedStruct.hEvent = NULL;
+    }
     if (success)
     {
         //TODO: Check the SRB_IO_CONTROL return code and check if it was successful or not. For now, if it reports success, we'll call it done. - TJE
@@ -388,8 +400,11 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
             ret = OS_PASSTHROUGH_FAILURE;
         }
         stop_Timer(&commandTimer);
-        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        if (overlappedStruct.hEvent)
+        {
+            CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+            overlappedStruct.hEvent = NULL;
+        }
         if (success)
         {
             if (ioctl->SrbIoCtrl.ReturnCode == NVME_IOCTL_SUCCESS)

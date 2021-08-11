@@ -230,7 +230,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                 {
                     *returnCode = raidFirmwareRequest->Header.ReturnCode;
                 }
-                if (readFirmwareInfo)
+                if (readFirmwareInfo && ptrDataRequest)
                 {
                     memcpy(ptrDataRequest, raidFirmwareRequest + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, dataRequestLength);
                 }
