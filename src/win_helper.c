@@ -373,7 +373,7 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                         TCHAR *interfaceList = (TCHAR*)calloc(interfaceListSize, sizeof(TCHAR));
                         if(interfaceList)
                         {
-                            cmRet = CM_Get_Device_Interface_List(&classGUID, deviceID, interfaceList, interfaceListSize * sizeof(TCHAR), CM_GET_DEVICE_INTERFACE_LIST_PRESENT);
+                            cmRet = CM_Get_Device_Interface_List(&classGUID, deviceID, interfaceList, interfaceListSize, CM_GET_DEVICE_INTERFACE_LIST_PRESENT);
                             if (CR_SUCCESS == cmRet)
                             {
                                 //Loop through this list, just in case more than one thing comes through
@@ -1766,7 +1766,10 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                 }
                                             }
                                         }
-                                        CloseHandle(deviceHandle);
+                                        if (deviceHandle)
+                                        {
+                                            CloseHandle(deviceHandle);
+                                        }
                                     }
                                 }
                             }
@@ -1900,8 +1903,11 @@ int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
         __FUNCTION__, nvmeIoCtx->device->os_info.last_error, nvmeIoCtx->device->os_info.last_error);
 #endif
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
+    if (overlappedStruct.hEvent)
+    {
+        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        overlappedStruct.hEvent = NULL;
+    }
     //dummy up sense data for end result
     if (fwdlIO)
     {
@@ -2162,7 +2168,7 @@ int win_SCSI_Get_Inquiry_Data(HANDLE deviceHandle, PSCSI_ADAPTER_BUS_INFO *scsiB
     int ret = SUCCESS;
     UCHAR busCount = 1, luCount = 1;
     DWORD inquiryDataSize = sizeof(SCSI_INQUIRY_DATA) + INQUIRYDATABUFFERSIZE;//this is supposed to be rounded up to an alignment boundary??? but that is not well described...
-    DWORD busDataLength = sizeof(SCSI_ADAPTER_BUS_INFO) + busCount * sizeof(SCSI_BUS_DATA) + luCount * inquiryDataSize;//Start with this, but more memory may be necessary.
+    DWORD busDataLength = sizeof(SCSI_ADAPTER_BUS_INFO) + C_CAST(DWORD, busCount) * sizeof(SCSI_BUS_DATA) + C_CAST(DWORD, luCount) * inquiryDataSize;//Start with this, but more memory may be necessary.
     *scsiBusInfo = (PSCSI_ADAPTER_BUS_INFO)calloc_aligned(busDataLength, sizeof(uint8_t), 8);
     if (scsiBusInfo)
     {
@@ -4227,8 +4233,11 @@ int send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
             }
         }
         stop_Timer(&commandTimer);
-        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        if (overlappedStruct.hEvent)
+        {
+            CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+            overlappedStruct.hEvent = NULL;
+        }
         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
         if (success)
         {
@@ -4522,8 +4531,11 @@ int send_ATA_Passthrough_Ex(ScsiIoCtx *scsiIoCtx)
             }
         }
         stop_Timer(&commandTimer);
-        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        if (overlappedStruct.hEvent)
+        {
+            CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+            overlappedStruct.hEvent = NULL;
+        }
         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
         if (success)
         {
@@ -4797,8 +4809,11 @@ int send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
             }
         }
         stop_Timer(&commandTimer);
-        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        if (overlappedStruct.hEvent)
+        {
+            CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+            overlappedStruct.hEvent = NULL;
+        }
         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
         if (success)
         {
@@ -5231,8 +5246,11 @@ int win10_FW_Activate_IO_SCSI(ScsiIoCtx *scsiIoCtx)
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&commandTimer);
-    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
+    if (overlappedStruct.hEvent)
+    {
+        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        overlappedStruct.hEvent = NULL;
+    }
     //dummy up sense data for end result
     if (fwdlIO)
     {
@@ -5409,7 +5427,7 @@ int win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     if (scsiIoCtx && scsiIoCtx->pAtaCmdOpts)
     {
         //get offset from the tfrs
-        downloadIO->Offset = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaHi, scsiIoCtx->pAtaCmdOpts->tfr.LbaMid) * LEGACY_DRIVE_SEC_SIZE;
+        downloadIO->Offset = C_CAST(DWORDLONG, M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaHi, scsiIoCtx->pAtaCmdOpts->tfr.LbaMid)) * LEGACY_DRIVE_SEC_SIZE;
     }
     else if (scsiIoCtx)
     {
@@ -5454,8 +5472,11 @@ int win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&commandTimer);
-    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
+    if (overlappedStruct.hEvent)
+    {
+        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        overlappedStruct.hEvent = NULL;
+    }
     //dummy up sense data for end result
     if (fwdlIO)
     {
@@ -6417,9 +6438,11 @@ int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&commandTimer);
-    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
-
+    if (overlappedStruct.hEvent)
+    {
+        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        overlappedStruct.hEvent = NULL;
+    }
     if (success)
     {
         ret = SUCCESS;
@@ -6921,8 +6944,11 @@ int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
         __FUNCTION__, nvmeIoCtx->device->os_info.last_error, nvmeIoCtx->device->os_info.last_error);
 #endif
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
+    if (overlappedStruct.hEvent)
+    {
+        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        overlappedStruct.hEvent = NULL;
+    }
     //dummy up sense data for end result
     if (fwdlIO)
     {
@@ -7054,8 +7080,11 @@ int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
         __FUNCTION__, nvmeIoCtx->device->os_info.last_error, nvmeIoCtx->device->os_info.last_error);
 #endif
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
+    if (overlappedStruct.hEvent)
+    {
+        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        overlappedStruct.hEvent = NULL;
+    }
     //dummy up sense data for end result
     if (fwdlIO)
     {
@@ -8607,8 +8636,11 @@ int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_
     }
     stop_Timer(&commandTimer);
     device->os_info.last_error = GetLastError();
-    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
+    if (overlappedStruct.hEvent)
+    {
+        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        overlappedStruct.hEvent = NULL;
+    }
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
     if (!retStatus)//not successful
@@ -9029,8 +9061,11 @@ int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
             print_Windows_Error_To_Screen(device->os_info.last_error);
         }
     }
-    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
+    if (overlappedStruct.hEvent)
+    {
+        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        overlappedStruct.hEvent = NULL;
+    }
     //clear the last command sense data and rtfrs. We'll dummy them up in a minute
     memset(&device->drive_info.lastCommandRTFRs, 0, sizeof(ataReturnTFRs));
     memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);

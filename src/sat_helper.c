@@ -2340,7 +2340,7 @@ int translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx *scs
     memcpy(&t10VendorIdDesignator[52], ataSerialNumber, SERIAL_NUM_LEN);
 
     //now setup the device identification page
-    deviceIdentificationPage = (uint8_t*)calloc(4U + 72U + naaDesignatorLength + SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+    deviceIdentificationPage = (uint8_t*)calloc((4U + 72U + naaDesignatorLength + SCSINameStringDesignatorLength) * sizeof(uint8_t), sizeof(uint8_t));
     if (!deviceIdentificationPage)
     {
         safe_Free(SCSINameStringDesignator);
@@ -2648,7 +2648,7 @@ int translate_Block_Limits_VPD_Page_B0h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 #if SAT_SPEC_SUPPORTED > 3
         uint8_t maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
         uint64_t maxUnmapRangePerDescriptor = device->drive_info.softSATFlags.dataSetManagementXLSupported ? UINT64_MAX : UINT16_MAX;
-        uint64_t maxLBAsPerUnmap = maxDescriptorsPerBlock * device->drive_info.IdentifyData.ata.Word105 * maxUnmapRangePerDescriptor;
+        uint64_t maxLBAsPerUnmap = C_CAST(uint64_t, maxDescriptorsPerBlock) * C_CAST(uint64_t, device->drive_info.IdentifyData.ata.Word105) * maxUnmapRangePerDescriptor;
         uint32_t unmapLBACount = maxLBAsPerUnmap > UINT32_MAX ? UINT32_MAX : (uint32_t)maxLBAsPerUnmap;
         uint32_t unmapMaxBlockDescriptors = maxDescriptorsPerBlock * device->drive_info.IdentifyData.ata.Word105;
 #else
@@ -8929,7 +8929,7 @@ int translate_Background_Scan_Results_Log_0x15(tDevice *device, ScsiIoCtx *scsiI
         //poh
         if (qwordPtr[2] & BIT63 && qwordPtr[2] & BIT62)
         {
-            uint64_t pohMinutes = 60 * M_DoubleWord0(qwordPtr[2]);
+            uint64_t pohMinutes = UINT64_C(60) * C_CAST(uint64_t, M_DoubleWord0(qwordPtr[2]));
             pohvalid = true;
             backgroundResults[offset + 0] = 0x00;
             backgroundResults[offset + 1] = 0x00;

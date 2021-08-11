@@ -328,7 +328,14 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
         printf("\t\tCSMI Error Code: ");
         print_IOCTL_Return_Code(ioctlHeader->ReturnCode);
         printf("\t\tCompletion time: ");
-        print_Command_Time(get_Nano_Seconds(*timer));
+        if (timer)
+        {
+            print_Command_Time(get_Nano_Seconds(*timer));
+        }
+        else
+        {
+            printf("Error getting command time\n");
+        }
         printf("\n");
     }
     csmiIoOutParams->sysIoctlReturn = localIoctlReturn;
@@ -2702,7 +2709,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
     {
         _stprintf_s(registryKey, registryKeyStringLength, TEXT("%s%s%s"), baseRegKeyPath, tdriverName, paramRegKeyPath);
     }
-    if (_tcslen(tdriverName) > 0 && _tcslen(registryKey) > 0)
+    if (tdriverName && registryKey && _tcslen(tdriverName) > 0 && _tcslen(registryKey) > 0)
     {
         if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_LOCAL_MACHINE, registryKey, 0, KEY_READ, &keyHandle))
         {
