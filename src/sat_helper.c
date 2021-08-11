@@ -3883,6 +3883,10 @@ int translate_SCSI_Read_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             bitPointer = 0;
             invalidField = true;
         }
+        if (transferLength == 0)//read6 a zero is more like ATA to do a larger transfer. Other reads, just return success without doing anything.
+        {
+            transferLength = 256;
+        }
         break;
     case 0x28://read 10
         lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
@@ -4006,6 +4010,10 @@ int translate_SCSI_Write_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             bitPointer = 0;
             fieldPointer = 1;
             invalidField = true;
+        }
+        if (transferLength == 0)//write 6, zero means a maximum possible transfer size, which is 256
+        {
+            transferLength = 256;
         }
         break;
     case 0x2A://write 10
