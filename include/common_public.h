@@ -970,6 +970,7 @@ extern "C"
         WIN_IOCTL_IDE_PASSTHROUGH_ONLY,//Only the old & undocumented IDE pass-through is supported. Do not use this unless absolutely nothing else works.
         WIN_IOCTL_SMART_AND_IDE,//Only the legacy SMART and IDE IOCTLs are supported, so 28bit limitations abound
         WIN_IOCTL_STORAGE_PROTOCOL_COMMAND, //Win10 + only. Should be used with NVMe. Might work with SCSI or ATA, but that is unknown...development hasn't started for this yet. Just a placeholder - TJE
+        WIN_IOCTL_BASIC,//Very basic and does no real pass-through commands. It just reports enough data to keep things more or less "happy". Calling into other MSFT calls to do everything necessary. SCSI only device type at this time. - TJE
     }eWindowsIOCTLType;
 
     typedef enum _eWindowsIOCTLMethod
