@@ -74,7 +74,7 @@ extern "C"
     //RAID implementations are suggested to include this as a substructure or have a pointer of some kind to this.
     typedef struct _csmiDeviceInfo
     {
-        CSMI_HANDLE *csmiDevHandle;//This is a pointer to the OS device handle. The reason for this is because on Windows, this can be device->os_info.fd or device->os_info.scsiSRBHandle, but on linux, it will be only device->os_info.fd. This complication is to support using CSMI IOCTLs on JBOD and in RAID mode without duplicating devices. - TJE
+        CSMI_HANDLE csmiDevHandle;//This is a pointer to the OS device handle. The reason for this is because on Windows, this can be device->os_info.fd or device->os_info.scsiSRBHandle, but on linux, it will be only device->os_info.fd. This complication is to support using CSMI IOCTLs on JBOD and in RAID mode without duplicating devices. - TJE
         bool csmiDeviceInfoValid;//whole structure contains valid information
         bool scsiAddressValid;
         bool signatureFISValid;

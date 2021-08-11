@@ -385,7 +385,7 @@ static bool is_Compatible_SCSI_FWDL_IO(ScsiIoCtx *scsiIoCtx, bool *isActivate)
     if (compatible)
     {
         //before we call it a supported command, we need to validate if this meets the alignment requirements, etc
-        if (!(*isActivate))
+        if (isActivate && !(*isActivate))
         {
             if (!(transferLengthBytes < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (transferLengthBytes % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0)))
             {
@@ -583,7 +583,7 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
             if (overlappedStruct.hEvent == NULL)
             {
-                safe_Free(nvmPassthroughCommand);
+                safe_Free_aligned(nvmPassthroughCommand);
                 return OS_PASSTHROUGH_FAILURE;
             }
             SetLastError(ERROR_SUCCESS);//clear out any errors before we begin
