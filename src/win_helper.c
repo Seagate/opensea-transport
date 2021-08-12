@@ -5015,7 +5015,7 @@ int send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
         switch (scsiIoCtx->direction)
         {
         case XFER_DATA_IN:
-            outBufferLength += M_Max(scsiIoCtx->dataLength, scsiIoCtx->pAtaCmdOpts->dataSize);
+            outBufferLength += dataLength;
             break;
         case XFER_DATA_OUT:
             //need to copy the data we're sending to the device over!
@@ -5023,7 +5023,7 @@ int send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
             {
                 memcpy(doubleBufferedIO->dataBuffer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
             }
-            inBufferLength += M_Max(scsiIoCtx->dataLength, scsiIoCtx->pAtaCmdOpts->dataSize);
+            inBufferLength += dataLength;
             break;
         default:
             break;
