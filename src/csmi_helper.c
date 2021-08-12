@@ -2995,7 +2995,11 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 eCSMISecurityAccess csmiAccess = CSMI_SECURITY_ACCESS_NONE;//only really needed in Windows - TJE
 #if defined (_WIN32)
                 //Get the controller number from the scsi handle since we need it later!
-                sscanf(raidList->handle, "\\\\.\\SCSI%d:", &controllerNumber);
+                int ret = sscanf(raidList->handle, "\\\\.\\SCSI%d:", &controllerNumber);
+                if (ret == 0 || ret != EOF)
+                {
+                    printf("WARNING: Unable to scan controller number!\n");
+                }
 
                 _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), raidList->handle);
                 //lets try to open the controller.
