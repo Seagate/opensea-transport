@@ -419,6 +419,11 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                         fclose(outputInfo->outputFilePtr);
                     }
                 }
+                //close all device handles
+                for (uint32_t deviceIter = 0; deviceIter < deviceCount; ++deviceIter)
+                {
+                    close_Device(&deviceList[deviceIter]);
+                }
             }
             safe_Free_aligned(deviceList);
         }
