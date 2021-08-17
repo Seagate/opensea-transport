@@ -311,8 +311,6 @@ extern "C"
        uint8_t                      vendorSpecificReserved[456];        // 56-511
     } nvmeSuperCapDramSmart;
 
-    #define BLOCK_SIZE      512
-
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__) 
     #pragma pack(push, 1)
     #endif
