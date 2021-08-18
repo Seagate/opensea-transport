@@ -9288,6 +9288,22 @@ int fill_In_Device_Info(tDevice *device)
             }
         }
 
+        //Checking the product identification for "Generic-" device to see if they are MMC, SD, etc type devices
+        if (strcmp(device->drive_info.T10_vendor_ident, "Generic-") == 0)
+        {
+            if (strcmp(device->drive_info.product_identification, "MS/MS-PRO") == 0 ||
+                strcmp(device->drive_info.product_identification, "xD-Picture") == 0 ||
+                strcmp(device->drive_info.product_identification, "SD/MMC") == 0 ||
+                strcmp(device->drive_info.product_identification, "Compact Flash") == 0 //TODO: Keep this here? This can be an ATA device, but that may depend on the interface - TJE
+                )
+            {
+                //TODO: We have "FLASH_DRIVE" as a type, but it won't ba handled well in the rest of the library.
+                //      Either need to start using it, or make more changes to handle it better -TJE
+                //device->drive_info.drive_type = FLASH_DRIVE;
+                device->drive_info.media_type = MEDIA_SSM_FLASH;
+            }
+        }
+
         if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE)
         {
 #if defined (_DEBUG)
@@ -9591,25 +9607,28 @@ int fill_In_Device_Info(tDevice *device)
                         {
                             uint16_t mediumRotationRate = M_BytesTo2ByteValue(blockDeviceCharacteristics[4], blockDeviceCharacteristics[5]);
                             uint8_t productType = blockDeviceCharacteristics[6];
-                            if (mediumRotationRate == 0x0001)
+                            if (device->drive_info.media_type != MEDIA_SSM_FLASH)//if this is already set, we don't want to change it because this is a helpful filter for some card-reader type devices.
                             {
-                                if (!satVPDPageRead)
+                                if (mediumRotationRate == 0x0001)
                                 {
-                                    device->drive_info.media_type = MEDIA_SSD;
+                                    if (!satVPDPageRead)
+                                    {
+                                        device->drive_info.media_type = MEDIA_SSD;
+                                    }
                                 }
-                            }
-                            else if (mediumRotationRate >= 0x401 && mediumRotationRate <= 0xFFFE)
-                            {
-                                if (!satVPDPageRead)
+                                else if (mediumRotationRate >= 0x401 && mediumRotationRate <= 0xFFFE)
                                 {
-                                    device->drive_info.media_type = MEDIA_HDD;
+                                    if (!satVPDPageRead)
+                                    {
+                                        device->drive_info.media_type = MEDIA_HDD;
+                                    }
                                 }
-                            }
-                            else
-                            {
-                                if (!satVPDPageRead)
+                                else
                                 {
-                                    device->drive_info.media_type = MEDIA_UNKNOWN;
+                                    if (!satVPDPageRead)
+                                    {
+                                        device->drive_info.media_type = MEDIA_UNKNOWN;
+                                    }
                                 }
                             }
                             switch (productType)
