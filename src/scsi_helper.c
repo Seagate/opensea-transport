@@ -8680,57 +8680,60 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
         //DO NOT try a SAT identify on these devices if we already know what they are. These should be treated as SCSI since they are either SCSI or ATA packet devices
         return NOT_SUPPORTED;
     }
-    uint8_t *ataInformation = (uint8_t *)calloc_aligned(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
-    if (!ataInformation)
+    if (!device->drive_info.passThroughHacks.scsiHacks.noVPDPages)//if this is set, then the device is known to not support VPD pages, so just skip to the SAT identify
     {
-        perror("Error allocating memory to read the ATA Information VPD page");
-        return MEMORY_FAILURE;
-    }
-    if (SUCCESS == scsi_Inquiry(device, ataInformation, VPD_ATA_INFORMATION_LEN, ATA_INFORMATION, true, false))
-    {
-        if (ataInformation[1] == ATA_INFORMATION)
+        uint8_t *ataInformation = (uint8_t *)calloc_aligned(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
+        if (!ataInformation)
         {
-            //set some of the bridge info in the device structure
-            memcpy(&device->drive_info.bridge_info.t10SATvendorID[0], &ataInformation[8], 8);
-            memcpy(&device->drive_info.bridge_info.SATproductID[0], &ataInformation[16], 16);
-            memcpy(&device->drive_info.bridge_info.SATfwRev[0], &ataInformation[32], 4);
+            perror("Error allocating memory to read the ATA Information VPD page");
+            return MEMORY_FAILURE;
+        }
+        if (SUCCESS == scsi_Inquiry(device, ataInformation, VPD_ATA_INFORMATION_LEN, ATA_INFORMATION, true, false))
+        {
+            if (ataInformation[1] == ATA_INFORMATION)
+            {
+                //set some of the bridge info in the device structure
+                memcpy(&device->drive_info.bridge_info.t10SATvendorID[0], &ataInformation[8], 8);
+                memcpy(&device->drive_info.bridge_info.SATproductID[0], &ataInformation[16], 16);
+                memcpy(&device->drive_info.bridge_info.SATfwRev[0], &ataInformation[32], 4);
 
-            if (ataInformation[36] == 0) //checking for PATA drive
-            {
-                if (ataInformation[43] & DEVICE_SELECT_BIT)//ATA signature device register is here. Checking for the device select bit being set to know it's device 1 (Not that we really need it)
+                if (ataInformation[36] == 0) //checking for PATA drive
                 {
-                    device->drive_info.ata_Options.isDevice1 = true;
+                    if (ataInformation[43] & DEVICE_SELECT_BIT)//ATA signature device register is here. Checking for the device select bit being set to know it's device 1 (Not that we really need it)
+                    {
+                        device->drive_info.ata_Options.isDevice1 = true;
+                    }
                 }
-            }
-            
-            if (ataInformation[56] == ATA_IDENTIFY || ataInformation[56] == ATA_READ_LOG_EXT || ataInformation[56] == ATA_READ_LOG_EXT_DMA)//Added read log commands here since they are in SAT4. Only HDD/SSD should use these.
-            {
-                issueSATIdentify = true;
-                device->drive_info.media_type = MEDIA_HDD;
-                device->drive_info.drive_type = ATA_DRIVE;
-            }
-            else if (ataInformation[56] == ATAPI_IDENTIFY)
-            {
-                issueSATIdentify = false;//Do not read it since we want to treat ATAPI as SCSI/with SCSI commands (at least for now)-TJE
-                device->drive_info.media_type = MEDIA_OPTICAL;
-                device->drive_info.drive_type = ATAPI_DRIVE;
+
+                if (ataInformation[56] == ATA_IDENTIFY || ataInformation[56] == ATA_READ_LOG_EXT || ataInformation[56] == ATA_READ_LOG_EXT_DMA)//Added read log commands here since they are in SAT4. Only HDD/SSD should use these.
+                {
+                    issueSATIdentify = true;
+                    device->drive_info.media_type = MEDIA_HDD;
+                    device->drive_info.drive_type = ATA_DRIVE;
+                }
+                else if (ataInformation[56] == ATAPI_IDENTIFY)
+                {
+                    issueSATIdentify = false;//Do not read it since we want to treat ATAPI as SCSI/with SCSI commands (at least for now)-TJE
+                    device->drive_info.media_type = MEDIA_OPTICAL;
+                    device->drive_info.drive_type = ATAPI_DRIVE;
+                }
+                else
+                {
+                    issueSATIdentify = true;
+                }
+                ret = SUCCESS;
             }
             else
             {
                 issueSATIdentify = true;
             }
-            ret = SUCCESS;
         }
-        else
+        else if (device->drive_info.interface_type == MMC_INTERFACE || device->drive_info.interface_type == NVME_INTERFACE || device->drive_info.interface_type == SD_INTERFACE)
         {
-            issueSATIdentify = true;
+            return NOT_SUPPORTED;
         }
+        safe_Free_aligned(ataInformation);
     }
-    else if (device->drive_info.interface_type == MMC_INTERFACE || device->drive_info.interface_type == NVME_INTERFACE || device->drive_info.interface_type == SD_INTERFACE)
-    {
-        return NOT_SUPPORTED;
-    }
-    safe_Free_aligned(ataInformation);
     if (issueSATIdentify)
     {
         if (SUCCESS == fill_In_ATA_Drive_Info(device))
@@ -9304,7 +9307,7 @@ int fill_In_Device_Info(tDevice *device)
 
         if (M_Word0(device->dFlags) == FAST_SCAN)
         {
-            if (version >= 2 || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable)//unit serial number added in SCSI2
+            if ((!device->drive_info.passThroughHacks.scsiHacks.noVPDPages || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable) && (version >= 2 || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable))//unit serial number added in SCSI2
             {
                 //I'm reading only the unit serial number page here for a quick scan and the device information page for WWN - TJE
                 uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
@@ -9358,7 +9361,7 @@ int fill_In_Device_Info(tDevice *device)
                     }
                 }
             }
-            if (version >= 3)//device identification added in SPC
+            if (version >= 3 && !device->drive_info.passThroughHacks.scsiHacks.noVPDPages)//device identification added in SPC
             {
                 uint8_t *deviceIdentification = (uint8_t*)calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment);
                 if (!deviceIdentification)
@@ -9409,7 +9412,7 @@ int fill_In_Device_Info(tDevice *device)
 
         bool satVPDPageRead = false;
         bool satComplianceChecked = false;
-        if (version >= 2 || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable) //SCSI 2 added VPD pages
+        if ((!device->drive_info.passThroughHacks.scsiHacks.noVPDPages || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable) && (version >= 2 || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable)) //SCSI 2 added VPD pages
         {
             //from here on we need to check if a VPD page is supported and read it if there is anything in it that we care about to store info in the device struct
             memset(inq_buf, 0, INQ_RETURN_DATA_LENGTH);
