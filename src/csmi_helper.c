@@ -2860,7 +2860,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                                     if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, csmiCountVerbosity))
                                     {
                                         //make sure we got all the drive information...if now, we need to reallocate with some more memory
-                                        for (uint16_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet; ++iter)
+                                        for (uint32_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet; ++iter)
                                         {
                                             switch (csmiRAIDConfig->Configuration.bDataType)
                                             {
@@ -3088,7 +3088,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                         if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, csmiListVerbosity))
                                         {
                                             //make sure we got all the drive information...if now, we need to reallocate with some more memory
-                                            for (uint16_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet && found < numberOfDevices; ++iter)
+                                            for (uint32_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet && found < numberOfDevices; ++iter)
                                             {
                                                 bool foundDevice = false;
                                                 char handle[40] = { 0 };
