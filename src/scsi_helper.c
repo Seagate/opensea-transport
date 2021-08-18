@@ -9294,6 +9294,7 @@ int fill_In_Device_Info(tDevice *device)
             if (strcmp(device->drive_info.product_identification, "MS/MS-PRO") == 0 ||
                 strcmp(device->drive_info.product_identification, "xD-Picture") == 0 ||
                 strcmp(device->drive_info.product_identification, "SD/MMC") == 0 ||
+                strcmp(device->drive_info.product_identification, "SD/MemoryStick") == 0 ||
                 strcmp(device->drive_info.product_identification, "Compact Flash") == 0 //TODO: Keep this here? This can be an ATA device, but that may depend on the interface - TJE
                 )
             {
