@@ -180,7 +180,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                 //NOTE: The offset should be a multiple of sizeof(void), which reading the structure types indicated that this should be the case for 64bit and 32bit builds. Anything else will need additional byte padding.
                 raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset = sizeof(SRB_IO_CONTROL) + sizeof(RAID_FIRMWARE_REQUEST_BLOCK);
                 raidFirmwareRequest->Request.FwRequestBlock.DataBufferLength = dataRequestLength;
-                memcpy(raidFirmwareRequest + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, ptrDataRequest, dataRequestLength);
+                memcpy(&raidFirmwareRequest->ioctlBuffer, ptrDataRequest, dataRequestLength);
             }
             //send the command
             DWORD bytesReturned = 0;

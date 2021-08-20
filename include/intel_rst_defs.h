@@ -150,10 +150,18 @@ CTL_CODE(0xF000, 0x010, METHOD_BUFFERED, FILE_ANY_ACCESS)
         INTEL_FIRMWARE_REQUEST_BLOCK FwRequestBlock;
     }RAID_FIRMWARE_REQUEST_BLOCK;
 
+#if defined (_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable:4200) // nonstandard extension used : zero-sized array in struct/union
+#endif
     typedef struct _IOCTL_RAID_FIRMWARE_BUFFER {
         SRB_IO_CONTROL Header;
         RAID_FIRMWARE_REQUEST_BLOCK Request;
+        UCHAR ioctlBuffer[0];
     }IOCTL_RAID_FIRMWARE_BUFFER;
+#if defined (_MSC_VER)
+#pragma warning(pop)//disable warning 4200
+#endif
 
     //The RAID FW ioctl can send only STORAGE_FIRMWARE_INFO_V2, STORAGE_FIRMWARE_DOWNLOAD_V2, STORAGE_FIRMWARE_ACTIVATE
     //These are redefined here so that an up to date Windows API is not required to compile this code.
