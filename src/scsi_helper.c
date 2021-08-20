@@ -9292,9 +9292,11 @@ int fill_In_Device_Info(tDevice *device)
         if (strcmp(device->drive_info.T10_vendor_ident, "Generic-") == 0)
         {
             if (strcmp(device->drive_info.product_identification, "MS/MS-PRO") == 0 ||
+                strcmp(device->drive_info.product_identification, "MS/MS-Pro") == 0 ||
                 strcmp(device->drive_info.product_identification, "xD-Picture") == 0 ||
                 strcmp(device->drive_info.product_identification, "SD/MMC") == 0 ||
                 strcmp(device->drive_info.product_identification, "SD/MemoryStick") == 0 ||
+                strcmp(device->drive_info.product_identification, "SM/xD-Picture") == 0 ||
                 strcmp(device->drive_info.product_identification, "Compact Flash") == 0 //TODO: Keep this here? This can be an ATA device, but that may depend on the interface - TJE
                 )
             {
@@ -9302,6 +9304,11 @@ int fill_In_Device_Info(tDevice *device)
                 //      Either need to start using it, or make more changes to handle it better -TJE
                 //device->drive_info.drive_type = FLASH_DRIVE;
                 device->drive_info.media_type = MEDIA_SSM_FLASH;
+                if (strcmp(device->drive_info.product_identification, "Compact Flash") != 0)
+                {
+                    //Only check for SAT on compact flash since it uses ATA commands. May need another case for CFast as well.
+                    checkForSAT = false;
+                }
             }
         }
 
