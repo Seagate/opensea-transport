@@ -9,6 +9,17 @@
 //
 // ******************************************************************************************
 // 
+
+//If _GNU_SOURCE is not already defined, define it to get access to versionsort
+//NOTE: This will be undefined at the end of this file if _GNU_SOURCE_DEFINED_IN_SG_HELPER is set to prevent unexpected
+//      behavior in any other parts of the code.
+//NOTE: Adding this definition like this so that it can also easily be removed as necessary in the future in case of errors.
+#if !defined (_GNU_SOURCE)
+    #define _GNU_SOURCE
+    #define _GNU_SOURCE_DEFINED_IN_SG_HELPER
+    #pragma message "Defining _GNU_SOURCE since it was not already defined."
+#endif
+
 #include <stdio.h>
 #include <dirent.h>
 #include <ctype.h>
@@ -1532,11 +1543,16 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     #if !defined(DISABLE_NVME_PASSTHROUGH)
     struct dirent **nvmenamelist;
     #endif
-    num_devs = scandir("/dev", &namelist, sg_filter, alphasort); 
+    int (*sortFunc)(const struct dirent **, const struct dirent **) = &alphasort;
+    #if defined (_GNU_SOURCE)
+        sortFunc = &versionsort;//use versionsort instead when available with _GNU_SOURCE
+    #endif
+
+    num_devs = scandir("/dev", &namelist, sg_filter, sortFunc); 
     if(num_devs == 0)
     {
         //check for SD devices
-        num_devs = scandir("/dev", &namelist, sd_filter, alphasort); 
+        num_devs = scandir("/dev", &namelist, sd_filter, sortFunc); 
     }
     //free the list of names to not leak memory
     for(int iter = 0; iter < num_devs; ++iter)
@@ -1546,7 +1562,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     safe_Free(namelist);
     //add nvme devices to the list
     #if !defined(DISABLE_NVME_PASSTHROUGH)
-    num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter,alphasort);
+    num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter,sortFunc);
     //free the nvmenamelist to not leak memory
     for(int iter = 0; iter < num_nvme_devs; ++iter)
     {
@@ -1606,15 +1622,21 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     #if !defined(DISABLE_NVME_PASSTHROUGH)
     struct dirent **nvmenamelist;
     #endif
-    num_sg_devs = scandir("/dev", &namelist, sg_filter, alphasort); 
+
+    int (*sortFunc)(const struct dirent **, const struct dirent **) = &alphasort;
+    #if defined (_GNU_SOURCE)
+        sortFunc = &versionsort;//use versionsort instead when available with _GNU_SOURCE
+    #endif
+
+    num_sg_devs = scandir("/dev", &namelist, sg_filter, sortFunc); 
     if(num_sg_devs == 0)
     {
         //check for SD devices
-        num_sd_devs = scandir("/dev", &namelist, sd_filter, alphasort); 
+        num_sd_devs = scandir("/dev", &namelist, sd_filter, sortFunc); 
     }
     #if !defined(DISABLE_NVME_PASSTHROUGH)
     //add nvme devices to the list
-    num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter,alphasort);
+    num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter,sortFunc);
     #endif
     
     char **devs = (char **)calloc(num_sg_devs + num_sd_devs + num_nvme_devs + 1, sizeof(char *));
@@ -2136,3 +2158,10 @@ int os_Unlock_Device(tDevice *device)
     fcntl(device->os_info.fd, F_SETFL, flags);
     return ret;
 }
+
+
+//This should be at the end of this file to undefine _GNU_SOURCE if this file manually enabled it
+#if !defined (_GNU_SOURCE_DEFINED_IN_SG_HELPER)
+    #undef _GNU_SOURCE
+    #undef _GNU_SOURCE_DEFINED_IN_SG_HELPER
+#endif
