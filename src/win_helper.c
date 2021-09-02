@@ -7454,6 +7454,50 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
             }
         }
         break;
+    case SYNCHRONIZE_CACHE_10:
+        if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[6] != 0)
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            ret = os_Flush(scsiIoCtx->device);
+            if (ret != SUCCESS)
+            {
+                //aborted command. TODO: Use windows errors to set more accurate sense data
+                senseKey = SENSE_KEY_ABORTED_COMMAND;
+                asc = 0x00;
+                ascq = 0x00;
+                setSenseData = true;
+            }
+        }
+        break;
+    case SYNCHRONIZE_CACHE_16_CMD:
+        if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[14] != 0)
+        {
+            //invalid field in CDB
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        else
+        {
+            ret = os_Flush(scsiIoCtx->device);
+            if (ret != SUCCESS)
+            {
+                //aborted command. TODO: Use windows errors to set more accurate sense data
+                senseKey = SENSE_KEY_ABORTED_COMMAND;
+                asc = 0x00;
+                ascq = 0x00;
+                setSenseData = true;
+            }
+        }
+        break;
     case TEST_UNIT_READY_CMD:
         if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0 || scsiIoCtx->cdb[4] != 0)
         {
