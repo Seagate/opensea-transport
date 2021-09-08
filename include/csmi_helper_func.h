@@ -18,7 +18,7 @@
 
 #include "common.h"
 #include <stdint.h>
-#include "csmisas.h"
+#include "external/csmi/csmisas.h"
 #include "scsi_helper.h"
 #include "csmi_helper.h"
 #include "sata_types.h"

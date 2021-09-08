@@ -23,6 +23,7 @@
 #include "intel_rst_helper.h"
 #else
 #include <sys/ioctl.h>
+#include <unistd.h>
 #endif
 #include "csmi_helper.h"
 #include "csmi_helper_func.h"
@@ -2392,15 +2393,23 @@ int close_CSMI_RAID_Device(tDevice *device)
 {
     if (device)
     {
+#if defined (_WIN32)
         CloseHandle(device->os_info.fd);
         device->os_info.last_error = GetLastError();
-        safe_Free(device->os_info.csmiDeviceData);
-        device->os_info.last_error = 0;
-#if defined (_WIN32)
         device->os_info.fd = INVALID_HANDLE_VALUE;
 #else
+        if(close(device->os_info.fd))
+        {
+            device->os_info.last_error = errno;
+        }
+        else
+        {
+            device->os_info.last_error = 0;
+        }
         device->os_info.fd = -1;
 #endif
+        safe_Free(device->os_info.csmiDeviceData);
+        device->os_info.last_error = 0;
         return SUCCESS;
     }
     else
@@ -2414,8 +2423,6 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
 {
     int ret = FAILURE;
     uint32_t controllerNum = 0, portID = 0, phyID = 0, lun = 0;
-    uint32_t *intelPathID = &portID, *intelTargetID = &phyID, *intelLun = &lun;
-    bool intelNVMe = false;
     //Need to open this handle and setup some information then fill in the device information.
     if (!(validate_Device_Struct(device->sanity)))
     {
@@ -2424,6 +2431,8 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
     //set the handle name first...since the tokenizing below will break it apart
     memcpy(device->os_info.name, filename, strlen(filename));
 #if defined (_WIN32)
+    bool intelNVMe = false;
+    uint32_t *intelPathID = &portID, *intelTargetID = &phyID, *intelLun = &lun;
     //Check if it's Intel NVMe PTL format
     int sscanfret = sscanf(filename, "csmi:%" SCNu32 ":N:%" SCNu32 ":%" SCNu32 ":%" SCNu32 "", &controllerNum, intelPathID, intelTargetID, intelLun);
     if (sscanfret != 0 && sscanfret != EOF && sscanfret == 4)
@@ -2447,10 +2456,10 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
     //TODO: handle non-Windows OS with CSMI
     char nixBaseHandleBuf[10] = { 0 };
     char *nixBaseHandle = &nixBaseHandleBuf[0];
-    int sscanfret = sscanf(filename, "csmi:%" SCNu32 ":%" SCNu32 ":%" SCNu32 " :%s", &controllerNum, &portNum, &lun, nixBaseHandle);
+    int sscanfret = sscanf(filename, "csmi:%" SCNu32 ":%" SCNu32 ":%" SCNu32 " :%s", &controllerNum, &portID, &lun, nixBaseHandle);
     if (sscanfret != 0 && sscanfret != EOF)
     {
-        sprintf(device->os_info.friendlyName, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%s", controllerNum, portNum, lun, nixBaseHandle);
+        sprintf(device->os_info.friendlyName, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%s", controllerNum, portID, lun, nixBaseHandle);
     }
     else
     {
@@ -2737,6 +2746,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
     safe_Free(tdriverName);
     safe_Free(registryKey);
 #else //not windows, need root, otherwise not available at all. Return FULL if running as root
+    M_USE_UNUSED(driverName);
     if (is_Running_Elevated())
     {
         access = CSMI_SECURITY_ACCESS_FULL;
@@ -2770,12 +2780,12 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
 #if defined (_WIN32)
     TCHAR deviceName[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
 #else
-    char deviceName[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+    char deviceName[CSMI_NIX_MAX_DEVICE_NAME_LENGTH] = { 0 };
 #endif
     eVerbosityLevels csmiCountVerbosity = VERBOSITY_DEFAULT;//change this if debugging
     ptrRaidHandleToScan raidList = NULL;
     ptrRaidHandleToScan previousRaidListEntry = NULL;
-    int controllerNumber = 0, found = 0;
+    uint32_t controllerNumber = 0, found = 0;
 
     if (!beginningOfList || !*beginningOfList)
     {
@@ -2810,7 +2820,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
             if (fd != INVALID_HANDLE_VALUE)
 #else
             sprintf(deviceName, "%s", raidList->handle);
-            if ((fd = open(filename, O_RDWR | O_NONBLOCK)) >= 0)
+            if ((fd = open(deviceName, O_RDWR | O_NONBLOCK)) >= 0)
 #endif
             {
 #if !defined (_WIN32)
@@ -2899,7 +2909,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                 CloseHandle(fd);
             }
 #else
-            if (fd < 0)
+            if (fd > 0)
             {
                 close(fd);
             }
@@ -2944,12 +2954,12 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
 int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags, ptrRaidHandleToScan *beginningOfList)
 {
     int returnValue = SUCCESS;
-    int numberOfDevices = 0;
+    uint32_t numberOfDevices = 0;
     CSMI_HANDLE fd = CSMI_INVALID_HANDLE;
 #if defined (_WIN32)
     TCHAR deviceName[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
 #else
-    char deviceName[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+    char deviceName[CSMI_NIX_MAX_DEVICE_NAME_LENGTH] = { 0 };
 #endif
     eVerbosityLevels csmiListVerbosity = VERBOSITY_DEFAULT;//If debugging, change this and down below where this is set per device will also need changing
     
@@ -2974,7 +2984,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         tDevice * d = NULL;
         ptrRaidHandleToScan raidList = *beginningOfList;
         ptrRaidHandleToScan previousRaidListEntry = NULL;
-        int controllerNumber = 0, found = 0, failedGetDeviceCount = 0;
+        uint32_t controllerNumber = 0, found = 0, failedGetDeviceCount = 0;
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
 
@@ -3005,8 +3015,8 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                     NULL);
                 if (fd != INVALID_HANDLE_VALUE)
 #else
-                sprintf(deviceName, "%s", raidList->handle);
-                if ((fd = open(filename, O_RDWR | O_NONBLOCK)) >= 0)
+                snprintf(deviceName, CSMI_NIX_MAX_DEVICE_NAME_LENGTH, "%s", raidList->handle);
+                if ((fd = open(deviceName, O_RDWR | O_NONBLOCK)) >= 0)
 #endif
                 {
 #if !defined (_WIN32)
@@ -3070,7 +3080,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                             for (uint16_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet && found < numberOfDevices; ++iter)
                                             {
                                                 bool foundDevice = false;
-                                                char handle[20] = { 0 };
+                                                char handle[40] = { 0 };
                                                 switch (csmiRAIDConfig->Configuration.bDataType)
                                                 {
                                                 case CSMI_SAS_RAID_DATA_DRIVES:

@@ -38,7 +38,7 @@ extern "C"
     {
         bool unknownRAID    : 1;//Setting this means it is not a known RAID from quick OS level glance and any RAID library that sees this device should try to use it and check it.
         bool csmiRAID       : 1;//CSMI RAID IOs. Mostly Intel motherboards, but some other drivers may support it
-        bool cissRAID       : 1;//HP CISS RAID controllers (Not supported yet)
+        bool cissRAID       : 1;//HP CISS RAID controllers
         bool megaRAID       : 1;//LSI/Avago/Broadcom MegaRAID IOCTLs (Not supported yet)
         bool adaptecRAID    : 1;//Adaptec/PMC/Microsemi RAID (Not supported yet)
         bool highpointRAID  : 1;//Highpoint RAID  (Not supported yet)

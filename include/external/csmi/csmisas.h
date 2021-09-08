@@ -115,8 +115,8 @@ Revision History:
 /* TARGET OS LINUX SPECIFIC CODE                                         */
 /*************************************************************************/
 
-// EDM #ifdef _linux
-#ifdef __KERNEL__
+#ifdef __linux__
+//#ifdef __KERNEL__
 
 // Linux base types
 
