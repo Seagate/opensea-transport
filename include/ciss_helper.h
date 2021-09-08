@@ -18,6 +18,9 @@
 
 #include "common.h"
 #include <stdint.h>
+#if defined (__unix__) //this is only done in case someone sets weird defines for Windows even though this isn't supported
+#include <dirent.h>
+#endif //__unix__
 
 #if defined (__cplusplus)
 extern "C"
@@ -49,11 +52,13 @@ extern "C"
         bool smartpqi;//freeBSD has a slightly different set of IOCTLs for this driver, although passthrough is likely exactly the same. (all structs are marked as packed though)
     }cissDeviceInfo, *ptrCissDeviceInfo;
 
+#if defined (__unix__) //this is only done in case someone sets weird defines for Windows even though this isn't supported
     //These filter functions help with scandir on /dev to find ciss compatible devices.
     //NOTE: On Linux, new devices are given /dev/sg, and those need to be tested for support in addition to these filters.
     //NOTE: smartpqi filter is only available on freeBSD. It will return 0 on all other OS's.
     int ciss_filter(const struct dirent *entry);
     int smartpqi_filter(const struct dirent *entry);
+#endif //__unix__
 
 #if defined (__cplusplus)
 }

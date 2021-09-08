@@ -202,6 +202,7 @@ int ciss_filter(const struct dirent *entry)
 
 int smartpqi_filter(const struct dirent *entry)
 {
+    M_USE_UNUSED(entry);
     return 0;
 }
 #elif defined (__FreeBSD__)
@@ -226,6 +227,7 @@ int ciss_filter(const struct dirent *entry)
 
 int smartpqi_filter(const struct dirent *entry)
 {
+    M_USE_UNUSED(entry);
     return 0;
 }
 #else
