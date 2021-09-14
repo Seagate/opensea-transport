@@ -742,6 +742,19 @@ void byte_Swap_ID_Data_Buffer(uint16_t *idData)
     }
 }
 
+//This is a quick check to assist with the fill in ATA drive info function to be more efficient
+static bool is_SAT_Invalid_Operation_Code(tDevice *device)
+{
+    bool invalidOP = false;
+    uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+    get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+    if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x20 && ascq == 0x00)
+    {
+        invalidOP = true;
+    }
+    return invalidOP;
+}
+
 int fill_In_ATA_Drive_Info(tDevice *device)
 {
     int ret = UNKNOWN;
@@ -761,7 +774,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         //make sure we disable sending the A1h SAT CDB or we could accidentally send a "blank" command due to how most of these devices receive commands under different OSs or through translators.
         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
     }
-    if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
+    if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (!is_SAT_Invalid_Operation_Code(device) && SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
     {
         retrievedIdentifyData = true;
     }
@@ -779,7 +792,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             }
             memset(identifyData, 0, 512);
             device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
-            if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
+            if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (!is_SAT_Invalid_Operation_Code(device) && SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
             {
                 retrievedIdentifyData = true;
             }
