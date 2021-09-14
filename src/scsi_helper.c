@@ -8911,6 +8911,22 @@ int fill_In_Device_Info(tDevice *device)
     #ifdef _DEBUG
     printf("%s: -->\n",__FUNCTION__);
     #endif
+
+    bool mediumNotPresent = false;//assume medium is available until we find out otherwise.
+    scsiStatus turStatus;
+    memset(&turStatus, 0, sizeof(scsiStatus));
+    scsi_Test_Unit_Ready(device, &turStatus);
+    if (turStatus.senseKey != SENSE_KEY_NO_ERROR)
+    {
+        if (turStatus.senseKey == SENSE_KEY_NOT_READY)
+        {
+            if (turStatus.asc == 0x3A)//NOTE: 3A seems to be all the "medium not present" status's, so not currently checking for ascq - TJE
+            {
+                mediumNotPresent = true;
+            }
+        }
+    }
+
     uint8_t *inq_buf = (uint8_t*)calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment);
     if (!inq_buf)
     {
@@ -9304,7 +9320,7 @@ int fill_In_Device_Info(tDevice *device)
                 //      Either need to start using it, or make more changes to handle it better -TJE
                 //device->drive_info.drive_type = FLASH_DRIVE;
                 device->drive_info.media_type = MEDIA_SSM_FLASH;
-                if (strcmp(device->drive_info.product_identification, "Compact Flash") != 0)
+                if (strcmp(device->drive_info.product_identification, "Compact Flash") != 0 || mediumNotPresent)
                 {
                     //Only check for SAT on compact flash since it uses ATA commands. May need another case for CFast as well.
                     checkForSAT = false;
@@ -9704,7 +9720,7 @@ int fill_In_Device_Info(tDevice *device)
             }
         }
 
-        if (readCapacity)
+        if (readCapacity && !mediumNotPresent)
         {
             //if inquiry says SPC or lower (3), then only do read capacity 10
             //Anything else can have read capacity 16 command available
