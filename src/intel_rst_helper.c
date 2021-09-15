@@ -180,7 +180,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                 //NOTE: The offset should be a multiple of sizeof(void), which reading the structure types indicated that this should be the case for 64bit and 32bit builds. Anything else will need additional byte padding.
                 raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset = sizeof(SRB_IO_CONTROL) + sizeof(RAID_FIRMWARE_REQUEST_BLOCK);
                 raidFirmwareRequest->Request.FwRequestBlock.DataBufferLength = dataRequestLength;
-                memcpy(raidFirmwareRequest + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, ptrDataRequest, dataRequestLength);
+                memcpy(&raidFirmwareRequest->ioctlBuffer, ptrDataRequest, dataRequestLength);
             }
             //send the command
             DWORD bytesReturned = 0;
@@ -189,7 +189,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
             overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
             if (overlappedStruct.hEvent == NULL)
             {
-                safe_Free(raidFirmwareRequest);
+                safe_Free_aligned(raidFirmwareRequest);
                 return OS_PASSTHROUGH_FAILURE;
             }
             start_Timer(&commandTimer);
@@ -230,7 +230,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                 {
                     *returnCode = raidFirmwareRequest->Header.ReturnCode;
                 }
-                if (readFirmwareInfo)
+                if (readFirmwareInfo && ptrDataRequest)
                 {
                     memcpy(ptrDataRequest, raidFirmwareRequest + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, dataRequestLength);
                 }
@@ -385,7 +385,7 @@ static bool is_Compatible_SCSI_FWDL_IO(ScsiIoCtx *scsiIoCtx, bool *isActivate)
     if (compatible)
     {
         //before we call it a supported command, we need to validate if this meets the alignment requirements, etc
-        if (!(*isActivate))
+        if (isActivate && !(*isActivate))
         {
             if (!(transferLengthBytes < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (transferLengthBytes % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0)))
             {
@@ -583,7 +583,7 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
             if (overlappedStruct.hEvent == NULL)
             {
-                safe_Free(nvmPassthroughCommand);
+                safe_Free_aligned(nvmPassthroughCommand);
                 return OS_PASSTHROUGH_FAILURE;
             }
             SetLastError(ERROR_SUCCESS);//clear out any errors before we begin

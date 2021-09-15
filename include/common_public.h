@@ -833,7 +833,9 @@ extern "C"
                 //uint8_t reserved[1];//padd byte for 8 byte boundary with above bools.
                 uint32_t maxTransferLength;//ATA Passthrough max transfer length in bytes. This may be different than the scsi translation max.
                 bool limitedUseTPSIU;//This might work for certain other commands, but only identify device has been found to show this. Using TPSIU on identify works as expected, but other data transfers abort this.
-                uint8_t atapadding[3];//padd 4 more bytes after transfer length to keep 8 byte boundaries
+                bool disableCheckCondition;//Set when check condition bit cannot be used because it causes problems
+                bool checkConditionEmpty;//Accepts the check condition bit, but returns empty data.
+                uint8_t atapadding[1];//padd 4 more bytes after transfer length to keep 8 byte boundaries
             }ataPTHacks;
             //NVMe Hacks
             struct {
@@ -967,6 +969,7 @@ extern "C"
         WIN_IOCTL_IDE_PASSTHROUGH_ONLY,//Only the old & undocumented IDE pass-through is supported. Do not use this unless absolutely nothing else works.
         WIN_IOCTL_SMART_AND_IDE,//Only the legacy SMART and IDE IOCTLs are supported, so 28bit limitations abound
         WIN_IOCTL_STORAGE_PROTOCOL_COMMAND, //Win10 + only. Should be used with NVMe. Might work with SCSI or ATA, but that is unknown...development hasn't started for this yet. Just a placeholder - TJE
+        WIN_IOCTL_BASIC,//Very basic and does no real pass-through commands. It just reports enough data to keep things more or less "happy". Calling into other MSFT calls to do everything necessary. SCSI only device type at this time. - TJE
     }eWindowsIOCTLType;
 
     typedef enum _eWindowsIOCTLMethod
@@ -1245,6 +1248,7 @@ extern "C"
         USB_Vendor_ChipsBank                            = 0x1E3D,
         USB_Vendor_Via_Labs                             = 0x2109,
         USB_Vendor_Dell                                 = 0x413C,
+        USB_Vendor_Kingston_Generic                     = 0x8888,
         // Add new enumerations above this line!
         USB_Vendor_MaxValue                             = 0xFFFF
     } eUSBVendorIDs;

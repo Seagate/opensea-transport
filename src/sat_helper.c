@@ -1018,7 +1018,10 @@ int build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, ataPassthr
         switch (ataCommandOptions->commandDirection)
         {
         case XFER_NO_DATA:
-            set_Check_Condition_Bit(*satCDB, transferBitsOffset);
+            if (!device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition)//don't set check condition if it will cause a problem with the adapter
+            {
+                set_Check_Condition_Bit(*satCDB, transferBitsOffset);
+            }
             break;
         default:
             //don't set the bit...unless we're being forced to do so
@@ -2337,7 +2340,7 @@ int translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx *scs
     memcpy(&t10VendorIdDesignator[52], ataSerialNumber, SERIAL_NUM_LEN);
 
     //now setup the device identification page
-    deviceIdentificationPage = (uint8_t*)calloc(4U + 72U + naaDesignatorLength + SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
+    deviceIdentificationPage = (uint8_t*)calloc((4U + 72U + naaDesignatorLength + SCSINameStringDesignatorLength) * sizeof(uint8_t), sizeof(uint8_t));
     if (!deviceIdentificationPage)
     {
         safe_Free(SCSINameStringDesignator);
@@ -2645,7 +2648,7 @@ int translate_Block_Limits_VPD_Page_B0h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 #if SAT_SPEC_SUPPORTED > 3
         uint8_t maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
         uint64_t maxUnmapRangePerDescriptor = device->drive_info.softSATFlags.dataSetManagementXLSupported ? UINT64_MAX : UINT16_MAX;
-        uint64_t maxLBAsPerUnmap = maxDescriptorsPerBlock * device->drive_info.IdentifyData.ata.Word105 * maxUnmapRangePerDescriptor;
+        uint64_t maxLBAsPerUnmap = C_CAST(uint64_t, maxDescriptorsPerBlock) * C_CAST(uint64_t, device->drive_info.IdentifyData.ata.Word105) * maxUnmapRangePerDescriptor;
         uint32_t unmapLBACount = maxLBAsPerUnmap > UINT32_MAX ? UINT32_MAX : (uint32_t)maxLBAsPerUnmap;
         uint32_t unmapMaxBlockDescriptors = maxDescriptorsPerBlock * device->drive_info.IdentifyData.ata.Word105;
 #else
@@ -3880,6 +3883,10 @@ int translate_SCSI_Read_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             bitPointer = 0;
             invalidField = true;
         }
+        if (transferLength == 0)//read6 a zero is more like ATA to do a larger transfer. Other reads, just return success without doing anything.
+        {
+            transferLength = 256;
+        }
         break;
     case 0x28://read 10
         lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
@@ -4003,6 +4010,10 @@ int translate_SCSI_Write_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             bitPointer = 0;
             fieldPointer = 1;
             invalidField = true;
+        }
+        if (transferLength == 0)//write 6, zero means a maximum possible transfer size, which is 256
+        {
+            transferLength = 256;
         }
         break;
     case 0x2A://write 10
@@ -8926,7 +8937,7 @@ int translate_Background_Scan_Results_Log_0x15(tDevice *device, ScsiIoCtx *scsiI
         //poh
         if (qwordPtr[2] & BIT63 && qwordPtr[2] & BIT62)
         {
-            uint64_t pohMinutes = 60 * M_DoubleWord0(qwordPtr[2]);
+            uint64_t pohMinutes = UINT64_C(60) * C_CAST(uint64_t, M_DoubleWord0(qwordPtr[2]));
             pohvalid = true;
             backgroundResults[offset + 0] = 0x00;
             backgroundResults[offset + 1] = 0x00;
@@ -10042,12 +10053,12 @@ int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     //group number should be zero
     uint16_t parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
     //filter out invalid fields
-    if (((fieldPointer = 1) && scsiIoCtx->cdb[1] != 0 )
-        || ((fieldPointer = 2) && scsiIoCtx->cdb[2] != 0)
-        || ((fieldPointer = 3) && scsiIoCtx->cdb[3] != 0)
-        || ((fieldPointer = 4) && scsiIoCtx->cdb[4] != 0)
-        || ((fieldPointer = 5) && scsiIoCtx->cdb[5] != 0)
-        || ((fieldPointer = 6) && scsiIoCtx->cdb[6] != 0)
+    if (((fieldPointer = 1) != 0 && scsiIoCtx->cdb[1] != 0 )
+        || ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[2] != 0)
+        || ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[3] != 0)
+        || ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[4] != 0)
+        || ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[5] != 0)
+        || ((fieldPointer = 6) != 0 && scsiIoCtx->cdb[6] != 0)
        )
     {
         if (bitPointer == 0)
@@ -12502,7 +12513,7 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         if (scsiIoCtx->cdb[OPERATION_CODE] == 0x15)//mode select 6
         {
             uint8_t byte1 = scsiIoCtx->cdb[1] & 0x11;//removing PF and SP bits since we can handle those, but not any other bits
-            if (((fieldPointer = 1) && byte1 != 0)
+            if (((fieldPointer = 1) != 0 && byte1 != 0)
                 || ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[2] != 0)
                 || ((fieldPointer = 3) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[3] != 0)
                 )
@@ -12534,7 +12545,7 @@ int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             tenByteCommand = true;
             parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
             uint8_t byte1 = scsiIoCtx->cdb[1] & 0x11;//removing PF and SP bits since we can handle those, but not any other bits
-            if (((fieldPointer = 1) && byte1 != 0)
+            if (((fieldPointer = 1) != 0 && byte1 != 0)
                 || ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[2] != 0)
                 || ((fieldPointer = 3) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[3] != 0)
                 || ((fieldPointer = 4) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[4] != 0)
@@ -16060,14 +16071,14 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         controlByteOffset = 1;
     }
     //check for bits in the control byte that are set that aren't supported
-    if ((bitPointer = 7 && scsiIoCtx->cdb[controlByteOffset] & BIT7) //vendor specific
-        || (bitPointer = 6 && scsiIoCtx->cdb[controlByteOffset] & BIT6) //vendor specific
-        || (bitPointer = 5 && scsiIoCtx->cdb[controlByteOffset] & BIT5) //reserved
-        || (bitPointer = 4 && scsiIoCtx->cdb[controlByteOffset] & BIT4) //reserved
-        || (bitPointer = 3 && scsiIoCtx->cdb[controlByteOffset] & BIT3) //reserved
-        || (bitPointer = 2 && scsiIoCtx->cdb[controlByteOffset] & BIT2) //naca
-        || (bitPointer = 1 && scsiIoCtx->cdb[controlByteOffset] & BIT1) //flag (obsolete in SAM2)
-        || (!(bitPointer = 0) && scsiIoCtx->cdb[controlByteOffset] & BIT0) //link (obsolete in SAM4)
+    if (((bitPointer = 7) != 0 && scsiIoCtx->cdb[controlByteOffset] & BIT7) //vendor specific
+        || ((bitPointer = 6) != 0 && scsiIoCtx->cdb[controlByteOffset] & BIT6) //vendor specific
+        || ((bitPointer = 5) != 0 && scsiIoCtx->cdb[controlByteOffset] & BIT5) //reserved
+        || ((bitPointer = 4) != 0 && scsiIoCtx->cdb[controlByteOffset] & BIT4) //reserved
+        || ((bitPointer = 3) != 0 && scsiIoCtx->cdb[controlByteOffset] & BIT3) //reserved
+        || ((bitPointer = 2) != 0 && scsiIoCtx->cdb[controlByteOffset] & BIT2) //naca
+        || ((bitPointer = 1) != 0 && scsiIoCtx->cdb[controlByteOffset] & BIT1) //flag (obsolete in SAM2)
+        || ((bitPointer = 0) == 0 && scsiIoCtx->cdb[controlByteOffset] & BIT0) //link (obsolete in SAM4)
         )
     {
         uint8_t senseKeySpecificDescriptor[8] = { 0 };

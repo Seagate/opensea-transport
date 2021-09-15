@@ -327,7 +327,14 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
         printf("\t\tCSMI Error Code: ");
         print_IOCTL_Return_Code(ioctlHeader->ReturnCode);
         printf("\t\tCompletion time: ");
-        print_Command_Time(get_Nano_Seconds(*timer));
+        if (timer)
+        {
+            print_Command_Time(get_Nano_Seconds(*timer));
+        }
+        else
+        {
+            printf("Error getting command time\n");
+        }
         printf("\n");
     }
     csmiIoOutParams->sysIoctlReturn = localIoctlReturn;
@@ -2693,7 +2700,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
     {
         _stprintf_s(registryKey, registryKeyStringLength, TEXT("%s%s%s"), baseRegKeyPath, tdriverName, paramRegKeyPath);
     }
-    if (_tcslen(tdriverName) > 0 && _tcslen(registryKey) > 0)
+    if (tdriverName && registryKey && _tcslen(tdriverName) > 0 && _tcslen(registryKey) > 0)
     {
         if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_LOCAL_MACHINE, registryKey, 0, KEY_READ, &keyHandle))
         {
@@ -2843,7 +2850,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                                     if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, csmiCountVerbosity))
                                     {
                                         //make sure we got all the drive information...if now, we need to reallocate with some more memory
-                                        for (uint16_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet; ++iter)
+                                        for (uint32_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet; ++iter)
                                         {
                                             switch (csmiRAIDConfig->Configuration.bDataType)
                                             {
@@ -2988,7 +2995,11 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 eCSMISecurityAccess csmiAccess = CSMI_SECURITY_ACCESS_NONE;//only really needed in Windows - TJE
 #if defined (_WIN32)
                 //Get the controller number from the scsi handle since we need it later!
-                sscanf(raidList->handle, "\\\\.\\SCSI%d:", &controllerNumber);
+                int ret = sscanf(raidList->handle, "\\\\.\\SCSI%d:", &controllerNumber);
+                if (ret == 0 || ret != EOF)
+                {
+                    printf("WARNING: Unable to scan controller number!\n");
+                }
 
                 _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), raidList->handle);
                 //lets try to open the controller.
@@ -3067,7 +3078,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                         if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, csmiListVerbosity))
                                         {
                                             //make sure we got all the drive information...if now, we need to reallocate with some more memory
-                                            for (uint16_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet && found < numberOfDevices; ++iter)
+                                            for (uint32_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet && found < numberOfDevices; ++iter)
                                             {
                                                 bool foundDevice = false;
                                                 char handle[20] = { 0 };
