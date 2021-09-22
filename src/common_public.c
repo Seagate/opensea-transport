@@ -2173,11 +2173,11 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
         switch (device->drive_info.adapter_info.vendorID)
         {
         case USB_Vendor_Seagate://0477
-            switch (device->drive_info.adapter_info.productID)
-            {
-            default: //unknown
-                break;
-            }
+            //switch (device->drive_info.adapter_info.productID)
+            //{
+            //default: //unknown
+            //    break;
+            //}
             break;
         case USB_Vendor_Seagate_RSS://0BC2
             switch (device->drive_info.adapter_info.productID)
@@ -4331,18 +4331,18 @@ bool set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
             }
             break;
         case IEEE1394_Vendor_Seagate://002037
-            switch (device->drive_info.adapter_info.productID)
+            /*switch (device->drive_info.adapter_info.productID)
             {
             default:
                 break;
-            }
+            }*/
             break;
         case IEEE1394_Vendor_Quantum://00E09E
-            switch (device->drive_info.adapter_info.productID)
+            /*switch (device->drive_info.adapter_info.productID)
             {
             default:
                 break;
-            }
+            }*/
             break;
         case 0x000BC2://This vendor ID doesn't make sense for the product that was tested!!!
             switch (device->drive_info.adapter_info.productID)

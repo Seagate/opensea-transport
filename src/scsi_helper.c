@@ -1358,6 +1358,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x0F:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -4200,6 +4202,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x3C:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -5054,14 +5058,9 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         }
         break;
     case 0x4D:
-        switch (ascq)
+        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
         {
-        default:
-            if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-            {
-                printf("asc & ascq: %" PRIX8 "h - %" PRIX8 "h = Tagged Overlapped Commands. Task Tag = %02" PRIX8 "h\n", asc, ascq, ascq);
-            }
-            break;
+            printf("asc & ascq: %" PRIX8 "h - %" PRIX8 "h = Tagged Overlapped Commands. Task Tag = %02" PRIX8 "h\n", asc, ascq, ascq);
         }
         break;
     case 0x4E:
@@ -5093,6 +5092,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x4F:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -5496,6 +5497,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x56:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -6467,6 +6470,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x5F:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7537,6 +7542,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x75:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7556,6 +7563,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x76:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7575,6 +7584,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x77:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7594,6 +7605,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x78:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7613,6 +7626,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x79:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7632,6 +7647,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x7A:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7651,6 +7668,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x7B:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7670,6 +7689,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x7C:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7689,6 +7710,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x7D:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7708,6 +7731,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x7E:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7727,6 +7752,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x7F:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
