@@ -234,17 +234,17 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             if (outputInfo->outputPath && *outputInfo->outputPath && strlen(*outputInfo->outputPath))
                             {
                                 strcpy(fileNameAndPath, *outputInfo->outputPath);
-                                strcat(fileNameAndPath, "/");
+                                snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s/", fileNameAndPath);
                             }
                             if (outputInfo->outputFileName && *outputInfo->outputFileName && strlen(*outputInfo->outputFileName))
                             {
-                                strcat(fileNameAndPath, *outputInfo->outputFileName);
+                                snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s%s", fileNameAndPath, *outputInfo->outputFileName);
                             }
                             else
                             {
-                                strcat(fileNameAndPath, "scanOutput");
+                                snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%sscanOutput", fileNameAndPath);
                             }
-                            strcat(fileNameAndPath, ".txt");
+                            snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s.txt", fileNameAndPath);
                             outputInfo->outputFilePtr = fopen(fileNameAndPath, "w+");
                             if (!(outputInfo->outputFilePtr))
                             {
@@ -329,11 +329,12 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
 #endif
                     if (scan_Drive_Type_Filter(&deviceList[devIter], flags) && scan_Interface_Type_Filter(&deviceList[devIter], flags))
                     {
-                        char displayHandle[256] = { 0 };
+#define SCAN_DISPLAY_HANDLE_STRING_LENGTH 256
+                        char displayHandle[SCAN_DISPLAY_HANDLE_STRING_LENGTH] = { 0 };
 #if defined(_WIN32)
-                        strcpy(displayHandle, deviceList[devIter].os_info.friendlyName);
+                        snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s", deviceList[devIter].os_info.friendlyName);
 #else
-                        strcpy(displayHandle, deviceList[devIter].os_info.name);
+                        snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s", deviceList[devIter].os_info.name);
 #endif
 #if defined (__linux__) && !defined(VMK_CROSS_COMP) && !defined(UEFI_C_SOURCE)
                         if ((flags & SG_TO_SD) > 0)
@@ -343,9 +344,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             if (SUCCESS == map_Block_To_Generic_Handle(displayHandle, &genName, &blockName))
                             {
                                 memset(displayHandle, 0, sizeof(displayHandle));
-                                strcpy(displayHandle, genName);
-                                strcat(displayHandle, "<->");
-                                strcat(displayHandle, blockName);
+                                snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s<->%s", genName, blockName);
                             }
                             safe_Free(genName);
                             safe_Free(blockName);
@@ -356,8 +355,8 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             char *blockName = NULL;
                             if (SUCCESS == map_Block_To_Generic_Handle(displayHandle, &genName, &blockName))
                             {
-                                memset(displayHandle, 0, sizeof(displayHandle));
-                                sprintf(displayHandle, "/dev/%s", blockName);
+                                memset(displayHandle, 0, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
+                                snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "/dev/%s", blockName);
                             }
                             safe_Free(genName);
                             safe_Free(blockName);

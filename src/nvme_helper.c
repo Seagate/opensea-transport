@@ -69,7 +69,7 @@ printf("fill NVMe info ret = %d\n", ret);
     if (ret == SUCCESS)
     {
         //set the t10 vendor id to NVMe
-        sprintf(device->drive_info.T10_vendor_ident, "NVMe");
+        snprintf(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "NVMe");
         device->drive_info.media_type = MEDIA_NVM;//This will bite us someday when someone decided to put non-ssds on NVMe interface.
 
         //Set the other device fields we need.

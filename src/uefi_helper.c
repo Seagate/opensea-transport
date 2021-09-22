@@ -45,6 +45,8 @@ bool os_Is_Infinite_Timeout_Supported()
     return true;
 }
 
+#define UEFI_HANDLE_STRING_LENGTH 64
+
 int get_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void **pPassthru, uint32_t controllerID)
 {
     int ret = SUCCESS;
@@ -229,7 +231,7 @@ int get_Device(const char *filename, tDevice *device)
             for(uint8_t iter = 0; iter < 32 && targetIDIter >= 0; iter += 2, --targetIDIter, ++targetStringIter)
             {
                 char smallString[4] = { 0 };//need to break the string into two charaters at a time then convert that to a integer to save for target name
-                sprintf(smallString, "%c%c", targetAsString[iter], targetAsString[iter + 1]);
+                snprintf(smallString, 4, "%c%c", targetAsString[iter], targetAsString[iter + 1]);
                 device->os_info.address.scsiEx.target[targetStringIter] = strtol(smallString, NULL, 16 /*string is in base 16*/);
             }
             EFI_EXT_SCSI_PASS_THRU_PROTOCOL *pPassthru;
@@ -1898,8 +1900,8 @@ int get_ATA_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                         if(buildPath == EFI_SUCCESS)
                         {
                             //found a device!!!
-                            char ataHandle[32] = { 0 };
-                            sprintf(ataHandle, "ata:%" PRIx16 ":%" PRIx16 ":%" PRIx16, counter, port, pmport);
+                            char ataHandle[UEFI_HANDLE_STRING_LENGTH] = { 0 };
+                            snprintf(ataHandle, UEFI_HANDLE_STRING_LENGTH, "ata:%" PRIx16 ":%" PRIx16 ":%" PRIx16, counter, port, pmport);
                             int result = get_Device(ataHandle, &ptrToDeviceList[*index]);
                             if(result != SUCCESS)
                             {
@@ -2026,8 +2028,8 @@ int get_SCSI_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, vers
                 if(buildPath == EFI_SUCCESS)
                 {
                     //found a device!!!
-                    char scsiHandle[64] = { 0 };
-                    sprintf(scsiHandle, "scsi:%" PRIx16 ":%" PRIx32 ":%" PRIx64, counter, target, lun);
+                    char scsiHandle[UEFI_HANDLE_STRING_LENGTH] = { 0 };
+                    snprintf(scsiHandle, UEFI_HANDLE_STRING_LENGTH, "scsi:%" PRIx16 ":%" PRIx32 ":%" PRIx64, counter, target, lun);
                     int result = get_Device(scsiHandle, &ptrToDeviceList[*index]);
                     if(result != SUCCESS)
                     {
@@ -2161,8 +2163,8 @@ int get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, ve
                 if(buildPath == EFI_SUCCESS)
                 {
                     //found a device!!!
-                    char scsiExHandle[64] = { 0 };
-                    sprintf(scsiExHandle, "scsiEx:%" PRIx16 ":%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 ":%" PRIx64, counter, target[0], target[1], target[2], target[3], target[4], target[5], target[6], target[7], target[8], target[9], target[10], target[11], target[12], target[13], target[14], target[15], lun);
+                    char scsiExHandle[UEFI_HANDLE_STRING_LENGTH] = { 0 };
+                    snprintf(scsiExHandle, UEFI_HANDLE_STRING_LENGTH, "scsiEx:%" PRIx16 ":%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 ":%" PRIx64, counter, target[0], target[1], target[2], target[3], target[4], target[5], target[6], target[7], target[8], target[9], target[10], target[11], target[12], target[13], target[14], target[15], lun);
                     int result = get_Device(scsiExHandle, &ptrToDeviceList[*index]);
                     if(result != SUCCESS)
                     {
@@ -2285,8 +2287,8 @@ int get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, vers
                 if(buildPath == EFI_SUCCESS)
                 {
                     //found a device!!!
-                    char nvmeHandle[64] = { 0 };
-                    sprintf(nvmeHandle, "nvme:%" PRIx16 ":%" PRIx32, counter, namespaceID);
+                    char nvmeHandle[UEFI_HANDLE_STRING_LENGTH] = { 0 };
+                    snprintf(nvmeHandle, UEFI_HANDLE_STRING_LENGTH, "nvme:%" PRIx16 ":%" PRIx32, counter, namespaceID);
                     int result = get_Device(nvmeHandle, &ptrToDeviceList[*index]);
                     if(result != SUCCESS)
                     {

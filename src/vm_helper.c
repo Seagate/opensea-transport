@@ -201,8 +201,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
             strcpy(nvmHandle, handle);
             device->drive_info.interface_type = NVME_INTERFACE;
             device->drive_info.drive_type = NVME_DRIVE;
-            sprintf(device->os_info.name, "%s", nvmHandle);
-            sprintf(device->os_info.friendlyName, "%s", basename(nvmHandle));
+            snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", nvmHandle);
+            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", basename(nvmHandle));
         }
         else //not NVMe, so we need to do some investigation of the handle. NOTE: this requires 2.6 and later kernel since it reads a link in the /sys/class/ filesystem
         {
@@ -533,13 +533,13 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                         //Now we will set up the device name, etc fields in the os_info structure.
                         if (bsg)
                         {
-                            sprintf(device->os_info.name, "/dev/bsg/%s", baseLink);
+                            snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/bsg/%s", baseLink);
                         }
                         else
                         {
-                            sprintf(device->os_info.name, "/dev/%s", baseLink);
+                            snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
                         }
-                        sprintf(device->os_info.friendlyName, "%s", baseLink);
+                        snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
 
                         //printf("getting SCSI address\n");
                         //set the scsi address field
@@ -590,14 +590,14 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 if (is_Block_SCSI_Generic_Handle(gen))
                                 {
                                     device->os_info.secondHandleValid = true;
-                                    sprintf(device->os_info.secondName, "/dev/bsg/%s", gen);
-                                    sprintf(device->os_info.secondFriendlyName, "%s", gen);
+                                    snprintf(device->os_info.secondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/bsg/%s", gen);
+                                    snprintf(device->os_info.secondFriendlyName, OS_SECOND_HANDLE_NAME_LENGTH, "%s", gen);
                                 }
                                 else
                                 {
                                     device->os_info.secondHandleValid = true;
-                                    sprintf(device->os_info.secondName, "/dev/%s", gen);
-                                    sprintf(device->os_info.secondFriendlyName, "%s", gen);
+                                    snprintf(device->os_info.secondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/%s", gen);
+                                    snprintf(device->os_info.secondFriendlyName, OS_SECOND_HANDLE_NAME_LENGTH, "%s", gen);
                                 }
                             }
                             else
@@ -605,8 +605,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 //generic handle was sent in
                                 //secondary handle will be a block handle
                                 device->os_info.secondHandleValid = true;
-                                sprintf(device->os_info.secondName, "/dev/%s", block);
-                                sprintf(device->os_info.secondFriendlyName, "%s", block);
+                                snprintf(device->os_info.secondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/%s", block);
+                                snprintf(device->os_info.secondFriendlyName, OS_SECOND_HANDLE_NAME_LENGTH, "%s", block);
                             }
 
                             if (strstr(block, "sr") || strstr(block, "scd"))
@@ -2046,7 +2046,7 @@ int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
     int fd=0;
     void * barRegs = NULL;
     char sysfsPath[PATH_MAX];
-    sprintf(sysfsPath,"/sys/block/%s/device/resource0",device->os_info.name);
+    snprintf(sysfsPath,"/sys/block/%s/device/resource0", PATH_MAX, device->os_info.name);
     fd = open(sysfsPath, O_RDONLY);
     if (fd >= 0) 
     {

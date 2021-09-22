@@ -2436,14 +2436,14 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
     if (sscanfret != 0 && sscanfret != EOF && sscanfret == 4)
     {
         intelNVMe = true;
-        sprintf(device->os_info.friendlyName, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":N:%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, *intelPathID, *intelTargetID, *intelLun);
+        snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH,  CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":N:%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, *intelPathID, *intelTargetID, *intelLun);
     }
     else
     {
         sscanfret = sscanf(filename, "csmi:%" SCNu32 ":%" SCNu32 ":%" SCNu32 ":%" SCNu32 "", &controllerNum, &portID, &phyID, &lun);
         if (sscanfret != 0 && sscanfret != EOF)
         {
-            sprintf(device->os_info.friendlyName, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, portID, phyID, lun);
+            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, portID, phyID, lun);
         }
         else
         {
@@ -2457,7 +2457,7 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
     int sscanfret = sscanf(filename, "csmi:%" SCNu32 ":%" SCNu32 ":%" SCNu32 " :%s", &controllerNum, &portNum, &lun, nixBaseHandle);
     if (sscanfret != 0 && sscanfret != EOF)
     {
-        sprintf(device->os_info.friendlyName, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%s", controllerNum, portNum, lun, nixBaseHandle);
+        snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%s", controllerNum, portNum, lun, nixBaseHandle);
     }
     else
     {
@@ -2816,7 +2816,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                 NULL);
             if (fd != INVALID_HANDLE_VALUE)
 #else
-            sprintf(deviceName, "%s", raidList->handle);
+            snprintf(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, "%s", raidList->handle);
             if ((fd = open(filename, O_RDWR | O_NONBLOCK)) >= 0)
 #endif
             {
@@ -3016,7 +3016,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                     NULL);
                 if (fd != INVALID_HANDLE_VALUE)
 #else
-                sprintf(deviceName, "%s", raidList->handle);
+                snprintf(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, "%s", raidList->handle);
                 if ((fd = open(filename, O_RDWR | O_NONBLOCK)) >= 0)
 #endif
                 {
@@ -3108,7 +3108,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                             path = csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[2];
                                                             //TODO: don't know which bytes hold target and lun...leaving as zero since they are TECHNICALLY reserved in the documentation
                                                             //\\.\SCSI?: number is needed in windows, this is the controllerNumber in Windows.
-                                                            sprintf(handle, "csmi:%" CPRIu8 ":N:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber, path, target, lun);
+                                                            snprintf(handle, 20, "csmi:%" CPRIu8 ":N:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber, path, target, lun);
                                                             foundDevice = true;
                                                         }
                                                         else //SAS or SATA drive
@@ -3141,7 +3141,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                                     {
                                                                     case CSMI_SAS_END_DEVICE:
                                                                         foundDevice = true;
-                                                                        sprintf(handle, "csmi:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber, phyInfo.Information.Phy[phyIter].bPortIdentifier, phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier, lun);
+                                                                        snprintf(handle, 20, "csmi:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber, phyInfo.Information.Phy[phyIter].bPortIdentifier, phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier, lun);
                                                                         break;
                                                                     case CSMI_SAS_NO_DEVICE_ATTACHED:
                                                                     case CSMI_SAS_EDGE_EXPANDER_DEVICE:
