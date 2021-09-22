@@ -415,7 +415,7 @@ int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor
                                                             if (CR_SUCCESS == cmRet)
                                                             {
                                                                 //uncomment this else case to view all the possible device or parent properties when figuring out what else is necessary to store for a new device.
-                                                                //*  //This is a comment switch. two slashes means uncomment the below, 1 means comment it out
+                                                                /*  //This is a comment switch. two slashes means uncomment the below, 1 means comment it out
                                                                 {
                                                                     ULONG propertyBufLen = 0;
                                                                     DEVPROPTYPE propertyType = 0;

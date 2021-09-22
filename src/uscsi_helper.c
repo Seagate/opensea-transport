@@ -396,9 +396,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     int i = 0;
     for(; i < num_devs; i++)
     {
-        devs[i] = (char *)malloc((strlen("/dev/rdsk/") + strlen(namelist[i]->d_name) + 1) * sizeof(char));
-        strcpy(devs[i], "/dev/rdsk/");
-        strcat(devs[i], namelist[i]->d_name);
+        size_t handleSize = (strlen("/dev/rdsk/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
+        devs[i] = (char *)malloc(handleSize);
+        snprintf(devs[i], handleSize, "/dev/rdsk/%s", namelist[i]->d_name);
         safe_Free(namelist[i]);
     }
     devs[i] = NULL;
