@@ -164,8 +164,8 @@ void close_NVMe_Passthru_Protocol_Ptr(EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL **pPass
 int get_Device(const char *filename, tDevice *device)
 {
     char interface[10] = { 0 };
-    strcpy(device->os_info.name, filename);
-    strcpy(device->os_info.friendlyName, filename);
+    snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
+    snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", filename);
     device->os_info.osType = OS_UEFI;
     if (strstr(filename, "ata"))
     {

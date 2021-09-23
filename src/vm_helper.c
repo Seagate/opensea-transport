@@ -197,8 +197,9 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
     {
         if (strstr(handle,"nvme") != NULL)
         {
-            char *nvmHandle = (char*)calloc(strlen(handle) + 1, sizeof(char));
-            strcpy(nvmHandle, handle);
+            size_t nvmHandleLen = strlen(handle) + 1;
+            char *nvmHandle = (char*)calloc(nvmHandleLen, sizeof(char));
+            snprintf(nvmHandle, nvmHandleLen, "%s", handle);
             device->drive_info.interface_type = NVME_INTERFACE;
             device->drive_info.drive_type = NVME_DRIVE;
             snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", nvmHandle);
@@ -263,7 +264,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             device->drive_info.interface_type = IDE_INTERFACE;
                             //get vendor and product IDs of the controller attached to this device.
                             char fullPciPath[PATH_MAX] = { 0 };
-                            strcpy(fullPciPath, inHandleLink);
+                            snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
                             fullPciPath[0] = '/';
                             fullPciPath[1] = 's';
@@ -333,7 +334,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             device->drive_info.interface_type = USB_INTERFACE;
                             //set the USB VID and PID. NOTE: There may be a better way to do this, but this seems to work for now.
                             char fullPciPath[PATH_MAX] = { 0 };
-                            strcpy(fullPciPath, inHandleLink);
+                            snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
                             fullPciPath[0] = '/';
                             fullPciPath[1] = 's';
@@ -406,7 +407,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             device->drive_info.interface_type = IEEE_1394_INTERFACE;
                             //TODO: investigate some way of saving vendor/product like information for firewire.
                             char fullFWPath[PATH_MAX] = { 0 };
-                            strcpy(fullFWPath, inHandleLink);
+                            snprintf(fullFWPath, PATH_MAX, "%s", inHandleLink);
 
                             fullFWPath[0] = '/';
                             fullFWPath[1] = 's';
@@ -459,7 +460,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             //get vendor and product IDs of the controller attached to this device.
 
                             char fullPciPath[PATH_MAX] = { 0 };
-                            strcpy(fullPciPath, inHandleLink);
+                            snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
                             fullPciPath[0] = '/';
                             fullPciPath[1] = 's';
@@ -695,11 +696,11 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                     //check for sg, then bsg
                     if (stat(scsiGenericClass, &mapStat) == 0 && S_ISDIR(mapStat.st_mode))
                     {
-                        strcpy(classPath, scsiGenericClass);
+                        snprintf(classPath, PATH_MAX, "%s", scsiGenericClass);
                     }
                     else if (stat(bsgClass, &mapStat) == 0 && S_ISDIR(mapStat.st_mode))
                     {
-                        strcpy(classPath, bsgClass);
+                        snprintf(classPath, PATH_MAX, "%s", bsgClass);
                         bsg = true;
                     }
                     else
@@ -712,7 +713,7 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                 else
                 {
                     //check for block
-                    strcpy(classPath, blockClass);
+                    snprintf(classPath, PATH_MAX, "%s", blockClass);
                     if (!(stat(classPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode)))
                     {
                         //printf ("could not map to block class");
@@ -728,8 +729,7 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                     //printf("item = %s\n", classList[iter]->d_name);
                     //now we need to read the link for classPath/d_name into a buffer...then compare it to the one we read earlier.
                     char temp[PATH_MAX] = { 0 };
-                    strcpy(temp, classPath);
-                    strcat(temp, classList[iter]->d_name);
+                    snprintf(temp, PATH_MAX, "%s%s", classPath, classList[iter]->d_name);
                     struct stat tempStat;
                     if (lstat(temp,&tempStat) == 0 && S_ISLNK(tempStat.st_mode))/*check if this is a link*/
                     {
@@ -1695,9 +1695,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     //add sg/sd devices to the list
     for (; i < (num_sg_devs); i++)
     {
-        devs[i] = (char *)malloc((strlen("/dev/disks/") + strlen(namelist[i]->d_name) + 1) * sizeof(char));
-        strcpy(devs[i], "/dev/disks/");
-        strcat(devs[i], namelist[i]->d_name);
+        size_t deviceHandleLen = (strlen("/dev/disks/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
+        devs[i] = (char *)malloc(deviceHandleLen);
+        snprintf(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name)
         safe_Free(namelist[i]);
     }
     safe_Free(namelist);
@@ -1705,12 +1705,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     //add nvme devices to the list
     for (j = 0; i < (num_sg_devs + num_nvme_devs) && i < MAX_DEVICES_PER_CONTROLLER;i++, j++)
     {
-        int nvmeAdptNameLen = 0;
-
-        nvmeAdptNameLen = strlen(nvmeAdptList.adapters[j].name);
-        devs[i] = (char *)malloc((nvmeAdptNameLen + 1) * sizeof(char));
-        memset(devs[i], 0, (nvmeAdptNameLen + 1) * sizeof(char));
-        strcpy(devs[i], nvmeAdptList.adapters[j].name);
+        size_t nvmeAdptNameLen = strlen(nvmeAdptList.adapters[j].name) + 1;
+        devs[i] = (char *)malloc(nvmeAdptNameLen);
+        memset(devs[i], 0, nvmeAdptNameLen);
+        snprintf(devs[i], nvmeAdptNameLen, "%s", nvmeAdptList.adapters[j].name);
     }
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
 
@@ -1738,7 +1736,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 continue;
             }
             memset(name, 0, sizeof(name));//clear name before reusing it
-            strcpy(name, devs[driveNumber]);
+            snprintf(name, sizeof(name), "%s", devs[driveNumber]);
             fd = -1;
             //lets try to open the device.      
             fd = open(name, O_RDWR | O_NONBLOCK);

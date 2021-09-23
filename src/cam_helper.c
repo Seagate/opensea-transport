@@ -1117,7 +1117,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 continue;
             }
             memset(name, 0, sizeof(name));//clear name before reusing it
-            strcpy(name, devs[driveNumber]);
+            snprintf(name, 80, "%s", devs[driveNumber]);
             fd = -1;
             //lets try to open the device.      
             fd = cam_get_device(name, d->os_info.name, sizeof(d->os_info.name), &d->os_info.fd);

@@ -233,8 +233,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             char fileNameAndPath[OPENSEA_PATH_MAX] = { 0 };
                             if (outputInfo->outputPath && *outputInfo->outputPath && strlen(*outputInfo->outputPath))
                             {
-                                strcpy(fileNameAndPath, *outputInfo->outputPath);
-                                snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s/", fileNameAndPath);
+                                snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s/", *outputInfo->outputPath);
                             }
                             if (outputInfo->outputFileName && *outputInfo->outputFileName && strlen(*outputInfo->outputFileName))
                             {
@@ -363,7 +362,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                         }
 #endif
                         char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
-                        strcpy(printable_sn, deviceList[devIter].drive_info.serialNumber);
+                        snprintf(printable_sn, SERIAL_NUM_LEN + 1, "%s", deviceList[devIter].drive_info.serialNumber);
                         //if seagate scsi, need to truncate to 8 digits
                         if (deviceList[devIter].drive_info.drive_type == SCSI_DRIVE && is_Seagate_Family(&deviceList[devIter]) == SEAGATE)
                         {
@@ -521,7 +520,7 @@ bool is_Maxtor_String(char* string)
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, string);
+        snprintf(localString, stringLen + 1, "%s", string);
         localString[stringLen] = '\0';
         convert_String_To_Upper_Case(localString);
         if (strlen(localString) >= maxtorLen && strncmp(localString, "MAXTOR", maxtorLen) == 0)
@@ -589,7 +588,7 @@ bool is_Seagate_VendorID(tDevice *device)
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, device->drive_info.T10_vendor_ident);
+        snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
         localString[stringLen] = '\0';
         convert_String_To_Upper_Case(localString);
         if (strlen(localString) >= seagateLen && strncmp(localString, "SEAGATE", seagateLen) == 0)
@@ -614,7 +613,7 @@ bool is_Seagate_MN(char* string)
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, string);
+        snprintf(localString, stringLen + 1, "%s", string);
         localString[stringLen] = '\0';
         //convert_String_To_Upper_Case(localString);//Removing uppercase converstion, thus making this a case sensitive comparison to fix issues with other non-Seagate products being detected as Seagate.
         if (strlen(localString) >= seagateLen && strncmp(localString, "ST", seagateLen) == 0)
@@ -720,7 +719,7 @@ bool is_Conner_VendorID(tDevice *device)
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, device->drive_info.T10_vendor_ident);
+        snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
         localString[stringLen] = '\0';
         if (strlen(localString) >= connerLen && strncmp(localString, "CONNER", connerLen) == 0)
         {
@@ -770,7 +769,7 @@ bool is_CDC_VendorID(tDevice *device)
                 perror("calloc failure");
                 return false;
             }
-            strcpy(localString, device->drive_info.T10_vendor_ident);
+            snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
             localString[stringLen] = '\0';
             if (strlen(localString) >= cdcLen && strncmp(localString, "CDC", cdcLen) == 0)
             {
@@ -797,7 +796,7 @@ bool is_DEC_VendorID(tDevice *device)
                 perror("calloc failure");
                 return false;
             }
-            strcpy(localString, device->drive_info.T10_vendor_ident);
+            snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
             localString[stringLen] = '\0';
             if (strlen(localString) >= cdcLen && strncmp(localString, "DEC", cdcLen) == 0)
             {
@@ -822,7 +821,7 @@ bool is_MiniScribe_VendorID(tDevice *device)
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, device->drive_info.T10_vendor_ident);
+        snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
         localString[stringLen] = '\0';
         if (strlen(localString) >= miniscribeLen && strncmp(localString, "MINSCRIB", miniscribeLen) == 0)
         {
@@ -848,7 +847,7 @@ bool is_Quantum_VendorID(tDevice *device)
                 perror("calloc failure");
                 return false;
             }
-            strcpy(localString, device->drive_info.T10_vendor_ident);
+            snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
             localString[stringLen] = '\0';
             if (strlen(localString) >= quantumLen && strncmp(localString, "QUANTUM", quantumLen) == 0)
             {
@@ -873,7 +872,7 @@ bool is_Quantum_Model_Number(char* string)
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, string);
+        snprintf(localString, stringLen + 1, "%s", string);
         localString[stringLen] = '\0';
         if (strlen(localString) >= quantumLen && (strncmp(localString, "Quantum", quantumLen) == 0 || strncmp(localString, "QUANTUM", quantumLen) == 0))
         {
@@ -927,7 +926,7 @@ bool is_PrarieTek_VendorID(tDevice *device)
                 perror("calloc failure");
                 return false;
             }
-            strcpy(localString, device->drive_info.T10_vendor_ident);
+            snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
             localString[stringLen] = '\0';
             if (strlen(localString) >= prarieTekLen && strncmp(localString, "PRAIRIE", prarieTekLen) == 0)
             {
@@ -953,7 +952,7 @@ bool is_LaCie(tDevice *device)
             perror("calloc failure");
             return MEMORY_FAILURE;
         }
-        strcpy(vendorID, device->drive_info.T10_vendor_ident);
+        snprintf(vendorID, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
         vendorID[8] = '\0';
         convert_String_To_Upper_Case(vendorID);
         if (strlen(vendorID) >= lacieLen && strncmp(vendorID, "LACIE", lacieLen) == 0)
@@ -978,7 +977,7 @@ bool is_Samsung_String(char* string)
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, string);
+        snprintf(localString, stringLen + 1, "%s", string);
         localString[stringLen] = '\0';
         convert_String_To_Upper_Case(localString);
         if (strlen(localString) >= samsungLen && strncmp(localString, "SAMSUNG", samsungLen) == 0)

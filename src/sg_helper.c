@@ -189,8 +189,9 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
     {
         if (strstr(handle,"nvme") != NULL)
         {
-            char *nvmHandle = (char*)calloc(strlen(handle) + 1, sizeof(char));
-            strcpy(nvmHandle, handle);
+            size_t nvmHandleLen = strlen(handle) + 1;
+            char *nvmHandle = (char*)calloc(nvmHandleLen, sizeof(char));
+            snprintf(nvmHandle, nvmHandleLen, "%s", handle);
             device->drive_info.interface_type = NVME_INTERFACE;
             device->drive_info.drive_type = NVME_DRIVE;
             snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", nvmHandle);
@@ -256,7 +257,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             device->drive_info.interface_type = IDE_INTERFACE;
                             //get vendor and product IDs of the controller attached to this device.
                             char fullPciPath[PATH_MAX] = { 0 };
-                            strcpy(fullPciPath, inHandleLink);
+                            snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
                             fullPciPath[0] = '/';
                             fullPciPath[1] = 's';
@@ -325,7 +326,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             device->drive_info.interface_type = USB_INTERFACE;
                             //set the USB VID and PID. NOTE: There may be a better way to do this, but this seems to work for now.
                             char fullPciPath[PATH_MAX] = { 0 };
-                            strcpy(fullPciPath, inHandleLink);
+                            snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
                             fullPciPath[0] = '/';
                             fullPciPath[1] = 's';
@@ -397,7 +398,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             device->drive_info.interface_type = IEEE_1394_INTERFACE;
                             //TODO: investigate some way of saving vendor/product like information for firewire.
                             char fullFWPath[PATH_MAX] = { 0 };
-                            strcpy(fullFWPath, inHandleLink);
+                            snprintf(fullFWPath, PATH_MAX, "%s", inHandleLink);
 
                             fullFWPath[0] = '/';
                             fullFWPath[1] = 's';
@@ -449,7 +450,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             //get vendor and product IDs of the controller attached to this device.
 
                             char fullPciPath[PATH_MAX] = { 0 };
-                            strcpy(fullPciPath, inHandleLink);
+                            snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
                             fullPciPath[0] = '/';
                             fullPciPath[1] = 's';
@@ -683,11 +684,11 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                     //check for sg, then bsg
                     if (stat(scsiGenericClass, &mapStat) == 0 && S_ISDIR(mapStat.st_mode))
                     {
-                        strcpy(classPath, scsiGenericClass);
+                        snprintf(classPath, PATH_MAX, "%s", scsiGenericClass);
                     }
                     else if (stat(bsgClass, &mapStat) == 0 && S_ISDIR(mapStat.st_mode))
                     {
-                        strcpy(classPath, bsgClass);
+                        snprintf(classPath, PATH_MAX, "%s", bsgClass);
                         bsg = true;
                     }
                     else
@@ -700,7 +701,7 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                 else
                 {
                     //check for block
-                    strcpy(classPath, blockClass);
+                    snprintf(classPath, PATH_MAX, "%s", blockClass);
                     if (!(stat(classPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode)))
                     {
                         //printf ("could not map to block class");
@@ -1691,7 +1692,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 continue;
             }
             memset(name, 0, sizeof(name));//clear name before reusing it
-            strcpy(name, devs[driveNumber]);
+            snprintf(name, sizeof(name), "%s", devs[driveNumber]);
             fd = -1;
             //lets try to open the device.      
             fd = open(name, O_RDWR | O_NONBLOCK);
