@@ -231,6 +231,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
             }
             //first make sure this directory exists
             struct stat inHandleStat;
+            memset(&inHandleStat, 0, sizeof(struct stat));
             if (stat(incomingHandleClassPath, &inHandleStat) == 0 && S_ISDIR(inHandleStat.st_mode))
             {
                 struct stat link;
@@ -270,9 +271,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             char *pciPath = (char*)calloc(PATH_MAX, sizeof(char));
                             if (pciPath)
                             {
-                                strncpy(pciPath, fullPciPath, newStrLen - 1);
-                                //printf("shortened Path = %s\n", pciPath);
-                                snprintf(pciPath, PATH_MAX, "%s/vendor", pciPath);
+                                snprintf(pciPath, PATH_MAX, "%.*s/vendor", newStrLen - 1, fullPciPath);
+                                //printf("shortened Path = %s\n", dirname(pciPath));
                                 FILE *temp = NULL;
                                 temp = fopen(pciPath, "r");
                                 if (temp)
@@ -339,7 +339,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             char *usbPath = (char*)calloc(PATH_MAX, sizeof(char));
                             if (usbPath)
                             {
-                                strncpy(usbPath, fullPciPath, newStrLen - 1);
+                                snprintf(usbPath, PATH_MAX, "%.*s", newStrLen - 1, fullPciPath);
                                 usbPath = dirname(usbPath);
                                 //printf("full USB Path = %s\n", usbPath);
                                 //now that the path is correct, we need to read the files idVendor and idProduct
@@ -412,9 +412,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             char *fwPath = (char*)calloc(PATH_MAX, sizeof(char));
                             if (fwPath)
                             {
-                                strncpy(fwPath, fullFWPath, newStrLen - 1);
-                                //printf("full FW Path = %s\n", fwPath);
-                                snprintf(fwPath, PATH_MAX, "%s/modalias", fwPath);
+                                snprintf(fwPath, PATH_MAX, "%.*s/modalias", newStrLen - 1, fullFWPath);
+                                //printf("full FW Path = %s\n", dirname(fwPath));
                                 //printf("modalias FW Path = %s\n", fwPath);
                                 FILE *temp = NULL;
                                 temp = fopen(fwPath, "r");
@@ -469,10 +468,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             char *pciPath = (char*)calloc(PATH_MAX, sizeof(char));
                             if (pciPath)
                             {
-                                strncpy(pciPath, fullPciPath, newStrLen - 1);
-
-                                //printf("Shortened PCI Path: %s\n", pciPath);
-                                snprintf(pciPath, PATH_MAX, "%s/vendor", pciPath);
+                                snprintf(pciPath, PATH_MAX, "%.*s/vendor", newStrLen - 1, fullPciPath);
+                                //printf("Shortened PCI Path: %s\n", dirname(pciPath));
                                 FILE *temp = NULL;
                                 temp = fopen(pciPath, "r");
                                 if (temp)

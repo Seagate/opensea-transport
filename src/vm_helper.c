@@ -34,6 +34,12 @@
 #include "common_platform.h"
 #endif
 
+    //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+bool os_Is_Infinite_Timeout_Supported()
+{
+    return true;
+}
+
 extern bool validate_Device_Struct(versionBlock);
 
 // Local helper functions for debugging
@@ -211,22 +217,22 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
             bool bsg = false;
             char incomingHandleClassPath[PATH_MAX] = { 0 };
             //char *incomingClassName = NULL;
-            strcat(incomingHandleClassPath, "/sys/class/");
+            snprintf(incomingHandleClassPath, PATH_MAX, "%s/sys/class/", incomingHandleClassPath);
             if (is_Block_Device_Handle((char*)handle))
             {
-                strcat(incomingHandleClassPath, "block/");
+                snprintf(incomingHandleClassPath, PATH_MAX, "%sblock/", incomingHandleClassPath);
                 incomingBlock = true;
                 //incomingClassName = strdup("block");
             }
             else if (is_Block_SCSI_Generic_Handle((char*)handle))
             {
                 bsg = true;
-                strcat(incomingHandleClassPath, "bsg/");
+                snprintf(incomingHandleClassPath, PATH_MAX, "%sbsg/", incomingHandleClassPath);
                 //incomingClassName = strdup("bsg");
             }
             else if (is_SCSI_Generic_Handle((char*)handle))
             {
-                strcat(incomingHandleClassPath, "scsi_generic/");
+                snprintf(incomingHandleClassPath, PATH_MAX, "%sscsi_generic/", incomingHandleClassPath);
                 //incomingClassName = strdup("scsi_generic");
             }
             else
@@ -239,10 +245,12 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
             }
             //first make sure this directory exists
             struct stat inHandleStat;
+            memset(&inHandleStat, 0, sizeof(struct stat));
             if (stat(incomingHandleClassPath, &inHandleStat) == 0 && S_ISDIR(inHandleStat.st_mode))
             {
                 struct stat link;
-                strcat(incomingHandleClassPath, basename((char*)handle));
+                memset(&link, 0, sizeof(struct stat));
+                snprintf(incomingHandleClassPath, PATH_MAX, "%s%s", incomingHandleClassPath, basename((char*)handle));
                 //now read the link with the handle appended on the end
                 if (lstat(incomingHandleClassPath,&link) == 0 && S_ISLNK(link.st_mode))
                 {
@@ -277,10 +285,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             char *pciPath = (char*)calloc(PATH_MAX, sizeof(char));
                             if (pciPath)
                             {
-                                strncpy(pciPath, fullPciPath, newStrLen - 1);
-                                //printf("shortened Path = %s\n", pciPath);
-                                strcat(pciPath, "/");
-                                strcat(pciPath, "vendor");
+                                snprintf(pciPath, PATH_MAX, "%.*s/vendor", newStrLen - 1, fullPciPath);
+                                //printf("shortened Path = %s\n", dirname(pciPath));
                                 FILE *temp = NULL;
                                 temp = fopen(pciPath, "r");
                                 if (temp)
@@ -294,7 +300,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                     temp = NULL;
                                 }
                                 pciPath = dirname(pciPath);//remove vendor from the end
-                                strcat(pciPath, "/device");
+                                snprintf(pciPath, PATH_MAX, "%s/device", pciPath);
                                 temp = fopen(pciPath, "r");
                                 if (temp)
                                 {
@@ -308,7 +314,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 }
                                 //Store revision data. This seems to be in the bcdDevice file.
                                 pciPath = dirname(pciPath);//remove device from the end
-                                strcat(pciPath, "/revision");
+                                snprintf(pciPath, PATH_MAX, "%s/revision", pciPath);
                                 temp = fopen(pciPath, "r");
                                 if (temp)
                                 {
@@ -347,12 +353,11 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             char *usbPath = (char*)calloc(PATH_MAX, sizeof(char));
                             if (usbPath)
                             {
-                                strncpy(usbPath, fullPciPath, newStrLen - 1);
+                                snprintf(usbPath, PATH_MAX, "%.*s", newStrLen - 1, fullPciPath);
                                 usbPath = dirname(usbPath);
-                                strcat(usbPath, "/");
                                 //printf("full USB Path = %s\n", usbPath);
                                 //now that the path is correct, we need to read the files idVendor and idProduct
-                                strcat(usbPath, "idVendor");
+                                snprintf(usbPath, PATH_MAX, "%s/idVendor", usbPath);
                                 //printf("idVendor USB Path = %s\n", usbPath);
                                 FILE *temp = NULL;
                                 temp = fopen(usbPath, "r");
@@ -368,7 +373,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 }
                                 usbPath = dirname(usbPath);//remove idVendor from the end
                                 //printf("full USB Path = %s\n", usbPath);
-                                strcat(usbPath, "/idProduct");
+                                snprintf(usbPath, PATH_MAX, "%s/idProduct", usbPath);
                                 //printf("idProduct USB Path = %s\n", usbPath);
                                 temp = fopen(usbPath, "r");
                                 if (temp)
@@ -383,7 +388,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 }
                                 //Store revision data. This seems to be in the bcdDevice file.
                                 usbPath = dirname(usbPath);//remove idProduct from the end
-                                strcat(usbPath, "/bcdDevice");
+                                snprintf(usbPath, PATH_MAX, "%s/bcdDevice", usbPath);
                                 temp = fopen(usbPath, "r");
                                 if (temp)
                                 {
@@ -421,10 +426,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             char *fwPath = (char*)calloc(PATH_MAX, sizeof(char));
                             if (fwPath)
                             {
-                                strncpy(fwPath, fullFWPath, newStrLen - 1);
-                                strcat(fwPath, "/");
-                                //printf("full FW Path = %s\n", fwPath);
-                                strcat(fwPath, "modalias");
+                                snprintf(fwPath, PATH_MAX, "%.*s/modalias", newStrLen - 1, fullFWPath);
+                                //printf("full FW Path = %s\n", dirname(fwPath));
                                 //printf("modalias FW Path = %s\n", fwPath);
                                 FILE *temp = NULL;
                                 temp = fopen(fwPath, "r");
@@ -479,12 +482,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             char *pciPath = (char*)calloc(PATH_MAX, sizeof(char));
                             if (pciPath)
                             {
-                                strncpy(pciPath, fullPciPath, newStrLen - 1);
-
-                                //printf("Shortened PCI Path: %s\n", pciPath);
-
-                                strcat(pciPath, "/");
-                                strcat(pciPath, "vendor");
+                                snprintf(pciPath, PATH_MAX, "%.*s/vendor", newStrLen - 1, fullPciPath);
+                                //printf("Shortened PCI Path: %s\n", dirname(pciPath));
                                 FILE *temp = NULL;
                                 temp = fopen(pciPath, "r");
                                 if (temp)
@@ -498,7 +497,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                     temp = NULL;
                                 }
                                 pciPath = dirname(pciPath);//remove vendor from the end
-                                strcat(pciPath, "/device");
+                                snprintf(pciPath, PATH_MAX, "%s/device", pciPath);
                                 temp = fopen(pciPath, "r");
                                 if (temp)
                                 {
@@ -512,7 +511,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 }
                                 //Store revision data. This seems to be in the bcdDevice file.
                                 pciPath = dirname(pciPath);//remove device from the end
-                                strcat(pciPath, "/revision");
+                                snprintf(pciPath, PATH_MAX, "%s/revision", pciPath);
                                 temp = fopen(pciPath, "r");
                                 if (temp)
                                 {
@@ -657,28 +656,28 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
         bool incomingBlock = false;//only set for SD!
         char incomingHandleClassPath[PATH_MAX] = { 0 };
         char *incomingClassName = NULL;
-        strcat(incomingHandleClassPath, "/sys/class/");
+        snprintf(incomingHandleClassPath, PATH_MAX, "%s/sys/class/", incomingHandleClassPath);
         if (is_Block_Device_Handle(handle))
         {
-            strcat(incomingHandleClassPath, "block/");
+            snprintf(incomingHandleClassPath, PATH_MAX, "%sblock/", incomingHandleClassPath);
             incomingBlock = true;
             incomingClassName = strdup("block");
         }
         else if (is_Block_SCSI_Generic_Handle(handle))
         {
-            strcat(incomingHandleClassPath, "bsg/");
+            snprintf(incomingHandleClassPath, PATH_MAX, "%sbsg/", incomingHandleClassPath);
             incomingClassName = strdup("bsg");
         }
         else if (is_SCSI_Generic_Handle(handle))
         {
-            strcat(incomingHandleClassPath, "scsi_generic/");
+            snprintf(incomingHandleClassPath, PATH_MAX, "%sscsi_generic/", incomingHandleClassPath);
             incomingClassName = strdup("scsi_generic");
         }
         //first make sure this directory exists
         struct stat inHandleStat;
         if (stat(incomingHandleClassPath, &inHandleStat) == 0 && S_ISDIR(inHandleStat.st_mode))
         {
-            strcat(incomingHandleClassPath, basename(handle));
+            snprintf(incomingHandleClassPath, PATH_MAX, "%s%s", incomingHandleClassPath, basename(handle));
             //now read the link with the handle appended on the end
             char inHandleLink[PATH_MAX] = { 0 };
             if (readlink(incomingHandleClassPath, inHandleLink, PATH_MAX) > 0)
@@ -723,20 +722,23 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                 }
                 //now we need to loop through each think in the class folder, read the link, and check if we match.
                 struct dirent **classList;
+                int remains = 0;
                 int numberOfItems = scandir(classPath, &classList, NULL /*not filtering anything. Just go through each item*/, alphasort);
                 for (int iter = 0; iter < numberOfItems; ++iter)
                 {
-                    //printf("item = %s\n", classList[iter]->d_name);
+                    //printf("item = %s: %d of %d\n", classList[iter]->d_name,iter,numberOfItems);
                     //now we need to read the link for classPath/d_name into a buffer...then compare it to the one we read earlier.
                     char temp[PATH_MAX] = { 0 };
-                    snprintf(temp, PATH_MAX, "%s%s", classPath, classList[iter]->d_name);
                     struct stat tempStat;
+                    memset(&tempStat, 0, sizeof(struct stat));
+                    snprintf(temp, PATH_MAX, "%s%s", classPath, classList[iter]->d_name);
                     if (lstat(temp,&tempStat) == 0 && S_ISLNK(tempStat.st_mode))/*check if this is a link*/
                     {
                         char mapLink[PATH_MAX] = { 0 };
                         if (readlink(temp, mapLink, PATH_MAX) > 0)
                         {
                             char *className = NULL;
+                            size_t classNameLength = 0;
                             //printf("read link as: %s\n", mapLink);
                             //now, we need to check the links and see if they match.
                             //NOTE: If we are in the block class, we will see sda, sda1, sda 2. These are all matches (technically)
@@ -744,26 +746,29 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                             //We need to match up until the class name (ex: block, bsg, scsi_generic)
                             if (incomingBlock)//block class
                             {
-                                className = (char*)calloc(strlen("scsi_generic") + 1, sizeof(char));
+                                classNameLength = strlen("scsi_generic") + 1;
+                                className = (char*)calloc(classNameLength, sizeof(char));
                                 if (className)
                                 {
-                                    strcat(className, "scsi_generic");
+                                    snprintf(className, classNameLength, "scsi_generic");
                                 }
                             }
                             else if (bsg) //bsg class
                             {
-                                className = (char*)calloc(strlen("bsg") + 1, sizeof(char));
+                                classNameLength = strlen("bsg") + 1;
+                                className = (char*)calloc(classNameLength, sizeof(char));
                                 if (className)
                                 {
-                                    strcat(className, "bsg");
+                                    snprintf(className, classNameLength, "bsg");
                                 }
                             }
                             else //scsi_generic class
                             {
-                                className = (char*)calloc(strlen("block") + 1, sizeof(char));
+                                classNameLength = strlen("block") + 1;
+                                className = (char*)calloc(classNameLength, sizeof(char));
                                 if (className)
                                 {
-                                    strcat(className, "block");
+                                    snprintf(className, classNameLength, "block");
                                 }
                             }
                             if (className)
@@ -784,6 +789,15 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                                     }
                                     safe_Free(className);
                                     safe_Free(incomingClassName);
+                                    // start PRH valgrind fixes
+                                    // this is causing a mem leak... when we bail the loop, there are a string of classList[] items 
+                                    // still allocated. 
+                                    for(remains = iter; remains<numberOfItems; remains++)
+                                    {
+                                        safe_Free(classList[remains]);
+                                    }
+                                    safe_Free(classList);
+                                    // end PRH valgrind fixes.
                                     return SUCCESS;
                                     break;//found a match, exit the loop
                                 }
@@ -791,6 +805,7 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                             safe_Free(className);
                         }
                     }
+                    safe_Free(classList[iter]); // PRH - valgrind
                 }
                 safe_Free(classList);
             }
@@ -1278,7 +1293,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     {
         io_hdr.timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
         //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < 4294966)
+        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < SG_MAX_CMD_TIMEOUT_SECONDS)
         {
             io_hdr.timeout *= 1000;//convert to milliseconds
         }
@@ -1293,7 +1308,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
         {
             io_hdr.timeout = scsiIoCtx->timeout;
             //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
-            if (scsiIoCtx->timeout < 4294966)
+            if (scsiIoCtx->timeout < SG_MAX_CMD_TIMEOUT_SECONDS)
             {
                 io_hdr.timeout *= 1000;//convert to milliseconds
             }
@@ -1729,7 +1744,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 #if defined (DEGUG_SCAN_TIME)
         start_Timer(&getDeviceListTimer);
 #endif
-        for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_sg_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
+        for (driveNumber = 0; ((driveNumber >= 0 && (unsigned int)driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_sg_devs + num_sd_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
             if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
             {
@@ -2044,7 +2059,7 @@ int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
     int fd=0;
     void * barRegs = NULL;
     char sysfsPath[PATH_MAX];
-    snprintf(sysfsPath,"/sys/block/%s/device/resource0", PATH_MAX, device->os_info.name);
+    snprintf(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0",device->os_info.name);
     fd = open(sysfsPath, O_RDONLY);
     if (fd >= 0) 
     {

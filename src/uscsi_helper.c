@@ -46,7 +46,7 @@ e.g. return c?t?d? from /dev/rdsk/c?t?d?
 static void set_Device_Name(const char* filename, char * name, int sizeOfName)
 {
     char * s = strrchr(filename, '/') + 1;
-    strncpy(name, s, M_Min(strlen(s), sizeOfName));
+    snprintf(name, sizeOfName, "%s", s);
 }
 
 int get_Device(const char *filename, tDevice *device)

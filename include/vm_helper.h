@@ -46,6 +46,13 @@ extern "C"
 #endif
 
 
+    //This is the maximum timeout a command can use in SG passthrough with linux...1193 hours
+    //NOTE: SG also supports an infinite timeout, but that is checked in a separate function
+#define SG_MAX_CMD_TIMEOUT_SECONDS 4294967
+
+    //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+    bool os_Is_Infinite_Timeout_Supported();
+
 //SG Driver status's since they are not available through standard includes we're using
 
 #ifndef OPENSEA_SG_ERR_DRIVER_MASK
