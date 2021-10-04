@@ -232,7 +232,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                 }
                 if (readFirmwareInfo && ptrDataRequest)
                 {
-                    memcpy(ptrDataRequest, raidFirmwareRequest + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, dataRequestLength);
+                    memcpy(ptrDataRequest, C_CAST(uintptr_t, raidFirmwareRequest) + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, dataRequestLength);
                 }
             }
             safe_Free_aligned(raidFirmwareRequest);
@@ -266,6 +266,9 @@ bool supports_Intel_Firmware_Download(tDevice *device)
         firmwareInfo->Version = INTEL_STORAGE_FIRMWARE_INFO_STRUCTURE_VERSION_V2;
         firmwareInfo->Size = sizeof(INTEL_STORAGE_FIRMWARE_INFO_V2);
         //nothing else needs setup, just issue the command
+#if defined (_DEBUG)
+        printf("Attempting to get Intel FWDL support\n");
+#endif
         if (SUCCESS == intel_RAID_FW_Request(device, firmwareInfo, allocationSize, 15, INTEL_FIRMWARE_FUNCTION_GET_INFO, flags, true, &returnCode))
         {
             supported = firmwareInfo->UpgradeSupport;
@@ -277,6 +280,23 @@ bool supports_Intel_Firmware_Download(tDevice *device)
                 device->os_info.csmiDeviceData->intelRSTSupport.maxXferSize = firmwareInfo->ImagePayloadMaxSize;
                 device->os_info.csmiDeviceData->intelRSTSupport.payloadAlignment = firmwareInfo->ImagePayloadAlignment;
             }
+#if defined (_DEBUG)
+            printf("Got Win10 FWDL Info\n");
+            printf("\tSupported: %d\n", firmwareInfo->UpgradeSupport);
+            printf("\tPayload Alignment: %ld\n", firmwareInfo->ImagePayloadAlignment);
+            printf("\tmaxXferSize: %ld\n", firmwareInfo->ImagePayloadMaxSize);
+            printf("\tPendingActivate: %d\n", firmwareInfo->PendingActivateSlot);
+            printf("\tActiveSlot: %d\n", firmwareInfo->ActiveSlot);
+            printf("\tSlot Count: %d\n", firmwareInfo->SlotCount);
+            printf("\tFirmware Shared: %d\n", firmwareInfo->FirmwareShared);
+            //print out what's in the slots!
+            for (uint8_t iter = 0; iter < firmwareInfo->SlotCount && iter < 7; ++iter)
+            {
+                printf("\t    Firmware Slot %d:\n", firmwareInfo->Slot[iter].SlotNumber);
+                printf("\t\tRead Only: %d\n", firmwareInfo->Slot[iter].ReadOnly);
+                printf("\t\tRevision: %s\n", firmwareInfo->Slot[iter].Revision);
+            }
+#endif
         }
         safe_Free(firmwareInfo);
     }
@@ -489,7 +509,7 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             memset(&commandTimer, 0, sizeof(seatimer_t));
             //setup the header (SRB_IO_CONTROL) first
             nvmPassthroughCommand->Header.HeaderLength = sizeof(SRB_IO_CONTROL);
-            memcpy(nvmPassthroughCommand->Header.Signature, INTELNVM_SIGNATURE, strlen(INTELNVM_SIGNATURE));
+            memcpy(nvmPassthroughCommand->Header.Signature, INTELNVM_SIGNATURE, 8);
             nvmPassthroughCommand->Header.Timeout = nvmeIoCtx->timeout;
             if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > nvmeIoCtx->timeout)
             {
