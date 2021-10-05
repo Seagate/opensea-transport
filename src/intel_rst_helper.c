@@ -232,7 +232,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                 }
                 if (readFirmwareInfo && ptrDataRequest)
                 {
-                    memcpy(ptrDataRequest, C_CAST(uintptr_t, raidFirmwareRequest) + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, dataRequestLength);
+                    memcpy(ptrDataRequest, C_CAST(uint8_t*, raidFirmwareRequest) + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, dataRequestLength);
                 }
             }
             safe_Free_aligned(raidFirmwareRequest);
