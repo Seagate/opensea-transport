@@ -2960,6 +2960,7 @@ int get_Win_Device(const char *filename, tDevice *device )
                     return SUCCESS;
                 }
 
+#if !defined (DISABLE_NVME_PASSTHROUGH)
                 if (checkForNVMe)
                 {
                     uint8_t nvmeIdent[4096] = { 0 };
@@ -2984,6 +2985,7 @@ int get_Win_Device(const char *filename, tDevice *device )
                         }
                     }
                 }
+#endif
 
                 // Lets fill out rest of info
                 //TODO: This doesn't work for ATAPI on Windows right now. Will need to debug it more to figure out what other parts are wrong to get it fully functional.
@@ -3304,7 +3306,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                             //get the SCSI address for this device and save it to the RAID handle list so it can be scanned for additional types of RAID interfaces.
                             SCSI_ADDRESS scsiAddress;
                             memset(&scsiAddress, 0, sizeof(SCSI_ADDRESS));
-                            if (SUCCESS == win_Get_SCSI_Address(fd, &scsiAddress))
+                            if (SUCCESS == win_Get_SCSI_Address(d->os_info.fd, &scsiAddress))
                             {
                                 char raidHandle[15] = { 0 };
                                 raidTypeHint raidHint;
@@ -8376,6 +8378,17 @@ int send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
+//This is a new union/struct I couldn't find anywhere but here: https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddstor/ns-ntddstor-storage_protocol_data_subvalue_get_log_page
+//So it is defined differently (name only) to prevent colisions if WinAPI version updates and has it at some point - TJE
+typedef union _MSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4 {
+    struct {
+        ULONG RetainAsyncEvent : 1;
+        ULONG LogSpecificField : 4;
+        ULONG Reserved : 27;
+    };
+    ULONG  AsUlong;
+}MSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4, *PMSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4;
+
 int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
 {
     int32_t returnValue = SUCCESS;
@@ -8415,8 +8428,39 @@ int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
 
     protocolData->ProtocolType = ProtocolTypeNvme;
     protocolData->DataType = NVMeDataTypeLogPage;
-    protocolData->ProtocolDataRequestValue = nvmeIoCtx->cmd.adminCmd.cdw10 & 0x000000FF;
-    protocolData->ProtocolDataRequestSubValue = M_Nibble2(nvmeIoCtx->cmd.adminCmd.cdw10);//bits 11:08 log page specific
+    protocolData->ProtocolDataRequestValue = M_Byte0(nvmeIoCtx->cmd.adminCmd.cdw10);//log id
+    protocolData->ProtocolDataRequestSubValue = nvmeIoCtx->cmd.adminCmd.cdw12;//offset lower 32 bits
+    
+#if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_20348
+    //20348 gives suv value 4 for the other bit field values
+    protocolData->ProtocolDataRequestSubValue2 = nvmeIoCtx->cmd.adminCmd.cdw13;//offset higher 32 bits
+    protocolData->ProtocolDataRequestSubValue3 = M_Word1(nvmeIoCtx->cmd.adminCmd.cdw11);//log specific ID
+    PSTORAGE_PROTOCOL_DATA_SUBVALUE_GET_LOG_PAGE nvmeSubValue4 = C_CAST(PSTORAGE_PROTOCOL_DATA_SUBVALUE_GET_LOG_PAGE, &protocolData->ProtocolDataRequestSubValue4);//protocol data request subvalue 4 is what this is in newer documentation...needs a different structure to really see if this way, but this should be compatible.
+    nvmeSubValue4->LogSpecificField = M_Nibble2(nvmeIoCtx->cmd.adminCmd.cdw10);
+    nvmeSubValue4->RetainAsynEvent = (nvmeIoCtx->cmd.adminCmd.cdw10 & BIT15) > 0 ? 1 : 0;
+#elif WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_18362 
+    //18362 gives sub value 3 for log specific ID
+    protocolData->ProtocolDataRequestSubValue2 = nvmeIoCtx->cmd.adminCmd.cdw13;//offset higher 32 bits
+    protocolData->ProtocolDataRequestSubValue3 = M_Word1(nvmeIoCtx->cmd.adminCmd.cdw11);//log specific ID
+    PMSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4 nvmeSubValue4 = C_CAST(PMSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4, &protocolData->Reserved);//protocol data request subvalue 4 is what this is in newer documentation...needs a different structure to really see if this way, but this should be compatible.
+    nvmeSubValue4->LogSpecificField = M_Nibble2(nvmeIoCtx->cmd.adminCmd.cdw10);
+    nvmeSubValue4->RetainAsyncEvent = (nvmeIoCtx->cmd.adminCmd.cdw10 & BIT15) > 0 ? 1 : 0;
+#elif WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_17763 
+    //17763 gave sub value 2 for offset high bits
+    protocolData->ProtocolDataRequestSubValue2 = nvmeIoCtx->cmd.adminCmd.cdw13;//offset higher 32 bits
+    protocolData->Reserved[0] = M_Word1(nvmeIoCtx->cmd.adminCmd.cdw11);//log specific ID
+    PMSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4 nvmeSubValue4 = C_CAST(PMSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4, &protocolData->Reserved[1]);//protocol data request subvalue 4 is what this is in newer documentation...needs a different structure to really see if this way, but this should be compatible.
+    nvmeSubValue4->LogSpecificField = M_Nibble2(nvmeIoCtx->cmd.adminCmd.cdw10);
+    nvmeSubValue4->RetainAsyncEvent = (nvmeIoCtx->cmd.adminCmd.cdw10 & BIT15) > 0 ? 1 : 0;
+#else
+    //set fields in reserved array???
+    protocolData->Reserved[0] = nvmeIoCtx->cmd.adminCmd.cdw13;//offset higher 32 bits
+    protocolData->Reserved[1] = M_Word1(nvmeIoCtx->cmd.adminCmd.cdw11);//log specific ID
+    PMSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4 nvmeSubValue4 = C_CAST(PMSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4, &protocolData->Reserved[2]);//protocol data request subvalue 4 is what this is in newer documentation...needs a different structure to really see if this way, but this should be compatible.
+    nvmeSubValue4->LogSpecificField = M_Nibble2(nvmeIoCtx->cmd.adminCmd.cdw10);
+    nvmeSubValue4->RetainAsyncEvent = (nvmeIoCtx->cmd.adminCmd.cdw10 & BIT15) > 0 ? 1 : 0;
+#endif
+
     protocolData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA);
     protocolData->ProtocolDataLength = nvmeIoCtx->dataSize;
 
@@ -8528,7 +8572,7 @@ int send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
     protocolData->ProtocolType = ProtocolTypeNvme;
     protocolData->DataType = NVMeDataTypeFeature;
     protocolData->ProtocolDataRequestValue = M_Byte0(nvmeIoCtx->cmd.adminCmd.cdw10);
-    protocolData->ProtocolDataRequestSubValue = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 10, 8);//Examples show this as set to zero...I'll try setting this to the "select" field value...0 does get current info, which is probably what is wanted most of the time.
+    protocolData->ProtocolDataRequestSubValue = nvmeIoCtx->cmd.adminCmd.cdw11;//latest Win API shows using CDW11 in a comment, which is a feature specific value
     protocolData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA);
     protocolData->ProtocolDataLength = nvmeIoCtx->dataSize;
 
