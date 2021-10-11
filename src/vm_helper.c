@@ -217,22 +217,22 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
             bool bsg = false;
             char incomingHandleClassPath[PATH_MAX] = { 0 };
             //char *incomingClassName = NULL;
-            snprintf(incomingHandleClassPath, PATH_MAX, "%s/sys/class/", incomingHandleClassPath);
+            common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class");
             if (is_Block_Device_Handle((char*)handle))
             {
-                snprintf(incomingHandleClassPath, PATH_MAX, "%sblock/", incomingHandleClassPath);
+                common_String_Concat(incomingHandleClassPath, PATH_MAX, "block/");
                 incomingBlock = true;
                 //incomingClassName = strdup("block");
             }
             else if (is_Block_SCSI_Generic_Handle((char*)handle))
             {
                 bsg = true;
-                snprintf(incomingHandleClassPath, PATH_MAX, "%sbsg/", incomingHandleClassPath);
+                common_String_Concat(incomingHandleClassPath, PATH_MAX, "bsg/");
                 //incomingClassName = strdup("bsg");
             }
             else if (is_SCSI_Generic_Handle((char*)handle))
             {
-                snprintf(incomingHandleClassPath, PATH_MAX, "%sscsi_generic/", incomingHandleClassPath);
+                common_String_Concat(incomingHandleClassPath, PATH_MAX, "scsi_generic/");
                 //incomingClassName = strdup("scsi_generic");
             }
             else
@@ -250,7 +250,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
             {
                 struct stat link;
                 memset(&link, 0, sizeof(struct stat));
-                snprintf(incomingHandleClassPath, PATH_MAX, "%s%s", incomingHandleClassPath, basename((char*)handle));
+                common_String_Concat(incomingHandleClassPath, PATH_MAX, basename((char*)handle));
                 //now read the link with the handle appended on the end
                 if (lstat(incomingHandleClassPath,&link) == 0 && S_ISLNK(link.st_mode))
                 {
@@ -285,7 +285,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             char *pciPath = (char*)calloc(PATH_MAX, sizeof(char));
                             if (pciPath)
                             {
-                                snprintf(pciPath, PATH_MAX, "%.*s/vendor", newStrLen - 1, fullPciPath);
+                                snprintf(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen - 1), fullPciPath);
                                 //printf("shortened Path = %s\n", dirname(pciPath));
                                 FILE *temp = NULL;
                                 temp = fopen(pciPath, "r");
@@ -300,7 +300,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                     temp = NULL;
                                 }
                                 pciPath = dirname(pciPath);//remove vendor from the end
-                                snprintf(pciPath, PATH_MAX, "%s/device", pciPath);
+                                common_String_Concat(pciPath, PATH_MAX, "/device");
                                 temp = fopen(pciPath, "r");
                                 if (temp)
                                 {
@@ -314,7 +314,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 }
                                 //Store revision data. This seems to be in the bcdDevice file.
                                 pciPath = dirname(pciPath);//remove device from the end
-                                snprintf(pciPath, PATH_MAX, "%s/revision", pciPath);
+                                common_String_Concat(pciPath, PATH_MAX, "/revision");
                                 temp = fopen(pciPath, "r");
                                 if (temp)
                                 {
@@ -353,11 +353,11 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             char *usbPath = (char*)calloc(PATH_MAX, sizeof(char));
                             if (usbPath)
                             {
-                                snprintf(usbPath, PATH_MAX, "%.*s", newStrLen - 1, fullPciPath);
+                                snprintf(usbPath, PATH_MAX, "%.*s", C_CAST(int, newStrLen - 1), fullPciPath);
                                 usbPath = dirname(usbPath);
                                 //printf("full USB Path = %s\n", usbPath);
                                 //now that the path is correct, we need to read the files idVendor and idProduct
-                                snprintf(usbPath, PATH_MAX, "%s/idVendor", usbPath);
+                                common_String_Concat(usbPath, PATH_MAX, "/idVendor");
                                 //printf("idVendor USB Path = %s\n", usbPath);
                                 FILE *temp = NULL;
                                 temp = fopen(usbPath, "r");
@@ -373,7 +373,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 }
                                 usbPath = dirname(usbPath);//remove idVendor from the end
                                 //printf("full USB Path = %s\n", usbPath);
-                                snprintf(usbPath, PATH_MAX, "%s/idProduct", usbPath);
+                                common_String_Concat(usbPath, PATH_MAX, "/idProduct");
                                 //printf("idProduct USB Path = %s\n", usbPath);
                                 temp = fopen(usbPath, "r");
                                 if (temp)
@@ -388,7 +388,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 }
                                 //Store revision data. This seems to be in the bcdDevice file.
                                 usbPath = dirname(usbPath);//remove idProduct from the end
-                                snprintf(usbPath, PATH_MAX, "%s/bcdDevice", usbPath);
+                                common_String_Concat(usbPath, PATH_MAX, "/bcdDevice");
                                 temp = fopen(usbPath, "r");
                                 if (temp)
                                 {
@@ -426,7 +426,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             char *fwPath = (char*)calloc(PATH_MAX, sizeof(char));
                             if (fwPath)
                             {
-                                snprintf(fwPath, PATH_MAX, "%.*s/modalias", newStrLen - 1, fullFWPath);
+                                snprintf(fwPath, PATH_MAX, "%.*s/modalias", C_CAST(int, newStrLen - 1), fullFWPath);
                                 //printf("full FW Path = %s\n", dirname(fwPath));
                                 //printf("modalias FW Path = %s\n", fwPath);
                                 FILE *temp = NULL;
@@ -482,7 +482,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             char *pciPath = (char*)calloc(PATH_MAX, sizeof(char));
                             if (pciPath)
                             {
-                                snprintf(pciPath, PATH_MAX, "%.*s/vendor", newStrLen - 1, fullPciPath);
+                                snprintf(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen - 1), fullPciPath);
                                 //printf("Shortened PCI Path: %s\n", dirname(pciPath));
                                 FILE *temp = NULL;
                                 temp = fopen(pciPath, "r");
@@ -497,7 +497,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                     temp = NULL;
                                 }
                                 pciPath = dirname(pciPath);//remove vendor from the end
-                                snprintf(pciPath, PATH_MAX, "%s/device", pciPath);
+                                common_String_Concat(pciPath, PATH_MAX, "/device");
                                 temp = fopen(pciPath, "r");
                                 if (temp)
                                 {
@@ -511,7 +511,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 }
                                 //Store revision data. This seems to be in the bcdDevice file.
                                 pciPath = dirname(pciPath);//remove device from the end
-                                snprintf(pciPath, PATH_MAX, "%s/revision", pciPath);
+                                common_String_Concat(pciPath, PATH_MAX, "/revision");
                                 temp = fopen(pciPath, "r");
                                 if (temp)
                                 {
@@ -656,28 +656,28 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
         bool incomingBlock = false;//only set for SD!
         char incomingHandleClassPath[PATH_MAX] = { 0 };
         char *incomingClassName = NULL;
-        snprintf(incomingHandleClassPath, PATH_MAX, "%s/sys/class/", incomingHandleClassPath);
+        common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
         if (is_Block_Device_Handle(handle))
         {
-            snprintf(incomingHandleClassPath, PATH_MAX, "%sblock/", incomingHandleClassPath);
+            common_String_Concat(incomingHandleClassPath, PATH_MAX, "block/");
             incomingBlock = true;
             incomingClassName = strdup("block");
         }
         else if (is_Block_SCSI_Generic_Handle(handle))
         {
-            snprintf(incomingHandleClassPath, PATH_MAX, "%sbsg/", incomingHandleClassPath);
+            common_String_Concat(incomingHandleClassPath, PATH_MAX, "bsg/");
             incomingClassName = strdup("bsg");
         }
         else if (is_SCSI_Generic_Handle(handle))
         {
-            snprintf(incomingHandleClassPath, PATH_MAX, "%sscsi_generic/", incomingHandleClassPath);
+            common_String_Concat(incomingHandleClassPath, PATH_MAX, "scsi_generic/");
             incomingClassName = strdup("scsi_generic");
         }
         //first make sure this directory exists
         struct stat inHandleStat;
         if (stat(incomingHandleClassPath, &inHandleStat) == 0 && S_ISDIR(inHandleStat.st_mode))
         {
-            snprintf(incomingHandleClassPath, PATH_MAX, "%s%s", incomingHandleClassPath, basename(handle));
+            common_String_Concat(incomingHandleClassPath, PATH_MAX, basename(handle));
             //now read the link with the handle appended on the end
             char inHandleLink[PATH_MAX] = { 0 };
             if (readlink(incomingHandleClassPath, inHandleLink, PATH_MAX) > 0)
@@ -728,10 +728,11 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                 {
                     //printf("item = %s: %d of %d\n", classList[iter]->d_name,iter,numberOfItems);
                     //now we need to read the link for classPath/d_name into a buffer...then compare it to the one we read earlier.
-                    char temp[PATH_MAX] = { 0 };
+                    size_t tempLen = strlen(classPath) + strlen(classList[iter]->d_name) + 1;
+                    char *temp = C_CAST(char*, calloc(tempLen, sizeof(char)));
                     struct stat tempStat;
                     memset(&tempStat, 0, sizeof(struct stat));
-                    snprintf(temp, PATH_MAX, "%s%s", classPath, classList[iter]->d_name);
+                    snprintf(temp, tempLen, "%s%s", classPath, classList[iter]->d_name);
                     if (lstat(temp,&tempStat) == 0 && S_ISLNK(tempStat.st_mode))/*check if this is a link*/
                     {
                         char mapLink[PATH_MAX] = { 0 };
@@ -806,6 +807,7 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                         }
                     }
                     safe_Free(classList[iter]); // PRH - valgrind
+                    safe_Free(temp);
                 }
                 safe_Free(classList);
             }

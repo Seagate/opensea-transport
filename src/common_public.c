@@ -237,13 +237,40 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             }
                             if (outputInfo->outputFileName && *outputInfo->outputFileName && strlen(*outputInfo->outputFileName))
                             {
-                                snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s%s", fileNameAndPath, *outputInfo->outputFileName);
+                                char *dup = strdup(fileNameAndPath);
+                                if(dup)
+                                {
+                                    snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s%s", dup, *outputInfo->outputFileName);
+                                    safe_Free(dup);
+                                }
+                                else
+                                {
+                                    printf("Error occurred while trying to allocate memory for text output\n");
+                                }
                             }
                             else
                             {
-                                snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%sscanOutput", fileNameAndPath);
+                                char *dup = strdup(fileNameAndPath);
+                                if(dup)
+                                {
+                                    snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%sscanOutput", dup);
+                                    safe_Free(dup);
+                                }
+                                else
+                                {
+                                    printf("An error occurred while trying to create scan output\n");
+                                }
                             }
-                            snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s.txt", fileNameAndPath);
+                            char *dup = strdup(fileNameAndPath);
+                            if(dup)
+                            {
+                                snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s.txt", dup);
+                                safe_Free(dup);
+                            }
+                            else
+                            {
+                                printf("An error occurred while trying to create scan output .txt\n");
+                            }
                             outputInfo->outputFilePtr = fopen(fileNameAndPath, "w+");
                             if (!(outputInfo->outputFilePtr))
                             {
