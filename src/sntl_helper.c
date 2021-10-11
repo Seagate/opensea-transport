@@ -800,7 +800,7 @@ int sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *device, ScsiIoCtx *s
             else
             {
                 char shortString[3] = { 0 };
-                sprintf(shortString, "%02" PRIX8, device->drive_info.IdentifyData.nvme.ns.eui64[euiOffset]);
+                snprintf(shortString, 3, "%02" PRIX8, device->drive_info.IdentifyData.nvme.ns.eui64[euiOffset]);
                 unitSerialNumber[offset] = shortString[0];
                 unitSerialNumber[offset + 1] = shortString[1];
                 offset += 2;
@@ -825,7 +825,7 @@ int sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *device, ScsiIoCtx *s
             else
             {
                 char shortString[3] = { 0 };
-                sprintf(shortString, "%02" PRIX8, device->drive_info.IdentifyData.nvme.ns.nguid[nguidOffset]);
+                snprintf(shortString, 3, "%02" PRIX8, device->drive_info.IdentifyData.nvme.ns.nguid[nguidOffset]);
                 unitSerialNumber[offset] = shortString[0];
                 unitSerialNumber[offset + 1] = shortString[1];
                 offset += 2;
@@ -837,7 +837,8 @@ int sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *device, ScsiIoCtx *s
     }
     else //If both of these fields aren't set, this is an NVMe 1.0 device that needs a different thing to be returned here.
     {
-        char nsidString[10] = { 0 };
+#define NSID_STRING_LENGTH 10
+        char nsidString[NSID_STRING_LENGTH] = { 0 };
         uint8_t counter = 0;
         //SN_NSID(ashex).
         uint8_t offset = 4;
@@ -848,7 +849,7 @@ int sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *device, ScsiIoCtx *s
             ++counter;
         }
         unitSerialNumber[offset] = '_';
-        sprintf(nsidString, "%08" PRIX32, device->drive_info.namespaceID);
+        snprintf(nsidString, NSID_STRING_LENGTH, "%08" PRIX32, device->drive_info.namespaceID);
         counter = 0;
         while (counter < 8)
         {

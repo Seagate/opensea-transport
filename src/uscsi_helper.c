@@ -46,7 +46,7 @@ e.g. return c?t?d? from /dev/rdsk/c?t?d?
 static void set_Device_Name(const char* filename, char * name, int sizeOfName)
 {
     char * s = strrchr(filename, '/') + 1;
-    strncpy(name, s, M_Min(strlen(s), sizeOfName));
+    snprintf(name, sizeOfName, "%s", s);
 }
 
 int get_Device(const char *filename, tDevice *device)
@@ -73,9 +73,9 @@ int get_Device(const char *filename, tDevice *device)
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
         //set the name
-        strcpy(device->os_info.name, filename);
+        snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, filename);
         //set the friendly name
-        set_Device_Name(filename, device->os_info.friendlyName, sizeof(device->os_info.friendlyName));
+        set_Device_Name(filename, device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
 
         //set the OS Type
         device->os_info.osType = OS_SOLARIS;
@@ -396,9 +396,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     int i = 0;
     for(; i < num_devs; i++)
     {
-        devs[i] = (char *)malloc((strlen("/dev/rdsk/") + strlen(namelist[i]->d_name) + 1) * sizeof(char));
-        strcpy(devs[i], "/dev/rdsk/");
-        strcat(devs[i], namelist[i]->d_name);
+        size_t handleSize = (strlen("/dev/rdsk/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
+        devs[i] = (char *)malloc(handleSize);
+        snprintf(devs[i], handleSize, "/dev/rdsk/%s", namelist[i]->d_name);
         safe_Free(namelist[i]);
     }
     devs[i] = NULL;
@@ -424,7 +424,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 continue;
             }
             memset(name, 0, sizeof(name));//clear name before reusing it
-            strcpy(name, devs[driveNumber]);
+            snprintf(name, sizeof(name), "%s", devs[driveNumber]);
             fd = -1;
             //lets try to open the device.      
             fd = open(name, O_RDWR | O_NONBLOCK);

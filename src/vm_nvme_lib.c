@@ -71,11 +71,11 @@ Nvme_Open(struct nvme_adapter_list *adapters, const char *name)
       return NULL;
    }
 
-   strncpy(handle->name, name, sizeof(handle->name));
+   snprintf(handle->name, VMK_MISC_NAME_MAX, "%s", name);
 
    signature.version = VMK_REVISION_FROM_NUMBERS(NVME_MGMT_MAJOR, NVME_MGMT_MINOR, NVME_MGMT_UPDATE, NVME_MGMT_PATCH);
-   strncpy(signature.name.string, adapter->signature, sizeof(signature.name.string));
-   strncpy(signature.vendor.string, NVME_MGMT_VENDOR, sizeof(signature.vendor.string));
+   snprintf(signature.name.string, sizeof(signature.name.string), "%s", adapter->signature);
+   snprintf(signature.vendor.string, sizeof(signature.vendor.string), NVME_MGMT_VENDOR);
    signature.numCallbacks = NVME_MGMT_CTRLR_NUM_CALLBACKS;
    signature.callbacks = nvmeCallbacks;
 

@@ -2096,7 +2096,7 @@ int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *scsiIoCtx
     ataInformation[23] = ' ';
     char openseaVersionString[9] = { 0 };
 
-    sprintf(openseaVersionString, "%d.%d.%d", OPENSEA_TRANSPORT_MAJOR_VERSION, OPENSEA_TRANSPORT_MINOR_VERSION, OPENSEA_TRANSPORT_PATCH_VERSION);
+    snprintf(openseaVersionString, 9, "%d.%d.%d", OPENSEA_TRANSPORT_MAJOR_VERSION, OPENSEA_TRANSPORT_MINOR_VERSION, OPENSEA_TRANSPORT_PATCH_VERSION);
 
     if (strlen(openseaVersionString) < 8)
     {
@@ -2286,7 +2286,8 @@ int translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx *scs
                                            device->drive_info.IdentifyData.ata.Word109,\
                                            device->drive_info.IdentifyData.ata.Word110,\
                                            device->drive_info.IdentifyData.ata.Word111);
-        char scsiNameString[21] = { 0 };
+#define SAT_SCSI_NAME_STRING_LENGTH 21
+        char scsiNameString[SAT_SCSI_NAME_STRING_LENGTH] = { 0 };
         naaDesignatorLength = 12;
         //WWN Supported
         naaDesignator = (uint8_t*)calloc(naaDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
@@ -2308,7 +2309,7 @@ int translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx *scs
         naaDesignator[11] = M_Byte0(device->drive_info.IdentifyData.ata.Word111);
 
         //now set up the scsi name string identifier
-        sprintf(&scsiNameString[0], "naa.%"PRIX64, wwn);
+        snprintf(&scsiNameString[0], SAT_SCSI_NAME_STRING_LENGTH, "naa.%"PRIX64, wwn);
         SCSINameStringDesignatorLength = 24;
         SCSINameStringDesignator = (uint8_t*)calloc(SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t));
         if (!SCSINameStringDesignator)

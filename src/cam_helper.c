@@ -109,8 +109,8 @@ int get_Device( const char *filename, tDevice *device )
 
 		char *baseLink = basename(deviceHandle);
 		// Now we will set up the device name, etc fields in the os_info structure
-		sprintf(device->os_info.name, "/dev/%s", baseLink);
-		sprintf(device->os_info.friendlyName, "%s", baseLink);
+		snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
+		snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
 
 		ret = fill_Drive_Info_Data(device);
 
@@ -133,9 +133,9 @@ int get_Device( const char *filename, tDevice *device )
         {
             //Set name and friendly name
             //name
-            strcpy(device->os_info.name, filename);
+            snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
             //friendly name
-            sprintf(device->os_info.friendlyName, "%s%d", devName, devUnit);
+            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s%d", devName, devUnit);
 
             device->os_info.fd = devUnit;
 
@@ -1067,25 +1067,25 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     int i = 0, j = 0, k=0;
     for (i = 0; i < num_da_devs; ++i)
     {
-        devs[i] = (char *)malloc((strlen("/dev/") + strlen(danamelist[i]->d_name) + 1) * sizeof(char));
-        strcpy(devs[i], "/dev/");
-        strcat(devs[i], danamelist[i]->d_name);
+        size_t devNameStringLength = (strlen("/dev/") + strlen(danamelist[i]->d_name) + 1) * sizeof(char);
+        devs[i] = (char *)malloc(devNameStringLength);
+        snprintf(devs[i], devNameStringLength, "/dev/%s", danamelist[i]->d_name);
         safe_Free(danamelist[i]);
     }
     for (j = 0; i < (num_da_devs + num_ada_devs) && j < num_ada_devs; ++i, j++)
     {
-        devs[i] = (char *)malloc((strlen("/dev/") + strlen(adanamelist[j]->d_name) + 1) * sizeof(char));
-        strcpy(devs[i], "/dev/");
-        strcat(devs[i], adanamelist[j]->d_name);
+        size_t devNameStringLength = (strlen("/dev/") + strlen(adanamelist[j]->d_name) + 1) * sizeof(char);
+        devs[i] = (char *)malloc(devNameStringLength);
+        snprintf(devs[i], devNameStringLength, "/dev/%s", adanamelist[j]->d_name);
         safe_Free(adanamelist[j]);
     }
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 	for (k = 0; i < (num_da_devs + num_ada_devs + num_nvme_devs) && k < num_nvme_devs; ++i, ++j, ++k)
 	{
-		devs[i] = (char *)malloc((strlen("/dev/") + strlen(nvmenamelist[k]->d_name) + 1) * sizeof(char));
-		strcpy(devs[i], "/dev/");
-		strcat(devs[i], nvmenamelist[k]->d_name);
+        size_t devNameStringLength = (strlen("/dev/") + strlen(nvmenamelist[k]->d_name) + 1) * sizeof(char);
+		devs[i] = (char *)malloc(devNameStringLength);
+        snprintf(devs[i], devNameStringLength, "/dev/%s", nvmenamelist[k]->d_name);
 		safe_Free(nvmenamelist[k]);
 	}
 #endif
@@ -1117,7 +1117,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 continue;
             }
             memset(name, 0, sizeof(name));//clear name before reusing it
-            strcpy(name, devs[driveNumber]);
+            snprintf(name, 80, "%s", devs[driveNumber]);
             fd = -1;
             //lets try to open the device.      
             fd = cam_get_device(name, d->os_info.name, sizeof(d->os_info.name), &d->os_info.fd);

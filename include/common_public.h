@@ -984,11 +984,14 @@ extern "C"
     //forward declare csmi info to avoid including csmi_helper.h
     typedef struct _csmiDeviceInfo csmiDeviceInfo,*ptrCsmiDeviceInfo;
 
+#define OS_HANDLE_NAME_MAX_LENGTH 256
+#define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
+#define OS_SECOND_HANDLE_NAME_LENGTH 30
     // \struct typedef struct _OSDriveInfo
     typedef struct _OSDriveInfo
     {
-        char                name[256];//handle name (string)
-        char                friendlyName[24];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
+        char                name[OS_HANDLE_NAME_MAX_LENGTH];//handle name (string)
+        char                friendlyName[OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
         eOSType             osType;//useful for lower layers to do OS specific things
         uint8_t             minimumAlignment;//This is a power of 2 value representing the byte alignment required. 0 - no requirement, 1 - single byte alignment, 2 - word, 4 - dword, 8 - qword, 16 - 128bit aligned
         uint8_t padd0[3];
@@ -1039,8 +1042,8 @@ extern "C"
             uint8_t         lun;//logical unit number
         }scsiAddress;
         bool                secondHandleValid;//must be true for remaining fields to be used.
-        char                secondName[30];
-        char                secondFriendlyName[30];
+        char                secondName[OS_SECOND_HANDLE_NAME_LENGTH];
+        char                secondFriendlyName[OS_SECOND_HANDLE_NAME_LENGTH];
         bool                secondHandleOpened;
         #if defined(VMK_CROSS_COMP)
         /**

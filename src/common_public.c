@@ -233,18 +233,44 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             char fileNameAndPath[OPENSEA_PATH_MAX] = { 0 };
                             if (outputInfo->outputPath && *outputInfo->outputPath && strlen(*outputInfo->outputPath))
                             {
-                                strcpy(fileNameAndPath, *outputInfo->outputPath);
-                                strcat(fileNameAndPath, "/");
+                                snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s/", *outputInfo->outputPath);
                             }
                             if (outputInfo->outputFileName && *outputInfo->outputFileName && strlen(*outputInfo->outputFileName))
                             {
-                                strcat(fileNameAndPath, *outputInfo->outputFileName);
+                                char *dup = strdup(fileNameAndPath);
+                                if(dup)
+                                {
+                                    snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s%s", dup, *outputInfo->outputFileName);
+                                    safe_Free(dup);
+                                }
+                                else
+                                {
+                                    printf("Error occurred while trying to allocate memory for text output\n");
+                                }
                             }
                             else
                             {
-                                strcat(fileNameAndPath, "scanOutput");
+                                char *dup = strdup(fileNameAndPath);
+                                if(dup)
+                                {
+                                    snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%sscanOutput", dup);
+                                    safe_Free(dup);
+                                }
+                                else
+                                {
+                                    printf("An error occurred while trying to create scan output\n");
+                                }
                             }
-                            strcat(fileNameAndPath, ".txt");
+                            char *dup = strdup(fileNameAndPath);
+                            if(dup)
+                            {
+                                snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s.txt", dup);
+                                safe_Free(dup);
+                            }
+                            else
+                            {
+                                printf("An error occurred while trying to create scan output .txt\n");
+                            }
                             outputInfo->outputFilePtr = fopen(fileNameAndPath, "w+");
                             if (!(outputInfo->outputFilePtr))
                             {
@@ -329,11 +355,12 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
 #endif
                     if (scan_Drive_Type_Filter(&deviceList[devIter], flags) && scan_Interface_Type_Filter(&deviceList[devIter], flags))
                     {
-                        char displayHandle[256] = { 0 };
+#define SCAN_DISPLAY_HANDLE_STRING_LENGTH 256
+                        char displayHandle[SCAN_DISPLAY_HANDLE_STRING_LENGTH] = { 0 };
 #if defined(_WIN32)
-                        strcpy(displayHandle, deviceList[devIter].os_info.friendlyName);
+                        snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s", deviceList[devIter].os_info.friendlyName);
 #else
-                        strcpy(displayHandle, deviceList[devIter].os_info.name);
+                        snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s", deviceList[devIter].os_info.name);
 #endif
 #if defined (__linux__) && !defined(VMK_CROSS_COMP) && !defined(UEFI_C_SOURCE)
                         if ((flags & SG_TO_SD) > 0)
@@ -343,9 +370,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             if (SUCCESS == map_Block_To_Generic_Handle(displayHandle, &genName, &blockName))
                             {
                                 memset(displayHandle, 0, sizeof(displayHandle));
-                                strcpy(displayHandle, genName);
-                                strcat(displayHandle, "<->");
-                                strcat(displayHandle, blockName);
+                                snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s<->%s", genName, blockName);
                             }
                             safe_Free(genName);
                             safe_Free(blockName);
@@ -356,15 +381,15 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             char *blockName = NULL;
                             if (SUCCESS == map_Block_To_Generic_Handle(displayHandle, &genName, &blockName))
                             {
-                                memset(displayHandle, 0, sizeof(displayHandle));
-                                sprintf(displayHandle, "/dev/%s", blockName);
+                                memset(displayHandle, 0, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
+                                snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "/dev/%s", blockName);
                             }
                             safe_Free(genName);
                             safe_Free(blockName);
                         }
 #endif
                         char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
-                        strcpy(printable_sn, deviceList[devIter].drive_info.serialNumber);
+                        snprintf(printable_sn, SERIAL_NUM_LEN + 1, "%s", deviceList[devIter].drive_info.serialNumber);
                         //if seagate scsi, need to truncate to 8 digits
                         if (deviceList[devIter].drive_info.drive_type == SCSI_DRIVE && is_Seagate_Family(&deviceList[devIter]) == SEAGATE)
                         {
@@ -522,7 +547,7 @@ bool is_Maxtor_String(char* string)
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, string);
+        snprintf(localString, stringLen + 1, "%s", string);
         localString[stringLen] = '\0';
         convert_String_To_Upper_Case(localString);
         if (strlen(localString) >= maxtorLen && strncmp(localString, "MAXTOR", maxtorLen) == 0)
@@ -590,7 +615,7 @@ bool is_Seagate_VendorID(tDevice *device)
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, device->drive_info.T10_vendor_ident);
+        snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
         localString[stringLen] = '\0';
         convert_String_To_Upper_Case(localString);
         if (strlen(localString) >= seagateLen && strncmp(localString, "SEAGATE", seagateLen) == 0)
@@ -615,7 +640,7 @@ bool is_Seagate_MN(char* string)
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, string);
+        snprintf(localString, stringLen + 1, "%s", string);
         localString[stringLen] = '\0';
         //convert_String_To_Upper_Case(localString);//Removing uppercase converstion, thus making this a case sensitive comparison to fix issues with other non-Seagate products being detected as Seagate.
         if (strlen(localString) >= seagateLen && strncmp(localString, "ST", seagateLen) == 0)
@@ -721,7 +746,7 @@ bool is_Conner_VendorID(tDevice *device)
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, device->drive_info.T10_vendor_ident);
+        snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
         localString[stringLen] = '\0';
         if (strlen(localString) >= connerLen && strncmp(localString, "CONNER", connerLen) == 0)
         {
@@ -771,7 +796,7 @@ bool is_CDC_VendorID(tDevice *device)
                 perror("calloc failure");
                 return false;
             }
-            strcpy(localString, device->drive_info.T10_vendor_ident);
+            snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
             localString[stringLen] = '\0';
             if (strlen(localString) >= cdcLen && strncmp(localString, "CDC", cdcLen) == 0)
             {
@@ -798,7 +823,7 @@ bool is_DEC_VendorID(tDevice *device)
                 perror("calloc failure");
                 return false;
             }
-            strcpy(localString, device->drive_info.T10_vendor_ident);
+            snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
             localString[stringLen] = '\0';
             if (strlen(localString) >= cdcLen && strncmp(localString, "DEC", cdcLen) == 0)
             {
@@ -823,7 +848,7 @@ bool is_MiniScribe_VendorID(tDevice *device)
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, device->drive_info.T10_vendor_ident);
+        snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
         localString[stringLen] = '\0';
         if (strlen(localString) >= miniscribeLen && strncmp(localString, "MINSCRIB", miniscribeLen) == 0)
         {
@@ -849,7 +874,7 @@ bool is_Quantum_VendorID(tDevice *device)
                 perror("calloc failure");
                 return false;
             }
-            strcpy(localString, device->drive_info.T10_vendor_ident);
+            snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
             localString[stringLen] = '\0';
             if (strlen(localString) >= quantumLen && strncmp(localString, "QUANTUM", quantumLen) == 0)
             {
@@ -874,7 +899,7 @@ bool is_Quantum_Model_Number(char* string)
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, string);
+        snprintf(localString, stringLen + 1, "%s", string);
         localString[stringLen] = '\0';
         if (strlen(localString) >= quantumLen && (strncmp(localString, "Quantum", quantumLen) == 0 || strncmp(localString, "QUANTUM", quantumLen) == 0))
         {
@@ -928,7 +953,7 @@ bool is_PrarieTek_VendorID(tDevice *device)
                 perror("calloc failure");
                 return false;
             }
-            strcpy(localString, device->drive_info.T10_vendor_ident);
+            snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
             localString[stringLen] = '\0';
             if (strlen(localString) >= prarieTekLen && strncmp(localString, "PRAIRIE", prarieTekLen) == 0)
             {
@@ -954,7 +979,7 @@ bool is_LaCie(tDevice *device)
             perror("calloc failure");
             return MEMORY_FAILURE;
         }
-        strcpy(vendorID, device->drive_info.T10_vendor_ident);
+        snprintf(vendorID, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
         vendorID[8] = '\0';
         convert_String_To_Upper_Case(vendorID);
         if (strlen(vendorID) >= lacieLen && strncmp(vendorID, "LACIE", lacieLen) == 0)
@@ -979,7 +1004,7 @@ bool is_Samsung_String(char* string)
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, string);
+        snprintf(localString, stringLen + 1, "%s", string);
         localString[stringLen] = '\0';
         convert_String_To_Upper_Case(localString);
         if (strlen(localString) >= samsungLen && strncmp(localString, "SAMSUNG", samsungLen) == 0)
