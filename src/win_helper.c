@@ -10350,8 +10350,10 @@ int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             }
             break;
         case NVME_ADMIN_CMD_DEVICE_SELF_TEST:
-            //TODO: This hasn't always been the case. If we can identify the specific version/update of Win10 this was enabled on, then we can make this better. - TJE
-            useNVMPassthrough = true;
+            if (is_Windows_10_Version_1903_Or_Higher())
+            {
+                useNVMPassthrough = true;
+            }
             break;
         default:
             //Check if it's a vendor unique op code.
