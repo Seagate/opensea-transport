@@ -3075,20 +3075,23 @@ int get_Win_Device(const char *filename, tDevice *device )
                         {
                             device->drive_info.drive_type = NVME_DRIVE;
                             device->drive_info.interface_type = NVME_INTERFACE;
-                            //set_Namespace_ID_For_Device(device);
                             device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this, althrough SCSI Read/write 16 will work too!
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures = true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;//This has seen some changes as Win10 API has advanced. May need more specific flags!
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique = true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest = true;//NOTE: probably specific to a certain Win10 update. Not clearly documented when this became available, so need to do some testing before this is perfect
+                            if (is_Windows_10_Version_1903_Or_Higher())
+                            {
+                                //this is definitely blocked in 1809, so this seems to have started being available in 1903
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest = true;//NOTE: probably specific to a certain Win10 update. Not clearly documented when this became available, so need to do some testing before this is perfect
+                            }
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securitySend = true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures = true;//Only 1 feature today.
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures = true;//Only 1 feature today. <--this is old. There is now a set features API, but I don't see what it does or does not allow. Still needs implementing. - TJE
                             if (is_Windows_PE())
                             {
                                 //If in Windows PE, then these other commands become available
