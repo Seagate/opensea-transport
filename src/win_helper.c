@@ -9320,64 +9320,192 @@ int send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_18362
+int send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeCmdCtx* nvmeIoCtx)
+{
+    int ret = OS_COMMAND_NOT_AVAILABLE;
+    //TODO: If a feature is transferring data, need to take that into account!
+    uint32_t bufferLength = FIELD_OFFSET(STORAGE_PROPERTY_SET, AdditionalParameters) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT) + nvmeIoCtx->dataSize;
+    uint8_t* bufferData = C_CAST(uint8_t*, calloc(bufferLength, sizeof(uint8_t)));
+    if (bufferData)
+    {
+        PSTORAGE_PROPERTY_SET propSet = C_CAST(PSTORAGE_PROPERTY_SET, bufferData);
+        PSTORAGE_PROTOCOL_SPECIFIC_DATA_EXT protocolSpecificData = C_CAST(PSTORAGE_PROTOCOL_SPECIFIC_DATA_EXT, propSet->AdditionalParameters);
+        PSTORAGE_PROTOCOL_DATA_DESCRIPTOR_EXT protocolDataDescr = C_CAST(PSTORAGE_PROTOCOL_DATA_DESCRIPTOR, bufferData);
+        //set properties config according to microsoft documentation.
+        propSet->SetType = PropertyStandardSet;
+        if (nvmeIoCtx->cmd.adminCmd.nsid == 0 || nvmeIoCtx->cmd.adminCmd.nsid == UINT32_MAX)
+        {
+            //All namespaces/the whole device
+            propSet->PropertyId = StorageAdapterProtocolSpecificProperty;
+        }
+        else
+        {
+            //set feature for specific namespace
+            propSet->PropertyId = StorageDeviceProtocolSpecificProperty;
+        }
+        //now setup the protocol specific data
+        protocolSpecificData->ProtocolType = ProtocolTypeNvme;
+        protocolSpecificData->DataType = NVMeDataTypeFeature;
+        //remaining fields are for nvme dwords
+        protocolSpecificData->ProtocolDataValue = M_Byte0(nvmeIoCtx->cmd.dwords.cdw10);//Where does the save bit go???
+        protocolSpecificData->ProtocolDataSubValue = nvmeIoCtx->cmd.dwords.cdw11;
+        protocolSpecificData->ProtocolDataSubValue2 = nvmeIoCtx->cmd.dwords.cdw12;
+        protocolSpecificData->ProtocolDataSubValue3 = nvmeIoCtx->cmd.dwords.cdw13;
+        protocolSpecificData->ProtocolDataSubValue4 = nvmeIoCtx->cmd.dwords.cdw14;
+        protocolSpecificData->ProtocolDataSubValue5 = nvmeIoCtx->cmd.dwords.cdw15;
+
+        if (nvmeIoCtx->ptrData && nvmeIoCtx->dataSize)
+        {
+            //if this feature has a databuffer, set it up to transmit it.
+            protocolSpecificData->ProtocolDataLength = nvmeIoCtx->dataSize;
+            protocolSpecificData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT);
+            memcpy_s(C_CAST(uint8_t*, protocolSpecificData) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT), nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);//TODO: Handle error code? we shouldn't ever have one since sizes are the same
+        }
+        else
+        {
+            //no additional command data is being shared for this feature.
+            protocolSpecificData->ProtocolDataLength = 0;
+            protocolSpecificData->ProtocolDataOffset = 0;
+        }
+
+        //
+    // Send request down.
+    //
+#if defined (_DEBUG)
+        printf("%s Drive Path = %s", __FUNCTION__, nvmeIoCtx->device->os_info.name);
+#endif
+        seatimer_t commandTimer;
+        memset(&commandTimer, 0, sizeof(seatimer_t));
+        start_Timer(&commandTimer);
+        DWORD returnedLength = 0;
+        BOOL result = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
+            IOCTL_STORAGE_SET_PROPERTY,
+            bufferData,
+            bufferLength,
+            bufferData,
+            bufferLength,
+            &returnedLength,
+            NULL
+        );
+        start_Timer(&commandTimer);
+        nvmeIoCtx->device->os_info.last_error = GetLastError();
+        nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+        if (!result)
+        {
+            if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+            {
+                printf("Windows Error: ");
+                print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
+            }
+            ret = OS_PASSTHROUGH_FAILURE;
+        }
+        else
+        {
+            //
+            // Validate the returned data.
+            //
+            if ((protocolDataDescr->Version != sizeof(STORAGE_PROTOCOL_DATA_DESCRIPTOR_EXT)) ||
+                (protocolDataDescr->Size != sizeof(STORAGE_PROTOCOL_DATA_DESCRIPTOR_EXT)))
+            {
+#if defined (_DEBUG)
+                printf("%s: Error Feature - data descriptor header not valid\n", __FUNCTION__);
+#endif
+                ret = OS_PASSTHROUGH_FAILURE;
+            }
+
+            protocolSpecificData = &protocolDataDescr->ProtocolSpecificData;
+
+            if ((protocolSpecificData->ProtocolDataOffset < sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT)) ||
+                (protocolSpecificData->ProtocolDataLength < nvmeIoCtx->dataSize))
+            {
+#if defined (_DEBUG)
+                printf("%s: Error Feature - ProtocolData Offset/Length not valid\n", __FUNCTION__);
+#endif
+                ret = OS_PASSTHROUGH_FAILURE;
+            }
+            nvmeIoCtx->commandCompletionData.commandSpecific = protocolSpecificData->FixedProtocolReturnData;//This should only be DWORD 0 on a get features command anyways...
+            nvmeIoCtx->commandCompletionData.dw0Valid = true;
+        }
+        safe_Free(bufferData);
+    }
+    else
+    {
+        ret = MEMORY_FAILURE;
+    }
+    return ret;
+}
+#endif
+
 int send_NVMe_Set_Features_Win10(nvmeCmdCtx *nvmeIoCtx, bool *useNVMPassthrough)
 {
     int ret = OS_COMMAND_NOT_AVAILABLE;
-    //TODO: Depending on the feature, we may need a SCSI translation, a Windows API call, or we won't be able to perform any translation at all.
-    //IOCTL_STORAGE_DEVICE_POWER_CAP
-    //bool save = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT31;
-    uint8_t featureID = M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10);
-    switch (featureID)
+
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_18362
+    //1903 added storage_set_property IOCTL support, so try it first before falling back on these other methods - TJE
+    if (is_Windows_10_Version_1903_Or_Higher())
     {
-    case 0x01://Arbitration
-        break;
-    case 0x02://Power Management
-        ret = win10_Translate_Set_Power_Management(nvmeIoCtx);
-        break;
-    case 0x03://LBA Range Type
-        break;
-    case 0x04://Temperature Threshold
-        ret = send_NVMe_Set_Temperature_Threshold(nvmeIoCtx);
-        break;
-    case 0x05://Error Recovery
-        ret = win10_Translate_Set_Error_Recovery_Time_Limit(nvmeIoCtx);
-        break;
-    case 0x06://Volatile Write Cache
-        ret = win10_Translate_Set_Volatile_Write_Cache(nvmeIoCtx);
-        break;
-    case 0x07://Number of Queues
-    case 0x08://Interrupt coalescing
-    case 0x09://Interrupt Vector Configuration
-    case 0x0A://Write Atomicity Normal
-    case 0x0B://Asynchronous Event Configuration
-    case 0x0C://Autonomous Power State Transition
-    case 0x0D://Host Memroy Buffer
-    case 0x0E://Timestamp
-    case 0x0F://Keep Alive Timer
-        break;
-    case 0x10://Host Controller Thermal Management
-        break;
-    case 0x80://Software Progress Marker
-    case 0x81://Host Identifier
-    case 0x82://Reservation Notification Mask
-        break;
-    case 0x83://Reservation Persistance
-                //SCSI Persistent reserve out?
-        break;
-    default:
-        //12h- 77h & 0h = reserved
-        //78h - 7Fh = NVMe Management Insterface Specification
-        //80h - BFh = command set specific
-        //C0h - FFh = vendor specific
-        if (featureID >= 0xC0 && featureID <= 0xFF)
+        ret = send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeIoCtx);
+    }
+#endif
+    if(ret == OS_COMMAND_NOT_AVAILABLE)
+    {
+        //TODO: Depending on the feature, we may need a SCSI translation, a Windows API call, or we won't be able to perform any translation at all.
+        //IOCTL_STORAGE_DEVICE_POWER_CAP
+        //bool save = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT31;
+        uint8_t featureID = M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10);
+        switch (featureID)
         {
-            //call the vendor specific pass-through function to try and issue this command
-            if (useNVMPassthrough)
+        case 0x01://Arbitration
+            break;
+        case 0x02://Power Management
+            ret = win10_Translate_Set_Power_Management(nvmeIoCtx);
+            break;
+        case 0x03://LBA Range Type
+            break;
+        case 0x04://Temperature Threshold
+            ret = send_NVMe_Set_Temperature_Threshold(nvmeIoCtx);
+            break;
+        case 0x05://Error Recovery
+            ret = win10_Translate_Set_Error_Recovery_Time_Limit(nvmeIoCtx);
+            break;
+        case 0x06://Volatile Write Cache
+            ret = win10_Translate_Set_Volatile_Write_Cache(nvmeIoCtx);
+            break;
+        case 0x07://Number of Queues
+        case 0x08://Interrupt coalescing
+        case 0x09://Interrupt Vector Configuration
+        case 0x0A://Write Atomicity Normal
+        case 0x0B://Asynchronous Event Configuration
+        case 0x0C://Autonomous Power State Transition
+        case 0x0D://Host Memroy Buffer
+        case 0x0E://Timestamp
+        case 0x0F://Keep Alive Timer
+            break;
+        case 0x10://Host Controller Thermal Management
+            break;
+        case 0x80://Software Progress Marker
+        case 0x81://Host Identifier
+        case 0x82://Reservation Notification Mask
+            break;
+        case 0x83://Reservation Persistance
+                    //SCSI Persistent reserve out?
+            break;
+        default:
+            //12h- 77h & 0h = reserved
+            //78h - 7Fh = NVMe Management Insterface Specification
+            //80h - BFh = command set specific
+            //C0h - FFh = vendor specific
+            if (featureID >= 0xC0 && featureID <= 0xFF)
             {
-                *useNVMPassthrough = true;
+                //call the vendor specific pass-through function to try and issue this command
+                if (useNVMPassthrough)
+                {
+                    *useNVMPassthrough = true;
+                }
             }
+            break;
         }
-        break;
     }
     return ret;
 }
