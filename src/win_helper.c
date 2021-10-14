@@ -9331,7 +9331,7 @@ int send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeCmdCtx* nvmeIoCtx)
     {
         PSTORAGE_PROPERTY_SET propSet = C_CAST(PSTORAGE_PROPERTY_SET, bufferData);
         PSTORAGE_PROTOCOL_SPECIFIC_DATA_EXT protocolSpecificData = C_CAST(PSTORAGE_PROTOCOL_SPECIFIC_DATA_EXT, propSet->AdditionalParameters);
-        PSTORAGE_PROTOCOL_DATA_DESCRIPTOR_EXT protocolDataDescr = C_CAST(PSTORAGE_PROTOCOL_DATA_DESCRIPTOR, bufferData);
+        PSTORAGE_PROTOCOL_DATA_DESCRIPTOR_EXT protocolDataDescr = C_CAST(PSTORAGE_PROTOCOL_DATA_DESCRIPTOR_EXT, bufferData);
         //set properties config according to microsoft documentation.
         propSet->SetType = PropertyStandardSet;
         if (nvmeIoCtx->cmd.adminCmd.nsid == 0 || nvmeIoCtx->cmd.adminCmd.nsid == UINT32_MAX)
