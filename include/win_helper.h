@@ -149,6 +149,21 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int os_Unlock_Device(tDevice *device);
 
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Unlock_Device(tDevice *device)
+    //
+    //! \brief   Description:  Issues IOCTL_DISK_UPDATE_PROPERTIES to force an update of the known filesystem...or attempts to.
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!   
+    //! 
+    //  Exit:
+    //!   \return SUCCESS = pass, NOT_SUPPORTED = IOCTL not available, or did not work. - TJE
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int os_Update_File_System_Cache(tDevice* device);
+
 #if !defined (DISABLE_NVME_PASSTHROUGH)
     //-----------------------------------------------------------------------------
     //
