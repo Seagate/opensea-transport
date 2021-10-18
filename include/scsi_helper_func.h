@@ -112,7 +112,6 @@ extern "C"
     //!   \param fru - pointer tot he variable to hold the field replaceable unit code
     //!
     //  Exit:
-    //!   \return none
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void get_Sense_Key_ASC_ASCQ_FRU(uint8_t *pbuf, uint32_t pbufSize, uint8_t *senseKey, uint8_t *asc, uint8_t *ascq, uint8_t *fru);
@@ -134,7 +133,6 @@ extern "C"
     //!   \param sksp - pointer to the structure that will hold the returned data. check the valid bit to make sure something was filled in, use the type to parse the info out correctly
     //!
     //  Exit:
-    //!   \return none
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void get_Sense_Key_Specific_Information(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp);
@@ -207,7 +205,6 @@ extern "C"
     //!   \param[out] info - pointer to the driveInfo structure to  fill in
     //!
     //  Exit:
-    //!   \return none
     //
     //-----------------------------------------------------------------------------
     void copy_Inquiry_Data( uint8_t *pbuf, driveInfo *info );
@@ -223,7 +220,6 @@ extern "C"
     //!   \param[out] serialNumber - pointer to the string to hold the serial number
     //!
     //  Exit:
-    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
     void copy_Serial_Number( uint8_t *pbuf, char *serialNumber );
@@ -243,7 +239,6 @@ extern "C"
     //!   \param readCap16 - set to true is the data buffer is from a read capacity 16 command, otherwise set to false for a buffer that is from read capacity 10
     //!
     //  Exit:
-    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void copy_Read_Capacity_Info(uint32_t *logicalBlockSize, uint32_t *physicalBlockSize, uint64_t *maxLBA, uint16_t *sectorAlignment, uint8_t *ptrBuf, bool readCap16);
@@ -2075,7 +2070,6 @@ extern "C"
     //!   \param[out] versionString = pointer to a char array that will hold a string describing the version. This should be MAX_VERSION_DESCRIPTOR_STRING_LENGTH in size or larger
     //!
     //  Exit:
-    //!   \return VOID
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* versionString);

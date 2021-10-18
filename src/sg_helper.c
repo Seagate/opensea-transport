@@ -46,7 +46,7 @@
 #endif
 
     //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
-bool os_Is_Infinite_Timeout_Supported()
+bool os_Is_Infinite_Timeout_Supported(void)
 {
     return true;
 }
@@ -314,7 +314,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                     fclose(temp);
                                     temp = NULL;
                                 }
-                                safe_Free(pciPath);
+                                safe_Free(pciPath)
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
                             }
                         }
@@ -386,7 +386,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                     fclose(temp);
                                     temp = NULL;
                                 }
-                                safe_Free(usbPath);
+                                safe_Free(usbPath)
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_USB;
                             }
                         }
@@ -435,7 +435,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                     temp = NULL;
                                 }
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_IEEE1394;
-                                safe_Free(fwPath);
+                                safe_Free(fwPath)
                             }
 
                         }
@@ -512,7 +512,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                     temp = NULL;
                                 }
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
-                                safe_Free(pciPath);
+                                safe_Free(pciPath)
                             }
                         }
                         char *baseLink = basename(inHandleLink);
@@ -605,8 +605,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             }
                         }
                         //printf("Finish handle mapping\n");
-                        safe_Free(block);
-                        safe_Free(gen);
+                        safe_Free(block)
+                        safe_Free(gen)
                     }
                     else
                     {
@@ -691,7 +691,7 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                     else
                     {
                         //printf ("could not map to generic class");
-                        safe_Free(incomingClassName);
+                        safe_Free(incomingClassName)
                         return NOT_SUPPORTED;
                     }
                 }
@@ -702,7 +702,7 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                     if (!(stat(classPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode)))
                     {
                         //printf ("could not map to block class");
-                        safe_Free(incomingClassName);
+                        safe_Free(incomingClassName)
                         return NOT_SUPPORTED;
                     }
                 }
@@ -774,43 +774,43 @@ int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **block
                                         *blockHandle = strndup(basename(classPtr), strlen(basename(classPtr)));
                                         *genericHandle = strdup(basename(handle));
                                     }
-                                    safe_Free(className);
-                                    safe_Free(incomingClassName);
+                                    safe_Free(className)
+                                    safe_Free(incomingClassName)
                                     // start PRH valgrind fixes
                                     // this is causing a mem leak... when we bail the loop, there are a string of classList[] items 
                                     // still allocated. 
                                     for(remains = iter; remains<numberOfItems; remains++)
                                     {
-                                        safe_Free(classList[remains]);
+                                        safe_Free(classList[remains])
                                     }
-                                    safe_Free(classList);
+                                    safe_Free(classList)
                                     // end PRH valgrind fixes.
                                     return SUCCESS;
                                     break;//found a match, exit the loop
                                 }
                             }
-                            safe_Free(className);
+                            safe_Free(className)
                         }
                     }
-                    safe_Free(classList[iter]); // PRH - valgrind
-                    safe_Free(temp);
+                    safe_Free(classList[iter]) // PRH - valgrind
+                    safe_Free(temp)
                 }
-                safe_Free(classList);
+                safe_Free(classList)
             }
             else
             {
                 //not a link, or some other error....probably an old kernel
-                safe_Free(incomingClassName);
+                safe_Free(incomingClassName)
                 return NOT_SUPPORTED;
             }
         }
         else
         {
             //Mapping is not supported...probably an old kernel
-            safe_Free(incomingClassName);
+            safe_Free(incomingClassName)
             return NOT_SUPPORTED;
         }
-        safe_Free(incomingClassName);
+        safe_Free(incomingClassName)
     }
     return UNKNOWN;
 }
@@ -866,8 +866,8 @@ int get_Device(const char *filename, tDevice *device)
         {
             deviceHandle = strdup(filename);
         }
-        safe_Free(genHandle);
-        safe_Free(blockHandle);
+        safe_Free(genHandle)
+        safe_Free(blockHandle)
     }
     else
     {
@@ -886,12 +886,12 @@ int get_Device(const char *filename, tDevice *device)
         print_Errno_To_Screen(errno);
         if (device->os_info.fd == EACCES) 
         {
-            safe_Free(deviceHandle);
+            safe_Free(deviceHandle)
             return PERMISSION_DENIED;
         }
         else
         {
-            safe_Free(deviceHandle);
+            safe_Free(deviceHandle)
             return FAILURE;
         }
     }
@@ -907,7 +907,7 @@ int get_Device(const char *filename, tDevice *device)
         device->drive_info.media_type = MEDIA_HDD;
         set_Device_Fields_From_Handle(deviceHandle, device);
         setup_Passthrough_Hacks_By_ID(device);
-        safe_Free(deviceHandle);
+        safe_Free(deviceHandle)
         return ret;
     }
     //\\TODO: Add support for other flags. 
@@ -1034,7 +1034,7 @@ int get_Device(const char *filename, tDevice *device)
             }
         }
     }
-    safe_Free(deviceHandle);
+    safe_Free(deviceHandle)
     return ret;
 }
 //http://www.tldp.org/HOWTO/SCSI-Generic-HOWTO/scsi_reset.html
@@ -1204,7 +1204,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
         {
             printf("%s Didn't understand direction\n", __FUNCTION__);
         }
-        safe_Free_aligned(localSenseBuffer);
+        safe_Free(localSenseBuffer)
         return BAD_PARAMETER;
     }
 
@@ -1487,7 +1487,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
 #ifdef _DEBUG
     printf("<--%s (%d)\n",__FUNCTION__, ret);
 #endif
-    safe_Free_aligned(localSenseBuffer);
+    safe_Free(localSenseBuffer)
     return ret;
 }
 
@@ -1557,18 +1557,18 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //free the list of names to not leak memory
     for(int iter = 0; iter < num_devs; ++iter)
     {
-    	safe_Free(namelist[iter]);
+    	safe_Free(namelist[iter])
     }
-    safe_Free(namelist);
+    safe_Free(namelist)
     //add nvme devices to the list
     #if !defined(DISABLE_NVME_PASSTHROUGH)
     num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter,sortFunc);
     //free the nvmenamelist to not leak memory
     for(int iter = 0; iter < num_nvme_devs; ++iter)
     {
-    	safe_Free(nvmenamelist[iter]);
+    	safe_Free(nvmenamelist[iter])
     }
-    safe_Free(nvmenamelist);
+    safe_Free(nvmenamelist)
     #endif
 
     *numberOfDevices = num_devs + num_nvme_devs;
@@ -1650,7 +1650,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         size_t handleSize = (strlen("/dev/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = (char *)malloc(handleSize);
         snprintf(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
-        safe_Free(namelist[i]);
+        safe_Free(namelist[i])
     }
     #if !defined(DISABLE_NVME_PASSTHROUGH)
     //add nvme devices to the list
@@ -1659,13 +1659,13 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         size_t handleSize = (strlen("/dev/") + strlen(nvmenamelist[j]->d_name) + 1) * sizeof(char);
         devs[i] = (char *)malloc(handleSize);
         snprintf(devs[i], handleSize, "/dev/%s", nvmenamelist[j]->d_name);
-        safe_Free(nvmenamelist[j]);
+        safe_Free(nvmenamelist[j])
     }
     #endif
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
-    safe_Free(namelist);
+    safe_Free(namelist)
     #if !defined(DISABLE_NVME_PASSTHROUGH)
-    safe_Free(nvmenamelist);
+    safe_Free(nvmenamelist)
     #endif
 
     //TODO: Check if sizeInBytes is a multiple of 
@@ -1731,7 +1731,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(devs[driveNumber]);
+            safe_Free(devs[driveNumber])
         }
 #if defined (DEGUG_SCAN_TIME)
         stop_Timer(&getDeviceListTimer);
@@ -1750,7 +1750,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 	        returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
 	    }
     }
-    safe_Free(devs);
+    safe_Free(devs)
     return returnValue;
 }
 

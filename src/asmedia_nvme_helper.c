@@ -502,7 +502,7 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     {
         if (localMemory)
         {
-            safe_Free_aligned(dataPhasePtr);
+            safe_Free(dataPhasePtr)
         }
         return ret;
     }
@@ -511,7 +511,7 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     {
         if (localMemory)
         {
-            safe_Free_aligned(dataPhasePtr);
+            safe_Free(dataPhasePtr)
         }
         return ret;
     }
@@ -522,7 +522,7 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     {
         if (localMemory)
         {
-            safe_Free_aligned(dataPhasePtr);
+            safe_Free(dataPhasePtr)
         }
         return ret;
     }
@@ -535,7 +535,7 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
         {
             memcpy(nvmCmd->ptrData, dataPhasePtr, nvmCmd->dataSize);
         }
-        safe_Free_aligned(dataPhasePtr);
+        safe_Free(dataPhasePtr)
     }
 
     bool senseDataIsAllWeGot = true;

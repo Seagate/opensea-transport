@@ -126,7 +126,7 @@ int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields)
 
     if (localSenseFieldsAllocated)
     {
-        safe_Free(localSenseFields);
+        safe_Free(localSenseFields)
     }
     return ret;
 }
@@ -384,7 +384,7 @@ int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit,
         memcpy(&overwriteBuffer[4], pattern, patternLengthBytes);
     }
     ret = scsi_Sanitize_Cmd(device, SCSI_SANITIZE_OVERWRITE, immediate, znr, allowUnrestrictedSanitizeExit, patternLengthBytes + 4, overwriteBuffer);
-    safe_Free_aligned(overwriteBuffer);
+    safe_Free(overwriteBuffer)
     return ret;
 }
 
@@ -4021,7 +4021,6 @@ int scsi_Zone_Management_In(tDevice *device, eZMAction action, uint8_t actionSpe
         break;
     default://Need to add new zm actions as they are defined in the spec
         return BAD_PARAMETER;
-        break;
     }
 
     if (dataDir == XFER_NO_DATA)
@@ -4079,7 +4078,6 @@ int scsi_Zone_Management_Out(tDevice *device, eZMAction action, uint8_t actionSp
     case ZM_ACTION_REPORT_ZONES://this is a zone management in command, so return bad parameter
     default://Need to add new zm actions as they are defined in the spec
         return BAD_PARAMETER;
-        break;
     }
 
     if (dataDir == XFER_NO_DATA)

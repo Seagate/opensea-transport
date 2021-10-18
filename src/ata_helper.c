@@ -269,8 +269,8 @@ int send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode
     writeSameBuffer[0] = M_Byte0(SCT_WRITE_SAME);
     writeSameBuffer[1] = M_Byte1(SCT_WRITE_SAME);
     //function code
-    writeSameBuffer[2] = M_Byte0(functionCode);
-    writeSameBuffer[3] = M_Byte1(functionCode);
+    writeSameBuffer[2] = M_Byte0(C_CAST(uint16_t, functionCode));
+    writeSameBuffer[3] = M_Byte1(C_CAST(uint16_t, functionCode));
     //start
     writeSameBuffer[4] = M_Byte0(startLBA);
     writeSameBuffer[5] = M_Byte1(startLBA);
@@ -331,7 +331,7 @@ int send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode
         ret = send_ATA_SCT_Data_Transfer(device, XFER_DATA_OUT, pattern, (uint32_t)(patternLength * device->drive_info.deviceBlockSize));
     }
 
-    safe_Free_aligned(writeSameBuffer);
+    safe_Free(writeSameBuffer)
     return ret;
 }
 
@@ -347,7 +347,7 @@ int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, 
     //if we are retrieving the current values, then we better have a good pointer...no point in sending the command if we don't
     if (functionCode == 0x0002 && !currentValue)
     {
-        safe_Free_aligned(errorRecoveryBuffer);
+        safe_Free(errorRecoveryBuffer)
         return BAD_PARAMETER;
     }
 
@@ -370,7 +370,7 @@ int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, 
     {
         *currentValue = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
     }
-    safe_Free_aligned(errorRecoveryBuffer);
+    safe_Free(errorRecoveryBuffer)
     return ret;
 }
 
@@ -386,7 +386,7 @@ int send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_
     //make sure we have valid pointers for state and optionFlags
     if (!state || !optionFlags)
     {
-        safe_Free_aligned(featureControlBuffer);
+        safe_Free(featureControlBuffer)
         return BAD_PARAMETER;
     }
     //clear the state and option flags out, unless we are setting something
@@ -426,7 +426,7 @@ int send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_
             *optionFlags = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
         }
     }
-    safe_Free_aligned(featureControlBuffer);
+    safe_Free(featureControlBuffer)
     return ret;
 }
 
@@ -1619,7 +1619,7 @@ bool is_Current_CHS_Info_Valid(tDevice *device)
 {
     bool chsSupported = true;
     uint8_t* identifyPtr = (uint8_t*)&device->drive_info.IdentifyData.ata.Word000;
-    uint16_t userAddressableCapacityCHS = M_BytesTo4ByteValue(identifyPtr[117], identifyPtr[116], identifyPtr[115], identifyPtr[114]);
+    uint32_t userAddressableCapacityCHS = M_BytesTo4ByteValue(identifyPtr[117], identifyPtr[116], identifyPtr[115], identifyPtr[114]);
     //Check words 1, 3, 6, 54, 55, 56, 58:57 for values
     if (!(device->drive_info.IdentifyData.ata.Word053 & BIT0) || //if this bit is set, then the current fields are valid. If not, they may or may not be valid
         device->drive_info.IdentifyData.ata.Word001 == 0 ||

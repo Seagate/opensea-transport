@@ -657,7 +657,7 @@ extern "C"
         //TODO: Other vendor unique SCSI to NVMe passthrough here
         NVME_PASSTHROUGH_UNKNOWN,
         //No passthrough
-        PASSTHROUGH_NONE = UINT32_MAX
+        PASSTHROUGH_NONE = INT32_MAX
     }ePassthroughType;
 
     typedef struct _ataOptions
@@ -1349,7 +1349,7 @@ extern "C"
         ZM_ACTION_RESET_WRITE_POINTERS  = 0x04,//non data-out
     }eZMAction;
 
-    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported();
+    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void);
 
     //NOTE: This is only possible in some OS's! If you request this and it's not supported, OS_TIMEOUT_TOO_LARGE is returned.
     #define INFINITE_TIMEOUT_VALUE UINT32_MAX
@@ -1493,7 +1493,6 @@ extern "C"
     //!   \param[in] scanVerbosity = the verbosity to run the scan at
     //!
     //  Exit:
-    //!   \return VOID
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityLevels scanVerbosity);

@@ -205,7 +205,6 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
             print_sense_key("Invalid sense key!", senseKey);
         }
         return BAD_PARAMETER;
-        break;
     }
     //now check the asc and ascq combination...this is going to be very large set of switch cases to do this...
     //FYI there is no rhyme or reason to the order...I just went through the massive table in SPC4...and only things for direct access block devices were implemented - TJE
@@ -8759,7 +8758,7 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
         {
             return NOT_SUPPORTED;
         }
-        safe_Free_aligned(ataInformation);
+        safe_Free(ataInformation)
     }
     if (issueSATIdentify)
     {
@@ -8777,7 +8776,7 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
     return ret;
 }
 
-bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
+static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
 {
     bool passthroughTypeSet = false;
     char vendorID[9] = { 0 };
@@ -9368,7 +9367,7 @@ int fill_In_Device_Info(tDevice *device)
             {
                 ret = fill_In_ATA_Drive_Info(device);
             }
-            safe_Free_aligned(inq_buf);
+            safe_Free(inq_buf)
             return ret;
         }
 
@@ -9412,7 +9411,7 @@ int fill_In_Device_Info(tDevice *device)
                         memset(device->drive_info.serialNumber, 0, SERIAL_NUM_LEN);
                     }
                 }
-                safe_Free_aligned(unitSerialNumber);
+                safe_Free(unitSerialNumber)
             }
             else
             {
@@ -9434,7 +9433,7 @@ int fill_In_Device_Info(tDevice *device)
                 if (!deviceIdentification)
                 {
                     perror("Error allocating memory to read device identification VPD page");
-                    safe_Free_aligned(inq_buf);
+                    safe_Free(inq_buf)
                     return MEMORY_FAILURE;
                 }
                 if (SUCCESS == scsi_Inquiry(device, deviceIdentification, INQ_RETURN_DATA_LENGTH, DEVICE_IDENTIFICATION, true, false))
@@ -9446,14 +9445,14 @@ int fill_In_Device_Info(tDevice *device)
                         byte_Swap_64(&device->drive_info.worldWideName);
                     }
                 }
-                safe_Free_aligned(deviceIdentification);
+                safe_Free(deviceIdentification)
             }
             //One last thing...Need to do a SAT scan...
             if (checkForSAT)
             {
                 check_SAT_Compliance_And_Set_Drive_Type(device);
             }
-            safe_Free_aligned(inq_buf);
+            safe_Free(inq_buf)
             return ret;
         }
 
@@ -9563,7 +9562,7 @@ int fill_In_Device_Info(tDevice *device)
             if (!supportedVPDPages)
             {
                 perror("Error allocating memory for supported VPD pages!\n");
-                safe_Free_aligned(inq_buf);
+                safe_Free(inq_buf)
                 return MEMORY_FAILURE;
             }
             memcpy(supportedVPDPages, &inq_buf[4], supportedVPDPagesLength);
@@ -9602,7 +9601,7 @@ int fill_In_Device_Info(tDevice *device)
                             }
                         }
                     }
-                    safe_Free_aligned(unitSerialNumber);
+                    safe_Free(unitSerialNumber)
                     break;
                 }
                 case DEVICE_IDENTIFICATION://World wide name
@@ -9622,7 +9621,7 @@ int fill_In_Device_Info(tDevice *device)
                             byte_Swap_64(&device->drive_info.worldWideName);
                         }
                     }
-                    safe_Free_aligned(deviceIdentification);
+                    safe_Free(deviceIdentification)
                     break;
                 }
                 case ATA_INFORMATION: //use this to determine if it's SAT compliant
@@ -9722,7 +9721,7 @@ int fill_In_Device_Info(tDevice *device)
                             }
                         }
                     }
-                    safe_Free_aligned(blockDeviceCharacteristics);
+                    safe_Free(blockDeviceCharacteristics)
                     break;
                 }
                 default:
@@ -9730,7 +9729,7 @@ int fill_In_Device_Info(tDevice *device)
                     break;
                 }
             }
-            safe_Free(supportedVPDPages);
+            safe_Free(supportedVPDPages)
         }
         else
         {
@@ -9756,7 +9755,7 @@ int fill_In_Device_Info(tDevice *device)
             uint8_t *readCapBuf = (uint8_t*)calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
             if (!readCapBuf)
             {
-                safe_Free_aligned(inq_buf);
+                safe_Free(inq_buf)
                 return MEMORY_FAILURE;
             }
             if (SUCCESS == scsi_Read_Capacity_10(device, readCapBuf, READ_CAPACITY_10_LEN))
@@ -9768,8 +9767,8 @@ int fill_In_Device_Info(tDevice *device)
                     uint8_t* temp = (uint8_t*)realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment);
                     if (!temp)
                     {
-                        safe_Free_aligned(readCapBuf);
-                        safe_Free_aligned(inq_buf);
+                        safe_Free(readCapBuf)
+                        safe_Free(inq_buf)
                         return MEMORY_FAILURE;
                     }
                     readCapBuf = temp;
@@ -9804,8 +9803,8 @@ int fill_In_Device_Info(tDevice *device)
                 uint8_t* temp = (uint8_t*)realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment);
                 if (temp == NULL)
                 {
-                    safe_Free_aligned(readCapBuf);
-                    safe_Free_aligned(inq_buf);
+                    safe_Free(readCapBuf)
+                    safe_Free(inq_buf)
                     return MEMORY_FAILURE;
                 }
                 readCapBuf = temp;
@@ -9821,7 +9820,7 @@ int fill_In_Device_Info(tDevice *device)
                     }
                 }
             }
-            safe_Free_aligned(readCapBuf);
+            safe_Free(readCapBuf)
             if (device->drive_info.devicePhyBlockSize == 0)
             {
                 //If we did not get a physical blocksize, we need to set it to the blocksize (logical).
@@ -9856,7 +9855,7 @@ int fill_In_Device_Info(tDevice *device)
         }
         ret = COMMAND_FAILURE;
     }
-    safe_Free_aligned(inq_buf);
+    safe_Free(inq_buf)
 
     #ifdef _DEBUG
     printf("\nscsi helper\n");

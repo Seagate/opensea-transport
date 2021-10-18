@@ -40,7 +40,7 @@ eConsoleColors uefiDebugMessageColor = BLUE;
 #define IS_ALIGNED(addr, size)      (((UINTN) (addr) & (size - 1)) == 0)
 
 //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
-bool os_Is_Infinite_Timeout_Supported()
+bool os_Is_Infinite_Timeout_Supported(void)
 {
     return true;
 }
@@ -202,7 +202,7 @@ int get_Device(const char *filename, tDevice *device)
                     //device doesn't exist, so we cannot talk to it
                     return FAILURE;
                 }
-                safe_Free(devicePath);
+                safe_Free(devicePath)
                 //close the protocol
                 close_ATA_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum);
             }
@@ -249,7 +249,7 @@ int get_Device(const char *filename, tDevice *device)
                     //device doesn't exist, so we cannot talk to it
                     return FAILURE;
                 }
-                safe_Free(devicePath);
+                safe_Free(devicePath)
                 close_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum);
             }
             else
@@ -281,7 +281,7 @@ int get_Device(const char *filename, tDevice *device)
                     //device doesn't exist, so we cannot talk to it
                     return FAILURE;
                 }
-                safe_Free(devicePath);
+                safe_Free(devicePath)
                 close_SCSI_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum);
             }
             else
@@ -318,7 +318,7 @@ int get_Device(const char *filename, tDevice *device)
                     //device doesn't exist, so we cannot talk to it
                     return FAILURE;
                 }
-                safe_Free(devicePath);
+                safe_Free(devicePath)
                 close_NVMe_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum);
                 device->drive_info.namespaceID = device->os_info.address.nvme.namespaceID;
             }
@@ -640,10 +640,10 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        safe_Free_aligned(localBuffer);
-        safe_Free_aligned(localCDB);
-        safe_Free_aligned(localSensePtr);
-        safe_Free_aligned(srp);
+        safe_Free(localBuffer)
+        safe_Free(localCDB)
+        safe_Free(localSensePtr)
+        safe_Free(srp)
         close_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum);
     }
     else
@@ -993,10 +993,10 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        safe_Free_aligned(localBuffer);
-        safe_Free_aligned(localCDB);
-        safe_Free_aligned(localSensePtr);
-        safe_Free_aligned(srp);
+        safe_Free(localBuffer)
+        safe_Free(localCDB)
+        safe_Free(localSensePtr)
+        safe_Free(srp)
         close_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum);
     }
     else
@@ -1342,10 +1342,10 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        safe_Free_aligned(ataPacket);
-        safe_Free_aligned(localBuffer);
-        safe_Free_aligned(ataStatus);
-        safe_Free_aligned(ataCommand);
+        safe_Free(ataPacket)
+        safe_Free(localBuffer)
+        safe_Free(ataStatus)
+        safe_Free(ataCommand)
         close_ATA_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum);
     }
     else
@@ -1726,11 +1726,11 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        safe_Free_aligned(nrp->MetadataBuffer);//TODO: Need to figure out a better way to handle the metadata than this...
-        safe_Free_aligned(nrp);
-        safe_Free_aligned(localBuffer);
-        safe_Free_aligned(nvmCommand);
-        safe_Free_aligned(nvmCompletion);
+        safe_Free(nrp->MetadataBuffer)//TODO: Need to figure out a better way to handle the metadata than this...
+        safe_Free(nrp)
+        safe_Free(localBuffer)
+        safe_Free(nvmCommand)
+        safe_Free(nvmCompletion)
         close_NVMe_Passthru_Protocol_Ptr(&pPassthru, nvmeIoCtx->device->os_info.controllerNum);
     }
     else
@@ -1837,7 +1837,7 @@ uint32_t get_ATA_Device_Count()
                         //EFI_NOT_FOUND means no device at this place.
                         //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                         //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                        safe_Free(devicePath);
+                        safe_Free(devicePath)
                     }
                 }
             }
@@ -1913,7 +1913,7 @@ int get_ATA_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                         //EFI_NOT_FOUND means no device at this place.
                         //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                         //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                        safe_Free(devicePath);
+                        safe_Free(devicePath)
                     }
                 }
             }
@@ -1975,7 +1975,7 @@ uint32_t get_SCSI_Device_Count()
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(devicePath);
+                safe_Free(devicePath)
             }
         }
         //close the protocol since we're going to open this again in getdevice
@@ -2041,7 +2041,7 @@ int get_SCSI_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, vers
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(devicePath);
+                safe_Free(devicePath)
             }
         }
         //close the protocol since we're going to open this again in getdevice
@@ -2106,7 +2106,7 @@ uint32_t get_SCSIEx_Device_Count()
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(devicePath);
+                safe_Free(devicePath)
             }
         }
         //close the protocol since we're going to open this again in getdevice
@@ -2176,7 +2176,7 @@ int get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, ve
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(devicePath);
+                safe_Free(devicePath)
             }
         }
         //close the protocol since we're going to open this again in getdevice
@@ -2236,7 +2236,7 @@ uint32_t get_NVMe_Device_Count()
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(devicePath);
+                safe_Free(devicePath)
             }
         }
         //close the protocol since we're going to open this again in getdevice
@@ -2300,7 +2300,7 @@ int get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, vers
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(devicePath);
+                safe_Free(devicePath)
             }
         }
         //close the protocol since we're going to open this again in getdevice

@@ -215,7 +215,7 @@ int send_CSMI_Legacy_ATA_Passthrough(tDevice *device, ataPassthroughCommand  *at
     memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);//clear before copying over data
     memcpy(&device->drive_info.lastCommandSenseData[0], &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
     //memcpy(&device->drive_info.lastCommandRTFRs, &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
-    safe_Free_aligned(senseData);
+    safe_Free(senseData)
     if (localSenseData)
     {
         ataCommandOptions->ptrSenseData = NULL;

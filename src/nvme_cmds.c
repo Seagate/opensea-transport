@@ -27,16 +27,12 @@ int nvme_Reset(tDevice *device)
     {
     case NVME_PASSTHROUGH_SYSTEM:
         return os_nvme_Reset(device);
-        break;
     case NVME_PASSTHROUGH_JMICRON:
         return jm_nvme_Reset(device);
-        break;
     case NVME_PASSTHROUGH_ASMEDIA:
         return asm_nvme_Reset(device);
-        break;
     case NVME_PASSTHROUGH_ASMEDIA_BASIC:
         return OS_COMMAND_NOT_AVAILABLE;
-        break;
     default:
         return BAD_PARAMETER;
     }
@@ -48,16 +44,12 @@ int nvme_Subsystem_Reset(tDevice *device)
     {
     case NVME_PASSTHROUGH_SYSTEM:
         return os_nvme_Subsystem_Reset(device);
-        break;
     case NVME_PASSTHROUGH_JMICRON:
         return jm_nvme_Subsystem_Reset(device);
-        break;
     case NVME_PASSTHROUGH_ASMEDIA:
         return asm_nvme_Subsystem_Reset(device);
-        break;
     case NVME_PASSTHROUGH_ASMEDIA_BASIC:
         return OS_COMMAND_NOT_AVAILABLE;
-        break;
     default:
         return BAD_PARAMETER;
     }
@@ -1057,7 +1049,7 @@ int nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegisters * ctrlRegs)
         memcpy(ctrlRegs,barRegs,sizeof(nvmeBarCtrlRegisters));
     }
     
-    safe_Free_aligned(barRegs);
+    safe_Free(barRegs)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {

@@ -86,7 +86,7 @@ ptrRaidHandleToScan remove_RAID_Handle(ptrRaidHandleToScan toRemove, ptrRaidHand
             //If there was a previous entry, need to update it's next pointer
             previous->next = returnMe;
         }
-        safe_Free(toRemove);
+        safe_Free(toRemove)
         return returnMe;
     }
     return NULL;
@@ -98,7 +98,7 @@ void delete_RAID_List(ptrRaidHandleToScan listBegin)
     while (listBegin)
     {
         ptrRaidHandleToScan nextDelete = listBegin->next;
-        safe_Free(listBegin);
+        safe_Free(listBegin)
         listBegin = nextDelete;
     }
     return;

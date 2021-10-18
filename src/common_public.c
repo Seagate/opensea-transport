@@ -17,7 +17,7 @@ int load_Bin_Buf( char *filename, void *myBuf, size_t bufSize )
 {
     //int ret = UNKNOWN;
     FILE     *fp;
-    uint32_t bytesRead = 0;
+    int bytesRead = 0;
 
     //Open file
 
@@ -29,7 +29,7 @@ int load_Bin_Buf( char *filename, void *myBuf, size_t bufSize )
     fseek(fp, 0, SEEK_SET); //should open to start but hey
 
     //Read file contents into buffer
-    bytesRead = (uint32_t)fread(myBuf, 1, bufSize, fp);
+    bytesRead = C_CAST(int, fread(myBuf, 1, bufSize, fp));//I don't like this. This should return size_t, but I don't want to change the API too much right now -TJE
     fclose(fp);
 
     return bytesRead;
@@ -241,7 +241,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                                 if(dup)
                                 {
                                     snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s%s", dup, *outputInfo->outputFileName);
-                                    safe_Free(dup);
+                                    safe_Free(dup)
                                 }
                                 else
                                 {
@@ -254,7 +254,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                                 if(dup)
                                 {
                                     snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%sscanOutput", dup);
-                                    safe_Free(dup);
+                                    safe_Free(dup)
                                 }
                                 else
                                 {
@@ -265,7 +265,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             if(dup)
                             {
                                 snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s.txt", dup);
-                                safe_Free(dup);
+                                safe_Free(dup)
                             }
                             else
                             {
@@ -274,7 +274,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             outputInfo->outputFilePtr = fopen(fileNameAndPath, "w+");
                             if (!(outputInfo->outputFilePtr))
                             {
-                                safe_Free(deviceList);
+                                safe_Free(deviceList)
                                 perror("could not open file!");
                                 return;
                             }
@@ -372,8 +372,8 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                                 memset(displayHandle, 0, sizeof(displayHandle));
                                 snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s<->%s", genName, blockName);
                             }
-                            safe_Free(genName);
-                            safe_Free(blockName);
+                            safe_Free(genName)
+                            safe_Free(blockName)
                         }
                         else if ((flags & SD_HANDLES) > 0)
                         {
@@ -384,8 +384,8 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                                 memset(displayHandle, 0, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
                                 snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "/dev/%s", blockName);
                             }
-                            safe_Free(genName);
-                            safe_Free(blockName);
+                            safe_Free(genName)
+                            safe_Free(blockName)
                         }
 #endif
                         char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
@@ -450,7 +450,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                     close_Device(&deviceList[deviceIter]);
                 }
             }
-            safe_Free_aligned(deviceList);
+            safe_Free(deviceList)
         }
         else
         {
@@ -506,7 +506,7 @@ int get_Version_Block(versionBlock * blk)
     }
 }
 
-void set_IEEE_OUI(uint32_t* ieeeOUI, tDevice *device, bool USBchildDrive)
+static void set_IEEE_OUI(uint32_t* ieeeOUI, tDevice *device, bool USBchildDrive)
 {
     uint8_t naa = 0;
     uint64_t wwn = 0;
@@ -554,7 +554,7 @@ bool is_Maxtor_String(char* string)
         {
             isMaxtor = true;
         }
-        safe_Free(localString);
+        safe_Free(localString)
     }
     return isMaxtor;
 }
@@ -622,7 +622,7 @@ bool is_Seagate_VendorID(tDevice *device)
         {
             isSeagate = true;
         }
-        safe_Free(localString);
+        safe_Free(localString)
     }
     return isSeagate;
 }
@@ -647,7 +647,7 @@ bool is_Seagate_MN(char* string)
         {
             isSeagate = true;
         }
-        safe_Free(localString);
+        safe_Free(localString)
     }
     return isSeagate;
 }
@@ -752,7 +752,7 @@ bool is_Conner_VendorID(tDevice *device)
         {
             isConner = true;
         }
-        safe_Free(localString);
+        safe_Free(localString)
     }
     return isConner;
 }
@@ -802,7 +802,7 @@ bool is_CDC_VendorID(tDevice *device)
             {
                 isCDC = true;
             }
-            safe_Free(localString);
+            safe_Free(localString)
         }
     }
     return isCDC;
@@ -829,7 +829,7 @@ bool is_DEC_VendorID(tDevice *device)
             {
                 isDEC = true;
             }
-            safe_Free(localString);
+            safe_Free(localString)
         }
     }
     return isDEC;
@@ -854,7 +854,7 @@ bool is_MiniScribe_VendorID(tDevice *device)
         {
             isMiniscribe = true;
         }
-        safe_Free(localString);
+        safe_Free(localString)
     }
     return isMiniscribe;
 }
@@ -880,7 +880,7 @@ bool is_Quantum_VendorID(tDevice *device)
             {
                 isQuantum = true;
             }
-            safe_Free(localString);
+            safe_Free(localString)
         }
     }
     return isQuantum;
@@ -905,7 +905,7 @@ bool is_Quantum_Model_Number(char* string)
         {
             isQuantum = true;
         }
-        safe_Free(localString);
+        safe_Free(localString)
     }
     return isQuantum;
 }
@@ -959,7 +959,7 @@ bool is_PrarieTek_VendorID(tDevice *device)
             {
                 isPrarieTek = true;
             }
-            safe_Free(localString);
+            safe_Free(localString)
         }
     }
     return isPrarieTek;
@@ -986,7 +986,7 @@ bool is_LaCie(tDevice *device)
         {
             isLaCie = true;
         }
-        safe_Free(vendorID);
+        safe_Free(vendorID)
     }
     return isLaCie;
 }
@@ -1011,7 +1011,7 @@ bool is_Samsung_String(char* string)
         {
             isSamsung = true;
         }
-        safe_Free(localString);
+        safe_Free(localString)
     }
     return isSamsung;
 }
@@ -1031,6 +1031,7 @@ bool is_Samsung_HDD(tDevice *device, bool USBchildDrive)
         break;
     case IEEE_SAMSUNG_SSD:
         isSSD = true;//fall through
+        M_FALLTHROUGH
     default:
         if (device->drive_info.interface_type == USB_INTERFACE && !USBchildDrive && !isSSD)
         {
@@ -1681,7 +1682,7 @@ int calculate_Checksum(uint8_t *pBuf, uint32_t blockSize)
         return BAD_PARAMETER;
     }
     
-    printf("%s: blksize %d, pBuf %p\n",__FUNCTION__, blockSize,pBuf);
+    printf("%s: blksize %d, pBuf %p\n",__FUNCTION__, blockSize, C_CAST(void*, pBuf));
     
     uint8_t checksum = 0; 
     uint32_t counter = 0;
@@ -1766,7 +1767,7 @@ void print_Command_Time(uint64_t timeInNanoSeconds)
 {
     double printTime = (double)timeInNanoSeconds;
     uint8_t unitCounter = 0;
-    bool breakLoop = false;;
+    bool breakLoop = false;
     while (printTime > 1 && unitCounter <= 6)
     {
         switch (unitCounter)
@@ -1778,7 +1779,6 @@ void print_Command_Time(uint64_t timeInNanoSeconds)
             {
                 breakLoop = true;
             }
-            break;
             break;
         case 4://m to h
         case 3://s to m
@@ -1861,7 +1861,7 @@ void print_Time(uint64_t timeInNanoSeconds)
 {
     double printTime = (double)timeInNanoSeconds;
     uint8_t unitCounter = 0;
-    bool breakLoop = false;;
+    bool breakLoop = false;
     while (printTime > 1 && unitCounter <= 6)
     {
         switch (unitCounter)
@@ -1873,7 +1873,6 @@ void print_Time(uint64_t timeInNanoSeconds)
             {
                 breakLoop = true;
             }
-            break;
             break;
         case 4://m to h
         case 3://s to m
@@ -2188,7 +2187,7 @@ bool is_Removable_Media(tDevice *device)
 }
 //https://usb-ids.gowdy.us/
 //http://www.linux-usb.org/usb.ids
-bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
+static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
 {
     bool passthroughHacksSet = false;
     //only change the ATA Passthrough type for USB (for legacy USB bridges)
@@ -4327,7 +4326,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
 }
 
 //Vendor ID's, or OUI's, can be found here: https://regauth.standards.ieee.org/standards-ra-web/pub/view.html#registries
-bool set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
+static bool set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
 {
     bool passthroughHacksSet = false;
     if (device->drive_info.interface_type == IEEE_1394_INTERFACE)

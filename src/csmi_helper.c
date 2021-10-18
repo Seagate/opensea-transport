@@ -280,7 +280,7 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
     {
         if (localTimer)
         {
-            safe_Free(timer);
+            safe_Free(timer)
         }
         return MEMORY_FAILURE;
     }
@@ -340,7 +340,7 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
     csmiIoOutParams->sysIoctlReturn = localIoctlReturn;
     if (localTimer)
     {
-        safe_Free(timer);
+        safe_Free(timer)
     }
     return ret;
 }
@@ -1434,7 +1434,7 @@ int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
     {
         if (sspInputs->cdbLength > 40)
         {
-            safe_Free_aligned(sspPassthrough);
+            safe_Free(sspPassthrough)
             return OS_COMMAND_NOT_AVAILABLE;
         }
         //copy to cdb, then additional CDB
@@ -1466,7 +1466,7 @@ int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
         }
         else
         {
-            safe_Free_aligned(sspPassthrough);
+            safe_Free(sspPassthrough)
             return BAD_PARAMETER;
         }
     }
@@ -1531,7 +1531,7 @@ int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
         print_Return_Enum("CSMI SSP Passthrough\n", ret);
     }
 
-    safe_Free_aligned(sspPassthrough);
+    safe_Free(sspPassthrough)
 
     return ret;
 }
@@ -1613,7 +1613,7 @@ int csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
         }
         else
         {
-            safe_Free_aligned(stpPassthrough);
+            safe_Free(stpPassthrough)
             return BAD_PARAMETER;
         }
     }
@@ -1670,7 +1670,7 @@ int csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
         print_Return_Enum("CSMI STP Passthrough\n", ret);
     }
 
-    safe_Free_aligned(stpPassthrough);
+    safe_Free(stpPassthrough)
 
     return ret;
 }
@@ -2196,7 +2196,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                                         }
                                     }
                                 }
-                                safe_Free(raidConfig);
+                                safe_Free(raidConfig)
                             }
                         }
                     }
@@ -2339,7 +2339,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                                                     foundPhyInfo = true;
                                                     //TODO: To help prevent multiport or multi-lun issues, we should REALLY check the device identification VPD page, but that can be a future enhancement
                                                 }
-                                                safe_Free(serialNumber);
+                                                safe_Free(serialNumber)
                                             }
                                         }
                                         //else...catastrophic failure? Not sure what to do here since this should be really rare to begin with.
@@ -2354,7 +2354,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
             if (!foundPhyInfo)
             {
                 //We don't have enough information to use CSMI passthrough on this device. Free memory and return NOT_SUPPORTED
-                safe_Free(device->os_info.csmiDeviceData);
+                safe_Free(device->os_info.csmiDeviceData)
                 ret = NOT_SUPPORTED;
             }
 
@@ -2401,7 +2401,7 @@ int close_CSMI_RAID_Device(tDevice *device)
     {
         CloseHandle(device->os_info.fd);
         device->os_info.last_error = GetLastError();
-        safe_Free(device->os_info.csmiDeviceData);
+        safe_Free(device->os_info.csmiDeviceData)
         device->os_info.last_error = 0;
 #if defined (_WIN32)
         device->os_info.fd = INVALID_HANDLE_VALUE;
@@ -2614,7 +2614,7 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
                                 }
                             }
                         }
-                        safe_Free(raidConfig);
+                        safe_Free(raidConfig)
                     }
                 }
             }
@@ -2711,7 +2711,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
             DWORD valueType = REG_DWORD;
             if (ERROR_SUCCESS == RegQueryValueEx(keyHandle, valueName, NULL, &valueType, regData, &dataLen))
             {
-                int32_t dwordVal = M_BytesTo4ByteValue(regData[3], regData[2], regData[1], regData[0]);
+                int32_t dwordVal = C_CAST(int32_t, M_BytesTo4ByteValue(regData[3], regData[2], regData[1], regData[0]));
                 switch (dwordVal)
                 {
                 case 0:
@@ -2741,8 +2741,8 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
             access = CSMI_SECURITY_ACCESS_LIMITED;
         }
     }
-    safe_Free(tdriverName);
-    safe_Free(registryKey);
+    safe_Free(tdriverName)
+    safe_Free(registryKey)
 #else //not windows, need root, otherwise not available at all. Return FULL if running as root
     if (is_Running_Elevated())
     {
@@ -2782,7 +2782,8 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
     eVerbosityLevels csmiCountVerbosity = VERBOSITY_DEFAULT;//change this if debugging
     ptrRaidHandleToScan raidList = NULL;
     ptrRaidHandleToScan previousRaidListEntry = NULL;
-    int controllerNumber = 0, found = 0;
+    uint32_t controllerNumber = 0;
+    int found = 0;
 
     if (!beginningOfList || !*beginningOfList)
     {
@@ -2878,7 +2879,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                                             }
                                         }
                                     }
-                                    safe_Free(csmiRAIDConfig);
+                                    safe_Free(csmiRAIDConfig)
                                 }
                             }
                         }
@@ -3179,7 +3180,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                 }
                                             }
                                         }
-                                        safe_Free(csmiRAIDConfig);
+                                        safe_Free(csmiRAIDConfig)
                                     }
                                 }
                             }

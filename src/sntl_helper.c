@@ -52,7 +52,7 @@
 #pragma warning(disable:4706)
 #endif
 
-void sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(uint8_t data[8], bool cd, bool bpv, uint8_t bitPointer, uint16_t fieldPointer)
+static void sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(uint8_t data[8], bool cd, bool bpv, uint8_t bitPointer, uint16_t fieldPointer)
 {
     if (data)
     {
@@ -76,7 +76,7 @@ void sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(uint8_t data[8], bool 
     }
 }
 
-void sntl_Set_Sense_Key_Specific_Descriptor_Progress_Indicator(uint8_t data[8], uint16_t progressValue)
+static void sntl_Set_Sense_Key_Specific_Descriptor_Progress_Indicator(uint8_t data[8], uint16_t progressValue)
 {
     if (data)
     {
@@ -92,7 +92,7 @@ void sntl_Set_Sense_Key_Specific_Descriptor_Progress_Indicator(uint8_t data[8], 
     }
 }
 
-void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLength, uint8_t senseKey, uint8_t asc, uint8_t ascq, bool descriptorFormat, uint8_t *descriptor, uint8_t descriptorCount /* this will probably only be 1, but up to 2 or 3 max */)
+static void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLength, uint8_t senseKey, uint8_t asc, uint8_t ascq, bool descriptorFormat, uint8_t *descriptor, uint8_t descriptorCount /* this will probably only be 1, but up to 2 or 3 max */)
 {
     uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
     uint8_t additionalSenseLength = 0;
@@ -311,7 +311,7 @@ void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLe
     }
 }
 
-void set_Sense_Data_By_Generic_NVMe_Status(tDevice *device, uint8_t nvmeStatus, uint8_t *sensePtr, uint32_t senseDataLength, bool doNotRetry)
+static void set_Sense_Data_By_Generic_NVMe_Status(tDevice *device, uint8_t nvmeStatus, uint8_t *sensePtr, uint32_t senseDataLength, bool doNotRetry)
 {
     //first check if sense data reporting is supported
     uint8_t senseKey = 0, asc = 0, ascq = 0;
@@ -416,7 +416,6 @@ void set_Sense_Data_By_Generic_NVMe_Status(tDevice *device, uint8_t nvmeStatus, 
         //TODO: Need something to handle these....
         genericCatchAllSense = true;
         break;
-        break;
         //80-BFh are I/O command set specific
     case 0x80://LBA out of range
         senseKey = SENSE_KEY_ILLEGAL_REQUEST;
@@ -488,7 +487,7 @@ void set_Sense_Data_By_Generic_NVMe_Status(tDevice *device, uint8_t nvmeStatus, 
     return;
 }
 //the completion queue will tell us if the error is specific to a command versus a generic error
-void set_Sense_Data_By_Command_Specific_NVMe_Status(tDevice *device, uint8_t nvmeStatus, uint8_t *sensePtr, uint32_t senseDataLength)
+static void set_Sense_Data_By_Command_Specific_NVMe_Status(tDevice *device, uint8_t nvmeStatus, uint8_t *sensePtr, uint32_t senseDataLength)
 {
     //first check if sense data reporting is supported
     uint8_t senseKey = 0, asc = 0, ascq = 0;
@@ -603,7 +602,7 @@ void set_Sense_Data_By_Command_Specific_NVMe_Status(tDevice *device, uint8_t nvm
     return;
 }
 
-void set_Sense_Data_By_Media_Errors_NVMe_Status(tDevice *device, uint8_t nvmeStatus, uint8_t *sensePtr, uint32_t senseDataLength)
+static void set_Sense_Data_By_Media_Errors_NVMe_Status(tDevice *device, uint8_t nvmeStatus, uint8_t *sensePtr, uint32_t senseDataLength)
 {
     //first check if sense data reporting is supported
     uint8_t senseKey = 0, asc = 0, ascq = 0;
@@ -692,7 +691,7 @@ void set_Sense_Data_By_Media_Errors_NVMe_Status(tDevice *device, uint8_t nvmeSta
     return;
 }
 //TODO: Handle doing other things like setting progress indication if a test is running while translating sense data or other things like that.
-void set_Sense_Data_By_NVMe_Status(tDevice *device, uint32_t completionDWord3, uint8_t *sensePtr, uint32_t senseDataLength)
+static void set_Sense_Data_By_NVMe_Status(tDevice *device, uint32_t completionDWord3, uint8_t *sensePtr, uint32_t senseDataLength)
 {
     uint8_t statusCodeType = M_GETBITRANGE(completionDWord3, 27, 25);
     uint8_t statusCode = M_GETBITRANGE(completionDWord3, 24, 17);
@@ -725,7 +724,7 @@ void set_Sense_Data_By_NVMe_Status(tDevice *device, uint32_t completionDWord3, u
     }
 }
 
-int sntl_Translate_Supported_VPD_Pages_00h(ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_Supported_VPD_Pages_00h(ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t supportedPages[LEGACY_DRIVE_SEC_SIZE] = { 0 };
@@ -765,7 +764,7 @@ int sntl_Translate_Supported_VPD_Pages_00h(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t unitSerialNumber[44] = { 0 };//44 is the max size of this page with the translation spec
@@ -801,8 +800,8 @@ int sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *device, ScsiIoCtx *s
             {
                 char shortString[3] = { 0 };
                 snprintf(shortString, 3, "%02" PRIX8, device->drive_info.IdentifyData.nvme.ns.eui64[euiOffset]);
-                unitSerialNumber[offset] = shortString[0];
-                unitSerialNumber[offset + 1] = shortString[1];
+                unitSerialNumber[offset] = C_CAST(uint8_t, shortString[0]);
+                unitSerialNumber[offset + 1] = C_CAST(uint8_t, shortString[1]);
                 offset += 2;
                 ++euiOffset;
             }
@@ -826,8 +825,8 @@ int sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *device, ScsiIoCtx *s
             {
                 char shortString[3] = { 0 };
                 snprintf(shortString, 3, "%02" PRIX8, device->drive_info.IdentifyData.nvme.ns.nguid[nguidOffset]);
-                unitSerialNumber[offset] = shortString[0];
-                unitSerialNumber[offset + 1] = shortString[1];
+                unitSerialNumber[offset] = C_CAST(uint8_t, shortString[0]);
+                unitSerialNumber[offset + 1] = C_CAST(uint8_t, shortString[1]);
                 offset += 2;
                 ++nguidOffset;
             }
@@ -844,7 +843,7 @@ int sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *device, ScsiIoCtx *s
         uint8_t offset = 4;
         while (counter < 20)
         {
-            unitSerialNumber[offset] = device->drive_info.IdentifyData.nvme.ctrl.sn[counter];
+            unitSerialNumber[offset] = C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[counter]);
             ++offset;
             ++counter;
         }
@@ -853,7 +852,7 @@ int sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *device, ScsiIoCtx *s
         counter = 0;
         while (counter < 8)
         {
-            unitSerialNumber[offset] = nsidString[counter];
+            unitSerialNumber[offset] = C_CAST(uint8_t, nsidString[counter]);
             ++offset;
             ++counter;
         }
@@ -876,7 +875,7 @@ int sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *device, ScsiIoCtx *s
 //SCSI Name String designator
 //EUI64 designator
 //Spec strongly recommends at least one EUI64 designator
-int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t zeros[16] = { 0 };
@@ -963,16 +962,16 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
             naaDesignator[3] = 16;//16 bytes following this
             naaDesignator[4] = M_NibblesTo1ByteValue(6, M_Nibble3(device->drive_info.IdentifyData.nvme.ctrl.vid));
             naaDesignator[5] = M_NibblesTo1ByteValue(M_Nibble2(device->drive_info.IdentifyData.nvme.ctrl.vid), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.vid));
-            naaDesignator[6] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[0]));
-            naaDesignator[7] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[0]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[1]));
-            naaDesignator[8] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[1]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[2]));
-            naaDesignator[9] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[2]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[3]));
-            naaDesignator[10] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[3]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[4]));
-            naaDesignator[11] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[4]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[5]));
-            naaDesignator[12] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[5]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[6]));
-            naaDesignator[13] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[6]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[7]));
-            naaDesignator[14] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[7]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[8]));
-            naaDesignator[15] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[8]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[9]));
+            naaDesignator[6] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid), M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[0])));
+            naaDesignator[7] = M_NibblesTo1ByteValue(M_Nibble0(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[0])), M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[1])));
+            naaDesignator[8] = M_NibblesTo1ByteValue(M_Nibble0(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[1])), M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[2])));
+            naaDesignator[9] = M_NibblesTo1ByteValue(M_Nibble0(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[2])), M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[3])));
+            naaDesignator[10] = M_NibblesTo1ByteValue(M_Nibble0(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[3])), M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[4])));
+            naaDesignator[11] = M_NibblesTo1ByteValue(M_Nibble0(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[4])), M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[5])));
+            naaDesignator[12] = M_NibblesTo1ByteValue(M_Nibble0(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[5])), M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[6])));
+            naaDesignator[13] = M_NibblesTo1ByteValue(M_Nibble0(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[6])), M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[7])));
+            naaDesignator[14] = M_NibblesTo1ByteValue(M_Nibble0(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[7])), M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[8])));
+            naaDesignator[15] = M_NibblesTo1ByteValue(M_Nibble0(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[8])), M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[9])));
             naaDesignator[16] = M_Byte3(device->drive_info.namespaceID);
             naaDesignator[17] = M_Byte2(device->drive_info.namespaceID);
             naaDesignator[18] = M_Byte1(device->drive_info.namespaceID);
@@ -984,11 +983,11 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
             naaDesignator[23] = 8;//8 bytes for the local designator
             naaDesignator[24] = M_NibblesTo1ByteValue(3, M_Nibble3(device->drive_info.IdentifyData.nvme.ctrl.vid));
             naaDesignator[25] = M_NibblesTo1ByteValue(M_Nibble2(device->drive_info.IdentifyData.nvme.ctrl.vid), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.vid));
-            naaDesignator[26] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[0]));
-            naaDesignator[27] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[0]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[1]));
-            naaDesignator[28] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[1]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[2]));
-            naaDesignator[29] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[2]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[3]));
-            naaDesignator[30] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.sn[3]), M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.sn[4]));
+            naaDesignator[26] = M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid), M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[0])));
+            naaDesignator[27] = M_NibblesTo1ByteValue(M_Nibble0(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[0])), M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[1])));
+            naaDesignator[28] = M_NibblesTo1ByteValue(M_Nibble0(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[1])), M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[2])));
+            naaDesignator[29] = M_NibblesTo1ByteValue(M_Nibble0(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[2])), M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[3])));
+            naaDesignator[30] = M_NibblesTo1ByteValue(M_Nibble0(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[3])), M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[4])));
             naaDesignator[31] = M_Byte0(device->drive_info.namespaceID);
         }
         else
@@ -1029,7 +1028,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
             //Need to set product ID here (16 bytes)
             for (uint8_t mnOffset = 0; mnOffset < 16; ++mnOffset, ++offset)
             {
-                t10VendorIdDesignator[offset] = device->drive_info.IdentifyData.nvme.ctrl.mn[mnOffset];
+                t10VendorIdDesignator[offset] = C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.mn[mnOffset]);
             }
             //now either NGUID or EUI64
             if (nguidnonZero)
@@ -1079,7 +1078,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
             //Need to set product ID here (16 bytes)
             for (uint8_t mnOffset = 0; mnOffset < 16; ++mnOffset, ++offset)
             {
-                t10VendorIdDesignator[offset] = device->drive_info.IdentifyData.nvme.ctrl.mn[mnOffset];
+                t10VendorIdDesignator[offset] = C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.mn[mnOffset]);
             }
             //now set PCI Vendor ID (as ASCII...spec is horribly written about this)
             t10VendorIdDesignator[28] = M_Nibble3(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
@@ -1087,13 +1086,13 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
             t10VendorIdDesignator[30] = M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
             t10VendorIdDesignator[31] = M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
             //Now some SN bytes
-            t10VendorIdDesignator[32] = device->drive_info.IdentifyData.nvme.ctrl.sn[0];
-            t10VendorIdDesignator[33] = device->drive_info.IdentifyData.nvme.ctrl.sn[1];
-            t10VendorIdDesignator[34] = device->drive_info.IdentifyData.nvme.ctrl.sn[2];
-            t10VendorIdDesignator[35] = device->drive_info.IdentifyData.nvme.ctrl.sn[3];
-            t10VendorIdDesignator[36] = device->drive_info.IdentifyData.nvme.ctrl.sn[4];
-            t10VendorIdDesignator[37] = device->drive_info.IdentifyData.nvme.ctrl.sn[5];
-            t10VendorIdDesignator[38] = device->drive_info.IdentifyData.nvme.ctrl.sn[6];
+            t10VendorIdDesignator[32] = C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[0]);
+            t10VendorIdDesignator[33] = C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[1]);
+            t10VendorIdDesignator[34] = C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[2]);
+            t10VendorIdDesignator[35] = C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[3]);
+            t10VendorIdDesignator[36] = C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[4]);
+            t10VendorIdDesignator[37] = C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[5]);
+            t10VendorIdDesignator[38] = C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[6]);
             //Finally, NSID (as ASCII)
             t10VendorIdDesignator[39] = M_Nibble7(device->drive_info.namespaceID) + '0';
             t10VendorIdDesignator[40] = M_Nibble6(device->drive_info.namespaceID) + '0';
@@ -1235,7 +1234,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
             //40 MN bytes
             for (uint8_t mnCounter = 0; mnCounter < 40; ++mnCounter, ++offset)
             {
-                SCSINameStringDesignator[offset] = device->drive_info.IdentifyData.nvme.ctrl.mn[mnCounter];
+                SCSINameStringDesignator[offset] = C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.mn[mnCounter]);
             }
             //NSID (as UTF-8)
             SCSINameStringDesignator[48] = M_Byte3(device->drive_info.namespaceID) + '0';
@@ -1246,7 +1245,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
             offset = 52;
             for (uint8_t snCounter = 0; snCounter < 20; ++snCounter, ++offset)
             {
-                SCSINameStringDesignator[offset] = device->drive_info.IdentifyData.nvme.ctrl.sn[snCounter];
+                SCSINameStringDesignator[offset] = C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[snCounter]);
             }
         }
         else
@@ -1325,9 +1324,9 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     deviceIdentificationPage = (uint8_t*)calloc(4U + eui64DesignatorLength + t10VendorIdDesignatorLength + naaDesignatorLength + SCSINameStringDesignatorLength, sizeof(uint8_t));
     if (!deviceIdentificationPage)
     {
-        safe_Free(naaDesignator);
-        safe_Free(SCSINameStringDesignator);
-        safe_Free(t10VendorIdDesignator);
+        safe_Free(naaDesignator)
+        safe_Free(SCSINameStringDesignator)
+        safe_Free(t10VendorIdDesignator)
         return MEMORY_FAILURE;
     }
     deviceIdentificationPage[0] = 0;
@@ -1343,7 +1342,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     {
         naaDesignatorLength = 0;
     }
-    safe_Free(naaDesignator);
+    safe_Free(naaDesignator)
     //t10 second
     if (t10VendorIdDesignatorLength > 0 && t10VendorIdDesignator)
     {
@@ -1353,7 +1352,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     {
         t10VendorIdDesignatorLength = 0;
     }
-    safe_Free(t10VendorIdDesignator);
+    safe_Free(t10VendorIdDesignator)
     //scsi name string third
     if (SCSINameStringDesignatorLength > 0 && SCSINameStringDesignator)
     {
@@ -1363,7 +1362,7 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     {
         SCSINameStringDesignatorLength = 0;
     }
-    safe_Free(SCSINameStringDesignator);
+    safe_Free(SCSINameStringDesignator)
     //eui64 last
     if (eui64DesignatorLength > 0 && eui64Designator)
     {
@@ -1373,17 +1372,17 @@ int sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx
     {
         eui64DesignatorLength = 0;
     }
-    safe_Free(eui64Designator);
+    safe_Free(eui64Designator)
     //copy the final data back for the command
     if (scsiIoCtx->pdata && deviceIdentificationPage)
     {
         memcpy(scsiIoCtx->pdata, deviceIdentificationPage, M_Min(4U + eui64DesignatorLength + t10VendorIdDesignatorLength + naaDesignatorLength + SCSINameStringDesignatorLength, scsiIoCtx->dataLength));
     }
-    safe_Free(deviceIdentificationPage);
+    safe_Free(deviceIdentificationPage)
     return ret;
 }
 
-int sntl_Translate_Extended_Inquiry_Data_VPD_Page_86h(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_Extended_Inquiry_Data_VPD_Page_86h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t extendedInquiry[64] = { 0 };
@@ -1464,7 +1463,7 @@ int sntl_Translate_Extended_Inquiry_Data_VPD_Page_86h(tDevice *device, ScsiIoCtx
     return ret;
 }
 
-int sntl_Translate_Block_Limits_VPD_Page_B0h(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_Block_Limits_VPD_Page_B0h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t blockLimits[64] = { 0 };
@@ -1545,7 +1544,7 @@ int sntl_Translate_Block_Limits_VPD_Page_B0h(tDevice *device, ScsiIoCtx *scsiIoC
     return ret;
 }
 
-int sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t blockDeviceCharacteriticsPage[64] = { 0 };
@@ -1572,7 +1571,7 @@ int sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(ScsiIoCtx *scsiIoCt
     return ret;
 }
 
-int sntl_Translate_Logical_Block_Provisioning_VPD_Page_B2h(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_Logical_Block_Provisioning_VPD_Page_B2h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t logicalBlockProvisioning[8] = { 0 };
@@ -1636,7 +1635,7 @@ int sntl_Translate_Logical_Block_Provisioning_VPD_Page_B2h(tDevice *device, Scsi
     return ret;
 }
 
-int sntl_Translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t bitPointer = 0;
@@ -1818,7 +1817,7 @@ int sntl_Translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int sntl_Translate_SCSI_Read_Capacity_Command(tDevice *device, bool readCapacity16, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Read_Capacity_Command(tDevice *device, bool readCapacity16, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint16_t fieldPointer = 0;
@@ -1956,7 +1955,7 @@ int sntl_Translate_SCSI_Read_Capacity_Command(tDevice *device, bool readCapacity
     return ret;
 }
 
-int sntl_Translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     bool subpageFormat = false;
@@ -2027,7 +2026,7 @@ int sntl_Translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int sntl_Translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t temperatureLog[16] = { 0 };
@@ -2116,7 +2115,7 @@ int sntl_Translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int sntl_Translate_Solid_State_Media_Log_0x11(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_Solid_State_Media_Log_0x11(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t solidStateMediaLog[12] = { 0 };
@@ -2180,7 +2179,7 @@ int sntl_Translate_Solid_State_Media_Log_0x11(tDevice *device, ScsiIoCtx *scsiIo
     return ret;
 }
 
-int sntl_Translate_Informational_Exceptions_Log_Page_2F(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_Informational_Exceptions_Log_Page_2F(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t informationalExceptions[11] = { 0 };
@@ -2238,7 +2237,7 @@ int sntl_Translate_Informational_Exceptions_Log_Page_2F(tDevice *device, ScsiIoC
 }
 
 #if defined (SNTL_EXT)
-int sntl_Translate_Background_Scan_Results_Log_0x15(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_Background_Scan_Results_Log_0x15(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t backgroundResults[20] = { 0 };
@@ -2317,7 +2316,7 @@ int sntl_Translate_Background_Scan_Results_Log_0x15(tDevice *device, ScsiIoCtx *
     return ret;
 }
 
-int sntl_Translate_General_Statistics_And_Performance_Log_0x19(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_General_Statistics_And_Performance_Log_0x19(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t generalStatisticsAndPerformance[72] = { 0 };
@@ -2461,7 +2460,7 @@ int sntl_Translate_General_Statistics_And_Performance_Log_0x19(tDevice *device, 
     return ret;
 }
 
-int sntl_Translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t selfTestResults[404] = { 0 };
@@ -2651,7 +2650,7 @@ int sntl_Translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx *scsiIo
 }
 #endif
 
-int sntl_Translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     //we ignore the sp bit since it doesn't matter to us
@@ -2846,7 +2845,7 @@ int sntl_Translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 
 //mode parameter header must be 4 bytes for short format and 8 bytes for long format (longHeader set to true)
 //dataBlockDescriptor must be non-null when returnDataBlockDescriiptor is true. When non null, it must be 8 bytes for short, or 16 for long (when longLBABit is set to true)
-int sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
+static int sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
 {
     int ret = SUCCESS;
     uint8_t *readWriteErrorRecovery = NULL;//will be allocated later
@@ -2950,7 +2949,7 @@ int sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(tDevice *device, Scs
         }
         else
         {
-            safe_Free(readWriteErrorRecovery);
+            safe_Free(readWriteErrorRecovery)
             set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             return ret;
         }
@@ -2976,13 +2975,13 @@ int sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(tDevice *device, Scs
     {
         memcpy(scsiIoCtx->pdata, readWriteErrorRecovery, M_Min(pageLength, allocationLength));
     }
-    safe_Free(readWriteErrorRecovery);
+    safe_Free(readWriteErrorRecovery)
     return ret;
 }
 
 //mode parameter header must be 4 bytes for short format and 8 bytes for long format (longHeader set to true)
 //dataBlockDescriptor must be non-null when returnDataBlockDescriiptor is true. When non null, it must be 8 bytes for short, or 16 for long (when longLBABit is set to true)
-int sntl_Translate_Mode_Sense_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
+static int sntl_Translate_Mode_Sense_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
 {
     int ret = SUCCESS;
     uint8_t *caching = NULL;//will be allocated later
@@ -3085,7 +3084,7 @@ int sntl_Translate_Mode_Sense_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx,
             {
                 //TODO: set an error...even though this shouldn't happen
                 set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
-                safe_Free(caching);
+                safe_Free(caching)
                 return ret;
             }
         }
@@ -3127,13 +3126,13 @@ int sntl_Translate_Mode_Sense_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx,
     {
         memcpy(scsiIoCtx->pdata, caching, M_Min(pageLength, allocationLength));
     }
-    safe_Free(caching);
+    safe_Free(caching)
     return ret;
 }
 
 //mode parameter header must be 4 bytes for short format and 8 bytes for long format (longHeader set to true)
 //dataBlockDescriptor must be non-null when returnDataBlockDescriiptor is true. When non null, it must be 8 bytes for short, or 16 for long (when longLBABit is set to true)
-int sntl_Translate_Mode_Sense_Control_0Ah(ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
+static int sntl_Translate_Mode_Sense_Control_0Ah(ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
 {
     int ret = SUCCESS;
     uint8_t *controlPage = NULL;//will be allocated later
@@ -3229,13 +3228,13 @@ int sntl_Translate_Mode_Sense_Control_0Ah(ScsiIoCtx *scsiIoCtx, uint8_t pageCont
     {
         memcpy(scsiIoCtx->pdata, controlPage, M_Min(pageLength, allocationLength));
     }
-    safe_Free(controlPage);
+    safe_Free(controlPage)
     return ret;
 }
 
 //mode parameter header must be 4 bytes for short format and 8 bytes for long format (longHeader set to true)
 //dataBlockDescriptor must be non-null when returnDataBlockDescriiptor is true. When non null, it must be 8 bytes for short, or 16 for long (when longLBABit is set to true)
-int sntl_Translate_Mode_Sense_Power_Condition_1A(ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
+static int sntl_Translate_Mode_Sense_Power_Condition_1A(ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
 {
     int ret = SUCCESS;
     uint8_t *powerConditionPage = NULL;//will be allocated later
@@ -3307,12 +3306,12 @@ int sntl_Translate_Mode_Sense_Power_Condition_1A(ScsiIoCtx *scsiIoCtx, uint8_t p
     {
         memcpy(scsiIoCtx->pdata, powerConditionPage, M_Min(pageLength, allocationLength));
     }
-    safe_Free(powerConditionPage);
+    safe_Free(powerConditionPage)
     return ret;
 }
 
 #if defined (SNTL_EXT)
-int sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
+static int sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
 {
     int ret = SUCCESS;
     uint8_t *controlExtPage = NULL;//will be allocated later
@@ -3416,11 +3415,11 @@ int sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(ScsiIoCtx *scsiIoCtx, ui
     {
         memcpy(scsiIoCtx->pdata, controlExtPage, M_Min(pageLength, allocationLength));
     }
-    safe_Free(controlExtPage);
+    safe_Free(controlExtPage)
     return ret;
 }
 
-int sntl_Translate_Mode_Sense_Informational_Exceptions_Control_1Ch(ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
+static int sntl_Translate_Mode_Sense_Informational_Exceptions_Control_1Ch(ScsiIoCtx *scsiIoCtx, uint8_t pageControl, bool returnDataBlockDescriptor, bool longLBABit, uint8_t *dataBlockDescriptor, bool longHeader, uint8_t *modeParameterHeader, uint16_t allocationLength)
 {
     int ret = SUCCESS;
     uint8_t *informationalExceptions = NULL;//will be allocated later
@@ -3508,13 +3507,13 @@ int sntl_Translate_Mode_Sense_Informational_Exceptions_Control_1Ch(ScsiIoCtx *sc
     {
         memcpy(scsiIoCtx->pdata, informationalExceptions, M_Min(pageLength, allocationLength));
     }
-    safe_Free(informationalExceptions);
+    safe_Free(informationalExceptions)
     return ret;
 }
 
 #endif
 
-int sntl_Translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     bool returnDataBlockDescriptor = true;//true means return a data block descriptor, false means don't return one
@@ -3748,7 +3747,7 @@ int sntl_Translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
     return ret;
 }
 
-int sntl_Translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t *ptrToBeginningOfModePage, uint16_t pageLength)
+static int sntl_Translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx, uint8_t *ptrToBeginningOfModePage, uint16_t pageLength)
 {
     int ret = SUCCESS;
     uint16_t dataOffset = C_CAST(uint16_t, ptrToBeginningOfModePage - scsiIoCtx->pdata);//to be used when setting which field is invalid in parameter list
@@ -3864,7 +3863,7 @@ int sntl_Translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCtx
 
 
 //TODO: a way to cache changes from the incoming block descriptor to change sector size in a format command.
-int sntl_Translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     bool pageFormat = false;
@@ -4269,7 +4268,7 @@ int sntl_Translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIoCt
     return ret;
 }
 
-int sntl_Translate_SCSI_Synchronize_Cache_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Synchronize_Cache_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     //check the read command and get the LBA from it
@@ -4321,7 +4320,7 @@ int sntl_Translate_SCSI_Synchronize_Cache_Command(tDevice *device, ScsiIoCtx *sc
 }
 
 //TODO: DPO bit
-int sntl_Translate_SCSI_Read_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Read_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     uint64_t lba = 0;
     uint32_t transferLength = 0;
@@ -4482,7 +4481,7 @@ int sntl_Translate_SCSI_Read_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 }
 
 //TODO: DPO bit
-int sntl_Translate_SCSI_Write_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Write_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     bool fua = false;
     uint64_t lba = 0;
@@ -4642,7 +4641,7 @@ int sntl_Translate_SCSI_Write_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int sntl_Translate_SCSI_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t byteCheck = 0;
@@ -4774,7 +4773,7 @@ int sntl_Translate_SCSI_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 break;
             }
         }*/
-        break;
+        //break;
     case 1://compare buffer to what is on the drive medium
         if (device->drive_info.IdentifyData.nvme.ns.dps > 0)
         {
@@ -4797,7 +4796,6 @@ int sntl_Translate_SCSI_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return NOT_SUPPORTED;
-        break;
     case 3://compare a single logical block of data to each LBA in the range...SNTL does not specify this mode...but we can probably implement it ourselves as an extension
         //TODO: do a loop of compare commands for the range of LBAs to compare each one, one logical block at a time
         fieldPointer = 1;
@@ -4805,7 +4803,6 @@ int sntl_Translate_SCSI_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return NOT_SUPPORTED;
-        break;
     default:
         ret = UNKNOWN;
         break;
@@ -4813,7 +4810,7 @@ int sntl_Translate_SCSI_Verify_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int sntl_Translate_SCSI_Security_Protocol_In_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Security_Protocol_In_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t securityProtocol = scsiIoCtx->cdb[1];
@@ -4878,7 +4875,7 @@ int sntl_Translate_SCSI_Security_Protocol_In_Command(tDevice *device, ScsiIoCtx 
     return ret;
 }
 
-int sntl_Translate_SCSI_Security_Protocol_Out_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Security_Protocol_Out_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t securityProtocol = scsiIoCtx->cdb[1];
@@ -4939,7 +4936,7 @@ int sntl_Translate_SCSI_Security_Protocol_Out_Command(tDevice *device, ScsiIoCtx
     return ret;
 }
 
-int sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t *reportLunsData = NULL;
@@ -5036,7 +5033,7 @@ int sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *scsiIoCt
             //dummy up a single lun
             singleLun = true;
         }
-        safe_Free_aligned(activeNamespaces);
+        safe_Free(activeNamespaces)
         if (singleLun)
         {
             reportLunsDataLength += 8;
@@ -5075,11 +5072,11 @@ int sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *scsiIoCt
     {
         ret = MEMORY_FAILURE;
     }
-    safe_Free(reportLunsData);
+    safe_Free(reportLunsData)
     return ret;
 }
 //TODO: if any kind of "device fault" occurs, send back a sense code similar to SAT with ATA devices
-int sntl_Translate_SCSI_Test_Unit_Ready_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Test_Unit_Ready_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t senseKeySpecificDescriptor[8] = { 0 };
@@ -5144,7 +5141,7 @@ int sntl_Translate_SCSI_Test_Unit_Ready_Command(tDevice *device, ScsiIoCtx *scsi
     return ret;
 }
 
-int sntl_Translate_SCSI_Write_Long(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Write_Long(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t senseKeySpecificDescriptor[8] = { 0 };
@@ -5305,7 +5302,7 @@ int sntl_Translate_SCSI_Write_Long(tDevice *device, ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int sntl_Translate_SCSI_Send_Diagnostic_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Send_Diagnostic_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t selfTestCode = (scsiIoCtx->cdb[1] >> 5) & 0x07;
@@ -5420,7 +5417,7 @@ int sntl_Translate_SCSI_Send_Diagnostic_Command(tDevice *device, ScsiIoCtx *scsi
     return ret;
 }
 
-int sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t mode = scsiIoCtx->cdb[1] & 0x1F;
@@ -5651,7 +5648,7 @@ int sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIoC
     return ret;
 }
 
-int sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t powerConditionModifier = M_Nibble0(scsiIoCtx->cdb[3]);
@@ -5896,7 +5893,7 @@ int sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsi
     return ret;
 }
 
-int sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t senseKeySpecificDescriptor[8] = { 0 };
@@ -6074,7 +6071,7 @@ int sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 }
             }
-            safe_Free_aligned(dsmBuffer);
+            safe_Free(dsmBuffer)
         }
     }
     return ret;
@@ -6084,7 +6081,7 @@ int sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 //Add support sanitize commands with our extensions
 //Add detecting when background self test is in progress and reporting progress from that
 //TODO: Figure out other ways to improve what happens in here to pass back out that would be useful. SNTL spec doesn't really say much about what to do here.
-int sntl_Translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
@@ -6210,7 +6207,7 @@ int sntl_Translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx *scsiIo
     return ret;
 }
 
-int sntl_Translate_Persistent_Reserve_In(tDevice * device, ScsiIoCtx * scsiIoCtx)
+static int sntl_Translate_Persistent_Reserve_In(tDevice * device, ScsiIoCtx * scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t *persistentReserveData = NULL;
@@ -6578,11 +6575,11 @@ int sntl_Translate_Persistent_Reserve_In(tDevice * device, ScsiIoCtx * scsiIoCtx
     {
         memcpy(scsiIoCtx->pdata, persistentReserveData, M_Min(persistentReserveDataLength, allocationLength));
     }
-    safe_Free(persistentReserveData);
+    safe_Free(persistentReserveData)
     return ret;
 }
 
-int sntl_Translate_Persistent_Reserve_Out(tDevice * device, ScsiIoCtx * scsiIoCtx)
+static int sntl_Translate_Persistent_Reserve_Out(tDevice * device, ScsiIoCtx * scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t *persistentReserveData = NULL;
@@ -6869,7 +6866,6 @@ int sntl_Translate_Persistent_Reserve_Out(tDevice * device, ScsiIoCtx * scsiIoCt
                 ret = NOT_SUPPORTED;
                 sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 return ret;
-                break;
             }
             switch (serviceAction)
             {
@@ -6956,7 +6952,6 @@ int sntl_Translate_Persistent_Reserve_Out(tDevice * device, ScsiIoCtx * scsiIoCt
                 ret = NOT_SUPPORTED;
                 sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 return ret;
-                break;
             }
             //set the reservation key
             buffer[0] = scsiIoCtx->pdata[7];
@@ -6991,12 +6986,12 @@ int sntl_Translate_Persistent_Reserve_Out(tDevice * device, ScsiIoCtx * scsiIoCt
     {
         memcpy(scsiIoCtx->pdata, persistentReserveData, M_Min(persistentReserveDataLength, parameterListLength));
     }
-    safe_Free(persistentReserveData);
+    safe_Free(persistentReserveData)
     return ret;
 }
 
 #if defined (SNTL_EXT)
-int sntl_Translate_SCSI_Sanitize_Command(tDevice * device, ScsiIoCtx * scsiIoCtx)
+static int sntl_Translate_SCSI_Sanitize_Command(tDevice * device, ScsiIoCtx * scsiIoCtx)
 {
     int ret = SUCCESS;
     uint8_t senseKeySpecificDescriptor[8] = { 0 };
@@ -7360,7 +7355,7 @@ int sntl_Translate_SCSI_Sanitize_Command(tDevice * device, ScsiIoCtx * scsiIoCtx
 }
 #endif
 
-void sntl_Set_Command_Timeouts_Descriptor(uint32_t nominalCommandProcessingTimeout, uint32_t recommendedCommandProcessingTimeout, uint8_t *pdata, uint32_t *offset)
+static void sntl_Set_Command_Timeouts_Descriptor(uint32_t nominalCommandProcessingTimeout, uint32_t recommendedCommandProcessingTimeout, uint8_t *pdata, uint32_t *offset)
 {
     pdata[*offset + 0] = 0x00;
     pdata[*offset + 1] = 0x0A;
@@ -7382,7 +7377,7 @@ void sntl_Set_Command_Timeouts_Descriptor(uint32_t nominalCommandProcessingTimeo
 }
 
 //TODO: add in support info for immediate bits (requires command support via threading)
-int sntl_Check_Operation_Code(tDevice *device, uint8_t operationCode, bool rctd, uint8_t **pdata, uint32_t *dataLength)
+static int sntl_Check_Operation_Code(tDevice *device, uint8_t operationCode, bool rctd, uint8_t **pdata, uint32_t *dataLength)
 {
     int ret = SUCCESS;
     *dataLength = 4;//add onto this for each of the different commands below, then allocate memory accordingly
@@ -8074,7 +8069,7 @@ int sntl_Check_Operation_Code(tDevice *device, uint8_t operationCode, bool rctd,
 }
 
 //TODO: add in support info for immediate bits (requires command support via threading)
-int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, uint8_t operationCode, uint16_t serviceAction, bool rctd, uint8_t **pdata, uint32_t *dataLength)
+static int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, uint8_t operationCode, uint16_t serviceAction, bool rctd, uint8_t **pdata, uint32_t *dataLength)
 {
     int ret = SUCCESS;
     *dataLength = 4;//add onto this for each of the different commands below, then allocate memory accordingly
@@ -8189,14 +8184,14 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, uint8_t operat
                     commandSupported = false;
                     break;
                 }
-                //fallthrough
+                M_FALLTHROUGH
             case 3://cryptographic erase
                 if (!(device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT0))
                 {
                     commandSupported = false;
                     break;
                 }
-                //fallthrough
+                M_FALLTHROUGH
             case 0x1F://exit failure mode
                 cdbLength = 10;
                 *dataLength += cdbLength;
@@ -8478,7 +8473,7 @@ int sntl_Check_Operation_Code_and_Service_Action(tDevice *device, uint8_t operat
     return ret;
 }
 
-int sntl_Create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint8_t **pdata, uint32_t *dataLength)
+static int sntl_Create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint8_t **pdata, uint32_t *dataLength)
 {
     int ret = SUCCESS;
     uint32_t reportAllMaxLength = 4 * LEGACY_DRIVE_SEC_SIZE;
@@ -9391,7 +9386,7 @@ int sntl_Create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint8_
     return ret;
 }
 
-int sntl_Translate_SCSI_Report_Supported_Operation_Codes_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+static int sntl_Translate_SCSI_Report_Supported_Operation_Codes_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     bool rctd = false;
@@ -9456,7 +9451,7 @@ int sntl_Translate_SCSI_Report_Supported_Operation_Codes_Command(tDevice *device
         else
         {
             //free this memory since the last function allocated it, but failed, then check if the op/sa combination is supported
-            safe_Free(supportedOpData);
+            safe_Free(supportedOpData)
             supportedOpDataLength = 0;
             if (sntl_Check_Operation_Code_and_Service_Action(device, requestedOperationCode, requestedServiceAction, rctd, &supportedOpData, &supportedOpDataLength))
             {
@@ -9480,7 +9475,7 @@ int sntl_Translate_SCSI_Report_Supported_Operation_Codes_Command(tDevice *device
     {
         memcpy(scsiIoCtx->pdata, supportedOpData, M_Min(supportedOpDataLength, allocationLength));
     }
-    safe_Free(supportedOpData);
+    safe_Free(supportedOpData)
     return ret;
 }
 

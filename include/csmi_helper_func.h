@@ -461,7 +461,6 @@ extern "C"
     //!   \param[in] device - pointer to tDevice structure for a CSMI RAID Device.
     //!
     //  Exit:
-    //!   \return void
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void print_CSMI_Device_Info(tDevice *device);

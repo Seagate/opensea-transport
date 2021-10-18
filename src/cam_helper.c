@@ -82,12 +82,12 @@ int get_Device( const char *filename, tDevice *device )
 			print_Errno_To_Screen(errno);
 			if (device->os_info.fd == EACCES)
 			{
-				safe_Free(deviceHandle);
+				safe_Free(deviceHandle)
 				return PERMISSION_DENIED;
 			}
 			else
 			{
-				safe_Free(deviceHandle);
+				safe_Free(deviceHandle)
 				return FAILURE;
 			}
 		}
@@ -114,7 +114,7 @@ int get_Device( const char *filename, tDevice *device )
 
 		ret = fill_Drive_Info_Data(device);
 
-		safe_Free(deviceHandle);
+		safe_Free(deviceHandle)
 		return ret;
 	} else
 #endif
@@ -991,21 +991,21 @@ int get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
     //free the list of names to not leak memory
     for (int iter = 0; iter < num_da_devs; ++iter)
     {
-        safe_Free(danamelist[iter]);
+        safe_Free(danamelist[iter])
     }
-    safe_Free(danamelist);
+    safe_Free(danamelist)
     //free the list of names to not leak memory
     for (int iter = 0; iter < num_ada_devs; ++iter)
     {
-        safe_Free(adanamelist[iter]);
+        safe_Free(adanamelist[iter])
     }
-    safe_Free(adanamelist);
+    safe_Free(adanamelist)
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 	//free the list of names to not leak memory
 	for (int iter = 0; iter < num_nvme_devs; ++iter)
 	{
-		safe_Free(nvmenamelist);
+		safe_Free(nvmenamelist)
 	}
 	*numberOfDevices = num_da_devs + num_ada_devs + num_nvme_devs;
 #else
@@ -1070,14 +1070,14 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         size_t devNameStringLength = (strlen("/dev/") + strlen(danamelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = (char *)malloc(devNameStringLength);
         snprintf(devs[i], devNameStringLength, "/dev/%s", danamelist[i]->d_name);
-        safe_Free(danamelist[i]);
+        safe_Free(danamelist[i])
     }
     for (j = 0; i < (num_da_devs + num_ada_devs) && j < num_ada_devs; ++i, j++)
     {
         size_t devNameStringLength = (strlen("/dev/") + strlen(adanamelist[j]->d_name) + 1) * sizeof(char);
         devs[i] = (char *)malloc(devNameStringLength);
         snprintf(devs[i], devNameStringLength, "/dev/%s", adanamelist[j]->d_name);
-        safe_Free(adanamelist[j]);
+        safe_Free(adanamelist[j])
     }
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
@@ -1086,15 +1086,15 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         size_t devNameStringLength = (strlen("/dev/") + strlen(nvmenamelist[k]->d_name) + 1) * sizeof(char);
 		devs[i] = (char *)malloc(devNameStringLength);
         snprintf(devs[i], devNameStringLength, "/dev/%s", nvmenamelist[k]->d_name);
-		safe_Free(nvmenamelist[k]);
+		safe_Free(nvmenamelist[k])
 	}
 #endif
 
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
-    safe_Free(danamelist);
-    safe_Free(adanamelist);
+    safe_Free(danamelist)
+    safe_Free(adanamelist)
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-	safe_Free(nvmenamelist);
+	safe_Free(nvmenamelist)
 #endif
 
     //TODO: Check if sizeInBytes is a multiple of 
@@ -1152,7 +1152,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(devs[driveNumber]);
+            safe_Free(devs[driveNumber])
         }
         if (found == failedGetDeviceCount)
         {
@@ -1167,7 +1167,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_Free(devs);
+    safe_Free(devs)
     return returnValue;
 }
 

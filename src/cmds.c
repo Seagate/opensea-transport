@@ -127,7 +127,7 @@ int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool in
         ret = scsi_Sanitize_Overwrite(device, exitFailureMode, znr, true, invertBetweenPasses, SANITIZE_OVERWRITE_NO_CHANGES, overwritePasses & 0x1F, pattern, patternLength);
         if (localPattern)
         {
-            safe_Free(pattern);
+            safe_Free(pattern)
             localPattern = false;
         }
         break;
@@ -518,7 +518,7 @@ int security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityPr
             ret = send_ATA_Trusted_Send_Cmd(device, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
             if (useLocalMemory)
             {
-                safe_Free_aligned(tcgBufPtr);
+                safe_Free(tcgBufPtr)
             }
         }
         else
@@ -586,7 +586,7 @@ int security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securit
             if (useLocalMemory)
             {
                 memcpy(ptrData, tcgBufPtr, M_Min(dataSize, tcgDataSize));
-                safe_Free_aligned(tcgBufPtr);
+                safe_Free(tcgBufPtr)
             }
         }
         else
@@ -697,7 +697,7 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
             }
             if (localPattern)
             {
-                safe_Free_aligned(pattern);
+                safe_Free(pattern)
             }
         }
         else
@@ -1588,7 +1588,6 @@ int io_Read(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32_
     case IDE_INTERFACE:
         //perform ATA reads
         return ata_Read(device, lba, async, ptrData, dataSize);
-        break;
     case SCSI_INTERFACE:
     case USB_INTERFACE:
     case MMC_INTERFACE:
@@ -1596,7 +1595,6 @@ int io_Read(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32_
     case IEEE_1394_INTERFACE:
         //perform SCSI reads
         return scsi_Read(device, lba, async, ptrData, dataSize);
-        break;
     case NVME_INTERFACE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
         return nvme_Read(device, lba, C_CAST(uint16_t, (dataSize / device->drive_info.deviceBlockSize) - 1), false, false, 0, ptrData, dataSize);
@@ -1607,10 +1605,8 @@ int io_Read(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32_
     case RAID_INTERFACE:
         //perform SCSI reads for now. We may need to add unique functions for NVMe and RAID reads later
         return scsi_Read(device, lba, async, ptrData, dataSize);
-        break;
     default:
         return NOT_SUPPORTED;
-        break;
     }
 }
 
@@ -1632,7 +1628,6 @@ int io_Write(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32
     case IDE_INTERFACE:
         //perform ATA writes
         return ata_Write(device, lba, async, ptrData, dataSize);
-        break;
     case SCSI_INTERFACE:
     case USB_INTERFACE:
     case MMC_INTERFACE:
@@ -1640,7 +1635,6 @@ int io_Write(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32
     case IEEE_1394_INTERFACE:
         //perform SCSI writes
         return scsi_Write(device, lba, async, ptrData, dataSize);
-        break;
     case NVME_INTERFACE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
         return nvme_Write(device, lba, C_CAST(uint16_t, (dataSize / device->drive_info.deviceBlockSize) - 1), false, false, 0, 0, ptrData, dataSize);
@@ -1653,7 +1647,6 @@ int io_Write(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32
         return scsi_Write(device, lba, async, ptrData, dataSize);
     default:
         return NOT_SUPPORTED;
-        break;
     }
 }
 
@@ -1806,7 +1799,7 @@ int nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
     {
         ret = MEMORY_FAILURE;
     }
-    safe_Free_aligned(data);
+    safe_Free(data)
     return ret;
 }
 #endif
@@ -1824,7 +1817,6 @@ int verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
         case IDE_INTERFACE:
             //perform ATA verifies
             return ata_Read_Verify(device, lba, range);
-            break;
         case SCSI_INTERFACE:
         case USB_INTERFACE:
         case MMC_INTERFACE:
@@ -1832,7 +1824,6 @@ int verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
         case IEEE_1394_INTERFACE:
             //perform SCSI verifies
             return scsi_Verify(device, lba, range);
-            break;
         case NVME_INTERFACE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
             return nvme_Verify_LBA(device, lba, range);
@@ -1843,10 +1834,8 @@ int verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
         case RAID_INTERFACE:
             //perform SCSI verifies for now. We may need to add unique functions for NVMe and RAID writes later
             return scsi_Verify(device, lba, range);
-            break;
         default:
             return NOT_SUPPORTED;
-            break;
         }
     }
 }
@@ -1888,7 +1877,6 @@ int flush_Cache(tDevice *device)
         case IDE_INTERFACE:
             //perform ATA writes
             return ata_Flush_Cache_Command(device);
-            break;
         case SCSI_INTERFACE:
         case USB_INTERFACE:
         case MMC_INTERFACE:
@@ -1896,7 +1884,6 @@ int flush_Cache(tDevice *device)
         case IEEE_1394_INTERFACE:
             //perform SCSI writes
             return scsi_Synchronize_Cache_Command(device);
-            break;
         case NVME_INTERFACE:
 #if !defined (DISABLE_NVME_PASSTHROUGH)
             return nvme_Flush(device);
@@ -1907,10 +1894,8 @@ int flush_Cache(tDevice *device)
         case RAID_INTERFACE:
             //perform SCSI writes for now. We may need to add unique functions for NVMe and RAID writes later
             return scsi_Synchronize_Cache_Command(device);
-            break;
         default:
             return NOT_SUPPORTED;
-            break;
         }
     }
 }

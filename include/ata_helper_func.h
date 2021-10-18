@@ -1865,7 +1865,6 @@ extern "C"
     //!   \param[in] ataCommandOptions = structure with the TFR information filled in to be printed out. (and protocol and direction)
     //!
     //  Exit:
-    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void print_Verbose_ATA_Command_Information(ataPassthroughCommand *ataCommandOptions);
@@ -1880,7 +1879,6 @@ extern "C"
     //!   \param[in] ataCommandOptions = structure with the TFR information filled in to be printed out. (and protocol and direction)
     //!
     //  Exit:
-    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataCommandOptions);

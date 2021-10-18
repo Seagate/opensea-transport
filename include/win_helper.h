@@ -34,7 +34,8 @@ extern "C"
 
 #if !defined (__MINGW32__)
 #define _NTSCSI_USER_MODE_ //this must be defined before including scsi.h
-#include <Scsi.h>
+#include <scsi.h>
+#undef _NTSCSI_USER_MODE_
 #else
 #if !defined (SRB_TYPE_SCSI_REQUEST_BLOCK)
 #define SRB_TYPE_SCSI_REQUEST_BLOCK 0
@@ -56,7 +57,7 @@ extern "C"
 #define WIN_MAX_CMD_TIMEOUT_SECONDS 108000
 
     //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
-    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported();
+    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void);
 
     //Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
     //NOTE: ARM requires 10.0.16299.0 API to get this library!

@@ -164,8 +164,8 @@ int ata_Sanitize_Command(tDevice *device, eATASanitizeFeature sanitizeFeature, u
     ataSanitizeCmd.tfr.CommandStatus = ATA_SANITIZE;
     ataSanitizeCmd.tfr.SectorCount = M_Byte0(sectorCount);
     ataSanitizeCmd.tfr.SectorCount48 = M_Byte1(sectorCount);
-    ataSanitizeCmd.tfr.ErrorFeature = M_Byte0(sanitizeFeature);
-    ataSanitizeCmd.tfr.Feature48 = M_Byte1(sanitizeFeature);
+    ataSanitizeCmd.tfr.ErrorFeature = M_Byte0(C_CAST(uint16_t, sanitizeFeature));
+    ataSanitizeCmd.tfr.Feature48 = M_Byte1(C_CAST(uint16_t, sanitizeFeature));
     ataSanitizeCmd.tfr.LbaLow = M_Byte0(lba);
     ataSanitizeCmd.tfr.LbaMid = M_Byte1(lba);
     ataSanitizeCmd.tfr.LbaHi = M_Byte2(lba);
@@ -1687,7 +1687,7 @@ int ata_SCT_Write_Same(tDevice *device, bool useGPL, bool useDMA, eSCTWriteSameF
         ret = ata_SCT_Data_Transfer(device, useGPL, useDMA, XFER_DATA_OUT, pattern, (uint32_t)(patternLength * device->drive_info.deviceBlockSize));
     }
 
-    safe_Free_aligned(writeSameBuffer);
+    safe_Free(writeSameBuffer)
     return ret;
 }
 
@@ -1703,7 +1703,7 @@ int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, ui
     //if we are retrieving the current values, then we better have a good pointer...no point in sending the command if we don't
     if (functionCode == 0x0002 && !currentValue)
     {
-        safe_Free_aligned(errorRecoveryBuffer);
+        safe_Free(errorRecoveryBuffer)
         return BAD_PARAMETER;
     }
 
@@ -1726,7 +1726,7 @@ int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, ui
     {
         *currentValue = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
     }
-    safe_Free_aligned(errorRecoveryBuffer);
+    safe_Free(errorRecoveryBuffer)
     return ret;
 }
 
@@ -1742,7 +1742,7 @@ int ata_SCT_Feature_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t 
     //make sure we have valid pointers for state and optionFlags
     if (!state || !optionFlags)
     {
-        safe_Free_aligned(featureControlBuffer);
+        safe_Free(featureControlBuffer)
         return BAD_PARAMETER;
     }
     //clear the state and option flags out, unless we are setting something
@@ -1782,7 +1782,7 @@ int ata_SCT_Feature_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t 
             *optionFlags = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
         }
     }
-    safe_Free_aligned(featureControlBuffer);
+    safe_Free(featureControlBuffer)
     return ret; 
 }
 
@@ -3615,8 +3615,8 @@ int ata_NV_Cache_Feature(tDevice *device, eNVCacheFeatures feature, uint16_t cou
     ataCommandOptions.tfr.LbaHi48 = M_Byte5(LBA);
     ataCommandOptions.tfr.SectorCount = M_Byte0(count);
     ataCommandOptions.tfr.SectorCount48 = M_Byte1(count);
-    ataCommandOptions.tfr.ErrorFeature = M_Byte0(feature);
-    ataCommandOptions.tfr.Feature48 = M_Byte1(feature);
+    ataCommandOptions.tfr.ErrorFeature = M_Byte0(C_CAST(uint16_t, feature));
+    ataCommandOptions.tfr.Feature48 = M_Byte1(C_CAST(uint16_t, feature));
     ataCommandOptions.tfr.CommandStatus = ATA_NV_CACHE;
 
     char* nvCacheFeature = NULL;
@@ -4301,7 +4301,6 @@ int ata_ZAC_Management_In(tDevice *device, eZMAction action, uint8_t actionSpeci
         break;
     default://Need to add new zm actions as they are defined in the spec
         return BAD_PARAMETER;
-        break;
     }
 
     if (ataCommandOptions.commadProtocol != ATA_PROTOCOL_NO_DATA)
@@ -4365,7 +4364,6 @@ int ata_ZAC_Management_Out(tDevice *device, eZMAction action, uint8_t actionSpec
     case ZM_ACTION_REPORT_ZONES://this is a zone management in command, so return bad parameter
     default://Need to add new zm actions as they are defined in the spec
         return BAD_PARAMETER;
-        break;
     }
 
     if (ataCommandOptions.commadProtocol != ATA_PROTOCOL_NO_DATA)
@@ -4428,7 +4426,7 @@ int ata_Open_Zone_Ext(tDevice *device, bool openAll, uint64_t zoneID)
 
 int ata_Report_Zones_Ext(tDevice *device, eZoneReportingOptions reportingOptions, bool partial, uint16_t returnPageCount, uint64_t zoneLocator, uint8_t *ptrData, uint32_t dataSize)
 {
-    uint8_t actionSpecificFeatureExt = reportingOptions;
+    uint8_t actionSpecificFeatureExt = C_CAST(uint8_t, reportingOptions);
     if (partial)
     {
         actionSpecificFeatureExt |= BIT7;

@@ -34,7 +34,7 @@
 extern bool validate_Device_Struct(versionBlock);
 
 //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
-bool os_Is_Infinite_Timeout_Supported()
+bool os_Is_Infinite_Timeout_Supported(void)
 {
     return false;//TODO: Documentation does not state if an infinite timeout is supported. If it actually is, need to define the infinite timeout value properly, and set it to the correct value
 }
@@ -348,9 +348,9 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     num_devs = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
     for (int iter = 0; iter < num_devs; ++iter)
     {
-        safe_Free(namelist[iter]);
+        safe_Free(namelist[iter])
     }
-    safe_Free(namelist);
+    safe_Free(namelist)
     *numberOfDevices = num_devs;
     M_USE_UNUSED(flags); 
     return SUCCESS;
@@ -399,10 +399,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         size_t handleSize = (strlen("/dev/rdsk/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = (char *)malloc(handleSize);
         snprintf(devs[i], handleSize, "/dev/rdsk/%s", namelist[i]->d_name);
-        safe_Free(namelist[i]);
+        safe_Free(namelist[i])
     }
     devs[i] = NULL;
-    safe_Free(namelist);
+    safe_Free(namelist)
 
     //TODO: Check if sizeInBytes is a multiple of 
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -454,7 +454,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(devs[driveNumber]);
+            safe_Free(devs[driveNumber])
         }
         if (found == failedGetDeviceCount)
         {
@@ -469,7 +469,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_Free(devs);
+    safe_Free(devs)
     return returnValue;
 }
 
