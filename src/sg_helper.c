@@ -2159,6 +2159,11 @@ int os_Unlock_Device(tDevice *device)
     return ret;
 }
 
+int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+{
+    //TODO: Complete this stub when this is figured out - TJE
+    return NOT_SUPPORTED;
+}
 
 //This should be at the end of this file to undefine _GNU_SOURCE if this file manually enabled it
 #if !defined (_GNU_SOURCE_DEFINED_IN_SG_HELPER)

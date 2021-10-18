@@ -1246,6 +1246,12 @@ int os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
+int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+{
+    //TODO: Complete this stub when this is figured out - TJE
+    return NOT_SUPPORTED;
+}
+
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {

@@ -232,6 +232,8 @@ extern "C"
     //-----------------------------------------------------------------------------
     int os_Unlock_Device(tDevice *device);
 
+    int os_Update_File_System_Cache(tDevice* device);
+
     #if defined (__cplusplus)
 }
     #endif

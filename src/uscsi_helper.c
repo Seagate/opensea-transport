@@ -538,3 +538,9 @@ int os_Unlock_Device(tDevice *device)
     fcntl(device->os_info.fd, F_SETFL, flags);
     return ret;
 }
+
+int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+{
+    //TODO: Complete this stub when this is figured out - TJE
+    return NOT_SUPPORTED;
+}

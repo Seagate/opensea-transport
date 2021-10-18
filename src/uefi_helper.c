@@ -2415,3 +2415,9 @@ int os_Unlock_Device(M_ATTR_UNUSED tDevice *device)
 {
     return SUCCESS;
 }
+
+int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+{
+    //TODO: Complete this stub when this is figured out - TJE
+    return NOT_SUPPORTED;
+}

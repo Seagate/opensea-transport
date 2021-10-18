@@ -2511,6 +2511,33 @@ static int win_Get_Device_Endurance(HANDLE *deviceHandle, PSTORAGE_HW_ENDURANCE_
 
 #endif //SEA_WIN32_WINNT_WINXP for storage query property calls.
 
+#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WINXP 
+//This function is supposed to update partition table information after it has been changed...this should work after an erase has been done to a drive - TJE
+int win_Update_Disk_Properties(HANDLE* deviceHandle)
+{
+    int ret = NOT_SUPPORTED;
+    DWORD bytesReturned = 0;
+    if (DeviceIoControl(deviceHandle, IOCTL_DISK_UPDATE_PROPERTIES, NULL, 0, NULL, 0, &bytesReturned, NULL))
+    {
+        ret = SUCCESS;
+    }
+    return ret;
+}
+
+#endif //for IOCTL_DISK_UPDATE_PROPERTIES 
+
+int os_Update_File_System_Cache(tDevice* device)
+{
+#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WINXP 
+    //TODO: Need to find a way to support other things like RAID or CSMI, etc in the future - TJE
+    return win_Update_Disk_Properties(device->os_info.fd);
+#else
+    //Not supported on this old of an OS - TJE
+    M_USE_UNUSED(device);
+    return NOT_SUPPORTED;
+#endif
+}
+
 //WinVer not wrapping this IOCTL...so it's probably old enough not to need it - TJE
 static int win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *geom)
 {
