@@ -94,7 +94,7 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
         {
             supported = false;
         }
-        safe_Free(passthroughBuffer)
+        safe_Free_aligned(passthroughBuffer)
     }
     return supported;
 }
@@ -332,7 +332,7 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
         case NVM_UNKNOWN_CMD_SET:
             //Fallthrough to default
         default:
-            safe_Free(passthroughBuffer)
+            safe_Free_aligned(passthroughBuffer)
             return BAD_PARAMETER;
         }
 
@@ -369,7 +369,7 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
             //TODO: Handle bidirectional transfers!!!
             //NVME_BI_DIRECTION
         default:
-            safe_Free(passthroughBuffer)
+            safe_Free_aligned(passthroughBuffer)
             return BAD_PARAMETER;
         }
 
@@ -455,7 +455,7 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
 
         nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
-        safe_Free(passthroughBuffer)
+        safe_Free_aligned(passthroughBuffer)
     }
     else
     {

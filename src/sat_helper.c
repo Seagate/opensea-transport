@@ -98,7 +98,7 @@ int get_Return_TFRs_From_Passthrough_Results_Log(tDevice *device, ataReturnTFRs 
             }
         }
     }
-    safe_Free(sense70logBuffer)
+    safe_Free_aligned(sense70logBuffer)
     return ret;
 }
 
@@ -111,7 +111,7 @@ int get_RTFRs_From_Descriptor_Format_Sense_Data(uint8_t *ptrSenseData, uint32_t 
         uint8_t descriptorOffset = SCSI_DESC_FORMAT_DESC_INDEX;
         uint8_t currentDescriptorLength = ptrSenseData[descriptorOffset + 1] + 2;
         //loop through the descriptors in case we were returned multiple...we only want the ATA pass through descriptor.
-        for (descriptorOffset = SCSI_DESC_FORMAT_DESC_INDEX; descriptorOffset < M_Min((uint8_t)(senseDataSize - SCSI_DESC_FORMAT_DESC_INDEX), (uint8_t)(ptrSenseData[7] + 7)); descriptorOffset += currentDescriptorLength)
+        for (descriptorOffset = SCSI_DESC_FORMAT_DESC_INDEX; descriptorOffset < M_Min(C_CAST(uint8_t, senseDataSize - SCSI_DESC_FORMAT_DESC_INDEX), C_CAST(uint8_t, ptrSenseData[7] + 7)); descriptorOffset += currentDescriptorLength)
         {
             //set the current descriptor length
             currentDescriptorLength = ptrSenseData[descriptorOffset + 1] + 2;
@@ -278,7 +278,7 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
                 {
                     ret = get_RTFRs_From_Descriptor_Format_Sense_Data(descriptorFormatSenseData, SPC3_SENSE_LEN, rtfr);
                 }
-                safe_Free(descriptorFormatSenseData)
+                safe_Free_aligned(descriptorFormatSenseData)
             }
         }
         //Some devices say passthrough info available, but populate nothing...so need to set this error!
@@ -712,9 +712,9 @@ int request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rtfr)
     if (!rtfrBuffer || !rtfr_senseData || !requestRTFRs)
     {
         perror("Calloc aligned Failure!\n");
-        safe_Free(rtfrBuffer)
-        safe_Free(rtfr_senseData)
-        safe_Free(requestRTFRs)
+        safe_Free_aligned(rtfrBuffer)
+        safe_Free_aligned(rtfr_senseData)
+        safe_Free_aligned(requestRTFRs)
         return MEMORY_FAILURE;
     }
     //Set the op code up for the size of the CDB
@@ -744,9 +744,9 @@ int request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rtfr)
     }
     else
     {
-        safe_Free(rtfrBuffer)
-        safe_Free(rtfr_senseData)
-        safe_Free(requestRTFRs)
+        safe_Free_aligned(rtfrBuffer)
+        safe_Free_aligned(rtfr_senseData)
+        safe_Free_aligned(requestRTFRs)
         return BAD_PARAMETER;
     }
     //set the protocol to Fh (15) to request the return TFRs be returned in that data in buffer.
@@ -796,9 +796,9 @@ int request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rtfr)
         }
     }
     //any other return value doesn't matter since this will not affect pass fail of our command. After this we will be dummying up a status anyways
-    safe_Free(rtfrBuffer)
-    safe_Free(rtfr_senseData)
-    safe_Free(requestRTFRs)
+    safe_Free_aligned(rtfrBuffer)
+    safe_Free_aligned(rtfr_senseData)
+    safe_Free_aligned(requestRTFRs)
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("SAT Return Response Information", rtfrRet);
@@ -1257,13 +1257,13 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
             ret = sendIOret;
         }
     }
-    safe_Free(satCDB)
+    safe_Free_aligned(satCDB)
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)
     {
         ret = COMMAND_TIMEOUT;
     }
     memcpy(&device->drive_info.lastCommandRTFRs, &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
-    safe_Free(senseData)
+    safe_Free_aligned(senseData)
     if (localSenseData)
     {
         ataCommandOptions->ptrSenseData = NULL;
@@ -1879,7 +1879,7 @@ static int satl_Read_Verify_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba, uint32_t
                     }
                 }
             }
-            safe_Free(compareBuf)
+            safe_Free_aligned(compareBuf)
             if (errorFound)
             {
                 //set failure
@@ -1959,7 +1959,7 @@ static int satl_Read_Verify_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba, uint32_t
                     }
                 }
             }
-            safe_Free(compareBuf)
+            safe_Free_aligned(compareBuf)
             if (errorFound)
             {
                 //set failure
@@ -1991,7 +1991,7 @@ static int satl_Sequential_Write_Commands(ScsiIoCtx *scsiIoCtx, uint64_t startLb
         if ((startLba + numberOfLBAs) > endingLBA)
         {
             //end of range...don't over do it!
-            numberOfLBAs = (uint32_t)(endingLBA - startLba);
+            numberOfLBAs = C_CAST(uint32_t, endingLBA - startLba);
             patternLength = numberOfLBAs * scsiIoCtx->device->drive_info.deviceBlockSize;
         }
         ret = satl_Write_Command(scsiIoCtx, startLba, pattern, patternLength, false);
@@ -4275,7 +4275,7 @@ static int translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCtx *scsiIoC
                     memcpy(writePattern, scsiIoCtx->pdata, patternLength);
                 }
                 ret = satl_Sequential_Write_Commands(scsiIoCtx, logicalBlockAddress, numberOflogicalBlocks, writePattern, patternLength);
-                safe_Free(writePattern)
+                safe_Free_aligned(writePattern)
             }
             else
             {
@@ -4631,7 +4631,7 @@ static int translate_SCSI_Write_And_Verify_Command(tDevice *device, ScsiIoCtx *s
                     }
                 }
             }
-            safe_Free(compareBuf)
+            safe_Free_aligned(compareBuf)
             if (errorFound)
             {
                 //set failure
@@ -4721,7 +4721,7 @@ static int translate_SCSI_Write_And_Verify_Command(tDevice *device, ScsiIoCtx *s
                     }
                 }
             }
-            safe_Free(compareBuf)
+            safe_Free_aligned(compareBuf)
             if (errorFound)
             {
                 //set failure
@@ -5009,7 +5009,7 @@ static int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIo
                                         {
                                             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x03, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
                                         }
-                                        safe_Free(ataWritePattern)
+                                        safe_Free_aligned(ataWritePattern)
                                     }
                                     else
                                     {
@@ -5043,7 +5043,7 @@ static int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIo
                                     if (lbaIter + verifySectors64K > device->drive_info.deviceMaxLba)
                                     {
                                         //make sure we don't try to write off the end of the drive!
-                                        verifySectors64K = (uint32_t)(device->drive_info.deviceMaxLba - lbaIter);
+                                        verifySectors64K = C_CAST(uint32_t, device->drive_info.deviceMaxLba - lbaIter);
                                     }
                                     ret = satl_Read_Verify_Command(scsiIoCtx, lbaIter, verifySectors64K, 0);
                                     if (ret != SUCCESS)
@@ -5075,7 +5075,7 @@ static int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIo
                                                     if (lbaIter + writeSectors64K > device->drive_info.deviceMaxLba)
                                                     {
                                                         //make sure we don't try to write off the end of the drive!
-                                                        writeSectors64K = (uint32_t)(device->drive_info.deviceMaxLba - lbaIter);
+                                                        writeSectors64K = C_CAST(uint32_t, device->drive_info.deviceMaxLba - lbaIter);
                                                     }
                                                     ret = satl_Write_Command(scsiIoCtx, lbaIter, ataWritePattern, ataWriteDataLength, false);
                                                     if (ret != SUCCESS)
@@ -5107,7 +5107,7 @@ static int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIo
                                                         }
                                                     }
                                                 }
-                                                safe_Free(ataWritePattern)
+                                                safe_Free_aligned(ataWritePattern)
                                             }
                                             else
                                             {
@@ -5330,7 +5330,7 @@ static int translate_SCSI_Reassign_Blocks_Command(tDevice *device, ScsiIoCtx *sc
             }
         }
     }
-    safe_Free(writeData)
+    safe_Free_aligned(writeData)
     return ret;
 }
 
@@ -5661,7 +5661,7 @@ static int translate_SCSI_Security_Protocol_In_Command(tDevice *device, ScsiIoCt
                         memcpy(scsiIoCtx->pdata, tempSecurityMemory, allocationLength);
                     }
                 }
-                safe_Free(tempSecurityMemory)
+                safe_Free_aligned(tempSecurityMemory)
             }
         }
     }
@@ -5928,7 +5928,7 @@ static int translate_SCSI_Security_Protocol_Out_Command(tDevice *device, ScsiIoC
                     ret = FAILURE;
                     set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 }
-                safe_Free(tempSecurityMemory)
+                safe_Free_aligned(tempSecurityMemory)
             }
         }
     }
@@ -9862,7 +9862,7 @@ static int translate_Application_Client_Log_Select_0x0F(tDevice *device, ScsiIoC
                     {
                         //break and set an error code
                         set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
-                        safe_Free(hostLogData)
+                        safe_Free_aligned(hostLogData)
                         break;
                     }
                 }
@@ -9872,14 +9872,14 @@ static int translate_Application_Client_Log_Select_0x0F(tDevice *device, ScsiIoC
                     {
                         //break and set an error code
                         set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
-                        safe_Free(hostLogData)
+                        safe_Free_aligned(hostLogData)
                         break;
                     }
                 }
                 else
                 {
                     //error...we shouldn't be here!
-                    safe_Free(hostLogData)
+                    safe_Free_aligned(hostLogData)
                     break;
                 }
                 //need another for loop to go through the ATA log data we just read so that we can modify the data before we write it.
@@ -9904,7 +9904,7 @@ static int translate_Application_Client_Log_Select_0x0F(tDevice *device, ScsiIoC
                     {
                         //break and set an error code
                         set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
-                        safe_Free(hostLogData)
+                        safe_Free_aligned(hostLogData)
                         break;
                     }
                 }
@@ -9914,17 +9914,17 @@ static int translate_Application_Client_Log_Select_0x0F(tDevice *device, ScsiIoC
                     {
                         //break and set an error code
                         set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
-                        safe_Free(hostLogData)
+                        safe_Free_aligned(hostLogData)
                         break;
                     }
                 }
                 else
                 {
                     //error...we shouldn't be here!
-                    safe_Free(hostLogData)
+                    safe_Free_aligned(hostLogData)
                     break;
                 }
-                safe_Free(hostLogData)
+                safe_Free_aligned(hostLogData)
             }
         }
     }
@@ -10244,7 +10244,7 @@ static int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 }
             }
-            safe_Free(trimBuffer)
+            safe_Free_aligned(trimBuffer)
         }
     }
     return ret;
@@ -13024,7 +13024,7 @@ static int translate_SCSI_Zone_Management_In_Command(tDevice *device, ScsiIoCtx 
         //copy the data based on allocation length
         memcpy(scsiIoCtx->pdata, dataBuf, M_Min(scsiIoCtx->dataLength, dataBufLength));
     }
-    safe_Free(dataBuf)
+    safe_Free_aligned(dataBuf)
     return ret;
 }
 
@@ -13132,7 +13132,7 @@ static int translate_SCSI_Zone_Management_Out_Command(tDevice *device, ScsiIoCtx
     //    //copy the data based on allocation length
     //    memcpy(scsiIoCtx->pdata, dataBuf, M_Min(scsiIoCtx->dataLength, dataBufLength));
     //}
-    //safe_Free(dataBuf)
+    //safe_Free_aligned(dataBuf)
     return ret;
 }
 

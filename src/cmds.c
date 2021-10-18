@@ -518,7 +518,7 @@ int security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityPr
             ret = send_ATA_Trusted_Send_Cmd(device, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
             if (useLocalMemory)
             {
-                safe_Free(tcgBufPtr)
+                safe_Free_aligned(tcgBufPtr)
             }
         }
         else
@@ -586,7 +586,7 @@ int security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securit
             if (useLocalMemory)
             {
                 memcpy(ptrData, tcgBufPtr, M_Min(dataSize, tcgDataSize));
-                safe_Free(tcgBufPtr)
+                safe_Free_aligned(tcgBufPtr)
             }
         }
         else
@@ -697,7 +697,7 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
             }
             if (localPattern)
             {
-                safe_Free(pattern)
+                safe_Free_aligned(pattern)
             }
         }
         else
@@ -777,7 +777,7 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
 {
     int ret = UNKNOWN;
     bool multipleLogicalPerPhysical = false;//used to set the physical block bit when applicable
-    uint16_t logicalPerPhysicalBlocks = (uint16_t)(device->drive_info.devicePhyBlockSize / device->drive_info.deviceBlockSize);
+    uint16_t logicalPerPhysicalBlocks = C_CAST(uint16_t, device->drive_info.devicePhyBlockSize / device->drive_info.deviceBlockSize);
     if (logicalPerPhysicalBlocks > 1)
     {
         //since this device has multiple logical blocks per physical block, we also need to adjust the LBA to be at the start of the physical block
@@ -1799,7 +1799,7 @@ int nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
     {
         ret = MEMORY_FAILURE;
     }
-    safe_Free(data)
+    safe_Free_aligned(data)
     return ret;
 }
 #endif

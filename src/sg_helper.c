@@ -984,7 +984,7 @@ int get_Device(const char *filename, tDevice *device)
             {
                 //http://www.faqs.org/docs/Linux-HOWTO/SCSI-Generic-HOWTO.html#IDDRIVER
                 device->os_info.sgDriverVersion.driverVersionValid = true;
-                device->os_info.sgDriverVersion.majorVersion = (uint8_t)(k / 10000);
+                device->os_info.sgDriverVersion.majorVersion = C_CAST(uint8_t, k / 10000);
                 device->os_info.sgDriverVersion.minorVersion = (uint8_t)((k - (device->os_info.sgDriverVersion.majorVersion * 10000)) / 100);
                 device->os_info.sgDriverVersion.revision = (uint8_t)(k - (device->os_info.sgDriverVersion.majorVersion * 10000) - (device->os_info.sgDriverVersion.minorVersion * 100));
                 
@@ -1204,7 +1204,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
         {
             printf("%s Didn't understand direction\n", __FUNCTION__);
         }
-        safe_Free(localSenseBuffer)
+        safe_Free_aligned(localSenseBuffer)
         return BAD_PARAMETER;
     }
 
@@ -1487,7 +1487,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
 #ifdef _DEBUG
     printf("<--%s (%d)\n",__FUNCTION__, ret);
 #endif
-    safe_Free(localSenseBuffer)
+    safe_Free_aligned(localSenseBuffer)
     return ret;
 }
 
@@ -1817,8 +1817,8 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         adminCmd.nsid = nvmeIoCtx->cmd.adminCmd.nsid;
         adminCmd.cdw2 = nvmeIoCtx->cmd.adminCmd.cdw2;
         adminCmd.cdw3 = nvmeIoCtx->cmd.adminCmd.cdw3;
-        adminCmd.metadata = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.adminCmd.metadata;
-        adminCmd.addr = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.adminCmd.addr;
+        adminCmd.metadata = C_CAST(uint64_t, uintptr_t)nvmeIoCtx->cmd.adminCmd.metadata;
+        adminCmd.addr = C_CAST(uint64_t, uintptr_t)nvmeIoCtx->cmd.adminCmd.addr;
         adminCmd.metadata_len = nvmeIoCtx->cmd.adminCmd.metadataLen;
         adminCmd.data_len = nvmeIoCtx->dataSize;
         adminCmd.cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
@@ -1865,8 +1865,8 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             nvmCmd.control = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw12);
             nvmCmd.nblocks = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12);
             nvmCmd.rsvd = RESERVED;
-            nvmCmd.metadata = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.nvmCmd.metadata;
-            nvmCmd.addr = (uint64_t)(uintptr_t)nvmeIoCtx->ptrData;
+            nvmCmd.metadata = C_CAST(uint64_t, uintptr_t)nvmeIoCtx->cmd.nvmCmd.metadata;
+            nvmCmd.addr = C_CAST(uint64_t, uintptr_t)nvmeIoCtx->ptrData;
             nvmCmd.slba = M_DWordsTo8ByteValue(nvmeIoCtx->cmd.nvmCmd.cdw11, nvmeIoCtx->cmd.nvmCmd.cdw10);
             nvmCmd.dsmgmt = nvmeIoCtx->cmd.nvmCmd.cdw13;
             nvmCmd.reftag = nvmeIoCtx->cmd.nvmCmd.cdw14;
@@ -1904,8 +1904,8 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             passThroughCmd->nsid = nvmeIoCtx->cmd.nvmCmd.nsid;
             passThroughCmd->cdw2 = nvmeIoCtx->cmd.nvmCmd.cdw2;
             passThroughCmd->cdw3 = nvmeIoCtx->cmd.nvmCmd.cdw3;
-            passThroughCmd->metadata = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.nvmCmd.metadata;
-            passThroughCmd->addr = (uint64_t)(uintptr_t)nvmeIoCtx->ptrData;
+            passThroughCmd->metadata = C_CAST(uint64_t, uintptr_t)nvmeIoCtx->cmd.nvmCmd.metadata;
+            passThroughCmd->addr = C_CAST(uint64_t, uintptr_t)nvmeIoCtx->ptrData;
             passThroughCmd->metadata_len = M_DoubleWord0(nvmeIoCtx->cmd.nvmCmd.prp2);//guessing here since I don't really know - TJE
             passThroughCmd->data_len = nvmeIoCtx->dataSize;//Or do I use the other PRP2 data? Not sure - TJE //M_DWord1(nvmeIoCtx->cmd.nvmCmd.prp2);//guessing here since I don't really know - TJE
             passThroughCmd->cdw10 = nvmeIoCtx->cmd.nvmCmd.cdw10;

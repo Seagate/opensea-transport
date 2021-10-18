@@ -640,10 +640,10 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        safe_Free(localBuffer)
-        safe_Free(localCDB)
-        safe_Free(localSensePtr)
-        safe_Free(srp)
+        safe_Free_aligned(localBuffer)
+        safe_Free_aligned(localCDB)
+        safe_Free_aligned(localSensePtr)
+        safe_Free_aligned(srp)
         close_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum);
     }
     else
@@ -993,10 +993,10 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        safe_Free(localBuffer)
-        safe_Free(localCDB)
-        safe_Free(localSensePtr)
-        safe_Free(srp)
+        safe_Free_aligned(localBuffer)
+        safe_Free_aligned(localCDB)
+        safe_Free_aligned(localSensePtr)
+        safe_Free_aligned(srp)
         close_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum);
     }
     else
@@ -1342,10 +1342,10 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        safe_Free(ataPacket)
-        safe_Free(localBuffer)
-        safe_Free(ataStatus)
-        safe_Free(ataCommand)
+        safe_Free_aligned(ataPacket)
+        safe_Free_aligned(localBuffer)
+        safe_Free_aligned(ataStatus)
+        safe_Free_aligned(ataCommand)
         close_ATA_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum);
     }
     else
@@ -1726,11 +1726,11 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        safe_Free(nrp->MetadataBuffer)//TODO: Need to figure out a better way to handle the metadata than this...
-        safe_Free(nrp)
-        safe_Free(localBuffer)
-        safe_Free(nvmCommand)
-        safe_Free(nvmCompletion)
+        safe_Free_aligned(nrp->MetadataBuffer)//TODO: Need to figure out a better way to handle the metadata than this...
+        safe_Free_aligned(nrp)
+        safe_Free_aligned(localBuffer)
+        safe_Free_aligned(nvmCommand)
+        safe_Free_aligned(nvmCompletion)
         close_NVMe_Passthru_Protocol_Ptr(&pPassthru, nvmeIoCtx->device->os_info.controllerNum);
     }
     else

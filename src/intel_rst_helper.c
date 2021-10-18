@@ -189,7 +189,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
             overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
             if (overlappedStruct.hEvent == NULL)
             {
-                safe_Free(raidFirmwareRequest)
+                safe_Free_aligned(raidFirmwareRequest)
                 return OS_PASSTHROUGH_FAILURE;
             }
             start_Timer(&commandTimer);
@@ -235,7 +235,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                     memcpy(ptrDataRequest, C_CAST(uint8_t*, raidFirmwareRequest) + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, dataRequestLength);
                 }
             }
-            safe_Free(raidFirmwareRequest)
+            safe_Free_aligned(raidFirmwareRequest)
         }
         else
         {
@@ -594,7 +594,7 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
                 nvmPassthroughCommand->Parameters.DataBufferOffset = 0;//this should be ok since we aren't doing a transfer
                 break;
             default:
-                safe_Free(nvmPassthroughCommand)
+                safe_Free_aligned(nvmPassthroughCommand)
                 return OS_COMMAND_NOT_AVAILABLE;
             }
             DWORD bytesReturned = 0;
@@ -603,7 +603,7 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
             if (overlappedStruct.hEvent == NULL)
             {
-                safe_Free(nvmPassthroughCommand)
+                safe_Free_aligned(nvmPassthroughCommand)
                 return OS_PASSTHROUGH_FAILURE;
             }
             SetLastError(ERROR_SUCCESS);//clear out any errors before we begin
@@ -660,7 +660,7 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             
             //set command time
             nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-            safe_Free(nvmPassthroughCommand)
+            safe_Free_aligned(nvmPassthroughCommand)
         }
         else
         {

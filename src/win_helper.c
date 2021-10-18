@@ -2123,7 +2123,7 @@ static int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCt
             break;
         }
     }
-    safe_Free(buffer)
+    safe_Free_aligned(buffer)
 #if defined (_DEBUG)
     printf("%s: <-- (ret=%d)\n", __FUNCTION__, ret);
 #endif
@@ -5558,10 +5558,10 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)/
                 uint16_t transferSizeSectors = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaLow, scsiIoCtx->pAtaCmdOpts->tfr.SectorCount);
 #if defined (_DEBUG_FWDL_API_COMPATABILITY)
                 printf("Transfersize sectors: %" PRIu16 "\n", transferSizeSectors);
-                printf("Transfersize bytes: %" PRIu32 "\tMaxXferSize: %" PRIu32 "\n", (uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE), scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize);
-                printf("Transfersize sectors %% alignment: %" PRIu32 "\n", ((uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment));
+                printf("Transfersize bytes: %" PRIu32 "\tMaxXferSize: %" PRIu32 "\n", C_CAST(uint32_t, transferSizeSectors * LEGACY_DRIVE_SEC_SIZE), scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize);
+                printf("Transfersize sectors %% alignment: %" PRIu32 "\n", (C_CAST(uint32_t, transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment));
 #endif
-                if ((uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && ((uint32_t)(transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
+                if (C_CAST(uint32_t, transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (C_CAST(uint32_t, transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
                 {
 #if defined (_DEBUG_FWDL_API_COMPATABILITY)
                     printf("\tTrue (0x0E)\n");
@@ -8003,7 +8003,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                                             if ((lba + numberOfLBAs) > scsiIoCtx->device->drive_info.deviceMaxLba)
                                             {
                                                 //end of range...don't over do it!
-                                                numberOfLBAs = (uint32_t)(scsiIoCtx->device->drive_info.deviceMaxLba - lba);
+                                                numberOfLBAs = C_CAST(uint32_t, scsiIoCtx->device->drive_info.deviceMaxLba - lba);
                                                 writeDataLength = numberOfLBAs * scsiIoCtx->device->drive_info.deviceBlockSize;
                                             }
                                             ret = os_Write(scsiIoCtx->device, lba, false, writePattern, writeDataLength);
@@ -8020,7 +8020,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                                             ascq = 0x00;
                                             setSenseData = true;
                                         }
-                                        safe_Free(writePattern)
+                                        safe_Free_aligned(writePattern)
                                     }
                                     else
                                     {
@@ -9145,7 +9145,7 @@ static int win10_Translate_Set_Error_Recovery_Time_Limit(nvmeCmdCtx *nvmeIoCtx)
                 //send it back to the drive
                 ret = scsi_Mode_Select_10(nvmeIoCtx->device, MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN, true, false, false, errorRecoveryMP, MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN);
             }
-            safe_Free(errorRecoveryMP)
+            safe_Free_aligned(errorRecoveryMP)
         }
         else
         {
@@ -9186,7 +9186,7 @@ static int win10_Translate_Set_Volatile_Write_Cache(nvmeCmdCtx *nvmeIoCtx)
                 //send it back to the drive
                 ret = scsi_Mode_Select_10(nvmeIoCtx->device, MODE_HEADER_LENGTH10 + MP_CACHING_LEN, true, false, false, cachingMP, MODE_HEADER_LENGTH10 + MP_CACHING_LEN);
             }
-            safe_Free(cachingMP)
+            safe_Free_aligned(cachingMP)
         }
         else
         {
@@ -9949,7 +9949,7 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
         {
             ret = MEMORY_FAILURE;
         }
-        safe_Free(unmapParameterData)
+        safe_Free_aligned(unmapParameterData)
     }
     nvmeIoCtx->device->deviceVerbosity = inVerbosity;
     return ret;

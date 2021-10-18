@@ -457,8 +457,8 @@ int nvme_Write(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBl
     {
         nvmCommand.cmd.nvmCmd.cdw12 |= BIT30;
     }
-    nvmCommand.cmd.nvmCmd.cdw12 |= (uint32_t)(protectionInformationField & 0x0F) << 26;
-    nvmCommand.cmd.nvmCmd.cdw12 |= (uint32_t)(directiveType & 0x0F) << 20;
+    nvmCommand.cmd.nvmCmd.cdw12 |= C_CAST(uint32_t, protectionInformationField & 0x0F) << 26;
+    nvmCommand.cmd.nvmCmd.cdw12 |= C_CAST(uint32_t, directiveType & 0x0F) << 20;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending NVMe Write Command\n");
@@ -498,7 +498,7 @@ int nvme_Read(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlo
     {
         nvmCommand.cmd.nvmCmd.cdw12 |= BIT30;
     }
-    nvmCommand.cmd.nvmCmd.cdw12 |= (uint32_t)(protectionInformationField & 0x0F) << 26;
+    nvmCommand.cmd.nvmCmd.cdw12 |= C_CAST(uint32_t, protectionInformationField & 0x0F) << 26;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending NVMe Read Command\n");
@@ -538,7 +538,7 @@ int nvme_Compare(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogical
     {
         nvmCommand.cmd.nvmCmd.cdw12 |= BIT30;
     }
-    nvmCommand.cmd.nvmCmd.cdw12 |= (uint32_t)(protectionInformationField & 0x0F) << 26;
+    nvmCommand.cmd.nvmCmd.cdw12 |= C_CAST(uint32_t, protectionInformationField & 0x0F) << 26;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending NVMe Compare Command\n");
@@ -741,7 +741,7 @@ int nvme_Sanitize(tDevice *device, bool noDeallocateAfterSanitize, bool invertBe
     nvmCommand.timeout = 15;
 
     //set the overwrite pass count first
-    nvmCommand.cmd.adminCmd.cdw10 = (uint32_t)(overWritePassCount << 4);
+    nvmCommand.cmd.adminCmd.cdw10 = C_CAST(uint32_t, overWritePassCount << 4);
     
     if (noDeallocateAfterSanitize)
     {
@@ -802,8 +802,8 @@ int nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts
     getLogPage.cmd.adminCmd.cdw10 = dWord10;
     getLogPage.cmd.adminCmd.cdw11 = numDwords >> 16;
 
-    getLogPage.cmd.adminCmd.cdw12 = (uint32_t)(getLogPageCmdOpts->offset & 0xFFFFFFFF);
-    getLogPage.cmd.adminCmd.cdw13 = (uint32_t)(getLogPageCmdOpts->offset >> 32);
+    getLogPage.cmd.adminCmd.cdw12 = C_CAST(uint32_t, getLogPageCmdOpts->offset & 0xFFFFFFFF);
+    getLogPage.cmd.adminCmd.cdw13 = C_CAST(uint32_t, getLogPageCmdOpts->offset >> 32);
 
     getLogPage.ptrData = (uint8_t*)getLogPageCmdOpts->addr;
     getLogPage.dataSize = getLogPageCmdOpts->dataLen;
@@ -1049,7 +1049,7 @@ int nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegisters * ctrlRegs)
         memcpy(ctrlRegs,barRegs,sizeof(nvmeBarCtrlRegisters));
     }
     
-    safe_Free(barRegs)
+    safe_Free_aligned(barRegs)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {

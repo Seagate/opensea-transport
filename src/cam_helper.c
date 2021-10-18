@@ -1279,7 +1279,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 		pt.cpl.rsvd1 = nvmeIoCtx->cmd.adminCmd.rsvd1;
 		pt.cmd.rsvd2 = nvmeIoCtx->cmd.adminCmd.cdw2;
 		pt.cmd.rsvd3 = nvmeIoCtx->cmd.adminCmd.cdw3;
-		pt.cmd.mptr = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.adminCmd.metadata;
+		pt.cmd.mptr = C_CAST(uint64_t, C_CAST(uintptr_t, nvmeIoCtx->cmd.adminCmd.metadata));
 
 		pt.cmd.cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
 		pt.cmd.cdw11 = nvmeIoCtx->cmd.adminCmd.cdw11;
@@ -1303,7 +1303,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 		pt.cpl.rsvd1 = nvmeIoCtx->cmd.nvmCmd.commandId;
 		pt.cmd.rsvd2 = nvmeIoCtx->cmd.nvmCmd.cdw2;
 		pt.cmd.rsvd3 = nvmeIoCtx->cmd.nvmCmd.cdw3;
-		pt.cmd.mptr = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.adminCmd.metadata;
+		pt.cmd.mptr = C_CAST(uint64_t, C_CAST(uintptr_t, nvmeIoCtx->cmd.adminCmd.metadata));
 
 		pt.cmd.cdw10 = nvmeIoCtx->cmd.nvmCmd.cdw10;
 		pt.cmd.cdw11 = nvmeIoCtx->cmd.nvmCmd.cdw11;

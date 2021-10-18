@@ -274,7 +274,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             outputInfo->outputFilePtr = fopen(fileNameAndPath, "w+");
                             if (!(outputInfo->outputFilePtr))
                             {
-                                safe_Free(deviceList)
+                                safe_Free_aligned(deviceList)
                                 perror("could not open file!");
                                 return;
                             }
@@ -450,7 +450,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                     close_Device(&deviceList[deviceIter]);
                 }
             }
-            safe_Free(deviceList)
+            safe_Free_aligned(deviceList)
         }
         else
         {

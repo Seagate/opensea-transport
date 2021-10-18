@@ -2076,7 +2076,7 @@ static int sntl_Translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiI
         temperatureLog[offset + 2] = 0x03;//format and linking = 11b
         temperatureLog[offset + 3] = 0x02;//length
         temperatureLog[offset + 4] = RESERVED;
-        temperatureLog[offset + 5] = (uint8_t)(currentTempK - 273);
+        temperatureLog[offset + 5] = C_CAST(uint8_t, currentTempK - 273);
         offset += 6;
     }
     if (parameterPointer <= 1)
@@ -2096,7 +2096,7 @@ static int sntl_Translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiI
             temperatureLog[offset + 2] = 0x03;//format and linking = 11b
             temperatureLog[offset + 3] = 0x02;
             temperatureLog[offset + 4] = RESERVED;
-            temperatureLog[offset + 5] = (uint8_t)(tempThreshK - 273);
+            temperatureLog[offset + 5] = C_CAST(uint8_t, tempThreshK - 273);
             offset += 6;
         }
         else
@@ -2289,7 +2289,7 @@ static int sntl_Translate_Background_Scan_Results_Log_0x15(tDevice *device, Scsi
         }
         else
         {
-            pohMinutes = (uint64_t)(60 * nvmePOH);
+            pohMinutes = C_CAST(uint64_t, 60 * nvmePOH);
         }
         backgroundResults[offset + 0] = 0x00;
         backgroundResults[offset + 1] = 0x00;
@@ -5033,7 +5033,7 @@ static int sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoCtx *s
             //dummy up a single lun
             singleLun = true;
         }
-        safe_Free(activeNamespaces)
+        safe_Free_aligned(activeNamespaces)
         if (singleLun)
         {
             reportLunsDataLength += 8;
@@ -6071,7 +6071,7 @@ static int sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoC
                     set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 }
             }
-            safe_Free(dsmBuffer)
+            safe_Free_aligned(dsmBuffer)
         }
     }
     return ret;

@@ -8758,7 +8758,7 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
         {
             return NOT_SUPPORTED;
         }
-        safe_Free(ataInformation)
+        safe_Free_aligned(ataInformation)
     }
     if (issueSATIdentify)
     {
@@ -9367,7 +9367,7 @@ int fill_In_Device_Info(tDevice *device)
             {
                 ret = fill_In_ATA_Drive_Info(device);
             }
-            safe_Free(inq_buf)
+            safe_Free_aligned(inq_buf)
             return ret;
         }
 
@@ -9411,7 +9411,7 @@ int fill_In_Device_Info(tDevice *device)
                         memset(device->drive_info.serialNumber, 0, SERIAL_NUM_LEN);
                     }
                 }
-                safe_Free(unitSerialNumber)
+                safe_Free_aligned(unitSerialNumber)
             }
             else
             {
@@ -9433,7 +9433,7 @@ int fill_In_Device_Info(tDevice *device)
                 if (!deviceIdentification)
                 {
                     perror("Error allocating memory to read device identification VPD page");
-                    safe_Free(inq_buf)
+                    safe_Free_aligned(inq_buf)
                     return MEMORY_FAILURE;
                 }
                 if (SUCCESS == scsi_Inquiry(device, deviceIdentification, INQ_RETURN_DATA_LENGTH, DEVICE_IDENTIFICATION, true, false))
@@ -9445,14 +9445,14 @@ int fill_In_Device_Info(tDevice *device)
                         byte_Swap_64(&device->drive_info.worldWideName);
                     }
                 }
-                safe_Free(deviceIdentification)
+                safe_Free_aligned(deviceIdentification)
             }
             //One last thing...Need to do a SAT scan...
             if (checkForSAT)
             {
                 check_SAT_Compliance_And_Set_Drive_Type(device);
             }
-            safe_Free(inq_buf)
+            safe_Free_aligned(inq_buf)
             return ret;
         }
 
@@ -9562,7 +9562,7 @@ int fill_In_Device_Info(tDevice *device)
             if (!supportedVPDPages)
             {
                 perror("Error allocating memory for supported VPD pages!\n");
-                safe_Free(inq_buf)
+                safe_Free_aligned(inq_buf)
                 return MEMORY_FAILURE;
             }
             memcpy(supportedVPDPages, &inq_buf[4], supportedVPDPagesLength);
@@ -9601,7 +9601,7 @@ int fill_In_Device_Info(tDevice *device)
                             }
                         }
                     }
-                    safe_Free(unitSerialNumber)
+                    safe_Free_aligned(unitSerialNumber)
                     break;
                 }
                 case DEVICE_IDENTIFICATION://World wide name
@@ -9621,7 +9621,7 @@ int fill_In_Device_Info(tDevice *device)
                             byte_Swap_64(&device->drive_info.worldWideName);
                         }
                     }
-                    safe_Free(deviceIdentification)
+                    safe_Free_aligned(deviceIdentification)
                     break;
                 }
                 case ATA_INFORMATION: //use this to determine if it's SAT compliant
@@ -9721,7 +9721,7 @@ int fill_In_Device_Info(tDevice *device)
                             }
                         }
                     }
-                    safe_Free(blockDeviceCharacteristics)
+                    safe_Free_aligned(blockDeviceCharacteristics)
                     break;
                 }
                 default:
@@ -9755,7 +9755,7 @@ int fill_In_Device_Info(tDevice *device)
             uint8_t *readCapBuf = (uint8_t*)calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
             if (!readCapBuf)
             {
-                safe_Free(inq_buf)
+                safe_Free_aligned(inq_buf)
                 return MEMORY_FAILURE;
             }
             if (SUCCESS == scsi_Read_Capacity_10(device, readCapBuf, READ_CAPACITY_10_LEN))
@@ -9767,8 +9767,8 @@ int fill_In_Device_Info(tDevice *device)
                     uint8_t* temp = (uint8_t*)realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment);
                     if (!temp)
                     {
-                        safe_Free(readCapBuf)
-                        safe_Free(inq_buf)
+                        safe_Free_aligned(readCapBuf)
+                        safe_Free_aligned(inq_buf)
                         return MEMORY_FAILURE;
                     }
                     readCapBuf = temp;
@@ -9803,8 +9803,8 @@ int fill_In_Device_Info(tDevice *device)
                 uint8_t* temp = (uint8_t*)realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment);
                 if (temp == NULL)
                 {
-                    safe_Free(readCapBuf)
-                    safe_Free(inq_buf)
+                    safe_Free_aligned(readCapBuf)
+                    safe_Free_aligned(inq_buf)
                     return MEMORY_FAILURE;
                 }
                 readCapBuf = temp;
@@ -9820,7 +9820,7 @@ int fill_In_Device_Info(tDevice *device)
                     }
                 }
             }
-            safe_Free(readCapBuf)
+            safe_Free_aligned(readCapBuf)
             if (device->drive_info.devicePhyBlockSize == 0)
             {
                 //If we did not get a physical blocksize, we need to set it to the blocksize (logical).
@@ -9855,7 +9855,7 @@ int fill_In_Device_Info(tDevice *device)
         }
         ret = COMMAND_FAILURE;
     }
-    safe_Free(inq_buf)
+    safe_Free_aligned(inq_buf)
 
     #ifdef _DEBUG
     printf("\nscsi helper\n");

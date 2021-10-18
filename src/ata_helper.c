@@ -328,10 +328,10 @@ int send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode
         || functionCode == WRITE_SAME_BACKGROUND_USE_SINGLE_LOGICAL_SECTOR || functionCode == WRITE_SAME_FOREGROUND_USE_SINGLE_LOGICAL_SECTOR)
     {
         //send the pattern to the data transfer log
-        ret = send_ATA_SCT_Data_Transfer(device, XFER_DATA_OUT, pattern, (uint32_t)(patternLength * device->drive_info.deviceBlockSize));
+        ret = send_ATA_SCT_Data_Transfer(device, XFER_DATA_OUT, pattern, C_CAST(uint32_t, patternLength * device->drive_info.deviceBlockSize));
     }
 
-    safe_Free(writeSameBuffer)
+    safe_Free_aligned(writeSameBuffer)
     return ret;
 }
 
@@ -347,7 +347,7 @@ int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, 
     //if we are retrieving the current values, then we better have a good pointer...no point in sending the command if we don't
     if (functionCode == 0x0002 && !currentValue)
     {
-        safe_Free(errorRecoveryBuffer)
+        safe_Free_aligned(errorRecoveryBuffer)
         return BAD_PARAMETER;
     }
 
@@ -370,7 +370,7 @@ int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, 
     {
         *currentValue = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
     }
-    safe_Free(errorRecoveryBuffer)
+    safe_Free_aligned(errorRecoveryBuffer)
     return ret;
 }
 
@@ -386,7 +386,7 @@ int send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_
     //make sure we have valid pointers for state and optionFlags
     if (!state || !optionFlags)
     {
-        safe_Free(featureControlBuffer)
+        safe_Free_aligned(featureControlBuffer)
         return BAD_PARAMETER;
     }
     //clear the state and option flags out, unless we are setting something
@@ -426,7 +426,7 @@ int send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_
             *optionFlags = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
         }
     }
-    safe_Free(featureControlBuffer)
+    safe_Free_aligned(featureControlBuffer)
     return ret;
 }
 
@@ -1220,7 +1220,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                     {
                         //data is valid, so figure out supported pages
                         uint8_t listLen = logBuffer[8];
-                        for (uint16_t iter = 9; iter < (uint16_t)(listLen + 8) && iter < UINT16_C(512); ++iter)
+                        for (uint16_t iter = 9; iter < C_CAST(uint16_t, listLen + 8) && iter < UINT16_C(512); ++iter)
                         {
                             switch (logBuffer[iter])
                             {

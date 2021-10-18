@@ -384,7 +384,7 @@ int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit,
         memcpy(&overwriteBuffer[4], pattern, patternLengthBytes);
     }
     ret = scsi_Sanitize_Cmd(device, SCSI_SANITIZE_OVERWRITE, immediate, znr, allowUnrestrictedSanitizeExit, patternLengthBytes + 4, overwriteBuffer);
-    safe_Free(overwriteBuffer)
+    safe_Free_aligned(overwriteBuffer)
     return ret;
 }
 
@@ -3746,12 +3746,12 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    {
 //        cdb[1] |= BIT0;
 //    }
-//    cdb[2] = (uint8_t)(logicalBlockAddress >> 24);
-//    cdb[3] = (uint8_t)(logicalBlockAddress >> 16);
-//    cdb[4] = (uint8_t)(logicalBlockAddress >> 8);
+//    cdb[2] = C_CAST(uint8_t, logicalBlockAddress >> 24);
+//    cdb[3] = C_CAST(uint8_t, logicalBlockAddress >> 16);
+//    cdb[4] = C_CAST(uint8_t, logicalBlockAddress >> 8);
 //    cdb[5] = (uint8_t)logicalBlockAddress;
 //    cdb[6] = groupNumber & 0x1F;
-//    cdb[7] = (uint8_t)(transferLength >> 8);
+//    cdb[7] = C_CAST(uint8_t, transferLength >> 8);
 //    cdb[8] = (uint8_t)transferLength;
 //    cdb[9] = 0;//control
 //
@@ -3848,13 +3848,13 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //        cdb[10] |= BIT0;
 //    }
 //    cdb[11] = RESERVED;
-//    cdb[12] = (uint8_t)(logicalBlockAddress >> 56);
-//    cdb[13] = (uint8_t)(logicalBlockAddress >> 48);
-//    cdb[14] = (uint8_t)(logicalBlockAddress >> 40);
-//    cdb[15] = (uint8_t)(logicalBlockAddress >> 32);
-//    cdb[16] = (uint8_t)(logicalBlockAddress >> 24);
-//    cdb[17] = (uint8_t)(logicalBlockAddress >> 16);
-//    cdb[18] = (uint8_t)(logicalBlockAddress >> 8);
+//    cdb[12] = C_CAST(uint8_t, logicalBlockAddress >> 56);
+//    cdb[13] = C_CAST(uint8_t, logicalBlockAddress >> 48);
+//    cdb[14] = C_CAST(uint8_t, logicalBlockAddress >> 40);
+//    cdb[15] = C_CAST(uint8_t, logicalBlockAddress >> 32);
+//    cdb[16] = C_CAST(uint8_t, logicalBlockAddress >> 24);
+//    cdb[17] = C_CAST(uint8_t, logicalBlockAddress >> 16);
+//    cdb[18] = C_CAST(uint8_t, logicalBlockAddress >> 8);
 //    cdb[19] = (uint8_t)logicalBlockAddress;
 //    cdb[20] = RESERVED;
 //    cdb[21] = RESERVED;
@@ -3864,9 +3864,9 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    cdb[25] = RESERVED;
 //    cdb[26] = RESERVED;
 //    cdb[27] = RESERVED;
-//    cdb[28] = (uint8_t)(transferLength >> 24);
-//    cdb[29] = (uint8_t)(transferLength >> 16);
-//    cdb[30] = (uint8_t)(transferLength >> 8);
+//    cdb[28] = C_CAST(uint8_t, transferLength >> 24);
+//    cdb[29] = C_CAST(uint8_t, transferLength >> 16);
+//    cdb[30] = C_CAST(uint8_t, transferLength >> 8);
 //    cdb[31] = (uint8_t)transferLength;
 //
 //    // Set up the CTX

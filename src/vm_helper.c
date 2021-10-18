@@ -947,7 +947,7 @@ int get_Device(const char *filename, tDevice *device)
 
             //http://www.faqs.org/docs/Linux-HOWTO/SCSI-Generic-HOWTO.html#IDDRIVER
             device->os_info.sgDriverVersion.driverVersionValid = true;
-            device->os_info.sgDriverVersion.majorVersion = (uint8_t)(k / 10000);
+            device->os_info.sgDriverVersion.majorVersion = C_CAST(uint8_t, k / 10000);
             device->os_info.sgDriverVersion.minorVersion = (uint8_t)((k - (device->os_info.sgDriverVersion.majorVersion * 10000)) / 100);
             device->os_info.sgDriverVersion.revision = (uint8_t)(k - (device->os_info.sgDriverVersion.majorVersion * 10000) - (device->os_info.sgDriverVersion.minorVersion * 100));
             #endif
@@ -1284,7 +1284,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
         {
             printf("%s Didn't understand direction\n", __FUNCTION__);
         }
-        safe_Free(localSenseBuffer)
+        safe_Free_aligned(localSenseBuffer)
         return BAD_PARAMETER;
     }
 
@@ -1567,7 +1567,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
 #ifdef _DEBUG
     printf("<--%s (%d)\n",__FUNCTION__, ret);
 #endif
-    safe_Free(localSenseBuffer)
+    safe_Free_aligned(localSenseBuffer)
     return ret;
 }
 

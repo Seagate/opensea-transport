@@ -1434,7 +1434,7 @@ int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
     {
         if (sspInputs->cdbLength > 40)
         {
-            safe_Free(sspPassthrough)
+            safe_Free_aligned(sspPassthrough)
             return OS_COMMAND_NOT_AVAILABLE;
         }
         //copy to cdb, then additional CDB
@@ -1466,7 +1466,7 @@ int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
         }
         else
         {
-            safe_Free(sspPassthrough)
+            safe_Free_aligned(sspPassthrough)
             return BAD_PARAMETER;
         }
     }
@@ -1531,7 +1531,7 @@ int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
         print_Return_Enum("CSMI SSP Passthrough\n", ret);
     }
 
-    safe_Free(sspPassthrough)
+    safe_Free_aligned(sspPassthrough)
 
     return ret;
 }
@@ -1613,7 +1613,7 @@ int csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
         }
         else
         {
-            safe_Free(stpPassthrough)
+            safe_Free_aligned(stpPassthrough)
             return BAD_PARAMETER;
         }
     }
@@ -1670,7 +1670,7 @@ int csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
         print_Return_Enum("CSMI STP Passthrough\n", ret);
     }
 
-    safe_Free(stpPassthrough)
+    safe_Free_aligned(stpPassthrough)
 
     return ret;
 }

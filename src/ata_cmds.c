@@ -649,7 +649,7 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
     }
     else
     {
-        ataCommandOptions.tfr.SectorCount = (uint8_t)(dataSize / LEGACY_DRIVE_SEC_SIZE);
+        ataCommandOptions.tfr.SectorCount = C_CAST(uint8_t, dataSize / LEGACY_DRIVE_SEC_SIZE);
     }
 
     ataCommandOptions.tfr.ErrorFeature = feature;
@@ -1684,10 +1684,10 @@ int ata_SCT_Write_Same(tDevice *device, bool useGPL, bool useDMA, eSCTWriteSameF
         || functionCode == WRITE_SAME_BACKGROUND_USE_SINGLE_LOGICAL_SECTOR || functionCode == WRITE_SAME_FOREGROUND_USE_SINGLE_LOGICAL_SECTOR)
     {
         //send the pattern to the data transfer log
-        ret = ata_SCT_Data_Transfer(device, useGPL, useDMA, XFER_DATA_OUT, pattern, (uint32_t)(patternLength * device->drive_info.deviceBlockSize));
+        ret = ata_SCT_Data_Transfer(device, useGPL, useDMA, XFER_DATA_OUT, pattern, C_CAST(uint32_t, patternLength * device->drive_info.deviceBlockSize));
     }
 
-    safe_Free(writeSameBuffer)
+    safe_Free_aligned(writeSameBuffer)
     return ret;
 }
 
@@ -1703,7 +1703,7 @@ int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, ui
     //if we are retrieving the current values, then we better have a good pointer...no point in sending the command if we don't
     if (functionCode == 0x0002 && !currentValue)
     {
-        safe_Free(errorRecoveryBuffer)
+        safe_Free_aligned(errorRecoveryBuffer)
         return BAD_PARAMETER;
     }
 
@@ -1726,7 +1726,7 @@ int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, ui
     {
         *currentValue = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
     }
-    safe_Free(errorRecoveryBuffer)
+    safe_Free_aligned(errorRecoveryBuffer)
     return ret;
 }
 
@@ -1742,7 +1742,7 @@ int ata_SCT_Feature_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t 
     //make sure we have valid pointers for state and optionFlags
     if (!state || !optionFlags)
     {
-        safe_Free(featureControlBuffer)
+        safe_Free_aligned(featureControlBuffer)
         return BAD_PARAMETER;
     }
     //clear the state and option flags out, unless we are setting something
@@ -1782,7 +1782,7 @@ int ata_SCT_Feature_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t 
             *optionFlags = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
         }
     }
-    safe_Free(featureControlBuffer)
+    safe_Free_aligned(featureControlBuffer)
     return ret; 
 }
 
