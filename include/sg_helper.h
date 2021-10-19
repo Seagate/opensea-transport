@@ -305,7 +305,7 @@ int os_nvme_Subsystem_Reset(tDevice *device);
 
 #endif
 
-int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **blockHandle);
+int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char **blockHandle);
 
 int device_Reset(int fd);
 

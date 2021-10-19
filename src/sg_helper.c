@@ -766,13 +766,13 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
                                 {
                                     if (incomingBlock)
                                     {
-                                        *blockHandle = strndup(basename(handle), strlen(basename(handle)));
+                                        *blockHandle = strndup(basename(C_CAST(char*, handle)), strlen(basename(C_CAST(char*, handle))));
                                         *genericHandle = strdup(basename(classPtr));
                                     }
                                     else
                                     {
                                         *blockHandle = strndup(basename(classPtr), strlen(basename(classPtr)));
-                                        *genericHandle = strdup(basename(handle));
+                                        *genericHandle = strdup(basename(C_CAST(char *, handle)));
                                     }
                                     safe_Free(className)
                                     safe_Free(incomingClassName)
