@@ -259,7 +259,7 @@ int send_ATA_SCT_Read_Write_Long(tDevice *device, eSCTRWLMode mode, uint64_t lba
 int send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode, uint64_t startLBA, uint64_t fillCount, uint8_t *pattern, uint64_t patternLength)
 {
     int ret = UNKNOWN;
-    uint8_t *writeSameBuffer = (uint8_t*)calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment);
+    uint8_t *writeSameBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!writeSameBuffer)
     {
         perror("Calloc failure!\n");
@@ -338,7 +338,7 @@ int send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode
 int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit)
 {
     int ret = UNKNOWN;
-    uint8_t *errorRecoveryBuffer = (uint8_t*)calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment);
+    uint8_t *errorRecoveryBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!errorRecoveryBuffer)
     {
         perror("Calloc failure!\n");
@@ -377,7 +377,7 @@ int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, 
 int send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags)
 {
     int ret = UNKNOWN;
-    uint8_t *featureControlBuffer = (uint8_t*)calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment);
+    uint8_t *featureControlBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!featureControlBuffer)
     {
         perror("Calloc Failure!\n");
@@ -760,7 +760,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     int ret = UNKNOWN;
     //Both pointers pointing to the same data. 
     uint16_t *ident_word = &device->drive_info.IdentifyData.ata.Word000;
-    uint8_t *identifyData = (uint8_t *)&device->drive_info.IdentifyData.ata.Word000;
+    uint8_t *identifyData = C_CAST(uint8_t *, &device->drive_info.IdentifyData.ata.Word000);
 #ifdef _DEBUG
     printf("%s -->\n", __FUNCTION__);
 #endif
@@ -774,7 +774,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         //make sure we disable sending the A1h SAT CDB or we could accidentally send a "blank" command due to how most of these devices receive commands under different OSs or through translators.
         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
     }
-    if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (!is_SAT_Invalid_Operation_Code(device) && SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
+    if ((SUCCESS == ata_Identify(device, C_CAST(uint8_t *, ident_word), sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero(C_CAST(uint8_t*, ident_word), 512)) || (!is_SAT_Invalid_Operation_Code(device) && SUCCESS == ata_Identify_Packet_Device(device, C_CAST(uint8_t *, ident_word), sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero(C_CAST(uint8_t*, ident_word), 512)))
     {
         retrievedIdentifyData = true;
     }
@@ -792,7 +792,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             }
             memset(identifyData, 0, 512);
             device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
-            if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (!is_SAT_Invalid_Operation_Code(device) && SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
+            if ((SUCCESS == ata_Identify(device, C_CAST(uint8_t *, ident_word), sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero(C_CAST(uint8_t*, ident_word), 512)) || (!is_SAT_Invalid_Operation_Code(device) && SUCCESS == ata_Identify_Packet_Device(device, C_CAST(uint8_t *, ident_word), sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero(C_CAST(uint8_t*, ident_word), 512)))
             {
                 retrievedIdentifyData = true;
             }
@@ -804,7 +804,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         {
             device->drive_info.scsiVersion = SCSI_VERSION_SPC_5;//SPC5. This is what software translator will set at the moment. Can make this configurable later, but this should be ok
         }
-        //print_Data_Buffer((uint8_t*)ident_word, 512, true);
+        //print_Data_Buffer(C_CAST(uint8_t*, ident_word), 512, true);
         ret = SUCCESS;
         if (device->drive_info.lastCommandRTFRs.device & DEVICE_SELECT_BIT)//Checking for the device select bit being set to know it's device 1 (Not that we really need it). This may not always be reported correctly depending on the lower layers of the OS and hardware. - TJE
         {
@@ -907,7 +907,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 uint8_t sectorSizeExponent = 0;
                 //get the number of logical blocks per physical blocks
                 sectorSizeExponent = ident_word[106] & 0x000F;
-                *fillPhysicalSectorSize = (uint32_t)(*fillLogicalSectorSize * power_Of_Two(sectorSizeExponent));
+                *fillPhysicalSectorSize = C_CAST(uint32_t, *fillLogicalSectorSize * power_Of_Two(sectorSizeExponent));
             }
         }
         else
@@ -1216,7 +1216,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 {
                     uint8_t pageNumber = logBuffer[2];
                     uint16_t revision = M_BytesTo2ByteValue(logBuffer[1], logBuffer[0]);
-                    if (pageNumber == (uint8_t)ATA_ID_DATA_LOG_SUPPORTED_PAGES && revision >= 0x0001)
+                    if (pageNumber == C_CAST(uint8_t, ATA_ID_DATA_LOG_SUPPORTED_PAGES) && revision >= 0x0001)
                     {
                         //data is valid, so figure out supported pages
                         uint8_t listLen = logBuffer[8];
@@ -1383,14 +1383,14 @@ uint32_t GetRevWord(uint8_t *tempbuf, uint32_t offset)
 
 uint16_t ata_Is_Extended_Power_Conditions_Feature_Supported(uint16_t *pIdentify)
 {
-    ptAtaIdentifyData pIdent = (ptAtaIdentifyData)pIdentify;
+    ptAtaIdentifyData pIdent = C_CAST(ptAtaIdentifyData, pIdentify);
     // BIT7 according to ACS 3 rv 5 for EPC
     return (pIdent->Word119 & BIT7);
 }
 
 uint16_t ata_Is_One_Extended_Power_Conditions_Feature_Supported(uint16_t *pIdentify)
 {
-    ptAtaIdentifyData pIdent = (ptAtaIdentifyData)pIdentify;
+    ptAtaIdentifyData pIdent = C_CAST(ptAtaIdentifyData, pIdentify);
     return (pIdent->Word120 & BIT7);
 
 }
@@ -1686,7 +1686,7 @@ int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_
             uint16_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word055;//from current ID configuration
             uint16_t sectorsPerTrack = device->drive_info.IdentifyData.ata.Word056;//from current ID configuration
             *lba = UINT32_MAX;
-            *lba = ((uint32_t)((uint32_t)((uint32_t)cylinder * (uint32_t)headsPerCylinder) + (uint32_t)head) * (uint32_t)sectorsPerTrack) + (uint32_t)sector - UINT32_C(1);
+            *lba = ((((C_CAST(uint32_t, cylinder)) * C_CAST(uint32_t, headsPerCylinder)) + C_CAST(uint32_t, head)) * C_CAST(uint32_t, sectorsPerTrack)) + C_CAST(uint32_t, sector) - UINT32_C(1);
         }
         else
         {

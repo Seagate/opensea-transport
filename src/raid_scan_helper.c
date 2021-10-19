@@ -22,7 +22,7 @@ ptrRaidHandleToScan add_RAID_Handle(ptrRaidHandleToScan currentPtr, char *handle
     //first make sure the current pointer is valid, if not it is most likely the beginning of the list, so it needs to be allocated
     if (currentPtr)
     {
-        currentPtr->next = (ptrRaidHandleToScan)calloc(1, sizeof(raidHandleToScan));
+        currentPtr->next = C_CAST(ptrRaidHandleToScan, calloc(1, sizeof(raidHandleToScan)));
         if (!currentPtr->next)
         {
             return NULL;
@@ -33,7 +33,7 @@ ptrRaidHandleToScan add_RAID_Handle(ptrRaidHandleToScan currentPtr, char *handle
     else
     {
         //probably first entry in the list, so allocate first entry
-        currentPtr = (ptrRaidHandleToScan)calloc(1, sizeof(raidHandleToScan));
+        currentPtr = C_CAST(ptrRaidHandleToScan, calloc(1, sizeof(raidHandleToScan)));
     }
     //make sure valid before filling in fields
     if (currentPtr)

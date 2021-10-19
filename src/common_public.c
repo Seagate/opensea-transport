@@ -162,7 +162,7 @@ bool scan_Interface_Type_Filter(tDevice *device, uint32_t scanFlags)
 
 void write_JSON_To_File(void *customData, char *message)
 {
-    FILE *jsonFile = (FILE*)customData;
+    FILE *jsonFile = C_CAST(FILE*, customData);
     if (jsonFile)
     {
         //fwrite(message, 1, strlen(message), jsonFile);
@@ -191,7 +191,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
     {
         if (deviceCount > 0)
         {
-            tDevice * deviceList = (tDevice*)calloc_aligned(deviceCount, sizeof(tDevice), 8);
+            tDevice * deviceList = C_CAST(tDevice*, calloc_aligned(deviceCount, sizeof(tDevice), 8));
             versionBlock version;
             if (!deviceList)
             {
@@ -518,15 +518,15 @@ static void set_IEEE_OUI(uint32_t* ieeeOUI, tDevice *device, bool USBchildDrive)
     {
         wwn = device->drive_info.bridge_info.childWWN;
     }
-    naa = (uint8_t)((wwn & 0xF000000000000000ULL) >> 60);
+    naa = C_CAST(uint8_t, (wwn & UINT64_C(0xF000000000000000)) >> 60);
     switch (naa)
     {
     case 2://bytes 2,3,4
-        *ieeeOUI = (uint32_t)((wwn & 0x0000FFFFFF000000ULL) >> 24);
+        *ieeeOUI = C_CAST(uint32_t, (wwn & UINT64_C(0x0000FFFFFF000000)) >> 24);
         break;
     case 5://most common - ATA requires this and I think SCSI almost always matches    bytes 0 - 3 (half of 0, half of 3) see SPC4 for details
     case 6://same as NAA format 5
-        *ieeeOUI = (uint32_t)((wwn & 0x0FFFFFF000000000ULL) >> 36);
+        *ieeeOUI = C_CAST(uint32_t, (wwn & UINT64_C(0x0FFFFFF000000000)) >> 36);
         break;
     default:
         //don't do anything since we don't have a way to parse it out of here or it is a new format that wasn't defined when writing this
@@ -541,7 +541,7 @@ bool is_Maxtor_String(char* string)
     size_t stringLen = strlen(string);
     if (stringLen > 0)
     {
-        char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+        char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
         if (localString == NULL)
         {
             perror("calloc failure");
@@ -609,7 +609,7 @@ bool is_Seagate_VendorID(tDevice *device)
     size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
     if (stringLen > 0)
     {
-        char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+        char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
         if (localString == NULL)
         {
             perror("calloc failure");
@@ -634,7 +634,7 @@ bool is_Seagate_MN(char* string)
     size_t stringLen = strlen(string);
     if (stringLen > 0)
     {
-        char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+        char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
         if (localString == NULL)
         {
             perror("calloc failure");
@@ -740,7 +740,7 @@ bool is_Conner_VendorID(tDevice *device)
     size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
     if (stringLen > 0)
     {
-        char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+        char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
         if (localString == NULL)
         {
             perror("calloc failure");
@@ -790,7 +790,7 @@ bool is_CDC_VendorID(tDevice *device)
         size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
         if (stringLen > 0)
         {
-            char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+            char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
             if (localString == NULL)
             {
                 perror("calloc failure");
@@ -817,7 +817,7 @@ bool is_DEC_VendorID(tDevice *device)
         size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
         if (stringLen > 0)
         {
-            char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+            char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
             if (localString == NULL)
             {
                 perror("calloc failure");
@@ -842,7 +842,7 @@ bool is_MiniScribe_VendorID(tDevice *device)
     size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
     if (stringLen > 0)
     {
-        char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+        char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
         if (localString == NULL)
         {
             perror("calloc failure");
@@ -868,7 +868,7 @@ bool is_Quantum_VendorID(tDevice *device)
         size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
         if (stringLen > 0)
         {
-            char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+            char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
             if (localString == NULL)
             {
                 perror("calloc failure");
@@ -893,7 +893,7 @@ bool is_Quantum_Model_Number(char* string)
     size_t stringLen = strlen(string);
     if (stringLen > 0)
     {
-        char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+        char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
         if (localString == NULL)
         {
             perror("calloc failure");
@@ -947,7 +947,7 @@ bool is_PrarieTek_VendorID(tDevice *device)
         size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
         if (stringLen > 0)
         {
-            char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+            char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
             if (localString == NULL)
             {
                 perror("calloc failure");
@@ -973,7 +973,7 @@ bool is_LaCie(tDevice *device)
     size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
     if (stringLen > 0)
     {
-        char *vendorID = (char *)calloc(9, sizeof(char));
+        char *vendorID = C_CAST(char *, calloc(9, sizeof(char)));
         if (vendorID == NULL)
         {
             perror("calloc failure");
@@ -998,7 +998,7 @@ bool is_Samsung_String(char* string)
     size_t stringLen = strlen(string);
     if (stringLen > 0)
     {
-        char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+        char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
         if (localString == NULL)
         {
             perror("calloc failure");
@@ -1765,7 +1765,7 @@ uint32_t get_Sector_Count_For_4096B_Based_XFers(tDevice *device)
 
 void print_Command_Time(uint64_t timeInNanoSeconds)
 {
-    double printTime = (double)timeInNanoSeconds;
+    double printTime = C_CAST(double, timeInNanoSeconds);
     uint8_t unitCounter = 0;
     bool breakLoop = false;
     while (printTime > 1 && unitCounter <= 6)
@@ -1851,7 +1851,7 @@ void print_Command_Time(uint64_t timeInNanoSeconds)
         break;
     default://couldn't get a good conversion or something weird happened so show original nanoseconds.
         printf("ns): ");
-        printTime = (double)timeInNanoSeconds;
+        printTime = C_CAST(double, timeInNanoSeconds);
         break;
     }
     printf("%0.02f\n\n", printTime);
@@ -1859,7 +1859,7 @@ void print_Command_Time(uint64_t timeInNanoSeconds)
 
 void print_Time(uint64_t timeInNanoSeconds)
 {
-    double printTime = (double)timeInNanoSeconds;
+    double printTime = C_CAST(double, timeInNanoSeconds);
     uint8_t unitCounter = 0;
     bool breakLoop = false;
     while (printTime > 1 && unitCounter <= 6)
@@ -1945,7 +1945,7 @@ void print_Time(uint64_t timeInNanoSeconds)
         break;
     default://couldn't get a good conversion or something weird happened so show original nanoseconds.
         printf("ns): ");
-        printTime = (double)timeInNanoSeconds;
+        printTime = C_CAST(double, timeInNanoSeconds);
         break;
     }
     printf("%0.02f\n", printTime);
@@ -2070,7 +2070,7 @@ bool is_CSMI_Device(tDevice *device)
 
 #ifdef _DEBUG
     printf("friendly name : %s interface_type : %d raid_device : %" PRIXPTR "\n",
-        device->os_info.friendlyName, device->drive_info.interface_type, (uintptr_t)device->raid_device);
+        device->os_info.friendlyName, device->drive_info.interface_type, C_CAST(uintptr_t, device->raid_device));
 #endif
 
     csmiDevice = csmiDevice && (strncmp(device->os_info.friendlyName, "SCSI", 4) == 0);

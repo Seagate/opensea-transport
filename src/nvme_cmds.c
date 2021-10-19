@@ -291,7 +291,7 @@ int nvme_Security_Send(tDevice *device, uint8_t securityProtocol, uint16_t secur
     adminCommand.commandType = NVM_ADMIN_CMD;
     adminCommand.cmd.adminCmd.opcode = NVME_ADMIN_CMD_SECURITY_SEND;
     adminCommand.commandDirection = XFER_DATA_OUT;
-    adminCommand.cmd.adminCmd.addr = (uintptr_t)ptrData;//TODO: does this need a cast?
+    adminCommand.cmd.adminCmd.addr = C_CAST(uintptr_t, ptrData);//TODO: does this need a cast?
     adminCommand.ptrData = ptrData;
     adminCommand.dataSize = dataLength;
     adminCommand.cmd.adminCmd.cdw10 = M_BytesTo4ByteValue(securityProtocol, M_Word1(securityProtocolSpecific), M_Word0(securityProtocolSpecific), nvmeSecuritySpecificField);
@@ -319,7 +319,7 @@ int nvme_Security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t se
     adminCommand.commandType = NVM_ADMIN_CMD;
     adminCommand.cmd.adminCmd.opcode = NVME_ADMIN_CMD_SECURITY_RECV;
     adminCommand.commandDirection = XFER_DATA_IN;
-    adminCommand.cmd.adminCmd.addr = (uintptr_t)ptrData;//TODO: does this need a cast?
+    adminCommand.cmd.adminCmd.addr = C_CAST(uintptr_t, ptrData);//TODO: does this need a cast?
     adminCommand.ptrData = ptrData;
     adminCommand.dataSize = dataLength;
     adminCommand.cmd.adminCmd.cdw10 = M_BytesTo4ByteValue(securityProtocol, M_Word1(securityProtocolSpecific), M_Word0(securityProtocolSpecific), nvmeSecuritySpecificField);
@@ -563,7 +563,7 @@ int nvme_Firmware_Image_Dl(tDevice *device, uint32_t bufferOffset, uint32_t numb
     ImageDl.cmd.adminCmd.opcode = NVME_ADMIN_CMD_DOWNLOAD_FW;
     ImageDl.commandType = NVM_ADMIN_CMD;
     ImageDl.commandDirection = XFER_DATA_OUT;
-    ImageDl.cmd.adminCmd.addr = (uintptr_t)ptrData;
+    ImageDl.cmd.adminCmd.addr = C_CAST(uintptr_t, ptrData);
     ImageDl.ptrData = ptrData;
     ImageDl.dataSize = numberOfBytes;
     ImageDl.cmd.adminCmd.cdw10 = (numberOfBytes >> 2) - 1; //Since this is, 0 based, number of DWords not Bytes. 
@@ -632,7 +632,7 @@ int nvme_Identify(tDevice *device, uint8_t *ptrData, uint32_t nvmeNamespace, uin
     identify.commandType = NVM_ADMIN_CMD;
     identify.commandDirection = XFER_DATA_IN;
     identify.cmd.adminCmd.nsid = nvmeNamespace;
-    identify.cmd.adminCmd.addr = (uintptr_t)ptrData;
+    identify.cmd.adminCmd.addr = C_CAST(uintptr_t, ptrData);
     identify.cmd.adminCmd.cdw10 = cns;
     identify.timeout = 15;
     identify.ptrData = ptrData;
@@ -784,9 +784,9 @@ int nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts
     getLogPage.commandType = NVM_ADMIN_CMD;
     getLogPage.commandDirection = XFER_DATA_IN;
     #if defined(VMK_CROSS_COMP)
-    getLogPage.cmd.adminCmd.addr = (uint32_t)getLogPageCmdOpts->addr;
+    getLogPage.cmd.adminCmd.addr = C_CAST(uint32_t, getLogPageCmdOpts->addr);
     #else
-    getLogPage.cmd.adminCmd.addr = (uintptr_t)getLogPageCmdOpts->addr;
+    getLogPage.cmd.adminCmd.addr = C_CAST(uintptr_t, getLogPageCmdOpts->addr);
     #endif
     getLogPage.dataSize = getLogPageCmdOpts->dataLen;
     getLogPage.ptrData = getLogPageCmdOpts->addr;
@@ -805,7 +805,7 @@ int nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts
     getLogPage.cmd.adminCmd.cdw12 = C_CAST(uint32_t, getLogPageCmdOpts->offset & 0xFFFFFFFF);
     getLogPage.cmd.adminCmd.cdw13 = C_CAST(uint32_t, getLogPageCmdOpts->offset >> 32);
 
-    getLogPage.ptrData = (uint8_t*)getLogPageCmdOpts->addr;
+    getLogPage.ptrData = C_CAST(uint8_t*, getLogPageCmdOpts->addr);
     getLogPage.dataSize = getLogPageCmdOpts->dataLen;
 
     getLogPage.timeout = 15;
@@ -885,7 +885,7 @@ int nvme_Reservation_Report(tDevice *device, bool extendedDataStructure, uint8_t
     memset(&nvmCmd, 0, sizeof(nvmeCmdCtx));
     nvmCmd.cmd.nvmCmd.opcode = NVME_CMD_RESERVATION_REPORT;
     nvmCmd.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
-    nvmCmd.cmd.nvmCmd.prp1 = (uintptr_t)ptrData;
+    nvmCmd.cmd.nvmCmd.prp1 = C_CAST(uintptr_t, ptrData);
     nvmCmd.commandDirection = XFER_DATA_IN;
     nvmCmd.commandType = NVM_CMD;
     nvmCmd.dataSize = dataSize;
@@ -922,7 +922,7 @@ int nvme_Reservation_Register(tDevice *device, uint8_t changePersistThroughPower
     memset(&nvmCmd, 0, sizeof(nvmeCmdCtx));
     nvmCmd.cmd.nvmCmd.opcode = NVME_CMD_RESERVATION_REGISTER;
     nvmCmd.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
-    nvmCmd.cmd.nvmCmd.prp1 = (uintptr_t)ptrData;
+    nvmCmd.cmd.nvmCmd.prp1 = C_CAST(uintptr_t, ptrData);
     nvmCmd.commandDirection = XFER_DATA_OUT;
     nvmCmd.commandType = NVM_CMD;
     nvmCmd.dataSize = dataSize;
@@ -960,7 +960,7 @@ int nvme_Reservation_Acquire(tDevice *device, uint8_t reservationType, bool igno
     memset(&nvmCmd, 0, sizeof(nvmeCmdCtx));
     nvmCmd.cmd.nvmCmd.opcode = NVME_CMD_RESERVATION_ACQUIRE;
     nvmCmd.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
-    nvmCmd.cmd.nvmCmd.prp1 = (uintptr_t)ptrData;
+    nvmCmd.cmd.nvmCmd.prp1 = C_CAST(uintptr_t, ptrData);
     nvmCmd.commandDirection = XFER_DATA_OUT;
     nvmCmd.commandType = NVM_CMD;
     nvmCmd.dataSize = dataSize;
@@ -998,7 +998,7 @@ int nvme_Reservation_Release(tDevice *device, uint8_t reservationType, bool igno
     memset(&nvmCmd, 0, sizeof(nvmeCmdCtx));
     nvmCmd.cmd.nvmCmd.opcode = NVME_CMD_RESERVATION_RELEASE;
     nvmCmd.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
-    nvmCmd.cmd.nvmCmd.prp1 = (uintptr_t)ptrData;
+    nvmCmd.cmd.nvmCmd.prp1 = C_CAST(uintptr_t, ptrData);
     nvmCmd.commandDirection = XFER_DATA_OUT;
     nvmCmd.commandType = NVM_CMD;
     nvmCmd.dataSize = dataSize;
@@ -1043,7 +1043,7 @@ int nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegisters * ctrlRegs)
     {
         printf("Reading PCI Bar Registers\n");
     }
-    ret = pci_Read_Bar_Reg( device, barRegs, (uint32_t)dataSize );
+    ret = pci_Read_Bar_Reg( device, barRegs, C_CAST(uint32_t, dataSize) );
     if (ret == SUCCESS) 
     {
         memcpy(ctrlRegs,barRegs,sizeof(nvmeBarCtrlRegisters));

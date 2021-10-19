@@ -107,37 +107,37 @@ void close_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void **pPassthru, uint32_t con
 int get_ATA_Passthru_Protocol_Ptr(EFI_ATA_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
 {
     EFI_GUID ataPtGUID = EFI_ATA_PASS_THRU_PROTOCOL_GUID;
-    return get_Passthru_Protocol_Ptr(ataPtGUID, (void**)pPassthru, controllerID);
+    return get_Passthru_Protocol_Ptr(ataPtGUID, C_CAST(void**, pPassthru), controllerID);
 }
 
 void close_ATA_Passthru_Protocol_Ptr(EFI_ATA_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
 {
     EFI_GUID ataPtGUID = EFI_ATA_PASS_THRU_PROTOCOL_GUID;
-    return close_Passthru_Protocol_Ptr(ataPtGUID, (void**)pPassthru, controllerID);
+    return close_Passthru_Protocol_Ptr(ataPtGUID, C_CAST(void**, pPassthru), controllerID);
 }
 
 int get_SCSI_Passthru_Protocol_Ptr(EFI_SCSI_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
 {
     EFI_GUID scsiPtGUID = EFI_SCSI_PASS_THRU_PROTOCOL_GUID;
-    return get_Passthru_Protocol_Ptr(scsiPtGUID, (void**)pPassthru, controllerID);
+    return get_Passthru_Protocol_Ptr(scsiPtGUID, C_CAST(void**, pPassthru), controllerID);
 }
 
 void close_SCSI_Passthru_Protocol_Ptr(EFI_SCSI_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
 {
     EFI_GUID scsiPtGUID = EFI_SCSI_PASS_THRU_PROTOCOL_GUID;
-    return close_Passthru_Protocol_Ptr(scsiPtGUID, (void**)pPassthru, controllerID);
+    return close_Passthru_Protocol_Ptr(scsiPtGUID, C_CAST(void**, pPassthru), controllerID);
 }
 
 int get_Ext_SCSI_Passthru_Protocol_Ptr(EFI_EXT_SCSI_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
 {
     EFI_GUID scsiPtGUID = EFI_EXT_SCSI_PASS_THRU_PROTOCOL_GUID;
-    return get_Passthru_Protocol_Ptr(scsiPtGUID, (void**)pPassthru, controllerID);
+    return get_Passthru_Protocol_Ptr(scsiPtGUID, C_CAST(void**, pPassthru), controllerID);
 }
 
 void close_Ext_SCSI_Passthru_Protocol_Ptr(EFI_EXT_SCSI_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
 {
     EFI_GUID scsiPtGUID = EFI_EXT_SCSI_PASS_THRU_PROTOCOL_GUID;
-    return close_Passthru_Protocol_Ptr(scsiPtGUID, (void**)pPassthru, controllerID);
+    return close_Passthru_Protocol_Ptr(scsiPtGUID, C_CAST(void**, pPassthru), controllerID);
 }
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
@@ -145,13 +145,13 @@ void close_Ext_SCSI_Passthru_Protocol_Ptr(EFI_EXT_SCSI_PASS_THRU_PROTOCOL **pPas
 int get_NVMe_Passthru_Protocol_Ptr(EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
 {
     EFI_GUID nvmePtGUID = EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL_GUID;
-    return get_Passthru_Protocol_Ptr(nvmePtGUID, (void**)pPassthru, controllerID);
+    return get_Passthru_Protocol_Ptr(nvmePtGUID, C_CAST(void**, pPassthru), controllerID);
 }
 
 void close_NVMe_Passthru_Protocol_Ptr(EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
 {
     EFI_GUID nvmePtGUID = EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL_GUID;
-    return close_Passthru_Protocol_Ptr(nvmePtGUID, (void**)pPassthru, controllerID);
+    return close_Passthru_Protocol_Ptr(nvmePtGUID, C_CAST(void**, pPassthru), controllerID);
 }
 #endif
 
@@ -238,7 +238,7 @@ int get_Device(const char *filename, tDevice *device)
             if (SUCCESS == get_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum))
             {
                 EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
-                EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, (uint8_t*)(&device->os_info.address.scsiEx.target), device->os_info.address.scsiEx.lun, &devicePath);
+                EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, C_CAST(uint8_t*, &device->os_info.address.scsiEx.target), device->os_info.address.scsiEx.lun, &devicePath);
                 if(buildPath == EFI_SUCCESS)
                 {
                     memcpy(&device->os_info.devicePath, devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
@@ -500,7 +500,7 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         {
             //allocate an aligned buffer here!
             localAlignedBuffer = true;
-            localBuffer = (uint8_t*)calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+            localBuffer = C_CAST(uint8_t*, calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
             if (!localBuffer)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -520,7 +520,7 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->cdb, pPassthru->Mode->IoAlign))
         {
             //allocate an aligned buffer here!
-            localCDB = (uint8_t *)calloc_aligned(scsiIoCtx->cdbLength, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+            localCDB = C_CAST(uint8_t *, calloc_aligned(scsiIoCtx->cdbLength, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
             if (!localCDB)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -539,7 +539,7 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         {
             //allocate an aligned buffer here!
             localSenseBuffer = true;
-            localSensePtr = (uint8_t *)calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+            localSensePtr = C_CAST(uint8_t *, calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
             if (!localSensePtr)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -814,7 +814,7 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             #endif
             //allocate an aligned buffer here!
             localAlignedBuffer = true;
-            localBuffer = (uint8_t*)calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+            localBuffer = C_CAST(uint8_t*, calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
             if (!localBuffer)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -847,7 +847,7 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             set_Console_Colors(true, DEFAULT);
             #endif
             //allocate an aligned buffer here!
-            localCDB = (uint8_t *)calloc_aligned(scsiIoCtx->cdbLength, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+            localCDB = C_CAST(uint8_t *, calloc_aligned(scsiIoCtx->cdbLength, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
             if (!localCDB)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -879,7 +879,7 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             #endif
             //allocate an aligned buffer here!
             localSenseBuffer = true;
-            localSensePtr = (uint8_t *)calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+            localSensePtr = C_CAST(uint8_t *, calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
             if (!localSensePtr)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -1029,8 +1029,8 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         uint8_t* localBuffer = NULL;
         bool localAlignedBuffer = false;
         EFI_ATA_PASS_THRU_COMMAND_PACKET	*ataPacket = NULL;// ata command packet
-        EFI_ATA_COMMAND_BLOCK *ataCommand = (EFI_ATA_COMMAND_BLOCK*)calloc_aligned(1, sizeof(EFI_ATA_COMMAND_BLOCK), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
-        EFI_ATA_STATUS_BLOCK *ataStatus = (EFI_ATA_STATUS_BLOCK*)calloc_aligned(1, sizeof(EFI_ATA_STATUS_BLOCK), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+        EFI_ATA_COMMAND_BLOCK *ataCommand = C_CAST(EFI_ATA_COMMAND_BLOCK*, calloc_aligned(1, sizeof(EFI_ATA_COMMAND_BLOCK), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
+        EFI_ATA_STATUS_BLOCK *ataStatus = C_CAST(EFI_ATA_STATUS_BLOCK*, calloc_aligned(1, sizeof(EFI_ATA_STATUS_BLOCK), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
 
         ataPacket = (EFI_ATA_PASS_THRU_COMMAND_PACKET *) calloc_aligned(1, sizeof(EFI_ATA_PASS_THRU_COMMAND_PACKET), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
 
@@ -1078,7 +1078,7 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
             #endif
             //allocate an aligned buffer here!
             localAlignedBuffer = true;
-            localBuffer = (uint8_t*)calloc_aligned(scsiIoCtx->pAtaCmdOpts->dataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+            localBuffer = C_CAST(uint8_t*, calloc_aligned(scsiIoCtx->pAtaCmdOpts->dataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
             if (!localBuffer)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -1420,8 +1420,8 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         uint8_t *localBuffer = NULL;
         bool localAlignedBuffer = false;
         EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET	*nrp = NULL;
-        EFI_NVM_EXPRESS_COMMAND *nvmCommand = (EFI_NVM_EXPRESS_COMMAND*)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMMAND), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
-        EFI_NVM_EXPRESS_COMPLETION *nvmCompletion = (EFI_NVM_EXPRESS_COMPLETION*)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMPLETION), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+        EFI_NVM_EXPRESS_COMMAND *nvmCommand = C_CAST(EFI_NVM_EXPRESS_COMMAND*, calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMMAND), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
+        EFI_NVM_EXPRESS_COMPLETION *nvmCompletion = C_CAST(EFI_NVM_EXPRESS_COMPLETION*, calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMPLETION), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
 
         if (!nvmCommand || !nvmCompletion)
         {
@@ -1429,7 +1429,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             return MEMORY_FAILURE;
         }
 
-        nrp = (EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET *)calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+        nrp = C_CAST(EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET *, calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
 
         if (!nrp)
         {
@@ -1485,7 +1485,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             set_Console_Colors(true, DEFAULT);
             #endif
             localAlignedBuffer = true;
-            localBuffer = (uint8_t*)calloc_aligned(M_Max(512, nvmeIoCtx->dataSize), sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+            localBuffer = C_CAST(uint8_t*, calloc_aligned(M_Max(512, nvmeIoCtx->dataSize), sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
             if (!localBuffer)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -1516,7 +1516,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             #endif
             //allocate an aligned buffer here!
             localAlignedBuffer = true;
-            localBuffer = (uint8_t*)calloc_aligned(nvmeIoCtx->dataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+            localBuffer = C_CAST(uint8_t*, calloc_aligned(nvmeIoCtx->dataSize, sizeof(uint8_t), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
             if (!localBuffer)
             {
                 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)

@@ -36,6 +36,7 @@ extern "C"
 #define _NTSCSI_USER_MODE_ //this must be defined before including scsi.h
 #include <scsi.h>
 #undef _NTSCSI_USER_MODE_
+#define INCLUDED_SCSI_DOT_H
 #else
 #if !defined (SRB_TYPE_SCSI_REQUEST_BLOCK)
 #define SRB_TYPE_SCSI_REQUEST_BLOCK 0

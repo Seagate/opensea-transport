@@ -228,11 +228,11 @@ int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
             uscsi_io.uscsi_timeout = 15;//default to 15 second timeout
         }
     }
-    uscsi_io.uscsi_cdb = (caddr_t)scsiIoCtx->cdb;
+    uscsi_io.uscsi_cdb = C_CAST(caddr_t, scsiIoCtx->cdb);
     uscsi_io.uscsi_cdblen = scsiIoCtx->cdbLength;
-    uscsi_io.uscsi_rqbuf = (caddr_t)scsiIoCtx->psense;
+    uscsi_io.uscsi_rqbuf = C_CAST(caddr_t, scsiIoCtx->psense);
     uscsi_io.uscsi_rqlen = scsiIoCtx->senseDataSize;
-    uscsi_io.uscsi_bufaddr = (caddr_t)scsiIoCtx->pdata;
+    uscsi_io.uscsi_bufaddr = C_CAST(caddr_t, scsiIoCtx->pdata);
     uscsi_io.uscsi_buflen = scsiIoCtx->dataLength;
 
     //set the uscsi flags for the command
@@ -392,12 +392,12 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     struct dirent **namelist;
     int num_devs = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
     
-    char **devs = (char **)calloc(num_devs + 1, sizeof(char *));
+    char **devs = C_CAST(char **, calloc(num_devs + 1, sizeof(char *)));
     int i = 0;
     for(; i < num_devs; i++)
     {
         size_t handleSize = (strlen("/dev/rdsk/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
-        devs[i] = (char *)malloc(handleSize);
+        devs[i] = C_CAST(char *, malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/rdsk/%s", namelist[i]->d_name);
         safe_Free(namelist[i])
     }
@@ -417,7 +417,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
-        for (driveNumber = 0; ((driveNumber >= 0 && (unsigned int)driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_devs)) && (found < numberOfDevices)); ++driveNumber)
+        for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
             if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
             {

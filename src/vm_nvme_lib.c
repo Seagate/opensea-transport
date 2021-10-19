@@ -66,7 +66,7 @@ Nvme_Open(struct nvme_adapter_list *adapters, const char *name)
       return NULL;
    }
 
-   handle = (struct nvme_handle *)malloc(sizeof(*handle));
+   handle = C_CAST(struct nvme_handle *, malloc(sizeof(*handle)));
    if (!handle) {
       return NULL;
    }
@@ -266,7 +266,7 @@ Nvme_Identify(struct nvme_handle *handle, int ns, void *id)
    uio.timeoutUs = ADMIN_TIMEOUT;
 #define PAGE_SIZE 4096
    uio.length = PAGE_SIZE;
-   uio.addr = (vmk_uint32)id;
+   uio.addr = C_CAST(vmk_uint32, id);
 
    rc = Nvme_AdminPassthru(handle, &uio);
 
@@ -361,7 +361,7 @@ int Nvme_FWLoadImage(char *fw_path, void **fw_buf, int *fw_size)
       return -EPERM;
    }
 
-   fw_file_size = (int)sb.st_size;
+   fw_file_size = C_CAST(int, sb.st_size);
    if ((*fw_buf = malloc(fw_file_size)) == NULL) {//need to free!!!!
       fprintf (stderr, "ERROR: Failed to malloc %d bytes.\n", fw_file_size);
       if (close (fd) == -1) {
@@ -424,7 +424,7 @@ int Nvme_FWDownload(struct nvme_handle *handle, int slot,  unsigned char *rom_bu
       uio.timeoutUs = ADMIN_TIMEOUT;
       uio.cmd.cmd.firmwareDownload.numDW = (size / sizeof(vmk_uint32)) - 1;
       uio.cmd.cmd.firmwareDownload.offset = offset / sizeof(vmk_uint32);
-      uio.addr = (vmk_uint32)chunk;
+      uio.addr = C_CAST(vmk_uint32, chunk);
       uio.length = size;
 
       rc = Nvme_AdminPassthru(handle, &uio);

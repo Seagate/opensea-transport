@@ -257,7 +257,7 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
         {
             if (deviceIdListLen > 0)
             {
-                listBuffer = (TCHAR*)calloc(deviceIdListLen, sizeof(TCHAR));
+                listBuffer = C_CAST(TCHAR*, calloc(deviceIdListLen, sizeof(TCHAR)));
                 if (listBuffer)
                 {
                     cmRet = CM_Get_Device_ID_List(filter, listBuffer, deviceIdListLen, deviceIdListFlags);
@@ -287,7 +287,7 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
             {
                 if (scsiIdListLen > 0)
                 {
-                    scsiListBuff = (TCHAR*)calloc(scsiIdListLen, sizeof(TCHAR));
+                    scsiListBuff = C_CAST(TCHAR*, calloc(scsiIdListLen, sizeof(TCHAR)));
                     if (scsiListBuff)
                     {
                         scsicmRet = CM_Get_Device_ID_List(scsiFilter, scsiListBuff, scsiIdListLen, filterFlags);
@@ -303,7 +303,7 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
             {
                 if (usbIdListLen > 0)
                 {
-                    usbListBuff = (TCHAR*)calloc(usbIdListLen, sizeof(TCHAR));
+                    usbListBuff = C_CAST(TCHAR*, calloc(usbIdListLen, sizeof(TCHAR)));
                     if (usbListBuff)
                     {
                         usbcmRet = CM_Get_Device_ID_List(usbFilter, usbListBuff, usbIdListLen, filterFlags);
@@ -316,7 +316,7 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
             }
             //now that we got USB and SCSI, we need to merge them together into a common list
             deviceIdListLen = scsiIdListLen + usbIdListLen;
-            listBuffer = (TCHAR*)calloc(deviceIdListLen, sizeof(TCHAR));
+            listBuffer = C_CAST(TCHAR*, calloc(deviceIdListLen, sizeof(TCHAR)));
             if (listBuffer)
             {
                 ULONG copyOffset = 0;
@@ -370,7 +370,7 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
                     cmRet = CM_Get_Device_Interface_List_Size(&interfaceListSize, &classGUID, deviceID, CM_GET_DEVICE_INTERFACE_LIST_PRESENT);
                     if (CR_SUCCESS == cmRet && interfaceListSize > 0)
                     {
-                        TCHAR *interfaceList = (TCHAR*)calloc(interfaceListSize, sizeof(TCHAR));
+                        TCHAR *interfaceList = C_CAST(TCHAR*, calloc(interfaceListSize, sizeof(TCHAR)));
                         if(interfaceList)
                         {
                             cmRet = CM_Get_Device_Interface_List(&classGUID, deviceID, interfaceList, interfaceListSize, CM_GET_DEVICE_INTERFACE_LIST_PRESENT);
@@ -408,7 +408,7 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
                                                     parentLen += 1;
                                                     if (CR_SUCCESS == cmRet)
                                                     {
-                                                        TCHAR *parentBuffer = (TCHAR*)calloc(parentLen, sizeof(TCHAR));
+                                                        TCHAR *parentBuffer = C_CAST(TCHAR*, calloc(parentLen, sizeof(TCHAR)));
                                                         if(parentBuffer)
                                                         {
                                                             cmRet = CM_Get_Device_ID(parentInst, parentBuffer, parentLen, 0);
@@ -1599,7 +1599,7 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
                                                                             cmRet = CM_Get_DevNode_PropertyW(propInst, devproperty, &propertyType, NULL, &propertyBufLen, 0);
                                                                             if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
                                                                             {
-                                                                                PBYTE propertyBuf = (PBYTE)calloc(propertyBufLen + 1, sizeof(BYTE));
+                                                                                PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
                                                                                 if (propertyBuf)
                                                                                 {
                                                                                     propertyBufLen += 1;
@@ -1618,9 +1618,9 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
                                                                                             //setup to handle multiple strings
                                                                                         {
                                                                                             uint8_t propListAdditionalLen = propertyModifier == DEVPROP_TYPEMOD_LIST ? 1 : 0;//this adjusts the loop because if this ISN'T set, then we don't need any more length than the string length
-                                                                                            for (LPWSTR property = (LPWSTR)propertyBuf; *property; property += wcslen(property) + propListAdditionalLen)
+                                                                                            for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + propListAdditionalLen)
                                                                                             {
-                                                                                                if (property && ((uintptr_t)property - (uintptr_t)propertyBuf) < propertyBufLen && wcslen(property))
+                                                                                                if (property && (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && wcslen(property))
                                                                                                 {
                                                                                                     wprintf(L"\t%s\n", property);
                                                                                                 }
@@ -1629,7 +1629,7 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
                                                                                             break;
                                                                                         case DEVPROP_TYPE_SBYTE://8bit signed byte
                                                                                         {
-                                                                                            char *signedByte = (char*)propertyBuf;
+                                                                                            char *signedByte = C_CAST(char*, propertyBuf);
                                                                                             printf("\t%" PRId8 "\n", *signedByte);
                                                                                         }
                                                                                         break;
@@ -1637,61 +1637,61 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
                                                                                         {
                                                                                             //TODO: Handle arrays which could show as this type. Check propertyModifier.
                                                                                             //      Currently only popping up for power data which can be converted to a structure and output.
-                                                                                            BYTE *unsignedByte = (BYTE*)propertyBuf;
+                                                                                            BYTE *unsignedByte = C_CAST(BYTE*, propertyBuf);
                                                                                             printf("\t%" PRIu8 "\n", *unsignedByte);
                                                                                         }
                                                                                         break;
                                                                                         case DEVPROP_TYPE_INT16:
                                                                                         {
-                                                                                            INT16 *signed16 = (INT16*)propertyBuf;
+                                                                                            INT16 *signed16 = C_CAST(INT16*, propertyBuf);
                                                                                             printf("\t%" PRId16 "\n", *signed16);
                                                                                         }
                                                                                         break;
                                                                                         case DEVPROP_TYPE_UINT16:
                                                                                         {
-                                                                                            UINT16 *unsigned16 = (UINT16*)propertyBuf;
+                                                                                            UINT16 *unsigned16 = C_CAST(UINT16*, propertyBuf);
                                                                                             printf("\t%" PRIu16 "\n", *unsigned16);
                                                                                         }
                                                                                         break;
                                                                                         case DEVPROP_TYPE_INT32:
                                                                                         {
-                                                                                            INT32 *signed32 = (INT32*)propertyBuf;
+                                                                                            INT32 *signed32 = C_CAST(INT32*, propertyBuf);
                                                                                             printf("\t%" PRId32 "\n", *signed32);
                                                                                         }
                                                                                         break;
                                                                                         case DEVPROP_TYPE_UINT32:
                                                                                         {
-                                                                                            UINT32 *unsigned32 = (UINT32*)propertyBuf;
+                                                                                            UINT32 *unsigned32 = C_CAST(UINT32*, propertyBuf);
                                                                                             printf("\t%" PRIu32 "\n", *unsigned32);
                                                                                         }
                                                                                         break;
                                                                                         case DEVPROP_TYPE_INT64:
                                                                                         {
-                                                                                            INT64 *signed64 = (INT64*)propertyBuf;
+                                                                                            INT64 *signed64 = C_CAST(INT64*, propertyBuf);
                                                                                             printf("\t%" PRId64 "\n", *signed64);
                                                                                         }
                                                                                         break;
                                                                                         case DEVPROP_TYPE_UINT64:
                                                                                         {
-                                                                                            UINT64 *unsigned64 = (UINT64*)propertyBuf;
+                                                                                            UINT64 *unsigned64 = C_CAST(UINT64*, propertyBuf);
                                                                                             printf("\t%" PRIu64 "\n", *unsigned64);
                                                                                         }
                                                                                         break;
                                                                                         case DEVPROP_TYPE_FLOAT:
                                                                                         {
-                                                                                            FLOAT *theFloat = (FLOAT*)propertyBuf;
+                                                                                            FLOAT *theFloat = C_CAST(FLOAT*, propertyBuf);
                                                                                             printf("\t%f\n", *theFloat);
                                                                                         }
                                                                                         break;
                                                                                         case DEVPROP_TYPE_DOUBLE:
                                                                                         {
-                                                                                            DOUBLE *theFloat = (DOUBLE*)propertyBuf;
+                                                                                            DOUBLE *theFloat = C_CAST(DOUBLE*, propertyBuf);
                                                                                             printf("\t%f\n", *theFloat);
                                                                                         }
                                                                                         break;
                                                                                         case DEVPROP_TYPE_BOOLEAN:
                                                                                         {
-                                                                                            BOOLEAN *theBool = (BOOLEAN*)propertyBuf;
+                                                                                            BOOLEAN *theBool = C_CAST(BOOLEAN*, propertyBuf);
                                                                                             if (*theBool == DEVPROP_FALSE)
                                                                                             {
                                                                                                 printf("\tFALSE\n");
@@ -1704,7 +1704,7 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
                                                                                         break;
                                                                                         case DEVPROP_TYPE_ERROR://win32 error code
                                                                                         {
-                                                                                            DWORD *win32Error = (DWORD*)propertyBuf;
+                                                                                            DWORD *win32Error = C_CAST(DWORD*, propertyBuf);
                                                                                             print_Windows_Error_To_Screen(*win32Error);
                                                                                         }
                                                                                         break;
@@ -1823,7 +1823,7 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
                                                                     cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_HardwareIds, &propertyType, NULL, &propertyBufLen, 0);
                                                                     if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
                                                                     {
-                                                                        PBYTE propertyBuf = (PBYTE)calloc(propertyBufLen + 1, sizeof(BYTE));
+                                                                        PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
                                                                         if (propertyBuf)
                                                                         {
                                                                             propertyBufLen += 1;
@@ -1831,9 +1831,9 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
                                                                             if (CR_SUCCESS == CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_HardwareIds, &propertyType, propertyBuf, &propertyBufLen, 0))
                                                                             {
                                                                                 //multiple strings can be returned.
-                                                                                for (LPWSTR property = (LPWSTR)propertyBuf; *property; property += wcslen(property) + 1)
+                                                                                for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + 1)
                                                                                 {
-                                                                                    if (property && ((uintptr_t)property - (uintptr_t)propertyBuf) < propertyBufLen && wcslen(property))
+                                                                                    if (property && (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && wcslen(property))
                                                                                     {
                                                                                         LPWSTR revisionStr = wcsstr(property, L"REV_");
                                                                                         if (revisionStr)
@@ -1915,18 +1915,18 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
                                                                     cmRet = CM_Get_DevNode_PropertyW(parentInst, propertyKey, &propertyType, NULL, &propertyBufLen, 0);
                                                                     if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
                                                                     {
-                                                                        PBYTE propertyBuf = (PBYTE)calloc(propertyBufLen + 1, sizeof(BYTE));
+                                                                        PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
                                                                         if (propertyBuf)
                                                                         {
                                                                             propertyBufLen += 1;
                                                                             if (CR_SUCCESS == CM_Get_DevNode_PropertyW(parentInst, propertyKey, &propertyType, propertyBuf, &propertyBufLen, 0))
                                                                             {
                                                                                 //multiple strings can be returned for some properties. This one will most likely only return one.
-                                                                                for (LPWSTR property = (LPWSTR)propertyBuf; *property; property += wcslen(property) + 1)
+                                                                                for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + 1)
                                                                                 {
-                                                                                    if (property && ((uintptr_t)property - (uintptr_t)propertyBuf) < propertyBufLen && wcslen(property))
+                                                                                    if (property && (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && wcslen(property))
                                                                                     {
-                                                                                        int scannedVals = _snwscanf_s((const wchar_t*)propertyBuf, propertyBufLen, L"1394\\%x&%x", &device->drive_info.adapter_info.specifierID, &device->drive_info.adapter_info.revision);
+                                                                                        int scannedVals = _snwscanf_s(C_CAST(const wchar_t*, propertyBuf), propertyBufLen, L"1394\\%x&%x", &device->drive_info.adapter_info.specifierID, &device->drive_info.adapter_info.revision);
                                                                                         if (scannedVals < 2)
                                                                                         {
         #if defined (_DEBUG)
@@ -2016,7 +2016,7 @@ static int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCt
     PSTORAGE_FIRMWARE_ACTIVATE  firmwareActivate;
 #if defined (_DEBUG)
     printf("%s: -->\n", __FUNCTION__);
-    printf("%s: Slot %" PRIu8 "\n", __FUNCTION__, (uint8_t)M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0));
+    printf("%s: Slot %" PRIu8 "\n", __FUNCTION__, C_CAST(uint8_t, M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0)));
 #endif
 
     //
@@ -2028,13 +2028,13 @@ static int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCt
     bufferSize += firmwareStructureOffset;
     bufferSize += FIELD_OFFSET(STORAGE_FIRMWARE_DOWNLOAD, ImageBuffer);
 
-    buffer = (PUCHAR)calloc_aligned(bufferSize, sizeof(UCHAR), nvmeIoCtx->device->os_info.minimumAlignment);
+    buffer = C_CAST(PUCHAR, calloc_aligned(bufferSize, sizeof(UCHAR), nvmeIoCtx->device->os_info.minimumAlignment));
     if (!buffer)
     {
         return MEMORY_FAILURE;
     }
 
-    srbControl = (PSRB_IO_CONTROL)buffer;
+    srbControl = C_CAST(PSRB_IO_CONTROL, buffer);
     srbControl->HeaderLength = sizeof(SRB_IO_CONTROL);
     srbControl->ControlCode = IOCTL_SCSI_MINIPORT_FIRMWARE;
     RtlMoveMemory(srbControl->Signature, IOCTL_MINIPORT_SIGNATURE_FIRMWARE, 8);
@@ -2045,7 +2045,7 @@ static int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCt
     srbControl->Timeout = nvmeIoCtx->timeout; //TODO: use default instead
     srbControl->Length = bufferSize - sizeof(SRB_IO_CONTROL);
 
-    firmwareRequest = (PFIRMWARE_REQUEST_BLOCK)(srbControl + 1);
+    firmwareRequest = C_CAST(PFIRMWARE_REQUEST_BLOCK, srbControl + 1);
     firmwareRequest->Version = FIRMWARE_REQUEST_BLOCK_STRUCTURE_VERSION;
     firmwareRequest->Size = sizeof(FIRMWARE_REQUEST_BLOCK);
     firmwareRequest->Function = FIRMWARE_FUNCTION_ACTIVATE;
@@ -2053,7 +2053,7 @@ static int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCt
     firmwareRequest->DataBufferOffset = firmwareStructureOffset;
     firmwareRequest->DataBufferLength = bufferSize - firmwareStructureOffset;
 
-    firmwareActivate = (PSTORAGE_FIRMWARE_ACTIVATE)((PUCHAR)srbControl + firmwareRequest->DataBufferOffset);
+    firmwareActivate = C_CAST(PSTORAGE_FIRMWARE_ACTIVATE, C_CAST(PUCHAR, srbControl) + firmwareRequest->DataBufferOffset);
     firmwareActivate->Version = 1;
     firmwareActivate->Size = sizeof(STORAGE_FIRMWARE_ACTIVATE);
     firmwareActivate->SlotToActivate = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
@@ -2544,7 +2544,7 @@ static int win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *geom)
     int ret = FAILURE;
     DWORD bytesReturned = 0;
     DWORD diskGeomSize = sizeof(DISK_GEOMETRY);
-    *geom = (PDISK_GEOMETRY)malloc(diskGeomSize);
+    *geom = C_CAST(PDISK_GEOMETRY, malloc(diskGeomSize));
     if (DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, *geom, diskGeomSize, &bytesReturned, NULL))
     {
         ret = SUCCESS;
@@ -2592,7 +2592,7 @@ static int win_Get_IDE_Disk_Controller_Number_And_Disk_Number(HANDLE *devHandle,
     int ret = FAILURE;
     DWORD bytesReturned = 0;
     DWORD controllerNumberSize = sizeof(DISK_CONTROLLER_NUMBER);
-    *numbers = (PDISK_CONTROLLER_NUMBER)malloc(controllerNumberSize);
+    *numbers = C_CAST(PDISK_CONTROLLER_NUMBER, malloc(controllerNumberSize));
     if (DeviceIoControl(devHandle, IOCTL_DISK_CONTROLLER_NUMBER, NULL, 0, *numbers, controllerNumberSize, &bytesReturned, NULL))
     {
         ret = SUCCESS;
@@ -2628,7 +2628,7 @@ static int win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_EX *geom, 
     DWORD diskGeomSize = sizeof(DISK_GEOMETRY) + sizeof(LARGE_INTEGER) + sizeof(DISK_PARTITION_INFO) + sizeof(DISK_DETECTION_INFO);
     if (geom)
     {
-        *geom = (PDISK_GEOMETRY_EX)malloc(diskGeomSize);
+        *geom = C_CAST(PDISK_GEOMETRY_EX, malloc(diskGeomSize));
         if (*geom)
         {
             if (DeviceIoControl(devHandle,
@@ -2689,7 +2689,7 @@ static int win_Get_Length_Information(HANDLE *devHandle, PGET_LENGTH_INFORMATION
     int ret = FAILURE;
     DWORD bytesReturned = 0;
     DWORD lengthInfoSize = sizeof(GET_LENGTH_INFORMATION);
-    *length = (PGET_LENGTH_INFORMATION)malloc(lengthInfoSize);
+    *length = C_CAST(PGET_LENGTH_INFORMATION, malloc(lengthInfoSize));
     if (DeviceIoControl(devHandle, IOCTL_DISK_GET_LENGTH_INFO, NULL, 0, *length, lengthInfoSize, &bytesReturned, NULL))
     {
         ret = SUCCESS;
@@ -2710,7 +2710,7 @@ static int win_SCSI_Get_Inquiry_Data(HANDLE deviceHandle, PSCSI_ADAPTER_BUS_INFO
     UCHAR busCount = 1, luCount = 1;
     DWORD inquiryDataSize = sizeof(SCSI_INQUIRY_DATA) + INQUIRYDATABUFFERSIZE;//this is supposed to be rounded up to an alignment boundary??? but that is not well described...
     DWORD busDataLength = sizeof(SCSI_ADAPTER_BUS_INFO) + busCount * sizeof(SCSI_BUS_DATA) + luCount * inquiryDataSize;//Start with this, but more memory may be necessary.
-    *scsiBusInfo = (PSCSI_ADAPTER_BUS_INFO)calloc_aligned(busDataLength, sizeof(uint8_t), 8);
+    *scsiBusInfo = C_CAST(PSCSI_ADAPTER_BUS_INFO, calloc_aligned(busDataLength, sizeof(uint8_t), 8));
     if (scsiBusInfo)
     {
         BOOL success = FALSE;
@@ -2864,7 +2864,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     DWORD maxExtents = 32;//https://technet.microsoft.com/en-us/library/cc772180(v=ws.11).aspx
                     PVOLUME_DISK_EXTENTS diskExtents = NULL;
                     DWORD diskExtentsSizeBytes = sizeof(VOLUME_DISK_EXTENTS) + (sizeof(DISK_EXTENT) * maxExtents);
-                    diskExtents = (PVOLUME_DISK_EXTENTS)malloc(diskExtentsSizeBytes);
+                    diskExtents = C_CAST(PVOLUME_DISK_EXTENTS, malloc(diskExtentsSizeBytes));
                     if (diskExtents)
                     {
                         if (DeviceIoControl(letterHandle, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, NULL, 0, diskExtents, diskExtentsSizeBytes, &returnedBytes, NULL))
@@ -3603,7 +3603,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     return returnValue;
 }
 
-#if defined _NTSCSI_USER_MODE_
+#if defined INCLUDED_SCSI_DOT_H
 typedef struct _scsiPassThroughEXIOStruct
 {
     union
@@ -3705,7 +3705,7 @@ int send_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx)
     int           ret = FAILURE;
     BOOL          success = FALSE;
     ULONG         returned_data = 0;
-    ptrSCSIPassThroughEXIOStruct sptdioEx = (ptrSCSIPassThroughEXIOStruct)malloc(sizeof(scsiPassThroughEXIOStruct));
+    ptrSCSIPassThroughEXIOStruct sptdioEx = C_CAST(ptrSCSIPassThroughEXIOStruct, malloc(sizeof(scsiPassThroughEXIOStruct)));
     if (!sptdioEx)
     {
         return MEMORY_FAILURE;
@@ -3913,7 +3913,7 @@ int send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
     BOOL          success = FALSE;
     ULONG         returned_data = 0;
     //size_t scsiPTIoStructSize = sizeof(scsiPassThroughEXIOStruct);
-    ptrSCSIPassThroughEXIOStruct sptdio = (ptrSCSIPassThroughEXIOStruct)malloc(sizeof(scsiPassThroughEXIOStruct));//add cdb and data length so that the memory allocated correctly!
+    ptrSCSIPassThroughEXIOStruct sptdio = C_CAST(ptrSCSIPassThroughEXIOStruct, malloc(sizeof(scsiPassThroughEXIOStruct)));//add cdb and data length so that the memory allocated correctly!
     if (!sptdio)
     {
         return MEMORY_FAILURE;
@@ -3929,12 +3929,12 @@ int send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
     {
         //This means the driver requires some sort of aligned pointer for the data buffer...so let's check and make sure that the user's pointer is aligned
         //If the user's pointer isn't aligned properly, align something local that is aligned to meet the driver's requirements, then copy data back for them.
-        alignedPointer = (uint8_t*)(((UINT_PTR)scsiIoCtx->pdata + (UINT_PTR)scsiIoCtx->device->os_info.alignmentMask) & ~(UINT_PTR)scsiIoCtx->device->os_info.alignmentMask);
+        alignedPointer = C_CAST(uint8_t*, (C_CAST(UINT_PTR, scsiIoCtx->pdata) + C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask)) & ~C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask));
         if (alignedPointer != scsiIoCtx->pdata)
         {
             localAlignedBuffer = true;
             uint32_t totalBufferSize = scsiIoCtx->dataLength + scsiIoCtx->device->os_info.alignmentMask;
-            localBuffer = (uint8_t*)calloc(totalBufferSize, sizeof(uint8_t));//TODO: If we want to remove allocating more memory, we should investigate making the scsiIoCtx->pdata a double pointer so we can reallocate it for the user.
+            localBuffer = C_CAST(uint8_t*, calloc(totalBufferSize, sizeof(uint8_t)));//TODO: If we want to remove allocating more memory, we should investigate making the scsiIoCtx->pdata a double pointer so we can reallocate it for the user.
             if (!localBuffer)
             {
                 perror("error allocating aligned buffer for ATA Passthrough Direct...attempting to use user's pointer.");
@@ -3943,7 +3943,7 @@ int send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
             }
             else
             {
-                alignedPointer = (uint8_t*)(((UINT_PTR)localBuffer + (UINT_PTR)scsiIoCtx->device->os_info.alignmentMask) & ~(UINT_PTR)scsiIoCtx->device->os_info.alignmentMask);
+                alignedPointer = C_CAST(uint8_t*, (C_CAST(UINT_PTR, localBuffer) + C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask)) & ~C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask));
                 if (scsiIoCtx->direction == XFER_DATA_OUT)
                 {
                     memcpy(alignedPointer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
@@ -4047,7 +4047,7 @@ int send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
     safe_Free(localBuffer)
     return ret;
 }
-#endif //#if defined _NTSCSI_USER_MODE_
+#endif //#if defined INCLUDED_SCSI_DOT_H
 
 //This structure MUST be dynamically allocated for double buffered transfers so that there is enough room for the return data! - TJE
 typedef struct _scsiPassThroughIOStruct {
@@ -4120,7 +4120,7 @@ static int convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx, pt
     //Use offsetof macro to set where to place the sense data. Old code, for whatever reason, didn't always work right...see comments below-TJE
     psptd->scsiPassthroughDirect.SenseInfoOffset = offsetof(scsiPassThroughIOStruct, senseBuffer);
     //sets the offset to the beginning of the sense buffer-TJE
-    //psptd->scsiPassthroughDirect.SenseInfoOffset = (ULONG)((&psptd->senseBuffer[0] - (uint8_t*)&psptd->scsiPassthroughDirect));
+    //psptd->scsiPassthroughDirect.SenseInfoOffset = C_CAST(ULONG, (&psptd->senseBuffer[0] - C_CAST(uint8_t*, &psptd->scsiPassthroughDirect)));
     memcpy(psptd->scsiPassthroughDirect.Cdb, scsiIoCtx->cdb, sizeof(psptd->scsiPassthroughDirect.Cdb));
     return ret;
 }
@@ -4183,7 +4183,7 @@ static int convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(ScsiIoCtx *scsi
     //Use offsetof macro to set where to place the sense data. Old code, for whatever reason, didn't always work right...see comments below-TJE
     psptd->scsiPassthrough.SenseInfoOffset = offsetof(scsiPassThroughIOStruct, senseBuffer);
     //sets the offset to the beginning of the sense buffer-TJE
-    //psptd->scsiPassthrough.SenseInfoOffset = (ULONG)((&psptd->senseBuffer[0] - (uint8_t*)&psptd->scsiPassthrough));
+    //psptd->scsiPassthrough.SenseInfoOffset = C_CAST(ULONG, (&psptd->senseBuffer[0] - C_CAST(uint8_t*, &psptd->scsiPassthrough)));
     memcpy(psptd->scsiPassthrough.Cdb, scsiIoCtx->cdb, sizeof(psptd->scsiPassthrough.Cdb));
     return ret;
 }
@@ -4193,7 +4193,7 @@ static int send_SCSI_Pass_Through(ScsiIoCtx *scsiIoCtx)
     int           ret = FAILURE;
     BOOL          success = FALSE;
     ULONG         returned_data = 0;
-    ptrSCSIPassThroughIOStruct sptdioDB = (ptrSCSIPassThroughIOStruct)malloc(sizeof(scsiPassThroughIOStruct) + scsiIoCtx->dataLength);
+    ptrSCSIPassThroughIOStruct sptdioDB = C_CAST(ptrSCSIPassThroughIOStruct, malloc(sizeof(scsiPassThroughIOStruct) + scsiIoCtx->dataLength));
     if (!sptdioDB)
     {
         return MEMORY_FAILURE;
@@ -4335,12 +4335,12 @@ static int send_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx)
     {
         //This means the driver requires some sort of aligned pointer for the data buffer...so let's check and make sure that the user's pointer is aligned
         //If the user's pointer isn't aligned properly, align something local that is aligned to meet the driver's requirements, then copy data back for them.
-        alignedPointer = (uint8_t*)(((UINT_PTR)scsiIoCtx->pdata + (UINT_PTR)scsiIoCtx->device->os_info.alignmentMask) & ~(UINT_PTR)scsiIoCtx->device->os_info.alignmentMask);
+        alignedPointer = C_CAST(uint8_t*, (C_CAST(UINT_PTR, scsiIoCtx->pdata) + C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask)) & ~C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask));
         if (alignedPointer != scsiIoCtx->pdata)
         {
             localAlignedBuffer = true;
             uint32_t totalBufferSize = scsiIoCtx->dataLength + C_CAST(uint32_t, scsiIoCtx->device->os_info.alignmentMask);
-            localBuffer = (uint8_t*)calloc(totalBufferSize, sizeof(uint8_t));//TODO: If we want to remove allocating more memory, we should investigate making the scsiIoCtx->pdata a double pointer so we can reallocate it for the user.
+            localBuffer = C_CAST(uint8_t*, calloc(totalBufferSize, sizeof(uint8_t)));//TODO: If we want to remove allocating more memory, we should investigate making the scsiIoCtx->pdata a double pointer so we can reallocate it for the user.
             if (!localBuffer)
             {
                 perror("error allocating aligned buffer for ATA Passthrough Direct...attempting to use user's pointer.");
@@ -4349,7 +4349,7 @@ static int send_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx)
             }
             else
             {
-                alignedPointer = (uint8_t*)(((UINT_PTR)localBuffer + (UINT_PTR)scsiIoCtx->device->os_info.alignmentMask) & ~(UINT_PTR)scsiIoCtx->device->os_info.alignmentMask);
+                alignedPointer = C_CAST(uint8_t*, (C_CAST(UINT_PTR, localBuffer) + C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask)) & ~C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask));
                 if (scsiIoCtx->direction == XFER_DATA_OUT)
                 {
                     memcpy(alignedPointer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
@@ -4459,7 +4459,7 @@ static int send_SCSI_Pass_Through_IO( ScsiIoCtx *scsiIoCtx )
         {
             return send_SCSI_Pass_Through_Direct(scsiIoCtx);
         }
-#if defined _NTSCSI_USER_MODE_
+#if defined INCLUDED_SCSI_DOT_H
         else if (scsiIoCtx->device->os_info.srbtype == SRB_TYPE_STORAGE_REQUEST_BLOCK)
         {
             return send_SCSI_Pass_Through_EX_Direct(scsiIoCtx);
@@ -4472,7 +4472,7 @@ static int send_SCSI_Pass_Through_IO( ScsiIoCtx *scsiIoCtx )
         {
             return send_SCSI_Pass_Through(scsiIoCtx);
         }
-#if defined _NTSCSI_USER_MODE_
+#if defined INCLUDED_SCSI_DOT_H
         else if (scsiIoCtx->device->os_info.srbtype == SRB_TYPE_STORAGE_REQUEST_BLOCK)
         {
             return send_SCSI_Pass_Through_EX(scsiIoCtx);
@@ -4495,7 +4495,7 @@ static int send_SCSI_Pass_Through_IO( ScsiIoCtx *scsiIoCtx )
                 return send_SCSI_Pass_Through(scsiIoCtx);
             }
         }
-#if defined _NTSCSI_USER_MODE_
+#if defined INCLUDED_SCSI_DOT_H
         else if (scsiIoCtx->device->os_info.srbtype == SRB_TYPE_STORAGE_REQUEST_BLOCK)//supports 32byte IOCTLS
         {
             if (scsiIoCtx->dataLength > DOUBLE_BUFFERED_MAX_TRANSFER_SIZE)
@@ -4645,12 +4645,12 @@ static int send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
     {
         //This means the driver requires some sort of aligned pointer for the data buffer...so let's check and make sure that the user's pointer is aligned
         //If the user's pointer isn't aligned properly, align something local that is aligned to meet the driver's requirements, then copy data back for them.
-        alignedPointer = (uint8_t*)(((UINT_PTR)scsiIoCtx->pdata + (UINT_PTR)scsiIoCtx->device->os_info.alignmentMask) & ~(UINT_PTR)scsiIoCtx->device->os_info.alignmentMask);
+        alignedPointer = C_CAST(uint8_t*, (C_CAST(UINT_PTR, scsiIoCtx->pdata) + C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask)) & ~C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask));
         if (alignedPointer != scsiIoCtx->pdata)
         {
             localAlignedBuffer = true;
             uint32_t totalBufferSize = scsiIoCtx->dataLength + C_CAST(uint32_t, scsiIoCtx->device->os_info.alignmentMask);
-            localBuffer = (uint8_t*)calloc(totalBufferSize, sizeof(uint8_t));//TODO: If we want to remove allocating more memory, we should investigate making the scsiIoCtx->pdata a double pointer so we can reallocate it for the user.
+            localBuffer = C_CAST(uint8_t*, calloc(totalBufferSize, sizeof(uint8_t)));//TODO: If we want to remove allocating more memory, we should investigate making the scsiIoCtx->pdata a double pointer so we can reallocate it for the user.
             if (!localBuffer)
             {
                 perror("error allocating aligned buffer for ATA Passthrough Direct...attempting to use user's pointer.");
@@ -4659,7 +4659,7 @@ static int send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
             }
             else
             {
-                alignedPointer = (uint8_t*)(((UINT_PTR)localBuffer + (UINT_PTR)scsiIoCtx->device->os_info.alignmentMask) & ~(UINT_PTR)scsiIoCtx->device->os_info.alignmentMask);
+                alignedPointer = C_CAST(uint8_t*, (C_CAST(UINT_PTR, localBuffer) + C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask)) & ~C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask));
                 if (scsiIoCtx->direction == XFER_DATA_OUT)
                 {
                     memcpy(alignedPointer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
@@ -4949,7 +4949,7 @@ static int send_ATA_Passthrough_Ex(ScsiIoCtx *scsiIoCtx)
     BOOL success;
     ULONG returned_data = 0;
     uint32_t dataLength = M_Max(scsiIoCtx->dataLength, scsiIoCtx->pAtaCmdOpts->dataSize);
-    ptrATADoubleBufferedIO doubleBufferedIO = (ptrATADoubleBufferedIO)malloc(sizeof(ATA_PASS_THROUGH_EX) + dataLength);
+    ptrATADoubleBufferedIO doubleBufferedIO = C_CAST(ptrATADoubleBufferedIO, malloc(sizeof(ATA_PASS_THROUGH_EX) + dataLength));
     if (!doubleBufferedIO)
     {
         //something went really wrong...
@@ -5222,7 +5222,7 @@ static int send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
     BOOL success;
     ULONG returned_data = 0;
     uint32_t dataLength = M_Max(scsiIoCtx->dataLength, scsiIoCtx->pAtaCmdOpts->dataSize);
-    ptrIDEDoubleBufferedIO doubleBufferedIO = (ptrIDEDoubleBufferedIO)malloc(sizeof(IDEDoubleBufferedIO) - 1 + dataLength);
+    ptrIDEDoubleBufferedIO doubleBufferedIO = C_CAST(ptrIDEDoubleBufferedIO, malloc(sizeof(IDEDoubleBufferedIO) - 1 + dataLength));
     if (!doubleBufferedIO)
     {
         //something went really wrong...
@@ -5630,7 +5630,7 @@ int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busType)
         slotCount = 7;//Max of 7 firmware slots on NVMe...might as well read in everything even if we aren't using it today.-TJE
     }
     uint32_t outputDataSize = sizeof(STORAGE_HW_FIRMWARE_INFO) + (sizeof(STORAGE_HW_FIRMWARE_SLOT_INFO) * slotCount);
-    uint8_t *outputData = (uint8_t*)malloc(outputDataSize);
+    uint8_t *outputData = C_CAST(uint8_t*, malloc(outputDataSize));
     if (!outputData)
     {
         return MEMORY_FAILURE;
@@ -5653,7 +5653,7 @@ int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busType)
     //Got the version info, but that doesn't mean we'll be successful with commands...
     if (fwdlRet)
     {
-        PSTORAGE_HW_FIRMWARE_INFO fwdlSupportedInfo = (PSTORAGE_HW_FIRMWARE_INFO)outputData;
+        PSTORAGE_HW_FIRMWARE_INFO fwdlSupportedInfo = C_CAST(PSTORAGE_HW_FIRMWARE_INFO, outputData);
         device->os_info.fwdlIOsupport.fwdlIOSupported = fwdlSupportedInfo->SupportUpgrade;
         device->os_info.fwdlIOsupport.payloadAlignment = fwdlSupportedInfo->ImagePayloadAlignment;
         device->os_info.fwdlIOsupport.maxXferSize = fwdlSupportedInfo->ImagePayloadMaxSize;
@@ -5911,7 +5911,7 @@ static int win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     }
     //send download IOCTL
     DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + dataLength;
-    PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD)malloc(downloadStructureSize);
+    PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO = C_CAST(PSTORAGE_HW_FIRMWARE_DOWNLOAD, malloc(downloadStructureSize));
     if (!downloadIO)
     {
         return MEMORY_FAILURE;
@@ -6371,13 +6371,13 @@ static int send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
     default:
         break;
     }
-    PSENDCMDINPARAMS smartIOin = (PSENDCMDINPARAMS)calloc(1, sizeof(SENDCMDINPARAMS) - 1 + dataInLength);
+    PSENDCMDINPARAMS smartIOin = C_CAST(PSENDCMDINPARAMS, calloc(1, sizeof(SENDCMDINPARAMS) - 1 + dataInLength));
     if (!smartIOin)
     {
         //something went really wrong...
         return MEMORY_FAILURE;
     }
-    PSENDCMDOUTPARAMS smartIOout = (PSENDCMDOUTPARAMS)calloc(1, sizeof(SENDCMDOUTPARAMS) - 1 + dataOutLength + magicPadding);
+    PSENDCMDOUTPARAMS smartIOout = C_CAST(PSENDCMDOUTPARAMS, calloc(1, sizeof(SENDCMDOUTPARAMS) - 1 + dataOutLength + magicPadding));
     if (!smartIOout)
     {
         safe_Free(smartIOin)
@@ -6511,7 +6511,7 @@ static int send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
                     smartTFRs.status = 0x50;
                     if (nonDataRTFRs)//only look for RTFRs on a non-data command!
                     {
-                        PIDEREGS ptrIDErtfrs = (PIDEREGS)(smartIOout->bBuffer);
+                        PIDEREGS ptrIDErtfrs = C_CAST(PIDEREGS, smartIOout->bBuffer);
                         smartTFRs.error = ptrIDErtfrs->bFeaturesReg;
                         smartTFRs.secCnt = ptrIDErtfrs->bSectorCountReg;
                         smartTFRs.lbaLow = ptrIDErtfrs->bSectorNumberReg;
@@ -7986,7 +7986,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                                     uint32_t writeSectors64K = 65535 / scsiIoCtx->device->drive_info.deviceBlockSize;
                                     //Write commands
                                     uint32_t writeDataLength = writeSectors64K * scsiIoCtx->device->drive_info.deviceBlockSize;
-                                    uint8_t *writePattern = (uint8_t*)calloc_aligned(writeSectors64K, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment);
+                                    uint8_t *writePattern = C_CAST(uint8_t*, calloc_aligned(writeSectors64K, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
                                     if (writePattern)
                                     {
                                         uint32_t numberOfLBAs = writeDataLength / scsiIoCtx->device->drive_info.deviceBlockSize;
@@ -8251,12 +8251,12 @@ static int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         //TODO: Validate that this assumption is actually correct.
         nvmePassthroughDataSize += nvmeIoCtx->dataSize;
     }
-    uint8_t *commandBuffer = (uint8_t*)_aligned_malloc(nvmePassthroughDataSize, 8);
+    uint8_t *commandBuffer = C_CAST(uint8_t*, _aligned_malloc(nvmePassthroughDataSize, 8));
     memset(commandBuffer, 0, nvmePassthroughDataSize);
 
     //Setup the storage protocol command structure.
 
-    PSTORAGE_PROTOCOL_COMMAND protocolCommand = (PSTORAGE_PROTOCOL_COMMAND)(commandBuffer);
+    PSTORAGE_PROTOCOL_COMMAND protocolCommand = C_CAST(PSTORAGE_PROTOCOL_COMMAND, commandBuffer);
 
     protocolCommand->Version = STORAGE_PROTOCOL_STRUCTURE_VERSION;
     protocolCommand->Length = sizeof(STORAGE_PROTOCOL_COMMAND);
@@ -8503,9 +8503,9 @@ static int send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
     */
     ZeroMemory(buffer, bufferLength);
 
-    query = (PSTORAGE_PROPERTY_QUERY)buffer;
-    protocolDataDescr = (PSTORAGE_PROTOCOL_DATA_DESCRIPTOR)buffer;
-    protocolData = (PSTORAGE_PROTOCOL_SPECIFIC_DATA)query->AdditionalParameters;
+    query = C_CAST(PSTORAGE_PROPERTY_QUERY, buffer);
+    protocolDataDescr = C_CAST(PSTORAGE_PROTOCOL_DATA_DESCRIPTOR, buffer);
+    protocolData = C_CAST(PSTORAGE_PROTOCOL_SPECIFIC_DATA, query->AdditionalParameters);
 
     //check that the rest of dword 10 is zero!
     if ((nvmeIoCtx->cmd.adminCmd.cdw10 >> 8) != 0)
@@ -8587,7 +8587,7 @@ static int send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
     }
     else
     {
-        char* identifyControllerData = (char*)((PCHAR)protocolData + protocolData->ProtocolDataOffset);
+        char* identifyControllerData = C_CAST(char*, C_CAST(PCHAR, protocolData) + protocolData->ProtocolDataOffset);
         memcpy(nvmeIoCtx->ptrData, identifyControllerData, nvmeIoCtx->dataSize);
     }
 
@@ -8637,9 +8637,9 @@ static int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
     //
     ZeroMemory(buffer, bufferLength);
 
-    query = (PSTORAGE_PROPERTY_QUERY)buffer;
-    protocolDataDescr = (PSTORAGE_PROTOCOL_DATA_DESCRIPTOR)buffer;
-    protocolData = (PSTORAGE_PROTOCOL_SPECIFIC_DATA)query->AdditionalParameters;
+    query = C_CAST(PSTORAGE_PROPERTY_QUERY, buffer);
+    protocolDataDescr = C_CAST(PSTORAGE_PROTOCOL_DATA_DESCRIPTOR, buffer);
+    protocolData = C_CAST(PSTORAGE_PROTOCOL_SPECIFIC_DATA, query->AdditionalParameters);
 
     query->PropertyId = StorageAdapterProtocolSpecificProperty;
     query->QueryType = PropertyStandardQuery;
@@ -8736,7 +8736,7 @@ static int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
             #endif
             returnValue = OS_PASSTHROUGH_FAILURE;
         }
-        uint8_t* logData = (uint8_t*)((PCHAR)protocolData + protocolData->ProtocolDataOffset);
+        uint8_t* logData = C_CAST(uint8_t*, C_CAST(PCHAR, protocolData) + protocolData->ProtocolDataOffset);
         if (nvmeIoCtx->ptrData && protocolData->ProtocolDataLength > 0)
         {
             memcpy(nvmeIoCtx->ptrData, logData, M_Min(protocolData->ProtocolDataLength, nvmeIoCtx->dataSize));
@@ -8780,9 +8780,9 @@ static int send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
     //
     ZeroMemory(buffer, bufferLength);
 
-    query = (PSTORAGE_PROPERTY_QUERY)buffer;
-    protocolDataDescr = (PSTORAGE_PROTOCOL_DATA_DESCRIPTOR)buffer;
-    protocolData = (PSTORAGE_PROTOCOL_SPECIFIC_DATA)query->AdditionalParameters;
+    query = C_CAST(PSTORAGE_PROPERTY_QUERY, buffer);
+    protocolDataDescr = C_CAST(PSTORAGE_PROTOCOL_DATA_DESCRIPTOR, buffer);
+    protocolData = C_CAST(PSTORAGE_PROTOCOL_SPECIFIC_DATA, query->AdditionalParameters);
 
     query->PropertyId = StorageAdapterProtocolSpecificProperty;
     query->QueryType = PropertyStandardQuery;
@@ -8848,7 +8848,7 @@ static int send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
 #endif
             returnValue = OS_PASSTHROUGH_FAILURE;
         }
-        uint8_t* featData = (uint8_t*)((PCHAR)protocolData + protocolData->ProtocolDataOffset);
+        uint8_t* featData = C_CAST(uint8_t*, C_CAST(PCHAR, protocolData) + protocolData->ProtocolDataOffset);
         if (nvmeIoCtx->ptrData && protocolData->ProtocolDataLength > 0)
         {
             memcpy(nvmeIoCtx->ptrData, featData, M_Min(nvmeIoCtx->dataSize, protocolData->ProtocolDataLength));
@@ -8965,14 +8965,14 @@ static int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     //send download IOCTL
 #if defined (WIN_API_TARGET_VERSION) && !defined (DISABLE_FWDL_V2) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
     DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2) + nvmeIoCtx->dataSize;
-    PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2 downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2)malloc(downloadStructureSize);
+    PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2 downloadIO = C_CAST(PSTORAGE_HW_FIRMWARE_DOWNLOAD_V2, malloc(downloadStructureSize));
 #if defined (_DEBUG)
     printf("%s: sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2)=%zu+%" PRIu32 "=%ld\n", \
         __FUNCTION__, sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2), nvmeIoCtx->dataSize, downloadStructureSize);
 #endif
 #else
     DWORD downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + nvmeIoCtx->dataSize;
-    PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO = (PSTORAGE_HW_FIRMWARE_DOWNLOAD)malloc(downloadStructureSize);
+    PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO = C_CAST(PSTORAGE_HW_FIRMWARE_DOWNLOAD, malloc(downloadStructureSize));
 #if defined (_DEBUG)
     printf("%s: sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD)=%zu\n", __FUNCTION__, sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD));
 #endif
@@ -9006,7 +9006,7 @@ static int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     //TODO: add firmware slot number?
     downloadIO->Slot = 0;// M_GETBITRANGE(nvmeIoCtx->cmd, 1, 0);
     //we need to set the offset since MS uses this in the command sent to the device.
-    downloadIO->Offset = (uint64_t)((uint64_t)nvmeIoCtx->cmd.adminCmd.cdw11 << 2);//convert #DWords to bytes for offset
+    downloadIO->Offset = C_CAST(uint64_t, nvmeIoCtx->cmd.adminCmd.cdw11) << 2;//convert #DWords to bytes for offset
     //set the size of the buffer
     downloadIO->BufferSize = nvmeIoCtx->dataSize;
 #if defined (WIN_API_TARGET_VERSION) && !defined (DISABLE_FWDL_V2) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
@@ -9133,7 +9133,7 @@ static int win10_Translate_Set_Error_Recovery_Time_Limit(nvmeCmdCtx *nvmeIoCtx)
     if (!dulbe && !(nvmeIoCtx->cmd.adminCmd.cdw11 >> 16))//make sure unsupported fields aren't set!!!
     {
         //use read-write error recovery MP - recovery time limit field
-        uint8_t *errorRecoveryMP = (uint8_t*)calloc_aligned(MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment);
+        uint8_t *errorRecoveryMP = C_CAST(uint8_t*, calloc_aligned(MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
         if (errorRecoveryMP)
         {
             //first, read the page into memory
@@ -9165,7 +9165,7 @@ static int win10_Translate_Set_Volatile_Write_Cache(nvmeCmdCtx *nvmeIoCtx)
     if (!(nvmeIoCtx->cmd.adminCmd.cdw11 >> 31))//make sure unsupported fields aren't set!!!
     {
         //use caching MP - write back cache enabled field
-        uint8_t *cachingMP = (uint8_t*)calloc_aligned(MODE_HEADER_LENGTH10 + MP_CACHING_LEN, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment);
+        uint8_t *cachingMP = C_CAST(uint8_t*, calloc_aligned(MODE_HEADER_LENGTH10 + MP_CACHING_LEN, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
         if (cachingMP)
         {
             //first, read the page into memory
@@ -9227,7 +9227,7 @@ static int win10_Translate_Set_Power_Management(nvmeCmdCtx *nvmeIoCtx)
             powerCap.Version = STORAGE_DEVICE_POWER_CAP_VERSION_V1;
             powerCap.Size = sizeof(STORAGE_DEVICE_POWER_CAP);
             powerCap.Units = StorageDevicePowerCapUnitsMilliwatts;
-            powerCap.MaxPower = (ULONG)(maxPowerWatts * 1000.0);
+            powerCap.MaxPower = C_CAST(ULONG, maxPowerWatts * 1000.0);
             DWORD returnedBytes = 0;
             SetLastError(NO_ERROR);
             seatimer_t commandTimer;
@@ -9548,7 +9548,7 @@ static int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
     {
         //mode select with mode descriptor (if needed for block size changes)
         //First we need to map the incoming LBA format to a size in bytes to send in a mode select
-        int16_t powerOfTwo = (int16_t)nvmeIoCtx->device->drive_info.IdentifyData.nvme.ns.lbaf[lbaFormat].lbaDS;
+        int16_t powerOfTwo = C_CAST(int16_t, nvmeIoCtx->device->drive_info.IdentifyData.nvme.ns.lbaf[lbaFormat].lbaDS);
         uint32_t lbaSize = 1;
         while (powerOfTwo >= 0)
         {
@@ -9890,7 +9890,7 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
         bool atLeastOneContextAttributeSet = false;
         //first, allocate enough memory for the Unmap command
         uint32_t unmapDataLength = 8 + (16 * numberOfRanges);
-        uint8_t *unmapParameterData = (uint8_t*)calloc_aligned(unmapDataLength, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment);//each range is 16 bytes plus an 8 byte header
+        uint8_t *unmapParameterData = C_CAST(uint8_t*, calloc_aligned(unmapDataLength, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));//each range is 16 bytes plus an 8 byte header
         if (unmapParameterData)
         {
             //in a loop, set the unmap descriptors
@@ -10245,9 +10245,9 @@ int send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx)
     //
     ZeroMemory(buffer, bufferLength);
 
-    query = (PSTORAGE_PROPERTY_QUERY)buffer;
-    protocolDataDescr = (PSTORAGE_PROTOCOL_DATA_DESCRIPTOR)buffer;
-    protocolData = (PSTORAGE_PROTOCOL_SPECIFIC_DATA)query->AdditionalParameters;
+    query = C_CAST(PSTORAGE_PROPERTY_QUERY, buffer);
+    protocolDataDescr = C_CAST(PSTORAGE_PROTOCOL_DATA_DESCRIPTOR, buffer);
+    protocolData = C_CAST(PSTORAGE_PROTOCOL_SPECIFIC_DATA, query->AdditionalParameters);
 
     query->PropertyId = StorageDeviceProtocolSpecificProperty;
     query->QueryType = PropertyStandardQuery;
@@ -10313,8 +10313,8 @@ int send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx)
 #endif
             returnValue = OS_PASSTHROUGH_FAILURE;
         }
-        char* logData = (char*)((PCHAR)protocolData + protocolData->ProtocolDataOffset);
-        memcpy(scsiIoCtx->pdata, (void*)logData, scsiIoCtx->dataLength);
+        char* logData = C_CAST(char*, C_CAST(PCHAR, protocolData) + protocolData->ProtocolDataOffset);
+        memcpy(scsiIoCtx->pdata, C_CAST(void*, logData), scsiIoCtx->dataLength);
     }
 
     safe_Free(buffer)
@@ -10352,9 +10352,9 @@ int send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx)
     //
     ZeroMemory(buffer, bufferLength);
 
-    query = (PSTORAGE_PROPERTY_QUERY)buffer;
-    protocolDataDescr = (PSTORAGE_PROTOCOL_DATA_DESCRIPTOR)buffer;
-    protocolData = (PSTORAGE_PROTOCOL_SPECIFIC_DATA)query->AdditionalParameters;
+    query = C_CAST(PSTORAGE_PROPERTY_QUERY, buffer);
+    protocolDataDescr = C_CAST(PSTORAGE_PROTOCOL_DATA_DESCRIPTOR, buffer);
+    protocolData = C_CAST(PSTORAGE_PROTOCOL_SPECIFIC_DATA, query->AdditionalParameters);
 
     query->PropertyId = StorageDeviceProtocolSpecificProperty;
     query->QueryType = PropertyStandardQuery;
@@ -10421,8 +10421,8 @@ int send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx)
 #endif
             returnValue = OS_PASSTHROUGH_FAILURE;
         }
-        char* logData = (char*)((PCHAR)protocolData + protocolData->ProtocolDataOffset);
-        memcpy(scsiIoCtx->pdata, (void*)logData, scsiIoCtx->dataLength);
+        char* logData = C_CAST(char*, C_CAST(PCHAR, protocolData) + protocolData->ProtocolDataOffset);
+        memcpy(scsiIoCtx->pdata, C_CAST(void*, logData), scsiIoCtx->dataLength);
     }
 
     safe_Free(buffer)
@@ -10767,7 +10767,7 @@ int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_
         printf("\n");
     }
 
-    if (bytesReturned != (DWORD)dataSize)
+    if (bytesReturned != C_CAST(DWORD, dataSize))
     {
         //error, didn't get all the data
         ret = FAILURE;
@@ -10985,7 +10985,7 @@ int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
     {
         print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
     }
-    if (bytesReturned != (DWORD)dataSize)
+    if (bytesReturned != C_CAST(DWORD, dataSize))
     {
         //error, didn't get all the data
         ret = FAILURE;
@@ -11298,7 +11298,7 @@ int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
     //flush the cache first to make sure we aren't reading something that is in cache than disk (as close as we can get right here)
     os_Flush(device);
     //now do a read and throw away the data
-    uint8_t *readData = (uint8_t*)malloc(device->drive_info.deviceBlockSize * range);
+    uint8_t *readData = C_CAST(uint8_t*, malloc(device->drive_info.deviceBlockSize * range));
     if (readData)
     {
         ret = os_Read(device, lba, false, readData, device->drive_info.deviceBlockSize * range);

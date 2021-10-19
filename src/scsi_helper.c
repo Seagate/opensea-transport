@@ -8525,7 +8525,7 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
                 printf("Actual Retry Count: %" PRIu16 "\n", senseFields->senseKeySpecificInformation.retryCount.actualRetryCount);
                 break;
             case SENSE_KEY_SPECIFIC_PROGRESS_INDICATION:
-                printf("Progress: %0.02f%%\n", (double)senseFields->senseKeySpecificInformation.progress.progressIndication / 65536.0);
+                printf("Progress: %0.02f%%\n", C_CAST(double, senseFields->senseKeySpecificInformation.progress.progressIndication) / 65536.0);
                 break;
             case SENSE_KEY_SPECIFIC_SEGMENT_POINTER:
                 if (senseFields->senseKeySpecificInformation.segment.segmentDescriptor)
@@ -8659,7 +8659,7 @@ void copy_Inquiry_Data( uint8_t *pbuf, driveInfo *info )
 // \brief copy the serial number off of 0x80 VPD page data.
 void copy_Serial_Number( uint8_t *pbuf, char *serialNumber )
 {
-    uint16_t snLen = ((uint16_t)pbuf[2] << 8) | pbuf[3];
+    uint16_t snLen = M_BytesTo2ByteValue(pbuf[2], pbuf[3]);
     memcpy(serialNumber, &pbuf[4], M_Min(snLen,SERIAL_NUM_LEN));
     serialNumber[M_Min(snLen,SERIAL_NUM_LEN)]='\0';
     remove_Leading_Whitespace(serialNumber);
@@ -8677,7 +8677,7 @@ void copy_Read_Capacity_Info(uint32_t *logicalBlockSize, uint32_t *physicalBlock
         *logicalBlockSize = M_BytesTo4ByteValue(ptrBuf[8], ptrBuf[9], ptrBuf[10], ptrBuf[11]);
         //get the physical sector size
         sectorSizeExponent = ptrBuf[13] & 0x0F;
-        *physicalBlockSize = (uint32_t)(*logicalBlockSize * power_Of_Two(sectorSizeExponent));
+        *physicalBlockSize = C_CAST(uint32_t, *logicalBlockSize * power_Of_Two(sectorSizeExponent));
         //set the sector alignment info
         *sectorAlignment = M_GETBITRANGE(M_BytesTo2ByteValue(ptrBuf[14], ptrBuf[15]), 13, 0);
     }
@@ -8708,7 +8708,7 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
     }
     if (!device->drive_info.passThroughHacks.scsiHacks.noVPDPages)//if this is set, then the device is known to not support VPD pages, so just skip to the SAT identify
     {
-        uint8_t *ataInformation = (uint8_t *)calloc_aligned(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
+        uint8_t *ataInformation = C_CAST(uint8_t *, calloc_aligned(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!ataInformation)
         {
             perror("Error allocating memory to read the ATA Information VPD page");
@@ -8953,7 +8953,7 @@ int fill_In_Device_Info(tDevice *device)
         }
     }
 
-    uint8_t *inq_buf = (uint8_t*)calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment);
+    uint8_t *inq_buf = C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!inq_buf)
     {
         perror("Error allocating memory for standard inquiry data (scsi)");
@@ -9377,7 +9377,7 @@ int fill_In_Device_Info(tDevice *device)
             {
                 //I'm reading only the unit serial number page here for a quick scan and the device information page for WWN - TJE
                 uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
-                uint8_t *unitSerialNumber = (uint8_t*)calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment);
+                uint8_t *unitSerialNumber = C_CAST(uint8_t*, calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!unitSerialNumber)
                 {
                     perror("Error allocating memory to read the unit serial number");
@@ -9429,7 +9429,7 @@ int fill_In_Device_Info(tDevice *device)
             }
             if (version >= 3 && !device->drive_info.passThroughHacks.scsiHacks.noVPDPages)//device identification added in SPC
             {
-                uint8_t *deviceIdentification = (uint8_t*)calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment);
+                uint8_t *deviceIdentification = C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!deviceIdentification)
                 {
                     perror("Error allocating memory to read device identification VPD page");
@@ -9558,7 +9558,7 @@ int fill_In_Device_Info(tDevice *device)
             }
             //first, get the length of the supported pages
             uint16_t supportedVPDPagesLength = M_BytesTo2ByteValue(inq_buf[2], inq_buf[3]);
-            uint8_t *supportedVPDPages = (uint8_t*)calloc(supportedVPDPagesLength, sizeof(uint8_t));
+            uint8_t *supportedVPDPages = C_CAST(uint8_t*, calloc(supportedVPDPagesLength, sizeof(uint8_t)));
             if (!supportedVPDPages)
             {
                 perror("Error allocating memory for supported VPD pages!\n");
@@ -9575,7 +9575,7 @@ int fill_In_Device_Info(tDevice *device)
                 case UNIT_SERIAL_NUMBER://Device serial number (only grab 20 characters worth since that's what we need for the device struct)
                 {
                     uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
-                    uint8_t *unitSerialNumber = (uint8_t*)calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment);
+                    uint8_t *unitSerialNumber = C_CAST(uint8_t*, calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment));
                     if (!unitSerialNumber)
                     {
                         perror("Error allocating memory to read the unit serial number");
@@ -9606,7 +9606,7 @@ int fill_In_Device_Info(tDevice *device)
                 }
                 case DEVICE_IDENTIFICATION://World wide name
                 {
-                    uint8_t *deviceIdentification = (uint8_t*)calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment);
+                    uint8_t *deviceIdentification = C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
                     if (!deviceIdentification)
                     {
                         perror("Error allocating memory to read device identification VPD page");
@@ -9645,7 +9645,7 @@ int fill_In_Device_Info(tDevice *device)
                 }
                 case BLOCK_DEVICE_CHARACTERISTICS: //use this to determine if it's SSD or HDD and whether it's a HDD or not
                 {
-                    uint8_t *blockDeviceCharacteristics = (uint8_t*)calloc_aligned(VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
+                    uint8_t *blockDeviceCharacteristics = C_CAST(uint8_t*, calloc_aligned(VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
                     if (!blockDeviceCharacteristics)
                     {
                         perror("Error allocating memory to read block device characteistics VPD page");
@@ -9752,7 +9752,7 @@ int fill_In_Device_Info(tDevice *device)
             //Anything else can have read capacity 16 command available
 
             //send a read capacity command to get the device's logical block size...read capacity 10 should be enough for this
-            uint8_t *readCapBuf = (uint8_t*)calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
+            uint8_t *readCapBuf = C_CAST(uint8_t*, calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
             if (!readCapBuf)
             {
                 safe_Free_aligned(inq_buf)
@@ -9764,7 +9764,7 @@ int fill_In_Device_Info(tDevice *device)
                 if (version > 3)//SPC2 and higher can reference SBC2 and higher which introduced read capacity 16
                 {
                     //try a read capacity 16 anyways and see if the data from that was valid or not since that will give us a physical sector size whereas readcap10 data will not
-                    uint8_t* temp = (uint8_t*)realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment);
+                    uint8_t* temp = C_CAST(uint8_t*, realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
                     if (!temp)
                     {
                         safe_Free_aligned(readCapBuf)
@@ -9800,7 +9800,7 @@ int fill_In_Device_Info(tDevice *device)
             else
             {
                 //try read capacity 16, if that fails we are done trying
-                uint8_t* temp = (uint8_t*)realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment);
+                uint8_t* temp = C_CAST(uint8_t*, realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
                 if (temp == NULL)
                 {
                     safe_Free_aligned(readCapBuf)

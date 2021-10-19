@@ -122,7 +122,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
     if (device)
     {
         size_t allocationSize = sizeof(IOCTL_RAID_FIRMWARE_BUFFER) + dataRequestLength;
-        IOCTL_RAID_FIRMWARE_BUFFER *raidFirmwareRequest = (IOCTL_RAID_FIRMWARE_BUFFER*)calloc_aligned(allocationSize, sizeof(uint8_t), device->os_info.minimumAlignment);
+        IOCTL_RAID_FIRMWARE_BUFFER *raidFirmwareRequest = C_CAST(IOCTL_RAID_FIRMWARE_BUFFER*, calloc_aligned(allocationSize, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (raidFirmwareRequest)
         {
             seatimer_t commandTimer;
@@ -145,8 +145,8 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                     raidFirmwareRequest->Header.Timeout = 15;
                 }
             }
-            raidFirmwareRequest->Header.ControlCode = (ULONG)IOCTL_RAID_FIRMWARE;
-            raidFirmwareRequest->Header.Length = (ULONG)(allocationSize - sizeof(SRB_IO_CONTROL));
+            raidFirmwareRequest->Header.ControlCode = C_CAST(ULONG, IOCTL_RAID_FIRMWARE);
+            raidFirmwareRequest->Header.Length = C_CAST(ULONG, allocationSize - sizeof(SRB_IO_CONTROL));
             //Next fill in IOCTL_RAID_FIRMWARE_BUFFER, then work down from there and memcpy the input data to this function since it will have the specific download function data in it
             raidFirmwareRequest->Request.Version = RAID_FIRMWARE_REQUEST_BLOCK_VERSION;
             raidFirmwareRequest->Request.TargetId = RESERVED;
@@ -196,9 +196,9 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
             BOOL success = DeviceIoControl(device->os_info.fd,
                 IOCTL_SCSI_MINIPORT,
                 raidFirmwareRequest,
-                (DWORD)allocationSize,
+                C_CAST(DWORD, allocationSize),
                 raidFirmwareRequest,
-                (DWORD)allocationSize,
+                C_CAST(DWORD, allocationSize),
                 &bytesReturned,
                 &overlappedStruct);
             device->os_info.last_error = GetLastError();
@@ -253,7 +253,7 @@ bool supports_Intel_Firmware_Download(tDevice *device)
 {
     bool supported = false;
     uint32_t allocationSize = sizeof(INTEL_STORAGE_FIRMWARE_INFO_V2) + (sizeof(INTEL_STORAGE_FIRMWARE_SLOT_INFO_V2) * 7);//max of 7 slots
-    PINTEL_STORAGE_FIRMWARE_INFO_V2 firmwareInfo = (PINTEL_STORAGE_FIRMWARE_INFO_V2)calloc(allocationSize, sizeof(uint8_t));//alignment not needed since this is passed to another function where it will be copied as needed
+    PINTEL_STORAGE_FIRMWARE_INFO_V2 firmwareInfo = C_CAST(PINTEL_STORAGE_FIRMWARE_INFO_V2, calloc(allocationSize, sizeof(uint8_t)));//alignment not needed since this is passed to another function where it will be copied as needed
     if (firmwareInfo)
     {
         uint32_t flags = 0;
@@ -310,7 +310,7 @@ static int internal_Intel_FWDL_Function_Download(tDevice *device, uint32_t flags
     if (device && imagePtr)
     {
         uint32_t allocationSize = sizeof(INTEL_STORAGE_FIRMWARE_DOWNLOAD_V2) + imageDataLength;
-        PINTEL_STORAGE_FIRMWARE_DOWNLOAD_V2 download = (PINTEL_STORAGE_FIRMWARE_DOWNLOAD_V2)calloc(allocationSize, sizeof(uint8_t));//alignment not needed since this will get copied to an aligned location
+        PINTEL_STORAGE_FIRMWARE_DOWNLOAD_V2 download = C_CAST(PINTEL_STORAGE_FIRMWARE_DOWNLOAD_V2, calloc(allocationSize, sizeof(uint8_t)));//alignment not needed since this will get copied to an aligned location
         if (download)
         {
             download->Version = INTEL_STORAGE_FIRMWARE_DOWNLOAD_STRUCTURE_VERSION_V2;
@@ -341,7 +341,7 @@ static int internal_Intel_FWDL_Function_Activate(tDevice *device, uint32_t flags
     if (device)
     {
         uint32_t allocationSize = sizeof(INTEL_STORAGE_FIRMWARE_ACTIVATE);
-        PINTEL_STORAGE_FIRMWARE_ACTIVATE activate = (PINTEL_STORAGE_FIRMWARE_ACTIVATE)calloc(allocationSize, sizeof(uint8_t));//alignment not needed since this will get copied to an aligned location
+        PINTEL_STORAGE_FIRMWARE_ACTIVATE activate = C_CAST(PINTEL_STORAGE_FIRMWARE_ACTIVATE, calloc(allocationSize, sizeof(uint8_t)));//alignment not needed since this will get copied to an aligned location
         if (activate)
         {
             activate->Version = INTEL_STORAGE_FIRMWARE_ACTIVATE_STRUCTURE_VERSION;
@@ -499,7 +499,7 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
         NVME_IOCTL_PASS_THROUGH *nvmPassthroughCommand = NULL;
         HANDLE handleToUse = nvmeIoCtx->device->os_info.fd;
         size_t allocationSize = sizeof(NVME_IOCTL_PASS_THROUGH) + nvmeIoCtx->dataSize;
-        nvmPassthroughCommand = (NVME_IOCTL_PASS_THROUGH*)calloc_aligned(allocationSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment);
+        nvmPassthroughCommand = C_CAST(NVME_IOCTL_PASS_THROUGH*, calloc_aligned(allocationSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
         if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
         {
             printf("\n====Sending Intel RST NVMe Command====\n");
@@ -526,8 +526,8 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
                     nvmPassthroughCommand->Header.Timeout = 15;
                 }
             }
-            nvmPassthroughCommand->Header.ControlCode = (ULONG)IOCTL_NVME_PASSTHROUGH;
-            nvmPassthroughCommand->Header.Length = (ULONG)(allocationSize - sizeof(SRB_IO_CONTROL));
+            nvmPassthroughCommand->Header.ControlCode = C_CAST(ULONG, IOCTL_NVME_PASSTHROUGH);
+            nvmPassthroughCommand->Header.Length = C_CAST(ULONG, allocationSize - sizeof(SRB_IO_CONTROL));
             //srb_io_control has been setup, now to main struct fields (minus data which is set when configuring the NVMe command)
             nvmPassthroughCommand->Version = NVME_PASS_THROUGH_VERSION;
             //setup the SCSI address, pathID is only part needed at time of writing, the rest is currently reserved, so leave as zeros
@@ -611,9 +611,9 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             BOOL success = DeviceIoControl(handleToUse,
                 IOCTL_SCSI_MINIPORT,
                 nvmPassthroughCommand,
-                (DWORD)allocationSize,
+                C_CAST(DWORD, allocationSize),
                 nvmPassthroughCommand,
-                (DWORD)allocationSize,
+                C_CAST(DWORD, allocationSize),
                 &bytesReturned,
                 &overlappedStruct);
             nvmeIoCtx->device->os_info.last_error = GetLastError();

@@ -60,7 +60,7 @@ int fill_In_NVMe_Device_Info(tDevice *device)
     printf("-->%s\n",__FUNCTION__);
 #endif
 
-    ret = nvme_Identify(device,(uint8_t *)ctrlData,0,NVME_IDENTIFY_CTRL);
+    ret = nvme_Identify(device, C_CAST(uint8_t *, ctrlData), 0, NVME_IDENTIFY_CTRL);
 
 #ifdef _DEBUG
 printf("fill NVMe info ret = %d\n", ret);
@@ -92,12 +92,12 @@ printf("fill NVMe info ret = %d\n", ret);
         //TODO: currently we set NAA to 5, but we should probably at least follow the SCSI-NVMe translation specification!
         *fillWWN = M_BytesTo8ByteValue(0x05, ctrlData->ieee[2], ctrlData->ieee[1], ctrlData->ieee[0], 0, 0, 0, 0) << 4;
 
-        ret = nvme_Identify(device,(uint8_t *)nsData, device->drive_info.namespaceID, NVME_IDENTIFY_NS);
+        ret = nvme_Identify(device, C_CAST(uint8_t *, nsData), device->drive_info.namespaceID, NVME_IDENTIFY_NS);
 
         if (ret == SUCCESS) 
         {
 
-            *fillLogicalSectorSize = (uint32_t)power_Of_Two(nsData->lbaf[nsData->flbas].lbaDS); //removed math.h pow() function - TJE
+            *fillLogicalSectorSize = C_CAST(uint32_t, power_Of_Two(nsData->lbaf[nsData->flbas].lbaDS)); //removed math.h pow() function - TJE
             *fillPhysicalSectorSize = *fillLogicalSectorSize; //True for NVMe?
             *fillSectorAlignment = 0;
 
@@ -870,11 +870,11 @@ int nvme_Get_SMART_Log_Page(tDevice *device, uint32_t nsid, uint8_t * pData, uin
     }
 
     memset(&cmdOpts,0,sizeof(nvmeGetLogPageCmdOpts));
-    smartLog = (nvmeSmartLog *)pData;
+    smartLog = C_CAST(nvmeSmartLog *, pData);
 
     cmdOpts.nsid = nsid;
-    //cmdOpts.addr = (uint64_t)smartLog;
-    cmdOpts.addr = (uint8_t*)smartLog;
+    //cmdOpts.addr = C_CAST(uint64_t, smartLog);
+    cmdOpts.addr = C_CAST(uint8_t*, smartLog);
     cmdOpts.dataLen = NVME_SMART_HEALTH_LOG_LEN;
     cmdOpts.lid = NVME_LOG_SMART_ID;
 
@@ -993,7 +993,7 @@ int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *ExtdSMARTInfo)
     getExtSMARTLog.dataLen = sizeof(EXTENDED_SMART_INFO_T);
     getExtSMARTLog.lid = 0xC4;
     getExtSMARTLog.nsid = device->drive_info.namespaceID;
-    getExtSMARTLog.addr = (uint8_t*)ExtdSMARTInfo;
+    getExtSMARTLog.addr = C_CAST(uint8_t*, ExtdSMARTInfo);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {

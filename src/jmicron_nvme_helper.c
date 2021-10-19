@@ -32,7 +32,7 @@ int build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirection *cdbData
     uint32_t parameterListLength = 0;
 
     cdb[0] = JMICRON_NVME_PT_OPCODE;
-    cdb[1] = (uint8_t)jmProtocol;
+    cdb[1] = C_CAST(uint8_t, jmProtocol);
     cdb[11] = 0;//control byte
 
     //CDB bytes 3, 4, & 5 are the parameter list length
@@ -54,7 +54,7 @@ int build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirection *cdbData
             //set the signature
             memcpy(dataPtr, JMICRON_NVME_NAMESTRING, strlen(JMICRON_NVME_NAMESTRING));
             //based on vendor ctrl value, we may setup a cmd, or leave those fields blank to setup some other action
-            dataPtr[72] = (uint8_t)jmCtrl;
+            dataPtr[72] = C_CAST(uint8_t, jmCtrl);
             if (jmCtrl == JM_VENDOR_CTRL_SERVICE_PROTOCOL_FIELD)
             {
                 //send a cmd

@@ -445,7 +445,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                        NULL,
                        direction, /*flags*/
                        MSG_SIMPLE_Q_TAG,
-                       (u_int8_t *)scsiIoCtx->pdata, /*data_ptr*/
+                       C_CAST(u_int8_t *, scsiIoCtx->pdata), /*data_ptr*/
                        scsiIoCtx->dataLength, /*dxfer_len*/
                        camTimeout);
 
@@ -1063,19 +1063,19 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 	num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
 #endif
 
-    char **devs = (char **)calloc(num_da_devs + num_ada_devs + num_nvme_devs + 1, sizeof(char *));
+    char **devs = C_CAST(char **, calloc(num_da_devs + num_ada_devs + num_nvme_devs + 1, sizeof(char *)));
     int i = 0, j = 0, k=0;
     for (i = 0; i < num_da_devs; ++i)
     {
         size_t devNameStringLength = (strlen("/dev/") + strlen(danamelist[i]->d_name) + 1) * sizeof(char);
-        devs[i] = (char *)malloc(devNameStringLength);
+        devs[i] = C_CAST(char *, malloc(devNameStringLength));
         snprintf(devs[i], devNameStringLength, "/dev/%s", danamelist[i]->d_name);
         safe_Free(danamelist[i])
     }
     for (j = 0; i < (num_da_devs + num_ada_devs) && j < num_ada_devs; ++i, j++)
     {
         size_t devNameStringLength = (strlen("/dev/") + strlen(adanamelist[j]->d_name) + 1) * sizeof(char);
-        devs[i] = (char *)malloc(devNameStringLength);
+        devs[i] = C_CAST(char *, malloc(devNameStringLength));
         snprintf(devs[i], devNameStringLength, "/dev/%s", adanamelist[j]->d_name);
         safe_Free(adanamelist[j])
     }
@@ -1084,7 +1084,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 	for (k = 0; i < (num_da_devs + num_ada_devs + num_nvme_devs) && k < num_nvme_devs; ++i, ++j, ++k)
 	{
         size_t devNameStringLength = (strlen("/dev/") + strlen(nvmenamelist[k]->d_name) + 1) * sizeof(char);
-		devs[i] = (char *)malloc(devNameStringLength);
+		devs[i] = C_CAST(char *, malloc(devNameStringLength));
         snprintf(devs[i], devNameStringLength, "/dev/%s", nvmenamelist[k]->d_name);
 		safe_Free(nvmenamelist[k])
 	}
@@ -1110,7 +1110,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
-        for (driveNumber = 0; ((driveNumber >= 0 && (unsigned int)driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_da_devs + num_ada_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
+        for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_da_devs + num_ada_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
             if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
             {

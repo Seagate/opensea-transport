@@ -118,7 +118,7 @@ int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool in
         if (!pattern)
         {
             localPattern = true;
-            pattern = (uint8_t*)calloc(4, sizeof(uint8_t));
+            pattern = C_CAST(uint8_t*, calloc(4, sizeof(uint8_t)));
             if (!pattern)
             {
                 return MEMORY_FAILURE;
@@ -505,7 +505,7 @@ int security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityPr
             {
                 //round up to nearest 512byte sector
                 size_t newBufferSize = (((dataSize + LEGACY_DRIVE_SEC_SIZE) - 1) / LEGACY_DRIVE_SEC_SIZE) * LEGACY_DRIVE_SEC_SIZE;
-                tcgBufPtr = (uint8_t*)calloc_aligned(newBufferSize, sizeof(uint8_t), device->os_info.minimumAlignment);
+                tcgBufPtr = C_CAST(uint8_t*, calloc_aligned(newBufferSize, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (tcgBufPtr == NULL)
                 {
                     return MEMORY_FAILURE;
@@ -572,7 +572,7 @@ int security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securit
             {
                 //round up to nearest 512byte sector
                 tcgDataSize = (((dataSize + LEGACY_DRIVE_SEC_SIZE) - 1) / LEGACY_DRIVE_SEC_SIZE) * LEGACY_DRIVE_SEC_SIZE;
-                tcgBufPtr = (uint8_t*)calloc_aligned(tcgDataSize, sizeof(uint8_t), device->os_info.minimumAlignment);
+                tcgBufPtr = C_CAST(uint8_t*, calloc_aligned(tcgDataSize, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!tcgBufPtr)
                 {
                     return MEMORY_FAILURE;
@@ -657,7 +657,7 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
             uint8_t feature = LEGACY_WRITE_SAME_INITIALIZE_SPECIFIED_SECTORS;
             if (noDataTransfer)
             {
-                pattern = (uint8_t*)calloc_aligned(device->drive_info.deviceBlockSize, sizeof(uint8_t), device->os_info.minimumAlignment);
+                pattern = C_CAST(uint8_t*, calloc_aligned(device->drive_info.deviceBlockSize, sizeof(uint8_t), device->os_info.minimumAlignment));
                 localPattern = true;
             }
             //Check range to see which feature to use
@@ -677,9 +677,9 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
                 {
                     uint16_t cylinder = 0;
                     uint8_t head = 0, sector = 0;
-                    if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)startingLba, &cylinder, &head, &sector))
+                    if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, startingLba), &cylinder, &head, &sector))
                     {
-                        ret = ata_Legacy_Write_Same_CHS(device, feature, (uint8_t)numberOfLogicalBlocks, cylinder, head, sector, pattern, device->drive_info.deviceBlockSize);
+                        ret = ata_Legacy_Write_Same_CHS(device, feature, C_CAST(uint8_t, numberOfLogicalBlocks), cylinder, head, sector, pattern, device->drive_info.deviceBlockSize);
                     }
                     else
                     {
@@ -688,7 +688,7 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
                 }
                 else
                 {
-                    ret = ata_Legacy_Write_Same(device, feature, (uint8_t)numberOfLogicalBlocks, (uint32_t)startingLba, pattern, device->drive_info.deviceBlockSize);
+                    ret = ata_Legacy_Write_Same(device, feature, C_CAST(uint8_t, numberOfLogicalBlocks), C_CAST(uint32_t, startingLba), pattern, device->drive_info.deviceBlockSize);
                 }
             }
             else
@@ -813,7 +813,7 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
         }
         else
         {
-            ret = scsi_Write_Long_10(device, false, true, multipleLogicalPerPhysical, (uint32_t)corruptLBA, 0, NULL);
+            ret = scsi_Write_Long_10(device, false, true, multipleLogicalPerPhysical, C_CAST(uint32_t, corruptLBA), 0, NULL);
         }
         break;
     default:
@@ -890,7 +890,7 @@ int write_Flagged_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
         }
         else
         {
-            ret = scsi_Write_Long_10(device, true, true, false, (uint32_t)corruptLBA, 0, NULL);
+            ret = scsi_Write_Long_10(device, true, true, false, C_CAST(uint32_t, corruptLBA), 0, NULL);
         }
         break;
     default:
@@ -1201,7 +1201,7 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                                 uint16_t cylinder = 0;
                                 uint8_t head = 0;
                                 uint8_t sector = 0;
-                                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                                if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, lba), &cylinder, &head, &sector))
                                 {
                                     ret = ata_Legacy_Write_Multiple_CHS(device, cylinder, head, sector, ptrData, dataSize, true, false);
                                 }
@@ -1222,7 +1222,7 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                                 uint16_t cylinder = 0;
                                 uint8_t head = 0;
                                 uint8_t sector = 0;
-                                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                                if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, lba), &cylinder, &head, &sector))
                                 {
                                     ret = ata_Legacy_Write_Sectors_CHS(device, cylinder, head, sector, ptrData, dataSize, true);
                                 }
@@ -1245,7 +1245,7 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                             uint16_t cylinder = 0;
                             uint8_t head = 0;
                             uint8_t sector = 0;
-                            if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                            if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, lba), &cylinder, &head, &sector))
                             {
                                 ret = ata_Legacy_Write_DMA_CHS(device, cylinder, head, sector, ptrData, dataSize, true, false);
                             }
@@ -1316,7 +1316,7 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                                 uint16_t cylinder = 0;
                                 uint8_t head = 0;
                                 uint8_t sector = 0;
-                                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                                if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, lba), &cylinder, &head, &sector))
                                 {
                                     ret = ata_Legacy_Write_Multiple_CHS(device, cylinder, head, sector, ptrData, dataSize, false, false);
                                 }
@@ -1337,7 +1337,7 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                                 uint16_t cylinder = 0;
                                 uint8_t head = 0;
                                 uint8_t sector = 0;
-                                if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                                if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, lba), &cylinder, &head, &sector))
                                 {
                                     ret = ata_Legacy_Write_Sectors_CHS(device, cylinder, head, sector, ptrData, dataSize, false);
                                 }
@@ -1360,7 +1360,7 @@ int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint3
                             uint16_t cylinder = 0;
                             uint8_t head = 0;
                             uint8_t sector = 0;
-                            if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                            if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, lba), &cylinder, &head, &sector))
                             {
                                 ret = ata_Legacy_Write_DMA_CHS(device, cylinder, head, sector, ptrData, dataSize, false, false);
                             }
@@ -1706,9 +1706,9 @@ int ata_Read_Verify(tDevice *device, uint64_t lba, uint32_t range)
                     uint16_t cylinder = 0;
                     uint8_t head = 0;
                     uint8_t sector = 0;
-                    if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                    if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, lba), &cylinder, &head, &sector))
                     {
-                        ret = ata_Legacy_Read_Verify_Sectors_CHS(device, true, (uint16_t)range, cylinder, head, sector);
+                        ret = ata_Legacy_Read_Verify_Sectors_CHS(device, true, C_CAST(uint16_t, range), cylinder, head, sector);
                     }
                     else //Couldn't convert or the LBA is greater than the current CHS mode
                     {
@@ -1717,7 +1717,7 @@ int ata_Read_Verify(tDevice *device, uint64_t lba, uint32_t range)
                 }
                 else
                 {
-                    ret = ata_Read_Verify_Sectors(device, true, (uint16_t)range, lba);
+                    ret = ata_Read_Verify_Sectors(device, true, C_CAST(uint16_t, range), lba);
                 }
             }
         }
@@ -1748,9 +1748,9 @@ int ata_Read_Verify(tDevice *device, uint64_t lba, uint32_t range)
                     uint16_t cylinder = 0;
                     uint8_t head = 0;
                     uint8_t sector = 0;
-                    if (SUCCESS == convert_LBA_To_CHS(device, (uint32_t)lba, &cylinder, &head, &sector))
+                    if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, lba), &cylinder, &head, &sector))
                     {
-                        ret = ata_Legacy_Read_Verify_Sectors_CHS(device, false, (uint16_t)range, cylinder, head, sector);
+                        ret = ata_Legacy_Read_Verify_Sectors_CHS(device, false, C_CAST(uint16_t, range), cylinder, head, sector);
                     }
                     else //Couldn't convert or the LBA is greater than the current CHS mode
                     {
@@ -1759,7 +1759,7 @@ int ata_Read_Verify(tDevice *device, uint64_t lba, uint32_t range)
                 }
                 else
                 {
-                    ret = ata_Read_Verify_Sectors(device, false, (uint16_t)range, lba);
+                    ret = ata_Read_Verify_Sectors(device, false, C_CAST(uint16_t, range), lba);
                 }
             }
         }
@@ -1774,7 +1774,7 @@ int scsi_Verify(tDevice *device, uint64_t lba, uint32_t range)
     if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && range <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
     {
         //use verify 10
-        ret = scsi_Verify_10(device, 0, false, 00, (uint32_t)lba, 0, (uint16_t)range, NULL, 0);
+        ret = scsi_Verify_10(device, 0, false, 00, C_CAST(uint32_t, lba), 0, C_CAST(uint16_t, range), NULL, 0);
     }
     else
     {
@@ -1790,7 +1790,7 @@ int nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
     //NVME doesn't have a verify command like ATA or SCSI, so we're going to substitute by doing a read with FUA set....should be the same minus doing a data transfer.
     int ret = SUCCESS;
     uint32_t dataLength = device->drive_info.deviceBlockSize * range;
-    uint8_t *data = (uint8_t*)calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment);
+    uint8_t *data = C_CAST(uint8_t*, calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (data)
     {
         ret = nvme_Read(device, lba, C_CAST(uint16_t, range - 1), false, true, 0, data, dataLength);

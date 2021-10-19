@@ -314,7 +314,7 @@ int ata_Legacy_Set_Max_Address_CHS(tDevice *device, uint16_t newMaxCylinder, uin
     ataCommandOptions.dataSize = 0;
     ataCommandOptions.ptrData = NULL;
     ataCommandOptions.tfr.CommandStatus = ATA_SET_MAX;
-    ataCommandOptions.tfr.ErrorFeature = (uint8_t)HPA_SET_MAX_ADDRESS;
+    ataCommandOptions.tfr.ErrorFeature = C_CAST(uint8_t, HPA_SET_MAX_ADDRESS);
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;

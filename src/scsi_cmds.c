@@ -25,7 +25,7 @@ int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields)
     ptrSenseDataFields localSenseFields = NULL;
     if (!pSenseFields)
     {
-        localSenseFields = (ptrSenseDataFields)calloc(1, sizeof(senseDataFields));
+        localSenseFields = C_CAST(ptrSenseDataFields, calloc(1, sizeof(senseDataFields)));
         if (!localSenseFields)
         {
             return MEMORY_FAILURE;
@@ -792,7 +792,7 @@ int scsi_Write_Buffer(tDevice *device, eWriteBufferMode mode, uint8_t modeSpecif
 
     // Set up the CDB.
     cdb[OPERATION_CODE] = WRITE_BUFFER_CMD;
-    cdb[1] = (uint8_t)mode;
+    cdb[1] = C_CAST(uint8_t, mode);
     cdb[1] |= (modeSpecific & 0x07) << 5;
     cdb[2] = bufferID;
     cdb[3] = M_Byte2(bufferOffset);
@@ -3749,10 +3749,10 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    cdb[2] = C_CAST(uint8_t, logicalBlockAddress >> 24);
 //    cdb[3] = C_CAST(uint8_t, logicalBlockAddress >> 16);
 //    cdb[4] = C_CAST(uint8_t, logicalBlockAddress >> 8);
-//    cdb[5] = (uint8_t)logicalBlockAddress;
+//    cdb[5] = C_CAST(uint8_t, logicalBlockAddress);
 //    cdb[6] = groupNumber & 0x1F;
 //    cdb[7] = C_CAST(uint8_t, transferLength >> 8);
-//    cdb[8] = (uint8_t)transferLength;
+//    cdb[8] = C_CAST(uint8_t, transferLength);
 //    cdb[9] = 0;//control
 //
 //    // Set up the CTX
@@ -3855,7 +3855,7 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    cdb[16] = C_CAST(uint8_t, logicalBlockAddress >> 24);
 //    cdb[17] = C_CAST(uint8_t, logicalBlockAddress >> 16);
 //    cdb[18] = C_CAST(uint8_t, logicalBlockAddress >> 8);
-//    cdb[19] = (uint8_t)logicalBlockAddress;
+//    cdb[19] = C_CAST(uint8_t, logicalBlockAddress);
 //    cdb[20] = RESERVED;
 //    cdb[21] = RESERVED;
 //    cdb[22] = RESERVED;
@@ -3867,7 +3867,7 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    cdb[28] = C_CAST(uint8_t, transferLength >> 24);
 //    cdb[29] = C_CAST(uint8_t, transferLength >> 16);
 //    cdb[30] = C_CAST(uint8_t, transferLength >> 8);
-//    cdb[31] = (uint8_t)transferLength;
+//    cdb[31] = C_CAST(uint8_t, transferLength);
 //
 //    // Set up the CTX
 //    scsiIoCtx.device = device;
@@ -4335,7 +4335,7 @@ int scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t 
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Persistent Reserve In - %" PRIu8 "\n", (uint8_t)M_GETBITRANGE(serviceAction, 4, 0));
+        printf("Sending SCSI Persistent Reserve In - %" PRIu8 "\n", C_CAST(uint8_t, M_GETBITRANGE(serviceAction, 4, 0)));
     }
     //send the command
     if (ptrData && allocationLength)
@@ -4375,7 +4375,7 @@ int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t 
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Persistent Reserve Out - %" PRIu8 "\n", (uint8_t)M_GETBITRANGE(serviceAction, 4, 0));
+        printf("Sending SCSI Persistent Reserve Out - %" PRIu8 "\n", C_CAST(uint8_t, M_GETBITRANGE(serviceAction, 4, 0)));
     }
     //send the command
     if (ptrData && parameterListLength)

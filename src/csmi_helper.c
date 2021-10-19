@@ -253,7 +253,7 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
     timer = csmiIoOutParams->ioctlTimer;
     if (!timer)
     {
-        timer = (seatimer_t*)calloc(1, sizeof(seatimer_t));
+        timer = C_CAST(seatimer_t*, calloc(1, sizeof(seatimer_t)));
         localTimer = true;
     }
 
@@ -867,7 +867,7 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
         case CSMI_SAS_RAID_DATA_DRIVES:
             if (config->bDriveCount < 0xF1)
             {
-                uint32_t totalDrives = (uint32_t)((configLength - 36) / sizeof(CSMI_SAS_RAID_DRIVES));//36 bytes prior to drive data
+                uint32_t totalDrives = C_CAST(uint32_t, (configLength - UINT32_C(36)) / sizeof(CSMI_SAS_RAID_DRIVES));//36 bytes prior to drive data
                 for (uint32_t iter = 0; iter < totalDrives && iter < config->bDriveCount; ++iter)
                 {
                     char model[41] = { 0 };
@@ -1410,7 +1410,7 @@ int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
         return BAD_PARAMETER;
     }
     sspPassthroughBufferLength = sizeof(CSMI_SAS_SSP_PASSTHRU_BUFFER) + sspInputs->dataLength;
-    sspPassthrough = (PCSMI_SAS_SSP_PASSTHRU_BUFFER)calloc_aligned(sizeof(uint8_t), sspPassthroughBufferLength, sizeof(void*));
+    sspPassthrough = C_CAST(PCSMI_SAS_SSP_PASSTHRU_BUFFER, calloc_aligned(sizeof(uint8_t), sspPassthroughBufferLength, sizeof(void*)));
     if (!sspPassthrough)
     {
         return MEMORY_FAILURE;
@@ -1574,7 +1574,7 @@ int csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
         return BAD_PARAMETER;
     }
     stpPassthroughBufferLength = sizeof(CSMI_SAS_STP_PASSTHRU_BUFFER) + stpInputs->dataLength;
-    stpPassthrough = (PCSMI_SAS_STP_PASSTHRU_BUFFER)calloc_aligned(sizeof(uint8_t), stpPassthroughBufferLength, sizeof(void*));
+    stpPassthrough = C_CAST(PCSMI_SAS_STP_PASSTHRU_BUFFER, calloc_aligned(sizeof(uint8_t), stpPassthroughBufferLength, sizeof(void*)));
     if (!stpPassthrough)
     {
         return MEMORY_FAILURE;
@@ -2121,7 +2121,7 @@ bool device_Supports_CSMI_With_RST(tDevice *device)
 int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device, uint8_t controllerNumber, uint8_t hostController, uint8_t pathidBus, uint8_t targetID, uint8_t lun)
 {
     int ret = SUCCESS;
-    device->os_info.csmiDeviceData = (ptrCsmiDeviceInfo)calloc(1, sizeof(csmiDeviceInfo));
+    device->os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, calloc(1, sizeof(csmiDeviceInfo)));
     if (device->os_info.csmiDeviceData)
     {
 #if defined (_WIN32)
@@ -2170,7 +2170,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                         {
                             //with the RAID info, now we can allocate and read the RAID config
                             uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) - 1 + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
-                            PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
+                            PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                             if (raidConfig)
                             {
                                 if (SUCCESS == csmi_Get_RAID_Config(device->os_info.csmiDeviceData->csmiDevHandle, 0, raidConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, device->deviceVerbosity))
@@ -2182,7 +2182,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                                             switch (raidConfig->Configuration.bDataType)
                                             {
                                             case CSMI_SAS_RAID_DATA_DRIVES:
-                                                if (strstr((const char*)raidConfig->Configuration.Drives[driveIter].bModel, device->drive_info.product_identification) && strstr((const char*)raidConfig->Configuration.Drives[driveIter].bSerialNumber, device->drive_info.serialNumber))
+                                                if (strstr(C_CAST(const char*, raidConfig->Configuration.Drives[driveIter].bModel), device->drive_info.product_identification) && strstr(C_CAST(const char*, raidConfig->Configuration.Drives[driveIter].bSerialNumber), device->drive_info.serialNumber))
                                                 {
                                                     //Found the match!!!
                                                     gotSASAddress = true;
@@ -2329,7 +2329,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                                         {
                                             //check the SN
                                             uint16_t serialNumberLength = M_Min(M_BytesTo2ByteValue(inqData[2], inqData[3]), 96) + 1;
-                                            char *serialNumber = (char*)calloc(serialNumberLength, sizeof(char));
+                                            char *serialNumber = C_CAST(char*, calloc(serialNumberLength, sizeof(char)));
                                             if (serialNumber)
                                             {
                                                 memcpy(serialNumber, &inqData[4], serialNumberLength - 1);//minus 1 to leave null terminator in tact at the end
@@ -2360,7 +2360,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
 
 #if defined (_WIN32) && defined (ENABLE_INTEL_RST)
             //Check if Intel Driver and if FWDL IOs are supported or not. version 14.8+
-            if (strncmp((const char*)driverInfo.Information.szName, "iaStor", 6) == 0)
+            if (strncmp(C_CAST(const char*, driverInfo.Information.szName), "iaStor", 6) == 0)
             {
                 //Intel driver, check for Additional IOCTLs by trying to read FWDL info
                 if (supports_Intel_Firmware_Download(device))
@@ -2492,10 +2492,10 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
 #endif
     {
         device->os_info.minimumAlignment = sizeof(void *);//setting alignment this way to be compatible across OSs since CSMI doesn't really dictate an alignment, but we should set something. - TJE
-        device->issue_io = (issue_io_func)send_CSMI_IO;
+        device->issue_io = C_CAST(issue_io_func, send_CSMI_IO);
         device->drive_info.drive_type = SCSI_DRIVE;//assume SCSI for now. Can be changed later
         device->drive_info.interface_type = RAID_INTERFACE;//TODO: Only set RAID interface for one that needs a function pointer and is in a RAID!!!
-        device->os_info.csmiDeviceData = (ptrCsmiDeviceInfo)calloc(1, sizeof(csmiDeviceInfo));
+        device->os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, calloc(1, sizeof(csmiDeviceInfo)));
         if (!device->os_info.csmiDeviceData)
         {
             return MEMORY_FAILURE;
@@ -2512,7 +2512,7 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
             device->os_info.csmiDeviceData->csmiMinorVersion = driverInfo.Information.usCSMIMinorRevision;
             //TODO: If this is an Intel RST driver, check the name and additionally check to see if it supports the Intel IOCTLs
             //NOTE: If it's an Intel NVMe, then we need to special case some of the below IOCTLs since it won't respond the same...
-            device->os_info.csmiDeviceData->securityAccess = get_CSMI_Security_Access((char*)driverInfo.Information.szName);//With this, we could add some intelligence to when commands are supported or not, at least under Windows, but mostly just a placeholder today. - TJE
+            device->os_info.csmiDeviceData->securityAccess = get_CSMI_Security_Access(C_CAST(char*, driverInfo.Information.szName));//With this, we could add some intelligence to when commands are supported or not, at least under Windows, but mostly just a placeholder today. - TJE
         }
         else
         {
@@ -2532,8 +2532,8 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
         if (intelNVMe)
         {
             device->drive_info.drive_type = NVME_DRIVE;
-            device->issue_io = (issue_io_func)send_Intel_NVM_SCSI_Command;
-            device->issue_nvme_io = (issue_io_func)send_Intel_NVM_Command;
+            device->issue_io = C_CAST(issue_io_func, send_Intel_NVM_SCSI_Command);
+            device->issue_nvme_io = C_CAST(issue_io_func, send_Intel_NVM_Command);
             device->os_info.csmiDeviceData->intelRSTSupport.intelRSTSupported = true;
             device->os_info.csmiDeviceData->intelRSTSupport.nvmePassthrough = true;
             device->os_info.csmiDeviceData->scsiAddressValid = true;
@@ -2583,7 +2583,7 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
                     {
                         //need to parse the RAID info to figure out how much memory to allocate and read the 
                         uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) - 1 + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
-                        PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
+                        PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                         if (!raidConfig)
                         {
                             return MEMORY_FAILURE;
@@ -2649,7 +2649,7 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
             }
 
             //Need to check for Intel IOCTL support on SATA drives so we can send the Intel FWDL ioctls instead of passthrough.
-            if (strncmp((const char*)driverInfo.Information.szName, "iaStorA", 7) == 0)
+            if (strncmp(C_CAST(const char*, driverInfo.Information.szName), "iaStorA", 7) == 0)
             {
                 //This is an intel driver.
                 //There is a way to get path-target-lun data from the SAS address if the other IOCTLs didn't work (which they don't seem to support this translation anyways)
@@ -2690,8 +2690,8 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
     TCHAR *paramRegKeyPath = TEXT("\\Parameters");
     size_t tdriverNameLength = (strlen(driverName) + 1) * sizeof(TCHAR);
     size_t registryKeyStringLength = _tcslen(baseRegKeyPath) + tdriverNameLength + _tcslen(paramRegKeyPath);
-    TCHAR *registryKey = (TCHAR*)calloc(registryKeyStringLength, sizeof(TCHAR));
-    TCHAR *tdriverName = (TCHAR*)calloc(tdriverNameLength, sizeof(TCHAR));
+    TCHAR *registryKey = C_CAST(TCHAR*, calloc(registryKeyStringLength, sizeof(TCHAR)));
+    TCHAR *tdriverName = C_CAST(TCHAR*, calloc(tdriverNameLength, sizeof(TCHAR)));
     if (tdriverName)
     {
         _stprintf_s(tdriverName, tdriverNameLength, TEXT("%hs"), driverName);
@@ -2845,7 +2845,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                             {
                                 //start with a length that adds no padding for extra drives, then reallocate to a new size when we know the new size
                                 uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES);
-                                PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
+                                PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                                 if (csmiRAIDConfig)
                                 {
                                     if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, csmiCountVerbosity))
@@ -3033,7 +3033,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                         csmiListVerbosity = d->deviceVerbosity;//this is to preserve any verbosity set when coming into this function
                         if (SUCCESS == csmi_Get_Driver_And_Controller_Data(fd, controllerNumber, &driverInfo, &controllerConfig, csmiListVerbosity))
                         {
-                            csmiAccess = get_CSMI_Security_Access((char*)driverInfo.Information.szName);
+                            csmiAccess = get_CSMI_Security_Access(C_CAST(char*, driverInfo.Information.szName));
                             switch (csmiAccess)
                             {
                             case CSMI_SECURITY_ACCESS_NONE:
@@ -3063,7 +3063,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                 csmi_Get_RAID_Info(fd, controllerNumber, &csmiRAIDInfo, csmiListVerbosity);
                                 csmi_Get_Phy_Info(fd, controllerNumber, &phyInfo, csmiListVerbosity);
 #if defined (_WIN32)
-                                if (strncmp((const char*)driverInfo.Information.szName, "iaStor", 6) == 0)
+                                if (strncmp(C_CAST(const char*, driverInfo.Information.szName), "iaStor", 6) == 0)
                                 {
                                     isIntelDriver = true;
                                 }
@@ -3073,7 +3073,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                 {
                                     //start with a length that adds no padding for extra drives, then reallocate to a new size when we know the new size
                                     uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES);
-                                    PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
+                                    PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                                     if (csmiRAIDConfig)
                                     {
                                         if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, csmiListVerbosity))
@@ -3099,7 +3099,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                         //Need to setup a handle and try get_Device to see if it works.
                                                         //NOTE: Need to know if on intel AND if model contains "NVMe" because we need to setup that differently to discover it properly
 #if defined (_WIN32)
-                                                        if (isIntelDriver && strncmp((const char*)csmiRAIDConfig->Configuration.Drives[iter].bModel, "NVMe", 4) == 0)
+                                                        if (isIntelDriver && strncmp(C_CAST(const char*, csmiRAIDConfig->Configuration.Drives[iter].bModel), "NVMe", 4) == 0)
                                                         {
                                                             //This should only happen on Intel Drivers using SRT
                                                             //The SAS Address holds port-target-lun data in it. NOTE: This is correct for this version of the driver, but this is not necessarily true for previous RST drivers according to documentation received from Intel. -TJE

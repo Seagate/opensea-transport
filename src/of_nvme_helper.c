@@ -28,16 +28,16 @@
 bool supports_OFNVME_IO(HANDLE deviceHandle)
 {
     bool supported = false;
-    uint32_t bufferSize = sizeof(NVME_PASS_THROUGH_IOCTL) + 4096;
-    uint8_t *passthroughBuffer = (uint8_t*)calloc_aligned(bufferSize, sizeof(uint8_t), sizeof(void*));
+    uint32_t bufferSize = sizeof(NVME_PASS_THROUGH_IOCTL) + UINT32_C(4096);
+    uint8_t *passthroughBuffer = C_CAST(uint8_t*, calloc_aligned(bufferSize, sizeof(uint8_t), sizeof(void*)));
     if (passthroughBuffer)
     {
         seatimer_t commandTimer;
         BOOL success = TRUE;
-        PNVME_PASS_THROUGH_IOCTL ioctl = (PNVME_PASS_THROUGH_IOCTL)passthroughBuffer;
+        PNVME_PASS_THROUGH_IOCTL ioctl = C_CAST(PNVME_PASS_THROUGH_IOCTL, passthroughBuffer);
         ioctl->SrbIoCtrl.HeaderLength = sizeof(SRB_IO_CONTROL);
         memcpy(ioctl->SrbIoCtrl.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
-        ioctl->SrbIoCtrl.ControlCode = (ULONG)NVME_PASS_THROUGH_SRB_IO_CODE;
+        ioctl->SrbIoCtrl.ControlCode = C_CAST(ULONG, NVME_PASS_THROUGH_SRB_IO_CODE);
         ioctl->SrbIoCtrl.Length = bufferSize - sizeof(SRB_IO_CONTROL);
         ioctl->SrbIoCtrl.Timeout = 15;
 
@@ -107,7 +107,7 @@ int send_OFNVME_Reset(tDevice * device)
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
     memcpy(ofnvmeReset.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
-    ofnvmeReset.ControlCode = (ULONG)NVME_RESET_DEVICE;
+    ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_RESET_DEVICE);
     ofnvmeReset.Length = sizeof(SRB_IO_CONTROL);
 
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
@@ -166,7 +166,7 @@ int send_OFNVME_Add_Namespace(tDevice * device)
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
     memcpy(ofnvmeReset.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
-    ofnvmeReset.ControlCode = (ULONG)NVME_HOT_ADD_NAMESPACE;
+    ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_HOT_ADD_NAMESPACE);
     ofnvmeReset.Length = sizeof(SRB_IO_CONTROL);
 
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
@@ -225,7 +225,7 @@ int send_OFNVME_Remove_Namespace(tDevice * device)
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
     memcpy(ofnvmeReset.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
-    ofnvmeReset.ControlCode = (ULONG)NVME_HOT_REMOVE_NAMESPACE;
+    ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_HOT_REMOVE_NAMESPACE);
     ofnvmeReset.Length = sizeof(SRB_IO_CONTROL);
 
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
@@ -281,15 +281,15 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
     int ret = OS_PASSTHROUGH_FAILURE;
 
     uint32_t bufferSize = sizeof(NVME_PASS_THROUGH_IOCTL) + nvmeIoCtx->dataSize;//TODO: add metadata. This will be returned first in the data buffer if there is any
-    uint8_t *passthroughBuffer = (uint8_t*)calloc_aligned(bufferSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment);
+    uint8_t *passthroughBuffer = C_CAST(uint8_t*, calloc_aligned(bufferSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
     if (passthroughBuffer)
     {
         seatimer_t commandTimer;
         BOOL success = TRUE;
-        PNVME_PASS_THROUGH_IOCTL ioctl = (PNVME_PASS_THROUGH_IOCTL)passthroughBuffer;
+        PNVME_PASS_THROUGH_IOCTL ioctl = C_CAST(PNVME_PASS_THROUGH_IOCTL, passthroughBuffer);
         ioctl->SrbIoCtrl.HeaderLength = sizeof(SRB_IO_CONTROL);
         memcpy(ioctl->SrbIoCtrl.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
-        ioctl->SrbIoCtrl.ControlCode = (ULONG)NVME_PASS_THROUGH_SRB_IO_CODE;
+        ioctl->SrbIoCtrl.ControlCode = C_CAST(ULONG, NVME_PASS_THROUGH_SRB_IO_CODE);
         ioctl->SrbIoCtrl.Length = bufferSize - sizeof(SRB_IO_CONTROL);
         ioctl->SrbIoCtrl.Timeout = nvmeIoCtx->timeout;
 
