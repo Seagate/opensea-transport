@@ -322,11 +322,13 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
                 ULONG copyOffset = 0;
                 if (scsicmRet == CR_SUCCESS && scsiIdListLen > 0 && scsiListBuff)
                 {
+                    cmRet = CR_SUCCESS;         //set the status as SUCCESS, as we have list of SCSI drives to use later
                     memcpy(&listBuffer[copyOffset], scsiListBuff, scsiIdListLen);
                     copyOffset += scsiIdListLen - 1;
                 }
                 if (usbcmRet == CR_SUCCESS && usbIdListLen > 0 && usbListBuff)
                 {
+                    cmRet = CR_SUCCESS;         //set the status as SUCCESS, as we have list of USB drives to use later
                     memcpy(&listBuffer[copyOffset], usbListBuff, usbIdListLen);
                     copyOffset += usbIdListLen - 1;
                 }
