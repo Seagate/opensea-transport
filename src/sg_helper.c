@@ -1334,6 +1334,13 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
                 case QUEUE_FULL:
                     printf(" - Queue Full\n");
                     break;
+#if defined (TASK_ABORTED)
+                case TASK_ABORTED:
+#else
+                case 0x20:
+#endif
+                    printf(" - Task Aborted\n");
+                    break;
                 default:
                     printf(" - Unknown Masked Status\n");
                     break;
@@ -2162,6 +2169,7 @@ int os_Unlock_Device(tDevice *device)
 int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
 {
     //TODO: Complete this stub when this is figured out - TJE
+    //IOCTL BLKRRPART from linux/fs.h???
     return NOT_SUPPORTED;
 }
 
