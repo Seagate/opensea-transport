@@ -458,7 +458,7 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         bool localAlignedBuffer = false, localSenseBuffer = false;
         EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET	*srp;//scsi request packet
 
-        srp = (EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *) calloc_aligned(1, sizeof(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+        srp = C_CAST(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *, calloc_aligned(1, sizeof(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
 
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
@@ -767,7 +767,7 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
         bool localAlignedBuffer = false, localSenseBuffer = false;
         EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET	*srp;// Extended scsi request packet
 
-        srp = (EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *) calloc_aligned(1, sizeof(EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+        srp = C_CAST(EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *, calloc_aligned(1, sizeof(EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
 
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
@@ -1032,7 +1032,7 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         EFI_ATA_COMMAND_BLOCK *ataCommand = C_CAST(EFI_ATA_COMMAND_BLOCK*, calloc_aligned(1, sizeof(EFI_ATA_COMMAND_BLOCK), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
         EFI_ATA_STATUS_BLOCK *ataStatus = C_CAST(EFI_ATA_STATUS_BLOCK*, calloc_aligned(1, sizeof(EFI_ATA_STATUS_BLOCK), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
 
-        ataPacket = (EFI_ATA_PASS_THRU_COMMAND_PACKET *) calloc_aligned(1, sizeof(EFI_ATA_PASS_THRU_COMMAND_PACKET), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1);
+        ataPacket = C_CAST(EFI_ATA_PASS_THRU_COMMAND_PACKET *, calloc_aligned(1, sizeof(EFI_ATA_PASS_THRU_COMMAND_PACKET), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
 
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);

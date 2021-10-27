@@ -1085,7 +1085,7 @@ int get_Device(const char *filename, tDevice *device)
                      perror("nvme_ioctl_id");
                      return ret;
                 }
-                device->drive_info.lunOrNSID = (uint32_t) ret;
+                device->drive_info.lunOrNSID = C_CAST(uint32_t, ret);
                 #endif
                 ret = fill_In_NVMe_Device_Info(device);
             }
