@@ -203,7 +203,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
             bool bsg = false;
             char incomingHandleClassPath[PATH_MAX] = { 0 };
             //char *incomingClassName = NULL;
-            common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class");
+            common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
             if (is_Block_Device_Handle(handle))
             {
                 common_String_Concat(incomingHandleClassPath, PATH_MAX, "block/");
