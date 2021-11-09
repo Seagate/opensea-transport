@@ -108,6 +108,15 @@ static void print_Intel_SRB_Status(uint32_t srbStatus)
     case INTEL_SRB_STATUS_LINK_DOWN:
         printf("Link Down\n");
         break;
+    case INTEL_SRB_STATUS_INSUFFICIENT_RESOURCES:
+        printf("Insufficient Resources\n");
+        break;
+    case INTEL_SRB_STATUS_THROTTLED_REQUEST:
+        printf("Throttled Request\n");
+        break;
+    case INTEL_SRB_STATUS_INVALID_PARAMETER:
+        printf("Invalid Parameter\n");
+        break;
     default:
         printf("Unknown SRB Status - %" PRIX32 "\n", srbStatus);
         break;
@@ -126,6 +135,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
         if (raidFirmwareRequest)
         {
             seatimer_t commandTimer;
+            HANDLE handleToUse = device->os_info.fd;//start with this in case of CSMI RAID
             //fill in SRB_IO_HEADER first
             raidFirmwareRequest->Header.HeaderLength = sizeof(SRB_IO_CONTROL);
             memcpy(raidFirmwareRequest->Header.Signature, INTEL_RAID_FW_SIGNATURE, 8);
@@ -166,8 +176,10 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
             }
             else
             {
+                handleToUse = device->os_info.scsiSRBHandle;
                 //use Windows pathId
                 raidFirmwareRequest->Request.PathId = device->os_info.scsi_addr.PathId;
+                printf("PathId: %" PRIu8 "\n", device->os_info.scsi_addr.PathId);
                 //TODO: may need to add in remaining scsi address in the future, but for now these other fields are reserved
             }
             //setup the firmware request
@@ -182,6 +194,12 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                 raidFirmwareRequest->Request.FwRequestBlock.DataBufferLength = dataRequestLength;
                 memcpy(&raidFirmwareRequest->ioctlBuffer, ptrDataRequest, dataRequestLength);
             }
+
+            if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+            {
+                printf("\n====Sending Intel Raid Firmware Request====\n");
+            }
+
             //send the command
             DWORD bytesReturned = 0;
             OVERLAPPED overlappedStruct;
@@ -193,7 +211,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                 return OS_PASSTHROUGH_FAILURE;
             }
             start_Timer(&commandTimer);
-            BOOL success = DeviceIoControl(device->os_info.fd,
+            BOOL success = DeviceIoControl(handleToUse,
                 IOCTL_SCSI_MINIPORT,
                 raidFirmwareRequest,
                 C_CAST(DWORD, allocationSize),
@@ -204,7 +222,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
             device->os_info.last_error = GetLastError();
             if (ERROR_IO_PENDING == device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
             {
-                success = GetOverlappedResult(device->os_info.fd, &overlappedStruct, &bytesReturned, TRUE);
+                success = GetOverlappedResult(handleToUse, &overlappedStruct, &bytesReturned, TRUE);
             }
             else if (device->os_info.last_error != ERROR_SUCCESS)
             {
@@ -224,15 +242,24 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
             }
             else
             {
-                ret = SUCCESS;
-                //should have completion data here
-                if (returnCode)
+                ret = SUCCESS;//IO sent successfully in the system...BUT we need to check the SRB return code to determine if the command went through to the device
+                switch (raidFirmwareRequest->Header.ReturnCode)
                 {
-                    *returnCode = raidFirmwareRequest->Header.ReturnCode;
-                }
-                if (readFirmwareInfo && ptrDataRequest)
-                {
-                    memcpy(ptrDataRequest, C_CAST(uint8_t*, raidFirmwareRequest) + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, dataRequestLength);
+                case INTEL_SRB_STATUS_SUCCESS:
+                    //should have completion data here
+                    if (returnCode)
+                    {
+                        *returnCode = raidFirmwareRequest->Header.ReturnCode;
+                    }
+                    if (readFirmwareInfo && ptrDataRequest)
+                    {
+                        memcpy(ptrDataRequest, C_CAST(uint8_t*, raidFirmwareRequest) + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, dataRequestLength);
+                    }
+                    break;
+                    //TODO: Handle more error codes? Maybe they will be able to give better or more meaningful status back up to the top layers
+                default:
+                    ret = OS_PASSTHROUGH_FAILURE;
+                    break;
                 }
             }
             safe_Free_aligned(raidFirmwareRequest)
@@ -619,7 +646,7 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             nvmeIoCtx->device->os_info.last_error = GetLastError();
             if (ERROR_IO_PENDING == nvmeIoCtx->device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
             {
-                success = GetOverlappedResult(nvmeIoCtx->device->os_info.fd, &overlappedStruct, &bytesReturned, TRUE);
+                success = GetOverlappedResult(handleToUse, &overlappedStruct, &bytesReturned, TRUE);
             }
             else if (nvmeIoCtx->device->os_info.last_error != ERROR_SUCCESS)
             {
@@ -635,22 +662,31 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             else
             {
                 ret = SUCCESS;
-                //TODO: Handle unsupported commands error codes and others that don't fill in the completion data
-                //      This may not come into this SUCCESS case and instead may need handling elsewhere.
-                //if(nvmPassthroughCommand->Header.ReturnCode)
-                if (nvmeIoCtx->commandDirection == XFER_DATA_IN && nvmeIoCtx->ptrData)
+                switch (nvmPassthroughCommand->Header.ReturnCode)
                 {
-                    memcpy(nvmeIoCtx->ptrData, nvmPassthroughCommand->data, nvmeIoCtx->dataSize);
+                case INTEL_SRB_STATUS_SUCCESS:
+                    //TODO: Handle unsupported commands error codes and others that don't fill in the completion data
+                    //      This may not come into this SUCCESS case and instead may need handling elsewhere.
+                    //if(nvmPassthroughCommand->Header.ReturnCode)
+                    if (nvmeIoCtx->commandDirection == XFER_DATA_IN && nvmeIoCtx->ptrData)
+                    {
+                        memcpy(nvmeIoCtx->ptrData, nvmPassthroughCommand->data, nvmeIoCtx->dataSize);
+                    }
+                    //copy completion data
+                    nvmeIoCtx->commandCompletionData.dw0Valid = true;
+                    nvmeIoCtx->commandCompletionData.dw1Valid = true;
+                    nvmeIoCtx->commandCompletionData.dw2Valid = true;
+                    nvmeIoCtx->commandCompletionData.dw3Valid = true;
+                    nvmeIoCtx->commandCompletionData.commandSpecific = nvmPassthroughCommand->Parameters.Completion.completion0;
+                    nvmeIoCtx->commandCompletionData.dw1Reserved = nvmPassthroughCommand->Parameters.Completion.completion1;
+                    nvmeIoCtx->commandCompletionData.sqIDandHeadPtr = nvmPassthroughCommand->Parameters.Completion.completion2;
+                    nvmeIoCtx->commandCompletionData.statusAndCID = nvmPassthroughCommand->Parameters.Completion.completion3;
+                    break;
+                    //TODO: Handle more error codes? Maybe they will be able to give better or more meaningful status back up to the top layers
+                default:
+                    ret = OS_PASSTHROUGH_FAILURE;
+                    break;
                 }
-                //copy completion data
-                nvmeIoCtx->commandCompletionData.dw0Valid = true;
-                nvmeIoCtx->commandCompletionData.dw1Valid = true;
-                nvmeIoCtx->commandCompletionData.dw2Valid = true;
-                nvmeIoCtx->commandCompletionData.dw3Valid = true;
-                nvmeIoCtx->commandCompletionData.commandSpecific = nvmPassthroughCommand->Parameters.Completion.completion0;
-                nvmeIoCtx->commandCompletionData.dw1Reserved = nvmPassthroughCommand->Parameters.Completion.completion1;
-                nvmeIoCtx->commandCompletionData.sqIDandHeadPtr = nvmPassthroughCommand->Parameters.Completion.completion2;
-                nvmeIoCtx->commandCompletionData.statusAndCID = nvmPassthroughCommand->Parameters.Completion.completion3;
             }
             if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
             {
