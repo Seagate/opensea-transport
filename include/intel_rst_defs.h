@@ -426,6 +426,29 @@ CTL_CODE(0xF000, 0xE00, METHOD_BUFFERED, FILE_ANY_ACCESS)
     #define INTEL_SRB_STATUS_THROTTLED_REQUEST        0x27
     #define INTEL_SRB_STATUS_INVALID_PARAMETER        0x28
 
+    //TODO: Are these the SRB status's for firmware, similar to the miniport in Windows to use when doing firmware updates instead???-TJE
+#define INTEL_FIRMWARE_STATUS_SUCCESS                             0x0
+#define INTEL_FIRMWARE_STATUS_ERROR                               0x1
+#define INTEL_FIRMWARE_STATUS_ILLEGAL_REQUEST                     0x2
+#define INTEL_FIRMWARE_STATUS_INVALID_PARAMETER                   0x3
+#define INTEL_FIRMWARE_STATUS_INPUT_BUFFER_TOO_BIG                0x4
+#define INTEL_FIRMWARE_STATUS_OUTPUT_BUFFER_TOO_SMALL             0x5
+#define INTEL_FIRMWARE_STATUS_INVALID_SLOT                        0x6
+#define INTEL_FIRMWARE_STATUS_INVALID_IMAGE                       0x7
+#define INTEL_FIRMWARE_STATUS_CONTROLLER_ERROR                    0x10
+#define INTEL_FIRMWARE_STATUS_POWER_CYCLE_REQUIRED                0x20
+#define INTEL_FIRMWARE_STATUS_DEVICE_ERROR                        0x40
+#define INTEL_FIRMWARE_STATUS_INTERFACE_CRC_ERROR                 0x80
+#define INTEL_FIRMWARE_STATUS_UNCORRECTABLE_DATA_ERROR            0x81
+#define INTEL_FIRMWARE_STATUS_MEDIA_CHANGE                        0x82
+#define INTEL_FIRMWARE_STATUS_ID_NOT_FOUND                        0x83
+#define INTEL_FIRMWARE_STATUS_MEDIA_CHANGE_REQUEST                0x84
+#define INTEL_FIRMWARE_STATUS_COMMAND_ABORT                       0x85
+#define INTEL_FIRMWARE_STATUS_END_OF_MEDIA                        0x86
+#define INTEL_FIRMWARE_STATUS_ILLEGAL_LENGTH                      0x87
+
+
+
 #if defined (__cplusplus)
 }
 #endif
