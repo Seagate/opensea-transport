@@ -179,7 +179,6 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                 handleToUse = device->os_info.scsiSRBHandle;
                 //use Windows pathId
                 raidFirmwareRequest->Request.PathId = device->os_info.scsi_addr.PathId;
-                printf("PathId: %" PRIu8 "\n", device->os_info.scsi_addr.PathId);
                 //TODO: may need to add in remaining scsi address in the future, but for now these other fields are reserved
             }
             //setup the firmware request
