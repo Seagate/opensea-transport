@@ -124,6 +124,74 @@ static void print_Intel_SRB_Status(uint32_t srbStatus)
     return;
 }
 
+static void printf_Intel_Firmware_SRB_Status(uint32_t srbStatus)
+{
+    switch (srbStatus)
+    {
+    case INTEL_FIRMWARE_STATUS_SUCCESS:
+        printf("Success\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_ERROR:
+        printf("Error\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_ILLEGAL_REQUEST:
+        printf("Illegal Request\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_INVALID_PARAMETER:
+        printf("Invalid Parameter\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_INPUT_BUFFER_TOO_BIG:
+        printf("Input Buffer Too Big\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_OUTPUT_BUFFER_TOO_SMALL:
+        printf("Output Buffer Too Small\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_INVALID_SLOT:
+        printf("Invalid Slot\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_INVALID_IMAGE:
+        printf("Invalid Image\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_CONTROLLER_ERROR:
+        printf("Controller Error\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_POWER_CYCLE_REQUIRED:
+        printf("Power Cycle Required\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_DEVICE_ERROR:
+        printf("Device Error\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_INTERFACE_CRC_ERROR:
+        printf("Interface CRC Error\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_UNCORRECTABLE_DATA_ERROR:
+        printf("Uncorrectable Data Error\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_MEDIA_CHANGE:
+        printf("Media Change\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_ID_NOT_FOUND:
+        printf("ID Not Found\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_MEDIA_CHANGE_REQUEST:
+        printf("Media Change Request\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_COMMAND_ABORT:
+        printf("Command Abort\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_END_OF_MEDIA:
+        printf("End of Media\n");
+        break;
+    case INTEL_FIRMWARE_STATUS_ILLEGAL_LENGTH:
+        printf("Illegal Length\n");
+        break;
+    default:
+        printf("Unknown SRB Status - %" PRIX32 "\n", srbStatus);
+        break;
+    }
+    return;
+}
+
 //generic function to handle taking in the various RAID FW Requests to keep code from being dumplicated
 static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t dataRequestLength, uint32_t timeoutSeconds, uint32_t intelFirmwareFunction, uint32_t intelFirmwareFlags, bool readFirmwareInfo, uint32_t *returnCode)
 {
@@ -233,7 +301,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
             if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
             {
                 print_Windows_Error_To_Screen(device->os_info.last_error);
-                print_Intel_SRB_Status(raidFirmwareRequest->Header.ReturnCode);
+                printf_Intel_Firmware_SRB_Status(raidFirmwareRequest->Header.ReturnCode);
             }
             if (!success)
             {
@@ -241,21 +309,39 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
             }
             else
             {
+                if (returnCode)
+                {
+                    *returnCode = raidFirmwareRequest->Header.ReturnCode;
+                }
                 ret = SUCCESS;//IO sent successfully in the system...BUT we need to check the SRB return code to determine if the command went through to the device
                 switch (raidFirmwareRequest->Header.ReturnCode)
                 {
-                case INTEL_SRB_STATUS_SUCCESS:
+                case INTEL_FIRMWARE_STATUS_SUCCESS:
                     //should have completion data here
-                    if (returnCode)
-                    {
-                        *returnCode = raidFirmwareRequest->Header.ReturnCode;
-                    }
                     if (readFirmwareInfo && ptrDataRequest)
                     {
                         memcpy(ptrDataRequest, C_CAST(uint8_t*, raidFirmwareRequest) + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, dataRequestLength);
                     }
                     break;
-                    //TODO: Handle more error codes? Maybe they will be able to give better or more meaningful status back up to the top layers
+                    //TODO: Some of these we can dummy up a response for ib ATA, SCSI, and NVMe.
+                case INTEL_FIRMWARE_STATUS_ERROR:
+                case INTEL_FIRMWARE_STATUS_ILLEGAL_REQUEST:
+                case INTEL_FIRMWARE_STATUS_INVALID_PARAMETER:
+                case INTEL_FIRMWARE_STATUS_INPUT_BUFFER_TOO_BIG:
+                case INTEL_FIRMWARE_STATUS_OUTPUT_BUFFER_TOO_SMALL:
+                case INTEL_FIRMWARE_STATUS_INVALID_SLOT:
+                case INTEL_FIRMWARE_STATUS_INVALID_IMAGE:
+                case INTEL_FIRMWARE_STATUS_CONTROLLER_ERROR:
+                case INTEL_FIRMWARE_STATUS_POWER_CYCLE_REQUIRED:
+                case INTEL_FIRMWARE_STATUS_DEVICE_ERROR:
+                case INTEL_FIRMWARE_STATUS_INTERFACE_CRC_ERROR:
+                case INTEL_FIRMWARE_STATUS_UNCORRECTABLE_DATA_ERROR:
+                case INTEL_FIRMWARE_STATUS_MEDIA_CHANGE:
+                case INTEL_FIRMWARE_STATUS_ID_NOT_FOUND:
+                case INTEL_FIRMWARE_STATUS_MEDIA_CHANGE_REQUEST:
+                case INTEL_FIRMWARE_STATUS_COMMAND_ABORT:
+                case INTEL_FIRMWARE_STATUS_END_OF_MEDIA:
+                case INTEL_FIRMWARE_STATUS_ILLEGAL_LENGTH:
                 default:
                     ret = OS_PASSTHROUGH_FAILURE;
                     break;
