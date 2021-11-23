@@ -342,6 +342,8 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                 case INTEL_FIRMWARE_STATUS_COMMAND_ABORT:
                 case INTEL_FIRMWARE_STATUS_END_OF_MEDIA:
                 case INTEL_FIRMWARE_STATUS_ILLEGAL_LENGTH:
+                    ret = FAILURE;
+                    break;
                 default:
                     ret = OS_PASSTHROUGH_FAILURE;
                     break;
@@ -799,6 +801,73 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
+#define DUMMY_NVME_STATUS(sct, sc) \
+    C_CAST(uint32_t, (sct << 25) | (sc << 17))
+
+//TODO: This may need adjusting with bus trace help in the future, but for now this is a best guess from what info we have.-TJE
+static void dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, uint32_t returnCode)
+{
+    switch (returnCode)
+    {
+    case INTEL_FIRMWARE_STATUS_SUCCESS:
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 0);
+        break;
+    case INTEL_FIRMWARE_STATUS_ERROR:
+        break;
+    case INTEL_FIRMWARE_STATUS_ILLEGAL_REQUEST: //overlapping range?
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 1);
+        break;
+    case INTEL_FIRMWARE_STATUS_INVALID_PARAMETER: //overlapping range?
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 2);
+        break;
+    case INTEL_FIRMWARE_STATUS_INPUT_BUFFER_TOO_BIG:
+        break;
+    case INTEL_FIRMWARE_STATUS_OUTPUT_BUFFER_TOO_SMALL:
+        break;
+    case INTEL_FIRMWARE_STATUS_INVALID_SLOT:
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = DUMMY_NVME_STATUS(NVME_SCT_COMMAND_SPECIFIC_STATUS, 6);
+        break;
+    case INTEL_FIRMWARE_STATUS_INVALID_IMAGE:
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = DUMMY_NVME_STATUS(NVME_SCT_COMMAND_SPECIFIC_STATUS, 7);;
+        break;
+    case INTEL_FIRMWARE_STATUS_ILLEGAL_LENGTH://overlapping range???
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = DUMMY_NVME_STATUS(NVME_SCT_COMMAND_SPECIFIC_STATUS, 14);
+        break;
+    case INTEL_FIRMWARE_STATUS_DEVICE_ERROR:
+    case INTEL_FIRMWARE_STATUS_CONTROLLER_ERROR:
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 6);//internal error
+        break;
+    case INTEL_FIRMWARE_STATUS_COMMAND_ABORT:
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 7);//command abort requested
+        break;
+    case INTEL_FIRMWARE_STATUS_ID_NOT_FOUND:
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 0x80);//lba out of range
+        break;
+    case INTEL_FIRMWARE_STATUS_INTERFACE_CRC_ERROR:
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 4);//data transfer error
+        break;
+    case INTEL_FIRMWARE_STATUS_UNCORRECTABLE_DATA_ERROR:
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = DUMMY_NVME_STATUS(NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS, 0x81);//unrecovered read error...not sure what else to set if this happens-TJE
+        break;
+    case INTEL_FIRMWARE_STATUS_POWER_CYCLE_REQUIRED:
+    case INTEL_FIRMWARE_STATUS_MEDIA_CHANGE:
+    case INTEL_FIRMWARE_STATUS_MEDIA_CHANGE_REQUEST:
+    case INTEL_FIRMWARE_STATUS_END_OF_MEDIA:
+    default:
+        break;
+    }
+}
 
 int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx)
 {
@@ -823,7 +892,8 @@ int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx)
                 }
                 //send download command API
                 ret = internal_Intel_FWDL_Function_Download(nvmeIoCtx->device, flags, &returnCode, nvmeIoCtx->ptrData, nvmeIoCtx->cmd.adminCmd.cdw10, nvmeIoCtx->cmd.adminCmd.cdw11, firmwareSlot, nvmeIoCtx->timeout);
-                //TODO: Dummy up output data based on return code.
+                //Dummy up output data based on return code.
+                dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
             }
             else if (nvmeIoCtx->cmd.adminCmd.opcode == NVME_ADMIN_CMD_ACTIVATE_FW)
             {
@@ -837,7 +907,8 @@ int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx)
                 firmwareSlot = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
                 //send activate command API
                 ret = internal_Intel_FWDL_Function_Activate(nvmeIoCtx->device, flags, &returnCode, firmwareSlot, nvmeIoCtx->timeout);
-                //TODO: Dummy up output data based on return code.
+                //Dummy up output data based on return code.
+                dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
             }
             else
             {
