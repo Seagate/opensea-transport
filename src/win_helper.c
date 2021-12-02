@@ -2005,135 +2005,1124 @@ static int win_Get_SCSI_Address(HANDLE deviceHandle, PSCSI_ADDRESS scsiAddress)
     return ret;
 }
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
 #if WINVER >= SEA_WIN32_WINNT_WINBLUE
-static int send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeCmdCtx *nvmeIoCtx)
+
+static void print_Firmware_Miniport_SRB_Status(ULONG returnCode)
+{
+    switch (returnCode)
+    {
+    case FIRMWARE_STATUS_SUCCESS:
+        printf("Success\n");
+        break;
+    case FIRMWARE_STATUS_INVALID_SLOT:
+        printf("Invalid Slot\n");
+        break;
+    case FIRMWARE_STATUS_INVALID_IMAGE:
+        printf("Invalid Image\n");
+        break;
+    case FIRMWARE_STATUS_ERROR:
+        printf("Error\n");
+        break;
+    case FIRMWARE_STATUS_ILLEGAL_REQUEST:
+        printf("Illegal Request\n");
+        break;
+    case FIRMWARE_STATUS_INVALID_PARAMETER:
+        printf("Invalid Parameter\n");
+        break;
+    case FIRMWARE_STATUS_INPUT_BUFFER_TOO_BIG:
+        printf("Input Buffer Too Big\n");
+        break;
+    case FIRMWARE_STATUS_OUTPUT_BUFFER_TOO_SMALL:
+        printf("Output Buffer Too Small\n");
+        break;
+    case FIRMWARE_STATUS_CONTROLLER_ERROR:
+        printf("Controller Error\n");
+        break;
+    case FIRMWARE_STATUS_POWER_CYCLE_REQUIRED:
+        printf("Power Cycle Required\n");
+        break;
+    case FIRMWARE_STATUS_DEVICE_ERROR:
+        printf("Device Error\n");
+        break;
+#if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
+    case FIRMWARE_STATUS_INTERFACE_CRC_ERROR:
+        printf("Interface CRC Error\n");
+        break;
+    case FIRMWARE_STATUS_UNCORRECTABLE_DATA_ERROR:
+        printf("Uncorrectable Data Error\n");
+        break;
+    case FIRMWARE_STATUS_MEDIA_CHANGE:
+        printf("Media Change\n");
+        break;
+    case FIRMWARE_STATUS_ID_NOT_FOUND:
+        printf("ID Not Found\n");
+        break;
+    case FIRMWARE_STATUS_MEDIA_CHANGE_REQUEST:
+        printf("Media Change Request\n");
+        break;
+    case FIRMWARE_STATUS_COMMAND_ABORT:
+        printf("Command Abort\n");
+        break;
+    case FIRMWARE_STATUS_END_OF_MEDIA:
+        printf("End of Media\n");
+        break;
+    case FIRMWARE_STATUS_ILLEGAL_LENGTH:
+        printf("Illegal Length\n");
+        break;
+#endif
+    default:
+        printf("Unknown Firmware SRB Status: 0x%" PRIX32 "\n", C_CAST(uint32_t, returnCode));
+        break;
+    }
+    return;
+}
+
+//this in an internal function so that it can be reused for reading firmware slot info, sending a download command, or sending an activate command.
+//The inputs
+static int send_Win_Firmware_Miniport_Command(HANDLE deviceHandle, eVerbosityLevels verboseLevel, void* ptrDataRequest, uint32_t dataRequestLength, uint32_t timeoutSeconds, uint32_t firmwareFunction, uint32_t firmwareFlags, uint32_t* returnCode, unsigned int* lastError, uint64_t *timeNanoseconds)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
-    PSRB_IO_CONTROL         srbControl;
-    PFIRMWARE_REQUEST_BLOCK firmwareRequest;
+    PSRB_IO_CONTROL         srbControl = NULL;
+    PFIRMWARE_REQUEST_BLOCK firmwareRequest = NULL;
     PUCHAR                  buffer = NULL;
-    ULONG                   bufferSize;
-    ULONG                   firmwareStructureOffset;
-    PSTORAGE_FIRMWARE_ACTIVATE  firmwareActivate;
-#if defined (_DEBUG)
-    printf("%s: -->\n", __FUNCTION__);
-    printf("%s: Slot %" PRIu8 "\n", __FUNCTION__, C_CAST(uint8_t, M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0)));
-#endif
+    ULONG                   bufferSize = sizeof(SRB_IO_CONTROL) + sizeof(FIRMWARE_REQUEST_BLOCK);// ((sizeof(SRB_IO_CONTROL) + sizeof(FIRMWARE_REQUEST_BLOCK) - 1) / sizeof(PVOID) + 1) * sizeof(PVOID);//Right from MSFT example toi align the data buffer on pointer alignment - TJE
+    ULONG                   firmwareRequestDataOffset = bufferSize;//This must be before we add any additional length to buffersize since this is where data will be copied to for the request - TJE
 
-    //
-    // The STORAGE_FIRMWARE_INFO is located after SRB_IO_CONTROL and FIRMWARE_RESQUEST_BLOCK
-    //
-    firmwareStructureOffset = ((sizeof(SRB_IO_CONTROL) + \
-        sizeof(FIRMWARE_REQUEST_BLOCK) - 1) / sizeof(PVOID) + 1) * sizeof(PVOID);
-    bufferSize = 4096; //Since Panther Max xfer is 4k
-    bufferSize += firmwareStructureOffset;
-    bufferSize += FIELD_OFFSET(STORAGE_FIRMWARE_DOWNLOAD, ImageBuffer);
-
-    buffer = C_CAST(PUCHAR, calloc_aligned(bufferSize, sizeof(UCHAR), nvmeIoCtx->device->os_info.minimumAlignment));
+    if (!ptrDataRequest || dataRequestLength == 0)
+    {
+        return BAD_PARAMETER;
+    }
+    if (timeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+    {
+        return OS_TIMEOUT_TOO_LARGE;
+    }
+    bufferSize += dataRequestLength;//Add the length of the passed in request that will be issued.
+    buffer = C_CAST(PUCHAR, calloc_aligned(bufferSize, sizeof(UCHAR), sizeof(PVOID)));//Most of the info I can find seems to want this pointer aligned, so this should work - TJE
     if (!buffer)
     {
         return MEMORY_FAILURE;
     }
 
+    if (VERBOSITY_COMMAND_NAMES <= verboseLevel)
+    {
+        printf("\n====Sending SCSI Miniport Firmware Request====\n");
+    }
+
+    //First fill out the srb header and firmware request block since these are common for all requests.
     srbControl = C_CAST(PSRB_IO_CONTROL, buffer);
     srbControl->HeaderLength = sizeof(SRB_IO_CONTROL);
-    srbControl->ControlCode = IOCTL_SCSI_MINIPORT_FIRMWARE;
-    RtlMoveMemory(srbControl->Signature, IOCTL_MINIPORT_SIGNATURE_FIRMWARE, 8);
-    if (nvmeIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+    memcpy(srbControl->Signature, IOCTL_MINIPORT_SIGNATURE_FIRMWARE, 8);
+    if (timeoutSeconds == 0)
     {
-        return OS_TIMEOUT_TOO_LARGE;
+        srbControl->Timeout = 60;
     }
-    srbControl->Timeout = nvmeIoCtx->timeout; //TODO: use default instead
+    else
+    {
+        srbControl->Timeout = timeoutSeconds;
+    }
+    srbControl->ControlCode = IOCTL_SCSI_MINIPORT_FIRMWARE;
     srbControl->Length = bufferSize - sizeof(SRB_IO_CONTROL);
-
-    firmwareRequest = C_CAST(PFIRMWARE_REQUEST_BLOCK, srbControl + 1);
+    //Now fill out the Firmware request block structure
+    firmwareRequest = C_CAST(PFIRMWARE_REQUEST_BLOCK, srbControl + 1);//this structure starts right after the SRB_IO_CONRTOL so simply add 1.
     firmwareRequest->Version = FIRMWARE_REQUEST_BLOCK_STRUCTURE_VERSION;
     firmwareRequest->Size = sizeof(FIRMWARE_REQUEST_BLOCK);
-    firmwareRequest->Function = FIRMWARE_FUNCTION_ACTIVATE;
-    firmwareRequest->Flags = FIRMWARE_REQUEST_FLAG_CONTROLLER;
-    firmwareRequest->DataBufferOffset = firmwareStructureOffset;
-    firmwareRequest->DataBufferLength = bufferSize - firmwareStructureOffset;
+    firmwareRequest->Function = firmwareFunction;
+    firmwareRequest->Flags = firmwareFlags;
+    firmwareRequest->DataBufferOffset = firmwareRequestDataOffset;
+    firmwareRequest->DataBufferLength = bufferSize - firmwareRequestDataOffset;
 
-    firmwareActivate = C_CAST(PSTORAGE_FIRMWARE_ACTIVATE, C_CAST(PUCHAR, srbControl) + firmwareRequest->DataBufferOffset);
-    firmwareActivate->Version = 1;
-    firmwareActivate->Size = sizeof(STORAGE_FIRMWARE_ACTIVATE);
-    firmwareActivate->SlotToActivate = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
+    //now copy the request to the proper offset in the buffer
+    memcpy(buffer + firmwareRequestDataOffset, ptrDataRequest, dataRequestLength);
 
-    DWORD returned_data = 0;
-    SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
     seatimer_t commandTimer;
-    memset(&commandTimer, 0, sizeof(seatimer_t));
+    ULONG returnedLength = 0;
     OVERLAPPED overlappedStruct;
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-    start_Timer(&commandTimer);
-    //
-    // Send the activation request
-    //
-    //success = DeviceIoControl(IoContext.hHandle,
-    int fwdlIO = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
-        IOCTL_SCSI_MINIPORT,
-        buffer,
-        bufferSize,
-        buffer,
-        bufferSize,
-        &returned_data,
-        &overlappedStruct
-    );
-    nvmeIoCtx->device->os_info.last_error = GetLastError();
-    if (ERROR_IO_PENDING == nvmeIoCtx->device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
+    if (overlappedStruct.hEvent == NULL)
     {
-        fwdlIO = GetOverlappedResult(nvmeIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
-        nvmeIoCtx->device->os_info.last_error = GetLastError();
+        safe_Free_aligned(buffer);
+        return OS_PASSTHROUGH_FAILURE;
     }
-    else if (nvmeIoCtx->device->os_info.last_error != ERROR_SUCCESS)
+    SetLastError(ERROR_SUCCESS);
+    start_Timer(&commandTimer);
+    BOOL result = DeviceIoControl(deviceHandle, IOCTL_SCSI_MINIPORT, buffer, bufferSize, buffer, bufferSize, &returnedLength, &overlappedStruct);
+    DWORD getLastError = GetLastError();
+    if (ERROR_IO_PENDING == getLastError)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
+    {
+        result = GetOverlappedResult(deviceHandle, &overlappedStruct, &returnedLength, TRUE);
+    }
+    else if (getLastError != ERROR_SUCCESS)
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&commandTimer);
-#if defined (_DEBUG)
-    printf("%s: nvmeIoCtx->device->os_info.last_error=%d(0x%x)\n", \
-        __FUNCTION__, nvmeIoCtx->device->os_info.last_error, nvmeIoCtx->device->os_info.last_error);
-#endif
-    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    if (overlappedStruct.hEvent)
+    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+    overlappedStruct.hEvent = NULL;
+
+    if (timeNanoseconds)
     {
-        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        *timeNanoseconds = get_Nano_Seconds(commandTimer);
     }
-    //dummy up sense data for end result
-    if (fwdlIO)
+
+    if (result)
     {
+        //command went through
+        if (firmwareFunction == FIRMWARE_FUNCTION_GET_INFO && returnedLength > 0)
+        {
+            //request was to read the firmware info, so copy this out to the buffer for the calling function to deal with - TJE
+            memcpy(ptrDataRequest, buffer + firmwareRequestDataOffset, dataRequestLength);
+        }
         ret = SUCCESS;
-        nvmeIoCtx->commandCompletionData.commandSpecific = 0;
-        nvmeIoCtx->commandCompletionData.dw0Valid = true;
+        if (returnCode)
+        {
+            *returnCode = srbControl->ReturnCode;//this is so the caller can do what it wants to with this information - TJE
+        }
+        if (VERBOSITY_COMMAND_VERBOSE <= verboseLevel)
+        {
+            printf("Firmware Miniport Status: ");
+            print_Firmware_Miniport_SRB_Status(getLastError);
+        }
     }
     else
     {
-        if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+        //something else went wrong. Check Windows last error code. Likely an incompatibility in some way.
+        if (VERBOSITY_COMMAND_VERBOSE <= verboseLevel)
         {
             printf("Windows Error: ");
-            print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
+            print_Windows_Error_To_Screen(getLastError);
+            printf("Firmware Miniport Status: ");
+            print_Firmware_Miniport_SRB_Status(getLastError);
         }
-        //TODO: We need to figure out what error codes Windows will return and how to dummy up the return value to match - TJE
-        switch (nvmeIoCtx->device->os_info.last_error)
+    }
+    if (lastError)
+    {
+        *lastError = getLastError;
+    }
+    safe_Free_aligned(buffer);
+    return ret;
+}
+
+static int get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool controllerRequest)
+{
+    int ret = NOT_SUPPORTED;
+#if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
+    if (is_Windows_10_Or_Higher())
+    {
+        //V2 structures - Win10 and up
+        ULONG firmwareInfoLength = sizeof(STORAGE_FIRMWARE_INFO_V2) + (sizeof(STORAGE_FIRMWARE_SLOT_INFO_V2) * 7);//max of 7 slots in NVMe. This should be plenty of space regardless of device type -TJE
+        PSTORAGE_FIRMWARE_INFO_V2 firmwareInfo = C_CAST(PSTORAGE_FIRMWARE_INFO_V2, calloc(firmwareInfoLength, sizeof(UCHAR)));
+        if (firmwareInfo)
         {
-        case ERROR_IO_DEVICE:
+            uint32_t returnCode = 0;
+            //Setup input values
+            firmwareInfo->Version = STORAGE_FIRMWARE_INFO_STRUCTURE_VERSION_V2;
+            firmwareInfo->Size = sizeof(STORAGE_FIRMWARE_INFO_V2);
+            //Issue the minport IOCTL
+            ret = send_Win_Firmware_Miniport_Command(device->os_info.fd, device->deviceVerbosity, firmwareInfo, firmwareInfoLength, 15, FIRMWARE_FUNCTION_GET_INFO, controllerRequest ? FIRMWARE_REQUEST_FLAG_CONTROLLER : 0, &returnCode, &device->os_info.last_error, NULL);
+            if (ret == SUCCESS)
+            {
+                device->os_info.fwdlMiniportSupported = true;
+                device->os_info.fwdlIOsupport.fwdlIOSupported = firmwareInfo->UpgradeSupport;
+                device->os_info.fwdlIOsupport.payloadAlignment = firmwareInfo->ImagePayloadAlignment;
+                device->os_info.fwdlIOsupport.maxXferSize = firmwareInfo->ImagePayloadMaxSize;
+                //TODO: store more FWDL information as we need it
+#if defined (_DEBUG)
+                printf("Got Miniport V2 FWDL Info\n");
+                printf("\tSupported: %d\n", firmwareInfo->UpgradeSupport);
+                printf("\tPayload Alignment: %ld\n", firmwareInfo->ImagePayloadAlignment);
+                printf("\tmaxXferSize: %ld\n", firmwareInfo->ImagePayloadMaxSize);
+                printf("\tPendingActivate: %d\n", firmwareInfo->PendingActivateSlot);
+                printf("\tActiveSlot: %d\n", firmwareInfo->ActiveSlot);
+                printf("\tSlot Count: %d\n", firmwareInfo->SlotCount);
+                printf("\tFirmware Shared: %d\n", firmwareInfo->FirmwareShared);
+                //print out what's in the slots!
+                for (uint8_t iter = 0; iter < firmwareInfo->SlotCount && iter < 7; ++iter)
+                {
+                    printf("\t    Firmware Slot %d:\n", firmwareInfo->Slot[iter].SlotNumber);
+                    printf("\t\tRead Only: %d\n", firmwareInfo->Slot[iter].ReadOnly);
+                    printf("\t\tRevision: %s\n", firmwareInfo->Slot[iter].Revision);
+                }
+#endif
+            }
+            safe_Free(firmwareInfo);
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
+    }
+    else
+#endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
+    if (is_Windows_8_One_Or_Higher())
+    {
+        //V1 structures - Win 8.1
+        ULONG firmwareInfoLength = sizeof(STORAGE_FIRMWARE_INFO) + (sizeof(STORAGE_FIRMWARE_SLOT_INFO) * 7);//max of 7 slots in NVMe. This should be plenty of space regardless of device type -TJE
+        PSTORAGE_FIRMWARE_INFO firmwareInfo = C_CAST(PSTORAGE_FIRMWARE_INFO, calloc(firmwareInfoLength, sizeof(UCHAR)));
+        if (firmwareInfo)
+        {
+            uint32_t returnCode = 0;
+            //Setup input values
+            firmwareInfo->Version = STORAGE_FIRMWARE_INFO_STRUCTURE_VERSION;
+            firmwareInfo->Size = sizeof(STORAGE_FIRMWARE_INFO);
+            //Issue the minport IOCTL
+            ret = send_Win_Firmware_Miniport_Command(device->os_info.fd, device->deviceVerbosity, firmwareInfo, firmwareInfoLength, 15, FIRMWARE_FUNCTION_GET_INFO, controllerRequest ? FIRMWARE_REQUEST_FLAG_CONTROLLER : 0, &returnCode, &device->os_info.last_error, NULL);
+            
+            if (ret == SUCCESS)
+            {
+                device->os_info.fwdlMiniportSupported = true;
+                device->os_info.fwdlIOsupport.fwdlIOSupported = firmwareInfo->UpgradeSupport;
+                device->os_info.fwdlIOsupport.payloadAlignment = 4096;//This is not specified in Win8, but assume this!
+                device->os_info.fwdlIOsupport.maxXferSize = device->os_info.adapterMaxTransferSize > 0 ? device->os_info.adapterMaxTransferSize : 65536; //Set 64K in case this is not otherwise set...not great but will likely work since this is the common transfer size limit in Windows - TJE
+                //TODO: store more FWDL information as we need it
+#if defined (_DEBUG)
+                printf("Got Miniport V1 FWDL Info\n");
+                printf("\tSupported: %d\n", firmwareInfo->UpgradeSupport);
+                //printf("\tPayload Alignment: %ld\n", firmwareInfo->ImagePayloadAlignment);
+                //printf("\tmaxXferSize: %ld\n", firmwareInfo->ImagePayloadMaxSize);
+                printf("\tPendingActivate: %d\n", firmwareInfo->PendingActivateSlot);
+                printf("\tActiveSlot: %d\n", firmwareInfo->ActiveSlot);
+                printf("\tSlot Count: %d\n", firmwareInfo->SlotCount);
+                //printf("\tFirmware Shared: %d\n", firmwareInfo->FirmwareShared);
+                //print out what's in the slots!
+                for (uint8_t iter = 0; iter < firmwareInfo->SlotCount && iter < 7; ++iter)
+                {
+                    char v1Revision[9] = { 0 };
+                    snprintf(v1Revision, 9, "%s", firmwareInfo->Slot[iter].Revision.Info);
+                    printf("\t    Firmware Slot %d:\n", firmwareInfo->Slot[iter].SlotNumber);
+                    printf("\t\tRead Only: %d\n", firmwareInfo->Slot[iter].ReadOnly);
+                    printf("\t\tRevision: %s\n", v1Revision);//temp storage since there was not enough room for null terminator in API so it gets messy.
+                }
+#endif
+            }
+            safe_Free(firmwareInfo);
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
+    }
+    return ret;
+}
+
+/*
+This API only supported deferred download and activate commands as defined in ACS3+ and SPC4+
+
+This table defines when this API is supported based on the drive and interface of the drive.
+      IDE | SCSI
+ATA    Y  |   N
+SCSI   N  |   Y
+
+This table defines when this API is supported based on the Interface and the Command being sent
+       ATA DL | ATA DL DMA | SCSI WB
+IDE       Y   |      Y     |    N
+SCSI      N   |      N     |    Y
+
+The reason the API is used only in the instances shown above is because the library is trying to
+honor issuing the expected command on a specific interface.
+
+If the drive is an ATA drive, behind a SAS controller, then a Write buffer command is issued to the
+controller to be translated according to the SAT spec. Sometimes, this may not be what a caller is wanting to do
+so we assume that we will only issue the command the caller is expecting to issue.
+
+There is an option to allow using this API call with any supported FWDL command regardless of drive type and interface that can be set.
+Device->os_info.fwdlIOsupport.allowFlexibleUseOfAPI set to true will check for a supported SCSI or ATA command and all other payload
+requirements and allow it to be issued for any case. This is good if your only goal is to get firmware to a drive and don't care about testing a specific command sequence.
+NOTE: Some SAS HBAs will issue a readlogext command before each download command when performing deferred download, which may not be expected if taking a bus trace of the sequence.
+
+*/
+
+bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)//TODO: add nvme support
+{
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+    printf("Checking if FWDL Command is compatible with Win 10 API\n");
+#endif
+    if (!scsiIoCtx->device->os_info.fwdlIOsupport.fwdlIOSupported)
+    {
+        //OS doesn't support this IO on this device, so just say no!
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+        printf("\tFalse (not Supported)\n");
+#endif
+        return false;
+    }
+    //If we are trying to send an ATA command, then only use the API if it's IDE.
+    //SCSI and RAID interfaces depend on the SATL to translate it correctly, but that is not checked by windows and is not possible since nothing responds to the report supported operation codes command
+    //A future TODO will be to have either a lookup table or additional check somewhere to send the report supported operation codes command, but this is good enough for now, since it's unlikely a SATL will implement that...
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+    printf("scsiIoCtx = %p\t->pAtaCmdOpts = %p\tinterface type: %d\n", scsiIoCtx, scsiIoCtx->pAtaCmdOpts, scsiIoCtx->device->drive_info.interface_type);
+#endif
+    if (scsiIoCtx->device->os_info.fwdlIOsupport.allowFlexibleUseOfAPI)
+    {
+        uint32_t transferLengthBytes = 0;
+        bool supportedCMD = false;
+        bool isActivate = false;
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+        printf("Flexible Win10 FWDL API allowed. Checking for supported commands\n");
+#endif
+        if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
+        {
+            uint8_t wbMode = M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0);
+            if (wbMode == SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER)
+            {
+                supportedCMD = true;
+                transferLengthBytes = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            }
+            else if (wbMode == SCSI_WB_ACTIVATE_DEFERRED_MICROCODE)
+            {
+                supportedCMD = true;
+                isActivate = true;
+            }
+        }
+        else if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
+        {
+
+            if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0E)
+            {
+                supportedCMD = true;
+                transferLengthBytes = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaLow, scsiIoCtx->pAtaCmdOpts->tfr.SectorCount) * LEGACY_DRIVE_SEC_SIZE;
+            }
+            else if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0F)
+            {
+                supportedCMD = true;
+                isActivate = true;
+            }
+        }
+        if (supportedCMD)
+        {
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+            printf("\tDetected supported command\n");
+#endif
+            if (isActivate)
+            {
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+                printf("\tTrue - is an activate command\n");
+#endif
+                return true;
+            }
+            else
+            {
+                if (transferLengthBytes < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (transferLengthBytes % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
+                {
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+                    printf("\tTrue - payload fits FWDL requirements from OS/Driver\n");
+#endif
+                    return true;
+                }
+            }
+        }
+    }
+    else if (scsiIoCtx && scsiIoCtx->pAtaCmdOpts && scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
+    {
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+        printf("Checking ATA command info for FWDL support\n");
+#endif
+        //We're sending an ATA passthrough command, and the OS says the io is supported, so it SHOULD work. - TJE
+        if (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA)
+        {
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+            printf("Is Download Microcode command (%" PRIX8 "h)\n", scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus);
+#endif
+            if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0E)
+            {
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+                printf("Is deferred download mode Eh\n");
+#endif
+                //We know it's a download command, now we need to make sure it's a multiple of the Windows alignment requirement and that it isn't larger than the maximum allowed
+                uint16_t transferSizeSectors = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaLow, scsiIoCtx->pAtaCmdOpts->tfr.SectorCount);
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+                printf("Transfersize sectors: %" PRIu16 "\n", transferSizeSectors);
+                printf("Transfersize bytes: %" PRIu32 "\tMaxXferSize: %" PRIu32 "\n", C_CAST(uint32_t, transferSizeSectors * LEGACY_DRIVE_SEC_SIZE), scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize);
+                printf("Transfersize sectors %% alignment: %" PRIu32 "\n", (C_CAST(uint32_t, transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment));
+#endif
+                if (C_CAST(uint32_t, transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (C_CAST(uint32_t, transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
+                {
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+                    printf("\tTrue (0x0E)\n");
+#endif
+                    return true;
+                }
+            }
+            else if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0F)
+            {
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+                printf("\tTrue (0x0F)\n");
+#endif
+                return true;
+            }
+        }
+    }
+    else if (scsiIoCtx)//sending a SCSI command
+    {
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+        printf("Checking SCSI command info for FWDL Support\n");
+#endif
+        //TODO? Should we check that this is a SCSI Drive? Right now we'll just attempt the download and let the drive/SATL handle translation
+        //check that it's a write buffer command for a firmware download & it's a deferred download command since that is all that is supported
+        if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
+        {
+            uint8_t wbMode = M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0);
+            uint32_t transferLength = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            switch (wbMode)
+            {
+            case SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER:
+                if (transferLength < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (transferLength % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
+                {
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+                    printf("\tTrue (SCSI Mode 0x0E)\n");
+#endif
+                    return true;
+                }
+                break;
+            case SCSI_WB_ACTIVATE_DEFERRED_MICROCODE:
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+                printf("\tTrue (SCSI Mode 0x0F)\n");
+#endif
+                return true;
+            default:
+                break;
+            }
+        }
+    }
+#if defined (_DEBUG_FWDL_API_COMPATABILITY)
+    printf("\tFalse\n");
+#endif
+    return false;
+}
+
+static bool is_Activate_Command(ScsiIoCtx* scsiIoCtx)
+{
+    bool isActivate = false;
+    if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
+    {
+        //check the subcommand (feature)
+        if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0F)
+        {
+            isActivate = true;
+        }
+    }
+    else if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
+    {
+        //it's a write buffer command, so we need to also check the mode.
+        uint8_t wbMode = M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0);
+        switch (wbMode)
+        {
+        case 0x0F:
+            isActivate = true;
+            break;
+        default:
+            break;
+        }
+    }
+    return isActivate;
+}
+
+static int dummy_Up_SCSI_Sense_FWDL(ScsiIoCtx* scsiIoCtx, ULONG returnCode)
+{
+    int ret = SUCCESS;//assume this for anything where we could generate a usable status and a few other cases
+    uint8_t senseKey = SENSE_KEY_NO_ERROR, asc = 0, ascq = 0;//no fru since that is vendor unique info that we have no way of dummying up - TJE
+    uint8_t localSense[SPC3_SENSE_LEN] = { 0 };
+    if (scsiIoCtx->pAtaCmdOpts)
+    {
+        //sense code should be "ATA Passthrough information available" since this is how a passed ATA command will show up versus a SCSI command - TJE
+        senseKey = SENSE_KEY_RECOVERED_ERROR;
+        asc = 0x00;
+        ascq = 0x1D;
+        //now set the ATA registers for command completion
+        switch (returnCode)
+        {
+        case FIRMWARE_STATUS_SUCCESS:
+            scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY;
+            if (is_Activate_Command(scsiIoCtx))
+            {
+                scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = 0x02;//applied the new microcode
+            }
+            else
+            {
+                if (scsiIoCtx->fwdlLastSegment)
+                {
+                    scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = 0x03;//all segments received and saved. Waiting for activation;
+                }
+                else
+                {
+                    scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = 0x01;//expecting more microcode
+                }
+            }
+            break;
+        case FIRMWARE_STATUS_DEVICE_ERROR:
+        case FIRMWARE_STATUS_CONTROLLER_ERROR:
+            scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY | ATA_STATUS_BIT_DEVICE_FAULT;
+            //TODO: Error register? Not sure what gets set in a device fault situation - TJE
+            break;
+        case FIRMWARE_STATUS_ERROR:
+        case FIRMWARE_STATUS_INVALID_SLOT:
+        case FIRMWARE_STATUS_INVALID_IMAGE:
+        case FIRMWARE_STATUS_ILLEGAL_REQUEST:
+        case FIRMWARE_STATUS_INVALID_PARAMETER:
+            scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
+            scsiIoCtx->pAtaCmdOpts->rtfr.error = ATA_ERROR_BIT_ABORT;
+            break;
+        case FIRMWARE_STATUS_INPUT_BUFFER_TOO_BIG:
+            ret = OS_PASSTHROUGH_FAILURE;
+            break;
+        case FIRMWARE_STATUS_OUTPUT_BUFFER_TOO_SMALL:
+            ret = OS_PASSTHROUGH_FAILURE;
+            break;
+        case FIRMWARE_STATUS_POWER_CYCLE_REQUIRED:
+            break;
+#if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
+        case FIRMWARE_STATUS_INTERFACE_CRC_ERROR:
+            scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
+            scsiIoCtx->pAtaCmdOpts->rtfr.error = ATA_ERROR_BIT_INTERFACE_CRC;
+            break;
+        case FIRMWARE_STATUS_UNCORRECTABLE_DATA_ERROR:
+            scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
+            scsiIoCtx->pAtaCmdOpts->rtfr.error = ATA_ERROR_BIT_UNCORRECTABLE_DATA;
+            break;
+        case FIRMWARE_STATUS_MEDIA_CHANGE:
+            scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
+            scsiIoCtx->pAtaCmdOpts->rtfr.error = ATA_ERROR_BIT_MEDIA_CHANGE;
+            break;
+        case FIRMWARE_STATUS_ID_NOT_FOUND:
+            scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
+            scsiIoCtx->pAtaCmdOpts->rtfr.error = ATA_ERROR_BIT_ID_NOT_FOUND;
+            break;
+        case FIRMWARE_STATUS_MEDIA_CHANGE_REQUEST:
+            scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
+            scsiIoCtx->pAtaCmdOpts->rtfr.error = ATA_ERROR_BIT_MEDIA_CHANGE_REQUEST;
+            break;
+        case FIRMWARE_STATUS_COMMAND_ABORT:
+            scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
+            scsiIoCtx->pAtaCmdOpts->rtfr.error = ATA_ERROR_BIT_ABORT;
+            break;
+        case FIRMWARE_STATUS_END_OF_MEDIA:
+            scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
+            scsiIoCtx->pAtaCmdOpts->rtfr.error = ATA_ERROR_BIT_END_OF_MEDIA;
+            break;
+        case FIRMWARE_STATUS_ILLEGAL_LENGTH:
+            break;
+#endif
         default:
             ret = OS_PASSTHROUGH_FAILURE;
             break;
         }
     }
-    safe_Free_aligned(buffer)
-#if defined (_DEBUG)
-    printf("%s: <-- (ret=%d)\n", __FUNCTION__, ret);
+    else
+    {
+        switch (returnCode)
+        {
+        case FIRMWARE_STATUS_SUCCESS:
+            break;
+        case FIRMWARE_STATUS_ERROR:
+            senseKey = SENSE_KEY_ABORTED_COMMAND;
+            //too generic to provide additional sense info
+            break;
+        case FIRMWARE_STATUS_ILLEGAL_REQUEST:
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            //too generic to provide additional sense info
+            break;
+        case FIRMWARE_STATUS_INVALID_PARAMETER:
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            break;
+        case FIRMWARE_STATUS_INPUT_BUFFER_TOO_BIG:
+            ret = OS_PASSTHROUGH_FAILURE;
+            break;
+        case FIRMWARE_STATUS_OUTPUT_BUFFER_TOO_SMALL:
+            ret = OS_PASSTHROUGH_FAILURE;
+            break;
+        case FIRMWARE_STATUS_INVALID_SLOT:
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            break;
+        case FIRMWARE_STATUS_INVALID_IMAGE:
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x26;
+            ascq = 0x00;
+            break;
+        case FIRMWARE_STATUS_DEVICE_ERROR:
+        case FIRMWARE_STATUS_CONTROLLER_ERROR:
+            senseKey = SENSE_KEY_HARDWARE_ERROR;
+            asc = 0x44;
+            ascq = 0x00;
+            break;
+        case FIRMWARE_STATUS_POWER_CYCLE_REQUIRED:
+            break;
+#if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
+        case FIRMWARE_STATUS_INTERFACE_CRC_ERROR:
+            senseKey = SENSE_KEY_ABORTED_COMMAND;
+            asc = 0x47;
+            ascq = 0x03;
+            break;
+        case FIRMWARE_STATUS_UNCORRECTABLE_DATA_ERROR:
+            senseKey = SENSE_KEY_MEDIUM_ERROR;
+            asc = 0x11;
+            ascq = 0x00;
+            break;
+        case FIRMWARE_STATUS_MEDIA_CHANGE:
+            senseKey = SENSE_KEY_UNIT_ATTENTION;
+            asc = 0x28;
+            ascq = 0x00;
+            break;
+        case FIRMWARE_STATUS_ID_NOT_FOUND:
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x21;
+            ascq = 0x00;
+            break;
+        case FIRMWARE_STATUS_MEDIA_CHANGE_REQUEST:
+            senseKey = SENSE_KEY_UNIT_ATTENTION;
+            asc = 0x5A;
+            ascq = 0x01;
+            break;
+        case FIRMWARE_STATUS_COMMAND_ABORT:
+            senseKey = SENSE_KEY_ABORTED_COMMAND;
+            //too generic to provide additional sense info
+            break;
+        case FIRMWARE_STATUS_END_OF_MEDIA:
+            senseKey = SENSE_KEY_NOT_READY;
+            asc = 0x3A;
+            ascq = 0x00;
+            break;
+        case FIRMWARE_STATUS_ILLEGAL_LENGTH:
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x24;
+            ascq = 0x00;
+            break;
 #endif
-    return ret;
+        default:
+            ret = OS_PASSTHROUGH_FAILURE;
+            break;
+        }
+    }
 
+    //now set the sense code into the data buffer output - using fixed format for simplicity - TJE
+    localSense[0] = 0x70;//fixed format
+    localSense[2] = senseKey;
+    //if (asc = 0x3A)
+    //{
+    //    //set the end of media bit?
+    //}
+    localSense[7] = 0x0A;//up to byte 17 set
+    localSense[12] = asc;
+    localSense[13] = ascq;
+    if (scsiIoCtx->pAtaCmdOpts)
+    {
+        localSense[0] |= BIT7;//set valid bit since we are filling in information field according to a standard - TJE
+        //set information and command specific info fields for passthrough register data
+        localSense[3] = scsiIoCtx->pAtaCmdOpts->rtfr.error;
+        localSense[4] = scsiIoCtx->pAtaCmdOpts->rtfr.status;
+        localSense[5] = scsiIoCtx->pAtaCmdOpts->rtfr.device;
+        localSense[6] = scsiIoCtx->pAtaCmdOpts->rtfr.secCnt;
+    }
+
+    //copy back based on allocated length
+    memcpy(scsiIoCtx->psense, localSense, scsiIoCtx->senseDataSize);
+    return ret;
 }
-#endif //WINVER
+
+static int win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = NOT_SUPPORTED;
+#if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
+    if (is_Windows_10_Or_Higher())
+    {
+        //V2 structures - Win10 and up
+        ULONG firmwareDLLength = sizeof(STORAGE_FIRMWARE_DOWNLOAD_V2) + scsiIoCtx->dataLength;
+        PSTORAGE_FIRMWARE_DOWNLOAD_V2 firmwareDownload = C_CAST(PSTORAGE_FIRMWARE_DOWNLOAD_V2, calloc(firmwareDLLength, sizeof(UCHAR)));
+        if (firmwareDownload)
+        {
+            uint32_t returnCode = 0;
+            uint32_t fwdlFlags = FIRMWARE_REQUEST_FLAG_CONTROLLER;//start with this, but may need other flags
+            //Setup input values
+            firmwareDownload->Version = STORAGE_FIRMWARE_DOWNLOAD_STRUCTURE_VERSION_V2;
+            firmwareDownload->Size = sizeof(STORAGE_FIRMWARE_DOWNLOAD_V2);
+            firmwareDownload->Slot = 0;//N/A on ATA and buffer ID on SCSI
+
+            firmwareDownload->BufferSize = firmwareDownload->ImageSize = scsiIoCtx->dataLength;
+
+            //we need to set the offset since MS uses this in the command sent to the device.
+            firmwareDownload->Offset = 0;//TODO: Make sure this works even though the buffer pointer is only the current segment!
+            if (scsiIoCtx && scsiIoCtx->pAtaCmdOpts)
+            {
+                //get offset from the tfrs
+                firmwareDownload->Offset = C_CAST(DWORDLONG, M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaHi, scsiIoCtx->pAtaCmdOpts->tfr.LbaMid)) * LEGACY_DRIVE_SEC_SIZE;
+                firmwareDownload->BufferSize = firmwareDownload->ImageSize = C_CAST(DWORDLONG, M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.SectorCount, scsiIoCtx->pAtaCmdOpts->tfr.LbaLow)) * LEGACY_DRIVE_SEC_SIZE;;
+            }
+            else if (scsiIoCtx)
+            {
+                //get offset from the cdb
+                firmwareDownload->Slot = scsiIoCtx->cdb[2];
+                firmwareDownload->Offset = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+                firmwareDownload->BufferSize = firmwareDownload->ImageSize = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            }
+            else
+            {
+                safe_Free(firmwareDownload)
+                    return BAD_PARAMETER;
+            }
+
+
+            //copy the image to ImageBuffer
+            memcpy(firmwareDownload->ImageBuffer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+            //setup any flags
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
+            if (scsiIoCtx->fwdlLastSegment)
+            {
+                //This IS documented on MSDN but VS2015 can't seem to find it...
+                //One website says that this flag is new in Win10 1704 - creators update (10.0.15021)
+                fwdlFlags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_LAST_SEGMENT;
+            }
+#endif
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+            if (scsiIoCtx->fwdlFirstSegment)
+            {
+                fwdlFlags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT;
+            }
+#endif
+            //Issue the minport IOCTL
+            ret = send_Win_Firmware_Miniport_Command(scsiIoCtx->device->os_info.fd, scsiIoCtx->device->deviceVerbosity, firmwareDownload, firmwareDLLength, scsiIoCtx->timeout, FIRMWARE_FUNCTION_DOWNLOAD, fwdlFlags, &returnCode, &scsiIoCtx->device->os_info.last_error, &scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds);
+            if (ret == SUCCESS)
+            {
+                ret = dummy_Up_SCSI_Sense_FWDL(scsiIoCtx, returnCode);
+            }
+            safe_Free(firmwareDownload);
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
+    }
+    else
+#endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
+        if (is_Windows_8_One_Or_Higher())
+        {
+            //V1 structures - Win8.1
+            ULONG firmwareDLLength = sizeof(STORAGE_FIRMWARE_DOWNLOAD) + scsiIoCtx->dataLength;
+            PSTORAGE_FIRMWARE_DOWNLOAD firmwareDownload = C_CAST(PSTORAGE_FIRMWARE_DOWNLOAD, calloc(firmwareDLLength, sizeof(UCHAR)));
+            if (firmwareDownload)
+            {
+                uint32_t returnCode = 0;
+                uint32_t fwdlFlags = FIRMWARE_REQUEST_FLAG_CONTROLLER;//start with this, but may need other flags
+                //Setup input values
+                firmwareDownload->Version = STORAGE_FIRMWARE_DOWNLOAD_STRUCTURE_VERSION;
+                firmwareDownload->Size = sizeof(STORAGE_FIRMWARE_DOWNLOAD);
+                firmwareDownload->BufferSize = scsiIoCtx->dataLength;
+
+                //we need to set the offset since MS uses this in the command sent to the device.
+                firmwareDownload->Offset = 0;//TODO: Make sure this works even though the buffer pointer is only the current segment!
+                if (scsiIoCtx && scsiIoCtx->pAtaCmdOpts)
+                {
+                    //get offset from the tfrs
+                    firmwareDownload->Offset = C_CAST(DWORDLONG, M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaHi, scsiIoCtx->pAtaCmdOpts->tfr.LbaMid)) * LEGACY_DRIVE_SEC_SIZE;
+                    firmwareDownload->BufferSize = C_CAST(DWORDLONG, M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.SectorCount, scsiIoCtx->pAtaCmdOpts->tfr.LbaLow)) * LEGACY_DRIVE_SEC_SIZE;;
+                }
+                else if (scsiIoCtx)
+                {
+                    //get offset from the cdb
+                    firmwareDownload->Offset = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+                    firmwareDownload->BufferSize = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+                }
+                else
+                {
+                    safe_Free(firmwareDownload)
+                    return BAD_PARAMETER;
+                }
+
+                //copy the image to ImageBuffer
+                memcpy(firmwareDownload->ImageBuffer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+                //no other flags to setup since 8.1 only had "controller" flag and existing slot flag (which only affects activate)
+                //Issue the minport IOCTL
+                ret = send_Win_Firmware_Miniport_Command(scsiIoCtx->device->os_info.fd, scsiIoCtx->device->deviceVerbosity, firmwareDownload, firmwareDLLength, scsiIoCtx->timeout, FIRMWARE_FUNCTION_DOWNLOAD, fwdlFlags, &returnCode, &scsiIoCtx->device->os_info.last_error, &scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds);
+                if (ret == SUCCESS)
+                {
+                    ret = dummy_Up_SCSI_Sense_FWDL(scsiIoCtx, returnCode);
+                }
+                safe_Free(firmwareDownload);
+            }
+            else
+            {
+                ret = MEMORY_FAILURE;
+            }
+        }
+    return ret;
+}
+
+static int win_FW_Activate_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = NOT_SUPPORTED;
+    //Only one version of activate structure - TJE
+    if (is_Windows_8_One_Or_Higher())
+    {
+        //V1 structures - Win8.1 & Win10
+        ULONG firmwareActivateLength = sizeof(STORAGE_FIRMWARE_ACTIVATE);
+        PSTORAGE_FIRMWARE_ACTIVATE firmwareActivate = C_CAST(PSTORAGE_FIRMWARE_ACTIVATE, calloc(firmwareActivateLength, sizeof(UCHAR)));
+        if (firmwareActivate)
+        {
+            uint32_t returnCode = 0;
+            uint32_t fwdlFlags = 0;//start with this, but may need other flags
+            
+            //Setup input values
+            firmwareActivate->Version = STORAGE_FIRMWARE_ACTIVATE_STRUCTURE_VERSION;
+            firmwareActivate->Size = sizeof(STORAGE_FIRMWARE_ACTIVATE);
+            firmwareActivate->SlotToActivate = 0;
+
+            if (scsiIoCtx && !scsiIoCtx->pAtaCmdOpts)
+            {
+                firmwareActivate->SlotToActivate = scsiIoCtx->cdb[2];//Set the slot number to the buffer ID number...This is the closest this translates.
+            }
+            if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)//TODO: SCSI interface, but NVMe in 8.1 will likely only be identified by earlier bustype or vendor id
+            {
+                //if we are on NVMe, but the command comes to here, then someone forced SCSI mode, so let's set this flag correctly
+                fwdlFlags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;
+            }
+
+            //Issue the minport IOCTL
+            ret = send_Win_Firmware_Miniport_Command(scsiIoCtx->device->os_info.fd, scsiIoCtx->device->deviceVerbosity, firmwareActivate, firmwareActivateLength, scsiIoCtx->timeout, FIRMWARE_FUNCTION_ACTIVATE, fwdlFlags, &returnCode, &scsiIoCtx->device->os_info.last_error, &scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds);
+            if (ret == SUCCESS)
+            {
+                ret = dummy_Up_SCSI_Sense_FWDL(scsiIoCtx, returnCode);
+            }
+            safe_Free(firmwareActivate);
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
+    }
+    return ret;
+}
+
+static int windows_Firmware_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
+{
+    if (!scsiIoCtx)
+    {
+        return BAD_PARAMETER;
+    }
+    if (is_Activate_Command(scsiIoCtx))
+    {
+        return win_FW_Activate_IO_SCSI_Miniport(scsiIoCtx);
+    }
+    else
+    {
+        return win_FW_Download_IO_SCSI_Miniport(scsiIoCtx);
+    }
+}
+
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+
+#define WIN_DUMMY_NVME_STATUS(sct, sc) \
+    C_CAST(uint32_t, (sct << 25) | (sc << 17))
+
+//TODO: This may need adjusting with bus trace help in the future, but for now this is a best guess from what info we have.-TJE
+static int dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, ULONG returnCode)
+{
+    int ret = SUCCESS;//assume this for anything where we could generate a usable status and a few other cases
+    switch (returnCode)
+    {
+    case FIRMWARE_STATUS_SUCCESS:
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 0);
+        break;
+    case FIRMWARE_STATUS_ERROR:
+        break;
+    case FIRMWARE_STATUS_ILLEGAL_REQUEST: //overlapping range?
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 1);
+        break;
+    case FIRMWARE_STATUS_INVALID_PARAMETER: //overlapping range?
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 2);
+        break;
+    case FIRMWARE_STATUS_INPUT_BUFFER_TOO_BIG:
+        ret = OS_PASSTHROUGH_FAILURE;
+        break;
+    case FIRMWARE_STATUS_OUTPUT_BUFFER_TOO_SMALL:
+        ret = OS_PASSTHROUGH_FAILURE;
+        break;
+    case FIRMWARE_STATUS_INVALID_SLOT:
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_COMMAND_SPECIFIC_STATUS, 6);
+        break;
+    case FIRMWARE_STATUS_INVALID_IMAGE:
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_COMMAND_SPECIFIC_STATUS, 7);;
+        break;
+    case FIRMWARE_STATUS_DEVICE_ERROR:
+    case FIRMWARE_STATUS_CONTROLLER_ERROR:
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 6);//internal error
+        break;
+    case FIRMWARE_STATUS_POWER_CYCLE_REQUIRED:
+        break;
+#if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
+    case FIRMWARE_STATUS_INTERFACE_CRC_ERROR:
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 4);//data transfer error
+        break;
+    case FIRMWARE_STATUS_UNCORRECTABLE_DATA_ERROR:
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS, 0x81);//unrecovered read error...not sure what else to set if this happens-TJE
+        break;
+    case FIRMWARE_STATUS_MEDIA_CHANGE:
+        ret = OS_PASSTHROUGH_FAILURE;
+        break;
+    case FIRMWARE_STATUS_ID_NOT_FOUND:
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 0x80);//lba out of range
+        break;
+    case FIRMWARE_STATUS_MEDIA_CHANGE_REQUEST:
+        ret = OS_PASSTHROUGH_FAILURE;
+        break;
+    case FIRMWARE_STATUS_COMMAND_ABORT:
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 7);//command abort requested
+        break;
+    case FIRMWARE_STATUS_END_OF_MEDIA:
+        ret = OS_PASSTHROUGH_FAILURE;
+        break;
+    case FIRMWARE_STATUS_ILLEGAL_LENGTH://overlapping range???
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_COMMAND_SPECIFIC_STATUS, 14);
+        break;
+#endif
+    default:
+        ret = OS_PASSTHROUGH_FAILURE;
+        break;
+    }
+    return ret;
+}
+
+static int send_Win_NVME_Firmware_Miniport_Download(nvmeCmdCtx* nvmeIoCtx)
+{
+    int ret = NOT_SUPPORTED;
+#if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
+    if (is_Windows_10_Or_Higher())
+    {
+        //V2 structures - Win10 and up
+        ULONG firmwareDLLength = sizeof(STORAGE_FIRMWARE_DOWNLOAD_V2) + nvmeIoCtx->dataSize;
+        PSTORAGE_FIRMWARE_DOWNLOAD_V2 firmwareDownload = C_CAST(PSTORAGE_FIRMWARE_DOWNLOAD_V2, calloc(firmwareDLLength, sizeof(UCHAR)));
+        if (firmwareDownload)
+        {
+            uint32_t returnCode = 0;
+            uint32_t fwdlFlags = FIRMWARE_REQUEST_FLAG_CONTROLLER;//start with this, but may need other flags
+            //Setup input values
+            firmwareDownload->Version = STORAGE_FIRMWARE_DOWNLOAD_STRUCTURE_VERSION_V2;
+            firmwareDownload->Size = sizeof(STORAGE_FIRMWARE_DOWNLOAD_V2);
+            firmwareDownload->Offset = C_CAST(ULONGLONG, nvmeIoCtx->cmd.adminCmd.cdw11) << 2;//multiply by 4 to convert words to bytes
+            firmwareDownload->BufferSize = C_CAST(ULONGLONG, nvmeIoCtx->cmd.adminCmd.cdw10 + 1) << 2;//add one since this is zeroes based then multiply by 4 to convert words to bytes
+            firmwareDownload->ImageSize = C_CAST(ULONGLONG, nvmeIoCtx->cmd.adminCmd.cdw10 + 1) << 2;//add one since this is zeroes based then multiply by 4 to convert words to bytes
+            firmwareDownload->Slot = STORAGE_FIRMWARE_INFO_INVALID_SLOT;//TODO: SHould this be zero? It technically shouldn't be used in this command in the NVMe spec - TJE
+
+            //copy the image to ImageBuffer
+            memcpy(firmwareDownload->ImageBuffer, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+            //setup any flags
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
+            if (nvmeIoCtx->fwdlLastSegment)
+            {
+                //This IS documented on MSDN but VS2015 can't seem to find it...
+                //One website says that this flag is new in Win10 1704 - creators update (10.0.15021)
+                fwdlFlags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_LAST_SEGMENT;
+            }
+#endif
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+            if (nvmeIoCtx->fwdlFirstSegment)
+            {
+                fwdlFlags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT;
+            }
+#endif
+            //Issue the minport IOCTL
+            ret = send_Win_Firmware_Miniport_Command(nvmeIoCtx->device->os_info.fd, nvmeIoCtx->device->deviceVerbosity, firmwareDownload, firmwareDLLength, nvmeIoCtx->timeout, FIRMWARE_FUNCTION_DOWNLOAD, fwdlFlags, &returnCode, &nvmeIoCtx->device->os_info.last_error, &nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds);
+            if (ret == SUCCESS)
+            {
+                ret = dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
+            }
+            safe_Free(firmwareDownload);
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
+    }
+    else
+#endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
+    if (is_Windows_8_One_Or_Higher())
+    {
+        //V1 structures - Win8.1
+        ULONG firmwareDLLength = sizeof(STORAGE_FIRMWARE_DOWNLOAD) + nvmeIoCtx->dataSize;
+        PSTORAGE_FIRMWARE_DOWNLOAD firmwareDownload = C_CAST(PSTORAGE_FIRMWARE_DOWNLOAD, calloc(firmwareDLLength, sizeof(UCHAR)));
+        if (firmwareDownload)
+        {
+            uint32_t returnCode = 0;
+            uint32_t fwdlFlags = FIRMWARE_REQUEST_FLAG_CONTROLLER;//start with this, but may need other flags
+            //Setup input values
+            firmwareDownload->Version = STORAGE_FIRMWARE_DOWNLOAD_STRUCTURE_VERSION;
+            firmwareDownload->Size = sizeof(STORAGE_FIRMWARE_DOWNLOAD);
+            firmwareDownload->Offset = nvmeIoCtx->cmd.adminCmd.cdw11 << 2;//multiply by 4 to convert words to bytes
+            firmwareDownload->BufferSize = (nvmeIoCtx->cmd.adminCmd.cdw10 + 1) << 2;//add one since this is zeroes based then multiply by 4 to convert words to bytes
+
+            //copy the image to ImageBuffer
+            memcpy(firmwareDownload->ImageBuffer, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+            //no other flags to setup since 8.1 only had "controller" flag and existing slot flag (which only affects activate)
+            //Issue the minport IOCTL
+            ret = send_Win_Firmware_Miniport_Command(nvmeIoCtx->device->os_info.fd, nvmeIoCtx->device->deviceVerbosity, firmwareDownload, firmwareDLLength, nvmeIoCtx->timeout, FIRMWARE_FUNCTION_DOWNLOAD, fwdlFlags, &returnCode, &nvmeIoCtx->device->os_info.last_error, &nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds);
+            if (ret == SUCCESS)
+            {
+                ret = dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
+            }
+            safe_Free(firmwareDownload);
+    }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
+    }
+    return ret;
+}
+
+static int send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIoCtx)
+{
+    int ret = NOT_SUPPORTED;
+    //Only one version of activate structure - TJE
+    if (is_Windows_8_One_Or_Higher())
+    {
+        //V1 structures - Win8.1 & Win10
+        ULONG firmwareActivateLength = sizeof(STORAGE_FIRMWARE_ACTIVATE);
+        PSTORAGE_FIRMWARE_ACTIVATE firmwareActivate = C_CAST(PSTORAGE_FIRMWARE_ACTIVATE, calloc(firmwareActivateLength, sizeof(UCHAR)));
+        if (firmwareActivate)
+        {
+            uint32_t returnCode = 0;
+            uint32_t fwdlFlags = FIRMWARE_REQUEST_FLAG_CONTROLLER;//start with this, but may need other flags
+            uint8_t activateAction = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3);
+            //Setup input values
+            firmwareActivate->Version = STORAGE_FIRMWARE_ACTIVATE_STRUCTURE_VERSION;
+            firmwareActivate->Size = sizeof(STORAGE_FIRMWARE_ACTIVATE);
+            firmwareActivate->SlotToActivate = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
+            if (activateAction == NVME_CA_ACTIVITE_ON_RST || activateAction == NVME_CA_ACTIVITE_IMMEDIATE)//check the activate action
+            {
+                //Activate actions 2, & 3 sound like the closest match to this flag. Each of these requests switching to the a firmware already on the drive.
+                //Activate action 0 & 1 say to replace a firmware image in a specified slot (and to or not to activate).
+                fwdlFlags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
+            }
+                
+            //Issue the minport IOCTL
+            ret = send_Win_Firmware_Miniport_Command(nvmeIoCtx->device->os_info.fd, nvmeIoCtx->device->deviceVerbosity, firmwareActivate, firmwareActivateLength, nvmeIoCtx->timeout, FIRMWARE_FUNCTION_ACTIVATE, fwdlFlags, &returnCode, &nvmeIoCtx->device->os_info.last_error, &nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds);
+            if (ret == SUCCESS)
+            {
+                ret = dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
+            }
+            safe_Free(firmwareActivate);
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
+    }
+    return ret;
+}
+
 #endif //DISABLE_NVME_PASSTHROUGH
+#endif //WINVER >= SEA_WIN32_WINNT_WINBLUE
 
 static int get_os_drive_number( char *filename )
 {
@@ -2950,10 +3939,18 @@ static int get_Win_Device(const char *filename, tDevice *device )
             {
                 bool checkForCSMI = false;
                 bool checkForNVMe = false;
+                int fwdlResult = NOT_SUPPORTED;
                 get_Adapter_IDs(device, device_desc, device_desc->Size);
 
+#if WINVER >= SEA_WIN32_WINNT_WINBLUE
+                fwdlResult = get_Win_FWDL_Miniport_Capabilities(device, device_desc->BusType == BusTypeNvme ? true : false);
+#endif
+
 #if WINVER >= SEA_WIN32_WINNT_WIN10
-                get_Windows_FWDL_IO_Support(device, device_desc->BusType);
+                if (fwdlResult != SUCCESS)
+                {
+                    get_Windows_FWDL_IO_Support(device, device_desc->BusType);
+                }
 #else
                 device->os_info.fwdlIOsupport.fwdlIOSupported = false;//this API is not available before Windows 10
 #endif
@@ -3129,6 +4126,11 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.format = true;
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miReceive = true;
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miSend = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize = true;
+                            }
+                            if (is_Windows_11_Version_21H2_Or_Higher)
+                            {
+                                //New documentation indicates that sanitize is supported wihtout PE mode in Windows 11.
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize = true;
                             }
                         }
@@ -5432,192 +6434,6 @@ static int send_SCSI_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
 }
 
 #if WINVER >= SEA_WIN32_WINNT_WIN10
-/*
-This API only supported deferred download and activate commands as defined in ACS3+ and SPC4+
-
-This table defines when this API is supported based on the drive and interface of the drive.
-      IDE | SCSI
-ATA    Y  |   N
-SCSI   N  |   Y
-
-This table defines when this API is supported based on the Interface and the Command being sent
-       ATA DL | ATA DL DMA | SCSI WB
-IDE       Y   |      Y     |    N
-SCSI      N   |      N     |    Y
-
-The reason the API is used only in the instances shown above is because the library is trying to
-honor issuing the expected command on a specific interface.
-
-If the drive is an ATA drive, behind a SAS controller, then a Write buffer command is issued to the
-controller to be translated according to the SAT spec. Sometimes, this may not be what a caller is wanting to do
-so we assume that we will only issue the command the caller is expecting to issue.
-
-There is an option to allow using this API call with any supported FWDL command regardless of drive type and interface that can be set.
-Device->os_info.fwdlIOsupport.allowFlexibleUseOfAPI set to true will check for a supported SCSI or ATA command and all other payload
-requirements and allow it to be issued for any case. This is good if your only goal is to get firmware to a drive and don't care about testing a specific command sequence.
-NOTE: Some SAS HBAs will issue a readlogext command before each download command when performing deferred download, which may not be expected if taking a bus trace of the sequence.
-
-*/
-
-
-
-bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx)//TODO: add nvme support
-{
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-    printf("Checking if FWDL Command is compatible with Win 10 API\n");
-#endif
-    if (!scsiIoCtx->device->os_info.fwdlIOsupport.fwdlIOSupported)
-    {
-        //OS doesn't support this IO on this device, so just say no!
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-        printf("\tFalse (not Supported)\n");
-#endif
-        return false;
-    }
-    //If we are trying to send an ATA command, then only use the API if it's IDE.
-    //SCSI and RAID interfaces depend on the SATL to translate it correctly, but that is not checked by windows and is not possible since nothing responds to the report supported operation codes command
-    //A future TODO will be to have either a lookup table or additional check somewhere to send the report supported operation codes command, but this is good enough for now, since it's unlikely a SATL will implement that...
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-    printf("scsiIoCtx = %p\t->pAtaCmdOpts = %p\tinterface type: %d\n", scsiIoCtx, scsiIoCtx->pAtaCmdOpts, scsiIoCtx->device->drive_info.interface_type);
-#endif
-    if (scsiIoCtx->device->os_info.fwdlIOsupport.allowFlexibleUseOfAPI)
-    {
-        uint32_t transferLengthBytes = 0;
-        bool supportedCMD = false;
-        bool isActivate = false;
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-        printf("Flexible Win10 FWDL API allowed. Checking for supported commands\n");
-#endif
-        if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
-        {
-            uint8_t wbMode = M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0);
-            if (wbMode == SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER)
-            {
-                supportedCMD = true;
-                transferLengthBytes = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
-            }
-            else if (wbMode == SCSI_WB_ACTIVATE_DEFERRED_MICROCODE)
-            {
-                supportedCMD = true;
-                isActivate = true;
-            }
-        }
-        else if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
-        {
-
-            if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0E)
-            {
-                supportedCMD = true;
-                transferLengthBytes = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaLow, scsiIoCtx->pAtaCmdOpts->tfr.SectorCount) * LEGACY_DRIVE_SEC_SIZE;
-            }
-            else if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0F)
-            {
-                supportedCMD = true;
-                isActivate = true;
-            }
-        }
-        if (supportedCMD)
-        {
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-            printf("\tDetected supported command\n");
-#endif
-            if (isActivate)
-            {
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-                printf("\tTrue - is an activate command\n");
-#endif
-                return true;
-            }
-            else
-            {
-                if (transferLengthBytes < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (transferLengthBytes % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
-                {
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-                    printf("\tTrue - payload fits FWDL requirements from OS/Driver\n");
-#endif
-                    return true;
-                }
-            }
-        }
-    }
-    else if (scsiIoCtx && scsiIoCtx->pAtaCmdOpts && scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
-    {
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-        printf("Checking ATA command info for FWDL support\n");
-#endif
-        //We're sending an ATA passthrough command, and the OS says the io is supported, so it SHOULD work. - TJE
-        if (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA)
-        {
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-            printf("Is Download Microcode command (%" PRIX8 "h)\n", scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus);
-#endif
-            if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0E)
-            {
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-                printf("Is deferred download mode Eh\n");
-#endif
-                //We know it's a download command, now we need to make sure it's a multiple of the Windows alignment requirement and that it isn't larger than the maximum allowed
-                uint16_t transferSizeSectors = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaLow, scsiIoCtx->pAtaCmdOpts->tfr.SectorCount);
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-                printf("Transfersize sectors: %" PRIu16 "\n", transferSizeSectors);
-                printf("Transfersize bytes: %" PRIu32 "\tMaxXferSize: %" PRIu32 "\n", C_CAST(uint32_t, transferSizeSectors * LEGACY_DRIVE_SEC_SIZE), scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize);
-                printf("Transfersize sectors %% alignment: %" PRIu32 "\n", (C_CAST(uint32_t, transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment));
-#endif
-                if (C_CAST(uint32_t, transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (C_CAST(uint32_t, transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
-                {
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-                    printf("\tTrue (0x0E)\n");
-#endif
-                    return true;
-                }
-            }
-            else if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0F)
-            {
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-                printf("\tTrue (0x0F)\n");
-#endif
-                return true;
-            }
-        }
-    }
-    else if(scsiIoCtx)//sending a SCSI command
-    {
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-        printf("Checking SCSI command info for FWDL Support\n");
-#endif
-        //TODO? Should we check that this is a SCSI Drive? Right now we'll just attempt the download and let the drive/SATL handle translation
-        //check that it's a write buffer command for a firmware download & it's a deferred download command since that is all that is supported
-        if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
-        {
-            uint8_t wbMode = M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0);
-            uint32_t transferLength = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
-            switch (wbMode)
-            {
-            case SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER:
-                if (transferLength < scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize && (transferLength % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
-                {
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-                    printf("\tTrue (SCSI Mode 0x0E)\n");
-#endif
-                    return true;
-                }
-                break;
-            case SCSI_WB_ACTIVATE_DEFERRED_MICROCODE:
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-                printf("\tTrue (SCSI Mode 0x0F)\n");
-#endif
-                return true;
-            default:
-                break;
-            }
-        }
-    }
-#if defined (_DEBUG_FWDL_API_COMPATABILITY)
-    printf("\tFalse\n");
-#endif
-    return false;
-}
-
 //TODO: handle more than 1 firmware slot per device.-TJE
 int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busType)
 {
@@ -5626,11 +6442,7 @@ int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busType)
     memset(&fwdlInfo, 0, sizeof(STORAGE_HW_FIRMWARE_INFO_QUERY));
     fwdlInfo.Version = sizeof(STORAGE_HW_FIRMWARE_INFO_QUERY);
     fwdlInfo.Size = sizeof(STORAGE_HW_FIRMWARE_INFO_QUERY);
-    uint8_t slotCount = 1;
-    if (busType == BusTypeNvme)
-    {
-        slotCount = 7;//Max of 7 firmware slots on NVMe...might as well read in everything even if we aren't using it today.-TJE
-    }
+    uint8_t slotCount = 7;//7 is maximum number of firmware slots...always reading with this for now since it doesn't hurt sas/sata drives. - TJE
     uint32_t outputDataSize = sizeof(STORAGE_HW_FIRMWARE_INFO) + (sizeof(STORAGE_HW_FIRMWARE_SLOT_INFO) * slotCount);
     uint8_t *outputData = C_CAST(uint8_t*, malloc(outputDataSize));
     if (!outputData)
@@ -5659,6 +6471,9 @@ int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busType)
         device->os_info.fwdlIOsupport.fwdlIOSupported = fwdlSupportedInfo->SupportUpgrade;
         device->os_info.fwdlIOsupport.payloadAlignment = fwdlSupportedInfo->ImagePayloadAlignment;
         device->os_info.fwdlIOsupport.maxXferSize = fwdlSupportedInfo->ImagePayloadMaxSize;
+
+        print_Data_Buffer(outputData, outputDataSize, true);
+
         //TODO: store more FWDL information as we need it
 #if defined (_DEBUG)
         printf("Got Win10 FWDL Info\n");
@@ -5686,33 +6501,6 @@ int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busType)
     }
     safe_Free(outputData)
     return ret;
-}
-
-static bool is_Activate_Command(ScsiIoCtx *scsiIoCtx)
-{
-    bool isActivate = false;
-    if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
-    {
-        //check the subcommand (feature)
-        if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0F)
-        {
-            isActivate = true;
-        }
-    }
-    else if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
-    {
-        //it's a write buffer command, so we need to also check the mode.
-        uint8_t wbMode = M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0);
-        switch (wbMode)
-        {
-        case 0x0F:
-            isActivate = true;
-            break;
-        default:
-            break;
-        }
-    }
-    return isActivate;
 }
 
 static int win10_FW_Activate_IO_SCSI(ScsiIoCtx *scsiIoCtx)
@@ -8092,15 +8880,24 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     {
         printf("Sending command with send_IO\n");
     }
-#if WINVER >= SEA_WIN32_WINNT_WIN10
+#if WINVER >= SEA_WIN32_WINNT_WINBLUE
     //TODO: We should figure out a better way to handle when to use the Windows API for these IOs than this...not sure if there should be a function called "is command in Win API" or something like that to check for it or not.-TJE
     if (is_Firmware_Download_Command_Compatible_With_Win_API(scsiIoCtx))
     {
-        ret = windows_Firmware_Download_IO_SCSI(scsiIoCtx);
+        if (scsiIoCtx->device->os_info.fwdlMiniportSupported)
+        {
+            ret = windows_Firmware_Download_IO_SCSI_Miniport(scsiIoCtx);
+        }
+#if WINVER >= SEA_WIN32_WINNT_WIN10
+        else
+        {
+            ret = windows_Firmware_Download_IO_SCSI(scsiIoCtx);
+        }
+#endif //WINVER >= SEA_WIN32_WINNT_WIN10
     }
     else
     {
-#endif
+#endif //WINVER >= SEA_WIN32_WINNT_WINBLUE
         switch (scsiIoCtx->device->drive_info.interface_type)
         {
         case IDE_INTERFACE:
@@ -8956,7 +9753,7 @@ static int send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoCtx)
 }
 
 //uncomment this flag to switch to force using the older structure if we need to.
-//#define DISABLE_FWDL_V2 1
+#define DISABLE_FWDL_V2 1
 
 static int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
 {
@@ -9006,7 +9803,7 @@ static int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
     }
 #endif
     //TODO: add firmware slot number?
-    downloadIO->Slot = 0;// M_GETBITRANGE(nvmeIoCtx->cmd, 1, 0);
+    downloadIO->Slot = STORAGE_HW_FIRMWARE_INVALID_SLOT;// M_GETBITRANGE(nvmeIoCtx->cmd, 1, 0);
     //we need to set the offset since MS uses this in the command sent to the device.
     downloadIO->Offset = C_CAST(uint64_t, nvmeIoCtx->cmd.adminCmd.cdw11) << 2;//convert #DWords to bytes for offset
     //set the size of the buffer
@@ -9068,6 +9865,8 @@ static int send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *nvmeIoCtx)
         ret = SUCCESS;
         nvmeIoCtx->commandCompletionData.commandSpecific = 0;
         nvmeIoCtx->commandCompletionData.dw0Valid = true;
+        nvmeIoCtx->commandCompletionData.statusAndCID = 0;
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
     }
     else
     {
@@ -10471,14 +11270,24 @@ static int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             ret = send_Win_NVMe_Get_Features_Cmd(nvmeIoCtx);
             break;
         case NVME_ADMIN_CMD_DOWNLOAD_FW:
-            ret = send_Win_NVMe_Firmware_Image_Download_Command(nvmeIoCtx);
+            if (nvmeIoCtx->device->os_info.fwdlMiniportSupported)
+            {
+                ret = send_Win_NVME_Firmware_Miniport_Download(nvmeIoCtx);
+            }
+            else
+            {
+                ret = send_Win_NVMe_Firmware_Image_Download_Command(nvmeIoCtx);
+            }
             break;
         case NVME_ADMIN_CMD_ACTIVATE_FW:
-#if defined(NVME_FW_ACTIVATE_WIN10)
-            ret = send_Win_NVMe_Firmware_Activate_Command(nvmeIoCtx);
-#else
-            ret = send_Win_NVMe_Firmware_Activate_Miniport_Command(nvmeIoCtx);
-#endif
+            if (nvmeIoCtx->device->os_info.fwdlMiniportSupported)
+            {
+                ret = send_Win_NVME_Firmware_Miniport_Activate(nvmeIoCtx);
+            }
+            else
+            {
+                ret = send_Win_NVMe_Firmware_Activate_Command(nvmeIoCtx);
+            }
             break;
         case NVME_ADMIN_CMD_SECURITY_SEND:
             ret = win10_Translate_Security_Send(nvmeIoCtx);
