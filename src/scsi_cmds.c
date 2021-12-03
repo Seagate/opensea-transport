@@ -4392,3 +4392,27 @@ int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t 
     }
     return ret;
 }
+
+int scsi_Rezero_Unit(tDevice* device)
+{
+    int ret = FAILURE;
+    uint8_t cdb[CDB_LEN_6] = { 0 };
+    cdb[OPERATION_CODE] = REZERO_UNIT;
+    cdb[1] = RESERVED;//technically has lun in here, but that is old SCSI2 ism that is long gone and is autofilled by low-level drivers on these old devices -TJE
+    cdb[2] = RESERVED;
+    cdb[3] = RESERVED;
+    cdb[4] = RESERVED;
+    cdb[5] = 0;
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending SCSI Rezero Unit\n");
+    }
+    //send the command
+    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Rezero Unit", ret);
+    }
+    return ret;
+}

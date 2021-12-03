@@ -407,6 +407,7 @@ extern "C"
         REPORT_SUPPORTED_TASK_MANAGEMENT_FUNCS      = 0xA3,
         REPORT_TARGET_PORT_GROUPS_CMD               = 0xA3,
         REQUEST_SENSE_CMD                           = 0x03,
+        REZERO_UNIT                                 = 0x01,
         SANITIZE_CMD                                = 0x48,
         SECURITY_PROTOCOL_IN                        = 0xA2,
         SECURITY_PROTOCOL_OUT                       = 0xB5,

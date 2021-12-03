@@ -2142,9 +2142,57 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int scsi_Restore_Elements_And_Rebuild(tDevice *device);
 
+    //-----------------------------------------------------------------------------
+    //
+    //  scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t allocationLength, uint8_t *ptrData)
+    //
+    //! \brief   Description:  Sends the SCSI Persistent reserve in command
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to device structure
+    //!   \param[in] serviceAction = persistent reserve action to perform
+    //!   \param[in] allocationLength = length of any data associated with the service action to receive from the device
+    //!   \param[in] ptrData = pointer to data buffer to issue to the device, if any.
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t allocationLength, uint8_t *ptrData);
 
+    //-----------------------------------------------------------------------------
+    //
+    //  scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t scope, uint8_t type,  uint32_t parameterListLength, uint8_t *ptrData)
+    //
+    //! \brief   Description:  Sends the SCSI Persistent reserve out command
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to device structure
+    //!   \param[in] serviceAction = persistent reserve action to perform
+    //!   \param[in] scope = scope of the service action
+    //!   \param[in] type = 
+    //!   \param[in] parameterListLength = length of any data associated with the service action to send to the device
+    //!   \param[in] ptrData = pointer to data buffer to issue to the device, if any.
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t scope, uint8_t type,  uint32_t parameterListLength, uint8_t *ptrData);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  scsi_Rezero_Unit(tDevice* device)
+    //
+    //! \brief   Description:  Sends the SCSI Rezero Unit command. SCSI 2 mentions that this returns the unit to a good state.
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to device structure
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int scsi_Rezero_Unit(tDevice* device);
 
 #if defined(__cplusplus)
 }
