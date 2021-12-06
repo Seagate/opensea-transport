@@ -6472,8 +6472,6 @@ int get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busType)
         device->os_info.fwdlIOsupport.payloadAlignment = fwdlSupportedInfo->ImagePayloadAlignment;
         device->os_info.fwdlIOsupport.maxXferSize = fwdlSupportedInfo->ImagePayloadMaxSize;
 
-        print_Data_Buffer(outputData, outputDataSize, true);
-
         //TODO: store more FWDL information as we need it
 #if defined (_DEBUG)
         printf("Got Win10 FWDL Info\n");
