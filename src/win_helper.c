@@ -4037,7 +4037,6 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     device->drive_info.namespaceID = device->os_info.scsi_addr.Lun + 1;
                     if (device_desc->VendorIdOffset)//Open fabrics will set a vendorIDoffset, MSFT driver will not.
                     {
-
                         if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE || SUCCESS == open_SCSI_SRB_Handle(device))
                         {
                             //now see if the IOCTL is supported or not
@@ -9257,6 +9256,69 @@ static int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
+static int win10_Translate_Identify_Active_Namespace_ID_List(nvmeCmdCtx* nvmeIoCtx)
+{
+    int ret = SUCCESS;
+    //return invalid namespace or format if NSID >= FFFFFFFEh or FFFFFFFFh
+    //CNTID is not used. If non-zero, return an error for invalid field in cmd???
+    if (nvmeIoCtx->cmd.adminCmd.nsid >= 0xFFFFFFFE)
+    {
+        //dummy up invalid field in CMD status
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 0x0B);
+        nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = 0;
+    }
+    else if (M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 8) > 0 || nvmeIoCtx->cmd.adminCmd.cdw11 || nvmeIoCtx->cmd.adminCmd.cdw12 || nvmeIoCtx->cmd.adminCmd.cdw13 || nvmeIoCtx->cmd.adminCmd.cdw14 || nvmeIoCtx->cmd.adminCmd.cdw15)
+    {
+        //invalid field in cmd...assuming that this should be filtered since it is not translatable!
+        nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 2);
+        nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = 0;
+    }
+    else
+    {
+        //NOTE: Need to only return NSID's that are greater than the requested NSID, so will need to filter report LUNS output - TJE
+        //report LUNs uses 64bits for each lun. NVMe uses 32bits for each NSID.
+        //This command describes 1024 NSIDs, so we can request the whole thing, then translate/filter as needed - TJE
+        uint32_t reportLunsDataSize = 16 + (1024 * 8);//131072B
+        uint8_t* reportLunsData = C_CAST(uint8_t*, calloc_aligned(reportLunsDataSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
+        if (reportLunsData)
+        {
+            memset(nvmeIoCtx->ptrData, 0, nvmeIoCtx->dataSize);
+            if (SUCCESS == (ret = scsi_Report_Luns(nvmeIoCtx->device, 0, reportLunsDataSize, reportLunsData)))
+            {
+                //Win10 follows SCSI translation and reports LUNs starting at zero, so for each LUN in the list, add 1 to get a NSID. - TJE
+                uint32_t lunListLength = M_BytesTo4ByteValue(reportLunsData[0], reportLunsData[1], reportLunsData[2], reportLunsData[3]);
+                //now go through the list and for each NSID greater than the provided NSID in the command, add it to the return data (reported as LUNs so add 1!)
+                for (uint32_t lunOffset = 8, nsidOffset = 0; lunOffset < (8 + lunListLength) && nsidOffset < nvmeIoCtx->dataSize && lunOffset < reportLunsDataSize; lunOffset += 8)
+                {
+                    uint64_t lun = M_BytesTo8ByteValue(reportLunsData[lunOffset + 0], reportLunsData[lunOffset + 1], reportLunsData[lunOffset + 2], reportLunsData[lunOffset + 3], reportLunsData[lunOffset + 4], reportLunsData[lunOffset + 5], reportLunsData[lunOffset + 6], reportLunsData[lunOffset + 7]);
+                    if ((lun + 1) > nvmeIoCtx->cmd.adminCmd.nsid)
+                    {
+                        //nvme uses little endian, so get this correct!
+                        nvmeIoCtx->ptrData[nsidOffset + 0] = M_Byte3(lun + 1);
+                        nvmeIoCtx->ptrData[nsidOffset + 1] = M_Byte2(lun + 1);
+                        nvmeIoCtx->ptrData[nsidOffset + 2] = M_Byte1(lun + 1);
+                        nvmeIoCtx->ptrData[nsidOffset + 3] = M_Byte0(lun + 1);
+                        nsidOffset += 4;
+                    }
+                }
+                print_Data_Buffer(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, false);
+            }
+            else
+            {
+                ret = OS_PASSTHROUGH_FAILURE;
+            }
+            safe_Free_aligned(reportLunsData);
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
+    }
+    return ret;
+}
+
 #if !defined(NVME_IDENTIFY_CNS_SPECIFIC_NAMESPACE)
 #define NVME_IDENTIFY_CNS_SPECIFIC_NAMESPACE 0
 #endif
@@ -9272,124 +9334,137 @@ static int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
 static int send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
 {
     int     ret = SUCCESS;
-    BOOL    result;
-    PVOID   buffer = NULL;
-    ULONG   bufferLength = 0;
-    ULONG   returnedLength = 0;
-
-    PSTORAGE_PROPERTY_QUERY query = NULL;
-    PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = NULL;
-    PSTORAGE_PROTOCOL_DATA_DESCRIPTOR protocolDataDescr = NULL;
-
-    //
-    // Allocate buffer for use.
-    //
-    bufferLength = FIELD_OFFSET(STORAGE_PROPERTY_QUERY, AdditionalParameters) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA) + NVME_IDENTIFY_DATA_LEN;
-    buffer = malloc(bufferLength);
-
-    if (buffer == NULL)
+    uint8_t cnsValue = M_Byte0(nvmeIoCtx->cmd.adminCmd.cdw10);
+    if (cnsValue == 2)
     {
-        #if defined (_DEBUG)
-        printf("%s: allocate buffer failed, exit",__FUNCTION__);
-        #endif
-        return MEMORY_FAILURE;
+        //need to issue SCSI translation report LUNs and dummy the result back up to the caller
+        return win10_Translate_Identify_Active_Namespace_ID_List(nvmeIoCtx);
     }
-
-    /*
-        Initialize query data structure to get Identify Controller Data.
-    */
-    ZeroMemory(buffer, bufferLength);
-
-    query = C_CAST(PSTORAGE_PROPERTY_QUERY, buffer);
-    protocolDataDescr = C_CAST(PSTORAGE_PROTOCOL_DATA_DESCRIPTOR, buffer);
-    protocolData = C_CAST(PSTORAGE_PROTOCOL_SPECIFIC_DATA, query->AdditionalParameters);
-
-    //check that the rest of dword 10 is zero!
-    if ((nvmeIoCtx->cmd.adminCmd.cdw10 >> 8) != 0)
+    else if (cnsValue >= 3)
     {
-        //these bytes are reserved in NVMe 1.2 which is the highest MS supports right now. - TJE
-        safe_Free(buffer)
+        //NOTE: MSFT has changed their APIs a few times. This could change in the future!
         return OS_COMMAND_NOT_AVAILABLE;
-    }
-
-    switch (M_Byte0(nvmeIoCtx->cmd.adminCmd.cdw10))
-    {
-    case 0://for the specified namespace. If nsid = UINT32_MAX it's for all namespaces
-        query->PropertyId = StorageDeviceProtocolSpecificProperty;
-        protocolData->ProtocolDataRequestValue = NVME_IDENTIFY_CNS_SPECIFIC_NAMESPACE;
-        break;
-    case 1://Identify controller data
-        query->PropertyId = StorageAdapterProtocolSpecificProperty;
-        protocolData->ProtocolDataRequestValue = NVME_IDENTIFY_CNS_CONTROLLER;
-        break;
-    case 2://list of 1024 active namespace IDs
-        query->PropertyId = StorageAdapterProtocolSpecificProperty;
-        protocolData->ProtocolDataRequestValue = NVME_IDENTIFY_CNS_ACTIVE_NAMESPACES;
-        //NOTE: This command is documented in MSDN, but it doesn't actually work, so we are returning an error instead! - TJE
-        safe_Free(buffer)
-        return OS_COMMAND_NOT_AVAILABLE;
-        //All values below here are added in NVMe 1.3, which MS doesn't support yet! - TJE
-    case 3://list of namespace identification descriptor structures
-        //namespace management cns values
-    case 0x10://list of up to 1024 namespace IDs with namespace identifier greater than one specified in NSID
-    case 0x11://identify namespace data for NSID specified
-    case 0x12://list of up to 2047 controller identifiers greater than or equal to the value specified in CDW10.CNTID. List contains controller identifiers that are attached to the namespace specified
-    case 0x13://list of up to 2047 controller identifiers greater than or equal to the value specified in CDW10.CNTID. List contains controller identifiers that that may or may not be attached to namespaces
-    case 0x14://primary controller capabilities
-    case 0x15://secondary controller list
-    default:
-        safe_Free(buffer)
-        return OS_COMMAND_NOT_AVAILABLE;
-    }
-
-    query->QueryType = PropertyStandardQuery;
-
-    protocolData->ProtocolType = ProtocolTypeNvme;
-    protocolData->DataType = NVMeDataTypeIdentify;
-    protocolData->ProtocolDataRequestSubValue = 0;
-    protocolData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA);
-    protocolData->ProtocolDataLength = NVME_IDENTIFY_DATA_LEN;
-
-    /*
-    // Send request down.
-    */
-    #if defined (_DEBUG)
-    printf("%s: Drive Path = %s", __FUNCTION__, nvmeIoCtx->device->os_info.name);
-    #endif
-
-    seatimer_t commandTimer;
-    memset(&commandTimer, 0, sizeof(seatimer_t));
-    start_Timer(&commandTimer);
-    result = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
-        IOCTL_STORAGE_QUERY_PROPERTY,
-        buffer,
-        bufferLength,
-        buffer,
-        bufferLength,
-        &returnedLength,
-        NULL
-    );
-    stop_Timer(&commandTimer);
-    nvmeIoCtx->device->os_info.last_error = GetLastError();
-    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-
-    if (result == 0)
-    {
-        if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            printf("Windows Error: ");
-            print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
-        }
-        ret = OS_PASSTHROUGH_FAILURE;
     }
     else
     {
-        char* identifyControllerData = C_CAST(char*, C_CAST(PCHAR, protocolData) + protocolData->ProtocolDataOffset);
-        memcpy(nvmeIoCtx->ptrData, identifyControllerData, nvmeIoCtx->dataSize);
+        BOOL    result;
+        PVOID   buffer = NULL;
+        ULONG   bufferLength = 0;
+        ULONG   returnedLength = 0;
+
+        PSTORAGE_PROPERTY_QUERY query = NULL;
+        PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = NULL;
+        PSTORAGE_PROTOCOL_DATA_DESCRIPTOR protocolDataDescr = NULL;
+
+        //
+        // Allocate buffer for use.
+        //
+        bufferLength = FIELD_OFFSET(STORAGE_PROPERTY_QUERY, AdditionalParameters) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA) + NVME_IDENTIFY_DATA_LEN;
+        buffer = malloc(bufferLength);
+
+        if (buffer == NULL)
+        {
+#if defined (_DEBUG)
+            printf("%s: allocate buffer failed, exit", __FUNCTION__);
+#endif
+            return MEMORY_FAILURE;
+        }
+
+        /*
+            Initialize query data structure to get Identify Controller Data.
+        */
+        ZeroMemory(buffer, bufferLength);
+
+        query = C_CAST(PSTORAGE_PROPERTY_QUERY, buffer);
+        protocolDataDescr = C_CAST(PSTORAGE_PROTOCOL_DATA_DESCRIPTOR, buffer);
+        protocolData = C_CAST(PSTORAGE_PROTOCOL_SPECIFIC_DATA, query->AdditionalParameters);
+
+        //check that the rest of dword 10 is zero!
+        if ((nvmeIoCtx->cmd.adminCmd.cdw10 >> 8) != 0)
+        {
+            //these bytes are reserved in NVMe 1.2 which is the highest MS supports right now. - TJE
+            safe_Free(buffer)
+                return OS_COMMAND_NOT_AVAILABLE;
+        }
+
+        switch (cnsValue)
+        {
+        case 0://for the specified namespace. If nsid = UINT32_MAX it's for all namespaces
+            query->PropertyId = StorageDeviceProtocolSpecificProperty;
+            protocolData->ProtocolDataRequestValue = NVME_IDENTIFY_CNS_SPECIFIC_NAMESPACE;
+            break;
+        case 1://Identify controller data
+            query->PropertyId = StorageAdapterProtocolSpecificProperty;
+            protocolData->ProtocolDataRequestValue = NVME_IDENTIFY_CNS_CONTROLLER;
+            break;
+        case 2://list of 1024 active namespace IDs
+            query->PropertyId = StorageAdapterProtocolSpecificProperty;
+            protocolData->ProtocolDataRequestValue = NVME_IDENTIFY_CNS_ACTIVE_NAMESPACES;
+            //NOTE: This command is documented in MSDN, but it doesn't actually work, so we are returning an error instead! - TJE
+            safe_Free(buffer)
+                return OS_COMMAND_NOT_AVAILABLE;
+            //All values below here are added in NVMe 1.3, which MS doesn't support yet! - TJE
+        case 3://list of namespace identification descriptor structures
+            //namespace management cns values
+        case 0x10://list of up to 1024 namespace IDs with namespace identifier greater than one specified in NSID
+        case 0x11://identify namespace data for NSID specified
+        case 0x12://list of up to 2047 controller identifiers greater than or equal to the value specified in CDW10.CNTID. List contains controller identifiers that are attached to the namespace specified
+        case 0x13://list of up to 2047 controller identifiers greater than or equal to the value specified in CDW10.CNTID. List contains controller identifiers that that may or may not be attached to namespaces
+        case 0x14://primary controller capabilities
+        case 0x15://secondary controller list
+        default:
+            safe_Free(buffer)
+                return OS_COMMAND_NOT_AVAILABLE;
+        }
+
+        query->QueryType = PropertyStandardQuery;
+
+        protocolData->ProtocolType = ProtocolTypeNvme;
+        protocolData->DataType = NVMeDataTypeIdentify;
+        protocolData->ProtocolDataRequestSubValue = 0;
+        protocolData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA);
+        protocolData->ProtocolDataLength = NVME_IDENTIFY_DATA_LEN;
+
+        /*
+        // Send request down.
+        */
+#if defined (_DEBUG)
+        printf("%s: Drive Path = %s", __FUNCTION__, nvmeIoCtx->device->os_info.name);
+#endif
+
+        seatimer_t commandTimer;
+        memset(&commandTimer, 0, sizeof(seatimer_t));
+        start_Timer(&commandTimer);
+        result = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
+            IOCTL_STORAGE_QUERY_PROPERTY,
+            buffer,
+            bufferLength,
+            buffer,
+            bufferLength,
+            &returnedLength,
+            NULL
+        );
+        stop_Timer(&commandTimer);
+        nvmeIoCtx->device->os_info.last_error = GetLastError();
+        nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+
+        if (result == 0)
+        {
+            if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+            {
+                printf("Windows Error: ");
+                print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
+            }
+            ret = OS_PASSTHROUGH_FAILURE;
+        }
+        else
+        {
+            char* identifyControllerData = C_CAST(char*, C_CAST(PCHAR, protocolData) + protocolData->ProtocolDataOffset);
+            memcpy(nvmeIoCtx->ptrData, identifyControllerData, nvmeIoCtx->dataSize);
+        }
+
+        safe_Free(buffer)
     }
-
-    safe_Free(buffer)
-
     return ret;
 }
 
