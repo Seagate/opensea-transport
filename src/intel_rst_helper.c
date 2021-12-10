@@ -300,7 +300,9 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
             overlappedStruct.hEvent = NULL;
             if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
             {
+                printf("Windows Error: ");
                 print_Windows_Error_To_Screen(device->os_info.last_error);
+                printf("Intel RAID Firmware: ");
                 printf_Intel_Firmware_SRB_Status(raidFirmwareRequest->Header.ReturnCode);
             }
             if (!success)
