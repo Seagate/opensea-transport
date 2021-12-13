@@ -4397,7 +4397,7 @@ int scsi_Rezero_Unit(tDevice* device)
 {
     int ret = FAILURE;
     uint8_t cdb[CDB_LEN_6] = { 0 };
-    cdb[OPERATION_CODE] = REZERO_UNIT;
+    cdb[OPERATION_CODE] = REZERO_UNIT_CMD;
     cdb[1] = RESERVED;//technically has lun in here, but that is old SCSI2 ism that is long gone and is autofilled by low-level drivers on these old devices -TJE
     cdb[2] = RESERVED;
     cdb[3] = RESERVED;
