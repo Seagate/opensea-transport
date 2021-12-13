@@ -9119,7 +9119,7 @@ static int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
 
     if (nvmeIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
     {
-        safe_Free(commandBuffer)
+        safe_Free_aligned(commandBuffer)
         return OS_TIMEOUT_TOO_LARGE;
     }
 
