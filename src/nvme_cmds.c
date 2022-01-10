@@ -339,6 +339,40 @@ int nvme_Security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t se
     return ret;
 }
 
+int nvme_Verify(tDevice* device, uint64_t startingLBA, bool limitedRetry, bool fua, uint16_t numberOfLogicalBlocks)
+{
+    int ret = SUCCESS;
+    nvmeCmdCtx nvmCommand;
+    memset(&nvmCommand, 0, sizeof(nvmeCmdCtx));
+    nvmCommand.commandType = NVM_CMD;
+    nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_VERIFY;
+    nvmCommand.commandDirection = XFER_NO_DATA;
+    nvmCommand.ptrData = NULL;
+    nvmCommand.dataSize = 0;
+    nvmCommand.cmd.nvmCmd.cdw10 = M_DoubleWord0(startingLBA);//lba
+    nvmCommand.cmd.nvmCmd.cdw11 = M_DoubleWord1(startingLBA);//lba
+    nvmCommand.cmd.nvmCmd.cdw12 = numberOfLogicalBlocks;
+    if (limitedRetry)
+    {
+        M_SET_BIT(nvmCommand.cmd.nvmCmd.cdw12, 31);
+    }
+    if (fua)
+    {
+        M_SET_BIT(nvmCommand.cmd.nvmCmd.cdw12, 30);
+    }
+    nvmCommand.timeout = 15;
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending NVMe Verify Command\n");
+    }
+    ret = nvme_Cmd(device, &nvmCommand);
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Verify", ret);
+    }
+    return ret;
+}
+
 int nvme_Write_Uncorrectable(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks)
 {
     int ret = SUCCESS;
