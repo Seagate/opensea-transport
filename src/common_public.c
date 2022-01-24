@@ -3440,6 +3440,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.singleSectorPIOOnly = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 8192;
                 break;
+            case 0xAA1A://Another ID for firecuda gaming SSD.
             case 0xAA17://FireCuda Gaming SSD
                 //NOTE: Recommend a retest for this device to double check the hacks. Most are setup based on other ASMedia bridge chip tests.
                 passthroughHacksSet = true;

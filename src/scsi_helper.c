@@ -9157,6 +9157,30 @@ int fill_In_Device_Info(tDevice *device)
             device->drive_info.media_type = MEDIA_UNKNOWN;
             break;
         }
+
+        //special USB detection case. If not already USB interface, do a few more checks to get the interface correct
+        if (device->drive_info.interface_type == SCSI_INTERFACE)
+        {
+            //check version descriptors first
+            for (uint16_t versionIter = 0, offset = 58; versionIter < 7 && offset < (inq_buf[4] + 4); ++versionIter, offset += 2)
+            {
+                uint16_t versionDescriptor = M_BytesTo2ByteValue(device->drive_info.scsiVpdData.inquiryData[offset + 0], device->drive_info.scsiVpdData.inquiryData[offset + 1]);
+                if (is_Standard_Supported(versionDescriptor, STANDARD_CODE_USB)
+                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_UAS)
+                    || is_Standard_Supported(versionDescriptor, STANDARD_CODE_UAS2))
+                {
+                    device->drive_info.interface_type = USB_INTERFACE;
+                }
+            }
+            
+            //Only rely on this as a last resort. Try using version descriptors when possible
+            //NOTE: This is different from SAS where the ID is in all CAPS, which makes this identification possible.
+            if (device->drive_info.interface_type == SCSI_INTERFACE && strcmp(device->drive_info.T10_vendor_ident, "Seagate") == 0)
+            {
+                device->drive_info.interface_type = USB_INTERFACE;
+            }
+        }
+
         //check for additional bits to try and filter out when to check for SAT
         if (checkForSAT && !device->drive_info.passThroughHacks.hacksSetByReportedID)
         {
@@ -9259,7 +9283,7 @@ int fill_In_Device_Info(tDevice *device)
             &&
             (strncmp(device->drive_info.T10_vendor_ident, "ASMT", 4) == 0 || strncmp(device->drive_info.T10_vendor_ident, "ASMedia", 7) == 0 
             || strstr(device->drive_info.product_identification, "ASM236X") || strstr(device->drive_info.product_identification, "NVME"))
-            )
+            || device->drive_info.interface_type == USB_INTERFACE)
         {
             //This is likely a ASMedia 236X device. Need to do another inquiry command in order to confirm.
             uint8_t asmtInq[38] = { 0 };
