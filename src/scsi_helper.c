@@ -9170,6 +9170,7 @@ int fill_In_Device_Info(tDevice *device)
                     || is_Standard_Supported(versionDescriptor, STANDARD_CODE_UAS2))
                 {
                     device->drive_info.interface_type = USB_INTERFACE;
+                    break;
                 }
             }
             
