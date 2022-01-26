@@ -9350,6 +9350,10 @@ int fill_In_Device_Info(tDevice *device)
             || strstr(device->drive_info.product_identification, "ASM236X") || strstr(device->drive_info.product_identification, "NVME")
             || is_Seagate_USB_Vendor_ID(device) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the ASmedia NVMe chips
             //TODO: Check when FWRev is set to 2364? At least one device I have does this, but not sure this is a good thing to add in here or not -TJE
+            && !hisup && !rmb //hisup shoiuld be 1 and rmb should be zero...on the asmedia chips I have tested, hisup is zero
+            && responseFormat >= 2 //filter out any weird old drives with bizarre responses
+            && inq_buf[4] == 0x47 //SNTL says 1F, but a couple of adapter I have sets 47h...using this for now to help filter the list
+            && cmdQueue //should be set for all NVMe SNTL translators
             )
         {
             //This is likely a ASMedia 236X device. Need to do another inquiry command in order to confirm.
