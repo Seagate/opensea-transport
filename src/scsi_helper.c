@@ -9875,13 +9875,6 @@ int fill_In_Device_Info(tDevice *device)
                                         checkForSAT = false;
                                     }
                                 }
-                                else
-                                {
-                                    if (!satVPDPageRead)
-                                    {
-                                        device->drive_info.media_type = MEDIA_UNKNOWN;
-                                    }
-                                }
                             }
                             switch (productType)
                             {
