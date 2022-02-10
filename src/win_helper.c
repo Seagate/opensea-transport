@@ -2005,8 +2005,7 @@ static int win_Get_SCSI_Address(HANDLE deviceHandle, PSCSI_ADDRESS scsiAddress)
     return ret;
 }
 
-#if WINVER >= SEA_WIN32_WINNT_WINBLUE
-
+#if WINVER >= SEA_WIN32_WINNT_WINBLUE && defined(IOCTL_SCSI_MINIPORT_FIRMWARE)
 static void print_Firmware_Miniport_SRB_Status(ULONG returnCode)
 {
     switch (returnCode)
@@ -3942,7 +3941,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
                 int fwdlResult = NOT_SUPPORTED;
                 get_Adapter_IDs(device, device_desc, device_desc->Size);
 
-#if WINVER >= SEA_WIN32_WINNT_WINBLUE
+#if WINVER >= SEA_WIN32_WINNT_WINBLUE && defined (IOCTL_SCSI_MINIPORT_FIRMWARE)
                 fwdlResult = get_Win_FWDL_Miniport_Capabilities(device, device_desc->BusType == BusTypeNvme ? true : false);
 #endif
 
@@ -8877,7 +8876,7 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     {
         printf("Sending command with send_IO\n");
     }
-#if WINVER >= SEA_WIN32_WINNT_WINBLUE
+#if WINVER >= SEA_WIN32_WINNT_WINBLUE && defined (IOCTL_SCSI_MINIPORT_FIRMWARE)
     //TODO: We should figure out a better way to handle when to use the Windows API for these IOs than this...not sure if there should be a function called "is command in Win API" or something like that to check for it or not.-TJE
     if (is_Firmware_Download_Command_Compatible_With_Win_API(scsiIoCtx))
     {
