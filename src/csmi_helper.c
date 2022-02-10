@@ -2836,7 +2836,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                         if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                             || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
                             || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
-                            && strcmp(driverInfo.Information.szName, "arcsas") != 0) //skip arcsas due to an unknown bug below in the scan that we have not yet resolved. It crashes the tool and it is not clear why at this time-TJE
+                            && strcmp(C_CAST(const char*, driverInfo.Information.szName), "arcsas") != 0) //skip arcsas due to an unknown bug below in the scan that we have not yet resolved. It crashes the tool and it is not clear why at this time-TJE
                         {
                             //Get RAID info
                             CSMI_SAS_RAID_INFO_BUFFER csmiRAIDInfo;
@@ -3054,7 +3054,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                             if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                                 || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
                                 || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
-                                && strcmp(driverInfo.Information.szName, "arcsas") != 0) //skip arcsas due to an unknown bug below in the scan that we have not yet resolved. It crashes the tool and it is not clear why at this time-TJE
+                                && strcmp(C_CAST(const char*, driverInfo.Information.szName), "arcsas") != 0) //skip arcsas due to an unknown bug below in the scan that we have not yet resolved. It crashes the tool and it is not clear why at this time-TJE
                             {
                                 //Get RAID info & Phy info. Need to match the RAID config (below) to some of the phy info as best we can...-TJE
 #if defined (_WIN32)
