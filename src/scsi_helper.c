@@ -9403,7 +9403,7 @@ int fill_In_Device_Info(tDevice *device)
                     {
                         device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_ASMEDIA;
                         //attempt the full passthrough
-                        if (SUCCESS == nvme_Identify(device, nvmeIdentify, 0, 1)) NVME_IDENTIFY_CTRL))
+                        if (SUCCESS == nvme_Identify(device, nvmeIdentify, 0, NVME_IDENTIFY_CTRL))
                         {
                             fullCmdSupport = true;
                         }
