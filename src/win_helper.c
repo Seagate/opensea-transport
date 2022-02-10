@@ -4126,7 +4126,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miSend = true;
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize = true;
                             }
-                            if (is_Windows_11_Version_21H2_Or_Higher)
+                            if (is_Windows_11_Version_21H2_Or_Higher())
                             {
                                 //New documentation indicates that sanitize is supported wihtout PE mode in Windows 11.
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize = true;
