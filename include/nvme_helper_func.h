@@ -302,6 +302,8 @@ OPENSEA_TRANSPORT_API int nvme_Security_Receive(tDevice *device, uint8_t securit
 
 OPENSEA_TRANSPORT_API int nvme_Security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t nvmeSecuritySpecificField, uint8_t *ptrData, uint32_t dataLength);
 
+OPENSEA_TRANSPORT_API int nvme_Verify(tDevice* device, uint64_t startingLBA, bool limitedRetry, bool fua, uint16_t numberOfLogicalBlocks);
+
 OPENSEA_TRANSPORT_API int nvme_Write_Uncorrectable(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks);
 
 #define SANITIZE_NVM_EXIT_FAILURE_MODE 1

@@ -3184,6 +3184,7 @@ int close_Device(tDevice *dev)
         {
             close_SCSI_SRB_Handle(dev);//\\.\SCSIx: could be opened for different reasons...so we need to close it here.
             safe_Free(dev->os_info.csmiDeviceData)//CSMI may have been used, so free this memory if it was before we close out.
+            CloseHandle(dev->os_info.forceUnitAccessRWfd);//if FUA handle was opened, this will close it out.
             retValue = CloseHandle(dev->os_info.fd);
             dev->os_info.last_error = GetLastError();
             if (retValue)
@@ -11548,30 +11549,226 @@ int pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pDa
     return NOT_SUPPORTED;
 }
 #endif
+
+static int open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(tDevice* device)
+{
+    int ret = SUCCESS;
+    if (device->os_info.forceUnitAccessRWfd == NULL || device->os_info.forceUnitAccessRWfd == INVALID_HANDLE_VALUE)
+    {
+        //handle is not yet opened
+        //FILE_FLAG_NO_BUFFERING - this is for the operating system/file system caching. NOT THE DISK!
+        //FILE_FLAG_WRITE_THROUGH - this seems to mean FUA based on the description of the flag
+        // The following link describes the flags. It sounds like we need both of them for FUA otherwise it may go to the system cache and then be flushed, which may not be the same- TJE
+        //See here for more info: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea#caching_behavior
+        device->os_info.forceUnitAccessRWfd = CreateFile(device->os_info.name, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+            FILE_FLAG_WRITE_THROUGH | FILE_FLAG_NO_BUFFERING |
+#if !defined(WINDOWS_DISABLE_OVERLAPPED)
+            FILE_FLAG_OVERLAPPED,
+#endif
+            NULL);
+        if (device->os_info.forceUnitAccessRWfd == INVALID_HANDLE_VALUE)
+        {
+            ret = NOT_SUPPORTED;//Or should this be set to failure??? - TJE
+        }
+    }
+    return ret;
+}
+
+static int set_Command_Completion_For_OS_Read_Write(tDevice* device, DWORD lastError)
+{
+    int ret = SUCCESS;
+    //clear the last command sense data and rtfrs. We'll dummy them up in a minute
+    memset(&device->drive_info.lastCommandRTFRs, 0, sizeof(ataReturnTFRs));
+    memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);
+    if (lastError == ERROR_SUCCESS)
+    {
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+        device->drive_info.lastNVMeResult.lastNVMeCommandSpecific = 0;
+        device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_SUCCESS_);
+#endif
+        if (device->drive_info.drive_type == ATA_DRIVE)
+        {
+            device->drive_info.lastCommandRTFRs.status = device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
+        }
+    }
+    else
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        ret = FAILURE;
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+        //For nvme, set the NVMe status as best we can, then fall through and set SCSI style sense data as well.
+        //This switch case will handle many, if not all the same cases as SCSI below, but this seemed like the easier way to solve this problem for now. - TJE
+        //if the DISABLE_NVME_PASSTHROUGH flag is refactored, this can probably be cleaned up a lot - TJE
+        device->drive_info.lastNVMeResult.lastNVMeCommandSpecific = 0;//cannot report this as far as I know, so clear it to zero
+        switch (lastError)
+        {
+        case ERROR_NOT_READY://sense key not ready
+            //namespace not ready
+            device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_NS_NOT_READY_);
+            break;
+        case ERROR_WRITE_PROTECT:
+            //attempted to write to read-only range
+            device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_COMMAND_SPECIFIC_STATUS, NVME_CMD_SP_SC_ATTEMPTED_WRITE_TO_READ_ONLY_RANGE);
+            break;
+        case ERROR_WRITE_FAULT:
+            //write fault
+            device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS, NVME_MED_ERR_SC_WRITE_FAULT_);
+            break;
+        case ERROR_READ_FAULT://should this be "Deallocated or unwritten logical block on NVME?
+        case ERROR_DEVICE_HARDWARE_ERROR:
+            //internal device error
+            device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_INTERNAL_);
+            break;
+        case ERROR_CRC: //medium error, uncorrectable data
+            device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS, NVME_MED_ERR_SC_UNREC_READ_ERROR_);
+            break;
+        case ERROR_SEEK://cannot find area or track on disk?
+            M_FALLTHROUGH //Fallthrough for now unless we can figure out a better, more specific error when this happens - TJE
+        case ERROR_SECTOR_NOT_FOUND://ID not found (beyond max LBA type error)
+            //lba out of range
+            device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_LBA_RANGE_);
+            break;
+        case ERROR_OFFSET_ALIGNMENT_VIOLATION://alignment error for the device
+            //namespace not ready??? THere doesn't seem to be anything similar in the spec like SAS/SATA have...probably because LBAs don't report differing logical and physical size
+            device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_NS_NOT_READY_);
+            break;
+        case ERROR_TIMEOUT:
+            //command abort requested. Assume this system asked to abort this when it took too long
+            device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_ABORT_REQ_);
+            break;
+        case ERROR_DEVICE_NOT_CONNECTED://CRC error???
+            //data transfer error?
+            device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_DATA_XFER_ERROR_);
+            break;
+        case ERROR_BAD_COMMAND:
+            //invalid op code??? or invalid field in command? no idea...-TJE
+            device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_INVALID_OPCODE_);
+            break;
+        case ERROR_INVALID_DATA://Not sure if this is the same as CRC or something else, so this may need changing if we see it in the future.
+        case ERROR_DATA_CHECKSUM_ERROR://Not sure if this will show up for RAW IO like this is doing or not, but we may need a case for this in the future.
+            //data transfer error?
+            device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_DATA_XFER_ERROR_);
+            break;
+        default:
+            //setting to abort requested since we don't know what else to set...generic enough
+            device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_ABORT_REQ_);
+            break;
+        }
+#endif
+
+        //failure for one reason or another. The last error may or may not tell us exactly what happened.
+        if (device->drive_info.drive_type == ATA_DRIVE)
+        {
+            device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
+        }
+        device->drive_info.lastCommandSenseData[0] = SCSI_SENSE_CUR_INFO_FIXED;
+        switch (device->os_info.last_error)
+        {
+            //Some of these are in here "just in case", but this is not a comprehensive list of what could be returned. Some may never be returned, others may not be in this list and are falling to the default case - TJE
+            //The only one I haven't been able to find a good answer for is an interface CRC error, which are hard to create and test for - TJE
+        case ERROR_NOT_READY://sense key not ready...not sure this matches anything in ATA if this even were to happen there.
+            senseKey = SENSE_KEY_NOT_READY;
+            //no other information can be provided
+            break;
+        case ERROR_WRITE_PROTECT:
+            senseKey = SENSE_KEY_DATA_PROTECT;
+            asc = 0x27;
+            ascq = 0x00;
+            //TODO: Not sure what to do about ATA here...there is not a direct translation
+            break;
+        case ERROR_WRITE_FAULT:
+        case ERROR_READ_FAULT:
+        case ERROR_DEVICE_HARDWARE_ERROR:
+            senseKey = SENSE_KEY_HARDWARE_ERROR;
+            asc = 0x44;
+            ascq = 0;
+            if (device->drive_info.drive_type == ATA_DRIVE)
+            {
+                device->drive_info.lastCommandRTFRs.status |= ATA_STATUS_BIT_DEVICE_FAULT;
+            }
+            break;
+        case ERROR_CRC: //medium error, uncorrectable data
+            senseKey = SENSE_KEY_MEDIUM_ERROR;
+            asc = 0x11;
+            ascq = 0;
+            if (device->drive_info.drive_type == ATA_DRIVE)
+            {
+                device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_UNCORRECTABLE_DATA;
+            }
+            break;
+        case ERROR_SEEK://cannot find area or track on disk?
+            M_FALLTHROUGH //Fallthrough for now unless we can figure out a better, more specific error when this happens - TJE
+        case ERROR_SECTOR_NOT_FOUND://ID not found (beyond max LBA type error)
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x21;
+            ascq = 0x00;
+            if (device->drive_info.drive_type == ATA_DRIVE)
+            {
+                device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_ID_NOT_FOUND;
+            }
+            break;
+        case ERROR_OFFSET_ALIGNMENT_VIOLATION://alignment error for the device
+            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
+            asc = 0x21;
+            ascq = 0x04;//technically this is "unaligned write command" which would not be accurate with a read, but this is the best I can do right now....maybe 07 for read boundary error???
+            if (device->drive_info.drive_type == ATA_DRIVE)
+            {
+                device->drive_info.lastCommandRTFRs.status |= ATA_STATUS_BIT_ALIGNMENT_ERROR;
+            }
+            break;
+        case ERROR_TIMEOUT:
+            senseKey = SENSE_KEY_ABORTED_COMMAND;
+            break;
+        case ERROR_DEVICE_NOT_CONNECTED://CRC error???
+            senseKey = SENSE_KEY_MEDIUM_ERROR;
+            //INFORMATION UNIT iuCRC ERROR DETECTED
+            asc = 0x47;
+            ascq = 0x03;
+            break;
+        case ERROR_BAD_COMMAND:
+        case ERROR_INVALID_DATA://Not sure if this is the same as CRC or something else, so this may need changing if we see it in the future.
+        case ERROR_DATA_CHECKSUM_ERROR://Not sure if this will show up for RAW IO like this is doing or not, but we may need a case for this in the future.
+        default:
+            //set the sense key to aborted command...don't set the asc or ascq since we don't know what to set those to right now
+            senseKey = SENSE_KEY_ABORTED_COMMAND;
+            break;
+        }
+        device->drive_info.lastCommandSenseData[2] |= senseKey;
+        if (asc || ascq)
+        {
+            device->drive_info.lastCommandSenseData[7] = 6;//get to bytes 12 & 13 for asc info...or should this change to a value of 7 to include fru, even though that is impossible for us to figure out??? - TJE
+            device->drive_info.lastCommandSenseData[12] = asc;
+            device->drive_info.lastCommandSenseData[13] = ascq;
+        }
+    }
+    return ret;
+}
+
 //The overlapped structure used here changes it to asynchronous IO, but the synchronous portions of code are left here in case the device responds as a synchronous device
 //and ignores the overlapped strucutre...it SHOULD work on any device like this.
 //See here: https://msdn.microsoft.com/en-us/library/windows/desktop/aa365683(v=vs.85).aspx
-int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
+int os_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrData, uint32_t dataSize)
 {
     int ret = UNKNOWN;
+    int openFUA = SUCCESS;
+    HANDLE handleToUse = device->os_info.fd;
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
         printf("Using Windows API to Read LBAs\n");
     }
-    if (async)
+    if (forceUnitAccess)
     {
-        //asynchronous IO is not supported right now
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        openFUA = open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(device);
+        if (openFUA == SUCCESS)
         {
-            print_Return_Enum("Windows API Read", NOT_SUPPORTED);
+            handleToUse = device->os_info.forceUnitAccessRWfd;
         }
-        return NOT_SUPPORTED;
     }
     //used for setting the timeout
     COMMTIMEOUTS comTimeout;
     memset(&comTimeout, 0, sizeof(COMMTIMEOUTS));
     /*BOOL timeoutGot = */
-    GetCommTimeouts(device->os_info.fd, &comTimeout);//get timeouts if possible before trying to change them...
+    GetCommTimeouts(handleToUse, &comTimeout);//get timeouts if possible before trying to change them...
     uint64_t timeoutInSeconds = 0;
     if (device->drive_info.defaultTimeoutSeconds == 0)
     {
@@ -11584,14 +11781,14 @@ int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_
         timeoutInSeconds = device->drive_info.defaultTimeoutSeconds;
     }
     /*BOOL timeoutSet = */
-    SetCommTimeouts(device->os_info.fd, &comTimeout);
+    SetCommTimeouts(handleToUse, &comTimeout);
     device->os_info.last_error = GetLastError();
     //for use by the setFilePointerEx function
     LARGE_INTEGER liDistanceToMove = { 0 }, lpNewFilePointer = { 0 };
     //set the distance to move in bytes
     liDistanceToMove.QuadPart = C_CAST(LONGLONG, lba * device->drive_info.deviceBlockSize);
     //set the offset here
-    BOOL retStatus = SetFilePointerEx(device->os_info.fd, liDistanceToMove, &lpNewFilePointer, FILE_BEGIN);
+    BOOL retStatus = SetFilePointerEx(handleToUse, liDistanceToMove, &lpNewFilePointer, FILE_BEGIN);
     if (!retStatus)
     {
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
@@ -11612,11 +11809,17 @@ int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_
     overlappedStruct.OffsetHigh = M_DoubleWord1(lba * device->drive_info.deviceBlockSize);
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
     start_Timer(&commandTimer);
-    retStatus = ReadFile(device->os_info.fd, ptrData, dataSize, &bytesReturned, &overlappedStruct);
+    if (forceUnitAccess && openFUA != SUCCESS)
+    {
+        //could not get a FUA handle...so emulate with a verify command before the read - TJE
+        //TODO: Should this bail out if it fails? Or continue to the read command???
+        os_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
+    }
+    retStatus = ReadFile(handleToUse, ptrData, dataSize, &bytesReturned, &overlappedStruct);
     device->os_info.last_error = GetLastError();
     if (ERROR_IO_PENDING == device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
     {
-        retStatus = GetOverlappedResult(device->os_info.fd, &overlappedStruct, &bytesReturned, TRUE);
+        retStatus = GetOverlappedResult(handleToUse, &overlappedStruct, &bytesReturned, TRUE);
     }
     else if (device->os_info.last_error != ERROR_SUCCESS)
     {
@@ -11656,110 +11859,7 @@ int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_
         ret = FAILURE;
     }
 
-    //clear the last command sense data and rtfrs. We'll dummy them up in a minute
-    memset(&device->drive_info.lastCommandRTFRs, 0, sizeof(ataReturnTFRs));
-    memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);
-
-    if (retStatus)
-    {
-        //successful read
-        if (device->drive_info.drive_type == ATA_DRIVE)
-        {
-            device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
-        }
-        ret = SUCCESS;
-    }
-    else
-    {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
-        ret = FAILURE;
-        //failure for one reason or another. The last error may or may not tell us exactly what happened.
-        if (device->drive_info.drive_type == ATA_DRIVE)
-        {
-            device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
-        }
-        device->drive_info.lastCommandSenseData[0] = SCSI_SENSE_CUR_INFO_FIXED;
-
-        switch (device->os_info.last_error)
-        {
-            //Some of these are in here "just in case", but this is not a comprehensive list of what could be returned. Some may never be returned, others may not be in this list and are falling to the default case - TJE
-            //The only one I haven't been able to find a good answer for is an interface CRC error, which are hard to create and test for - TJE
-        case ERROR_NOT_READY://sense key not ready...not sure this matches anything in ATA if this even were to happen there.
-            senseKey = SENSE_KEY_NOT_READY;
-            //no other information can be provided
-            break;
-        case ERROR_WRITE_PROTECT:
-            senseKey = SENSE_KEY_DATA_PROTECT;
-            asc = 0x27;
-            ascq = 0x00;
-            //TODO: Not sure what to do about ATA here...there is not a direct translation
-            break;
-        case ERROR_WRITE_FAULT:
-        case ERROR_READ_FAULT:
-        case ERROR_DEVICE_HARDWARE_ERROR:
-            senseKey = SENSE_KEY_HARDWARE_ERROR;
-            asc = 0x44;
-            ascq = 0;
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.status |= ATA_STATUS_BIT_DEVICE_FAULT;
-            }
-            break;
-        case ERROR_CRC: //medium error, uncorrectable data
-            senseKey = SENSE_KEY_MEDIUM_ERROR;
-            asc = 0x11;
-            ascq = 0;
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_UNCORRECTABLE_DATA;
-            }
-            break;
-        case ERROR_SEEK://cannot find area or track on disk?
-            M_FALLTHROUGH //Fallthrough for now unless we can figure out a better, more specific error when this happens - TJE
-        case ERROR_SECTOR_NOT_FOUND://ID not found (beyond max LBA type error)
-            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
-            asc = 0x21;
-            ascq = 0x00;
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_ID_NOT_FOUND;
-            }
-            break;
-        case ERROR_OFFSET_ALIGNMENT_VIOLATION://alignment error for the device
-            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
-            asc = 0x21;
-            ascq = 0x04;//technically this is "unaligned write command" which would not be accurate with a read, but this is the best I can do right now....maybe 07 for read boundary error???
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.status |= ATA_STATUS_BIT_ALIGNMENT_ERROR;
-            }
-            break;
-        case ERROR_TIMEOUT:
-            senseKey = SENSE_KEY_ABORTED_COMMAND;
-            ret = COMMAND_TIMEOUT;
-            break;
-        case ERROR_DEVICE_NOT_CONNECTED://CRC error???
-            senseKey = SENSE_KEY_MEDIUM_ERROR;
-            //INFORMATION UNIT iuCRC ERROR DETECTED
-            asc = 0x47;
-            ascq = 0x03;
-            break;
-        case ERROR_BAD_COMMAND:
-        case ERROR_INVALID_DATA://Not sure if this is the same as CRC or something else, so this may need changing if we see it in the future.
-        case ERROR_DATA_CHECKSUM_ERROR://Not sure if this will show up for RAW IO like this is doing or not, but we may need a case for this in the future.
-        default:
-            //set the sense key to aborted command...don't set the asc or ascq since we don't know what to set those to right now
-            senseKey = SENSE_KEY_ABORTED_COMMAND;
-            break;
-        }
-        device->drive_info.lastCommandSenseData[2] |= senseKey;
-        if (asc || ascq)
-        {
-            device->drive_info.lastCommandSenseData[7] = 6;//get to bytes 12 & 13 for asc info...or should this change to a value of 7 to include fru, even though that is impossible for us to figure out??? - TJE
-            device->drive_info.lastCommandSenseData[12] = asc;
-            device->drive_info.lastCommandSenseData[13] = ascq;
-        }
-    }
+    retStatus = set_Command_Completion_For_OS_Read_Write(device, device->os_info.last_error);
 
     //check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= timeoutInSeconds)
@@ -11773,27 +11873,28 @@ int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_
     return ret;
 }
 
-int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize)
+int os_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrData, uint32_t dataSize)
 {
     int ret = UNKNOWN;
+    int openFUA = SUCCESS;
+    HANDLE handleToUse = device->os_info.fd;
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
         printf("Using Windows API to Write LBAs\n");
     }
-    if (async)
+    if (forceUnitAccess)
     {
-        //asynchronous IO is not supported right now
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        openFUA = open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(device);
+        if (openFUA == SUCCESS)
         {
-            print_Return_Enum("Windows API Write", NOT_SUPPORTED);
+            handleToUse = device->os_info.forceUnitAccessRWfd;
         }
-        return NOT_SUPPORTED;
     }
     //used for setting the timeout
     COMMTIMEOUTS comTimeout;
     memset(&comTimeout, 0, sizeof(COMMTIMEOUTS));
     /*BOOL timeoutGot = */
-    GetCommTimeouts(device->os_info.fd, &comTimeout);//get timeouts if possible before trying to change them...
+    GetCommTimeouts(handleToUse, &comTimeout);//get timeouts if possible before trying to change them...
     uint64_t timeoutInSeconds = 0;
     if (device->drive_info.defaultTimeoutSeconds == 0)
     {
@@ -11806,14 +11907,14 @@ int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
         timeoutInSeconds = device->drive_info.defaultTimeoutSeconds;
     }
     /*BOOL timeoutSet = */
-    SetCommTimeouts(device->os_info.fd, &comTimeout);
+    SetCommTimeouts(handleToUse, &comTimeout);
     device->os_info.last_error = GetLastError();
     //for use by the setFilePointerEx function
     LARGE_INTEGER liDistanceToMove = { 0 }, lpNewFilePointer = { 0 };
     //set the distance to move in bytes
     liDistanceToMove.QuadPart = C_CAST(LONGLONG, lba * device->drive_info.deviceBlockSize);
     //set the offset here
-    BOOL retStatus = SetFilePointerEx(device->os_info.fd, liDistanceToMove, &lpNewFilePointer, FILE_BEGIN);
+    BOOL retStatus = SetFilePointerEx(handleToUse, liDistanceToMove, &lpNewFilePointer, FILE_BEGIN);
     if (!retStatus)
     {
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
@@ -11840,15 +11941,20 @@ int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
         printf("\n");
     }
     start_Timer(&commandTimer);
-    retStatus = WriteFile(device->os_info.fd, ptrData, dataSize, &bytesReturned, &overlappedStruct);
+    retStatus = WriteFile(handleToUse, ptrData, dataSize, &bytesReturned, &overlappedStruct);
     device->os_info.last_error = GetLastError();
     if (ERROR_IO_PENDING == device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
     {
-        retStatus = GetOverlappedResult(device->os_info.fd, &overlappedStruct, &bytesReturned, TRUE);
+        retStatus = GetOverlappedResult(handleToUse, &overlappedStruct, &bytesReturned, TRUE);
     }
     else if (device->os_info.last_error != ERROR_SUCCESS)
     {
         ret = OS_PASSTHROUGH_FAILURE;
+    }
+    if (forceUnitAccess && openFUA != SUCCESS)
+    {
+        //could not get a FUA handle...so emulate with a verify command after the write - TJE
+        os_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
     }
     stop_Timer(&commandTimer);
     device->os_info.last_error = GetLastError();
@@ -11874,110 +11980,8 @@ int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32
         ret = FAILURE;
     }
 
-    //clear the last command sense data and rtfrs. We'll dummy them up in a minute
-    memset(&device->drive_info.lastCommandRTFRs, 0, sizeof(ataReturnTFRs));
-    memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);
+    retStatus = set_Command_Completion_For_OS_Read_Write(device, device->os_info.last_error);
 
-    if (retStatus)
-    {
-        //successful write
-        if (device->drive_info.drive_type == ATA_DRIVE)
-        {
-            device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
-        }
-        ret = SUCCESS;
-    }
-    else
-    {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
-        ret = FAILURE;
-        //failure for one reason or another. The last error may or may not tell us exactly what happened.
-        if (device->drive_info.drive_type == ATA_DRIVE)
-        {
-            device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
-        }
-        device->drive_info.lastCommandSenseData[0] = SCSI_SENSE_CUR_INFO_FIXED;
-
-        switch (device->os_info.last_error)
-        {
-            //Some of these are in here "just in case", but this is not a comprehensive list of what could be returned. Some may never be returned, others may not be in this list and are falling to the default case - TJE
-            //The only one I haven't been able to find a good answer for is an interface CRC error, which are hard to create and test for - TJE
-        case ERROR_NOT_READY://sense key not ready...not sure this matches anything in ATA if this even were to happen there.
-            senseKey = SENSE_KEY_NOT_READY;
-            //no other information can be provided
-            break;
-        case ERROR_WRITE_PROTECT:
-            senseKey = SENSE_KEY_DATA_PROTECT;
-            asc = 0x27;
-            ascq = 0x00;
-            //TODO: Not sure what to do about ATA here...there is not a direct translation
-            break;
-        case ERROR_WRITE_FAULT:
-        case ERROR_READ_FAULT:
-        case ERROR_DEVICE_HARDWARE_ERROR:
-            senseKey = SENSE_KEY_HARDWARE_ERROR;
-            asc = 0x44;
-            ascq = 0;
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.status |= ATA_STATUS_BIT_DEVICE_FAULT;
-            }
-            break;
-        case ERROR_CRC: //medium error, uncorrectable data
-            senseKey = SENSE_KEY_MEDIUM_ERROR;
-            asc = 0x11;
-            ascq = 0;
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_UNCORRECTABLE_DATA;
-            }
-            break;
-        case ERROR_SEEK://cannot find area or track on disk?
-            M_FALLTHROUGH //Fallthrough for now unless we can figure out a better, more specific error when this happens - TJE
-        case ERROR_SECTOR_NOT_FOUND://ID not found (beyond max LBA type error)
-            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
-            asc = 0x21;
-            ascq = 0x00;
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_ID_NOT_FOUND;
-            }
-            break;
-        case ERROR_OFFSET_ALIGNMENT_VIOLATION://alignment error for the device
-            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
-            asc = 0x21;
-            ascq = 0x04;//technically this is "unaligned write command" which would not be accurate with a read, but this is the best I can do right now....maybe 07 for read boundary error???
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.status |= ATA_STATUS_BIT_ALIGNMENT_ERROR;
-            }
-            break;
-        case ERROR_TIMEOUT:
-            senseKey = SENSE_KEY_ABORTED_COMMAND;
-            ret = COMMAND_TIMEOUT;
-            break;
-        case ERROR_DEVICE_NOT_CONNECTED://CRC error???
-            senseKey = SENSE_KEY_MEDIUM_ERROR;
-            //INFORMATION UNIT iuCRC ERROR DETECTED
-            asc = 0x47;
-            ascq = 0x03;
-            break;
-        case ERROR_BAD_COMMAND:
-        case ERROR_INVALID_DATA://Not sure if this is the same as CRC or something else, so this may need changing if we see it in the future.
-        case ERROR_DATA_CHECKSUM_ERROR://Not sure if this will show up for RAW IO like this is doing or not, but we may need a case for this in the future.
-        default:
-            //set the sense key to aborted command...don't set the asc or ascq since we don't know what to set those to right now
-            senseKey = SENSE_KEY_ABORTED_COMMAND;
-            break;
-        }
-        device->drive_info.lastCommandSenseData[2] |= senseKey;
-        if (asc || ascq)
-        {
-            device->drive_info.lastCommandSenseData[7] = 6;//get to bytes 12 & 13 for asc info...or should this change to a value of 7 to include fru, even though that is impossible for us to figure out??? - TJE
-            device->drive_info.lastCommandSenseData[12] = asc;
-            device->drive_info.lastCommandSenseData[13] = ascq;
-        }
-    }
     //check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= timeoutInSeconds)
     {
@@ -12054,110 +12058,7 @@ int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
         CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
         overlappedStruct.hEvent = NULL;
     }
-    //clear the last command sense data and rtfrs. We'll dummy them up in a minute
-    memset(&device->drive_info.lastCommandRTFRs, 0, sizeof(ataReturnTFRs));
-    memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);
-    if (success)
-    {
-        //successful verify
-        if (device->drive_info.drive_type == ATA_DRIVE)
-        {
-            device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
-        }
-        ret = SUCCESS;
-    }
-    else
-    {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
-        ret = FAILURE;
-        //failure for one reason or another. The last error may or may not tell us exactly what happened.
-        if (device->drive_info.drive_type == ATA_DRIVE)
-        {
-            device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
-        }
-        device->drive_info.lastCommandSenseData[0] = SCSI_SENSE_CUR_INFO_FIXED;
-        //below are the error codes windows driver site says we can get https://msdn.microsoft.com/en-us/library/windows/hardware/ff560420(v=vs.85).aspx
-        //NOTE: Translated to last error codes as best we can
-        switch (device->os_info.last_error)
-        {
-            //Some of these are in here "just in case", but this is not a comprehensive list of what could be returned. Some may never be returned, others may not be in this list and are falling to the default case - TJE
-            //The only one I haven't been able to find a good answer for is an interface CRC error, which are hard to create and test for - TJE
-        case ERROR_NOT_READY://sense key not ready...not sure this matches anything in ATA if this even were to happen there.
-            senseKey = SENSE_KEY_NOT_READY;
-            //no other information can be provided
-            break;
-        case ERROR_WRITE_PROTECT:
-            senseKey = SENSE_KEY_DATA_PROTECT;
-            asc = 0x27;
-            ascq = 0x00;
-            //TODO: Not sure what to do about ATA here...there is not a direct translation
-            break;
-        case ERROR_WRITE_FAULT:
-        case ERROR_READ_FAULT:
-        case ERROR_DEVICE_HARDWARE_ERROR:
-            senseKey = SENSE_KEY_HARDWARE_ERROR;
-            asc = 0x44;
-            ascq = 0;
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.status |= ATA_STATUS_BIT_DEVICE_FAULT;
-            }
-            break;
-        case ERROR_CRC: //medium error, uncorrectable data
-            senseKey = SENSE_KEY_MEDIUM_ERROR;
-            asc = 0x11;
-            ascq = 0;
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_UNCORRECTABLE_DATA;
-            }
-            break;
-        case ERROR_SEEK://cannot find area or track on disk?
-            M_FALLTHROUGH //Fallthrough for now unless we can figure out a better, more specific error when this happens - TJE
-        case ERROR_SECTOR_NOT_FOUND://ID not found (beyond max LBA type error)
-            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
-            asc = 0x21;
-            ascq = 0x00;
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_ID_NOT_FOUND;
-            }
-            break;
-        case ERROR_OFFSET_ALIGNMENT_VIOLATION://alignment error for the device
-            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
-            asc = 0x21;
-            ascq = 0x04;//technically this is "unaligned write command" which would not be accurate with a read, but this is the best I can do right now....maybe 07 for read boundary error???
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.status |= ATA_STATUS_BIT_ALIGNMENT_ERROR;
-            }
-            break;
-        case ERROR_TIMEOUT:
-            senseKey = SENSE_KEY_ABORTED_COMMAND;
-            ret = COMMAND_TIMEOUT;
-            break;
-        case ERROR_DEVICE_NOT_CONNECTED://CRC error???
-            senseKey = SENSE_KEY_MEDIUM_ERROR;
-            //INFORMATION UNIT iuCRC ERROR DETECTED
-            asc = 0x47;
-            ascq = 0x03;
-            break;
-        case ERROR_BAD_COMMAND:
-        case ERROR_INVALID_DATA://Not sure if this is the same as CRC or something else, so this may need changing if we see it in the future.
-        case ERROR_DATA_CHECKSUM_ERROR://Not sure if this will show up for RAW IO like this is doing or not, but we may need a case for this in the future.
-        default:
-            //set the sense key to aborted command...don't set the asc or ascq since we don't know what to set those to right now
-            senseKey = SENSE_KEY_ABORTED_COMMAND;
-            break;
-        }
-        device->drive_info.lastCommandSenseData[2] |= senseKey;
-        if (asc || ascq)
-        {
-            device->drive_info.lastCommandSenseData[7] = 6;//get to bytes 12 & 13 for asc info...or should this change to a value of 7 to include fru, even though that is impossible for us to figure out??? - TJE
-            device->drive_info.lastCommandSenseData[12] = asc;
-            device->drive_info.lastCommandSenseData[13] = ascq;
-        }
-    }
+    ret = set_Command_Completion_For_OS_Read_Write(device, device->os_info.last_error);
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(verifyTimer);
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
@@ -12250,110 +12151,7 @@ int os_Flush(tDevice *device)
     {
         print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
     }
-    //clear the last command sense data and rtfrs. We'll dummy them up in a minute
-    memset(&device->drive_info.lastCommandRTFRs, 0, sizeof(ataReturnTFRs));
-    memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);
-
-    if (retStatus)
-    {
-        //successful read
-        if (device->drive_info.drive_type == ATA_DRIVE)
-        {
-            device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
-        }
-        ret = SUCCESS;
-    }
-    else
-    {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
-        ret = FAILURE;
-        //failure for one reason or another. The last error may or may not tell us exactly what happened.
-        if (device->drive_info.drive_type == ATA_DRIVE)
-        {
-            device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
-        }
-        device->drive_info.lastCommandSenseData[0] = SCSI_SENSE_CUR_INFO_FIXED;
-
-        switch (device->os_info.last_error)
-        {
-            //Some of these are in here "just in case", but this is not a comprehensive list of what could be returned. Some may never be returned, others may not be in this list and are falling to the default case - TJE
-            //The only one I haven't been able to find a good answer for is an interface CRC error, which are hard to create and test for - TJE
-        case ERROR_NOT_READY://sense key not ready...not sure this matches anything in ATA if this even were to happen there.
-            senseKey = SENSE_KEY_NOT_READY;
-            //no other information can be provided
-            break;
-        case ERROR_WRITE_PROTECT:
-            senseKey = SENSE_KEY_DATA_PROTECT;
-            asc = 0x27;
-            ascq = 0x00;
-            //TODO: Not sure what to do about ATA here...there is not a direct translation
-            break;
-        case ERROR_WRITE_FAULT:
-        case ERROR_READ_FAULT:
-        case ERROR_DEVICE_HARDWARE_ERROR:
-            senseKey = SENSE_KEY_HARDWARE_ERROR;
-            asc = 0x44;
-            ascq = 0;
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.status |= ATA_STATUS_BIT_DEVICE_FAULT;
-            }
-            break;
-        case ERROR_CRC: //medium error, uncorrectable data
-            senseKey = SENSE_KEY_MEDIUM_ERROR;
-            asc = 0x11;
-            ascq = 0;
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_UNCORRECTABLE_DATA;
-            }
-            break;
-        case ERROR_SEEK://cannot find area or track on disk?
-            M_FALLTHROUGH //Fallthrough for now unless we can figure out a better, more specific error when this happens - TJE
-        case ERROR_SECTOR_NOT_FOUND://ID not found (beyond max LBA type error)
-            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
-            asc = 0x21;
-            ascq = 0x00;
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_ID_NOT_FOUND;
-            }
-            break;
-        case ERROR_OFFSET_ALIGNMENT_VIOLATION://alignment error for the device
-            senseKey = SENSE_KEY_ILLEGAL_REQUEST;
-            asc = 0x21;
-            ascq = 0x04;//technically this is "unaligned write command" which would not be accurate with a read, but this is the best I can do right now....maybe 07 for read boundary error???
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.status |= ATA_STATUS_BIT_ALIGNMENT_ERROR;
-            }
-            break;
-        case ERROR_TIMEOUT:
-            senseKey = SENSE_KEY_ABORTED_COMMAND;
-            ret = COMMAND_TIMEOUT;
-            break;
-        case ERROR_DEVICE_NOT_CONNECTED://CRC error???
-            senseKey = SENSE_KEY_MEDIUM_ERROR;
-            //INFORMATION UNIT iuCRC ERROR DETECTED
-            asc = 0x47;
-            ascq = 0x03;
-            break;
-        case ERROR_BAD_COMMAND:
-        case ERROR_INVALID_DATA://Not sure if this is the same as CRC or something else, so this may need changing if we see it in the future.
-        case ERROR_DATA_CHECKSUM_ERROR://Not sure if this will show up for RAW IO like this is doing or not, but we may need a case for this in the future.
-        default:
-            //set the sense key to aborted command...don't set the asc or ascq since we don't know what to set those to right now
-            senseKey = SENSE_KEY_ABORTED_COMMAND;
-            break;
-        }
-        device->drive_info.lastCommandSenseData[2] |= senseKey;
-        if (asc || ascq)
-        {
-            device->drive_info.lastCommandSenseData[7] = 6;//get to bytes 12 & 13 for asc info...or should this change to a value of 7 to include fru, even though that is impossible for us to figure out??? - TJE
-            device->drive_info.lastCommandSenseData[12] = asc;
-            device->drive_info.lastCommandSenseData[13] = ascq;
-        }
-    }
+    retStatus = set_Command_Completion_For_OS_Read_Write(device, device->os_info.last_error);
 
     //check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= timeoutInSeconds)

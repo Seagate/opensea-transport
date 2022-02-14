@@ -917,7 +917,9 @@ extern "C"
             uint8_t padd[4];
         }ataSenseData;
         uint8_t lastCommandSenseData[SPC3_SENSE_LEN];//This holds the sense data for the last command to be sent to the device. This is not necessarily the last function called as functions may send multiple commands to the device.
-        uint8_t padd5[4];
+        bool dpoFUAvalid;
+        bool dpoFUA;//for use in cmds.h read/write functions. May be useful elsewhere too. This is not initialized by fill drive info at this time. It is populated when calling read_LBA or write_LBA.
+        uint8_t padd5[2];
         struct {
             uint32_t lastNVMeCommandSpecific;//DW0 of command completion. Not all OS's return this so it is not always valid...only really useful for SNTL when it is used. Linux, Solaris, FreeBSD, UEFI. Windows is the problem child here.
             uint32_t lastNVMeStatus;//DW3 of command completion. Not all OS's return this so it is not always valid...only really useful for SNTL when it is used. Linux, Solaris, FreeBSD, UEFI. Windows is the problem child here.
@@ -1096,13 +1098,14 @@ extern "C"
         bool openFabricsNVMePassthroughSupported;//If true, then nvme commands can be issued using the open fabrics NVMe passthrough IOCTL
         bool intelNVMePassthroughSupported;//if true, this is a device that supports intel's nvme passthrough, but doesn't show up as full features with CSMI as expected otherwise.
         bool fwdlMiniportSupported;//Miniport IOCTL for FWDL is supported. This should be in the structure above, but it is here for compatibility at this time - TJE
+        HANDLE forceUnitAccessRWfd;//used for os_read and os_Write when using the force unit access option
         //TODO: Store the device path! This may occasionally be useful to have. Longest one will probably be no more that MAX_DEVICE_ID_LEN characters. (This is defined as 200)
         //padding to keep same size as other OSs. This is to keep things similar across OSs.
         //Variable sizes based on 32 vs 64bit since handle is a void*
         #if defined (_WIN64)
-            uint8_t paddWin[46];
+            uint8_t paddWin[38];
         #else
-            uint8_t paddWin[54];
+            uint8_t paddWin[50];
         #endif //Win64 for padding
         #elif defined (__FreeBSD__)
         int fd;//used when cam is not being used (legacy ATA or NVMe IO without CAM....which may not be supported, but kept here just in case)

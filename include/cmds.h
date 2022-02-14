@@ -301,7 +301,7 @@ extern "C"
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param lba - the LBA you wish to start reading at
-    //!   \param async - set to true for an asynchronous read command (NOT SUPPORTED at this time)
+    //!   \param forceUnitAccess - set to true to bypass the cache and go directly to media (NOTE: May send read verify AND read in some cases if FUA bit not supported in a command)
     //!   \param ptrData - pointer to the data buf to fill in with read data
     //!   \param dataSize - size of the buffer, in bytes, for what is to be read. This size is divided by the device's logical sector size to get how many sectors to transfer.
     //!   
@@ -309,7 +309,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int read_LBA(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int read_LBA(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -319,7 +319,7 @@ extern "C"
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param lba - the LBA you wish to start writing at
-    //!   \param async - set to true for an asynchronous write command (NOT SUPPORTED at this time)
+    //!   \param forceUnitAccess - set to true to bypass the cache and go directly to media (NOTE: May send write AND read verify in some cases if FUA bit not supported in a command)
     //!   \param ptrData - pointer to the data buf to use for writing data
     //!   \param dataSize - size of the buffer, in bytes, for what is to be written. This size is divided by the device's logical sector size to get how many sectors to transfer.
     //!   
@@ -327,7 +327,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int write_LBA(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int write_LBA(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -367,7 +367,7 @@ extern "C"
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param lba - the LBA you wish to start reading at
-    //!   \param async - set to true for an asynchronous read command (NOT SUPPORTED at this time)
+    //!   \param forceUnitAccess - set to true to bypass the cache and go directly to media (NOTE: May send read verify AND read in some cases if FUA bit not supported in a command)
     //!   \param ptrData - pointer to the data buf to fill in with read data
     //!   \param dataSize - size of the buffer, in bytes, for what is to be read. This size is divided by the device's logical sector size to get how many sectors to transfer.
     //!   
@@ -375,7 +375,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int os_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int os_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -385,7 +385,7 @@ extern "C"
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param lba - the LBA you wish to start writing at
-    //!   \param async - set to true for an asynchronous write command (NOT SUPPORTED at this time)
+    //!   \param forceUnitAccess - set to true to bypass the cache and go directly to media (NOTE: May send write AND read verify in some cases if FUA bit not supported in a command)
     //!   \param ptrData - pointer to the data buf to use for writing data
     //!   \param dataSize - size of the buffer, in bytes, for what is to be written. This size is divided by the device's logical sector size to get how many sectors to transfer.
     //!   
@@ -393,7 +393,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int os_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int os_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrData, uint32_t dataSize);
 
     OPENSEA_TRANSPORT_API int os_Verify(tDevice *device, uint64_t lba, uint32_t range);
 
@@ -407,7 +407,7 @@ extern "C"
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param lba - the LBA you wish to start reading at
-    //!   \param async - set to true for an asynchronous read command (NOT SUPPORTED at this time)
+    //!   \param forceUnitAccess - set to true to bypass the cache and go directly to media (NOTE: May send read verify AND read in some cases if FUA bit not supported in a command)
     //!   \param ptrData - pointer to the data buf to fill in with read data
     //!   \param dataSize - size of the buffer, in bytes, for what is to be read. This size is divided by the device's logical sector size to get how many sectors to transfer.
     //!   
@@ -415,7 +415,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int io_Read(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int io_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -425,7 +425,7 @@ extern "C"
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param lba - the LBA you wish to start writing at
-    //!   \param async - set to true for an asynchronous write command (NOT SUPPORTED at this time)
+    //!   \param forceUnitAccess - set to true to bypass the cache and go directly to media (NOTE: May send write AND read verify in some cases if FUA bit not supported in a command)
     //!   \param ptrData - pointer to the data buf to use for writing data
     //!   \param dataSize - size of the buffer, in bytes, for what is to be written. This size is divided by the device's logical sector size to get how many sectors to transfer.
     //!   
@@ -433,7 +433,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int io_Write(tDevice *device, uint64_t lba, bool async, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int io_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -443,7 +443,7 @@ extern "C"
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param lba - the LBA you wish to start writing at
-    //!   \param async - set to true for an asynchronous write command (NOT SUPPORTED at this time)
+    //!   \param forceUnitAccess - set to true to bypass the cache and go directly to media (NOTE: May send write AND read verify in some cases if FUA bit not supported in a command)
     //!   \param ptrData - pointer to the data buf to use for writing data
     //!   \param dataSize - size of the buffer, in bytes, for what is to be written. This size is divided by the device's logical sector size to get how many sectors to transfer.
     //!   
@@ -451,7 +451,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int scsi_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -461,7 +461,7 @@ extern "C"
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param lba - the LBA you wish to start reading at
-    //!   \param async - set to true for an asynchronous read command (NOT SUPPORTED at this time)
+    //!   \param forceUnitAccess - set to true to bypass the cache and go directly to media (NOTE: May send read verify AND read in some cases if FUA bit not supported in a command)
     //!   \param ptrData - pointer to the data buf to use for reading data
     //!   \param dataSize - size of the buffer, in bytes, for what is to be read. This size is divided by the device's logical sector size to get how many sectors to transfer.
     //!   
@@ -469,7 +469,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int scsi_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -479,7 +479,7 @@ extern "C"
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param lba - the LBA you wish to start writing at
-    //!   \param async - set to true for an asynchronous write command (NOT SUPPORTED at this time)
+    //!   \param forceUnitAccess - set to true to bypass the cache and go directly to media (NOTE: May send write AND read verify in some cases if FUA bit not supported in a command)
     //!   \param ptrData - pointer to the data buf to use for writing data
     //!   \param dataSize - size of the buffer, in bytes, for what is to be written. This size is divided by the device's logical sector size to get how many sectors to transfer.
     //!   
@@ -487,7 +487,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Write(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int ata_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -497,7 +497,7 @@ extern "C"
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param lba - the LBA you wish to start reading at
-    //!   \param async - set to true for an asynchronous read command (NOT SUPPORTED at this time)
+    //!   \param forceUnitAccess - set to true to bypass the cache and go directly to media (NOTE: May send read verify AND read in some cases if FUA bit not supported in a command)
     //!   \param ptrData - pointer to the data buf to use for reading data
     //!   \param dataSize - size of the buffer, in bytes, for what is to be read. This size is divided by the device's logical sector size to get how many sectors to transfer.
     //!   
@@ -505,7 +505,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Read(tDevice *device, uint64_t lba, bool async, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int ata_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrData, uint32_t dataSize);
 
     OPENSEA_TRANSPORT_API int scsi_Verify(tDevice *device, uint64_t lba, uint32_t range);
 
