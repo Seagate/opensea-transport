@@ -11560,7 +11560,10 @@ static int open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(tDevice* device)
         //FILE_FLAG_WRITE_THROUGH - this seems to mean FUA based on the description of the flag
         // The following link describes the flags. It sounds like we need both of them for FUA otherwise it may go to the system cache and then be flushed, which may not be the same- TJE
         //See here for more info: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea#caching_behavior
-        device->os_info.forceUnitAccessRWfd = CreateFile(device->os_info.name, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+        TCHAR fuaDevice[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+        TCHAR* ptrFuaDevice = &fuaDevice[0];
+        _stprintf_s(fuaDevice, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), device->os_info.name);
+        device->os_info.forceUnitAccessRWfd = CreateFile(ptrFuaDevice, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
             FILE_FLAG_WRITE_THROUGH | FILE_FLAG_NO_BUFFERING |
 #if !defined(WINDOWS_DISABLE_OVERLAPPED)
             FILE_FLAG_OVERLAPPED,
