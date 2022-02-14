@@ -17,9 +17,7 @@
 
 #include "scsi_helper.h"
 #include "sat_helper.h"
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper.h"
-#endif
 #include "common_public.h"
 
 #if defined (__cplusplus)
@@ -37,22 +35,27 @@ extern "C"
 // \todo Figure out which scsi.h & sg.h should we be including kernel specific or in /usr/..../include
     #include <scsi/sg.h>
     #include <scsi/scsi.h>
-#if !defined(DISABLE_NVME_PASSTHROUGH)
     #if defined (__has_include)//GCC5 and higher support this, BUT only if a C standard is specified. The -std=gnuXX does not support this properly for some odd reason.
         #if __has_include (<linux/nvme_ioctl.h>)
+            #if defined (_DEBUG)
             #pragma message "Using linux/nvme_ioctl.h"
+            #endif
             #include <linux/nvme_ioctl.h>
             #if !defined (SEA_NVME_IOCTL_H)
                 #define SEA_NVME_IOCTL_H
             #endif
         #elif __has_include (<linux/nvme.h>)
+            #if defined (_DEBUG)
             #pragma message "Using linux/nvme.h"
+            #endif
             #include <linux/nvme.h>
             #if !defined (SEA_NVME_IOCTL_H)
                 #define SEA_NVME_IOCTL_H
             #endif
         #elif __has_include (<uapi/nvme.h>)
+            #if defined (_DEBUG)
             #pragma message "Using uapi/nvme.h"
+            #endif
             #include <uapi/nvme.h>
             #if !defined (SEA_UAPI_NVME_H)
                 #define SEA_UAPI_NVME_H
@@ -65,7 +68,7 @@ extern "C"
             #elif defined (SEA_UAPI_NVME_H)
                 #include <uapi/nvme.h>
             #else
-                #pragma GCC error "Please define one of the following to include the correct NVMe header: SEA_NVME_IOCTL_H, SEA_NVME_H, or SEA_UAPI_NVME_H\nThese specify whether the NVMe IOCTL is in /usr/include/linux/nvme_ioctl.h, /usr/include/linux/nvme.h, or /usr/include/uapi/nvme.h"
+                #pragma message "No NVMe header detected with __has_include. Assuming no NVMe support."
             #endif
         #endif
     #else
@@ -76,11 +79,10 @@ extern "C"
         #elif defined (SEA_UAPI_NVME_H)
             #include <uapi/nvme.h>
         #else
-            #pragma GCC error "Please define one of the following to include the correct NVMe header: SEA_NVME_IOCTL_H, SEA_NVME_H, or SEA_UAPI_NVME_H\nThese specify whether the NVMe IOCTL is in /usr/include/linux/nvme_ioctl.h, /usr/include/linux/nvme.h, or /usr/include/uapi/nvme.h"
+            #pragma message "No NVMe header detected. Assuming no NVMe support. Define one of the following to include the correct NVMe header: SEA_NVME_IOCTL_H, SEA_NVME_H, or SEA_UAPI_NVME_H\nThese specify whether the NVMe IOCTL is in /usr/include/linux/nvme_ioctl.h, /usr/include/linux/nvme.h, or /usr/include/uapi/nvme.h"
         #endif
     #endif
     #include "nvme_helper.h"
-#endif
 
 #define SG_PHYSICAL_DRIVE   "/dev/sg" //followed by a number
 #define SD_PHYSICAL_DRIVE   "/dev/sd" //followed by a letter
@@ -272,7 +274,6 @@ int os_Bus_Reset(tDevice *device);
 int os_Controller_Reset(tDevice *device);
 
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 //-----------------------------------------------------------------------------
 //
 //  pci_Read_Bar_Reg()
@@ -348,5 +349,3 @@ int host_Reset(int fd);
     #if defined (__cplusplus)
 }
     #endif
-
-#endif

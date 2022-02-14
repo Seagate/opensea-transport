@@ -14,7 +14,6 @@
 
 #pragma once
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper.h"
 #if defined (__cplusplus)
 extern "C"
@@ -344,6 +343,4 @@ OPENSEA_TRANSPORT_API int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_
 
 #if defined (__cplusplus)
 }
-#endif
-
 #endif

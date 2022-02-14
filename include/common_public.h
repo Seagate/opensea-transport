@@ -339,7 +339,6 @@ extern "C"
         uint16_t Word255;
     }tAtaIdentifyData, *ptAtaIdentifyData;
 
-    #if !defined(DISABLE_NVME_PASSTHROUGH)
     /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif*/
@@ -511,8 +510,6 @@ extern "C"
     #else
     }__attribute__((packed,aligned(1))) nvmeIdentifyData;
     #endif*/
-
-    #endif //disable NVME passthrough
 
     typedef struct _ataReturnTFRs
     {
@@ -901,9 +898,7 @@ extern "C"
         uint64_t       worldWideName;
         union{
             tAtaIdentifyData ata; //NOTE: This will automatically be byte swapped when saved here on big-endian systems for compatibility will all kinds of bit checks of the data throughout the code at this time. Use a separate buffer if you want the completely raw data without this happening. - TJE
-#if !defined(DISABLE_NVME_PASSTHROUGH)
             nvmeIdentifyData nvme;
-#endif
             //reserved field below is set to 8192 because nvmeIdentifyData structure holds both controller and namespace data which are 4k each
             uint8_t reserved[8192];//putting this here to allow some compatibility when NVMe passthrough is NOT enabled.
         }IdentifyData; //THis MUST be at an even 8 byte offset to be accessed correctly!!!
@@ -954,9 +949,7 @@ extern "C"
         UEFI_PASSTHROUGH_SCSI,
         UEFI_PASSTHROUGH_SCSI_EXT,
         UEFI_PASSTHROUGH_ATA,
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         UEFI_PASSTHROUGH_NVME,
-#endif
     }eUEFIPassthroughType;
 #endif
 
@@ -1015,11 +1008,9 @@ extern "C"
                 uint16_t port;
                 uint16_t portMultiplierPort;
             }ata;
-            #if !defined (DISABLE_NVME_PASSTHROUGH)
             struct _nvmeAddress{
                 uint32_t namespaceID;
             }nvme;
-            #endif
             uint8_t raw[24];
         }address;
         uint16_t            controllerNum;//used to figure out which controller the above address applies to.

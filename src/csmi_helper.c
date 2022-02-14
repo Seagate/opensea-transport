@@ -2528,7 +2528,7 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
             ret = FAILURE;//TODO: should this fail here??? This IOCTL is required...
         }
 
-#if defined (_WIN32) && defined (ENABLE_INTEL_RST) && !defined (DISABLE_NVME_PASSTHROUGH)
+#if defined (_WIN32) && defined (ENABLE_INTEL_RST)
         if (intelNVMe)
         {
             device->drive_info.drive_type = NVME_DRIVE;

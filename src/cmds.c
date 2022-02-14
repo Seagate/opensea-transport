@@ -30,12 +30,8 @@ int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode, bool znr)
         ret = ata_Sanitize_Block_Erase(device, exitFailureMode, znr);
         break;
     case NVME_DRIVE:
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         ret = nvme_Sanitize(device, false, false, 0, exitFailureMode, SANITIZE_NVM_BLOCK_ERASE, 0);
         break;
-#else
-        //rely on SCSI translation
-#endif
     case SCSI_DRIVE:
         ret = scsi_Sanitize_Block_Erase(device, exitFailureMode, true, znr);
         break;
@@ -58,12 +54,8 @@ int send_Sanitize_Crypto_Erase(tDevice *device, bool exitFailureMode, bool znr)
         ret = ata_Sanitize_Crypto_Scramble(device, exitFailureMode, znr);
         break;
     case NVME_DRIVE:
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         ret = nvme_Sanitize(device, false, false, 0, exitFailureMode, SANITIZE_NVM_CRYPTO, 0);
         break;
-#else
-        //rely on SCSI translation
-#endif
     case SCSI_DRIVE:
         ret = scsi_Sanitize_Cryptographic_Erase(device, exitFailureMode, true, znr);
         break;
@@ -94,7 +86,6 @@ int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool in
     }
         break;
     case NVME_DRIVE:
-#if !defined (DISABLE_NVME_PASSTHROUGH)
     {
         uint32_t nvmPattern = 0;
         if (pattern && patternLength >= 4)
@@ -104,10 +95,6 @@ int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool in
         ret = nvme_Sanitize(device, false, invertBetweenPasses, overwritePasses, exitFailureMode, SANITIZE_NVM_OVERWRITE, nvmPattern);
     }
         break;
-#else
-        //rely on SCSI translation
-        //fall through...
-#endif
     case SCSI_DRIVE:
         //overwrite passes set to 0 on scsi is reserved. This is being changed to the maximum for SCSI to mean 16 passes
         if ((overwritePasses & 0x0F) == 0)
@@ -147,12 +134,8 @@ int send_Sanitize_Exit_Failure_Mode(tDevice *device)
         ret = ata_Sanitize_Status(device, true);
         break;
     case NVME_DRIVE:
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         ret = nvme_Sanitize(device, false, false, 0, false, SANITIZE_NVM_EXIT_FAILURE_MODE, 0);
         break;
-#else
-        //rely on SCSI translation
-#endif
     case SCSI_DRIVE:
         ret = scsi_Sanitize_Exit_Failure_Mode(device);
         break;
@@ -179,7 +162,6 @@ int spin_down_drive(tDevice *device, bool sleepState)
         }
         break;
     case NVME_DRIVE:
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         if (sleepState)
         {
             ret = NOT_SUPPORTED;
@@ -193,7 +175,6 @@ int spin_down_drive(tDevice *device, bool sleepState)
             ret = nvme_Set_Features(device, &standby);
         }
         break;
-#endif
     case SCSI_DRIVE:
         if (device->drive_info.scsiVersion > SCSI_VERSION_SCSI2)
         {
@@ -283,10 +264,8 @@ int fill_Drive_Info_Data(tDevice *device)
             status = fill_In_Device_Info(device);
             break;
         case NVME_INTERFACE:
-#if !defined(DISABLE_NVME_PASSTHROUGH)
             status = fill_In_NVMe_Device_Info(device);
             break;
-#endif
         case RAID_INTERFACE:
             //if it's RAID interface, the low-level RAID code may already have set the drive type, so treat it based off of what drive type is set to
             switch (device->drive_info.drive_type)
@@ -295,10 +274,8 @@ int fill_Drive_Info_Data(tDevice *device)
                 status = fill_In_ATA_Drive_Info(device);
                 break;
             case NVME_DRIVE:
-#if !defined(DISABLE_NVME_PASSTHROUGH)
                 status = fill_In_NVMe_Device_Info(device);
                 break;
-#endif
             default:
                 status = fill_In_Device_Info(device);
                 break;
@@ -366,7 +343,6 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
     }
         break;
     case NVME_DRIVE:
-#if !defined(DISABLE_NVME_PASSTHROUGH)
     {
         switch (dlMode)
         {
@@ -444,7 +420,6 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
         }
     }
         break;
-#endif
     case SCSI_DRIVE:
     {
         eWriteBufferMode scsiDLMode = SCSI_WB_DL_MICROCODE_SAVE_ACTIVATE;//default
@@ -528,10 +503,8 @@ int security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityPr
     }
     break;
     case NVME_DRIVE:
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         ret = nvme_Security_Send(device, securityProtocol, securityProtocolSpecific, 0, ptrData, dataSize);
         break;
-#endif
     case SCSI_DRIVE:
     {
         //The inc512 bit is not allowed on NVMe drives when sent this command....we may want to remove setting it, but for now we'll leave it here.
@@ -596,10 +569,8 @@ int security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securit
     }
     break;
     case NVME_DRIVE:
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         ret = nvme_Security_Receive(device, securityProtocol, securityProtocolSpecific, 0, ptrData, dataSize);
         break;
-#endif
     case SCSI_DRIVE:
     {
         //The inc512 bit is not allowed on NVMe drives when sent this command....we may want to remove setting it, but for now we'll leave it here.
@@ -750,10 +721,8 @@ bool is_Write_Psuedo_Uncorrectable_Supported(tDevice *device)
         }
         break;
     case NVME_DRIVE:
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         supported = false;
         break;
-#endif
     case SCSI_DRIVE:
     {
         //check for wu_supp in extended inquiry vpd page (SPC4+) since this matches when it was added to SBC3
@@ -802,10 +771,8 @@ int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
         }
         break;
     case NVME_DRIVE:
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         ret = NOT_SUPPORTED;
         break;
-#endif
     case SCSI_DRIVE:
         if (device->drive_info.deviceMaxLba > UINT32_MAX)
         {
@@ -835,13 +802,11 @@ bool is_Write_Flagged_Uncorrectable_Supported(tDevice *device)
         }
         break;
     case NVME_DRIVE:
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT1)
         {
             supported = true;
         }
         break;
-#endif
     case SCSI_DRIVE:
     {
         //check for wu_supp in extended inquiry vpd page (SPC4+) since this matches when it was added to SBC3
@@ -879,10 +844,8 @@ int write_Flagged_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
         }
         break;
     case NVME_DRIVE:
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         ret = nvme_Write_Uncorrectable(device, corruptLBA, 0);//0 means 1 LBA since this is a zeros based value
         break;
-#endif
     case SCSI_DRIVE:
         if (device->drive_info.deviceMaxLba > UINT32_MAX)
         {
@@ -1410,8 +1373,8 @@ void get_SCSI_DPO_FUA_Support(tDevice* device)
 {
     if (!device->drive_info.dpoFUAvalid)
     {
-        uint8_t cachingMP[MODE_HEADER_LENGTH10 + 20] = { 0 };
-        if (device->drive_info.scsiVersion >= SCSI_VERSION_SCSI2 && SUCCESS == scsi_Mode_Sense_10(device, MODE_PAGE_CACHING, MODE_HEADER_LENGTH10 + 20, 0, true, false, MPC_CURRENT_VALUES, cachingMP))
+        uint8_t cachingMP[MODE_PARAMETER_HEADER_10_LEN + 20] = { 0 };
+        if (device->drive_info.scsiVersion >= SCSI_VERSION_SCSI2 && SUCCESS == scsi_Mode_Sense_10(device, MP_CACHING, MODE_PARAMETER_HEADER_10_LEN + 20, 0, true, false, MPC_CURRENT_VALUES, cachingMP))
         {
             //dpo/fua bit is in the device type specific parameter of the header
             //byte 3, bit 4
@@ -1620,12 +1583,7 @@ int io_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrDat
         //perform SCSI reads
         return scsi_Read(device, lba, forceUnitAccess, ptrData, dataSize);
     case NVME_INTERFACE:
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         return nvme_Read(device, lba, C_CAST(uint16_t, (dataSize / device->drive_info.deviceBlockSize) - 1), false, forceUnitAccess, 0, ptrData, dataSize);
-#else 
-        //perform SCSI reads
-        return scsi_Read(device, lba, forceUnitAccess, ptrData, dataSize);
-#endif
     case RAID_INTERFACE:
         //perform SCSI reads for now. We may need to add unique functions for NVMe and RAID reads later
         return scsi_Read(device, lba, forceUnitAccess, ptrData, dataSize);
@@ -1655,12 +1613,7 @@ int io_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrDa
         //perform SCSI writes
         return scsi_Write(device, lba, forceUnitAccess, ptrData, dataSize);
     case NVME_INTERFACE:
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         return nvme_Write(device, lba, C_CAST(uint16_t, (dataSize / device->drive_info.deviceBlockSize) - 1), false, forceUnitAccess, 0, 0, ptrData, dataSize);
-#else 
-        //perform SCSI writes
-        return scsi_Write(device, lba, forceUnitAccess, ptrData, dataSize);
-#endif
     case RAID_INTERFACE:
         //perform SCSI writes for now. We may need to add unique functions for NVMe and RAID writes later
         return scsi_Write(device, lba, forceUnitAccess, ptrData, dataSize);
@@ -1803,7 +1756,6 @@ int scsi_Verify(tDevice *device, uint64_t lba, uint32_t range)
     return ret;
 }
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
 int nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
 {
     int ret = SUCCESS;
@@ -1829,7 +1781,6 @@ int nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
     }
     return ret;
 }
-#endif
 
 int verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
 {
@@ -1852,12 +1803,7 @@ int verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
             //perform SCSI verifies
             return scsi_Verify(device, lba, range);
         case NVME_INTERFACE:
-#if !defined (DISABLE_NVME_PASSTHROUGH)
             return nvme_Verify_LBA(device, lba, range);
-#else 
-            //perform SCSI verifies
-            return scsi_Verify(device, lba, range);
-#endif
         case RAID_INTERFACE:
             //perform SCSI verifies for now. We may need to add unique functions for NVMe and RAID writes later
             return scsi_Verify(device, lba, range);
@@ -1912,12 +1858,7 @@ int flush_Cache(tDevice *device)
             //perform SCSI writes
             return scsi_Synchronize_Cache_Command(device);
         case NVME_INTERFACE:
-#if !defined (DISABLE_NVME_PASSTHROUGH)
             return nvme_Flush(device);
-#else
-            //perform SCSI flush
-            return scsi_Synchronize_Cache_Command(device);
-#endif
         case RAID_INTERFACE:
             //perform SCSI writes for now. We may need to add unique functions for NVMe and RAID writes later
             return scsi_Synchronize_Cache_Command(device);

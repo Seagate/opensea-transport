@@ -25,10 +25,8 @@
 #include "cmds.h"
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper_func.h"
 #include "sntl_helper.h"
-#endif
 
 #if defined(DEGUG_SCAN_TIME)
 #include "common_platform.h"
@@ -1571,7 +1569,6 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     return ret;
 }
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 static int nvme_filter( const struct dirent *entry)
 {
     int nvmeHandle = strncmp("nvme",entry->d_name,4);
@@ -1596,7 +1593,6 @@ static int nvme_filter( const struct dirent *entry)
         return 0;
     }
 }
-#endif
 
 //-----------------------------------------------------------------------------
 //
@@ -1873,9 +1869,9 @@ int close_Device(tDevice *dev)
     }
 }
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 {
+#if !defined (DISABLE_NVME_PASSTHROUGH)
     int ret = 0;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
     struct usr_io uio;
 
@@ -2039,6 +2035,9 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     printf("<--%s (%d)\n",__FUNCTION__, ret);
 #endif
     return ret;
+#else //DISABLE_NVME_PASSTHROUGH
+    return OS_COMMAND_NOT_AVAILABLE;
+#endif //DISABLE_NVME_PASSTHROUGH
 }
 
 int os_nvme_Reset(tDevice *device)
@@ -2057,6 +2056,7 @@ int os_nvme_Subsystem_Reset(tDevice *device)
 
 int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
 {
+#if !defined (DISABLE_NVME_PASSTHROUGH)
     int ret = UNKNOWN;
     int fd=0;
     void * barRegs = NULL;
@@ -2087,8 +2087,11 @@ int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
         ret = BAD_PARAMETER;
     }
     return ret;
+#else //DISABLE_NVME_PASSTHROUGH
+    return OS_COMMAND_NOT_AVAILABLE;
+#endif //DISABLE_NVME_PASSTHROUGH
 }
-#endif
+
 int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
@@ -2112,13 +2115,11 @@ int os_Flush(M_ATTR_UNUSED tDevice *device)
 int os_Lock_Device(tDevice *device)
 {
     int ret = SUCCESS;
-#if !defined (DISABLE_NVME_PASSTHROUGH)
     if (device->drive_info.drive_type == NVME_DRIVE)
     {
         //Not sure what to do
     }
     else
-#endif
     {
         //Get flags
         int flags = fcntl(device->os_info.fd, F_GETFL);
@@ -2133,13 +2134,11 @@ int os_Lock_Device(tDevice *device)
 int os_Unlock_Device(tDevice *device)
 {
     int ret = SUCCESS;
-#if !defined (DISABLE_NVME_PASSTHROUGH)
     if (device->drive_info.drive_type == NVME_DRIVE)
     {
         //Not sure what to do
     }
     else
-#endif
     {
         //Get flags
         int flags = fcntl(device->os_info.fd, F_GETFL);

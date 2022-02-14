@@ -37,7 +37,6 @@ extern "C"
     //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
     bool os_Is_Infinite_Timeout_Supported(void);
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
     //-----------------------------------------------------------------------------
     //
     //  pci_Read_Bar_Reg()
@@ -96,9 +95,6 @@ extern "C"
     int os_Unlock_Device(tDevice *device);
 
     int os_Update_File_System_Cache(tDevice* device);
-
-#endif
-
 
 #if defined (__cplusplus)
 }

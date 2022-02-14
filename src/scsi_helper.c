@@ -14,9 +14,7 @@
 #include "ata_helper_func.h"
 #include <ctype.h>//for checking for printable characters
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper_func.h"
-#endif
 
 uint16_t calculate_Logical_Block_Guard(uint8_t *buffer, uint32_t userDataLength, uint32_t totalDataLength)
 {
@@ -9382,7 +9380,6 @@ int fill_In_Device_Info(tDevice *device)
             {
                 if (asmtInq[36] == 0x60 && asmtInq[37] == 0x23)//todo: add checking length ahead of this for improved backwards compatibility with SCSI 2 devices.
                 {
-#if !defined (DISABLE_NVME_PASSTHROUGH)
                     //This is an ASMedia device with the 236X chip which supports USB to NVMe passthrough
                     //will attempt to check for full passthrough support first
                     uint8_t* nvmeIdentify = C_CAST(uint8_t*, calloc_aligned(NVME_IDENTIFY_DATA_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
@@ -9420,7 +9417,6 @@ int fill_In_Device_Info(tDevice *device)
                         device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
                         device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric = true;
                     }
-#endif
                     checkForSAT = false;
                 }
             }
@@ -9482,7 +9478,6 @@ int fill_In_Device_Info(tDevice *device)
                )
             {
                 ret = fill_In_ATA_Drive_Info(device);
-#if !defined (DISABLE_NVME_PASSTHROUGH)
                 if (ret != SUCCESS && checkJMicronNVMe)
                 {
                     device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
@@ -9511,7 +9506,6 @@ int fill_In_Device_Info(tDevice *device)
                         ret = SUCCESS;//do not fail here since this should otherwise be treated as a SCSI drive
                     }
                 }
-#endif
             }
             safe_Free_aligned(inq_buf)
             return ret;
@@ -9598,7 +9592,6 @@ int fill_In_Device_Info(tDevice *device)
             {
                 if (SUCCESS != check_SAT_Compliance_And_Set_Drive_Type(device) && checkJMicronNVMe)
                 {
-#if !defined (DISABLE_NVME_PASSTHROUGH)
                     device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
                     ret = fill_In_NVMe_Device_Info(device);
                     if (ret == SUCCESS)
@@ -9620,7 +9613,6 @@ int fill_In_Device_Info(tDevice *device)
                         device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
                     }
                     else
-#endif
                     {
                         device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
                         ret = SUCCESS;//do not fail here since this should otherwise be treated as a SCSI drive
@@ -9814,7 +9806,6 @@ int fill_In_Device_Info(tDevice *device)
                             //send test unit ready to get the device responding again (For better performance on some USB devices that don't support this page)
                             scsi_Test_Unit_Ready(device, NULL);
                             //TODO: Check jmicron here???
-#if !defined (DISABLE_NVME_PASSTHROUGH)
                             if (checkJMicronNVMe)
                             {
                                 device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
@@ -9843,7 +9834,6 @@ int fill_In_Device_Info(tDevice *device)
                                     ret = SUCCESS;//do not fail here since this should otherwise be treated as a SCSI drive
                                 }
                             }
-#endif
                         }
                         satComplianceChecked = true;
                     }
@@ -10047,7 +10037,6 @@ int fill_In_Device_Info(tDevice *device)
             satCheck = check_SAT_Compliance_And_Set_Drive_Type(device);
         }
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         //Because we may find an NVMe over USB device, if we find one of these, perform a little more discovery...
         if ((device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
             ||
@@ -10089,7 +10078,6 @@ int fill_In_Device_Info(tDevice *device)
                 ret = scsiRet;//do not fail here since this should otherwise be treated as a SCSI drive
             }
         }
-#endif
     }
     else
     {

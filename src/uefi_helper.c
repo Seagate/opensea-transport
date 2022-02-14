@@ -1385,11 +1385,9 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
             ret = translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
         }
         break;
-#if !defined (DISABLE_NVME_PASSTHROUGH)
     case UEFI_PASSTHROUGH_NVME:
         ret = sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
         break;
-#endif
     default:
         #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
@@ -1402,9 +1400,9 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     return ret;
 }
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
+#if !defined (DISABLE_NVME_PASSTHROUGH)
     int ret = OS_PASSTHROUGH_FAILURE;
     EFI_STATUS Status = EFI_SUCCESS;
     EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL *pPassthru;
@@ -1743,11 +1741,14 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
     set_Console_Colors(true, DEFAULT);
     #endif
     return ret;
+#else //DISABLE_NVME_PASSTHROUGH
+    return OS_COMMAND_NOT_AVAILABLE;
+#endif //DISABLE_NVME_PASSTHROUGH
 }
 
 int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize)
 {
-    return NOT_SUPPORTED;
+    return OS_COMMAND_NOT_AVAILABLE;
 }
 
 int os_nvme_Reset(tDevice *device)
@@ -1779,8 +1780,6 @@ int os_nvme_Subsystem_Reset(tDevice *device)
     }
     return OS_COMMAND_NOT_AVAILABLE;
 }
-
-#endif //DISABLE_NVME_PASSTHROUGH
 
 int close_Device(tDevice *device)
 {
@@ -2195,9 +2194,9 @@ int get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, ve
     return ret;
 }
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
 uint32_t get_NVMe_Device_Count()
 {
+#if !defined (DISABLE_NVME_PASSTHROUGH)
     uint32_t deviceCount = 0;
     EFI_STATUS uefiStatus = EFI_SUCCESS;
     EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL *pPassthru;
@@ -2249,10 +2248,14 @@ uint32_t get_NVMe_Device_Count()
     set_Console_Colors(true, DEFAULT);
     #endif
     return deviceCount;
+#else //DISABLE_NVME_PASSTHROUGH
+    return 0;
+#endif //DISABLE_NVME_PASSTHROUGH
 }
 
 int get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint32_t *index)
 {
+#if !defined (DISABLE_NVME_PASSTHROUGH)
     int ret = NOT_SUPPORTED;
     uint32_t deviceCount = 0;
     EFI_STATUS uefiStatus = EFI_SUCCESS;
@@ -2317,8 +2320,10 @@ int get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, vers
         }
     }
     return ret;
+#else //DISABLE_NVME_PASSTHROUGH
+    return NOT_SUPPORTED;
+#endif //DISABLE_NVME_PASSTHROUGH
 }
-#endif
 
 //-----------------------------------------------------------------------------
 //
@@ -2343,9 +2348,7 @@ int get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
     *numberOfDevices += get_ATA_Device_Count();
     *numberOfDevices += get_SCSI_Device_Count();
     *numberOfDevices += get_SCSIEx_Device_Count();
-    #if !defined (DISABLE_NVME_PASSTHROUGH)
     *numberOfDevices += get_NVMe_Device_Count();
-    #endif
     return SUCCESS;
 }
 
@@ -2380,9 +2383,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     get_ATA_Devices(ptrToDeviceList, sizeInBytes, ver, &index);
     get_SCSI_Devices(ptrToDeviceList, sizeInBytes, ver, &index);
     get_SCSIEx_Devices(ptrToDeviceList, sizeInBytes, ver, &index);
-    #if !defined (DISABLE_NVME_PASSTHROUGH)
     get_NVMe_Devices(ptrToDeviceList, sizeInBytes, ver, &index);
-    #endif
     return SUCCESS;
 }
 

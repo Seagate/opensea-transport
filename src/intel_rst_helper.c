@@ -14,7 +14,7 @@
 #include "intel_rst_defs.h"
 #include "intel_rst_helper.h"
 #include "sntl_helper.h"
-
+#include <stddef.h>
 #if defined (ENABLE_CSMI)
 #include "csmi_helper.h"
 #endif
@@ -603,7 +603,6 @@ int send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
     //NOTE: This function will handle calling appropriate NVMe firmware update function as well
     //NOTE2: This will not issue whatever command you want. Only certain commands are supported by the driver. This function will attempt any command given in case driver updates allow other commands in the future.
 static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
@@ -972,7 +971,5 @@ int send_Intel_NVM_SCSI_Command(ScsiIoCtx *scsiIoCtx)
     }
     return ret;
 }
-
-#endif //!DISABLE_NVME_PASSTHROUGH
 
 #endif //ENABLE_INTEL_RST

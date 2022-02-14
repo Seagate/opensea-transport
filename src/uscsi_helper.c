@@ -493,7 +493,6 @@ int os_Flush(M_ATTR_UNUSED tDevice *device)
     return NOT_SUPPORTED;
 }
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 int send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx *nvmeIoCtx)
 {
     return NOT_SUPPORTED;
@@ -513,7 +512,6 @@ int os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
-#endif
 
 int os_Lock_Device(tDevice *device)
 {
