@@ -9063,13 +9063,13 @@ static int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     {
         protocolCommand->CommandSpecific = STORAGE_PROTOCOL_SPECIFIC_NVME_ADMIN_COMMAND;
         protocolCommand->Flags = STORAGE_PROTOCOL_COMMAND_FLAG_ADAPTER_REQUEST;
-        nvmeAdminCommand *command = (nvmeAdminCommand*)&protocolCommand->Command;
+        nvmeAdminCommand *command = C_CAST(nvmeAdminCommand*, &protocolCommand->Command);
         memcpy(command, &nvmeIoCtx->cmd.adminCmd, STORAGE_PROTOCOL_COMMAND_LENGTH_NVME);
     }
     else
     {
         protocolCommand->CommandSpecific = STORAGE_PROTOCOL_SPECIFIC_NVME_NVM_COMMAND;
-        nvmCommand *command = (nvmCommand*)&protocolCommand->Command;
+        nvmCommand *command = C_CAST(nvmCommand*, &protocolCommand->Command);
         memcpy(command, &nvmeIoCtx->cmd.nvmCmd, STORAGE_PROTOCOL_COMMAND_LENGTH_NVME);
     }
 
