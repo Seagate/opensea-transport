@@ -2833,9 +2833,10 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                     if (SUCCESS == csmi_Get_Driver_And_Controller_Data(fd, controllerNumber, &driverInfo, &controllerConfig, csmiCountVerbosity))
                     {
                         //Check if it's a RAID capable controller. We only want to enumerate devices on those in this function
-                        if (controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
+                        if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                             || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
                             || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
+                            && strcmp(C_CAST(const char*, driverInfo.Information.szName), "arcsas") != 0) //skip arcsas due to an unknown bug below in the scan that we have not yet resolved. It crashes the tool and it is not clear why at this time-TJE
                         {
                             //Get RAID info
                             CSMI_SAS_RAID_INFO_BUFFER csmiRAIDInfo;
@@ -3050,9 +3051,10 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                 break;
                             }
                             //Check if it's a RAID capable controller. We only want to enumerate devices on those in this function
-                            if (controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
+                            if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                                 || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
                                 || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
+                                && strcmp(C_CAST(const char*, driverInfo.Information.szName), "arcsas") != 0) //skip arcsas due to an unknown bug below in the scan that we have not yet resolved. It crashes the tool and it is not clear why at this time-TJE
                             {
                                 //Get RAID info & Phy info. Need to match the RAID config (below) to some of the phy info as best we can...-TJE
 #if defined (_WIN32)

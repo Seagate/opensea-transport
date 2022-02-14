@@ -8706,7 +8706,7 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
         //DO NOT try a SAT identify on these devices if we already know what they are. These should be treated as SCSI since they are either SCSI or ATA packet devices
         return NOT_SUPPORTED;
     }
-    if (!device->drive_info.passThroughHacks.scsiHacks.noVPDPages)//if this is set, then the device is known to not support VPD pages, so just skip to the SAT identify
+    if (!device->drive_info.passThroughHacks.scsiHacks.noVPDPages && !device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage)//if this is set, then the device is known to not support VPD pages, so just skip to the SAT identify
     {
         uint8_t *ataInformation = C_CAST(uint8_t *, calloc_aligned(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!ataInformation)
@@ -8821,6 +8821,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
             {
                 passthroughTypeSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_NEC;
+                device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
             }
         }
         else if (strcmp(vendorID, "Seagate") == 0)
@@ -8839,6 +8840,25 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
             {
                 device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
                 //TODO: this device previously had a hack that SMART check isn't supported, so need to migrate that too.
+            }
+            else
+            {
+                //setup some defaults that will most likely work for most current products
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //TODO: since we may find SATA or NVMe adapters, we cannot set below due to a union being used. May need to remove that or find another solution
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
             }
         }
         else if (strcmp(vendorID, "Samsung") == 0)
@@ -8925,6 +8945,18 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
         }
     }
     return passthroughTypeSet;
+}
+
+bool is_Seagate_USB_Vendor_ID(tDevice* device)
+{
+    if (strcmp(device->drive_info.T10_vendor_ident, "Seagate") == 0)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 // \fn fill_In_Device_Info(device device)
@@ -9157,6 +9189,57 @@ int fill_In_Device_Info(tDevice *device)
             device->drive_info.media_type = MEDIA_UNKNOWN;
             break;
         }
+
+        bool foundUSBStandardDescriptor = false;
+        bool foundSATStandardDescriptor = false;
+        bool foundATAStandardDescriptor = false;
+
+        //check version descriptors first (If returned sense data is long enough and reports all of this)
+        //This can help improve SAT detection and other passthrough quirks
+        for (uint16_t versionIter = 0, offset = 58; versionIter < 7 && offset < (inq_buf[4] + 4); ++versionIter, offset += 2)
+        {
+            uint16_t versionDescriptor = M_BytesTo2ByteValue(device->drive_info.scsiVpdData.inquiryData[offset + 0], device->drive_info.scsiVpdData.inquiryData[offset + 1]);
+            if (!foundUSBStandardDescriptor && (is_Standard_Supported(versionDescriptor, STANDARD_CODE_USB)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_UAS)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_UAS2)))
+            {
+                foundUSBStandardDescriptor = true;
+            }
+            else if (!foundSATStandardDescriptor && (is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT2)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT3)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT4)))
+            {
+                foundSATStandardDescriptor = true;
+            }
+            else if (!foundATAStandardDescriptor && (is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI6)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI7)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI8)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ACSx)))
+            {
+                foundATAStandardDescriptor = true;
+            }
+        }
+
+        //special USB detection case. If not already USB interface, do a few more checks to get the interface correct
+        if (device->drive_info.interface_type == SCSI_INTERFACE)
+        {
+            if (foundUSBStandardDescriptor)
+            {
+                device->drive_info.interface_type = USB_INTERFACE;
+            }
+            
+            //Only rely on this as a last resort. Try using version descriptors when possible
+            //NOTE: This is different from SAS where the ID is in all CAPS, which makes this identification possible.
+            //TODO: LaCie? Need to make sure this only catches USB and not something else like thunderbolt
+            if (device->drive_info.interface_type == SCSI_INTERFACE && is_Seagate_USB_Vendor_ID(device))
+            {
+                device->drive_info.interface_type = USB_INTERFACE;
+            }
+        }
+        bool hisup = M_ToBool(inq_buf[3] & BIT4);//historical support...this is set to 1 for nvme (SNTL) and not specified in SAT...may be useful later - TJE
+        bool rmb = M_ToBool(inq_buf[1] & BIT1);//removable medium. This should be zero for all modern HDDs and any SSD, even over USB, but USB sometimes plays by it's own rules. - TJE
+        bool cmdQueue = M_ToBool(inq_buf[7] & BIT1);//set to 1 for nvme, unspecified for SAT
         //check for additional bits to try and filter out when to check for SAT
         if (checkForSAT && !device->drive_info.passThroughHacks.hacksSetByReportedID)
         {
@@ -9234,7 +9317,7 @@ int fill_In_Device_Info(tDevice *device)
 
         //As per NVM Express SCSI Translation Reference. 
         //NOTE: Setting this type here allows us to skip sending some extra commands. (e.g. SAT compliant)
-        if (memcmp(device->drive_info.T10_vendor_ident, "NVMe",4) == 0 )
+        if (memcmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0 )
         {
             //DO NOT set the drive type to NVMe here. We need to treat it as a SCSI device since we can only issue SCSI translatable commands!!!
             //device->drive_info.drive_type  = NVME_DRIVE;
@@ -9253,83 +9336,7 @@ int fill_In_Device_Info(tDevice *device)
             checkForSAT = false;
         }
 
-        //If this is a suspected NVMe device, specifically ASMedia 236X chip, need to do an inquiry with EXACTLY 38bytes to check for a specific signature
-        //This will check for some known outputs to know when to do the additional inquiry command for ASMedia detection. This may not catch everything. - TJE
-        if (!(device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
-            &&
-            (strncmp(device->drive_info.T10_vendor_ident, "ASMT", 4) == 0 || strncmp(device->drive_info.T10_vendor_ident, "ASMedia", 7) == 0 
-            || strstr(device->drive_info.product_identification, "ASM236X") || strstr(device->drive_info.product_identification, "NVME"))
-            )
-        {
-            //This is likely a ASMedia 236X device. Need to do another inquiry command in order to confirm.
-            uint8_t asmtInq[38] = { 0 };
-            if (SUCCESS == scsi_Inquiry(device, asmtInq, 38, 0, false, false))
-            {
-                if (asmtInq[36] == 0x60 && asmtInq[37] == 0x23)//todo: add checking length ahead of this for improved backwards compatibility with SCSI 2 devices.
-                {
-                    //This is an ASMedia device with the 236X chip which supports USB to NVMe passthrough
-                    //This code will setup known hacks for these devices since it wasn't already detected by lower layers based on VID/PID reported over the USB interface
-                    checkForSAT = false;
-                    device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_ASMEDIA_BASIC;
-                    device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
-                    device->drive_info.passThroughHacks.turfValue = 33;
-                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in the case an ATA passthrough command is attempted, it won't try this opcode since it can cause performance problems or crash the bridge
-                    device->drive_info.drive_type = NVME_DRIVE;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
-                    device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
-                    device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
-                    device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
-                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
-                    device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
-                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
-                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric = true;
-                }
-            }
-        }
-
-        //Need to check version descriptors here since they may be useful below, but also because it can be used to help rule-out some USB to NVMe devices.
-        bool satVersionDescriptorFound = false;
-        if (!device->drive_info.passThroughHacks.hacksSetByReportedID && version >= 4 && (inq_buf[4] + 4 > 57))//if less than this length, then there definitely won't be a reason to check version descriptors
-        {
-            uint16_t versionDescriptor = 0;
-            if(strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0 || strstr(device->drive_info.product_identification, "NVME"))
-            {
-                //This means we most likely have some sort of NVMe device, so SAT (ATA passthrough) makes no sense to check for.
-                checkForSAT = false;
-            }
-            else
-            {
-                for (uint16_t versionIter = 0, offset = 58; versionIter < 7 && offset < (inq_buf[4] + 4); ++versionIter, offset += 2)
-                {
-                    versionDescriptor = M_BytesTo2ByteValue(device->drive_info.scsiVpdData.inquiryData[offset + 0], device->drive_info.scsiVpdData.inquiryData[offset + 1]);
-                    if (is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT2)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT3)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT4)
-                        //Next version descriptors aren't sat but should only appear on a SAT interface...at least we know they are ATA/ATAPI so it won't hurt to try issuing a command to the drive.
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI6)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI7)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI8)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ACSx)
-                        )
-                    {
-                        //This is a workaround for some USB to NVMe adapters that list a SAT descriptor, which makes no sense.
-                        if (strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0 || strstr(device->drive_info.product_identification, "NVME") == NULL)
-                        {
-                            satVersionDescriptorFound = true;
-                        }
-                        else
-                        {
-                            checkForSAT = false;
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-
+        bool knownMemoryStickID = false;
         //Checking the product identification for "Generic-" device to see if they are MMC, SD, etc type devices
         if (strcmp(device->drive_info.T10_vendor_ident, "Generic-") == 0)
         {
@@ -9351,7 +9358,116 @@ int fill_In_Device_Info(tDevice *device)
                     //Only check for SAT on compact flash since it uses ATA commands. May need another case for CFast as well.
                     checkForSAT = false;
                 }
+                knownMemoryStickID = true;
             }
+        }
+
+        //If this is a suspected NVMe device, specifically ASMedia 236X chip, need to do an inquiry with EXACTLY 38bytes to check for a specific signature
+        //This will check for some known outputs to know when to do the additional inquiry command for ASMedia detection. This may not catch everything. - TJE
+        if (!knownMemoryStickID && !device->drive_info.passThroughHacks.hacksSetByReportedID  && !(device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
+            &&
+            (strncmp(device->drive_info.T10_vendor_ident, "ASMT", 4) == 0 || strncmp(device->drive_info.T10_vendor_ident, "ASMedia", 7) == 0 
+            || strstr(device->drive_info.product_identification, "ASM236X") || strstr(device->drive_info.product_identification, "NVME")
+            || is_Seagate_USB_Vendor_ID(device) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the ASmedia NVMe chips
+            //TODO: Check when FWRev is set to 2364? At least one device I have does this, but not sure this is a good thing to add in here or not -TJE
+            && !hisup && !rmb //hisup shoiuld be 1 and rmb should be zero...on the asmedia chips I have tested, hisup is zero
+            && responseFormat >= 2 //filter out any weird old drives with bizarre responses
+            && inq_buf[4] == 0x47 //SNTL says 1F, but a couple of adapter I have sets 47h...using this for now to help filter the list
+            && cmdQueue //should be set for all NVMe SNTL translators
+            )
+        {
+            //This is likely a ASMedia 236X device. Need to do another inquiry command in order to confirm.
+            uint8_t asmtInq[38] = { 0 };
+            if (SUCCESS == scsi_Inquiry(device, asmtInq, 38, 0, false, false))
+            {
+                if (asmtInq[36] == 0x60 && asmtInq[37] == 0x23)//todo: add checking length ahead of this for improved backwards compatibility with SCSI 2 devices.
+                {
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+                    //This is an ASMedia device with the 236X chip which supports USB to NVMe passthrough
+                    //will attempt to check for full passthrough support first
+                    uint8_t* nvmeIdentify = C_CAST(uint8_t*, calloc_aligned(NVME_IDENTIFY_DATA_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    bool fullCmdSupport = false;
+                    //setup hacks/flags common for both types of passthrough
+                    device->drive_info.drive_type = NVME_DRIVE;
+                    device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                    device->drive_info.passThroughHacks.turfValue = 33;
+                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in the case an ATA passthrough command is attempted, it won't try this opcode since it can cause performance problems or crash the bridge
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                    if (nvmeIdentify)
+                    {
+                        device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_ASMEDIA;
+                        //attempt the full passthrough
+                        if (SUCCESS == nvme_Identify(device, nvmeIdentify, 0, NVME_IDENTIFY_CTRL))
+                        {
+                            fullCmdSupport = true;
+                        }
+                        safe_Free_aligned(nvmeIdentify);
+                    }
+                    //This code will setup known hacks for these devices since it wasn't already detected by lower layers based on VID/PID reported over the USB interface
+                    checkForSAT = false;
+                    if (!fullCmdSupport)
+                    {
+                        //if the full cmd above failed, but we are here, that means it supports the basic passthrough
+                        //change to this passthrough and set the limited capabilities flags
+                        device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_ASMEDIA_BASIC;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric = true;
+                    }
+#endif
+                    checkForSAT = false;
+                }
+            }
+        }
+
+        //Need to check version descriptors here since they may be useful below, but also because it can be used to help rule-out some USB to NVMe devices.
+        bool satVersionDescriptorFound = false;
+        if(strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0 || strstr(device->drive_info.product_identification, "NVME") || strstr(device->drive_info.product_identification, "NVMe"))
+        {
+            //This means we most likely have some sort of NVMe device, so SAT (ATA passthrough) makes no sense to check for.
+            checkForSAT = false;
+        }
+        else
+        {
+            if (foundSATStandardDescriptor || foundATAStandardDescriptor)
+            {
+                if (strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0 || strstr(device->drive_info.product_identification, "NVME") == NULL || strstr(device->drive_info.product_identification, "NVMe") == NULL)
+                {
+                    satVersionDescriptorFound = true;
+                }
+                else
+                {
+                    checkForSAT = false;
+                }
+            }
+        }
+
+        bool checkJMicronNVMe = false;
+        if (!device->drive_info.passThroughHacks.hacksSetByReportedID && checkForSAT && !(device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
+            && (
+                strncmp(device->drive_info.T10_vendor_ident, "JMicron", 4) == 0 || //check anything coming up as Jmicron
+                (strncmp(device->drive_info.T10_vendor_ident, "JMicron", 4) == 0 && strncmp(device->drive_info.product_identification, "Tech", 4) == 0 && (strncmp(device->drive_info.product_revision, "0204", 4) == 0 || strncmp(device->drive_info.product_revision, "0205", 4) == 0)) //this is specific to known Jmicron-nvme adapters
+                || is_Seagate_USB_Vendor_ID(device) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the Jmicron NVMe chips
+            && foundSATStandardDescriptor && !foundATAStandardDescriptor //these chips report SAT, but not an ATA standard...might reduce how often this check is performed - TJE
+            && hisup && !rmb //hisup shoiuld be 1 and rmb should be zero...this should filter SOME, but not all USB adapters that are actually SATA drives - TJE
+            && responseFormat >= 2 //filter out any weird old drives with bizarre responses
+            //&& inq_buf[4] == 0x5b //SNTL says 1F, but one adapter I have sets 5B...need to make sure other adapters do the same before we enforce this check - TJE
+            && cmdQueue //should be set for all NVMe SNTL translators
+            )
+        {
+            //this is some additional checks for JMicron NVMe passthrough
+            checkJMicronNVMe = true;
+            //Do not turn off SAT checks because there is not enough information to filter down into a known NVMe vs known SATA device in this "auto-detect" case
+            //checking for this will come, most likely, after SAT check.
+            //TODO: Further improvement: Detect A1h command supported, but 85h is NOT. A1 is the opcode supported by this device's passthrough and anything supporting 85h will have to be SAT, not this unique NVMe passthrough - TJE
+            //      note: there is not currently a good way to track the results from these commands in fill_ATA_Drive_Info...that is something we can work on going forward.
+            //      A1 SAT identify should return "Invalid field in CDB" and 85h should return "Invalid operation code". While SOME SAT device may do this too, this will reduce commanmds sent to genuine SAT devices.
         }
 
         if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE)
@@ -9366,6 +9482,36 @@ int fill_In_Device_Info(tDevice *device)
                )
             {
                 ret = fill_In_ATA_Drive_Info(device);
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+                if (ret != SUCCESS && checkJMicronNVMe)
+                {
+                    device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
+                    ret = fill_In_NVMe_Device_Info(device);
+                    if (ret == SUCCESS)
+                    {
+                        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                        device->drive_info.passThroughHacks.turfValue = 13;
+                        device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in 
+                        device->drive_info.drive_type = NVME_DRIVE;
+                        device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                        device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = false;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                        device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
+                    }
+                    else
+                    {
+                        device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                        ret = SUCCESS;//do not fail here since this should otherwise be treated as a SCSI drive
+                    }
+                }
+#endif
             }
             safe_Free_aligned(inq_buf)
             return ret;
@@ -9450,7 +9596,36 @@ int fill_In_Device_Info(tDevice *device)
             //One last thing...Need to do a SAT scan...
             if (checkForSAT)
             {
-                check_SAT_Compliance_And_Set_Drive_Type(device);
+                if (SUCCESS != check_SAT_Compliance_And_Set_Drive_Type(device) && checkJMicronNVMe)
+                {
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+                    device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
+                    ret = fill_In_NVMe_Device_Info(device);
+                    if (ret == SUCCESS)
+                    {
+                        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                        device->drive_info.passThroughHacks.turfValue = 13;
+                        device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in 
+                        device->drive_info.drive_type = NVME_DRIVE;
+                        device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                        device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = false;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                        device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
+                    }
+                    else
+#endif
+                    {
+                        device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                        ret = SUCCESS;//do not fail here since this should otherwise be treated as a SCSI drive
+                    }
+                }
             }
             safe_Free_aligned(inq_buf)
             return ret;
@@ -9536,7 +9711,7 @@ int fill_In_Device_Info(tDevice *device)
                         inq_buf[offset] = DEVICE_IDENTIFICATION;
                         ++offset;
                     }
-                    if (checkForSAT)
+                    if (checkForSAT && !device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage)
                     {
                         inq_buf[offset] = ATA_INFORMATION;
                         ++offset;
@@ -9638,6 +9813,37 @@ int fill_In_Device_Info(tDevice *device)
                         {
                             //send test unit ready to get the device responding again (For better performance on some USB devices that don't support this page)
                             scsi_Test_Unit_Ready(device, NULL);
+                            //TODO: Check jmicron here???
+#if !defined (DISABLE_NVME_PASSTHROUGH)
+                            if (checkJMicronNVMe)
+                            {
+                                device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
+                                ret = fill_In_NVMe_Device_Info(device);
+                                if (ret == SUCCESS)
+                                {
+                                    device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                                    device->drive_info.passThroughHacks.turfValue = 13;
+                                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in 
+                                    device->drive_info.drive_type = NVME_DRIVE;
+                                    device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = false;
+                                    device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
+                                }
+                                else
+                                {
+                                    device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                                    ret = SUCCESS;//do not fail here since this should otherwise be treated as a SCSI drive
+                                }
+                            }
+#endif
                         }
                         satComplianceChecked = true;
                     }
@@ -9672,12 +9878,10 @@ int fill_In_Device_Info(tDevice *device)
                                     {
                                         device->drive_info.media_type = MEDIA_HDD;
                                     }
-                                }
-                                else
-                                {
-                                    if (!satVPDPageRead)
+                                    if (checkJMicronNVMe)
                                     {
-                                        device->drive_info.media_type = MEDIA_UNKNOWN;
+                                        //The logic here is that there are no NVMe HDDs that will use this bridge, so do not do a SAT check, and instead check only for JMicron NVMe adapter - TJE
+                                        checkForSAT = false;
                                     }
                                 }
                             }
@@ -9793,6 +9997,7 @@ int fill_In_Device_Info(tDevice *device)
                         if (readCapBuf[12] & BIT0)
                         {
                             device->drive_info.currentProtectionType = M_GETBITRANGE(readCapBuf[12], 3, 1) + 1;
+                            checkForSAT = false;
                         }
                     }
                 }
@@ -9817,6 +10022,7 @@ int fill_In_Device_Info(tDevice *device)
                     if (readCapBuf[12] & BIT0)
                     {
                         device->drive_info.currentProtectionType = M_GETBITRANGE(readCapBuf[12], 3, 1) + 1;
+                        checkForSAT = false;
                     }
                 }
             }
@@ -9829,21 +10035,59 @@ int fill_In_Device_Info(tDevice *device)
             }
         }
 
-        //printf("passthrough type set to %d\n", device->drive_info.passThroughHacks.passthroughType);
+        //NOTE: You would think that checking if physical and logical block sizes don't match you can filter NVMe (they are supposed to be the same in translation),
+        //      but this DOES NOT WORK. For whatever reason, some report 512B logical, 4k physical....for no apparent reason. - TJE
 
+        //printf("passthrough type set to %d\n", device->drive_info.passThroughHacks.passthroughType);
+        int satCheck = FAILURE;
         //if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just issue a SAT identify in here to set things up...might reduce multiple commands later
         if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE) 
             && device->drive_info.media_type != MEDIA_UNKNOWN && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
         {
-            check_SAT_Compliance_And_Set_Drive_Type(device);
+            satCheck = check_SAT_Compliance_And_Set_Drive_Type(device);
         }
 
 #if !defined (DISABLE_NVME_PASSTHROUGH)
         //Because we may find an NVMe over USB device, if we find one of these, perform a little more discovery...
-        if (device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
+        if ((device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
+            ||
+            (satCheck != SUCCESS && checkJMicronNVMe)
+            )
         {
+            int scsiRet = ret;
+            if (checkJMicronNVMe)
+            {
+                device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
+            }
             //NOTE: It is OK if this fails since it will fall back to treating as SCSI
-            fill_In_NVMe_Device_Info(device);
+            ret = fill_In_NVMe_Device_Info(device);
+            if (ret == SUCCESS && checkJMicronNVMe)
+            {
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 13;
+                device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in 
+                device->drive_info.drive_type = NVME_DRIVE;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = false;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
+            }
+            else if(checkJMicronNVMe)
+            {
+                device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                ret = scsiRet;//do not fail here since this should otherwise be treated as a SCSI drive
+            }
+            else
+            {
+                ret = scsiRet;//do not fail here since this should otherwise be treated as a SCSI drive
+            }
         }
 #endif
     }

@@ -167,7 +167,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -184,7 +184,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -202,7 +202,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -219,7 +219,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -239,7 +239,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -260,7 +260,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -282,7 +282,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -303,7 +303,7 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;ENABLE_CSMI;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;DISABLE_NVME_PASSTHROUGH;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>

@@ -29,6 +29,7 @@ elif target_machine.system() == 'windows'
   	os_deps += [cfgmgr32]
   endif
   add_project_arguments('-DDENABLE_INTEL_RST', language : 'c')
+  global_cpp_args += ['-D_CRT_NONSTDC_NO_DEPRECATE', '-D_CRT_SECURE_NO_WARNINGS']
   global_cpp_args += ['-DSTATIC_OPENSEA_TRANSPORT', '-D_UNICODE', '-DUNICODE']
 endif # TODO UEFI and vmware
 

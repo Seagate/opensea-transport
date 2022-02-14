@@ -786,7 +786,8 @@ extern "C"
             }scsiInq;
             uint8_t reserved[6];//padd out above to 8 byte boundaries
             uint32_t maxTransferLength;//Maximum SCSI command transfer length in bytes. Mostly here for USB where translations aren't accurate or don't show this properly.
-            uint32_t scsipadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
+            bool noSATVPDPage;//when this is set, the SAT VPD is not available and should not be read, skipping ahead to instead directly trying a passthrough command
+            uint8_t scsipadding[3];//padd 4 more bytes after transfer length to keep 8 byte boundaries
         }scsiHacks;
         union {
             //ATA Hacks refer to SAT translation issues or workarounds.

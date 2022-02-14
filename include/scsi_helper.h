@@ -904,6 +904,27 @@ extern "C"
         //All others are reserved
     }eSATSecurityDevicePassword;
 
+    typedef enum _eSCSIProtocolID
+    {
+        SCSI_PROTOCOL_ID_FIBRE_CHANNEL  = 0x0,
+        SCSI_PROTOCOL_ID_SPI            = 0x1,//Parallel SCSI
+        SCSI_PROTOCOL_ID_SSA            = 0x2,//Serial Storage Architecture
+        SCSI_PROTOCOL_ID_SBP            = 0x3,//IEEE 1394
+        SCSI_PROTOCOL_ID_SRP            = 0x4,//SCSI RDMA
+        SCSI_PROTOCOL_ID_iSCSI          = 0x5,//internet SCSI
+        SCSI_PROTOCOL_ID_SAS            = 0x6,//Serial Attached SCSI
+        SCSI_PROTOCOL_ID_ADT            = 0x7,//Automation/Drive interface transport protocol
+        SCSI_PROTOCOL_ID_ATA            = 0x8,//AT Attachment Interface
+        SCSI_PROTOCOL_ID_UAS            = 0x9,//USB Attached SCSI
+        SCSI_PROTOCOL_ID_SOP            = 0xA,//SCSI over PCI express
+        SCSI_PROTOCOL_ID_PCIe           = 0xB,//PCI Express Protocols
+        SCSI_PROTOCOL_ID_RESERVED1      = 0xC,
+        SCSI_PROTOCOL_ID_RESERVED2      = 0xD,
+        SCSI_PROTOCOL_ID_RESERVED3      = 0xE,
+        SCSI_PROTOCOL_ID_NO_SPECIFIC_PROTOCOL   = 0xF
+    }eSCSIProtocolID;
+
+
     #if defined (__cplusplus)
 } //extern "C"
     #endif

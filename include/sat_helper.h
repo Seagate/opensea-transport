@@ -50,7 +50,7 @@ extern "C"
 
     // SAT Spec Byte 2 specifics
 
-    // T_LENGTH Field Values based on SAT spec Table 139 — T_LENGTH field
+    // T_LENGTH Field Values based on SAT spec Table 139 - T_LENGTH field
     #define SAT_T_LEN_XFER_NO_DATA  (0x00) // No data is transferred
     #define SAT_T_LEN_XFER_FET      (0x01) // The transfer length is an unsigned integer specified in the FEATURES (7:0) field.
     #define SAT_T_LEN_XFER_SEC_CNT  (0x02) // The transfer length is an unsigned integer specified in the SECTOR_COUNT (7:0) field.

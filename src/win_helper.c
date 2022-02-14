@@ -2005,8 +2005,7 @@ static int win_Get_SCSI_Address(HANDLE deviceHandle, PSCSI_ADDRESS scsiAddress)
     return ret;
 }
 
-#if WINVER >= SEA_WIN32_WINNT_WINBLUE
-
+#if WINVER >= SEA_WIN32_WINNT_WINBLUE && defined(IOCTL_SCSI_MINIPORT_FIRMWARE)
 static void print_Firmware_Miniport_SRB_Status(ULONG returnCode)
 {
     switch (returnCode)
@@ -3943,7 +3942,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
                 int fwdlResult = NOT_SUPPORTED;
                 get_Adapter_IDs(device, device_desc, device_desc->Size);
 
-#if WINVER >= SEA_WIN32_WINNT_WINBLUE
+#if WINVER >= SEA_WIN32_WINNT_WINBLUE && defined (IOCTL_SCSI_MINIPORT_FIRMWARE)
                 fwdlResult = get_Win_FWDL_Miniport_Capabilities(device, device_desc->BusType == BusTypeNvme ? true : false);
 #endif
 
@@ -4128,7 +4127,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miSend = true;
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize = true;
                             }
-                            if (is_Windows_11_Version_21H2_Or_Higher)
+                            if (is_Windows_11_Version_21H2_Or_Higher())
                             {
                                 //New documentation indicates that sanitize is supported wihtout PE mode in Windows 11.
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize = true;
@@ -8878,7 +8877,7 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     {
         printf("Sending command with send_IO\n");
     }
-#if WINVER >= SEA_WIN32_WINNT_WINBLUE
+#if WINVER >= SEA_WIN32_WINNT_WINBLUE && defined (IOCTL_SCSI_MINIPORT_FIRMWARE)
     //TODO: We should figure out a better way to handle when to use the Windows API for these IOs than this...not sure if there should be a function called "is command in Win API" or something like that to check for it or not.-TJE
     if (is_Firmware_Download_Command_Compatible_With_Win_API(scsiIoCtx))
     {
@@ -9065,13 +9064,13 @@ static int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     {
         protocolCommand->CommandSpecific = STORAGE_PROTOCOL_SPECIFIC_NVME_ADMIN_COMMAND;
         protocolCommand->Flags = STORAGE_PROTOCOL_COMMAND_FLAG_ADAPTER_REQUEST;
-        nvmeAdminCommand *command = (nvmeAdminCommand*)&protocolCommand->Command;
+        nvmeAdminCommand *command = C_CAST(nvmeAdminCommand*, &protocolCommand->Command);
         memcpy(command, &nvmeIoCtx->cmd.adminCmd, STORAGE_PROTOCOL_COMMAND_LENGTH_NVME);
     }
     else
     {
         protocolCommand->CommandSpecific = STORAGE_PROTOCOL_SPECIFIC_NVME_NVM_COMMAND;
-        nvmCommand *command = (nvmCommand*)&protocolCommand->Command;
+        nvmCommand *command = C_CAST(nvmCommand*, &protocolCommand->Command);
         memcpy(command, &nvmeIoCtx->cmd.nvmCmd, STORAGE_PROTOCOL_COMMAND_LENGTH_NVME);
     }
 
