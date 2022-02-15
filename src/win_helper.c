@@ -4034,8 +4034,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             //now see if the IOCTL is supported or not
 #if defined (ENABLE_OFNVME) || defined (ENABLE_INTEL_RST)
                             //if defined hell since we can flag these interfaces on and off
+                            bool foundNVMePassthrough = false;
     #if defined (ENABLE_OFNVME)
-                            if (supports_OFNVME_IO(device->os_info.scsiSRBHandle))
+                            if (!foundNVMePassthrough && supports_OFNVME_IO(device->os_info.scsiSRBHandle))
                             {
                                 //congratulations! nvme commands can be passed through!!!
                                 device->os_info.openFabricsNVMePassthroughSupported = true;
@@ -4043,26 +4044,22 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                 device->drive_info.interface_type = NVME_INTERFACE;
                                 device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
                                 //TODO: Setup limited passthrough capabilities structure???
+                                foundNVMePassthrough = true;
                             }
-    #if !defined (ENABLE_INTEL_RST)
-                            else
-    #endif //!ENABLE_INTEL_RST
     #endif //ENABLE_OFNVME
-    #if defined (ENABLE_OFNVME)
-                            else
-    #endif//ENABLE_OFNVME
     #if defined (ENABLE_INTEL_RST)
                             //TODO: else if(/*check for Intel RST CSMI support*/)
-                            if (device_Supports_CSMI_With_RST(device->os_info.scsiSRBHandle))
+                            if (!foundNVMePassthrough && device_Supports_CSMI_With_RST(device->os_info.scsiSRBHandle))
                             {
                                 //TODO: setup CSMI structure
+                                printf("Found intel RST NVMe\n");
                                 device->drive_info.drive_type = NVME_DRIVE;
                                 device->drive_info.interface_type = NVME_INTERFACE;
                                 device->os_info.intelNVMePassthroughSupported = true;
+                                foundNVMePassthrough = true;
                             }
     #endif//ENABLE_INTEL_RST
-                            
-                            else
+                            if(!foundNVMePassthrough)
 #endif //ENABLE_OFNVME || ENABLE_INTEL_RST
                             {
                                 //unable to do passthrough, and isn't in normal Win10 mode, this means it's some other driver that we don't know how to use. Treat as SCSI
