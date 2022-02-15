@@ -1373,8 +1373,8 @@ void get_SCSI_DPO_FUA_Support(tDevice* device)
 {
     if (!device->drive_info.dpoFUAvalid)
     {
-        uint8_t cachingMP[MODE_PARAMETER_HEADER_10_LEN + 20] = { 0 };
-        if (device->drive_info.scsiVersion >= SCSI_VERSION_SCSI2 && SUCCESS == scsi_Mode_Sense_10(device, MP_CACHING, MODE_PARAMETER_HEADER_10_LEN + 20, 0, true, false, MPC_CURRENT_VALUES, cachingMP))
+        uint8_t cachingMP[MODE_PARAMETER_HEADER_10_LEN + MP_CACHING_LEN] = { 0 };
+        if (device->drive_info.scsiVersion >= SCSI_VERSION_SCSI2 && SUCCESS == scsi_Mode_Sense_10(device, MP_CACHING, MODE_PARAMETER_HEADER_10_LEN + MP_CACHING_LEN, 0, true, false, MPC_CURRENT_VALUES, cachingMP))
         {
             //dpo/fua bit is in the device type specific parameter of the header
             //byte 3, bit 4
