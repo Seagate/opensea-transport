@@ -510,8 +510,8 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
         {
             printf("False\n");
         }
-#define NVME_STATUS_CODE_TYPE_STRING_LENGTH 60
-#define NVME_STATUS_CODE_STRING_LENGTH 60
+#define NVME_STATUS_CODE_TYPE_STRING_LENGTH 32
+#define NVME_STATUS_CODE_STRING_LENGTH 62
         char statusCodeTypeString[NVME_STATUS_CODE_TYPE_STRING_LENGTH] = { 0 };
         char statusCodeString[NVME_STATUS_CODE_STRING_LENGTH] = { 0 };
         //also print out the phase tag, CID. NOTE: These aren't available in Linux!
