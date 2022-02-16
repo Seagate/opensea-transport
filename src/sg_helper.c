@@ -38,6 +38,55 @@
 #include "ata_helper_func.h"
 #include "nvme_helper_func.h"
 #include "sntl_helper.h"
+#include <scsi/sg.h>
+#include <scsi/scsi.h>
+#if defined (__has_include)//GCC5 and higher support this, BUT only if a C standard is specified. The -std=gnuXX does not support this properly for some odd reason.
+    #if __has_include (<linux/nvme_ioctl.h>)
+        #if defined (_DEBUG)
+        #pragma message "Using linux/nvme_ioctl.h"
+        #endif
+        #include <linux/nvme_ioctl.h>
+        #if !defined (SEA_NVME_IOCTL_H)
+            #define SEA_NVME_IOCTL_H
+        #endif
+    #elif __has_include (<linux/nvme.h>)
+        #if defined (_DEBUG)
+        #pragma message "Using linux/nvme.h"
+        #endif
+        #include <linux/nvme.h>
+        #if !defined (SEA_NVME_IOCTL_H)
+            #define SEA_NVME_IOCTL_H
+        #endif
+    #elif __has_include (<uapi/nvme.h>)
+        #if defined (_DEBUG)
+        #pragma message "Using uapi/nvme.h"
+        #endif
+        #include <uapi/nvme.h>
+        #if !defined (SEA_UAPI_NVME_H)
+            #define SEA_UAPI_NVME_H
+        #endif
+    #else //__has_include could not locate the header, check if it was specified by the user through a define.
+        #if defined (SEA_NVME_IOCTL_H)
+            #include <linux/nvme_ioctl.h>
+        #elif defined (SEA_NVME_H)
+            #include <linux/nvme.h>
+        #elif defined (SEA_UAPI_NVME_H)
+            #include <uapi/nvme.h>
+        #else
+            #pragma message "No NVMe header detected with __has_include. Assuming no NVMe support."
+        #endif
+    #endif
+#else
+    #if defined (SEA_NVME_IOCTL_H)
+        #include <linux/nvme_ioctl.h>
+    #elif defined (SEA_NVME_H)
+        #include <linux/nvme.h>
+    #elif defined (SEA_UAPI_NVME_H)
+        #include <uapi/nvme.h>
+    #else
+        #pragma message "No NVMe header detected. Assuming no NVMe support. Define one of the following to include the correct NVMe header: SEA_NVME_IOCTL_H, SEA_NVME_H, or SEA_UAPI_NVME_H\nThese specify whether the NVMe IOCTL is in /usr/include/linux/nvme_ioctl.h, /usr/include/linux/nvme.h, or /usr/include/uapi/nvme.h"
+    #endif
+#endif
 
 #if defined(DEGUG_SCAN_TIME)
 #include "common_platform.h"
