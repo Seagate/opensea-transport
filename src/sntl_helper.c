@@ -139,7 +139,7 @@ static void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t sens
         senseData[7] = additionalSenseLength;
         if (descriptor)
         {
-            uint8_t senseDataOffset = 8, descriptorLength = 0, counter = 0;
+            uint8_t /*senseDataOffset = 8,*/ descriptorLength = 0, counter = 0;
             uint32_t descriptorOffset = 0;
             while (counter < descriptorCount)
             {
@@ -299,7 +299,7 @@ static void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t sens
                 }
                 ++counter;
                 descriptorOffset += descriptorLength;
-                senseDataOffset += descriptorLength;
+                //senseDataOffset += descriptorLength;
             }
         }
     }
