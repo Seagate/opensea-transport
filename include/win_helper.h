@@ -17,9 +17,7 @@
 #include "scsi_helper.h"
 #include "sat_helper.h"
 #include "common_public.h"
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper.h"
-#endif
 
 
 #if defined (__cplusplus)
@@ -165,7 +163,6 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int os_Update_File_System_Cache(tDevice* device);
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
     //-----------------------------------------------------------------------------
     //
     //  pci_Read_Bar_Reg()
@@ -218,7 +215,6 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     long getpagesize(void);
-#endif
 
 #if defined (__cplusplus)
 }

@@ -21,9 +21,7 @@
 #include <windows.h>                // added for forced PnP rescan
 #include <tchar.h>
 #include <initguid.h>
-//#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include <ntddstor.h>
-//#endif
 //NOTE: ARM requires 10.0.16299.0 API to get this library!
 #include <cfgmgr32.h>               // added for forced PnP rescan
 //#include <setupapi.h> //NOTE: Not available for ARM
@@ -38,10 +36,8 @@
 #include "usb_hacks.h"
 #include "common_public.h"
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper.h"
 #include "nvme_helper_func.h"
-#endif
 
 #if defined (ENABLE_CSMI) //when this is enabled, the "get_Device", "get_Device_Count", and "get_Device_List" will also check for CSMI devices unless a flag is given to ignore them. For apps only doing CSMI, call the csmi implementations directly
 #include "csmi_helper_func.h"
@@ -2005,6 +2001,9 @@ static int win_Get_SCSI_Address(HANDLE deviceHandle, PSCSI_ADDRESS scsiAddress)
     return ret;
 }
 
+#define WIN_DUMMY_NVME_STATUS(sct, sc) \
+    C_CAST(uint32_t, (sct << 25) | (sc << 17))
+
 #if WINVER >= SEA_WIN32_WINNT_WINBLUE && defined(IOCTL_SCSI_MINIPORT_FIRMWARE)
 static void print_Firmware_Miniport_SRB_Status(ULONG returnCode)
 {
@@ -2908,11 +2907,6 @@ static int windows_Firmware_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
     }
 }
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
-
-#define WIN_DUMMY_NVME_STATUS(sct, sc) \
-    C_CAST(uint32_t, (sct << 25) | (sc << 17))
-
 //TODO: This may need adjusting with bus trace help in the future, but for now this is a best guess from what info we have.-TJE
 static int dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, ULONG returnCode)
 {
@@ -3120,7 +3114,6 @@ static int send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIoCtx)
     return ret;
 }
 
-#endif //DISABLE_NVME_PASSTHROUGH
 #endif //WINVER >= SEA_WIN32_WINNT_WINBLUE
 
 static int get_os_drive_number( char *filename )
@@ -4030,7 +4023,6 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     device->drive_info.interface_type = IEEE_1394_INTERFACE;
                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                 }
-#if !defined(DISABLE_NVME_PASSTHROUGH)
                 //NVMe bustype can be defined for Win7 with openfabrics nvme driver, so make sure we can handle it...it shows as a SCSI device on this interface unless you use a SCSI?: handle with the IOCTL directly to the driver.
                 else if (device_desc->BusType == BusTypeNvme)
                 {
@@ -4042,8 +4034,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             //now see if the IOCTL is supported or not
 #if defined (ENABLE_OFNVME) || defined (ENABLE_INTEL_RST)
                             //if defined hell since we can flag these interfaces on and off
+                            bool foundNVMePassthrough = false;
     #if defined (ENABLE_OFNVME)
-                            if (supports_OFNVME_IO(device->os_info.scsiSRBHandle))
+                            if (!foundNVMePassthrough && supports_OFNVME_IO(device->os_info.scsiSRBHandle))
                             {
                                 //congratulations! nvme commands can be passed through!!!
                                 device->os_info.openFabricsNVMePassthroughSupported = true;
@@ -4051,26 +4044,22 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                 device->drive_info.interface_type = NVME_INTERFACE;
                                 device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
                                 //TODO: Setup limited passthrough capabilities structure???
+                                foundNVMePassthrough = true;
                             }
-    #if !defined (ENABLE_INTEL_RST)
-                            else
-    #endif //!ENABLE_INTEL_RST
     #endif //ENABLE_OFNVME
-    #if defined (ENABLE_OFNVME)
-                            else
-    #endif//ENABLE_OFNVME
     #if defined (ENABLE_INTEL_RST)
                             //TODO: else if(/*check for Intel RST CSMI support*/)
-                            if (device_Supports_CSMI_With_RST(device->os_info.scsiSRBHandle))
+                            if (!foundNVMePassthrough && device_Supports_CSMI_With_RST(device->os_info.scsiSRBHandle))
                             {
                                 //TODO: setup CSMI structure
+                                printf("Found intel RST NVMe\n");
                                 device->drive_info.drive_type = NVME_DRIVE;
                                 device->drive_info.interface_type = NVME_INTERFACE;
                                 device->os_info.intelNVMePassthroughSupported = true;
+                                foundNVMePassthrough = true;
                             }
     #endif//ENABLE_INTEL_RST
-                            
-                            else
+                            if(!foundNVMePassthrough)
 #endif //ENABLE_OFNVME || ENABLE_INTEL_RST
                             {
                                 //unable to do passthrough, and isn't in normal Win10 mode, this means it's some other driver that we don't know how to use. Treat as SCSI
@@ -4144,7 +4133,6 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     }
 
                 }
-#endif //!defined(DISABLE_NVME_PASSTHROUGH)
                 else //treat anything else as a SCSI device.
                 {
                     device->drive_info.interface_type = SCSI_INTERFACE;
@@ -4185,7 +4173,6 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     return SUCCESS;
                 }
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
                 if (checkForNVMe)
                 {
                     uint8_t nvmeIdent[4096] = { 0 };
@@ -4210,7 +4197,6 @@ static int get_Win_Device(const char *filename, tDevice *device )
                         }
                     }
                 }
-#endif
 
                 // Lets fill out rest of info
                 //TODO: This doesn't work for ATAPI on Windows right now. Will need to debug it more to figure out what other parts are wrong to get it fully functional.
@@ -9030,8 +9016,6 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     return ret;
 }
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
-
 #if WINVER >= SEA_WIN32_WINNT_WIN10
 /*
     MS Windows treats specification commands different from Vendor Unique Commands.
@@ -11316,6 +11300,7 @@ int send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx)
 static int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = OS_COMMAND_NOT_AVAILABLE;
+#if !defined (DISABLE_NVME_PASSTHROUGH)
     //TODO: Should we be checking the nsid in each command before issuing it? This should happen at some point, at least to filter out "all namespaces" for certain commands since MS won't let us issue some of them through their API - TJE
     if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
     {
@@ -11451,6 +11436,9 @@ static int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 #endif
     }
     return ret;
+#else //DISABLE_NVME_PASSTHROUGH
+    return OS_COMMAND_NOT_AVAILABLE;
+#endif //DISBALE_NVME_PASSTHROUGH
 }
 
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
@@ -11548,7 +11536,6 @@ int pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pDa
 {
     return NOT_SUPPORTED;
 }
-#endif
 
 static int open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(tDevice* device)
 {
@@ -11585,20 +11572,17 @@ static int set_Command_Completion_For_OS_Read_Write(tDevice* device, DWORD lastE
     memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);
     if (lastError == ERROR_SUCCESS)
     {
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         device->drive_info.lastNVMeResult.lastNVMeCommandSpecific = 0;
         device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_SUCCESS_);
-#endif
         if (device->drive_info.drive_type == ATA_DRIVE)
         {
-            device->drive_info.lastCommandRTFRs.status = device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
+            device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
         }
     }
     else
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         ret = FAILURE;
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         //For nvme, set the NVMe status as best we can, then fall through and set SCSI style sense data as well.
         //This switch case will handle many, if not all the same cases as SCSI below, but this seemed like the easier way to solve this problem for now. - TJE
         //if the DISABLE_NVME_PASSTHROUGH flag is refactored, this can probably be cleaned up a lot - TJE
@@ -11657,7 +11641,6 @@ static int set_Command_Completion_For_OS_Read_Write(tDevice* device, DWORD lastE
             device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_ABORT_REQ_);
             break;
         }
-#endif
 
         //failure for one reason or another. The last error may or may not tell us exactly what happened.
         if (device->drive_info.drive_type == ATA_DRIVE)

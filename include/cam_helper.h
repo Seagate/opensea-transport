@@ -18,9 +18,7 @@
 #include "scsi_helper.h"
 #include "sat_helper.h"
 #include "common_public.h"
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper.h"
-#endif
 
 #if defined (__cplusplus)
 extern "C"
@@ -160,7 +158,6 @@ extern "C"
     //-----------------------------------------------------------------------------
     int os_Controller_Reset(tDevice *device);
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
     //-----------------------------------------------------------------------------
     //
     //  pci_Read_Bar_Reg()
@@ -199,8 +196,6 @@ extern "C"
     int os_nvme_Reset(tDevice *device);
 
     int os_nvme_Subsystem_Reset(tDevice *device);
-
-#endif
 
     //-----------------------------------------------------------------------------
     //

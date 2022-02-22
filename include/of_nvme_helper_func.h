@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if defined (ENABLE_OFNVME) && !defined (DISABLE_NVME_PASSTHROUGH)
+#if defined (ENABLE_OFNVME)
 
 #include "common.h"
 #include <stdint.h>

@@ -9,7 +9,6 @@
 //
 // ******************************************************************************************
 // 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 
 #include "platform_helper.h"
 #include <stdio.h>
@@ -511,8 +510,8 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
         {
             printf("False\n");
         }
-#define NVME_STATUS_CODE_TYPE_STRING_LENGTH 60
-#define NVME_STATUS_CODE_STRING_LENGTH 60
+#define NVME_STATUS_CODE_TYPE_STRING_LENGTH 32
+#define NVME_STATUS_CODE_STRING_LENGTH 62
         char statusCodeTypeString[NVME_STATUS_CODE_TYPE_STRING_LENGTH] = { 0 };
         char statusCodeString[NVME_STATUS_CODE_STRING_LENGTH] = { 0 };
         //also print out the phase tag, CID. NOTE: These aren't available in Linux!
@@ -910,6 +909,7 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
                 snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unknown");
                 break;
             }
+            break;
         case NVME_SCT_VENDOR_SPECIFIC_STATUS:
             snprintf(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Vendor Specific");
             snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unknown");
@@ -1130,5 +1130,3 @@ int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *ExtdSMARTInfo)
     }
     return ret;
 }
-
-#endif

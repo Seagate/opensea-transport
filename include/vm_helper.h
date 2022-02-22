@@ -17,12 +17,10 @@
 
 #include "scsi_helper.h"
 #include "sat_helper.h"
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "vm_nvme.h"
 #include "vm_nvme_lib.h"
 #include "vm_nvme_mgmt.h"
 #include "nvme_helper.h"
-#endif
 #include "common_public.h"
 
 #if defined (__cplusplus)
@@ -40,10 +38,7 @@ extern "C"
 // \todo Figure out which scsi.h & sg.h should we be including kernel specific or in /usr/..../include
     #include <scsi/sg.h>
     #include <scsi/scsi.h>
-#if !defined(DISABLE_NVME_PASSTHROUGH)
-
     #include "nvme_helper.h"
-#endif
 
 
     //This is the maximum timeout a command can use in SG passthrough with linux...1193 hours
@@ -232,7 +227,6 @@ int os_Bus_Reset(tDevice *device);
 int os_Controller_Reset(tDevice *device);
 
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 //-----------------------------------------------------------------------------
 //
 //  pci_Read_Bar_Reg()
@@ -258,8 +252,6 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
 int os_nvme_Reset(tDevice *device);
 
 int os_nvme_Subsystem_Reset(tDevice *device);
-
-#endif
 
 //int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **blockHandle);
 

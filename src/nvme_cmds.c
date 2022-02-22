@@ -12,7 +12,6 @@
 // \file nvme_cmds.c   Implementation for NVM Express command functions
 //                     The intention of the file is to be generic & not OS specific
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "platform_helper.h"
 
 #include "nvme_helper.h"
@@ -1092,5 +1091,3 @@ int nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegisters * ctrlRegs)
 
     return ret;
 }
-
-#endif

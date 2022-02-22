@@ -19,7 +19,6 @@
 
 #pragma once
 #include <inttypes.h>
-#if !defined (DISABLE_NVME_PASSTHROUGH)
 
 #include "nvme_helper.h"
 #include "scsi_helper.h"
@@ -112,5 +111,3 @@ extern "C"
 #if defined (__cplusplus)
 }
 #endif
-
-#endif //DISABLE_NVME_PASSTHROUGH

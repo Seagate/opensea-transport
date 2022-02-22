@@ -2112,10 +2112,8 @@ void print_tDevice_Size()
     printf("\tdrive_info = %zu\n", offsetof(tDevice, drive_info));
     printf("\t\tIdentifyData = %zu\n", offsetof(tDevice, drive_info.IdentifyData));
     printf("\t\tATA Identify = %zu\n", offsetof(tDevice, drive_info.IdentifyData.ata));
-    #if !defined (DISABLE_NVME_PASSTHROUGH)
     printf("\t\tNVMe CTRL ID = %zu\n", offsetof(tDevice, drive_info.IdentifyData.nvme.ctrl));
     printf("\t\tNVMe Namespace ID = %zu\n", offsetof(tDevice, drive_info.IdentifyData.nvme.ns));
-    #endif
     printf("\t\tscsiVpdData = %zu\n", offsetof(tDevice, drive_info.scsiVpdData));
     printf("\t\tlastCommandSenseData = %zu\n", offsetof(tDevice, drive_info.lastCommandSenseData));
     printf("\traid_device = %zu\n", offsetof(tDevice, raid_device));

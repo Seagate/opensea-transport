@@ -36,9 +36,56 @@
 #include "cmds.h"
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper_func.h"
 #include "sntl_helper.h"
+#include <scsi/sg.h>
+#include <scsi/scsi.h>
+#if defined (__has_include)//GCC5 and higher support this, BUT only if a C standard is specified. The -std=gnuXX does not support this properly for some odd reason.
+    #if __has_include (<linux/nvme_ioctl.h>)
+        #if defined (_DEBUG)
+        #pragma message "Using linux/nvme_ioctl.h"
+        #endif
+        #include <linux/nvme_ioctl.h>
+        #if !defined (SEA_NVME_IOCTL_H)
+            #define SEA_NVME_IOCTL_H
+        #endif
+    #elif __has_include (<linux/nvme.h>)
+        #if defined (_DEBUG)
+        #pragma message "Using linux/nvme.h"
+        #endif
+        #include <linux/nvme.h>
+        #if !defined (SEA_NVME_IOCTL_H)
+            #define SEA_NVME_IOCTL_H
+        #endif
+    #elif __has_include (<uapi/nvme.h>)
+        #if defined (_DEBUG)
+        #pragma message "Using uapi/nvme.h"
+        #endif
+        #include <uapi/nvme.h>
+        #if !defined (SEA_UAPI_NVME_H)
+            #define SEA_UAPI_NVME_H
+        #endif
+    #else //__has_include could not locate the header, check if it was specified by the user through a define.
+        #if defined (SEA_NVME_IOCTL_H)
+            #include <linux/nvme_ioctl.h>
+        #elif defined (SEA_NVME_H)
+            #include <linux/nvme.h>
+        #elif defined (SEA_UAPI_NVME_H)
+            #include <uapi/nvme.h>
+        #else
+            #pragma message "No NVMe header detected with __has_include. Assuming no NVMe support."
+        #endif
+    #endif
+#else
+    #if defined (SEA_NVME_IOCTL_H)
+        #include <linux/nvme_ioctl.h>
+    #elif defined (SEA_NVME_H)
+        #include <linux/nvme.h>
+    #elif defined (SEA_UAPI_NVME_H)
+        #include <uapi/nvme.h>
+    #else
+        #pragma message "No NVMe header detected. Assuming no NVMe support. Define one of the following to include the correct NVMe header: SEA_NVME_IOCTL_H, SEA_NVME_H, or SEA_UAPI_NVME_H\nThese specify whether the NVMe IOCTL is in /usr/include/linux/nvme_ioctl.h, /usr/include/linux/nvme.h, or /usr/include/uapi/nvme.h"
+    #endif
 #endif
 
 #if defined(DEGUG_SCAN_TIME)
@@ -942,7 +989,7 @@ int get_Device(const char *filename, tDevice *device)
             printf("Interface type: %d\n",device->drive_info.interface_type);
             printf("Media type: %d\n",device->drive_info.media_type);
             #endif //DEBUG
-            #else
+            #else //DISABLE_NVME_PASSTHROUGH
             #if defined (_DEBUG)
             printf("\nsg helper-nvmedev --  NVME Passthrough disabled, device not supported\n");
             #endif //DEBUG
@@ -1101,9 +1148,7 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     switch (scsiIoCtx->device->drive_info.interface_type)
     {
     case NVME_INTERFACE:
-        #if !defined (DISABLE_NVME_PASSTHROUGH)
         return sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
-        #endif
         //USB, ATA, and SCSI interface all use sg, so just issue an SG IO.
     case SCSI_INTERFACE:
     case IDE_INTERFACE:
@@ -1498,7 +1543,6 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     return ret;
 }
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 static int nvme_filter( const struct dirent *entry)
 {
     int nvmeHandle = strncmp("nvme",entry->d_name,4);
@@ -1523,7 +1567,6 @@ static int nvme_filter( const struct dirent *entry)
         return 0;
     }
 }
-#endif
 
 //-----------------------------------------------------------------------------
 //
@@ -1547,9 +1590,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     int  num_devs = 0, num_nvme_devs = 0;
 
     struct dirent **namelist;
-    #if !defined(DISABLE_NVME_PASSTHROUGH)
     struct dirent **nvmenamelist;
-    #endif
     int (*sortFunc)(const struct dirent **, const struct dirent **) = &alphasort;
     #if defined (_GNU_SOURCE)
         sortFunc = &versionsort;//use versionsort instead when available with _GNU_SOURCE
@@ -1568,7 +1609,6 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     }
     safe_Free(namelist)
     //add nvme devices to the list
-    #if !defined(DISABLE_NVME_PASSTHROUGH)
     num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter,sortFunc);
     //free the nvmenamelist to not leak memory
     for(int iter = 0; iter < num_nvme_devs; ++iter)
@@ -1576,7 +1616,6 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     	safe_Free(nvmenamelist[iter])
     }
     safe_Free(nvmenamelist)
-    #endif
 
     *numberOfDevices = num_devs + num_nvme_devs;
 
@@ -1626,9 +1665,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     int  num_sg_devs = 0, num_sd_devs = 0, num_nvme_devs = 0;
 
     struct dirent **namelist;
-    #if !defined(DISABLE_NVME_PASSTHROUGH)
     struct dirent **nvmenamelist;
-    #endif
 
     int (*sortFunc)(const struct dirent **, const struct dirent **) = &alphasort;
     #if defined (_GNU_SOURCE)
@@ -1641,16 +1678,12 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         //check for SD devices
         num_sd_devs = scandir("/dev", &namelist, sd_filter, sortFunc); 
     }
-    #if !defined(DISABLE_NVME_PASSTHROUGH)
     //add nvme devices to the list
     num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter,sortFunc);
-    #endif
     
     char **devs = C_CAST(char **, calloc(num_sg_devs + num_sd_devs + num_nvme_devs + 1, sizeof(char *)));
     int i = 0;
-    #if !defined(DISABLE_NVME_PASSTHROUGH)
     int j = 0;
-    #endif
     //add sg/sd devices to the list
     for (; i < (num_sg_devs + num_sd_devs); i++)
     {
@@ -1659,7 +1692,6 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         snprintf(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
         safe_Free(namelist[i])
     }
-    #if !defined(DISABLE_NVME_PASSTHROUGH)
     //add nvme devices to the list
     for (j = 0; i < (num_sg_devs + num_sd_devs + num_nvme_devs) && j < num_nvme_devs;i++, j++)
     {
@@ -1668,12 +1700,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         snprintf(devs[i], handleSize, "/dev/%s", nvmenamelist[j]->d_name);
         safe_Free(nvmenamelist[j])
     }
-    #endif
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
     safe_Free(namelist)
-    #if !defined(DISABLE_NVME_PASSTHROUGH)
     safe_Free(nvmenamelist)
-    #endif
 
     //TODO: Check if sizeInBytes is a multiple of 
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -1797,9 +1826,9 @@ int close_Device(tDevice *dev)
     }
 }
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 {
+#if !defined(DISABLE_NVME_PASSTHROUGH)
     int ret = SUCCESS;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
     seatimer_t commandTimer;
     memset(&commandTimer, 0, sizeof(commandTimer));
@@ -1954,10 +1983,14 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     }
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     return ret;
+#else //DISABLE_NVME_PASSTHROUGH
+    return OS_COMMAND_NOT_AVAILABLE;
+#endif //DISABLE_NVME_PASSTHROUGH
 }
 
 int linux_NVMe_Reset(tDevice *device, bool subsystemReset)
 {
+#if !defined(DISABLE_NVME_PASSTHROUGH)
     //Can only do a reset on a controller handle. Need to get the controller handle if this is a namespace handle!!!
     int ret = OS_PASSTHROUGH_FAILURE;
     int handleToReset = device->os_info.fd;
@@ -2034,10 +2067,14 @@ int linux_NVMe_Reset(tDevice *device, bool subsystemReset)
         close(handleToReset);
     }
     return ret;
+#else //DISABLE_NVME_PASSTHROUGH
+    return OS_COMMAND_NOT_AVAILABLE;
+#endif //DISABLE_NVME_PASSTHROUGH
 }
 
 int os_nvme_Reset(tDevice *device)
 {
+#if !defined(DISABLE_NVME_PASSTHROUGH)
     int ret = SUCCESS;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
@@ -2049,10 +2086,14 @@ int os_nvme_Reset(tDevice *device)
         print_Return_Enum("NVMe Reset", ret);
     }
     return ret;
+#else //DISABLE_NVME_PASSTHROUGH
+    return OS_COMMAND_NOT_AVAILABLE;
+#endif //DISABLE_NVME_PASSTHROUGH
 }
 
 int os_nvme_Subsystem_Reset(tDevice *device)
 {
+#if !defined(DISABLE_NVME_PASSTHROUGH)
     int ret = SUCCESS;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
@@ -2064,6 +2105,9 @@ int os_nvme_Subsystem_Reset(tDevice *device)
         print_Return_Enum("NVMe Subsystem Reset", ret);
     }
     return ret;
+#else //DISABLE_NVME_PASSTHROUGH
+    return OS_COMMAND_NOT_AVAILABLE;
+#endif //DISABLE_NVME_PASSTHROUGH
 }
 
 //to be used with a deep scan???
@@ -2090,6 +2134,7 @@ int os_nvme_Subsystem_Reset(tDevice *device)
 
 int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
 {
+#if !defined(DISABLE_NVME_PASSTHROUGH)
     int ret = UNKNOWN;
     int fd=0;
     void * barRegs = NULL;
@@ -2120,8 +2165,11 @@ int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
         ret = BAD_PARAMETER;
     }
     return ret;
-}
+#else //DISABLE_NVME_PASSTHROUGH
+    return OS_COMMAND_NOT_AVAILABLE;
 #endif
+}
+
 int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;

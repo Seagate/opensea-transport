@@ -17,16 +17,13 @@
 #include "intel_rst_defs.h"
 #include "scsi_helper.h"
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper.h"
-#endif
 
 #if defined (__cplusplus)
 extern "C"
 {
 #endif
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
     //-----------------------------------------------------------------------------
     //
     //  send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx)
@@ -76,7 +73,6 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int send_Intel_NVM_SCSI_Command(ScsiIoCtx *scsiIoCtx);
-#endif
 
     //-----------------------------------------------------------------------------
     //

@@ -16,14 +16,14 @@
 #include "ata_helper_func.h"
 #include "sat_helper_func.h"
 #include "usb_hacks.h"
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include <sys/ioctl.h>
 #include <libgen.h>
 #include "nvme_helper_func.h"
 #include "sntl_helper.h"
+#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include <dev/nvme/nvme.h>
+#endif //DISABLE_NVME_PASSTHROUGH
 #include "common.h"
-#endif
 
 extern bool validate_Device_Struct(versionBlock);
 
@@ -42,7 +42,6 @@ bool os_Is_Infinite_Timeout_Supported()
     return true;
 }
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 bool is_NVMe_Handle(char *handle)
 {
 	bool isNVMeDevice = false;
@@ -55,7 +54,6 @@ bool is_NVMe_Handle(char *handle)
 	}
 	return isNVMeDevice;
 }
-#endif
 
 int get_Device( const char *filename, tDevice *device )
 {
@@ -322,12 +320,10 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     {
         ret = send_Scsi_Cam_IO(scsiIoCtx);
     }
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	else if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)
 	{
 		ret = sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
 	}
-#endif
     else if (scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
     {
         if (scsiIoCtx->pAtaCmdOpts)
@@ -971,22 +967,15 @@ int close_Device(tDevice *dev)
 int get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 {
 	int  num_da_devs = 0, num_ada_devs = 0;
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	int num_nvme_devs = 0;
-#endif
 
     struct dirent **danamelist;
     struct dirent **adanamelist;
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	struct dirent **nvmenamelist;
-#endif
 
     num_da_devs = scandir("/dev", &danamelist, da_filter, alphasort);
     num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
-
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
-#endif
 
     //free the list of names to not leak memory
     for (int iter = 0; iter < num_da_devs; ++iter)
@@ -1001,16 +990,12 @@ int get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
     }
     safe_Free(adanamelist)
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	//free the list of names to not leak memory
 	for (int iter = 0; iter < num_nvme_devs; ++iter)
 	{
 		safe_Free(nvmenamelist)
 	}
 	*numberOfDevices = num_da_devs + num_ada_devs + num_nvme_devs;
-#else
-  *numberOfDevices = num_da_devs + num_ada_devs;
-#endif
     
     return SUCCESS;
 }
@@ -1051,17 +1036,11 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 	
     struct dirent **danamelist;
     struct dirent **adanamelist;
-
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	struct dirent **nvmenamelist;
-#endif
 
     num_da_devs = scandir("/dev", &danamelist, da_filter, alphasort);
     num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
-
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
-#endif
 
     char **devs = C_CAST(char **, calloc(num_da_devs + num_ada_devs + num_nvme_devs + 1, sizeof(char *)));
     int i = 0, j = 0, k=0;
@@ -1080,7 +1059,6 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         safe_Free(adanamelist[j])
     }
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	for (k = 0; i < (num_da_devs + num_ada_devs + num_nvme_devs) && k < num_nvme_devs; ++i, ++j, ++k)
 	{
         size_t devNameStringLength = (strlen("/dev/") + strlen(nvmenamelist[k]->d_name) + 1) * sizeof(char);
@@ -1088,14 +1066,11 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         snprintf(devs[i], devNameStringLength, "/dev/%s", nvmenamelist[k]->d_name);
 		safe_Free(nvmenamelist[k])
 	}
-#endif
 
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
     safe_Free(danamelist)
     safe_Free(adanamelist)
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	safe_Free(nvmenamelist)
-#endif
 
     //TODO: Check if sizeInBytes is a multiple of 
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -1252,9 +1227,12 @@ int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
     return NOT_SUPPORTED;
 }
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
+
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
+#if defined(DISABLE_NVME_PASSTHROUGH)
+    return OS_COMMAND_NOT_AVAILABLE;
+#else //DISABLE_NVME_PASSTHROUGH
 	int ret = SUCCESS;
 	int32_t ioctlResult = 0;
 	seatimer_t commandTimer;
@@ -1355,10 +1333,12 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 	}
 
 	return ret;
+#endif //DISABLE_NVME_PASSTHROUGH
 }
 
 int os_nvme_Reset(tDevice *device)
 {
+#if !defined(DISABLE_NVME_PASSTHROUGH)
 	int ret = OS_PASSTHROUGH_FAILURE;
 	int handleToReset = device->os_info.fd;
 	seatimer_t commandTimer;
@@ -1395,6 +1375,9 @@ int os_nvme_Reset(tDevice *device)
 	}
 
     return ret;
+#else //DISABLE_NVME_PASSTHROUGH
+    return OS_COMMAND_NOT_AVAILABLE;
+#endif //DISABLE_NVME_PASSTHROUGH
 }
 
 int os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice *device)
@@ -1406,7 +1389,6 @@ int pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pDa
 {
     return NOT_SUPPORTED;
 }
-#endif
 
 int os_Lock_Device(M_ATTR_UNUSED tDevice *device)
 {

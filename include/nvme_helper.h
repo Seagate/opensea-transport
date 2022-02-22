@@ -14,7 +14,6 @@
 //        This file acts as a OS agnostic glue layer for different OSes. 
 
 #pragma once
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 //typedef unsigned int* __uintptr_t;
 #include "common_public.h"
 #if defined (__cplusplus)
@@ -1123,4 +1122,3 @@ typedef struct _fb_log_page_CF
 }
 #endif
 
-#endif
