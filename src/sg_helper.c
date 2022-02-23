@@ -40,6 +40,8 @@
 #include "sntl_helper.h"
 #include <scsi/sg.h>
 #include <scsi/scsi.h>
+#include <sys/mount.h>//for umount and umount2. NOTE: This defines the things we need from linux/fs.h as well, which is why that is commented out - TJE
+#include <linux/fs.h> //for BLKRRPART to refresh partition info after completion of an erase
 #if defined (__has_include)//GCC5 and higher support this, BUT only if a C standard is specified. The -std=gnuXX does not support this properly for some odd reason.
     #if __has_include (<linux/nvme_ioctl.h>)
         #if defined (_DEBUG)
@@ -1810,6 +1812,15 @@ int close_Device(tDevice *dev)
     {
         retValue = close(dev->os_info.fd);
         dev->os_info.last_error = errno;
+
+        if(dev->os_info.secondHandleValid && dev->os_info.secondHandleOpened)
+        {
+            if(close(dev->os_info.fd2) == 0)
+            {
+                dev->os_info.fd2 = -1;
+            }
+        }
+
         if ( retValue == 0)
         {
             dev->os_info.fd = -1;
@@ -2113,22 +2124,27 @@ int os_nvme_Subsystem_Reset(tDevice *device)
 //to be used with a deep scan???
 //fd must be a controller handle
 //TODO: Should we rework the linux_NVMe_Reset call to handle this too?
-//int nvme_Namespace_Rescan(int fd)
-//{
-//    int ret = OS_PASSTHROUGH_FAILURE;
-//    int ioRes = ioctl(fd, NVME_IOCTL_RESCAN);
-//    if (ioRes < 0)
-//    {
-//        //failed!
-//        perror("NVMe Rescan");
-//    }
-//    else
-//    {
-//        //success!
-//        ret = SUCCESS;
-//    }
-//    return ret;
-//}
+int nvme_Namespace_Rescan(int fd)
+{
+#if !defined(DISABLE_NVME_PASSTHROUGH) && defined (NVME_IOCTL_RESCAN) //This IOCTL is not available on older kernels, which is why this is checked like this - TJE
+   int ret = OS_PASSTHROUGH_FAILURE;
+   int ioRes = ioctl(fd, NVME_IOCTL_RESCAN);
+   if (ioRes < 0)
+   {
+       //failed!
+       perror("NVMe Rescan");
+   }
+   else
+   {
+       //success!
+       ret = SUCCESS;
+   }
+   return ret;
+#else
+    M_USE_UNUSED(fd);
+    return OS_COMMAND_NOT_AVAILABLE;
+#endif
+}
 
 //Case to remove this from sg_helper.h/c and have a platform/lin/pci-herlper.h vs platform/win/pci-helper.c 
 
@@ -2168,6 +2184,34 @@ int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
 #else //DISABLE_NVME_PASSTHROUGH
     return OS_COMMAND_NOT_AVAILABLE;
 #endif
+}
+
+//This is used to open device->os_info.fd2 which is where we will store
+//a /dev/sd handle which is a block device handle for SCSI devices.
+//This will do nothing on NVMe as it is not needed. - TJE
+static int open_fd2(tDevice *device)
+{
+    int ret = SUCCESS;
+    if(device->os_info.secondHandleValid && !device->os_info.secondHandleOpened)
+    {
+        if ((device->os_info.fd2 = open(device->os_info.secondName, O_RDWR | O_NONBLOCK)) < 0)
+        {
+            perror("open");
+            device->os_info.fd2 = errno;
+            printf("open failure\n");
+            printf("Error: ");
+            print_Errno_To_Screen(errno);
+            if (device->os_info.fd2 == EACCES) 
+            {
+                return PERMISSION_DENIED;
+            }
+            else
+            {
+                return FAILURE;
+            }
+        }
+    }
+    return ret;
 }
 
 int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
@@ -2214,11 +2258,40 @@ int os_Unlock_Device(tDevice *device)
     return ret;
 }
 
-int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+int os_Update_File_System_Cache(tDevice* device)
 {
-    //TODO: Complete this stub when this is figured out - TJE
-    //IOCTL BLKRRPART from linux/fs.h???
-    return NOT_SUPPORTED;
+    int ret = SUCCESS;
+    int *fdToRescan = &device->os_info.fd;
+    #if defined (_DEBUG)
+    printf("Updating file system cache\n");
+    #endif
+    if(device->os_info.secondHandleValid && SUCCESS == open_fd2(device))
+    {
+        #if defined (_DEBUG)
+        printf("using fd2: %s\n", device->os_info.secondName);
+        #endif
+        fdToRescan = &device->os_info.fd2;
+    }
+
+    //Now, call BLKRRPART
+    #if defined (_DEBUG)
+    printf("Rescanning partition table\n");
+    #endif
+    if(ioctl(*fdToRescan, BLKRRPART) < 0)
+    {
+        #if defined (_DEBUG)
+        printf("\tCould not update partition table\n");
+        #endif
+        device->os_info.last_error = errno;
+        if(device->deviceVerbosity <= VERBOSITY_COMMAND_NAMES)
+        {
+            printf("Error update device blocksize to the OS: \n");
+            print_Errno_To_Screen(errno);
+            printf("\n");
+        }
+        ret = FAILURE;
+    }
+    return ret;
 }
 
 //This should be at the end of this file to undefine _GNU_SOURCE if this file manually enabled it
