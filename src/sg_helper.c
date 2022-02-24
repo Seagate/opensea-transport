@@ -40,6 +40,7 @@
 #include "sntl_helper.h"
 #include <scsi/sg.h>
 #include <scsi/scsi.h>
+#include <mntent.h>
 #include <sys/mount.h>//for umount and umount2. NOTE: This defines the things we need from linux/fs.h as well, which is why that is commented out - TJE
 #include <linux/fs.h> //for BLKRRPART to refresh partition info after completion of an erase
 #if defined (__has_include)//GCC5 and higher support this, BUT only if a C standard is specified. The -std=gnuXX does not support this properly for some odd reason.
@@ -229,6 +230,75 @@ bool is_NVMe_Handle(char *handle)
     return isNvmeDevice;
 }
 
+#define GETMNTENT_R_LINE_BUF_SIZE (256)
+static int get_Partition_Count(const char * blockDeviceName)
+{
+    int result = 0;
+    FILE *mount = setmntent("/etc/mtab", "r");//we only need to know about mounted partitions. Mounted partitions need to be known so that they can be unmounted when necessary. - TJE
+    struct mntent *entry = NULL;
+#if defined (_BSD_SOURCE) || defined(_SVID_SOURCE) //getmntent_r lists these feature test macros to look for - TJE
+    struct mntent entBuf;
+    char lineBuf[GETMNTENT_R_LINE_BUF_SIZE] = { 0 };
+    while(NULL != (entry = getmntent_r(mount, &entBuf, lineBuf, GETMNTENT_R_LINE_BUF_SIZE)))
+#else //use the not thread safe version since that is all that is available
+    while(NULL != (entry = getmntent(mount)))
+#endif
+    {
+        if(strstr(entry->mnt_fsname, blockDeviceName))
+        {
+            //Found a match, increment result counter.
+            ++result;
+        }
+    }
+    endmntent(mount);
+    return result;
+}
+
+#define PART_INFO_NAME_LENGTH (32)
+#define PART_INFO_PATH_LENGTH (64)
+typedef struct _spartitionInfo
+{
+    char fsName[PART_INFO_NAME_LENGTH];
+    char mntPath[PART_INFO_PATH_LENGTH];
+}spartitionInfo, *ptrsPartitionInfo;
+//partitionInfoList is a pointer to the beginning of the list
+//listCount is the number of these structures, which should be returned by get_Partition_Count
+static int get_Partition_List(const char * blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
+{
+    int result = SUCCESS;
+    int matchesFound = 0;
+    if(listCount > 0)
+    {
+        FILE *mount = setmntent("/etc/mtab", "r");//we only need to know about mounted partitions. Mounted partitions need to be known so that they can be unmounted when necessary. - TJE
+        struct mntent *entry = NULL;
+#if defined(_BSD_SOURCE) || defined (_SVID_SOURCE) || !defined (NO_GETMNTENT_R) //feature test macros we're defining _BSD_SOURCE or _SVID_SOURCE in my testing, but we want the reentrant version whenever possible. This can be defined if this function is not identified. - TJE
+        struct mntent entBuf;
+        char lineBuf[GETMNTENT_R_LINE_BUF_SIZE] = { 0 };
+        while(NULL != (entry = getmntent_r(mount, &entBuf, lineBuf, GETMNTENT_R_LINE_BUF_SIZE)))
+#else //use the not thread safe version since that is all that is available
+#pragma message "Not using getmntent_r. Partition detection is not thread safe"
+        while(NULL != (entry = getmntent(mount)))
+#endif
+        {
+            if(strstr(entry->mnt_fsname, blockDeviceName))
+            {
+                //found a match, copy it to the list
+                if(matchesFound < listCount)
+                {
+                    snprintf((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s", entry->mnt_fsname);
+                    snprintf((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH, "%s", entry->mnt_dir);
+                    ++matchesFound;
+                }
+                else
+                {
+                    result = MEMORY_FAILURE;//out of memory to copy all results to the list.
+                }
+            }
+        }
+        endmntent(mount);
+    }
+    return result;
+}
 
 //while similar to the function below, this is used only by get_Device to set up some fields in the device structure for the above layers
 static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
@@ -877,6 +947,55 @@ long get_Device_Page_Size(void)
 #endif
 }
 
+static int set_Device_Partition_Info(tDevice *device)
+{
+    int ret = SUCCESS;
+    int partitionCount = 0;
+    char *blockHandle = device->os_info.name;
+    if(device->os_info.secondHandleValid && !is_Block_Device_Handle(blockHandle))
+    {
+        blockHandle = device->os_info.secondName;
+    }
+    partitionCount = get_Partition_Count(blockHandle);
+    #if defined (_DEBUG)
+    printf("Partition count for %s = %d\n", blockHandle, partitionCount);
+    #endif
+    if(partitionCount > 0)
+    {
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
+        if(parts)
+        {
+            if(SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
+            {
+                int iter = 0;
+                for(; iter < partitionCount; ++iter)
+                {
+                    //since we found a partition, set the "has file system" bool to true
+                    device->os_info.fileSystemInfo.hasFileSystem = true;
+                    #if defined (_DEBUG)
+                    printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
+                    #endif
+                    //check if one of the partitions is /boot and mark the system disk when this is found
+                    //TODO: Should / be treated as a system disk too?
+                    if(strncmp((parts + iter)->mntPath, "/boot", 5) == 0)
+                    {
+                        device->os_info.fileSystemInfo.isSystemDisk = true;
+                        #if defined (_DEBUG)
+                        printf("found system disk\n");
+                        #endif
+                    }
+                }
+            }
+            safe_Free(parts);
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
+    }
+    return ret;
+}
+
 #define LIN_MAX_HANDLE_LENGTH 16
 int get_Device(const char *filename, tDevice *device)
 {
@@ -946,7 +1065,7 @@ int get_Device(const char *filename, tDevice *device)
     }
 
     device->os_info.minimumAlignment = sizeof(void *);
-
+    
     //Adding support for different device discovery options. 
     if (device->dFlags == OPEN_HANDLE_ONLY)
     {
@@ -956,6 +1075,7 @@ int get_Device(const char *filename, tDevice *device)
         device->drive_info.media_type = MEDIA_HDD;
         set_Device_Fields_From_Handle(deviceHandle, device);
         setup_Passthrough_Hacks_By_ID(device);
+        set_Device_Partition_Info(device);
         safe_Free(deviceHandle)
         return ret;
     }
@@ -983,6 +1103,8 @@ int get_Device(const char *filename, tDevice *device)
             //Now we will set up the device name, etc fields in the os_info structure.
             snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
             snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
+
+            set_Device_Partition_Info(device);
 
             ret = fill_Drive_Info_Data(device);
             #if defined (_DEBUG)
@@ -1050,6 +1172,7 @@ int get_Device(const char *filename, tDevice *device)
                 #endif
                 set_Device_Fields_From_Handle(deviceHandle, device);
                 setup_Passthrough_Hacks_By_ID(device);
+                set_Device_Partition_Info(device);
 
                 #if defined (_DEBUG)
                 printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n",
@@ -2283,13 +2406,65 @@ int os_Update_File_System_Cache(tDevice* device)
         printf("\tCould not update partition table\n");
         #endif
         device->os_info.last_error = errno;
-        if(device->deviceVerbosity <= VERBOSITY_COMMAND_NAMES)
+        if(device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
         {
-            printf("Error update device blocksize to the OS: \n");
+            printf("Error update partition table: \n");
             print_Errno_To_Screen(errno);
             printf("\n");
         }
         ret = FAILURE;
+    }
+    return ret;
+}
+
+int os_Unmount_File_Systems_On_Device(tDevice *device)
+{
+    int ret = SUCCESS;
+    int partitionCount = 0;
+    char *blockHandle = device->os_info.name;
+    if(device->os_info.secondHandleValid && !is_Block_Device_Handle(blockHandle))
+    {
+        blockHandle = device->os_info.secondName;
+    }
+    partitionCount = get_Partition_Count(blockHandle);
+    #if defined (_DEBUG)
+    printf("Partition count for %s = %d\n", blockHandle, partitionCount);
+    #endif
+    if(partitionCount > 0)
+    {
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
+        if(parts)
+        {
+            if(SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
+            {
+                int iter = 0;
+                for(; iter < partitionCount; ++iter)
+                {
+                    //since we found a partition, set the "has file system" bool to true
+                    #if defined (_DEBUG)
+                    printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
+                    #endif
+                    //Now that we have a name, unmount the file system
+                    //Linux 2.1.116 added the umount2()
+                    if(0 > umount2((parts + iter)->mntPath, MNT_FORCE))
+                    {
+                        ret = FAILURE;
+                        device->os_info.last_error = errno;
+                        if(device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+                        {
+                            printf("Unable to unmount %s: \n", (parts + iter)->mntPath);
+                            print_Errno_To_Screen(errno);
+                            printf("\n");
+                        }
+                    }
+                }
+            }
+            safe_Free(parts);
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
     }
     return ret;
 }

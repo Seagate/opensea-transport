@@ -7446,6 +7446,11 @@ int os_Unlock_Device(tDevice *device)
     return ret;
 }
 
+int os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED tDevice *device)
+{
+    return NOT_SUPPORTED;
+}
+
 //This basic translation is for odd or old devices that aren't supporting passthrough.
 //It is set to be more basic, while still fulfilling some required SCSI commands to make
 //sure that upper layer code is happy with what this is reporting.

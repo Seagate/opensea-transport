@@ -83,7 +83,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    int os_Device_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Device_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -99,7 +99,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    int os_Bus_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Bus_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -115,7 +115,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    int os_Controller_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Controller_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -198,9 +198,9 @@ extern "C"
     //-----------------------------------------------------------------------------
     int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
 
-    int os_nvme_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_nvme_Reset(tDevice *device);
 
-    int os_nvme_Subsystem_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_nvme_Subsystem_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -215,6 +215,9 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     long getpagesize(void);
+
+
+    OPENSEA_TRANSPORT_API int os_Unmount_File_Systems_On_Device(tDevice *device);
 
 #if defined (__cplusplus)
 }

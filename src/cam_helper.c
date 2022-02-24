@@ -1221,13 +1221,6 @@ int os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
-{
-    //TODO: Complete this stub when this is figured out - TJE
-    return NOT_SUPPORTED;
-}
-
-
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
 #if defined(DISABLE_NVME_PASSTHROUGH)
@@ -1400,4 +1393,22 @@ int os_Unlock_Device(M_ATTR_UNUSED tDevice *device)
 {
     //There is nothing to unlock since you cannot open a CAM device with O_NONBLOCK
     return SUCCESS;
+}
+
+//For the file syste cache update and unmount, these two functions may be useful:
+//getfsstat ??? https://www.freebsd.org/cgi/man.cgi?query=getfsstat&sektion=2&apropos=0&manpath=FreeBSD+13.0-RELEASE+and+Ports
+//statfs ??? https://www.freebsd.org/cgi/man.cgi?query=statfs&sektion=2&apropos=0&manpath=FreeBSD+13.0-RELEASE+and+Ports
+//fstab ??? https://www.freebsd.org/cgi/man.cgi?query=fstab&sektion=5&apropos=0&manpath=FreeBSD+13.0-RELEASE+and+Ports
+//This looks very similar to the Linux getmntent:
+//getfsent ???https://www.freebsd.org/cgi/man.cgi?query=getfsent&sektion=3&apropos=0&manpath=FreeBSD+13.0-RELEASE+and+Ports
+
+int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+{
+    //TODO: Complete this stub when this is figured out - TJE
+    return NOT_SUPPORTED;
+}
+
+int os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED tDevice *device)
+{
+    return NOT_SUPPORTED;
 }
