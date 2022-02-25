@@ -3860,11 +3860,11 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                     foundVolumeLetter = true;
                                     device->os_info.fileSystemInfo.hasFileSystem = true;//We found a filesystem for this drive, so set this to true.
                                     //now we need to determine if this volume has the system directory on it.
-                                    CHAR systemDirectoryPath[4096] = { 0 };//4096 SHOULD be plenty...
+                                    TCHAR systemDirectoryPath[4096] = { 0 };//4096 SHOULD be plenty...
 
-                                    if (GetSystemDirectoryA(systemDirectoryPath, 4096) > 0)
+                                    if (GetSystemDirectory(systemDirectoryPath, 4096) > 0)
                                     {
-                                        if (strlen(systemDirectoryPath) > 0)
+                                        if (_tcslen(systemDirectoryPath) > 0)
                                         {
                                             //we need to check only the first letter of the returned string since this is the volume letter
                                             if (systemDirectoryPath[0] == currentLetter)
