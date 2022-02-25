@@ -545,5 +545,6 @@ int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
 
 int os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED tDevice *device)
 {
+    //https://illumos.org/man/3C/getmntent
     return NOT_SUPPORTED;
 }
