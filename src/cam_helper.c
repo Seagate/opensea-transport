@@ -18,6 +18,9 @@
 #include "usb_hacks.h"
 #include <sys/ioctl.h>
 #include <libgen.h>
+#include <sys/param.h>
+#include <sys/ucred.h>
+#include <sys/mount.h>
 #include "nvme_helper_func.h"
 #include "sntl_helper.h"
 #if !defined(DISABLE_NVME_PASSTHROUGH)
@@ -1404,11 +1407,51 @@ int os_Unlock_Device(M_ATTR_UNUSED tDevice *device)
 
 int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
 {
-    //TODO: Complete this stub when this is figured out - TJE
+    //TODO: I have not found an analog to Linux which is usually the most helpful for figuring out what to do.
+    //      I haven't found any other API or IOCTL that reloads the partition table on the disk (which is pretty close)
+    //      Only thing that might work is a reload of an already mounted FS? At least that's a best guess.
+    //      I will need a better test setup to validate this than I currently have access to - TJE
+    //MNT_RELOAD ???
     return NOT_SUPPORTED;
 }
 
-int os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED tDevice *device)
+int os_Unmount_File_Systems_On_Device(tDevice *device)
 {
-    return NOT_SUPPORTED;
+    //This is written using getmntinfo, which seems to wrap getfsstat.
+    //https://www.freebsd.org/cgi/man.cgi?query=getmntinfo&manpath=FreeBSD+12.1-RELEASE+and+Ports
+    //This was chosen because it provides the info we want, and also claims to only show mounted devices.
+    //I also tried using getfsent, but that didn't return what we needed.
+    //If for any reason, getmntinfo is not available, I recommend switching to getfsstat. The code is similar
+    //but slightly different. I only had a VM to test with so my results showed the same between the APIs,
+    //but the description of getmntinfo was more along the lines of what has been implemented for
+    //other OS's we support. - TJE
+    int ret = SUCCESS;
+    struct statfs* mountedFS = NULL;
+    int totalMounts = getmntinfo(&mountedFS, MNT_WAIT);//Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
+    if (totalMounts > 0 && mountedFS)
+    {
+        int entIter = 0;
+        for (entIter = 0; entIter < totalMounts; ++entIter)
+        {
+            if (strstr((mountedFS + entIter)->f_mntfromname, device->os_info.name))
+            {
+                //found a match for the current device handle
+                //f_mntonname gives us the directory to unmount
+                //unmount is more line Linux unmount2
+                //https://www.freebsd.org/cgi/man.cgi?query=unmount&sektion=2&apropos=0&manpath=FreeBSD+13.0-RELEASE
+                if (0 > unmount((mountedFS + entIter)->f_mntonname, MNT_FORCE))
+                {
+                    ret = FAILURE;
+                    device->os_info.last_error = errno;
+                    if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+                    {
+                        printf("Unable to unmount %s: \n", (mountedFS + entIter)->f_mntonname);
+                        print_Errno_To_Screen(errno);
+                        printf("\n");
+                    }
+                }
+            }
+        }
+    }
+    return ret;
 }
