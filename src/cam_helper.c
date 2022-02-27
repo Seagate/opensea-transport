@@ -58,6 +58,125 @@ bool is_NVMe_Handle(char *handle)
 	return isNVMeDevice;
 }
 
+static int get_Partition_Count(const char* blockDeviceName)
+{
+    int result = 0;
+    struct statfs* mountedFS = NULL;
+    int totalMounts = getmntinfo(&mountedFS, MNT_WAIT);//Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
+    if (totalMounts > 0 && mountedFS)
+    {
+        int entIter = 0;
+        for (entIter = 0; entIter < totalMounts; ++entIter)
+        {
+            if (strstr((mountedFS + entIter)->f_mntfromname, device->os_info.name))
+            {
+                //found a match for the current device handle
+                ++result;
+            }
+        }
+    }
+    safe_Free(mountedFS);
+    return result;
+}
+
+#define PART_INFO_NAME_LENGTH (32)
+#define PART_INFO_PATH_LENGTH (64)
+typedef struct _spartitionInfo
+{
+    char fsName[PART_INFO_NAME_LENGTH];
+    char mntPath[PART_INFO_PATH_LENGTH];
+}spartitionInfo, * ptrsPartitionInfo;
+//partitionInfoList is a pointer to the beginning of the list
+//listCount is the number of these structures, which should be returned by get_Partition_Count
+static int get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
+{
+    int result = SUCCESS;
+    int matchesFound = 0;
+    if (listCount > 0)
+    {
+        //This is written using getmntinfo, which seems to wrap getfsstat.
+        //https://www.freebsd.org/cgi/man.cgi?query=getmntinfo&manpath=FreeBSD+12.1-RELEASE+and+Ports
+        //This was chosen because it provides the info we want, and also claims to only show mounted devices.
+        //I also tried using getfsent, but that didn't return what we needed.
+        //If for any reason, getmntinfo is not available, I recommend switching to getfsstat. The code is similar
+        //but slightly different. I only had a VM to test with so my results showed the same between the APIs,
+        //but the description of getmntinfo was more along the lines of what has been implemented for
+        //other OS's we support. - TJE
+        int ret = SUCCESS;
+        struct statfs* mountedFS = NULL;
+        int totalMounts = getmntinfo(&mountedFS, MNT_WAIT);//Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
+        if (totalMounts > 0 && mountedFS)
+        {
+            int entIter = 0;
+            for (entIter = 0; entIter < totalMounts; ++entIter)
+            {
+                if (strstr((mountedFS + entIter)->f_mntfromname, device->os_info.name))
+                {
+                    //found a match for the current device handle
+                    //f_mntonname gives us the directory to unmount
+                    //found a match, copy it to the list
+                    if (matchesFound < listCount)
+                    {
+                        snprintf((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s", (mountedFS + entIter)->f_mntfromname);
+                        snprintf((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH, "%s", (mountedFS + entIter)->f_mntonname);
+                        ++matchesFound;
+                    }
+                    else
+                    {
+                        result = MEMORY_FAILURE;//out of memory to copy all results to the list.
+                    }
+                }
+            }
+        }
+        safe_Free(mountedFS);
+    }
+    return result;
+}
+
+static int set_Device_Partition_Info(tDevice* device)
+{
+    int ret = SUCCESS;
+    int partitionCount = 0;
+    partitionCount = get_Partition_Count(device->os_info.name);
+#if defined (_DEBUG)
+    printf("Partition count for %s = %d\n", device->os_info.name, partitionCount);
+#endif
+    if (partitionCount > 0)
+    {
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
+        if (parts)
+        {
+            if (SUCCESS == get_Partition_List(device->os_info.name, parts, partitionCount))
+            {
+                int iter = 0;
+                for (; iter < partitionCount; ++iter)
+                {
+                    //since we found a partition, set the "has file system" bool to true
+                    device->os_info.fileSystemInfo.hasFileSystem = true;
+#if defined (_DEBUG)
+                    printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
+#endif
+                    //check if one of the partitions is /boot and mark the system disk when this is found
+                    //TODO: Should / be treated as a system disk too?
+                    if (strncmp((parts + iter)->mntPath, "/boot", 5) == 0)
+                    {
+                        device->os_info.fileSystemInfo.isSystemDisk = true;
+#if defined (_DEBUG)
+                        printf("found system disk\n");
+#endif
+                    }
+                }
+            }
+            safe_Free(parts);
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
+    }
+    return ret;
+}
+
 int get_Device( const char *filename, tDevice *device )
 {
     struct ccb_getdev cgd;
@@ -112,6 +231,7 @@ int get_Device( const char *filename, tDevice *device )
 		// Now we will set up the device name, etc fields in the os_info structure
 		snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
 		snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
+        set_Device_Partition_Info(device);
 
 		ret = fill_Drive_Info_Data(device);
 
@@ -279,6 +399,7 @@ int get_Device( const char *filename, tDevice *device )
                             //      This will require some more research, but we should be able to do this now that we know the interface
                             setup_Passthrough_Hacks_By_ID(device);
                         }
+                        set_Device_Partition_Info(device);
                         ret = fill_Drive_Info_Data(device);
                     }
                     else
@@ -1412,45 +1533,53 @@ int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
     //      Only thing that might work is a reload of an already mounted FS? At least that's a best guess.
     //      I will need a better test setup to validate this than I currently have access to - TJE
     //MNT_RELOAD ???
+    //sys/disk.h provides lots of info about the device. One of the IOCTLs may allow for a reread of the partition table.
     return NOT_SUPPORTED;
 }
 
 int os_Unmount_File_Systems_On_Device(tDevice *device)
 {
-    //This is written using getmntinfo, which seems to wrap getfsstat.
-    //https://www.freebsd.org/cgi/man.cgi?query=getmntinfo&manpath=FreeBSD+12.1-RELEASE+and+Ports
-    //This was chosen because it provides the info we want, and also claims to only show mounted devices.
-    //I also tried using getfsent, but that didn't return what we needed.
-    //If for any reason, getmntinfo is not available, I recommend switching to getfsstat. The code is similar
-    //but slightly different. I only had a VM to test with so my results showed the same between the APIs,
-    //but the description of getmntinfo was more along the lines of what has been implemented for
-    //other OS's we support. - TJE
     int ret = SUCCESS;
-    struct statfs* mountedFS = NULL;
-    int totalMounts = getmntinfo(&mountedFS, MNT_WAIT);//Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
-    if (totalMounts > 0 && mountedFS)
+    int partitionCount = 0;
+    partitionCount = get_Partition_Count(device->os_info.name);
+#if defined (_DEBUG)
+    printf("Partition count for %s = %d\n", device->os_info.name, partitionCount);
+#endif
+    if (partitionCount > 0)
     {
-        int entIter = 0;
-        for (entIter = 0; entIter < totalMounts; ++entIter)
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
+        if (parts)
         {
-            if (strstr((mountedFS + entIter)->f_mntfromname, device->os_info.name))
+            if (SUCCESS == get_Partition_List(device->os_info.name, parts, partitionCount))
             {
-                //found a match for the current device handle
-                //f_mntonname gives us the directory to unmount
-                //unmount is more line Linux unmount2
-                //https://www.freebsd.org/cgi/man.cgi?query=unmount&sektion=2&apropos=0&manpath=FreeBSD+13.0-RELEASE
-                if (0 > unmount((mountedFS + entIter)->f_mntonname, MNT_FORCE))
+                int iter = 0;
+                for (; iter < partitionCount; ++iter)
                 {
-                    ret = FAILURE;
-                    device->os_info.last_error = errno;
-                    if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+                    //since we found a partition, set the "has file system" bool to true
+#if defined (_DEBUG)
+                    printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
+#endif
+                    //Now that we have a name, unmount the file system
+                    //unmount is more line Linux unmount2
+                    //https://www.freebsd.org/cgi/man.cgi?query=unmount&sektion=2&apropos=0&manpath=FreeBSD+13.0-RELEASE
+                    if (0 > unmount((parts + iter)->mntPath, MNT_FORCE))
                     {
-                        printf("Unable to unmount %s: \n", (mountedFS + entIter)->f_mntonname);
-                        print_Errno_To_Screen(errno);
-                        printf("\n");
+                        ret = FAILURE;
+                        device->os_info.last_error = errno;
+                        if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+                        {
+                            printf("Unable to unmount %s: \n", (parts + iter)->mntPath);
+                            print_Errno_To_Screen(errno);
+                            printf("\n");
+                        }
                     }
                 }
             }
+            safe_Free(parts);
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
         }
     }
     return ret;
