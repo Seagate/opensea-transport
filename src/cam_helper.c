@@ -68,7 +68,7 @@ static int get_Partition_Count(const char* blockDeviceName)
         int entIter = 0;
         for (entIter = 0; entIter < totalMounts; ++entIter)
         {
-            if (strstr((mountedFS + entIter)->f_mntfromname, device->os_info.name))
+            if (strstr((mountedFS + entIter)->f_mntfromname, blockDeviceName))
             {
                 //found a match for the current device handle
                 ++result;
@@ -110,7 +110,7 @@ static int get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo par
             int entIter = 0;
             for (entIter = 0; entIter < totalMounts; ++entIter)
             {
-                if (strstr((mountedFS + entIter)->f_mntfromname, device->os_info.name))
+                if (strstr((mountedFS + entIter)->f_mntfromname, blockDeviceName))
                 {
                     //found a match for the current device handle
                     //f_mntonname gives us the directory to unmount
