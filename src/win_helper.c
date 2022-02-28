@@ -3735,6 +3735,10 @@ static int win_SCSI_Get_Inquiry_Data(HANDLE deviceHandle, PSCSI_ADAPTER_BUS_INFO
 }
 #endif //SEA_WIN32_WINNT_WIN8
 
+#define MAX_VOL_BITS (32)
+#define MAX_VOL_STR_LEN (8)
+#define MAX_DISK_EXTENTS (32)
+
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
 static int get_Win_Device(const char *filename, tDevice *device )
 {
@@ -3820,17 +3824,18 @@ static int get_Win_Device(const char *filename, tDevice *device )
         //map the drive to a volume letter
         DWORD driveLetters = 0;
         TCHAR currentLetter = 'A';
-        driveLetters = GetLogicalDrives();
+        uint32_t volumeCounter = 0;
+        driveLetters = GetLogicalDrives();//TODO: This will remount everything. If we can figure out a better way to do this, we should so that not everything is remounted. - TJE
         device->os_info.fileSystemInfo.fileSystemInfoValid = true;//Setting this since we have code here to detect the volumes in the OS
-        bool foundVolumeLetter = false;
-        while (driveLetters > 0 && !foundVolumeLetter)
+        uint8_t volIter = 0;
+        for (volIter = 0; volIter < MAX_VOL_BITS; ++volIter, ++currentLetter, ++volumeCounter)
         {
-            if (driveLetters & BIT0)
+            if (M_BitN(volIter) & driveLetters)
             {
                 //a volume with this letter exists...check it's physical device number
-                TCHAR volume_name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+                TCHAR volume_name[MAX_VOL_STR_LEN] = { 0 };
                 TCHAR *ptrLetterName = &volume_name[0];
-                _stprintf_s(ptrLetterName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\%c:"), currentLetter);
+                _sntprintf_s(ptrLetterName, MAX_VOL_STR_LEN, _TRUNCATE, TEXT("\\\\.\\%c:"), currentLetter);
                 HANDLE letterHandle = CreateFile(ptrLetterName,
                     GENERIC_WRITE | GENERIC_READ,
                     FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -3845,7 +3850,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
                 if (letterHandle != INVALID_HANDLE_VALUE)
                 {
                     DWORD returnedBytes = 0;
-                    DWORD maxExtents = 32;//https://technet.microsoft.com/en-us/library/cc772180(v=ws.11).aspx
+                    DWORD maxExtents = MAX_DISK_EXTENTS;//https://technet.microsoft.com/en-us/library/cc772180(v=ws.11).aspx
                     PVOLUME_DISK_EXTENTS diskExtents = NULL;
                     DWORD diskExtentsSizeBytes = sizeof(VOLUME_DISK_EXTENTS) + (sizeof(DISK_EXTENT) * maxExtents);
                     diskExtents = C_CAST(PVOLUME_DISK_EXTENTS, malloc(diskExtentsSizeBytes));
@@ -3857,14 +3862,17 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             {
                                 if (diskExtents->Extents[counter].DiskNumber == device->os_info.os_drive_number)
                                 {
-                                    foundVolumeLetter = true;
                                     device->os_info.fileSystemInfo.hasFileSystem = true;//We found a filesystem for this drive, so set this to true.
-                                    //now we need to determine if this volume has the system directory on it.
-                                    CHAR systemDirectoryPath[4096] = { 0 };//4096 SHOULD be plenty...
 
-                                    if (GetSystemDirectoryA(systemDirectoryPath, 4096) > 0)
+                                    //Set a bit to note that this particular volume (letter) is on this device
+                                    device->os_info.volumeBitField |= (UINT32_C(1) << volumeCounter);
+
+                                    //now we need to determine if this volume has the system directory on it.
+                                    TCHAR systemDirectoryPath[MAX_PATH] = { 0 };
+
+                                    if (GetSystemDirectory(systemDirectoryPath, MAX_PATH) > 0)
                                     {
-                                        if (strlen(systemDirectoryPath) > 0)
+                                        if (_tcslen(systemDirectoryPath) > 0)
                                         {
                                             //we need to check only the first letter of the returned string since this is the volume letter
                                             if (systemDirectoryPath[0] == currentLetter)
@@ -3880,7 +3888,6 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                         }
                                         #endif
                                     }
-                                    break;
                                 }
                             }
                         }
@@ -3890,8 +3897,6 @@ static int get_Win_Device(const char *filename, tDevice *device )
                 }
                 CloseHandle(letterHandle);
             }
-            driveLetters = driveLetters >> 1;//shift the bits by 1 and we will go onto the next drive letter
-            ++currentLetter;//increment the letter
         }
 
         //set the OS Type
@@ -7442,6 +7447,72 @@ int os_Unlock_Device(tDevice *device)
     if (!DeviceIoControl(device->os_info.fd, FSCTL_UNLOCK_VOLUME, NULL, 0, NULL, 0, &returnedBytes, NULL))
     {
         ret = FAILURE;
+    }
+    return ret;
+}
+
+int os_Unmount_File_Systems_On_Device(tDevice *device)
+{
+    int ret = SUCCESS;
+    //If the volume bitfield is blank, then there is nothing to unmount - TJE
+    if (device->os_info.volumeBitField > 0)
+    {
+        //go through each bit in the bitfield. Bit0 = A, BIT1 = B, BIT2 = C, etc
+        //unmount each volume for the specified device.
+        uint8_t volIter = 0;
+        TCHAR volumeLetter = 'A';//always start with A
+        for (volIter = 0; volIter < MAX_VOL_BITS; ++volIter, ++volumeLetter)
+        {
+            if (M_BitN(volIter) & device->os_info.volumeBitField)
+            {
+                //found a volume.
+                //Steps:
+                //1. open handle to the volume
+                //2. lock the volume: FSCTL_LOCK_VOLUME
+                //3. dismount volume: FSCTL_DISMOUNT_VOLUME 
+                //4. unlock the volume: FSCTL_UNLOCK_VOLUME
+                //5. close the handle to the volume
+                HANDLE volumeHandle = INVALID_HANDLE_VALUE;
+                DWORD bytesReturned = 0;
+                TCHAR volumeHandleString[MAX_VOL_STR_LEN] = { 0 };
+                _sntprintf_s(volumeHandleString, MAX_VOL_STR_LEN, _TRUNCATE, TEXT("\\\\.\\%c:"), volumeLetter);
+                volumeHandle = CreateFile(volumeHandleString, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+                if (INVALID_HANDLE_VALUE != volumeHandle)
+                {
+                    BOOL ioctlResult = FALSE, lockResult = FALSE;
+                    lockResult = DeviceIoControl(volumeHandle, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, &bytesReturned, NULL);
+                    if (lockResult == FALSE)
+                    {
+                        if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+                        {
+                            _tprintf(TEXT("WARNING: Unable to lock volume: %s\n"), volumeHandleString);
+                        }
+                    }
+                    ioctlResult = DeviceIoControl(volumeHandle, FSCTL_DISMOUNT_VOLUME, NULL, 0, NULL, 0, &bytesReturned, NULL);
+                    if (ioctlResult == FALSE)
+                    {
+                        if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+                        {
+                            _tprintf(TEXT("Error: Unable to dismount volume: %s\n"), volumeHandleString);
+                        }
+                        ret = FAILURE;
+                    }
+                    if (lockResult == TRUE)
+                    {
+                        ioctlResult = DeviceIoControl(volumeHandle, FSCTL_UNLOCK_VOLUME, NULL, 0, NULL, 0, &bytesReturned, NULL);
+                        if (ioctlResult == FALSE)
+                        {
+                            if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+                            {
+                                _tprintf(TEXT("WARNING: Unable to unlock volume: %s\n"), volumeHandleString);
+                            }
+                        }
+                    }
+                    CloseHandle(volumeHandle);
+                    volumeHandle = INVALID_HANDLE_VALUE;
+                }
+            }
+        }
     }
     return ret;
 }

@@ -297,6 +297,8 @@ int host_Reset(int fd);
 
     int os_Update_File_System_Cache(tDevice* device);
 
+    int os_Unmount_File_Systems_On_Device(tDevice *device);
+
     #if defined (__cplusplus)
 }
     #endif
