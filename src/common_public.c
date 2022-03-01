@@ -1358,6 +1358,11 @@ bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
             ||
             ((strstr(device->drive_info.bridge_info.childDriveMN, "XA") != NULL)
                 && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "DC") == 7))         //older models
+            /*The following are unique to some USB SSD products. These seem to all report UHFS00.1 for firmware rev, but trying to only match UHFS for now
+            * These drives also seem to set "Seagate SSD" for the MN in the child drive info. Since they are USB, these should only be checked like this
+            * as they are not being manufactured any other way for now. - TJE
+            */
+            || ((strstr(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") != NULL) && (strstr(device->drive_info.bridge_info.childDriveFW, "UHFS") != NULL))
             )
         {
             isSeagateVendor = true;
@@ -1581,6 +1586,11 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
             if (is_LaCie(device))
             {
                 isSeagateFamily = LACIE;
+                //Special case for some USB SSDs. These can be recognized as vendor_f
+                if (is_Seagate_Model_Number_Vendor_F(device, true))
+                {
+                    isSeagateFamily = SEAGATE_VENDOR_F;
+                }
             }
             break;
         case 5://is_Quantum

@@ -885,6 +885,15 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                                        device->drive_info.IdentifyData.ata.Word110,\
                                        device->drive_info.IdentifyData.ata.Word111);
 
+        //Special case for SSD detection. One of these SSDs didn't set the media_type to SSD
+        //but it is an SSD. So this match will catch it when this happens. It should be uncommon to find though -TJE
+        if (device->drive_info.media_type != MEDIA_SSD && 
+            strlen(device->drive_info.bridge_info.childDriveMN) > 0 && (strstr(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") != NULL) && 
+            strlen(device->drive_info.bridge_info.childDriveFW) > 0 && (strstr(device->drive_info.bridge_info.childDriveFW, "UHFS") != NULL))
+        {
+            device->drive_info.media_type = MEDIA_SSD;
+        }
+
         //get the sector sizes from the identify data
         if (((ident_word[106] & BIT14) == BIT14) && ((ident_word[106] & BIT15) == 0)) //making sure this word has valid data
         {
