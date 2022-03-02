@@ -62,6 +62,7 @@ extern "C"
 
     #define POWER_BALANCE_LBA_LOW_ENABLE UINT8_C(0x01)
     #define POWER_BALANCE_LBA_LOW_DISABLE UINT8_C(0x02)
+	#define POWER_BALANCE_LBA_LOW_LIMITED UINT8_C(0x03)
 
     typedef enum _eSeagateLowCurrentSpinupSetFeaturesValues
     {

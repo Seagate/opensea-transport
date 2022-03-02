@@ -1197,6 +1197,14 @@ extern "C"
         PWR_CND_RESERVED
     } ePowerConditionID;
 
+	//this enum is used to know the power mode of a device
+	typedef enum _ePowerBalanceMode
+	{
+		POWER_BAL_ENABLE = 1,
+		POWER_BAL_DISABLE = 2,
+		POWER_BAL_LIMITED = 3
+	} ePowerBalanceMode;
+
     #define LEGACY_DRIVE_SEC_SIZE         UINT16_C(512)
     #define COMMON_4K_SIZE                UINT16_C(4096)
     #define MAX_28_BIT_LBA                UINT32_C(0xFFFFFFF)
