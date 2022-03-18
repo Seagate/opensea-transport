@@ -24,7 +24,7 @@ extern "C"
     #define NVME_IDENTIFY_DATA_LEN (4096)
     #define NVME_SMART_HEALTH_LOG_LEN (512)
     #define NVME_DWORD_SIZE (4)
-    #define NVME_ALL_NAMESPACES       (0xFFFFFFFFU)
+    #define NVME_ALL_NAMESPACES       UINT32_C(0xFFFFFFFF) //This was chosen over 0 for backwards compatibility - TJE
 
     #define NVME_MAX_FW_SLOTS         (7)
 
@@ -108,7 +108,8 @@ extern "C"
         uint8_t             availSpare;
         uint8_t             spareThresh;
         uint8_t             percentUsed;
-        uint8_t             rsvd6[26];
+        uint8_t             enduranceGroupCriticalWarning;
+        uint8_t             rsvd6[25];
         uint8_t             dataUnitsRead[16];
         uint8_t             dataUnitsWritten[16];
         uint8_t             hostReads[16];
@@ -559,6 +560,7 @@ extern "C"
 
     typedef enum _eNvmeLogs
     {
+        NVME_LOG_SUPPORTED_PAGES = 0x00,
         NVME_LOG_ERROR_ID = 0x01,
         NVME_LOG_SMART_ID = 0x02,
         NVME_LOG_FW_SLOT_ID = 0x03,
@@ -566,6 +568,21 @@ extern "C"
         NVME_LOG_DEV_SELF_TEST = 0x06,
         NVME_LOG_TELEMETRY_HOST = 0x07,
         NVME_LOG_TELEMETRY_CTRL = 0x08,
+        NVME_LOG_ENDURANCE_GROUP_INFO = 0x09,
+        NVME_LOG_PREDICTABLE_LATENCY_PER_NVM_SET = 0x0A,
+        NVME_LOG_PREDICTABLE_LATENCY_EVENT_AGREGATE = 0x0B,
+        NVME_LOG_ASYMMETRIC_NAMESPACE_ACCESS = 0x0C,
+        NVME_LOG_PERSISTENT_EVENT_LOG = 0x0D,
+        NVME_LOG_COMMAND_SET_SPECIFIC = 0x0E,
+        NVME_LOG_ENDURANCE_GROUP_EVENT_AGREGATE = 0x0F,
+        NVME_LOG_MEDIA_UNIT_STATUS = 0x10,
+        NVME_LOG_SUPPORTED_CAPACITY_CONFIGURATION_LIST = 0x11,
+        NVME_LOG_FETURE_IDENTIFIERS_SUPPORTED_AND_EFFECTS = 0x12,
+        NVME_LOG_MN_COMMANDS_SUPPORTED_AND_EFFECTS = 0x13,
+        NVME_LOG_COMMAND_AND_FEATURE_LOCKDOWN    = 0x14,
+        NVME_LOG_BOOT_PARTITION  = 0x15,
+        NVME_LOG_ROTATIONAL_MEDIA_INFORMATION   = 0x16,
+        NVME_LOG_DISCOVERY = 0x70,
         NVME_LOG_RESERVATION_ID = 0x80,
         NVME_LOG_SANITIZE_ID = 0x81,
     }eNvmeLogs;

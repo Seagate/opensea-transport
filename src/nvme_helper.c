@@ -55,6 +55,7 @@ int fill_In_NVMe_Device_Info(tDevice *device)
 
     nvmeIDCtrl * ctrlData = &device->drive_info.IdentifyData.nvme.ctrl; //Conroller information data structure
     nvmeIDNameSpaces * nsData = &device->drive_info.IdentifyData.nvme.ns; //Name Space Data structure 
+
 #ifdef _DEBUG
     printf("-->%s\n",__FUNCTION__);
 #endif
@@ -67,6 +68,7 @@ printf("fill NVMe info ret = %d\n", ret);
 
     if (ret == SUCCESS)
     {
+        uint16_t enduranceGroup = 0;
         //set the t10 vendor id to NVMe
         snprintf(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "NVMe");
         device->drive_info.media_type = MEDIA_NVM;//This will bite us someday when someone decided to put non-ssds on NVMe interface.
@@ -102,15 +104,33 @@ printf("fill NVMe info ret = %d\n", ret);
 
             *fillMaxLba = nsData->nsze - 1;//spec says this is from 0 to (n-1)!
             
-
-            //TODO: Add support if more than one Namespace. 
-            /*
-            for (ns=2; ns <= ctrlData.nn; ns++) 
+            enduranceGroup = nsData->endgid;
+            if (ctrlData->lpa & BIT5 && ctrlData->ctratt & BIT4 && enduranceGroup > 0)
             {
-                
-
-            }*/
-
+                //Check if this is an HDD
+                //First read the supported logs log page, then if the rotating media log is there, read it.
+                uint8_t* supportedLogs = C_CAST(uint8_t*, calloc_aligned(1024, sizeof(uint8_t), device->os_info.minimumAlignment));
+                if (supportedLogs)
+                {
+                    nvmeGetLogPageCmdOpts supLogs;
+                    memset(&supLogs, 0, sizeof(nvmeGetLogPageCmdOpts));
+                    supLogs.addr = supportedLogs;
+                    supLogs.dataLen = 1024;
+                    supLogs.lid = NVME_LOG_SUPPORTED_PAGES;
+                    if (SUCCESS == nvme_Get_Log_Page(device, &supLogs))
+                    {
+                        uint32_t rotMediaOffset = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION * 4;
+                        uint32_t rotMediaSup = M_BytesTo4ByteValue(supportedLogs[rotMediaOffset + 3], supportedLogs[rotMediaOffset + 2], supportedLogs[rotMediaOffset + 1], supportedLogs[rotMediaOffset + 0]);
+                        if (rotMediaSup & BIT0)
+                        {
+                            //rotational media log is supported.
+                            //Set the media type because this is supported, at least for now. We can read the log and the actual rotation rate if needed.
+                            device->drive_info.media_type = MEDIA_HDD;
+                        }
+                    }
+                    safe_Free_aligned(supportedLogs);
+                }
+            }
         }
     }
 #ifdef _DEBUG
