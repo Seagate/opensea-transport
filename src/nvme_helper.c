@@ -389,7 +389,11 @@ int check_NVMe_Status(uint32_t nvmeStatusDWord)
             ret = FAILURE;
             break;
         case NVME_CMD_SP_SC_INVALID_FIRMWARE_SLOT_:
+            ret = FAILURE;
+            break;
         case NVME_CMD_SP_SC_INVALIDFIRMWARE_IMAGE_:
+            ret = FAILURE;
+            break;
         case NVME_CMD_SP_SC_INVALID_INTERRUPT_VECTOR_:
         case NVME_CMD_SP_SC_INVALID_LOG_PAGE_:
         case NVME_CMD_SP_SC_INVALID_FORMAT_:
