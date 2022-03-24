@@ -1554,7 +1554,7 @@ int scsi_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptr
             }
         }
     }
-    if (!device->drive_info.dpoFUA)
+    if (forceUnitAccess && !device->drive_info.dpoFUA)
     {
         //send verify after write since FUA is not available
         ret = scsi_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
