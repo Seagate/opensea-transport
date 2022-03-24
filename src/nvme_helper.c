@@ -116,10 +116,10 @@ printf("fill NVMe info ret = %d\n", ret);
                     memset(&supLogs, 0, sizeof(nvmeGetLogPageCmdOpts));
                     supLogs.addr = supportedLogs;
                     supLogs.dataLen = 1024;
-                    supLogs.lid = NVME_LOG_SUPPORTED_PAGES;
+                    supLogs.lid = NVME_LOG_SUPPORTED_PAGES_ID;
                     if (SUCCESS == nvme_Get_Log_Page(device, &supLogs))
                     {
-                        uint32_t rotMediaOffset = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION * 4;
+                        uint32_t rotMediaOffset = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION_ID * 4;
                         uint32_t rotMediaSup = M_BytesTo4ByteValue(supportedLogs[rotMediaOffset + 3], supportedLogs[rotMediaOffset + 2], supportedLogs[rotMediaOffset + 1], supportedLogs[rotMediaOffset + 0]);
                         if (rotMediaSup & BIT0)
                         {
@@ -1124,7 +1124,7 @@ int nvme_Get_DevSelfTest_Log_Page(tDevice *device, uint8_t * pData, uint32_t dat
     memset(&cmdOpts,0,sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr = pData;
     cmdOpts.dataLen = dataLen;
-    cmdOpts.lid = NVME_LOG_DEV_SELF_TEST;
+    cmdOpts.lid = NVME_LOG_DEV_SELF_TEST_ID;
     
     ret = nvme_Get_Log_Page(device, &cmdOpts);
 #ifdef _DEBUG
