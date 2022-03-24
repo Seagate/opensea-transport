@@ -392,9 +392,14 @@ extern "C"
         uint32_t            rtd3e;
         uint32_t            oaes;
         uint32_t            ctratt;
-        uint8_t             reservedBytes111_100[12];
+        uint16_t            rrls;
+        uint8_t             reservedBytes110_102[9];
+        uint8_t             cntrltype;
         uint8_t             fguid[16];//128bit identifier
-        uint8_t             reservedBytes239_128[112];
+        uint16_t            crdt1;
+        uint16_t            crdt2;
+        uint16_t            crdt3;
+        uint8_t             reservedBytes239_134[106];
         uint8_t             nvmManagement[16];
         //Admin command set attribues & optional controller capabilities
         uint16_t            oacs;
@@ -422,7 +427,19 @@ extern "C"
         uint16_t            mntmt;
         uint16_t            mxtmt;
         uint32_t            sanicap;
-        uint8_t             reservedBytes511_332[180];
+        uint32_t            hmminds;
+        uint16_t            hmmaxd;
+        uint16_t            nsetidmax;
+        uint16_t            endgidmax;
+        uint8_t             anatt;
+        uint8_t             anacap;
+        uint32_t            anagrpmax;
+        uint32_t            nanagrpid;
+        uint32_t            pels;
+        uint16_t            domainIdentifier;
+        uint8_t             reservedBytes367_358[10];
+        uint8_t             megcap[16];
+        uint8_t             reservedBytes511_384[128];
         //NVM command set attributes;
         uint8_t             sqes;
         uint8_t             cqes;
@@ -434,12 +451,18 @@ extern "C"
         uint8_t             vwc;
         uint16_t            awun;
         uint16_t            awupf;
-        uint8_t             nvscc;
-        uint8_t             reservedByte531;
+        union {
+            uint8_t             nvscc;
+            uint8_t             icsvscc;
+        };
+        uint8_t             nwpc;
         uint16_t            acwu;
-        uint8_t             rsvd534[2];
+        uint16_t            optionalCopyFormatsSupported;
         uint32_t            sgls;
-        uint8_t             reservedBytes767_540[228];
+        uint32_t            mnan;
+        uint8_t             maxdna[16];
+        uint32_t            maxcna;
+        uint8_t             reservedBytes767_564[204];
         char                subnqn[256];
         uint8_t             reservedBytes1791_1024[768];
         uint8_t             nvmeOverFabrics[256];
@@ -491,11 +514,23 @@ extern "C"
         uint16_t            nabspf;
         uint16_t            noiob;
         uint8_t             nvmcap[16];//128bit number
-        uint8_t             rsvd40[40];//bytes 103:64
+        uint16_t            npwg;
+        uint16_t            npwa;
+        uint16_t            npdg;
+        uint16_t            npda;
+        uint16_t            nows;
+        uint16_t            mssrl;
+        uint16_t            mcl;
+        uint8_t             msrc;
+        uint8_t             rsvd40[11];//bytes 91:81
+        uint32_t            anagrpid;
+        uint8_t             rsvd1[3];//bytes 98:96
+        uint8_t             nsattr;
+        uint16_t            nvmsetid;
+        uint16_t            endgid;
         uint8_t             nguid[16];
         uint8_t             eui64[8];
-        nvmeLBAF            lbaf[16];
-        uint8_t             rsvd192[192];
+        nvmeLBAF            lbaf[64];
         uint8_t             vs[3712];
     //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDNameSpaces;

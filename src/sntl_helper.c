@@ -1546,13 +1546,55 @@ static int sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(ScsiIoCtx *s
 {
     int ret = SUCCESS;
     uint8_t blockDeviceCharacteriticsPage[64] = { 0 };
+    bool setRotationRate = false;
     blockDeviceCharacteriticsPage[0] = 0;
     blockDeviceCharacteriticsPage[1] = BLOCK_DEVICE_CHARACTERISTICS;
     blockDeviceCharacteriticsPage[2] = 0x00;
     blockDeviceCharacteriticsPage[3] = 0x3C;
-    //rotation rate - non rotating device (SSD)
-    blockDeviceCharacteriticsPage[4] = 0x00;
-    blockDeviceCharacteriticsPage[5] = 0x01;
+#if defined (SNTL_EXT)
+    if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.lpa & BIT5 && scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.ctratt & BIT4 && scsiIoCtx->device->drive_info.IdentifyData.nvme.ns.endgid > 0)
+    {
+        //Check if this is an HDD
+        //First read the supported logs log page, then if the rotating media log is there, read it.
+        uint8_t* supportedLogs = C_CAST(uint8_t*, calloc_aligned(1024, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
+        if (supportedLogs)
+        {
+            nvmeGetLogPageCmdOpts supLogs;
+            memset(&supLogs, 0, sizeof(nvmeGetLogPageCmdOpts));
+            supLogs.addr = supportedLogs;
+            supLogs.dataLen = 1024;
+            supLogs.lid = NVME_LOG_SUPPORTED_PAGES;
+            if (SUCCESS == nvme_Get_Log_Page(scsiIoCtx->device, &supLogs))
+            {
+                uint32_t rotMediaOffset = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION * 4;
+                uint32_t rotMediaSup = M_BytesTo4ByteValue(supportedLogs[rotMediaOffset + 3], supportedLogs[rotMediaOffset + 2], supportedLogs[rotMediaOffset + 1], supportedLogs[rotMediaOffset + 0]);
+                if (rotMediaSup & BIT0)
+                {
+                    //rotational media log is supported.
+                    uint8_t rotMediaInfo[512] = { 0 };
+                    nvmeGetLogPageCmdOpts rotationMediaLog;
+                    memset(&rotationMediaLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+                    rotationMediaLog.addr = rotMediaInfo;
+                    rotationMediaLog.dataLen = 512;
+                    rotationMediaLog.lid = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION;
+                    if (SUCCESS == nvme_Get_Log_Page(scsiIoCtx->device, &rotationMediaLog))
+                    {
+                        blockDeviceCharacteriticsPage[4] = rotMediaInfo[5];
+                        blockDeviceCharacteriticsPage[5] = rotMediaInfo[4];
+                        setRotationRate = true;
+                    }
+                }
+            }
+            safe_Free_aligned(supportedLogs);
+        }
+    }
+#endif
+    if (!setRotationRate)
+    {
+        //rotation rate - non rotating device (SSD)
+        blockDeviceCharacteriticsPage[4] = 0x00;
+        blockDeviceCharacteriticsPage[5] = 0x01;
+    }
     //product type - not some kind of camera card
     blockDeviceCharacteriticsPage[6] = 0;
     //form factor - not reported
@@ -1989,6 +2031,31 @@ static int sntl_Translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *scsiIo
     supportedPages[offset] = LP_TEMPERATURE;
     offset += increment;
 #if defined (SNTL_EXT)
+    //if rotating media log is supportd on NVMe, then we can also support the start-stop cycle counter log
+    if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.lpa & BIT5 && scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.ctratt & BIT4 && scsiIoCtx->device->drive_info.IdentifyData.nvme.ns.endgid > 0)
+    {
+        //Check if this is an HDD
+        //First read the supported logs log page, then if the rotating media log is there, read it.
+        uint8_t* supportedLogs = C_CAST(uint8_t*, calloc_aligned(1024, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
+        if (supportedLogs)
+        {
+            nvmeGetLogPageCmdOpts supLogs;
+            memset(&supLogs, 0, sizeof(nvmeGetLogPageCmdOpts));
+            supLogs.addr = supportedLogs;
+            supLogs.dataLen = 1024;
+            supLogs.lid = NVME_LOG_SUPPORTED_PAGES;
+            if (SUCCESS == nvme_Get_Log_Page(scsiIoCtx->device, &supLogs))
+            {
+                uint32_t rotMediaOffset = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION * 4;
+                uint32_t rotMediaSup = M_BytesTo4ByteValue(supportedLogs[rotMediaOffset + 3], supportedLogs[rotMediaOffset + 2], supportedLogs[rotMediaOffset + 1], supportedLogs[rotMediaOffset + 0]);
+                if (rotMediaSup & BIT0)
+                {
+                    supportedPages[offset] = LP_START_STOP_CYCLE_COUNTER;
+                    offset += increment;
+                }
+            }
+        }
+    }
     //If smart self test is supported, add the self test results log (10h)
     if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)
     {
@@ -2458,6 +2525,125 @@ static int sntl_Translate_General_Statistics_And_Performance_Log_0x19(tDevice *d
     return ret;
 }
 
+static int sntl_Translate_Start_Stop_Cycle_Log_0x0E(tDevice* device, ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    uint8_t startStopLog[20] = { 0 };
+    uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
+    uint8_t senseKeySpecificDescriptor[8] = { 0 };
+    uint8_t bitPointer = 0;
+    uint16_t fieldPointer = 0;
+    if (parameterPointer > 0x0006)
+    {
+        fieldPointer = 5;
+        bitPointer = 7;
+        sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        ret = NOT_SUPPORTED;
+        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        return ret;
+    }
+    //set the header
+    startStopLog[0] = 0x0E;
+    startStopLog[1] = 0x00;
+    startStopLog[2] = 0x00;
+    startStopLog[3] = 0x14;
+    //note: Only parameters 4 and 6 are supported
+    //read the nvme log page
+    if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.lpa & BIT5 && scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.ctratt & BIT4 && scsiIoCtx->device->drive_info.IdentifyData.nvme.ns.endgid > 0)
+    {
+        //Check if this is an HDD
+        //First read the supported logs log page, then if the rotating media log is there, read it.
+        uint8_t* supportedLogs = C_CAST(uint8_t*, calloc_aligned(1024, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
+        if (supportedLogs)
+        {
+            nvmeGetLogPageCmdOpts supLogs;
+            memset(&supLogs, 0, sizeof(nvmeGetLogPageCmdOpts));
+            supLogs.addr = supportedLogs;
+            supLogs.dataLen = 1024;
+            supLogs.lid = NVME_LOG_SUPPORTED_PAGES;
+            if (SUCCESS == nvme_Get_Log_Page(scsiIoCtx->device, &supLogs))
+            {
+                uint32_t rotMediaOffset = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION * 4;
+                uint32_t rotMediaSup = M_BytesTo4ByteValue(supportedLogs[rotMediaOffset + 3], supportedLogs[rotMediaOffset + 2], supportedLogs[rotMediaOffset + 1], supportedLogs[rotMediaOffset + 0]);
+                if (rotMediaSup & BIT0)
+                {
+                    //rotational media log is supported.
+                    uint8_t rotMediaInfo[512] = { 0 };
+                    nvmeGetLogPageCmdOpts rotationMediaLog;
+                    memset(&rotationMediaLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+                    rotationMediaLog.addr = rotMediaInfo;
+                    rotationMediaLog.dataLen = 512;
+                    rotationMediaLog.lid = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION;
+                    if (SUCCESS == nvme_Get_Log_Page(scsiIoCtx->device, &rotationMediaLog))
+                    {
+                        uint32_t offset = 4;//increments each time we add a parameter
+                        if (parameterPointer <= 4)
+                        {
+                            startStopLog[offset + 0] = 0x00;
+                            startStopLog[offset + 1] = 0x04;
+                            startStopLog[offset + 2] = 0x03;//DU=0, TSD = 0, Format and Linking = 11b
+                            startStopLog[offset + 3] = 0x04;//param length
+                            startStopLog[offset + 4] = rotMediaInfo[11];//msb
+                            startStopLog[offset + 5] = rotMediaInfo[10];
+                            startStopLog[offset + 6] = rotMediaInfo[9];
+                            startStopLog[offset + 7] = rotMediaInfo[8];
+                            offset += 8;
+                        }
+                        if (parameterPointer <= 6)
+                        {
+                            startStopLog[offset + 0] = 0x00;
+                            startStopLog[offset + 1] = 0x06;
+                            startStopLog[offset + 2] = 0x03;//DU=0, TSD = 0, Format and Linking = 11b
+                            startStopLog[offset + 3] = 0x04;//param length
+                            startStopLog[offset + 4] = rotMediaInfo[19];//msb
+                            startStopLog[offset + 5] = rotMediaInfo[18];
+                            startStopLog[offset + 6] = rotMediaInfo[17];
+                            startStopLog[offset + 7] = rotMediaInfo[16];
+                            offset += 8;
+                        }
+                        //TODO: Vendor unique parameters 8004 and 8006 for the failed counts reported in NVMe
+                    }
+                    else
+                    {
+                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                        ret = FAILURE;
+                    }
+                }
+                else
+                {
+                    //rotating media log is not supported...so call this invalid field in CDB
+                    fieldPointer = 3;
+                    bitPointer = 7;
+                    sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    ret = NOT_SUPPORTED;
+                    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                }
+            }
+            else
+            {
+                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                ret = FAILURE;
+            }
+            safe_Free_aligned(supportedLogs);
+        }
+    }
+    else
+    {
+        //This shouldn't happen. We should not have gotten here with other check.
+        //Set up sense data for an error for invalid field in CDB, specifying the log page
+        fieldPointer = 3;
+        bitPointer = 7;
+        sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+        ret = NOT_SUPPORTED;
+        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+    }
+    if (scsiIoCtx->pdata)
+    {
+        memcpy(scsiIoCtx->pdata, startStopLog, M_Min(20U, scsiIoCtx->dataLength));
+    }
+    return ret;
+}
+
 static int sntl_Translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
@@ -2719,6 +2905,34 @@ static int sntl_Translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scs
                 }
                 break;
 #if defined (SNTL_EXT)
+            case LP_START_STOP_CYCLE_COUNTER: //start-stop cycle counter log page
+                switch (subpageCode)
+                {
+                case 0:
+                    //This will only be supported on rotating media for start-stop cycle counter and load-unload counts
+                    if(device->drive_info.media_type == MEDIA_HDD)//this check is good enough for now for how SNTL gets used today - TJE
+                    {
+                        ret = sntl_Translate_Start_Stop_Cycle_Log_0x0E(device, scsiIoCtx);
+                    }
+                    else
+                    {
+                        //invalid log page, not subpage
+                        fieldPointer = 2;
+                        bitPointer = 5;
+                        sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                        ret = NOT_SUPPORTED;
+                        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                    }
+                    break;
+                default:
+                    fieldPointer = 3;
+                    bitPointer = 7;
+                    sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    ret = NOT_SUPPORTED;
+                    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                    break;
+                }
+                break;
             case LP_SELF_TEST_RESULTS://self test results
               switch (subpageCode)
               {

@@ -11916,7 +11916,7 @@ int os_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrDat
         ret = FAILURE;
     }
 
-    retStatus = set_Command_Completion_For_OS_Read_Write(device, device->os_info.last_error);
+    ret = set_Command_Completion_For_OS_Read_Write(device, device->os_info.last_error);
 
     //check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= timeoutInSeconds)
@@ -12037,7 +12037,7 @@ int os_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrDa
         ret = FAILURE;
     }
 
-    retStatus = set_Command_Completion_For_OS_Read_Write(device, device->os_info.last_error);
+    ret = set_Command_Completion_For_OS_Read_Write(device, device->os_info.last_error);
 
     //check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= timeoutInSeconds)
