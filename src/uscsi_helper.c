@@ -122,7 +122,7 @@ static int set_Device_Partition_Info(tDevice* device)
 {
     int ret = SUCCESS;
     int partitionCount = 0;
-    char blockHandle[OS_HANDLE_NAME_MAX_LENGTH] = 0;
+    char blockHandle[OS_HANDLE_NAME_MAX_LENGTH] = {0};
     snprintf(blockHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/");
     set_Device_Name(device->os_info.name, &blockHandle[strlen("/dev/")], OS_HANDLE_NAME_MAX_LENGTH - strlen("/dev/"));
     //note: this mess above is to get rid of /rdsk/ in the file handle as that raw disk handle won't be part of the information in the mount tab file.
@@ -181,8 +181,6 @@ int get_Device(const char *filename, tDevice *device)
     device->os_info.osType = OS_SOLARIS;
     device->os_info.minimumAlignment = sizeof(void *);//setting to be compatible with certain aligned memory allocation functions.
 
-    set_Device_Partition_Info(device);
-
     //Adding support for different device discovery options. 
     if (device->dFlags == OPEN_HANDLE_ONLY)
     {
@@ -193,6 +191,7 @@ int get_Device(const char *filename, tDevice *device)
     {
         //set the name
         snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, filename);
+        set_Device_Partition_Info(device);
         //set the friendly name
         set_Device_Name(filename, device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
 
@@ -666,7 +665,7 @@ int os_Unmount_File_Systems_On_Device(tDevice *device)
 {
     int ret = SUCCESS;
     int partitionCount = 0;
-    char blockHandle[OS_HANDLE_NAME_MAX_LENGTH] = 0;
+    char blockHandle[OS_HANDLE_NAME_MAX_LENGTH] = {0};
     snprintf(blockHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/");
     set_Device_Name(device->os_info.name, &blockHandle[strlen("/dev/")], OS_HANDLE_NAME_MAX_LENGTH - strlen("/dev/"));
     //note: this mess above is to get rid of /rdsk/ in the file handle as that raw disk handle won't be part of the information in the mount tab file.
