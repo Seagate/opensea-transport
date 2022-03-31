@@ -429,6 +429,8 @@ extern "C"
         bool                            fwdlLastSegment;//firmware download unique flag to help low-level OSs (Windows)
     } ataPassthroughCommand;
 
+#define SMART_ATTRIBUTE_RAW_DATA_BYTE_COUNT UINT8_C(7)
+
     //added these packs to make sure this structure gets interpreted correctly
     // in the code when I point it to a buffer and try and access it.
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
@@ -440,7 +442,7 @@ extern "C"
         uint16_t    status;//bit 0 = prefail warranty bit, bit 1 = online collection, bit 2 = performance, bit 3 = error rate, bit 4 = even counter, bit 5 = self preserving
         uint8_t     nominal;
         uint8_t     worstEver;
-        uint8_t     rawData[7];//attribute and vendor specific
+        uint8_t     rawData[SMART_ATTRIBUTE_RAW_DATA_BYTE_COUNT];//attribute and vendor specific
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataSMARTAttribute;
     #pragma pack(pop)
@@ -448,6 +450,7 @@ extern "C"
     }__attribute__((packed,aligned(1))) ataSMARTAttribute;
     #endif
 
+#define SMART_THRESHOLD_RESERVED_DATA_BYTE_COUNT UINT8_C(10)
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
@@ -455,7 +458,7 @@ extern "C"
     {
         uint8_t      attributeNumber;
         uint8_t      thresholdValue;
-        uint8_t      reservedBytes[10];
+        uint8_t      reservedBytes[SMART_THRESHOLD_RESERVED_DATA_BYTE_COUNT];
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataSMARTThreshold;
     #pragma pack(pop)
