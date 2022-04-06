@@ -1312,6 +1312,55 @@ bool is_Seagate_Model_Number_Vendor_E(tDevice *device, bool USBchildDrive)
     return isSeagateVendor;
 }
 
+bool is_Seagate_Model_Number_Vendor_SSD_PJ(tDevice *device, bool USBchildDrive)
+{
+    //These are some older enterprise SSDs that had some unique capabilities.
+    bool isSeagateVendor = false;
+    const char *mnPtr = &device->drive_info.product_identification[0];
+    if (USBchildDrive)
+    {
+        mnPtr = &device->drive_info.bridge_info.childDriveMN[0];
+    }
+    if (strlen(mnPtr))
+    {
+        if (/* check P models first */
+            strcmp(mnPtr, "ST400KN0001") == 0 ||
+            strcmp(mnPtr, "ST800KN0001") == 0 ||
+            strcmp(mnPtr, "ST1600KN0001") == 0 ||
+            strcmp(mnPtr, "ST480KN0001") == 0 ||
+            strcmp(mnPtr, "ST960KN0001") == 0 ||
+            strcmp(mnPtr, "ST1920KN0001") == 0 ||
+            strcmp(mnPtr, "ST400KN0011") == 0 ||
+            strcmp(mnPtr, "ST800KN0011") == 0 ||
+            strcmp(mnPtr, "ST1600KN0011") == 0 ||
+            strcmp(mnPtr, "ST480KN0011") == 0 ||
+            strcmp(mnPtr, "ST960KN0011") == 0 ||
+            strcmp(mnPtr, "ST1920KN0011") == 0 ||
+            strcmp(mnPtr, "ST400KN0021") == 0 ||
+            strcmp(mnPtr, "ST800KN0021") == 0 ||
+            strcmp(mnPtr, "ST480KN0021") == 0 ||
+            strcmp(mnPtr, "ST960KN0021") == 0 ||
+            strcmp(mnPtr, "ST400KN0031") == 0 ||
+            strcmp(mnPtr, "ST800KN0031") == 0 ||
+            strcmp(mnPtr, "ST480KN0031") == 0 ||
+            strcmp(mnPtr, "ST960KN0031") == 0 ||
+            /* Now check J models */
+            strcmp(mnPtr, "ST1000KN0002") == 0 ||
+            strcmp(mnPtr, "ST2000KN0002") == 0 ||
+            strcmp(mnPtr, "ST4000KN0002") == 0 ||
+            strcmp(mnPtr, "ST1000KN0012") == 0 ||
+            strcmp(mnPtr, "ST2000KN0012") == 0)
+        {
+            isSeagateVendor = true;
+        }
+        else if (!USBchildDrive)
+        {
+            isSeagateVendor = is_Seagate_Model_Number_Vendor_SSD_PJ(device, true);
+        }
+    }
+    return isSeagateVendor;
+}
+
 bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
@@ -1559,6 +1608,10 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
                 else if (is_Seagate_Model_Number_Vendor_H(device, false))
                 {
                     isSeagateFamily = SEAGATE_VENDOR_H;
+                }
+                else if (is_Seagate_Model_Number_Vendor_SSD_PJ(device, false))
+                {
+                    isSeagateFamily = SEAGATE_VENDOR_SSD_PJ;
                 }
             }
             break;

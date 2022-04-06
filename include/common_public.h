@@ -1329,7 +1329,8 @@ extern "C"
         //Recently Added
         SEAGATE_VENDOR_F = BIT18,
         SEAGATE_VENDOR_G = BIT19,
-        SEAGATE_VENDOR_H = BIT20
+        SEAGATE_VENDOR_H = BIT20,
+        SEAGATE_VENDOR_SSD_PJ = BIT21, //Older enterprise NVMe drives that had some unique capabilities
     }eSeagateFamily;
 
     //The scan flags should each be a bit in a 32bit unsigned integer.
