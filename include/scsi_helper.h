@@ -305,6 +305,18 @@ extern "C"
         SANITIZE_OVERWRITE_VENDOR3      = 0x03
     }eScsiSanitizeOverwriteTest;
 
+    typedef enum _eReadBufferMode
+    {
+        SCSI_RB_COMBINED_HEADER_AND_DATA                                = 0x00, //obsolete (see SPC or SCSI2)
+        SCSI_RB_VENDOR_SPECIFIC                                         = 0x01,
+        SCSI_RB_DATA                                                    = 0x02,
+        SCSI_RB_DESCRIPTOR                                              = 0x03,
+        SCSI_RB_READ_DATA_FROM_ECHO_BUFFER                              = 0x0A,
+        SCSI_RB_ECHO_BUFFER_DESCRIPTOR                                  = 0x0B,
+        SCSI_RB_READ_MICROCODE_STATUS                                   = 0x0F,
+        SCSI_RB_ENABLE_EXPANDER_COMMUNICATIONS_PROTOCOL_AND_ECHO_BUFFER = 0x1A, //obsolete (See SPC3)
+        SCSI_RB_ERROR_HISTORY                                           = 0x1C,
+    }eReadBufferMode;
 
     typedef enum _eWriteBufferMode
     {

@@ -1563,10 +1563,10 @@ static int sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(ScsiIoCtx *s
             memset(&supLogs, 0, sizeof(nvmeGetLogPageCmdOpts));
             supLogs.addr = supportedLogs;
             supLogs.dataLen = 1024;
-            supLogs.lid = NVME_LOG_SUPPORTED_PAGES;
+            supLogs.lid = NVME_LOG_SUPPORTED_PAGES_ID;
             if (SUCCESS == nvme_Get_Log_Page(scsiIoCtx->device, &supLogs))
             {
-                uint32_t rotMediaOffset = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION * 4;
+                uint32_t rotMediaOffset = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION_ID * 4;
                 uint32_t rotMediaSup = M_BytesTo4ByteValue(supportedLogs[rotMediaOffset + 3], supportedLogs[rotMediaOffset + 2], supportedLogs[rotMediaOffset + 1], supportedLogs[rotMediaOffset + 0]);
                 if (rotMediaSup & BIT0)
                 {
@@ -1576,7 +1576,7 @@ static int sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(ScsiIoCtx *s
                     memset(&rotationMediaLog, 0, sizeof(nvmeGetLogPageCmdOpts));
                     rotationMediaLog.addr = rotMediaInfo;
                     rotationMediaLog.dataLen = 512;
-                    rotationMediaLog.lid = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION;
+                    rotationMediaLog.lid = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION_ID;
                     if (SUCCESS == nvme_Get_Log_Page(scsiIoCtx->device, &rotationMediaLog))
                     {
                         blockDeviceCharacteriticsPage[4] = rotMediaInfo[5];
@@ -2043,10 +2043,10 @@ static int sntl_Translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *scsiIo
             memset(&supLogs, 0, sizeof(nvmeGetLogPageCmdOpts));
             supLogs.addr = supportedLogs;
             supLogs.dataLen = 1024;
-            supLogs.lid = NVME_LOG_SUPPORTED_PAGES;
+            supLogs.lid = NVME_LOG_SUPPORTED_PAGES_ID;
             if (SUCCESS == nvme_Get_Log_Page(scsiIoCtx->device, &supLogs))
             {
-                uint32_t rotMediaOffset = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION * 4;
+                uint32_t rotMediaOffset = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION_ID * 4;
                 uint32_t rotMediaSup = M_BytesTo4ByteValue(supportedLogs[rotMediaOffset + 3], supportedLogs[rotMediaOffset + 2], supportedLogs[rotMediaOffset + 1], supportedLogs[rotMediaOffset + 0]);
                 if (rotMediaSup & BIT0)
                 {
@@ -2560,10 +2560,10 @@ static int sntl_Translate_Start_Stop_Cycle_Log_0x0E(tDevice* device, ScsiIoCtx* 
             memset(&supLogs, 0, sizeof(nvmeGetLogPageCmdOpts));
             supLogs.addr = supportedLogs;
             supLogs.dataLen = 1024;
-            supLogs.lid = NVME_LOG_SUPPORTED_PAGES;
+            supLogs.lid = NVME_LOG_SUPPORTED_PAGES_ID;
             if (SUCCESS == nvme_Get_Log_Page(scsiIoCtx->device, &supLogs))
             {
-                uint32_t rotMediaOffset = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION * 4;
+                uint32_t rotMediaOffset = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION_ID * 4;
                 uint32_t rotMediaSup = M_BytesTo4ByteValue(supportedLogs[rotMediaOffset + 3], supportedLogs[rotMediaOffset + 2], supportedLogs[rotMediaOffset + 1], supportedLogs[rotMediaOffset + 0]);
                 if (rotMediaSup & BIT0)
                 {
@@ -2573,7 +2573,7 @@ static int sntl_Translate_Start_Stop_Cycle_Log_0x0E(tDevice* device, ScsiIoCtx* 
                     memset(&rotationMediaLog, 0, sizeof(nvmeGetLogPageCmdOpts));
                     rotationMediaLog.addr = rotMediaInfo;
                     rotationMediaLog.dataLen = 512;
-                    rotationMediaLog.lid = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION;
+                    rotationMediaLog.lid = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION_ID;
                     if (SUCCESS == nvme_Get_Log_Page(scsiIoCtx->device, &rotationMediaLog))
                     {
                         uint32_t offset = 4;//increments each time we add a parameter
@@ -2677,7 +2677,7 @@ static int sntl_Translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx 
     dstLog.nsid = NVME_ALL_NAMESPACES;//TODO: by namespace instead?
     dstLog.addr = nvmDSTLog;
     dstLog.dataLen = 564;
-    dstLog.lid = NVME_LOG_DEV_SELF_TEST;
+    dstLog.lid = NVME_LOG_DEV_SELF_TEST_ID;
     dstLog.rae = 1;//preserve any asynchronous events
     if (SUCCESS != nvme_Get_Log_Page(device, &dstLog))
     {
@@ -6372,7 +6372,7 @@ static int sntl_Translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx 
         memset(&dstLog, 0, sizeof(nvmeGetLogPageCmdOpts));
         dstLog.addr = logPage;
         dstLog.dataLen = 512;
-        dstLog.lid = NVME_LOG_DEV_SELF_TEST;
+        dstLog.lid = NVME_LOG_DEV_SELF_TEST_ID;
         if (SUCCESS == nvme_Get_Log_Page(device, &dstLog))
         {
             uint8_t currentSelfTest = M_Nibble0(logPage[0]);
