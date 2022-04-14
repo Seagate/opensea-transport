@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -164,8 +164,8 @@ int ata_Sanitize_Command(tDevice *device, eATASanitizeFeature sanitizeFeature, u
     ataSanitizeCmd.tfr.CommandStatus = ATA_SANITIZE;
     ataSanitizeCmd.tfr.SectorCount = M_Byte0(sectorCount);
     ataSanitizeCmd.tfr.SectorCount48 = M_Byte1(sectorCount);
-    ataSanitizeCmd.tfr.ErrorFeature = M_Byte0(sanitizeFeature);
-    ataSanitizeCmd.tfr.Feature48 = M_Byte1(sanitizeFeature);
+    ataSanitizeCmd.tfr.ErrorFeature = M_Byte0(C_CAST(uint16_t, sanitizeFeature));
+    ataSanitizeCmd.tfr.Feature48 = M_Byte1(C_CAST(uint16_t, sanitizeFeature));
     ataSanitizeCmd.tfr.LbaLow = M_Byte0(lba);
     ataSanitizeCmd.tfr.LbaMid = M_Byte1(lba);
     ataSanitizeCmd.tfr.LbaHi = M_Byte2(lba);
@@ -280,7 +280,7 @@ int ata_Sanitize_Overwrite_Erase(tDevice *device, bool failureModeBit, bool inve
 {
     uint16_t overwriteCount = 0;
     uint64_t overwriteLBA = overwritePattern;
-    overwriteLBA |= ((uint64_t)ATA_SANITIZE_OVERWRITE_LBA << 32);
+    overwriteLBA |= (C_CAST(uint64_t, ATA_SANITIZE_OVERWRITE_LBA) << 32);
     if (failureModeBit)
     {
         overwriteCount |= BIT4;
@@ -649,7 +649,7 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
     }
     else
     {
-        ataCommandOptions.tfr.SectorCount = (uint8_t)(dataSize / LEGACY_DRIVE_SEC_SIZE);
+        ataCommandOptions.tfr.SectorCount = C_CAST(uint8_t, dataSize / LEGACY_DRIVE_SEC_SIZE);
     }
 
     ataCommandOptions.tfr.ErrorFeature = feature;
@@ -1186,7 +1186,7 @@ int ata_Set_Max(tDevice *device, eHPAFeature setMaxFeature, uint32_t newMaxLBA, 
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.tfr.CommandStatus = ATA_SET_MAX;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
-    ataCommandOptions.tfr.ErrorFeature = (uint8_t)setMaxFeature;
+    ataCommandOptions.tfr.ErrorFeature = C_CAST(uint8_t, setMaxFeature);
 
     switch (setMaxFeature)
     {
@@ -1345,7 +1345,7 @@ int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subComman
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.dataSize = dataLen;
     ataCommandOptions.ptrData = pData;
-    ataCommandOptions.tfr.ErrorFeature = (uint8_t)subCommand;
+    ataCommandOptions.tfr.ErrorFeature = C_CAST(uint8_t, subCommand);
     ataCommandOptions.tfr.SectorCount = M_Byte0(blockCount);
     ataCommandOptions.tfr.LbaLow = M_Byte1(blockCount);
     ataCommandOptions.tfr.LbaMid = M_Byte0(bufferOffset);
@@ -1382,11 +1382,11 @@ int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subComman
     {
         if (useDMA)
         {
-            printf("Sending ATA Download Microcode DMA, subcommand 0x%" PRIX8 "\n", (uint8_t)subCommand);
+            printf("Sending ATA Download Microcode DMA, subcommand 0x%" PRIX8 "\n", C_CAST(uint8_t, subCommand));
         }
         else
         {
-            printf("Sending ATA Download Microcode, subcommand 0x%" PRIX8 "\n", (uint8_t)subCommand);
+            printf("Sending ATA Download Microcode, subcommand 0x%" PRIX8 "\n", C_CAST(uint8_t, subCommand));
         }
     }
 
@@ -1615,7 +1615,7 @@ int ata_SCT_Read_Write_Long(tDevice *device, bool useGPL, bool useDMA, eSCTRWLMo
 int ata_SCT_Write_Same(tDevice *device, bool useGPL, bool useDMA, eSCTWriteSameFunctions functionCode, uint64_t startLBA, uint64_t fillCount, uint8_t *pattern, uint64_t patternLength)
 {
     int ret = UNKNOWN;
-    uint8_t *writeSameBuffer = (uint8_t*)calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment);
+    uint8_t *writeSameBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!writeSameBuffer)
     {
         perror("Calloc failure!\n");
@@ -1684,17 +1684,17 @@ int ata_SCT_Write_Same(tDevice *device, bool useGPL, bool useDMA, eSCTWriteSameF
         || functionCode == WRITE_SAME_BACKGROUND_USE_SINGLE_LOGICAL_SECTOR || functionCode == WRITE_SAME_FOREGROUND_USE_SINGLE_LOGICAL_SECTOR)
     {
         //send the pattern to the data transfer log
-        ret = ata_SCT_Data_Transfer(device, useGPL, useDMA, XFER_DATA_OUT, pattern, (uint32_t)(patternLength * device->drive_info.deviceBlockSize));
+        ret = ata_SCT_Data_Transfer(device, useGPL, useDMA, XFER_DATA_OUT, pattern, C_CAST(uint32_t, patternLength * device->drive_info.deviceBlockSize));
     }
 
-    safe_Free_aligned(writeSameBuffer);
+    safe_Free_aligned(writeSameBuffer)
     return ret;
 }
 
 int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit)
 {
     int ret = UNKNOWN;
-    uint8_t *errorRecoveryBuffer = (uint8_t*)calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment);
+    uint8_t *errorRecoveryBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!errorRecoveryBuffer)
     {
         perror("Calloc failure!\n");
@@ -1703,7 +1703,7 @@ int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, ui
     //if we are retrieving the current values, then we better have a good pointer...no point in sending the command if we don't
     if (functionCode == 0x0002 && !currentValue)
     {
-        safe_Free_aligned(errorRecoveryBuffer);
+        safe_Free_aligned(errorRecoveryBuffer)
         return BAD_PARAMETER;
     }
 
@@ -1726,14 +1726,14 @@ int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, ui
     {
         *currentValue = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
     }
-    safe_Free_aligned(errorRecoveryBuffer);
+    safe_Free_aligned(errorRecoveryBuffer)
     return ret;
 }
 
 int ata_SCT_Feature_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags)
 {
     int ret = UNKNOWN;
-    uint8_t *featureControlBuffer = (uint8_t*)calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment);
+    uint8_t *featureControlBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!featureControlBuffer)
     {
         perror("Calloc Failure!\n");
@@ -1742,7 +1742,7 @@ int ata_SCT_Feature_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t 
     //make sure we have valid pointers for state and optionFlags
     if (!state || !optionFlags)
     {
-        safe_Free_aligned(featureControlBuffer);
+        safe_Free_aligned(featureControlBuffer)
         return BAD_PARAMETER;
     }
     //clear the state and option flags out, unless we are setting something
@@ -1782,7 +1782,7 @@ int ata_SCT_Feature_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t 
             *optionFlags = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
         }
     }
-    safe_Free_aligned(featureControlBuffer);
+    safe_Free_aligned(featureControlBuffer)
     return ret; 
 }
 
@@ -3615,8 +3615,8 @@ int ata_NV_Cache_Feature(tDevice *device, eNVCacheFeatures feature, uint16_t cou
     ataCommandOptions.tfr.LbaHi48 = M_Byte5(LBA);
     ataCommandOptions.tfr.SectorCount = M_Byte0(count);
     ataCommandOptions.tfr.SectorCount48 = M_Byte1(count);
-    ataCommandOptions.tfr.ErrorFeature = M_Byte0(feature);
-    ataCommandOptions.tfr.Feature48 = M_Byte1(feature);
+    ataCommandOptions.tfr.ErrorFeature = M_Byte0(C_CAST(uint16_t, feature));
+    ataCommandOptions.tfr.Feature48 = M_Byte1(C_CAST(uint16_t, feature));
     ataCommandOptions.tfr.CommandStatus = ATA_NV_CACHE;
 
     char* nvCacheFeature = NULL;
@@ -3808,7 +3808,7 @@ int ata_NV_Cache_Add_LBAs_To_Cache(tDevice *device, bool populateImmediately, ui
 int ata_NV_Flush_NV_Cache(tDevice *device, uint32_t minNumberOfLogicalBlocks)
 {
     int ret = UNKNOWN;
-    ret = ata_NV_Cache_Feature(device, NV_FLUSH_NV_CACHE, 0, (uint64_t)minNumberOfLogicalBlocks,NULL, 0);
+    ret = ata_NV_Cache_Feature(device, NV_FLUSH_NV_CACHE, 0, C_CAST(uint64_t, minNumberOfLogicalBlocks), NULL, 0);
     return ret;
 }
 
@@ -4062,7 +4062,7 @@ int ata_Device_Configuration_Overlay_Feature(tDevice *device, eDCOFeatures dcoFe
     ataCommandOptions.tfr.LbaMid = 0;
     ataCommandOptions.tfr.LbaHi = 0;
     ataCommandOptions.tfr.SectorCount = 0;
-    ataCommandOptions.tfr.ErrorFeature = (uint8_t)dcoFeature;
+    ataCommandOptions.tfr.ErrorFeature = C_CAST(uint8_t, dcoFeature);
     ataCommandOptions.tfr.CommandStatus = ATA_DCO;
 
     //default
@@ -4264,7 +4264,7 @@ int ata_ZAC_Management_In(tDevice *device, eZMAction action, uint8_t actionSpeci
     ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_ZONE_MANAGEMENT_IN;
     ataCommandOptions.tfr.Feature48 = actionSpecificFeatureExt;
-    ataCommandOptions.tfr.ErrorFeature = (uint8_t)action;
+    ataCommandOptions.tfr.ErrorFeature = C_CAST(uint8_t, action);
     ataCommandOptions.tfr.SectorCount = RESERVED;
     ataCommandOptions.tfr.SectorCount48 = RESERVED;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
@@ -4301,7 +4301,6 @@ int ata_ZAC_Management_In(tDevice *device, eZMAction action, uint8_t actionSpeci
         break;
     default://Need to add new zm actions as they are defined in the spec
         return BAD_PARAMETER;
-        break;
     }
 
     if (ataCommandOptions.commadProtocol != ATA_PROTOCOL_NO_DATA)
@@ -4336,7 +4335,7 @@ int ata_ZAC_Management_Out(tDevice *device, eZMAction action, uint8_t actionSpec
     ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_ZONE_MANAGEMENT_OUT;
     ataCommandOptions.tfr.Feature48 = actionSpecificFeatureExt;
-    ataCommandOptions.tfr.ErrorFeature = (uint8_t)action;
+    ataCommandOptions.tfr.ErrorFeature = C_CAST(uint8_t, action);
     ataCommandOptions.tfr.SectorCount = RESERVED;
     ataCommandOptions.tfr.SectorCount48 = RESERVED;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
@@ -4365,7 +4364,6 @@ int ata_ZAC_Management_Out(tDevice *device, eZMAction action, uint8_t actionSpec
     case ZM_ACTION_REPORT_ZONES://this is a zone management in command, so return bad parameter
     default://Need to add new zm actions as they are defined in the spec
         return BAD_PARAMETER;
-        break;
     }
 
     if (ataCommandOptions.commadProtocol != ATA_PROTOCOL_NO_DATA)
@@ -4428,7 +4426,7 @@ int ata_Open_Zone_Ext(tDevice *device, bool openAll, uint64_t zoneID)
 
 int ata_Report_Zones_Ext(tDevice *device, eZoneReportingOptions reportingOptions, bool partial, uint16_t returnPageCount, uint64_t zoneLocator, uint8_t *ptrData, uint32_t dataSize)
 {
-    uint8_t actionSpecificFeatureExt = reportingOptions;
+    uint8_t actionSpecificFeatureExt = C_CAST(uint8_t, reportingOptions);
     if (partial)
     {
         actionSpecificFeatureExt |= BIT7;
@@ -4848,8 +4846,8 @@ int ata_NCQ_Non_Data(tDevice *device, uint8_t subCommand /*bits 4:0*/, uint16_t 
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
     ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_FPDMA_NON_DATA;
-    ataCommandOptions.tfr.Feature48 = M_Byte1((uint64_t)subCommandSpecificFeature << 4);
-    ataCommandOptions.tfr.ErrorFeature = (M_Nibble0((uint64_t)subCommandSpecificFeature) << 4) | M_Nibble0(subCommand);
+    ataCommandOptions.tfr.Feature48 = M_Byte1(C_CAST(uint64_t, subCommandSpecificFeature) << 4);
+    ataCommandOptions.tfr.ErrorFeature = (M_Nibble0(C_CAST(uint64_t, subCommandSpecificFeature)) << 4) | M_Nibble0(subCommand);
     ataCommandOptions.tfr.SectorCount48 = subCommandSpecificCount;
     ataCommandOptions.tfr.SectorCount = ncqTag << 3;//shift into bits 7:3
     ataCommandOptions.tfr.LbaLow = M_Byte0(lba);
@@ -4881,7 +4879,7 @@ int ata_NCQ_Non_Data(tDevice *device, uint8_t subCommand /*bits 4:0*/, uint16_t 
 
 int ata_NCQ_Abort_NCQ_Queue(tDevice *device, uint8_t abortType /*bits0:3*/, uint8_t prio /*bits 1:0*/, uint8_t ncqTag, uint8_t tTag)
 {
-    return ata_NCQ_Non_Data(device, 0, abortType, (uint16_t)prio << 6, ncqTag, (uint64_t)tTag << 3, 0);
+    return ata_NCQ_Non_Data(device, 0, abortType, C_CAST(uint16_t, prio) << 6, ncqTag, C_CAST(uint64_t, tTag) << 3, 0);
 }
 
 int ata_NCQ_Deadline_Handlinge(tDevice *device, bool rdnc, bool wdnc, uint8_t ncqTag)

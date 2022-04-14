@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -46,13 +46,19 @@ extern "C"
         #if defined (EXPORT_OPENSEA_TRANSPORT) && defined(STATIC_OPENSEA_TRANSPORT)
             #error "The preprocessor definitions EXPORT_OPENSEA_TRANSPORT and STATIC_OPENSEA_TRANSPORT cannot be combined!"
         #elif defined(STATIC_OPENSEA_TRANSPORT)
+            #if defined (_DEBUG)
             #pragma message("Compiling opensea-transport as a static library!")
+            #endif
             #define OPENSEA_TRANSPORT_API
         #elif defined(EXPORT_OPENSEA_TRANSPORT)
+            #if defined (_DEBUG)
             #pragma message("Compiling opensea-transport as exporting DLL!")
+            #endif
             #define OPENSEA_TRANSPORT_API __declspec(dllexport)
         #elif defined(IMPORT_OPENSEA_TRANSPORT)
+            #if defined (_DEBUG)
             #pragma message("Compiling opensea-transport as importing DLL!")
+            #endif
             #define OPENSEA_TRANSPORT_API __declspec(dllimport)
         #else
             #error "You must specify STATIC_OPENSEA_TRANSPORT or EXPORT_OPENSEA_TRANSPORT or IMPORT_OPENSEA_TRANSPORT in the preprocessor definitions!"
@@ -339,7 +345,6 @@ extern "C"
         uint16_t Word255;
     }tAtaIdentifyData, *ptAtaIdentifyData;
 
-    #if !defined(DISABLE_NVME_PASSTHROUGH)
     /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push,1)
     #endif*/
@@ -387,9 +392,14 @@ extern "C"
         uint32_t            rtd3e;
         uint32_t            oaes;
         uint32_t            ctratt;
-        uint8_t             reservedBytes111_100[12];
+        uint16_t            rrls;
+        uint8_t             reservedBytes110_102[9];
+        uint8_t             cntrltype;
         uint8_t             fguid[16];//128bit identifier
-        uint8_t             reservedBytes239_128[112];
+        uint16_t            crdt1;
+        uint16_t            crdt2;
+        uint16_t            crdt3;
+        uint8_t             reservedBytes239_134[106];
         uint8_t             nvmManagement[16];
         //Admin command set attribues & optional controller capabilities
         uint16_t            oacs;
@@ -417,7 +427,19 @@ extern "C"
         uint16_t            mntmt;
         uint16_t            mxtmt;
         uint32_t            sanicap;
-        uint8_t             reservedBytes511_332[180];
+        uint32_t            hmminds;
+        uint16_t            hmmaxd;
+        uint16_t            nsetidmax;
+        uint16_t            endgidmax;
+        uint8_t             anatt;
+        uint8_t             anacap;
+        uint32_t            anagrpmax;
+        uint32_t            nanagrpid;
+        uint32_t            pels;
+        uint16_t            domainIdentifier;
+        uint8_t             reservedBytes367_358[10];
+        uint8_t             megcap[16];
+        uint8_t             reservedBytes511_384[128];
         //NVM command set attributes;
         uint8_t             sqes;
         uint8_t             cqes;
@@ -429,12 +451,18 @@ extern "C"
         uint8_t             vwc;
         uint16_t            awun;
         uint16_t            awupf;
-        uint8_t             nvscc;
-        uint8_t             reservedByte531;
+        union {
+            uint8_t             nvscc;
+            uint8_t             icsvscc;
+        };
+        uint8_t             nwpc;
         uint16_t            acwu;
-        uint8_t             rsvd534[2];
+        uint16_t            optionalCopyFormatsSupported;
         uint32_t            sgls;
-        uint8_t             reservedBytes767_540[228];
+        uint32_t            mnan;
+        uint8_t             maxdna[16];
+        uint32_t            maxcna;
+        uint8_t             reservedBytes767_564[204];
         char                subnqn[256];
         uint8_t             reservedBytes1791_1024[768];
         uint8_t             nvmeOverFabrics[256];
@@ -486,11 +514,23 @@ extern "C"
         uint16_t            nabspf;
         uint16_t            noiob;
         uint8_t             nvmcap[16];//128bit number
-        uint8_t             rsvd40[40];//bytes 103:64
+        uint16_t            npwg;
+        uint16_t            npwa;
+        uint16_t            npdg;
+        uint16_t            npda;
+        uint16_t            nows;
+        uint16_t            mssrl;
+        uint16_t            mcl;
+        uint8_t             msrc;
+        uint8_t             rsvd40[11];//bytes 91:81
+        uint32_t            anagrpid;
+        uint8_t             rsvd1[3];//bytes 98:96
+        uint8_t             nsattr;
+        uint16_t            nvmsetid;
+        uint16_t            endgid;
         uint8_t             nguid[16];
         uint8_t             eui64[8];
-        nvmeLBAF            lbaf[16];
-        uint8_t             rsvd192[192];
+        nvmeLBAF            lbaf[64];
         uint8_t             vs[3712];
     //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDNameSpaces;
@@ -511,8 +551,6 @@ extern "C"
     #else
     }__attribute__((packed,aligned(1))) nvmeIdentifyData;
     #endif*/
-
-    #endif //disable NVME passthrough
 
     typedef struct _ataReturnTFRs
     {
@@ -657,7 +695,7 @@ extern "C"
         //TODO: Other vendor unique SCSI to NVMe passthrough here
         NVME_PASSTHROUGH_UNKNOWN,
         //No passthrough
-        PASSTHROUGH_NONE = UINT32_MAX
+        PASSTHROUGH_NONE = INT32_MAX
     }ePassthroughType;
 
     typedef struct _ataOptions
@@ -786,7 +824,8 @@ extern "C"
             }scsiInq;
             uint8_t reserved[6];//padd out above to 8 byte boundaries
             uint32_t maxTransferLength;//Maximum SCSI command transfer length in bytes. Mostly here for USB where translations aren't accurate or don't show this properly.
-            uint32_t scsipadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
+            bool noSATVPDPage;//when this is set, the SAT VPD is not available and should not be read, skipping ahead to instead directly trying a passthrough command
+            uint8_t scsipadding[3];//padd 4 more bytes after transfer length to keep 8 byte boundaries
         }scsiHacks;
         union {
             //ATA Hacks refer to SAT translation issues or workarounds.
@@ -810,6 +849,7 @@ extern "C"
                 ATA28 - ata28BitOnly
                 NOMMPIO - noMultipleModeCommands
                 MPTXFER - maxTransferLength (bytes)
+                TPID - tpsiu on identify (limited use tpsiu)
                 //TODO: Add more hacks below as needed to workaround other weird behavior for ATA passthrough.
                 */
                 bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
@@ -831,7 +871,10 @@ extern "C"
                 bool noMultipleModeCommands;//This is to disable use read/write multiple commands if a bridge chip doesn't handle them correctly.
                 //uint8_t reserved[1];//padd byte for 8 byte boundary with above bools.
                 uint32_t maxTransferLength;//ATA Passthrough max transfer length in bytes. This may be different than the scsi translation max.
-                uint32_t atapadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
+                bool limitedUseTPSIU;//This might work for certain other commands, but only identify device has been found to show this. Using TPSIU on identify works as expected, but other data transfers abort this.
+                bool disableCheckCondition;//Set when check condition bit cannot be used because it causes problems
+                bool checkConditionEmpty;//Accepts the check condition bit, but returns empty data.
+                uint8_t atapadding[1];//padd 4 more bytes after transfer length to keep 8 byte boundaries
             }ataPTHacks;
             //NVMe Hacks
             struct {
@@ -896,9 +939,7 @@ extern "C"
         uint64_t       worldWideName;
         union{
             tAtaIdentifyData ata; //NOTE: This will automatically be byte swapped when saved here on big-endian systems for compatibility will all kinds of bit checks of the data throughout the code at this time. Use a separate buffer if you want the completely raw data without this happening. - TJE
-#if !defined(DISABLE_NVME_PASSTHROUGH)
             nvmeIdentifyData nvme;
-#endif
             //reserved field below is set to 8192 because nvmeIdentifyData structure holds both controller and namespace data which are 4k each
             uint8_t reserved[8192];//putting this here to allow some compatibility when NVMe passthrough is NOT enabled.
         }IdentifyData; //THis MUST be at an even 8 byte offset to be accessed correctly!!!
@@ -912,7 +953,9 @@ extern "C"
             uint8_t padd[4];
         }ataSenseData;
         uint8_t lastCommandSenseData[SPC3_SENSE_LEN];//This holds the sense data for the last command to be sent to the device. This is not necessarily the last function called as functions may send multiple commands to the device.
-        uint8_t padd5[4];
+        bool dpoFUAvalid;
+        bool dpoFUA;//for use in cmds.h read/write functions. May be useful elsewhere too. This is not initialized by fill drive info at this time. It is populated when calling read_LBA or write_LBA.
+        uint8_t padd5[2];
         struct {
             uint32_t lastNVMeCommandSpecific;//DW0 of command completion. Not all OS's return this so it is not always valid...only really useful for SNTL when it is used. Linux, Solaris, FreeBSD, UEFI. Windows is the problem child here.
             uint32_t lastNVMeStatus;//DW3 of command completion. Not all OS's return this so it is not always valid...only really useful for SNTL when it is used. Linux, Solaris, FreeBSD, UEFI. Windows is the problem child here.
@@ -947,9 +990,7 @@ extern "C"
         UEFI_PASSTHROUGH_SCSI,
         UEFI_PASSTHROUGH_SCSI_EXT,
         UEFI_PASSTHROUGH_ATA,
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         UEFI_PASSTHROUGH_NVME,
-#endif
     }eUEFIPassthroughType;
 #endif
 
@@ -965,6 +1006,7 @@ extern "C"
         WIN_IOCTL_IDE_PASSTHROUGH_ONLY,//Only the old & undocumented IDE pass-through is supported. Do not use this unless absolutely nothing else works.
         WIN_IOCTL_SMART_AND_IDE,//Only the legacy SMART and IDE IOCTLs are supported, so 28bit limitations abound
         WIN_IOCTL_STORAGE_PROTOCOL_COMMAND, //Win10 + only. Should be used with NVMe. Might work with SCSI or ATA, but that is unknown...development hasn't started for this yet. Just a placeholder - TJE
+        WIN_IOCTL_BASIC,//Very basic and does no real pass-through commands. It just reports enough data to keep things more or less "happy". Calling into other MSFT calls to do everything necessary. SCSI only device type at this time. - TJE
     }eWindowsIOCTLType;
 
     typedef enum _eWindowsIOCTLMethod
@@ -979,11 +1021,14 @@ extern "C"
     //forward declare csmi info to avoid including csmi_helper.h
     typedef struct _csmiDeviceInfo csmiDeviceInfo,*ptrCsmiDeviceInfo;
 
+#define OS_HANDLE_NAME_MAX_LENGTH 256
+#define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
+#define OS_SECOND_HANDLE_NAME_LENGTH 30
     // \struct typedef struct _OSDriveInfo
     typedef struct _OSDriveInfo
     {
-        char                name[256];//handle name (string)
-        char                friendlyName[24];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
+        char                name[OS_HANDLE_NAME_MAX_LENGTH];//handle name (string)
+        char                friendlyName[OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH];//Handle name in a shorter/more friendly format. Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
         eOSType             osType;//useful for lower layers to do OS specific things
         uint8_t             minimumAlignment;//This is a power of 2 value representing the byte alignment required. 0 - no requirement, 1 - single byte alignment, 2 - word, 4 - dword, 8 - qword, 16 - 128bit aligned
         uint8_t padd0[3];
@@ -1004,11 +1049,9 @@ extern "C"
                 uint16_t port;
                 uint16_t portMultiplierPort;
             }ata;
-            #if !defined (DISABLE_NVME_PASSTHROUGH)
             struct _nvmeAddress{
                 uint32_t namespaceID;
             }nvme;
-            #endif
             uint8_t raw[24];
         }address;
         uint16_t            controllerNum;//used to figure out which controller the above address applies to.
@@ -1034,8 +1077,8 @@ extern "C"
             uint8_t         lun;//logical unit number
         }scsiAddress;
         bool                secondHandleValid;//must be true for remaining fields to be used.
-        char                secondName[30];
-        char                secondFriendlyName[30];
+        char                secondName[OS_SECOND_HANDLE_NAME_LENGTH];
+        char                secondFriendlyName[OS_SECOND_HANDLE_NAME_LENGTH];
         bool                secondHandleOpened;
         #if defined(VMK_CROSS_COMP)
         /**
@@ -1086,13 +1129,16 @@ extern "C"
         uint32_t adapterMaxTransferSize;//Bytes. Returned by querying for adapter properties. Can be used to know when trying to request more than the adapter or driver supports.
         bool openFabricsNVMePassthroughSupported;//If true, then nvme commands can be issued using the open fabrics NVMe passthrough IOCTL
         bool intelNVMePassthroughSupported;//if true, this is a device that supports intel's nvme passthrough, but doesn't show up as full features with CSMI as expected otherwise.
+        bool fwdlMiniportSupported;//Miniport IOCTL for FWDL is supported. This should be in the structure above, but it is here for compatibility at this time - TJE
+        HANDLE forceUnitAccessRWfd;//used for os_read and os_Write when using the force unit access option
+        uint32_t volumeBitField;//This is a bitfield that is stored to prevent rereading, mounting, waking all systems on the system. Since we read this up front, this will be stored so taht each partition on a device can be unmouted later if necessary. - TJE
         //TODO: Store the device path! This may occasionally be useful to have. Longest one will probably be no more that MAX_DEVICE_ID_LEN characters. (This is defined as 200)
         //padding to keep same size as other OSs. This is to keep things similar across OSs.
         //Variable sizes based on 32 vs 64bit since handle is a void*
         #if defined (_WIN64)
-            uint8_t paddWin[47];
+            uint8_t paddWin[34];
         #else
-            uint8_t paddWin[55];
+            uint8_t paddWin[46];
         #endif //Win64 for padding
         #elif defined (__FreeBSD__)
         int fd;//used when cam is not being used (legacy ATA or NVMe IO without CAM....which may not be supported, but kept here just in case)
@@ -1243,6 +1289,7 @@ extern "C"
         USB_Vendor_ChipsBank                            = 0x1E3D,
         USB_Vendor_Via_Labs                             = 0x2109,
         USB_Vendor_Dell                                 = 0x413C,
+        USB_Vendor_Kingston_Generic                     = 0x8888,
         // Add new enumerations above this line!
         USB_Vendor_MaxValue                             = 0xFFFF
     } eUSBVendorIDs;
@@ -1282,7 +1329,8 @@ extern "C"
         //Recently Added
         SEAGATE_VENDOR_F = BIT18,
         SEAGATE_VENDOR_G = BIT19,
-        SEAGATE_VENDOR_H = BIT20
+        SEAGATE_VENDOR_H = BIT20,
+        SEAGATE_VENDOR_SSD_PJ = BIT21, //Older enterprise NVMe drives that had some unique capabilities
     }eSeagateFamily;
 
     //The scan flags should each be a bit in a 32bit unsigned integer.
@@ -1340,7 +1388,7 @@ extern "C"
         ZM_ACTION_RESET_WRITE_POINTERS  = 0x04,//non data-out
     }eZMAction;
 
-    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported();
+    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void);
 
     //NOTE: This is only possible in some OS's! If you request this and it's not supported, OS_TIMEOUT_TOO_LARGE is returned.
     #define INFINITE_TIMEOUT_VALUE UINT32_MAX
@@ -1484,7 +1532,6 @@ extern "C"
     //!   \param[in] scanVerbosity = the verbosity to run the scan at
     //!
     //  Exit:
-    //!   \return VOID
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityLevels scanVerbosity);

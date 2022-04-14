@@ -67,136 +67,135 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{7DAC7F63-E808-47FD-BEEB-33E4A870008B}</ProjectGuid>
-    <RootNamespace>opensea-transport</RootNamespace>
-    <ProjectName>opensea-transportLib</ProjectName>
-    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+    <ProjectGuid>{EC785B2D-14C3-4AAF-AF33-595BFC96343C}</ProjectGuid>
+    <RootNamespace>opensea-transport-DLL</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WindowsSDKDesktopARMSupport>true</WindowsSDKDesktopARMSupport>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
+    <WindowsSDKDesktopARMSupport>true</WindowsSDKDesktopARMSupport>
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WindowsSDKDesktopARM64Support>true</WindowsSDKDesktopARM64Support>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
+    <WindowsSDKDesktopARM64Support>true</WindowsSDKDesktopARM64Support>
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WindowsSDKDesktopARMSupport>true</WindowsSDKDesktopARMSupport>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
+    <WindowsSDKDesktopARMSupport>true</WindowsSDKDesktopARMSupport>
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WindowsSDKDesktopARM64Support>true</WindowsSDKDesktopARM64Support>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
+    <WindowsSDKDesktopARM64Support>true</WindowsSDKDesktopARM64Support>
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <WindowsSDKDesktopARMSupport>true</WindowsSDKDesktopARMSupport>
     <CharacterSet>MultiByte</CharacterSet>
+    <WindowsSDKDesktopARMSupport>true</WindowsSDKDesktopARMSupport>
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <WindowsSDKDesktopARM64Support>true</WindowsSDKDesktopARM64Support>
     <CharacterSet>MultiByte</CharacterSet>
+    <WindowsSDKDesktopARM64Support>true</WindowsSDKDesktopARM64Support>
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <WindowsSDKDesktopARMSupport>true</WindowsSDKDesktopARMSupport>
     <CharacterSet>MultiByte</CharacterSet>
+    <WindowsSDKDesktopARMSupport>true</WindowsSDKDesktopARMSupport>
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <WindowsSDKDesktopARM64Support>true</WindowsSDKDesktopARM64Support>
     <CharacterSet>MultiByte</CharacterSet>
+    <WindowsSDKDesktopARM64Support>true</WindowsSDKDesktopARM64Support>
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
     <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
     <SpectreMitigation>false</SpectreMitigation>
@@ -254,83 +253,83 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\LIB\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\DLL\</OutDir>
     <TargetName>opensea-transport</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
-    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\LIB\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\DLL\</OutDir>
     <TargetName>opensea-transport</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
-    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\LIB\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\DLL\</OutDir>
     <TargetName>opensea-transport</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">
-    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\LIB\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\DLL\</OutDir>
     <TargetName>opensea-transport</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">
-    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\LIB\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\DLL\</OutDir>
     <TargetName>opensea-transport</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">
-    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\LIB\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\DLL\</OutDir>
     <TargetName>opensea-transport</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\LIB\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\DLL\</OutDir>
     <TargetName>opensea-transport</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">
-    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\LIB\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\DLL\</OutDir>
     <TargetName>opensea-transport</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\LIB\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\DLL\</OutDir>
     <TargetName>opensea-transport</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
-    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\LIB\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\DLL\</OutDir>
     <TargetName>opensea-transport</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
-    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\LIB\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\DLL\</OutDir>
     <TargetName>opensea-transport</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">
-    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\LIB\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\DLL\</OutDir>
     <TargetName>opensea-transport</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">
-    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\LIB\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\DLL\</OutDir>
     <TargetName>opensea-transport</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">
-    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\LIB\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\DLL\</OutDir>
     <TargetName>opensea-transport</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\LIB\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\DLL\</OutDir>
     <TargetName>opensea-transport</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">
-    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\LIB\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\DLL\</OutDir>
     <TargetName>opensea-transport</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -340,18 +339,17 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_OFNVME;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204;4061;5105</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
       <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2017\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <ClCompile>
@@ -360,18 +358,17 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_OFNVME;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204;4061;5105</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
       <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <AdditionalDependencies>opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2017\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
@@ -380,18 +377,17 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_OFNVME;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204;4061;5105</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
       <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <AdditionalDependencies>opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2017\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">
     <ClCompile>
@@ -400,19 +396,18 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_OFNVME;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204;4061;5105</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
       <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2017\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">
     <ClCompile>
@@ -421,19 +416,18 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_OFNVME;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204;4061;5105</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
       <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <AdditionalDependencies>opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2017\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">
     <ClCompile>
@@ -442,19 +436,18 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_OFNVME;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204;4061;5105</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
       <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <AdditionalDependencies>opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2017\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -463,20 +456,17 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_OFNVME;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204;4061;5105</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
       <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
-      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
-      <OmitFramePointers>false</OmitFramePointers>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2017\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">
     <ClCompile>
@@ -485,19 +475,18 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_OFNVME;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204;4061;5105</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
       <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2017\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -508,19 +497,19 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_OFNVME;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204;4061;5105</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2017\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
     <ClCompile>
@@ -531,19 +520,19 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_OFNVME;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204;4061;5105</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <AdditionalDependencies>opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2017\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <ClCompile>
@@ -554,19 +543,19 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_OFNVME;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204;4061;5105</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <AdditionalDependencies>opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2017\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">
     <ClCompile>
@@ -577,20 +566,20 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_OFNVME;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204;4061;5105</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2017\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">
     <ClCompile>
@@ -601,20 +590,20 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_OFNVME;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204;4061;5105</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <AdditionalDependencies>opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2017\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">
     <ClCompile>
@@ -625,20 +614,20 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_OFNVME;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204;4061;5105</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <AdditionalDependencies>opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2017\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -649,19 +638,19 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_OFNVME;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204;4061;5105</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2017\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">
     <ClCompile>
@@ -672,175 +661,21 @@
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>STATIC_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_OFNVME;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204;4061;5105</DisableSpecificWarnings>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/volatile:iso %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2017\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="..\..\..\..\src\asmedia_nvme_helper.c" />
-    <ClCompile Include="..\..\..\..\src\ata_cmds.c" />
-    <ClCompile Include="..\..\..\..\src\ata_helper.c" />
-    <ClCompile Include="..\..\..\..\src\ata_legacy_cmds.c" />
-    <ClCompile Include="..\..\..\..\src\cam_helper.c">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\src\cmds.c" />
-    <ClCompile Include="..\..\..\..\src\common_public.c" />
-    <ClCompile Include="..\..\..\..\src\csmi_helper.c" />
-    <ClCompile Include="..\..\..\..\src\csmi_legacy_pt_cdb_helper.c" />
-    <ClCompile Include="..\..\..\..\src\cypress_legacy_helper.c" />
-    <ClCompile Include="..\..\..\..\src\intel_rst_helper.c" />
-    <ClCompile Include="..\..\..\..\src\jmicron_nvme_helper.c" />
-    <ClCompile Include="..\..\..\..\src\nec_legacy_helper.c" />
-    <ClCompile Include="..\..\..\..\src\nvme_cmds.c" />
-    <ClCompile Include="..\..\..\..\src\nvme_helper.c" />
-    <ClCompile Include="..\..\..\..\src\of_nvme_helper.c" />
-    <ClCompile Include="..\..\..\..\src\prolific_legacy_helper.c" />
-    <ClCompile Include="..\..\..\..\src\psp_legacy_helper.c" />
-    <ClCompile Include="..\..\..\..\src\raid_scan_helper.c" />
-    <ClCompile Include="..\..\..\..\src\sata_helper_func.c" />
-    <ClCompile Include="..\..\..\..\src\sat_helper.c" />
-    <ClCompile Include="..\..\..\..\src\scsi_cmds.c" />
-    <ClCompile Include="..\..\..\..\src\scsi_helper.c" />
-    <ClCompile Include="..\..\..\..\src\sg_helper.c">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\src\sntl_helper.c" />
-    <ClCompile Include="..\..\..\..\src\ti_legacy_helper.c" />
-    <ClCompile Include="..\..\..\..\src\uefi_helper.c">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\src\usb_hacks.c" />
-    <ClCompile Include="..\..\..\..\src\uscsi_helper.c">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\src\vm_helper.c">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\src\vm_nvme_lib.c">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\src\vm_nvme_mgmt_common.c">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\src\win_helper.c" />
-  </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\asmedia_nvme_helper.h" />
     <ClInclude Include="..\..\..\..\include\ata_helper.h" />
@@ -947,8 +782,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\vendor\seagate\seagate_ata_types.h" />
-    <ClInclude Include="..\..\..\..\include\vendor\seagate\seagate_common_types.h" />
-    <ClInclude Include="..\..\..\..\include\vendor\seagate\seagate_scsi_types.h" />
     <ClInclude Include="..\..\..\..\include\version.h" />
     <ClInclude Include="..\..\..\..\include\vm_helper.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -1001,6 +834,163 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\win_helper.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\..\src\asmedia_nvme_helper.c" />
+    <ClCompile Include="..\..\..\..\src\ata_cmds.c" />
+    <ClCompile Include="..\..\..\..\src\ata_helper.c" />
+    <ClCompile Include="..\..\..\..\src\ata_legacy_cmds.c" />
+    <ClCompile Include="..\..\..\..\src\cam_helper.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\cmds.c" />
+    <ClCompile Include="..\..\..\..\src\common_public.c" />
+    <ClCompile Include="..\..\..\..\src\csmi_helper.c" />
+    <ClCompile Include="..\..\..\..\src\csmi_legacy_pt_cdb_helper.c" />
+    <ClCompile Include="..\..\..\..\src\cypress_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\intel_rst_helper.c" />
+    <ClCompile Include="..\..\..\..\src\jmicron_nvme_helper.c" />
+    <ClCompile Include="..\..\..\..\src\nec_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\nvme_cmds.c" />
+    <ClCompile Include="..\..\..\..\src\nvme_helper.c" />
+    <ClCompile Include="..\..\..\..\src\of_nvme_helper.c" />
+    <ClCompile Include="..\..\..\..\src\prolific_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\psp_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\raid_scan_helper.c" />
+    <ClCompile Include="..\..\..\..\src\sata_helper_func.c" />
+    <ClCompile Include="..\..\..\..\src\sat_helper.c" />
+    <ClCompile Include="..\..\..\..\src\scsi_cmds.c" />
+    <ClCompile Include="..\..\..\..\src\scsi_helper.c" />
+    <ClCompile Include="..\..\..\..\src\sg_helper.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\sntl_helper.c" />
+    <ClCompile Include="..\..\..\..\src\ti_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\uefi_helper.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\usb_hacks.c" />
+    <ClCompile Include="..\..\..\..\src\uscsi_helper.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\vm_helper.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\vm_nvme_lib.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\vm_nvme_mgmt_common.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\win_helper.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\..\src\cppdeps.pl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

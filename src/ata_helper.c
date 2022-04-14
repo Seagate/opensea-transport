@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -259,7 +259,7 @@ int send_ATA_SCT_Read_Write_Long(tDevice *device, eSCTRWLMode mode, uint64_t lba
 int send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode, uint64_t startLBA, uint64_t fillCount, uint8_t *pattern, uint64_t patternLength)
 {
     int ret = UNKNOWN;
-    uint8_t *writeSameBuffer = (uint8_t*)calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment);
+    uint8_t *writeSameBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!writeSameBuffer)
     {
         perror("Calloc failure!\n");
@@ -269,8 +269,8 @@ int send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode
     writeSameBuffer[0] = M_Byte0(SCT_WRITE_SAME);
     writeSameBuffer[1] = M_Byte1(SCT_WRITE_SAME);
     //function code
-    writeSameBuffer[2] = M_Byte0(functionCode);
-    writeSameBuffer[3] = M_Byte1(functionCode);
+    writeSameBuffer[2] = M_Byte0(C_CAST(uint16_t, functionCode));
+    writeSameBuffer[3] = M_Byte1(C_CAST(uint16_t, functionCode));
     //start
     writeSameBuffer[4] = M_Byte0(startLBA);
     writeSameBuffer[5] = M_Byte1(startLBA);
@@ -328,17 +328,17 @@ int send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode
         || functionCode == WRITE_SAME_BACKGROUND_USE_SINGLE_LOGICAL_SECTOR || functionCode == WRITE_SAME_FOREGROUND_USE_SINGLE_LOGICAL_SECTOR)
     {
         //send the pattern to the data transfer log
-        ret = send_ATA_SCT_Data_Transfer(device, XFER_DATA_OUT, pattern, (uint32_t)(patternLength * device->drive_info.deviceBlockSize));
+        ret = send_ATA_SCT_Data_Transfer(device, XFER_DATA_OUT, pattern, C_CAST(uint32_t, patternLength * device->drive_info.deviceBlockSize));
     }
 
-    safe_Free_aligned(writeSameBuffer);
+    safe_Free_aligned(writeSameBuffer)
     return ret;
 }
 
 int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit)
 {
     int ret = UNKNOWN;
-    uint8_t *errorRecoveryBuffer = (uint8_t*)calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment);
+    uint8_t *errorRecoveryBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!errorRecoveryBuffer)
     {
         perror("Calloc failure!\n");
@@ -347,7 +347,7 @@ int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, 
     //if we are retrieving the current values, then we better have a good pointer...no point in sending the command if we don't
     if (functionCode == 0x0002 && !currentValue)
     {
-        safe_Free_aligned(errorRecoveryBuffer);
+        safe_Free_aligned(errorRecoveryBuffer)
         return BAD_PARAMETER;
     }
 
@@ -370,14 +370,14 @@ int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, 
     {
         *currentValue = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
     }
-    safe_Free_aligned(errorRecoveryBuffer);
+    safe_Free_aligned(errorRecoveryBuffer)
     return ret;
 }
 
 int send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags)
 {
     int ret = UNKNOWN;
-    uint8_t *featureControlBuffer = (uint8_t*)calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment);
+    uint8_t *featureControlBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!featureControlBuffer)
     {
         perror("Calloc Failure!\n");
@@ -386,7 +386,7 @@ int send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_
     //make sure we have valid pointers for state and optionFlags
     if (!state || !optionFlags)
     {
-        safe_Free_aligned(featureControlBuffer);
+        safe_Free_aligned(featureControlBuffer)
         return BAD_PARAMETER;
     }
     //clear the state and option flags out, unless we are setting something
@@ -426,7 +426,7 @@ int send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_
             *optionFlags = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
         }
     }
-    safe_Free_aligned(featureControlBuffer);
+    safe_Free_aligned(featureControlBuffer)
     return ret;
 }
 
@@ -742,12 +742,25 @@ void byte_Swap_ID_Data_Buffer(uint16_t *idData)
     }
 }
 
+//This is a quick check to assist with the fill in ATA drive info function to be more efficient
+static bool is_SAT_Invalid_Operation_Code(tDevice *device)
+{
+    bool invalidOP = false;
+    uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+    get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
+    if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x20 && ascq == 0x00)
+    {
+        invalidOP = true;
+    }
+    return invalidOP;
+}
+
 int fill_In_ATA_Drive_Info(tDevice *device)
 {
     int ret = UNKNOWN;
     //Both pointers pointing to the same data. 
     uint16_t *ident_word = &device->drive_info.IdentifyData.ata.Word000;
-    uint8_t *identifyData = (uint8_t *)&device->drive_info.IdentifyData.ata.Word000;
+    uint8_t *identifyData = C_CAST(uint8_t *, &device->drive_info.IdentifyData.ata.Word000);
 #ifdef _DEBUG
     printf("%s -->\n", __FUNCTION__);
 #endif
@@ -761,11 +774,11 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         //make sure we disable sending the A1h SAT CDB or we could accidentally send a "blank" command due to how most of these devices receive commands under different OSs or through translators.
         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
     }
-    if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
+    if ((SUCCESS == ata_Identify(device, C_CAST(uint8_t *, ident_word), sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero(C_CAST(uint8_t*, ident_word), 512)) || (!is_SAT_Invalid_Operation_Code(device) && SUCCESS == ata_Identify_Packet_Device(device, C_CAST(uint8_t *, ident_word), sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero(C_CAST(uint8_t*, ident_word), 512)))
     {
         retrievedIdentifyData = true;
     }
-    else
+    else if(!device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported)//retry only if this is not already set to true since the above commands would have been sent with 85h already
     {
         //TODO: Check the sense data to see if it was invalid operation code. If so, then the device does not support the A1h command.
         //If this failed, issue a test unit ready command, followed by switching to 16B sat commands. Most devices tested will support A1h and very few will not if they support SAT at all.
@@ -779,7 +792,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             }
             memset(identifyData, 0, 512);
             device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
-            if ((SUCCESS == ata_Identify(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)) || (SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)ident_word, sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero((uint8_t*)ident_word, 512)))
+            if ((SUCCESS == ata_Identify(device, C_CAST(uint8_t *, ident_word), sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero(C_CAST(uint8_t*, ident_word), 512)) || (!is_SAT_Invalid_Operation_Code(device) && SUCCESS == ata_Identify_Packet_Device(device, C_CAST(uint8_t *, ident_word), sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero(C_CAST(uint8_t*, ident_word), 512)))
             {
                 retrievedIdentifyData = true;
             }
@@ -791,7 +804,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         {
             device->drive_info.scsiVersion = SCSI_VERSION_SPC_5;//SPC5. This is what software translator will set at the moment. Can make this configurable later, but this should be ok
         }
-        //print_Data_Buffer((uint8_t*)ident_word, 512, true);
+        //print_Data_Buffer(C_CAST(uint8_t*, ident_word), 512, true);
         ret = SUCCESS;
         if (device->drive_info.lastCommandRTFRs.device & DEVICE_SELECT_BIT)//Checking for the device select bit being set to know it's device 1 (Not that we really need it). This may not always be reported correctly depending on the lower layers of the OS and hardware. - TJE
         {
@@ -872,6 +885,15 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                                        device->drive_info.IdentifyData.ata.Word110,\
                                        device->drive_info.IdentifyData.ata.Word111);
 
+        //Special case for SSD detection. One of these SSDs didn't set the media_type to SSD
+        //but it is an SSD. So this match will catch it when this happens. It should be uncommon to find though -TJE
+        if (device->drive_info.media_type != MEDIA_SSD && 
+            strlen(device->drive_info.bridge_info.childDriveMN) > 0 && (strstr(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") != NULL) && 
+            strlen(device->drive_info.bridge_info.childDriveFW) > 0 && (strstr(device->drive_info.bridge_info.childDriveFW, "UHFS") != NULL))
+        {
+            device->drive_info.media_type = MEDIA_SSD;
+        }
+
         //get the sector sizes from the identify data
         if (((ident_word[106] & BIT14) == BIT14) && ((ident_word[106] & BIT15) == 0)) //making sure this word has valid data
         {
@@ -894,7 +916,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 uint8_t sectorSizeExponent = 0;
                 //get the number of logical blocks per physical blocks
                 sectorSizeExponent = ident_word[106] & 0x000F;
-                *fillPhysicalSectorSize = (uint32_t)(*fillLogicalSectorSize * power_Of_Two(sectorSizeExponent));
+                *fillPhysicalSectorSize = C_CAST(uint32_t, *fillLogicalSectorSize * power_Of_Two(sectorSizeExponent));
             }
         }
         else
@@ -1203,11 +1225,11 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 {
                     uint8_t pageNumber = logBuffer[2];
                     uint16_t revision = M_BytesTo2ByteValue(logBuffer[1], logBuffer[0]);
-                    if (pageNumber == (uint8_t)ATA_ID_DATA_LOG_SUPPORTED_PAGES && revision >= 0x0001)
+                    if (pageNumber == C_CAST(uint8_t, ATA_ID_DATA_LOG_SUPPORTED_PAGES) && revision >= 0x0001)
                     {
                         //data is valid, so figure out supported pages
                         uint8_t listLen = logBuffer[8];
-                        for (uint16_t iter = 9; iter < (uint16_t)(listLen + 8) && iter < UINT16_C(512); ++iter)
+                        for (uint16_t iter = 9; iter < C_CAST(uint16_t, listLen + 8) && iter < UINT16_C(512); ++iter)
                         {
                             switch (logBuffer[iter])
                             {
@@ -1370,14 +1392,14 @@ uint32_t GetRevWord(uint8_t *tempbuf, uint32_t offset)
 
 uint16_t ata_Is_Extended_Power_Conditions_Feature_Supported(uint16_t *pIdentify)
 {
-    ptAtaIdentifyData pIdent = (ptAtaIdentifyData)pIdentify;
+    ptAtaIdentifyData pIdent = C_CAST(ptAtaIdentifyData, pIdentify);
     // BIT7 according to ACS 3 rv 5 for EPC
     return (pIdent->Word119 & BIT7);
 }
 
 uint16_t ata_Is_One_Extended_Power_Conditions_Feature_Supported(uint16_t *pIdentify)
 {
-    ptAtaIdentifyData pIdent = (ptAtaIdentifyData)pIdentify;
+    ptAtaIdentifyData pIdent = C_CAST(ptAtaIdentifyData, pIdentify);
     return (pIdent->Word120 & BIT7);
 
 }
@@ -1606,7 +1628,7 @@ bool is_Current_CHS_Info_Valid(tDevice *device)
 {
     bool chsSupported = true;
     uint8_t* identifyPtr = (uint8_t*)&device->drive_info.IdentifyData.ata.Word000;
-    uint16_t userAddressableCapacityCHS = M_BytesTo4ByteValue(identifyPtr[117], identifyPtr[116], identifyPtr[115], identifyPtr[114]);
+    uint32_t userAddressableCapacityCHS = M_BytesTo4ByteValue(identifyPtr[117], identifyPtr[116], identifyPtr[115], identifyPtr[114]);
     //Check words 1, 3, 6, 54, 55, 56, 58:57 for values
     if (!(device->drive_info.IdentifyData.ata.Word053 & BIT0) || //if this bit is set, then the current fields are valid. If not, they may or may not be valid
         device->drive_info.IdentifyData.ata.Word001 == 0 ||
@@ -1673,7 +1695,7 @@ int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_
             uint16_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word055;//from current ID configuration
             uint16_t sectorsPerTrack = device->drive_info.IdentifyData.ata.Word056;//from current ID configuration
             *lba = UINT32_MAX;
-            *lba = ((uint32_t)((uint32_t)((uint32_t)cylinder * (uint32_t)headsPerCylinder) + (uint32_t)head) * (uint32_t)sectorsPerTrack) + (uint32_t)sector - UINT32_C(1);
+            *lba = ((((C_CAST(uint32_t, cylinder)) * C_CAST(uint32_t, headsPerCylinder)) + C_CAST(uint32_t, head)) * C_CAST(uint32_t, sectorsPerTrack)) + C_CAST(uint32_t, sector) - UINT32_C(1);
         }
         else
         {

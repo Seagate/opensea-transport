@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,7 +14,6 @@
 //        This file acts as a OS agnostic glue layer for different OSes. 
 
 #pragma once
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 //typedef unsigned int* __uintptr_t;
 #include "common_public.h"
 #if defined (__cplusplus)
@@ -25,7 +24,7 @@ extern "C"
     #define NVME_IDENTIFY_DATA_LEN (4096)
     #define NVME_SMART_HEALTH_LOG_LEN (512)
     #define NVME_DWORD_SIZE (4)
-    #define NVME_ALL_NAMESPACES       (0xFFFFFFFFU)
+    #define NVME_ALL_NAMESPACES       UINT32_C(0xFFFFFFFF) //This was chosen over 0 for backwards compatibility - TJE
 
     #define NVME_MAX_FW_SLOTS         (7)
 
@@ -109,7 +108,8 @@ extern "C"
         uint8_t             availSpare;
         uint8_t             spareThresh;
         uint8_t             percentUsed;
-        uint8_t             rsvd6[26];
+        uint8_t             enduranceGroupCriticalWarning;
+        uint8_t             rsvd6[25];
         uint8_t             dataUnitsRead[16];
         uint8_t             dataUnitsWritten[16];
         uint8_t             hostReads[16];
@@ -311,8 +311,6 @@ extern "C"
        uint8_t                      vendorSpecificReserved[456];        // 56-511
     } nvmeSuperCapDramSmart;
 
-    #define BLOCK_SIZE      512
-
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__) 
     #pragma pack(push, 1)
     #endif
@@ -384,6 +382,7 @@ extern "C"
         NVME_CMD_COMPARE                = 0x05,
         NVME_CMD_WRITE_ZEROS            = 0x08,
         NVME_CMD_DATA_SET_MANAGEMENT    = 0x09,
+        NVME_CMD_VERIFY                 = 0x0C,
         NVME_CMD_RESERVATION_REGISTER   = 0x0D,
         NVME_CMD_RESERVATION_REPORT     = 0x0E,
         NVME_CMD_RESERVATION_ACQUIRE    = 0x11,
@@ -561,13 +560,29 @@ extern "C"
 
     typedef enum _eNvmeLogs
     {
+        NVME_LOG_SUPPORTED_PAGES_ID = 0x00,
         NVME_LOG_ERROR_ID = 0x01,
         NVME_LOG_SMART_ID = 0x02,
         NVME_LOG_FW_SLOT_ID = 0x03,
         NVME_LOG_CMD_SPT_EFET_ID = 0x05,
-        NVME_LOG_DEV_SELF_TEST = 0x06,
-        NVME_LOG_TELEMETRY_HOST = 0x07,
-        NVME_LOG_TELEMETRY_CTRL = 0x08,
+        NVME_LOG_DEV_SELF_TEST_ID = 0x06,
+        NVME_LOG_TELEMETRY_HOST_ID = 0x07,
+        NVME_LOG_TELEMETRY_CTRL_ID = 0x08,
+        NVME_LOG_ENDURANCE_GROUP_INFO_ID = 0x09,
+        NVME_LOG_PREDICTABLE_LATENCY_PER_NVM_SET_ID = 0x0A,
+        NVME_LOG_PREDICTABLE_LATENCY_EVENT_AGREGATE_ID = 0x0B,
+        NVME_LOG_ASYMMETRIC_NAMESPACE_ACCESS_ID = 0x0C,
+        NVME_LOG_PERSISTENT_EVENT_LOG_ID = 0x0D,
+        NVME_LOG_COMMAND_SET_SPECIFIC_ID = 0x0E,
+        NVME_LOG_ENDURANCE_GROUP_EVENT_AGREGATE_ID = 0x0F,
+        NVME_LOG_MEDIA_UNIT_STATUS_ID = 0x10,
+        NVME_LOG_SUPPORTED_CAPACITY_CONFIGURATION_LIST_ID = 0x11,
+        NVME_LOG_FETURE_IDENTIFIERS_SUPPORTED_AND_EFFECTS_ID = 0x12,
+        NVME_LOG_MN_COMMANDS_SUPPORTED_AND_EFFECTS_ID = 0x13,
+        NVME_LOG_COMMAND_AND_FEATURE_LOCKDOWN_ID = 0x14,
+        NVME_LOG_BOOT_PARTITION_ID = 0x15,
+        NVME_LOG_ROTATIONAL_MEDIA_INFORMATION_ID = 0x16,
+        NVME_LOG_DISCOVERY_ID = 0x70,
         NVME_LOG_RESERVATION_ID = 0x80,
         NVME_LOG_SANITIZE_ID = 0x81,
     }eNvmeLogs;
@@ -606,6 +621,7 @@ extern "C"
         uint8_t     sel; // Select Value SEL Bit 10:08 are used in Get Features. 
         uint8_t     fid; // Feature Identifier used for both Get/Set
         uint32_t    featSetGetValue; //Value returned or to be set as Dword11
+        uint32_t    nsid;
     } nvmeFeaturesCmdOpt;
 
 #if 0
@@ -726,6 +742,7 @@ extern "C"
         NVME_SCT_GENERIC_COMMAND_STATUS = 0,
         NVME_SCT_COMMAND_SPECIFIC_STATUS = 1,
         NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS = 2,
+        NVME_SCT_PATH_RELATED_STATUS    = 3,
         //3-6 are reserved
         NVME_SCT_VENDOR_SPECIFIC_STATUS = 7
     }eNvmeStatusCodeType;
@@ -762,12 +779,22 @@ extern "C"
         NVME_GEN_SC_SANITIZE_IN_PROGRESS                        = 0x1D,
         NVME_GEN_SC_SGL_DATA_BLOCK_GRANULARITY_INVALID          = 0x1E,
         NVME_GEN_SC_COMMAND_NOT_SUPPORTED_FOR_QUEUE_IN_CMB      = 0x1F,
+        NVME_GEN_SC_NS_IS_WRITE_PROTECTED                       = 0x20,
+        NVME_GEN_SC_COMMAND_INTERRUPTED                         = 0x21,
+        NVME_GEN_SC_TRANSIENT_TRANSPORT_ERROR                   = 0x22,
+        NVME_GEN_SC_COMMAND_PROHIBITED_BY_CMD_AND_FEAT_LOCKDOWN = 0x23,
+        NVME_GEN_SC_ADMIN_COMMAND_MEDIA_NOT_READY               = 0x24,
         //80-BF are NVM command set specific
         NVME_GEN_SC_LBA_RANGE_                                  = 0x80,
         NVME_GEN_SC_CAP_EXCEEDED_                               = 0x81,
         NVME_GEN_SC_NS_NOT_READY_                               = 0x82,
         NVME_GEN_SC_RESERVATION_CONFLICT                        = 0x83,
         NVME_GEN_SC_FORMAT_IN_PROGRESS                          = 0x84,
+        NVME_GEN_SC_INVALID_VALUE_SIZE                          = 0x85,
+        NVME_GEN_SC_INVALID_KEY_SIZE                            = 0x86,
+        NVME_GEN_SC_KV_KEY_DOES_NOT_EXIST                       = 0x87,
+        NVME_GEN_SC_UNRECOVERED_ERROR                           = 0x88,
+        NVME_GEN_SC_KEY_EXISTS                                  = 0x89,
     } eNvmeReturnStatus;
 
     typedef enum _eNvmeCmdSpecificStatus 
@@ -806,10 +833,34 @@ extern "C"
         NVME_CMD_SP_SC_INVALID_SECONDARY_CONTROLLER_STATE       = 0x20,
         NVME_CMD_SP_SC_INVALID_NUMBER_OF_CONTROLLER_RESOURCES   = 0x21,
         NVME_CMD_SP_SC_INVALID_RESOURCE_IDENTIFIER              = 0x22,
+        NVME_CMD_SP_SC_SANITIZE_PROHIBITED_WHILE_PERSISTENT_MEMORY_REGION_IS_ENABLED    = 0x23,
+        NVME_CMD_SP_SC_ANA_GROUP_IDENTIFIER_INVALID              = 0x24,
+        NVME_CMD_SP_SC_ANA_ATTACH_FAILED                        = 0x25,
+        NVME_CMD_SP_SC_INSUFFICIENT_CAPACITY                    = 0x26,
+        NVME_CMD_SP_SC_NAMESPACE_ATTACHMENT_LIMIT_EXCEEDED      = 0x27,
+        NVME_CMD_SP_SC_PROHIBITION_OF_COMMAND_EXECUTION_NOT_SUPPORTED   = 0x28,
+        NVME_CMD_SP_SC_IO_COMMAND_SET_NOT_SUPPORTED             = 0x29,
+        NVME_CMD_SP_SC_IO_COMMAND_SET_NOT_ENABLED               = 0x2A,
+        NVME_CMD_SP_SC_IO_COMMAND_SET_COMBINATION_REJECTED      = 0x2B,
+        NVME_CMD_SP_SC_INVALID_IO_COMMAND_SET                   = 0x2C,
+        NVME_CMD_SP_SC_IDENTIFIER_UNAVAILABLE                   = 0x2D,
+        //70-7F are Directive Specific
+        // 
         //80-BF are NVM command set specific
+        //IO Commands
         NVME_CMD_SP_SC_CONFLICTING_ATTRIBUTES_                  = 0x80,
         NVME_CMD_SP_SC_INVALID_PROTECTION_INFORMATION           = 0x81,
         NVME_CMD_SP_SC_ATTEMPTED_WRITE_TO_READ_ONLY_RANGE       = 0x82,
+        NVME_CMD_SP_SC_COMMAND_SIZE_LIMIT_EXCEEDED              = 0x83,
+        NVME_CMD_SP_SC_ZONED_BOUNDARY_ERROR                     = 0xB8,
+        NVME_CMD_SP_SC_ZONE_IS_FULL                             = 0xB9,
+        NVME_CMD_SP_SC_ZONE_IS_READ_ONLY                        = 0xBA,
+        NVME_CMD_SP_SC_ZONE_IS_OFFLINE                          = 0xBB,
+        NVME_CMD_SP_SC_ZONE_INVALID_WRITE                       = 0xBC,
+        NVME_CMD_SP_SC_TOO_MANY_ACTIVE_ZONES                    = 0xBD,
+        NVME_CMD_SP_SC_TOO_MANY_OPEN_ZONES                      = 0xBE,
+        NVME_CMD_SP_SC_INVALID_ZONE_STATE_TRANSITION            = 0xBF,
+        //TODO: Fabrics Commands
     }eNvmeCmdSpecificStatus;
 
     typedef enum _eNvmeMediaDataErrStatus
@@ -821,8 +872,25 @@ extern "C"
         NVME_MED_ERR_SC_ETE_REFTAG_CHECK_                       = 0x84,
         NVME_MED_ERR_SC_COMPARE_FAILED_                         = 0x85,
         NVME_MED_ERR_SC_ACCESS_DENIED_                          = 0x86,
-        NVME_MED_ERR_SC_DEALLOCATED_OR_UNWRITTEN_LOGICAL_BLOCK  = 0x87
+        NVME_MED_ERR_SC_DEALLOCATED_OR_UNWRITTEN_LOGICAL_BLOCK  = 0x87,
+        NVME_MED_ERR_SC_END_TO_END_STORAGE_TAG_CHECK_ERROR      = 0x88,
     }eNvmeMediaDataErrStatus;
+
+    typedef enum _eNvmePathRelatedStatus
+    {
+        NVME_PATH_SC_INTERNAL_PATH_ERROR    = 0x00,
+        NVME_PATH_SC_ASYMMETRIC_ACCESS_PERSISTENT_LOSS  = 0x01,
+        NVME_PATH_SC_ASYMMETRIC_ACCESS_INACCESSIBLE = 0x02,
+        NVME_PATH_SC_ASYMMETRIC_ACCESS_TRANSITION   = 0x03,
+        //60-6F are Controller detected Pathing errors
+        NVME_PATH_SC_CONTROLLER_PATHING_ERROR   = 0x60,
+        //70-7F are Host detected Pathing errors
+        NVME_PATH_SC_HOST_PATHING_ERROR = 0x70,
+        NVME_PATH_SC_COMMAND_ABORTED_BY_HOST    = 0x71,
+        //80-BFh are other pathing errors
+        //c0-FFh are vendor specific
+    }eNvmePathRelatedStatus;
+
 
     //NVME_SC_DNR_          = 0x4000 //Where is this coming from???
 
@@ -1071,4 +1139,3 @@ typedef struct _fb_log_page_CF
 }
 #endif
 
-#endif

@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -25,7 +25,7 @@ int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields)
     ptrSenseDataFields localSenseFields = NULL;
     if (!pSenseFields)
     {
-        localSenseFields = (ptrSenseDataFields)calloc(1, sizeof(senseDataFields));
+        localSenseFields = C_CAST(ptrSenseDataFields, calloc(1, sizeof(senseDataFields)));
         if (!localSenseFields)
         {
             return MEMORY_FAILURE;
@@ -126,7 +126,7 @@ int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields)
 
     if (localSenseFieldsAllocated)
     {
-        safe_Free(localSenseFields);
+        safe_Free(localSenseFields)
     }
     return ret;
 }
@@ -384,7 +384,7 @@ int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit,
         memcpy(&overwriteBuffer[4], pattern, patternLengthBytes);
     }
     ret = scsi_Sanitize_Cmd(device, SCSI_SANITIZE_OVERWRITE, immediate, znr, allowUnrestrictedSanitizeExit, patternLengthBytes + 4, overwriteBuffer);
-    safe_Free_aligned(overwriteBuffer);
+    safe_Free_aligned(overwriteBuffer)
     return ret;
 }
 
@@ -792,7 +792,7 @@ int scsi_Write_Buffer(tDevice *device, eWriteBufferMode mode, uint8_t modeSpecif
 
     // Set up the CDB.
     cdb[OPERATION_CODE] = WRITE_BUFFER_CMD;
-    cdb[1] = (uint8_t)mode;
+    cdb[1] = C_CAST(uint8_t, mode);
     cdb[1] |= (modeSpecific & 0x07) << 5;
     cdb[2] = bufferID;
     cdb[3] = M_Byte2(bufferOffset);
@@ -3746,13 +3746,13 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    {
 //        cdb[1] |= BIT0;
 //    }
-//    cdb[2] = (uint8_t)(logicalBlockAddress >> 24);
-//    cdb[3] = (uint8_t)(logicalBlockAddress >> 16);
-//    cdb[4] = (uint8_t)(logicalBlockAddress >> 8);
-//    cdb[5] = (uint8_t)logicalBlockAddress;
+//    cdb[2] = C_CAST(uint8_t, logicalBlockAddress >> 24);
+//    cdb[3] = C_CAST(uint8_t, logicalBlockAddress >> 16);
+//    cdb[4] = C_CAST(uint8_t, logicalBlockAddress >> 8);
+//    cdb[5] = C_CAST(uint8_t, logicalBlockAddress);
 //    cdb[6] = groupNumber & 0x1F;
-//    cdb[7] = (uint8_t)(transferLength >> 8);
-//    cdb[8] = (uint8_t)transferLength;
+//    cdb[7] = C_CAST(uint8_t, transferLength >> 8);
+//    cdb[8] = C_CAST(uint8_t, transferLength);
 //    cdb[9] = 0;//control
 //
 //    // Set up the CTX
@@ -3848,14 +3848,14 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //        cdb[10] |= BIT0;
 //    }
 //    cdb[11] = RESERVED;
-//    cdb[12] = (uint8_t)(logicalBlockAddress >> 56);
-//    cdb[13] = (uint8_t)(logicalBlockAddress >> 48);
-//    cdb[14] = (uint8_t)(logicalBlockAddress >> 40);
-//    cdb[15] = (uint8_t)(logicalBlockAddress >> 32);
-//    cdb[16] = (uint8_t)(logicalBlockAddress >> 24);
-//    cdb[17] = (uint8_t)(logicalBlockAddress >> 16);
-//    cdb[18] = (uint8_t)(logicalBlockAddress >> 8);
-//    cdb[19] = (uint8_t)logicalBlockAddress;
+//    cdb[12] = C_CAST(uint8_t, logicalBlockAddress >> 56);
+//    cdb[13] = C_CAST(uint8_t, logicalBlockAddress >> 48);
+//    cdb[14] = C_CAST(uint8_t, logicalBlockAddress >> 40);
+//    cdb[15] = C_CAST(uint8_t, logicalBlockAddress >> 32);
+//    cdb[16] = C_CAST(uint8_t, logicalBlockAddress >> 24);
+//    cdb[17] = C_CAST(uint8_t, logicalBlockAddress >> 16);
+//    cdb[18] = C_CAST(uint8_t, logicalBlockAddress >> 8);
+//    cdb[19] = C_CAST(uint8_t, logicalBlockAddress);
 //    cdb[20] = RESERVED;
 //    cdb[21] = RESERVED;
 //    cdb[22] = RESERVED;
@@ -3864,10 +3864,10 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    cdb[25] = RESERVED;
 //    cdb[26] = RESERVED;
 //    cdb[27] = RESERVED;
-//    cdb[28] = (uint8_t)(transferLength >> 24);
-//    cdb[29] = (uint8_t)(transferLength >> 16);
-//    cdb[30] = (uint8_t)(transferLength >> 8);
-//    cdb[31] = (uint8_t)transferLength;
+//    cdb[28] = C_CAST(uint8_t, transferLength >> 24);
+//    cdb[29] = C_CAST(uint8_t, transferLength >> 16);
+//    cdb[30] = C_CAST(uint8_t, transferLength >> 8);
+//    cdb[31] = C_CAST(uint8_t, transferLength);
 //
 //    // Set up the CTX
 //    scsiIoCtx.device = device;
@@ -4021,7 +4021,6 @@ int scsi_Zone_Management_In(tDevice *device, eZMAction action, uint8_t actionSpe
         break;
     default://Need to add new zm actions as they are defined in the spec
         return BAD_PARAMETER;
-        break;
     }
 
     if (dataDir == XFER_NO_DATA)
@@ -4079,7 +4078,6 @@ int scsi_Zone_Management_Out(tDevice *device, eZMAction action, uint8_t actionSp
     case ZM_ACTION_REPORT_ZONES://this is a zone management in command, so return bad parameter
     default://Need to add new zm actions as they are defined in the spec
         return BAD_PARAMETER;
-        break;
     }
 
     if (dataDir == XFER_NO_DATA)
@@ -4320,7 +4318,7 @@ int scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t 
 {
     int ret = FAILURE;
     uint8_t cdb[CDB_LEN_10] = { 0 };
-    cdb[OPERATION_CODE] = 0x5E;
+    cdb[OPERATION_CODE] = PERSISTENT_RESERVE_IN_CMD;
     //set the service action
     cdb[1] = M_GETBITRANGE(serviceAction, 4, 0);
     //reserved
@@ -4337,7 +4335,7 @@ int scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t 
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Persistent Reserve In - %" PRIu8 "\n", (uint8_t)M_GETBITRANGE(serviceAction, 4, 0));
+        printf("Sending SCSI Persistent Reserve In - %" PRIu8 "\n", C_CAST(uint8_t, M_GETBITRANGE(serviceAction, 4, 0)));
     }
     //send the command
     if (ptrData && allocationLength)
@@ -4355,11 +4353,11 @@ int scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t 
     return ret;
 }
 
-int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t scope, uint8_t type, uint16_t parameterListLength, uint8_t *ptrData)
+int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t scope, uint8_t type, uint32_t parameterListLength, uint8_t *ptrData)
 {
     int ret = FAILURE;
     uint8_t cdb[CDB_LEN_10] = { 0 };
-    cdb[OPERATION_CODE] = 0x5E;
+    cdb[OPERATION_CODE] = PERSISTENT_RESERVE_OUT_CMD;
     //set the service action
     cdb[1] = M_GETBITRANGE(serviceAction, 4, 0);
     //scope & type
@@ -4367,9 +4365,9 @@ int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t 
     //reserved
     cdb[3] = RESERVED;
     cdb[4] = RESERVED;
-    cdb[5] = RESERVED;
-    cdb[6] = RESERVED;
     //allocation length
+    cdb[5] = M_Byte3(parameterListLength);
+    cdb[6] = M_Byte2(parameterListLength);
     cdb[7] = M_Byte1(parameterListLength);
     cdb[8] = M_Byte0(parameterListLength);
     //control
@@ -4377,7 +4375,7 @@ int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t 
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Persistent Reserve Out - %" PRIu8 "\n", (uint8_t)M_GETBITRANGE(serviceAction, 4, 0));
+        printf("Sending SCSI Persistent Reserve Out - %" PRIu8 "\n", C_CAST(uint8_t, M_GETBITRANGE(serviceAction, 4, 0)));
     }
     //send the command
     if (ptrData && parameterListLength)
@@ -4391,6 +4389,30 @@ int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Persistent Reserve Out", ret);
+    }
+    return ret;
+}
+
+int scsi_Rezero_Unit(tDevice* device)
+{
+    int ret = FAILURE;
+    uint8_t cdb[CDB_LEN_6] = { 0 };
+    cdb[OPERATION_CODE] = REZERO_UNIT_CMD;
+    cdb[1] = RESERVED;//technically has lun in here, but that is old SCSI2 ism that is long gone and is autofilled by low-level drivers on these old devices -TJE
+    cdb[2] = RESERVED;
+    cdb[3] = RESERVED;
+    cdb[4] = RESERVED;
+    cdb[5] = 0;
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending SCSI Rezero Unit\n");
+    }
+    //send the command
+    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Rezero Unit", ret);
     }
     return ret;
 }

@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -314,7 +314,7 @@ int ata_Legacy_Set_Max_Address_CHS(tDevice *device, uint16_t newMaxCylinder, uin
     ataCommandOptions.dataSize = 0;
     ataCommandOptions.ptrData = NULL;
     ataCommandOptions.tfr.CommandStatus = ATA_SET_MAX;
-    ataCommandOptions.tfr.ErrorFeature = (uint8_t)HPA_SET_MAX_ADDRESS;
+    ataCommandOptions.tfr.ErrorFeature = C_CAST(uint8_t, HPA_SET_MAX_ADDRESS);
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;

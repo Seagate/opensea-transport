@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -17,7 +17,7 @@ int load_Bin_Buf( char *filename, void *myBuf, size_t bufSize )
 {
     //int ret = UNKNOWN;
     FILE     *fp;
-    uint32_t bytesRead = 0;
+    int bytesRead = 0;
 
     //Open file
 
@@ -29,7 +29,7 @@ int load_Bin_Buf( char *filename, void *myBuf, size_t bufSize )
     fseek(fp, 0, SEEK_SET); //should open to start but hey
 
     //Read file contents into buffer
-    bytesRead = (uint32_t)fread(myBuf, 1, bufSize, fp);
+    bytesRead = C_CAST(int, fread(myBuf, 1, bufSize, fp));//I don't like this. This should return size_t, but I don't want to change the API too much right now -TJE
     fclose(fp);
 
     return bytesRead;
@@ -162,7 +162,7 @@ bool scan_Interface_Type_Filter(tDevice *device, uint32_t scanFlags)
 
 void write_JSON_To_File(void *customData, char *message)
 {
-    FILE *jsonFile = (FILE*)customData;
+    FILE *jsonFile = C_CAST(FILE*, customData);
     if (jsonFile)
     {
         //fwrite(message, 1, strlen(message), jsonFile);
@@ -191,7 +191,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
     {
         if (deviceCount > 0)
         {
-            tDevice * deviceList = (tDevice*)calloc_aligned(deviceCount, sizeof(tDevice), 8);
+            tDevice * deviceList = C_CAST(tDevice*, calloc_aligned(deviceCount, sizeof(tDevice), 8));
             versionBlock version;
             if (!deviceList)
             {
@@ -233,22 +233,48 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             char fileNameAndPath[OPENSEA_PATH_MAX] = { 0 };
                             if (outputInfo->outputPath && *outputInfo->outputPath && strlen(*outputInfo->outputPath))
                             {
-                                strcpy(fileNameAndPath, *outputInfo->outputPath);
-                                strcat(fileNameAndPath, "/");
+                                snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s/", *outputInfo->outputPath);
                             }
                             if (outputInfo->outputFileName && *outputInfo->outputFileName && strlen(*outputInfo->outputFileName))
                             {
-                                strcat(fileNameAndPath, *outputInfo->outputFileName);
+                                char *dup = strdup(fileNameAndPath);
+                                if(dup)
+                                {
+                                    snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s%s", dup, *outputInfo->outputFileName);
+                                    safe_Free(dup)
+                                }
+                                else
+                                {
+                                    printf("Error occurred while trying to allocate memory for text output\n");
+                                }
                             }
                             else
                             {
-                                strcat(fileNameAndPath, "scanOutput");
+                                char *dup = strdup(fileNameAndPath);
+                                if(dup)
+                                {
+                                    snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%sscanOutput", dup);
+                                    safe_Free(dup)
+                                }
+                                else
+                                {
+                                    printf("An error occurred while trying to create scan output\n");
+                                }
                             }
-                            strcat(fileNameAndPath, ".txt");
+                            char *dup = strdup(fileNameAndPath);
+                            if(dup)
+                            {
+                                snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s.txt", dup);
+                                safe_Free(dup)
+                            }
+                            else
+                            {
+                                printf("An error occurred while trying to create scan output .txt\n");
+                            }
                             outputInfo->outputFilePtr = fopen(fileNameAndPath, "w+");
                             if (!(outputInfo->outputFilePtr))
                             {
-                                safe_Free(deviceList);
+                                safe_Free_aligned(deviceList)
                                 perror("could not open file!");
                                 return;
                             }
@@ -329,11 +355,12 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
 #endif
                     if (scan_Drive_Type_Filter(&deviceList[devIter], flags) && scan_Interface_Type_Filter(&deviceList[devIter], flags))
                     {
-                        char displayHandle[256] = { 0 };
+#define SCAN_DISPLAY_HANDLE_STRING_LENGTH 256
+                        char displayHandle[SCAN_DISPLAY_HANDLE_STRING_LENGTH] = { 0 };
 #if defined(_WIN32)
-                        strcpy(displayHandle, deviceList[devIter].os_info.friendlyName);
+                        snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s", deviceList[devIter].os_info.friendlyName);
 #else
-                        strcpy(displayHandle, deviceList[devIter].os_info.name);
+                        snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s", deviceList[devIter].os_info.name);
 #endif
 #if defined (__linux__) && !defined(VMK_CROSS_COMP) && !defined(UEFI_C_SOURCE)
                         if ((flags & SG_TO_SD) > 0)
@@ -343,12 +370,10 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             if (SUCCESS == map_Block_To_Generic_Handle(displayHandle, &genName, &blockName))
                             {
                                 memset(displayHandle, 0, sizeof(displayHandle));
-                                strcpy(displayHandle, genName);
-                                strcat(displayHandle, "<->");
-                                strcat(displayHandle, blockName);
+                                snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s<->%s", genName, blockName);
                             }
-                            safe_Free(genName);
-                            safe_Free(blockName);
+                            safe_Free(genName)
+                            safe_Free(blockName)
                         }
                         else if ((flags & SD_HANDLES) > 0)
                         {
@@ -356,15 +381,15 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             char *blockName = NULL;
                             if (SUCCESS == map_Block_To_Generic_Handle(displayHandle, &genName, &blockName))
                             {
-                                memset(displayHandle, 0, sizeof(displayHandle));
-                                sprintf(displayHandle, "/dev/%s", blockName);
+                                memset(displayHandle, 0, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
+                                snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "/dev/%s", blockName);
                             }
-                            safe_Free(genName);
-                            safe_Free(blockName);
+                            safe_Free(genName)
+                            safe_Free(blockName)
                         }
 #endif
                         char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
-                        strcpy(printable_sn, deviceList[devIter].drive_info.serialNumber);
+                        snprintf(printable_sn, SERIAL_NUM_LEN + 1, "%s", deviceList[devIter].drive_info.serialNumber);
                         //if seagate scsi, need to truncate to 8 digits
                         if (deviceList[devIter].drive_info.drive_type == SCSI_DRIVE && is_Seagate_Family(&deviceList[devIter]) == SEAGATE)
                         {
@@ -419,8 +444,13 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                         fclose(outputInfo->outputFilePtr);
                     }
                 }
+                //close all device handles
+                for (uint32_t deviceIter = 0; deviceIter < deviceCount; ++deviceIter)
+                {
+                    close_Device(&deviceList[deviceIter]);
+                }
             }
-            safe_Free_aligned(deviceList);
+            safe_Free_aligned(deviceList)
         }
         else
         {
@@ -476,7 +506,7 @@ int get_Version_Block(versionBlock * blk)
     }
 }
 
-void set_IEEE_OUI(uint32_t* ieeeOUI, tDevice *device, bool USBchildDrive)
+static void set_IEEE_OUI(uint32_t* ieeeOUI, tDevice *device, bool USBchildDrive)
 {
     uint8_t naa = 0;
     uint64_t wwn = 0;
@@ -488,15 +518,15 @@ void set_IEEE_OUI(uint32_t* ieeeOUI, tDevice *device, bool USBchildDrive)
     {
         wwn = device->drive_info.bridge_info.childWWN;
     }
-    naa = (uint8_t)((wwn & 0xF000000000000000ULL) >> 60);
+    naa = C_CAST(uint8_t, (wwn & UINT64_C(0xF000000000000000)) >> 60);
     switch (naa)
     {
     case 2://bytes 2,3,4
-        *ieeeOUI = (uint32_t)((wwn & 0x0000FFFFFF000000ULL) >> 24);
+        *ieeeOUI = C_CAST(uint32_t, (wwn & UINT64_C(0x0000FFFFFF000000)) >> 24);
         break;
     case 5://most common - ATA requires this and I think SCSI almost always matches    bytes 0 - 3 (half of 0, half of 3) see SPC4 for details
     case 6://same as NAA format 5
-        *ieeeOUI = (uint32_t)((wwn & 0x0FFFFFF000000000ULL) >> 36);
+        *ieeeOUI = C_CAST(uint32_t, (wwn & UINT64_C(0x0FFFFFF000000000)) >> 36);
         break;
     default:
         //don't do anything since we don't have a way to parse it out of here or it is a new format that wasn't defined when writing this
@@ -511,20 +541,20 @@ bool is_Maxtor_String(char* string)
     size_t stringLen = strlen(string);
     if (stringLen > 0)
     {
-        char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+        char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
         if (localString == NULL)
         {
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, string);
+        snprintf(localString, stringLen + 1, "%s", string);
         localString[stringLen] = '\0';
         convert_String_To_Upper_Case(localString);
         if (strlen(localString) >= maxtorLen && strncmp(localString, "MAXTOR", maxtorLen) == 0)
         {
             isMaxtor = true;
         }
-        safe_Free(localString);
+        safe_Free(localString)
     }
     return isMaxtor;
 }
@@ -579,20 +609,20 @@ bool is_Seagate_VendorID(tDevice *device)
     size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
     if (stringLen > 0)
     {
-        char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+        char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
         if (localString == NULL)
         {
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, device->drive_info.T10_vendor_ident);
+        snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
         localString[stringLen] = '\0';
         convert_String_To_Upper_Case(localString);
         if (strlen(localString) >= seagateLen && strncmp(localString, "SEAGATE", seagateLen) == 0)
         {
             isSeagate = true;
         }
-        safe_Free(localString);
+        safe_Free(localString)
     }
     return isSeagate;
 }
@@ -604,20 +634,20 @@ bool is_Seagate_MN(char* string)
     size_t stringLen = strlen(string);
     if (stringLen > 0)
     {
-        char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+        char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
         if (localString == NULL)
         {
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, string);
+        snprintf(localString, stringLen + 1, "%s", string);
         localString[stringLen] = '\0';
         //convert_String_To_Upper_Case(localString);//Removing uppercase converstion, thus making this a case sensitive comparison to fix issues with other non-Seagate products being detected as Seagate.
         if (strlen(localString) >= seagateLen && strncmp(localString, "ST", seagateLen) == 0)
         {
             isSeagate = true;
         }
-        safe_Free(localString);
+        safe_Free(localString)
     }
     return isSeagate;
 }
@@ -710,19 +740,19 @@ bool is_Conner_VendorID(tDevice *device)
     size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
     if (stringLen > 0)
     {
-        char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+        char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
         if (localString == NULL)
         {
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, device->drive_info.T10_vendor_ident);
+        snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
         localString[stringLen] = '\0';
         if (strlen(localString) >= connerLen && strncmp(localString, "CONNER", connerLen) == 0)
         {
             isConner = true;
         }
-        safe_Free(localString);
+        safe_Free(localString)
     }
     return isConner;
 }
@@ -760,19 +790,19 @@ bool is_CDC_VendorID(tDevice *device)
         size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
         if (stringLen > 0)
         {
-            char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+            char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
             if (localString == NULL)
             {
                 perror("calloc failure");
                 return false;
             }
-            strcpy(localString, device->drive_info.T10_vendor_ident);
+            snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
             localString[stringLen] = '\0';
             if (strlen(localString) >= cdcLen && strncmp(localString, "CDC", cdcLen) == 0)
             {
                 isCDC = true;
             }
-            safe_Free(localString);
+            safe_Free(localString)
         }
     }
     return isCDC;
@@ -787,19 +817,19 @@ bool is_DEC_VendorID(tDevice *device)
         size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
         if (stringLen > 0)
         {
-            char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+            char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
             if (localString == NULL)
             {
                 perror("calloc failure");
                 return false;
             }
-            strcpy(localString, device->drive_info.T10_vendor_ident);
+            snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
             localString[stringLen] = '\0';
             if (strlen(localString) >= cdcLen && strncmp(localString, "DEC", cdcLen) == 0)
             {
                 isDEC = true;
             }
-            safe_Free(localString);
+            safe_Free(localString)
         }
     }
     return isDEC;
@@ -812,19 +842,19 @@ bool is_MiniScribe_VendorID(tDevice *device)
     size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
     if (stringLen > 0)
     {
-        char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+        char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
         if (localString == NULL)
         {
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, device->drive_info.T10_vendor_ident);
+        snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
         localString[stringLen] = '\0';
         if (strlen(localString) >= miniscribeLen && strncmp(localString, "MINSCRIB", miniscribeLen) == 0)
         {
             isMiniscribe = true;
         }
-        safe_Free(localString);
+        safe_Free(localString)
     }
     return isMiniscribe;
 }
@@ -838,19 +868,19 @@ bool is_Quantum_VendorID(tDevice *device)
         size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
         if (stringLen > 0)
         {
-            char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+            char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
             if (localString == NULL)
             {
                 perror("calloc failure");
                 return false;
             }
-            strcpy(localString, device->drive_info.T10_vendor_ident);
+            snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
             localString[stringLen] = '\0';
             if (strlen(localString) >= quantumLen && strncmp(localString, "QUANTUM", quantumLen) == 0)
             {
                 isQuantum = true;
             }
-            safe_Free(localString);
+            safe_Free(localString)
         }
     }
     return isQuantum;
@@ -863,19 +893,19 @@ bool is_Quantum_Model_Number(char* string)
     size_t stringLen = strlen(string);
     if (stringLen > 0)
     {
-        char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+        char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
         if (localString == NULL)
         {
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, string);
+        snprintf(localString, stringLen + 1, "%s", string);
         localString[stringLen] = '\0';
         if (strlen(localString) >= quantumLen && (strncmp(localString, "Quantum", quantumLen) == 0 || strncmp(localString, "QUANTUM", quantumLen) == 0))
         {
             isQuantum = true;
         }
-        safe_Free(localString);
+        safe_Free(localString)
     }
     return isQuantum;
 }
@@ -917,19 +947,19 @@ bool is_PrarieTek_VendorID(tDevice *device)
         size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
         if (stringLen > 0)
         {
-            char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+            char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
             if (localString == NULL)
             {
                 perror("calloc failure");
                 return false;
             }
-            strcpy(localString, device->drive_info.T10_vendor_ident);
+            snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
             localString[stringLen] = '\0';
             if (strlen(localString) >= prarieTekLen && strncmp(localString, "PRAIRIE", prarieTekLen) == 0)
             {
                 isPrarieTek = true;
             }
-            safe_Free(localString);
+            safe_Free(localString)
         }
     }
     return isPrarieTek;
@@ -943,20 +973,20 @@ bool is_LaCie(tDevice *device)
     size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
     if (stringLen > 0)
     {
-        char *vendorID = (char *)calloc(9, sizeof(char));
+        char *vendorID = C_CAST(char *, calloc(9, sizeof(char)));
         if (vendorID == NULL)
         {
             perror("calloc failure");
             return MEMORY_FAILURE;
         }
-        strcpy(vendorID, device->drive_info.T10_vendor_ident);
+        snprintf(vendorID, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
         vendorID[8] = '\0';
         convert_String_To_Upper_Case(vendorID);
         if (strlen(vendorID) >= lacieLen && strncmp(vendorID, "LACIE", lacieLen) == 0)
         {
             isLaCie = true;
         }
-        safe_Free(vendorID);
+        safe_Free(vendorID)
     }
     return isLaCie;
 }
@@ -968,20 +998,20 @@ bool is_Samsung_String(char* string)
     size_t stringLen = strlen(string);
     if (stringLen > 0)
     {
-        char *localString = (char *)calloc(stringLen + 1, sizeof(char));
+        char *localString = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
         if (localString == NULL)
         {
             perror("calloc failure");
             return false;
         }
-        strcpy(localString, string);
+        snprintf(localString, stringLen + 1, "%s", string);
         localString[stringLen] = '\0';
         convert_String_To_Upper_Case(localString);
         if (strlen(localString) >= samsungLen && strncmp(localString, "SAMSUNG", samsungLen) == 0)
         {
             isSamsung = true;
         }
-        safe_Free(localString);
+        safe_Free(localString)
     }
     return isSamsung;
 }
@@ -1001,6 +1031,7 @@ bool is_Samsung_HDD(tDevice *device, bool USBchildDrive)
         break;
     case IEEE_SAMSUNG_SSD:
         isSSD = true;//fall through
+        M_FALLTHROUGH
     default:
         if (device->drive_info.interface_type == USB_INTERFACE && !USBchildDrive && !isSSD)
         {
@@ -1281,6 +1312,55 @@ bool is_Seagate_Model_Number_Vendor_E(tDevice *device, bool USBchildDrive)
     return isSeagateVendor;
 }
 
+bool is_Seagate_Model_Number_Vendor_SSD_PJ(tDevice *device, bool USBchildDrive)
+{
+    //These are some older enterprise SSDs that had some unique capabilities.
+    bool isSeagateVendor = false;
+    const char *mnPtr = &device->drive_info.product_identification[0];
+    if (USBchildDrive)
+    {
+        mnPtr = &device->drive_info.bridge_info.childDriveMN[0];
+    }
+    if (strlen(mnPtr))
+    {
+        if (/* check P models first */
+            strcmp(mnPtr, "ST400KN0001") == 0 ||
+            strcmp(mnPtr, "ST800KN0001") == 0 ||
+            strcmp(mnPtr, "ST1600KN0001") == 0 ||
+            strcmp(mnPtr, "ST480KN0001") == 0 ||
+            strcmp(mnPtr, "ST960KN0001") == 0 ||
+            strcmp(mnPtr, "ST1920KN0001") == 0 ||
+            strcmp(mnPtr, "ST400KN0011") == 0 ||
+            strcmp(mnPtr, "ST800KN0011") == 0 ||
+            strcmp(mnPtr, "ST1600KN0011") == 0 ||
+            strcmp(mnPtr, "ST480KN0011") == 0 ||
+            strcmp(mnPtr, "ST960KN0011") == 0 ||
+            strcmp(mnPtr, "ST1920KN0011") == 0 ||
+            strcmp(mnPtr, "ST400KN0021") == 0 ||
+            strcmp(mnPtr, "ST800KN0021") == 0 ||
+            strcmp(mnPtr, "ST480KN0021") == 0 ||
+            strcmp(mnPtr, "ST960KN0021") == 0 ||
+            strcmp(mnPtr, "ST400KN0031") == 0 ||
+            strcmp(mnPtr, "ST800KN0031") == 0 ||
+            strcmp(mnPtr, "ST480KN0031") == 0 ||
+            strcmp(mnPtr, "ST960KN0031") == 0 ||
+            /* Now check J models */
+            strcmp(mnPtr, "ST1000KN0002") == 0 ||
+            strcmp(mnPtr, "ST2000KN0002") == 0 ||
+            strcmp(mnPtr, "ST4000KN0002") == 0 ||
+            strcmp(mnPtr, "ST1000KN0012") == 0 ||
+            strcmp(mnPtr, "ST2000KN0012") == 0)
+        {
+            isSeagateVendor = true;
+        }
+        else if (!USBchildDrive)
+        {
+            isSeagateVendor = is_Seagate_Model_Number_Vendor_SSD_PJ(device, true);
+        }
+    }
+    return isSeagateVendor;
+}
+
 bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
@@ -1327,6 +1407,11 @@ bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
             ||
             ((strstr(device->drive_info.bridge_info.childDriveMN, "XA") != NULL)
                 && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "DC") == 7))         //older models
+            /*The following are unique to some USB SSD products. These seem to all report UHFS00.1 for firmware rev, but trying to only match UHFS for now
+            * These drives also seem to set "Seagate SSD" for the MN in the child drive info. Since they are USB, these should only be checked like this
+            * as they are not being manufactured any other way for now. - TJE
+            */
+            || ((strstr(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") != NULL) && (strstr(device->drive_info.bridge_info.childDriveFW, "UHFS") != NULL))
             )
         {
             isSeagateVendor = true;
@@ -1524,6 +1609,10 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
                 {
                     isSeagateFamily = SEAGATE_VENDOR_H;
                 }
+                else if (is_Seagate_Model_Number_Vendor_SSD_PJ(device, false))
+                {
+                    isSeagateFamily = SEAGATE_VENDOR_SSD_PJ;
+                }
             }
             break;
         case 2://is_Maxtor
@@ -1550,6 +1639,11 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
             if (is_LaCie(device))
             {
                 isSeagateFamily = LACIE;
+                //Special case for some USB SSDs. These can be recognized as vendor_f
+                if (is_Seagate_Model_Number_Vendor_F(device, true))
+                {
+                    isSeagateFamily = SEAGATE_VENDOR_F;
+                }
             }
             break;
         case 5://is_Quantum
@@ -1651,7 +1745,7 @@ int calculate_Checksum(uint8_t *pBuf, uint32_t blockSize)
         return BAD_PARAMETER;
     }
     
-    printf("%s: blksize %d, pBuf %p\n",__FUNCTION__, blockSize,pBuf);
+    printf("%s: blksize %d, pBuf %p\n",__FUNCTION__, blockSize, C_CAST(void*, pBuf));
     
     uint8_t checksum = 0; 
     uint32_t counter = 0;
@@ -1734,9 +1828,9 @@ uint32_t get_Sector_Count_For_4096B_Based_XFers(tDevice *device)
 
 void print_Command_Time(uint64_t timeInNanoSeconds)
 {
-    double printTime = (double)timeInNanoSeconds;
+    double printTime = C_CAST(double, timeInNanoSeconds);
     uint8_t unitCounter = 0;
-    bool breakLoop = false;;
+    bool breakLoop = false;
     while (printTime > 1 && unitCounter <= 6)
     {
         switch (unitCounter)
@@ -1748,7 +1842,6 @@ void print_Command_Time(uint64_t timeInNanoSeconds)
             {
                 breakLoop = true;
             }
-            break;
             break;
         case 4://m to h
         case 3://s to m
@@ -1821,7 +1914,7 @@ void print_Command_Time(uint64_t timeInNanoSeconds)
         break;
     default://couldn't get a good conversion or something weird happened so show original nanoseconds.
         printf("ns): ");
-        printTime = (double)timeInNanoSeconds;
+        printTime = C_CAST(double, timeInNanoSeconds);
         break;
     }
     printf("%0.02f\n\n", printTime);
@@ -1829,9 +1922,9 @@ void print_Command_Time(uint64_t timeInNanoSeconds)
 
 void print_Time(uint64_t timeInNanoSeconds)
 {
-    double printTime = (double)timeInNanoSeconds;
+    double printTime = C_CAST(double, timeInNanoSeconds);
     uint8_t unitCounter = 0;
-    bool breakLoop = false;;
+    bool breakLoop = false;
     while (printTime > 1 && unitCounter <= 6)
     {
         switch (unitCounter)
@@ -1843,7 +1936,6 @@ void print_Time(uint64_t timeInNanoSeconds)
             {
                 breakLoop = true;
             }
-            break;
             break;
         case 4://m to h
         case 3://s to m
@@ -1916,7 +2008,7 @@ void print_Time(uint64_t timeInNanoSeconds)
         break;
     default://couldn't get a good conversion or something weird happened so show original nanoseconds.
         printf("ns): ");
-        printTime = (double)timeInNanoSeconds;
+        printTime = C_CAST(double, timeInNanoSeconds);
         break;
     }
     printf("%0.02f\n", printTime);
@@ -2041,7 +2133,7 @@ bool is_CSMI_Device(tDevice *device)
 
 #ifdef _DEBUG
     printf("friendly name : %s interface_type : %d raid_device : %" PRIXPTR "\n",
-        device->os_info.friendlyName, device->drive_info.interface_type, (uintptr_t)device->raid_device);
+        device->os_info.friendlyName, device->drive_info.interface_type, C_CAST(uintptr_t, device->raid_device));
 #endif
 
     csmiDevice = csmiDevice && (strncmp(device->os_info.friendlyName, "SCSI", 4) == 0);
@@ -2083,10 +2175,8 @@ void print_tDevice_Size()
     printf("\tdrive_info = %zu\n", offsetof(tDevice, drive_info));
     printf("\t\tIdentifyData = %zu\n", offsetof(tDevice, drive_info.IdentifyData));
     printf("\t\tATA Identify = %zu\n", offsetof(tDevice, drive_info.IdentifyData.ata));
-    #if !defined (DISABLE_NVME_PASSTHROUGH)
     printf("\t\tNVMe CTRL ID = %zu\n", offsetof(tDevice, drive_info.IdentifyData.nvme.ctrl));
     printf("\t\tNVMe Namespace ID = %zu\n", offsetof(tDevice, drive_info.IdentifyData.nvme.ns));
-    #endif
     printf("\t\tscsiVpdData = %zu\n", offsetof(tDevice, drive_info.scsiVpdData));
     printf("\t\tlastCommandSenseData = %zu\n", offsetof(tDevice, drive_info.lastCommandSenseData));
     printf("\traid_device = %zu\n", offsetof(tDevice, raid_device));
@@ -2158,7 +2248,7 @@ bool is_Removable_Media(tDevice *device)
 }
 //https://usb-ids.gowdy.us/
 //http://www.linux-usb.org/usb.ids
-bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
+static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
 {
     bool passthroughHacksSet = false;
     //only change the ATA Passthrough type for USB (for legacy USB bridges)
@@ -2168,13 +2258,14 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
         switch (device->drive_info.adapter_info.vendorID)
         {
         case USB_Vendor_Seagate://0477
-            switch (device->drive_info.adapter_info.productID)
-            {
-            default: //unknown
-                break;
-            }
+            //switch (device->drive_info.adapter_info.productID)
+            //{
+            //default: //unknown
+            //    break;
+            //}
             break;
         case USB_Vendor_Seagate_RSS://0BC2
+            device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
             switch (device->drive_info.adapter_info.productID)
             {
             case 0x0888://0BC2 VID
@@ -2267,7 +2358,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
                 break;
-            case 0x2020://Firecude HDD
+            case 0x2020://Firecuda HDD
                 passthroughHacksSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
@@ -2281,13 +2372,13 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
                 //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
-                //tpsiu identify only
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
-            case 0x2021://Firecude HDD
+            case 0x2021://Firecuda HDD
                 passthroughHacksSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
@@ -2301,13 +2392,13 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
                 //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
-                //tpsiu identify only
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
-            case 0x2022://Firecude HDD hub
+            case 0x2022://Firecuda HDD hub
                 passthroughHacksSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
@@ -2321,7 +2412,90 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
                 //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
-                //tpsiu identify only
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
+                break;
+            case 0x203C://One Touch SSD
+            case 0x2013://Expansion SSD
+            case 0x202D://Game Drive SSD
+                //NOTE: This is a weird drive.
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 7;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly = true;
+                device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 0;
+                break;
+            case 0x2030://Expansion HDD
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 34;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
+                break;
+            case 0x2036://Expansion HDD
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 33;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
+                break;
+            case 0x2037://Expansion HDD
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 33;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
@@ -2513,7 +2687,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
                 //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
-                //tpsiu on identify only
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
@@ -3092,7 +3266,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
                 //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
-                //NOTE: TPSIU worked for identify but not other commands when tested.
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
                 break;
             case 0xA313://Wireless
                 passthroughHacksSet = true;
@@ -3279,7 +3453,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
                 //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
                 //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;//Not sure if this actually worked when the test tool pumped this result out. Off for now.
-                //device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//This only worked for identify
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 //This device has 2 HDDs in a RAID inside it.
@@ -3308,7 +3482,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.singleSectorPIOOnly = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 8192;
                 break;
-
+            case 0xAA1A://Another ID for firecuda gaming SSD.
             case 0xAA17://FireCuda Gaming SSD
                 //NOTE: Recommend a retest for this device to double check the hacks. Most are setup based on other ASMedia bridge chip tests.
                 passthroughHacksSet = true;
@@ -3325,7 +3499,46 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
                 break;
+            case 0xAB80://One Touch Hub
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 34;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
+                break;
             default: //unknown
+                //setup some defaults that will most likely work for most current products
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 33;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //TODO: since we may find SATA or NVMe adapters, we cannot set below due to a union being used. May need to remove that or find another solution
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             }
             break;
@@ -3425,7 +3638,46 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
                 //NOTE: Add max passthrough transfer length hack set to 65536
                 break;
+            case 0x10EF://Mobile SSD
+                //NOTE: This is a weird drive
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 7;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly = true;
+                device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 0;
+                break;
             default:
+                //setup some defaults that will most likely work for most current products
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 33;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //TODO: since we may find SATA or NVMe adapters, we cannot set below due to a union being used. May need to remove that or find another solution
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             }
             break;
@@ -3617,6 +3869,8 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
             case 0x5106://Seen in ThermalTake BlackX 5G
                 //Results are for revision 0001h
                 //Does not seem to handle drives with a 4k logical sector size well.
+                //7/29/2021 - retested manually. TPSIU seems to work better only for identify. UDMA mode definitely doesn't work.
+                //            but DMA mode works fine. Remaining hacks seem appropriate overall
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
                 passthroughHacksSet = true;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
@@ -3631,12 +3885,13 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.reportSingleOpCodes = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 122880;//This seems to vary with each time this device is tested
                 //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
-                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
-                device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
-                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 36864;//This seems to vary with each time this device is tested.
+                device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;//NOTE: Can use PIO read log ext just fine, but DMA is the problem. THis still works with SMART though, but a future hack may be needed.-TJE
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 524288;
                 break;
             case 0x55AA://ASMT 2105
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
@@ -3757,6 +4012,27 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
+                break;
+            case 0x2567://USB3 to SATA adapter box
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 34;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             default: //unknown
                 break;
@@ -4111,6 +4387,37 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 break;
             }
             break;
+        case USB_Vendor_Kingston_Generic:
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x7777://USB to M.2 SATA adapter...crashes without any recovery very easily.
+                //This does NOT like TPSIU for ANYTHING but identify and crashes if using UDMA mode.
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 34;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = false;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                //NOTE: Does not handle zero length read/write commands
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;//bytes
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                //A1 is always supported
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;//Identify only or it crashes the adapter firmware
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;//Attempting any DMA passthrough fails for invalid field in CDB. UDMA mode crashes the firmware entirely.
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 125440;//Bytes
+                device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty = true;//returns empty sense data in return for check condition, when a result is expected to come back
+                break;
+            default:
+                break;
+            }
+            break;
         default: //unknown
             break;
         }
@@ -4119,7 +4426,7 @@ bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
 }
 
 //Vendor ID's, or OUI's, can be found here: https://regauth.standards.ieee.org/standards-ra-web/pub/view.html#registries
-bool set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
+static bool set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
 {
     bool passthroughHacksSet = false;
     if (device->drive_info.interface_type == IEEE_1394_INTERFACE)
@@ -4148,18 +4455,18 @@ bool set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
             }
             break;
         case IEEE1394_Vendor_Seagate://002037
-            switch (device->drive_info.adapter_info.productID)
+            /*switch (device->drive_info.adapter_info.productID)
             {
             default:
                 break;
-            }
+            }*/
             break;
         case IEEE1394_Vendor_Quantum://00E09E
-            switch (device->drive_info.adapter_info.productID)
+            /*switch (device->drive_info.adapter_info.productID)
             {
             default:
                 break;
-            }
+            }*/
             break;
         case 0x000BC2://This vendor ID doesn't make sense for the product that was tested!!!
             switch (device->drive_info.adapter_info.productID)

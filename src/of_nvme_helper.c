@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -28,16 +28,16 @@
 bool supports_OFNVME_IO(HANDLE deviceHandle)
 {
     bool supported = false;
-    uint32_t bufferSize = sizeof(NVME_PASS_THROUGH_IOCTL) + 4096;
-    uint8_t *passthroughBuffer = (uint8_t*)calloc_aligned(bufferSize, sizeof(uint8_t), sizeof(void*));
+    uint32_t bufferSize = sizeof(NVME_PASS_THROUGH_IOCTL) + UINT32_C(4096);
+    uint8_t *passthroughBuffer = C_CAST(uint8_t*, calloc_aligned(bufferSize, sizeof(uint8_t), sizeof(void*)));
     if (passthroughBuffer)
     {
         seatimer_t commandTimer;
         BOOL success = TRUE;
-        PNVME_PASS_THROUGH_IOCTL ioctl = (PNVME_PASS_THROUGH_IOCTL)passthroughBuffer;
+        PNVME_PASS_THROUGH_IOCTL ioctl = C_CAST(PNVME_PASS_THROUGH_IOCTL, passthroughBuffer);
         ioctl->SrbIoCtrl.HeaderLength = sizeof(SRB_IO_CONTROL);
         memcpy(ioctl->SrbIoCtrl.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
-        ioctl->SrbIoCtrl.ControlCode = (ULONG)NVME_PASS_THROUGH_SRB_IO_CODE;
+        ioctl->SrbIoCtrl.ControlCode = C_CAST(ULONG, NVME_PASS_THROUGH_SRB_IO_CODE);
         ioctl->SrbIoCtrl.Length = bufferSize - sizeof(SRB_IO_CONTROL);
         ioctl->SrbIoCtrl.Timeout = 15;
 
@@ -78,11 +78,14 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
         }
         else if (last_error != ERROR_SUCCESS)
         {
-            supported = false;;
+            supported = false;
         }
         stop_Timer(&commandTimer);
-        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        if (overlappedStruct.hEvent)
+        {
+            CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+            overlappedStruct.hEvent = NULL;
+        }
         if (success)
         {
             supported = true;
@@ -91,7 +94,7 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
         {
             supported = false;
         }
-        safe_Free_aligned(passthroughBuffer);
+        safe_Free_aligned(passthroughBuffer)
     }
     return supported;
 }
@@ -104,7 +107,7 @@ int send_OFNVME_Reset(tDevice * device)
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
     memcpy(ofnvmeReset.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
-    ofnvmeReset.ControlCode = (ULONG)NVME_RESET_DEVICE;
+    ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_RESET_DEVICE);
     ofnvmeReset.Length = sizeof(SRB_IO_CONTROL);
 
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
@@ -131,8 +134,11 @@ int send_OFNVME_Reset(tDevice * device)
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
-    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
+    if (overlappedStruct.hEvent)
+    {
+        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        overlappedStruct.hEvent = NULL;
+    }
     if (success)
     {
         //TODO: Check the SRB_IO_CONTROL return code and check if it was successful or not. For now, if it reports success, we'll call it done. - TJE
@@ -160,7 +166,7 @@ int send_OFNVME_Add_Namespace(tDevice * device)
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
     memcpy(ofnvmeReset.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
-    ofnvmeReset.ControlCode = (ULONG)NVME_HOT_ADD_NAMESPACE;
+    ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_HOT_ADD_NAMESPACE);
     ofnvmeReset.Length = sizeof(SRB_IO_CONTROL);
 
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
@@ -187,8 +193,11 @@ int send_OFNVME_Add_Namespace(tDevice * device)
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
-    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
+    if (overlappedStruct.hEvent)
+    {
+        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        overlappedStruct.hEvent = NULL;
+    }
     if (success)
     {
         //TODO: Check the SRB_IO_CONTROL return code and check if it was successful or not. For now, if it reports success, we'll call it done. - TJE
@@ -216,7 +225,7 @@ int send_OFNVME_Remove_Namespace(tDevice * device)
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
     memcpy(ofnvmeReset.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
-    ofnvmeReset.ControlCode = (ULONG)NVME_HOT_REMOVE_NAMESPACE;
+    ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_HOT_REMOVE_NAMESPACE);
     ofnvmeReset.Length = sizeof(SRB_IO_CONTROL);
 
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
@@ -243,8 +252,11 @@ int send_OFNVME_Remove_Namespace(tDevice * device)
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
-    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
+    if (overlappedStruct.hEvent)
+    {
+        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        overlappedStruct.hEvent = NULL;
+    }
     if (success)
     {
         //TODO: Check the SRB_IO_CONTROL return code and check if it was successful or not. For now, if it reports success, we'll call it done. - TJE
@@ -269,15 +281,15 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
     int ret = OS_PASSTHROUGH_FAILURE;
 
     uint32_t bufferSize = sizeof(NVME_PASS_THROUGH_IOCTL) + nvmeIoCtx->dataSize;//TODO: add metadata. This will be returned first in the data buffer if there is any
-    uint8_t *passthroughBuffer = (uint8_t*)calloc_aligned(bufferSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment);
+    uint8_t *passthroughBuffer = C_CAST(uint8_t*, calloc_aligned(bufferSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
     if (passthroughBuffer)
     {
         seatimer_t commandTimer;
         BOOL success = TRUE;
-        PNVME_PASS_THROUGH_IOCTL ioctl = (PNVME_PASS_THROUGH_IOCTL)passthroughBuffer;
+        PNVME_PASS_THROUGH_IOCTL ioctl = C_CAST(PNVME_PASS_THROUGH_IOCTL, passthroughBuffer);
         ioctl->SrbIoCtrl.HeaderLength = sizeof(SRB_IO_CONTROL);
         memcpy(ioctl->SrbIoCtrl.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
-        ioctl->SrbIoCtrl.ControlCode = (ULONG)NVME_PASS_THROUGH_SRB_IO_CODE;
+        ioctl->SrbIoCtrl.ControlCode = C_CAST(ULONG, NVME_PASS_THROUGH_SRB_IO_CODE);
         ioctl->SrbIoCtrl.Length = bufferSize - sizeof(SRB_IO_CONTROL);
         ioctl->SrbIoCtrl.Timeout = nvmeIoCtx->timeout;
 
@@ -320,7 +332,7 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
         case NVM_UNKNOWN_CMD_SET:
             //Fallthrough to default
         default:
-            safe_Free(passthroughBuffer);
+            safe_Free_aligned(passthroughBuffer)
             return BAD_PARAMETER;
         }
 
@@ -357,7 +369,7 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
             //TODO: Handle bidirectional transfers!!!
             //NVME_BI_DIRECTION
         default:
-            safe_Free(passthroughBuffer);
+            safe_Free_aligned(passthroughBuffer)
             return BAD_PARAMETER;
         }
 
@@ -388,8 +400,11 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
             ret = OS_PASSTHROUGH_FAILURE;
         }
         stop_Timer(&commandTimer);
-        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        if (overlappedStruct.hEvent)
+        {
+            CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+            overlappedStruct.hEvent = NULL;
+        }
         if (success)
         {
             if (ioctl->SrbIoCtrl.ReturnCode == NVME_IOCTL_SUCCESS)
@@ -440,7 +455,7 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
 
         nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
-        safe_Free_aligned(passthroughBuffer);
+        safe_Free_aligned(passthroughBuffer)
     }
     else
     {

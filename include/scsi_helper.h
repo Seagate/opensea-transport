@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -305,6 +305,18 @@ extern "C"
         SANITIZE_OVERWRITE_VENDOR3      = 0x03
     }eScsiSanitizeOverwriteTest;
 
+    typedef enum _eReadBufferMode
+    {
+        SCSI_RB_COMBINED_HEADER_AND_DATA                                = 0x00, //obsolete (see SPC or SCSI2)
+        SCSI_RB_VENDOR_SPECIFIC                                         = 0x01,
+        SCSI_RB_DATA                                                    = 0x02,
+        SCSI_RB_DESCRIPTOR                                              = 0x03,
+        SCSI_RB_READ_DATA_FROM_ECHO_BUFFER                              = 0x0A,
+        SCSI_RB_ECHO_BUFFER_DESCRIPTOR                                  = 0x0B,
+        SCSI_RB_READ_MICROCODE_STATUS                                   = 0x0F,
+        SCSI_RB_ENABLE_EXPANDER_COMMUNICATIONS_PROTOCOL_AND_ECHO_BUFFER = 0x1A, //obsolete (See SPC3)
+        SCSI_RB_ERROR_HISTORY                                           = 0x1C,
+    }eReadBufferMode;
 
     typedef enum _eWriteBufferMode
     {
@@ -325,6 +337,26 @@ extern "C"
         SCSI_WB_DOWNLOAD_APPLICATION_CLIENT_ERROR_HISTORY               = 0x1C,
     }eWriteBufferMode;
 
+    typedef enum _ePersistentReserveInServiceActions
+    {
+        SCSI_PERSISTENT_RESERVE_IN_READ_KEYS             = 0,//SPC
+        SCSI_PERSISTENT_RESERVE_IN_READ_RESERVATION      = 1,//SPC
+        SCSI_PERSISTENT_RESERVE_IN_REPORT_CAPABILITIES   = 2,//SPC3
+        SCSI_PERSISTENT_RESERVE_IN_READ_FULL_STATUS      = 3,//SPC3
+    }ePersistentReserveInServiceActions;
+
+    typedef enum _ePersistentReserveOutServiceActions
+    {
+        SCSI_PERSISTENT_RESERVE_OUT_REGISTER                            = 0,//SPC
+        SCSI_PERSISTENT_RESERVE_OUT_RESERVE                             = 1,//SPC
+        SCSI_PERSISTENT_RESERVE_OUT_RELEASE                             = 2,//SPC
+        SCSI_PERSISTENT_RESERVE_OUT_CLEAR                               = 3,//SPC
+        SCSI_PERSISTENT_RESERVE_OUT_PREEMPT                             = 4,//SPC
+        SCSI_PERSISTENT_RESERVE_OUT_PREEMPT_AND_ABORT                   = 5,//SPC
+        SCSI_PERSISTENT_RESERVE_OUT_REGISTER_AND_IGNORE_EXISTING_KEY    = 6,//SPC2
+        SCSI_PERSISTENT_RESERVE_OUT_REGISTER_AND_MOVE                   = 7,//SPC3
+        SCSI_PERSISTENT_RESERVE_OUT_REPLACE_LOST_RESERVATION            = 8,//SPC4
+    }ePersistentReserveOutServiceActions;
 
 //some of these commands have something like _CMD in the name or a missing underscore in order
 //to avoid conflict with a system header somewhere in linux or windows. - TJE
@@ -387,6 +419,7 @@ extern "C"
         REPORT_SUPPORTED_TASK_MANAGEMENT_FUNCS      = 0xA3,
         REPORT_TARGET_PORT_GROUPS_CMD               = 0xA3,
         REQUEST_SENSE_CMD                           = 0x03,
+        REZERO_UNIT_CMD                             = 0x01,
         SANITIZE_CMD                                = 0x48,
         SECURITY_PROTOCOL_IN                        = 0xA2,
         SECURITY_PROTOCOL_OUT                       = 0xB5,
@@ -882,6 +915,27 @@ extern "C"
         SAT_SECURITY_PROTOCOL_SPECIFIC_DISABLE_PASSWORD = 0x0006, //disable password command with provided password
         //All others are reserved
     }eSATSecurityDevicePassword;
+
+    typedef enum _eSCSIProtocolID
+    {
+        SCSI_PROTOCOL_ID_FIBRE_CHANNEL  = 0x0,
+        SCSI_PROTOCOL_ID_SPI            = 0x1,//Parallel SCSI
+        SCSI_PROTOCOL_ID_SSA            = 0x2,//Serial Storage Architecture
+        SCSI_PROTOCOL_ID_SBP            = 0x3,//IEEE 1394
+        SCSI_PROTOCOL_ID_SRP            = 0x4,//SCSI RDMA
+        SCSI_PROTOCOL_ID_iSCSI          = 0x5,//internet SCSI
+        SCSI_PROTOCOL_ID_SAS            = 0x6,//Serial Attached SCSI
+        SCSI_PROTOCOL_ID_ADT            = 0x7,//Automation/Drive interface transport protocol
+        SCSI_PROTOCOL_ID_ATA            = 0x8,//AT Attachment Interface
+        SCSI_PROTOCOL_ID_UAS            = 0x9,//USB Attached SCSI
+        SCSI_PROTOCOL_ID_SOP            = 0xA,//SCSI over PCI express
+        SCSI_PROTOCOL_ID_PCIe           = 0xB,//PCI Express Protocols
+        SCSI_PROTOCOL_ID_RESERVED1      = 0xC,
+        SCSI_PROTOCOL_ID_RESERVED2      = 0xD,
+        SCSI_PROTOCOL_ID_RESERVED3      = 0xE,
+        SCSI_PROTOCOL_ID_NO_SPECIFIC_PROTOCOL   = 0xF
+    }eSCSIProtocolID;
+
 
     #if defined (__cplusplus)
 } //extern "C"

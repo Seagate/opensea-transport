@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -17,9 +17,7 @@
 
 #include "scsi_helper.h"
 #include "sat_helper.h"
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper.h"
-#endif
 #include "common_public.h"
 
 #if defined (__cplusplus)
@@ -35,52 +33,7 @@ extern "C"
     #include <string.h> // For memset
     #include <unistd.h> // For getpagesize
 // \todo Figure out which scsi.h & sg.h should we be including kernel specific or in /usr/..../include
-    #include <scsi/sg.h>
-    #include <scsi/scsi.h>
-#if !defined(DISABLE_NVME_PASSTHROUGH)
-    #if defined (__has_include)//GCC5 and higher support this, BUT only if a C standard is specified. The -std=gnuXX does not support this properly for some odd reason.
-        #if __has_include (<linux/nvme_ioctl.h>)
-            #pragma message "Using linux/nvme_ioctl.h"
-            #include <linux/nvme_ioctl.h>
-            #if !defined (SEA_NVME_IOCTL_H)
-                #define SEA_NVME_IOCTL_H
-            #endif
-        #elif __has_include (<linux/nvme.h>)
-            #pragma message "Using linux/nvme.h"
-            #include <linux/nvme.h>
-            #if !defined (SEA_NVME_IOCTL_H)
-                #define SEA_NVME_IOCTL_H
-            #endif
-        #elif __has_include (<uapi/nvme.h>)
-            #pragma message "Using uapi/nvme.h"
-            #include <uapi/nvme.h>
-            #if !defined (SEA_UAPI_NVME_H)
-                #define SEA_UAPI_NVME_H
-            #endif
-        #else //__has_include could not locate the header, check if it was specified by the user through a define.
-            #if defined (SEA_NVME_IOCTL_H)
-                #include <linux/nvme_ioctl.h>
-            #elif defined (SEA_NVME_H)
-                #include <linux/nvme.h>
-            #elif defined (SEA_UAPI_NVME_H)
-                #include <uapi/nvme.h>
-            #else
-                #pragma GCC error "Please define one of the following to include the correct NVMe header: SEA_NVME_IOCTL_H, SEA_NVME_H, or SEA_UAPI_NVME_H\nThese specify whether the NVMe IOCTL is in /usr/include/linux/nvme_ioctl.h, /usr/include/linux/nvme.h, or /usr/include/uapi/nvme.h"
-            #endif
-        #endif
-    #else
-        #if defined (SEA_NVME_IOCTL_H)
-            #include <linux/nvme_ioctl.h>
-        #elif defined (SEA_NVME_H)
-            #include <linux/nvme.h>
-        #elif defined (SEA_UAPI_NVME_H)
-            #include <uapi/nvme.h>
-        #else
-            #pragma GCC error "Please define one of the following to include the correct NVMe header: SEA_NVME_IOCTL_H, SEA_NVME_H, or SEA_UAPI_NVME_H\nThese specify whether the NVMe IOCTL is in /usr/include/linux/nvme_ioctl.h, /usr/include/linux/nvme.h, or /usr/include/uapi/nvme.h"
-        #endif
-    #endif
     #include "nvme_helper.h"
-#endif
 
 #define SG_PHYSICAL_DRIVE   "/dev/sg" //followed by a number
 #define SD_PHYSICAL_DRIVE   "/dev/sd" //followed by a letter
@@ -91,7 +44,7 @@ extern "C"
 #define SG_MAX_CMD_TIMEOUT_SECONDS 4294967
 
     //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
-    bool os_Is_Infinite_Timeout_Supported();
+    bool os_Is_Infinite_Timeout_Supported(void);
 
 //SG Driver status's since they are not available through standard includes we're using
 
@@ -272,7 +225,6 @@ int os_Bus_Reset(tDevice *device);
 int os_Controller_Reset(tDevice *device);
 
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 //-----------------------------------------------------------------------------
 //
 //  pci_Read_Bar_Reg()
@@ -305,7 +257,7 @@ int os_nvme_Subsystem_Reset(tDevice *device);
 
 #endif
 
-int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **blockHandle);
+int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char **blockHandle);
 
 int device_Reset(int fd);
 
@@ -343,8 +295,10 @@ int host_Reset(int fd);
     //-----------------------------------------------------------------------------
     int os_Unlock_Device(tDevice *device);
 
+    int os_Update_File_System_Cache(tDevice* device);
+
+    int os_Unmount_File_Systems_On_Device(tDevice *device);
+
     #if defined (__cplusplus)
 }
     #endif
-
-#endif

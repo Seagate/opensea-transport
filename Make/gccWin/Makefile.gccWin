@@ -1,7 +1,7 @@
 #
 # Do NOT modify or remove this copyright and license
 #
-# Copyright (c) 2012 - 2019 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+# Copyright (c) 2012 - 2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 #
 # This software is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -87,7 +87,6 @@ LIB_SRC_FILES = \
 PROJECT_DEFINES += -DSTATIC_OPENSEA_TRANSPORT
 PROJECT_DEFINES += -D_CRT_SECURE_NO_WARNINGS
 PROJECT_DEFINES += -DENABLE_CSMI -DENABLE_INTEL_RST
-PROJECT_DEFINES += -DWIN_API_TARGET_VERSION=100162990L
 ifneq (,$(findstring Linux,$(MYUNAME)))
 	PROJECT_DEFINES += -DDISABLE_NVME_PASSTHROUGH
 else
@@ -101,9 +100,6 @@ ifneq (,$(findstring MINGW64,$(UNAME)))
 	# PROJECT_DEFINES += -D_CRT_NONSTDC_NO_DEPRECATE
 	#BR note: -D_WIN32_WINNT=0x0601 fixes unknown Windows version in winioctl.h and  error: 'BusTypeSata' undeclared (first use in this function)
 	PROJECT_DEFINES += -D_WIN32_WINNT=0x0601
-	# PROJECT_DEFINES += -DWIN_API_TARGET_VERSION=100150630L
-	# PROJECT_DEFINES += -DWIN_API_TARGET_VERSION=81000000L
-	# PROJECT_DEFINES += -DWINVER=SEA_WIN32_WINNT_WIN10
 endif
 
 #All of the source files have associated object files

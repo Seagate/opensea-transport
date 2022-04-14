@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,7 +9,6 @@
 //
 // ******************************************************************************************
 // 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 
 #include "platform_helper.h"
 #include <stdio.h>
@@ -56,11 +55,12 @@ int fill_In_NVMe_Device_Info(tDevice *device)
 
     nvmeIDCtrl * ctrlData = &device->drive_info.IdentifyData.nvme.ctrl; //Conroller information data structure
     nvmeIDNameSpaces * nsData = &device->drive_info.IdentifyData.nvme.ns; //Name Space Data structure 
+
 #ifdef _DEBUG
     printf("-->%s\n",__FUNCTION__);
 #endif
 
-    ret = nvme_Identify(device,(uint8_t *)ctrlData,0,NVME_IDENTIFY_CTRL);
+    ret = nvme_Identify(device, C_CAST(uint8_t *, ctrlData), 0, NVME_IDENTIFY_CTRL);
 
 #ifdef _DEBUG
 printf("fill NVMe info ret = %d\n", ret);
@@ -68,8 +68,9 @@ printf("fill NVMe info ret = %d\n", ret);
 
     if (ret == SUCCESS)
     {
+        uint16_t enduranceGroup = 0;
         //set the t10 vendor id to NVMe
-        sprintf(device->drive_info.T10_vendor_ident, "NVMe");
+        snprintf(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "NVMe");
         device->drive_info.media_type = MEDIA_NVM;//This will bite us someday when someone decided to put non-ssds on NVMe interface.
 
         //Set the other device fields we need.
@@ -92,26 +93,44 @@ printf("fill NVMe info ret = %d\n", ret);
         //TODO: currently we set NAA to 5, but we should probably at least follow the SCSI-NVMe translation specification!
         *fillWWN = M_BytesTo8ByteValue(0x05, ctrlData->ieee[2], ctrlData->ieee[1], ctrlData->ieee[0], 0, 0, 0, 0) << 4;
 
-        ret = nvme_Identify(device,(uint8_t *)nsData, device->drive_info.namespaceID, NVME_IDENTIFY_NS);
+        ret = nvme_Identify(device, C_CAST(uint8_t *, nsData), device->drive_info.namespaceID, NVME_IDENTIFY_NS);
 
         if (ret == SUCCESS) 
         {
 
-            *fillLogicalSectorSize = (uint32_t)power_Of_Two(nsData->lbaf[nsData->flbas].lbaDS); //removed math.h pow() function - TJE
+            *fillLogicalSectorSize = C_CAST(uint32_t, power_Of_Two(nsData->lbaf[nsData->flbas].lbaDS)); //removed math.h pow() function - TJE
             *fillPhysicalSectorSize = *fillLogicalSectorSize; //True for NVMe?
             *fillSectorAlignment = 0;
 
             *fillMaxLba = nsData->nsze - 1;//spec says this is from 0 to (n-1)!
             
-
-            //TODO: Add support if more than one Namespace. 
-            /*
-            for (ns=2; ns <= ctrlData.nn; ns++) 
+            enduranceGroup = nsData->endgid;
+            if (ctrlData->lpa & BIT5 && ctrlData->ctratt & BIT4 && enduranceGroup > 0)
             {
-                
-
-            }*/
-
+                //Check if this is an HDD
+                //First read the supported logs log page, then if the rotating media log is there, read it.
+                uint8_t* supportedLogs = C_CAST(uint8_t*, calloc_aligned(1024, sizeof(uint8_t), device->os_info.minimumAlignment));
+                if (supportedLogs)
+                {
+                    nvmeGetLogPageCmdOpts supLogs;
+                    memset(&supLogs, 0, sizeof(nvmeGetLogPageCmdOpts));
+                    supLogs.addr = supportedLogs;
+                    supLogs.dataLen = 1024;
+                    supLogs.lid = NVME_LOG_SUPPORTED_PAGES_ID;
+                    if (SUCCESS == nvme_Get_Log_Page(device, &supLogs))
+                    {
+                        uint32_t rotMediaOffset = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION_ID * 4;
+                        uint32_t rotMediaSup = M_BytesTo4ByteValue(supportedLogs[rotMediaOffset + 3], supportedLogs[rotMediaOffset + 2], supportedLogs[rotMediaOffset + 1], supportedLogs[rotMediaOffset + 0]);
+                        if (rotMediaSup & BIT0)
+                        {
+                            //rotational media log is supported.
+                            //Set the media type because this is supported, at least for now. We can read the log and the actual rotation rate if needed.
+                            device->drive_info.media_type = MEDIA_HDD;
+                        }
+                    }
+                    safe_Free_aligned(supportedLogs);
+                }
+            }
         }
     }
 #ifdef _DEBUG
@@ -370,7 +389,11 @@ int check_NVMe_Status(uint32_t nvmeStatusDWord)
             ret = FAILURE;
             break;
         case NVME_CMD_SP_SC_INVALID_FIRMWARE_SLOT_:
+            ret = FAILURE;
+            break;
         case NVME_CMD_SP_SC_INVALIDFIRMWARE_IMAGE_:
+            ret = FAILURE;
+            break;
         case NVME_CMD_SP_SC_INVALID_INTERRUPT_VECTOR_:
         case NVME_CMD_SP_SC_INVALID_LOG_PAGE_:
         case NVME_CMD_SP_SC_INVALID_FORMAT_:
@@ -511,288 +534,413 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
         {
             printf("False\n");
         }
-        char statusCodeTypeString[60] = { 0 };
-        char statusCodeString[60] = { 0 };
+#define NVME_STATUS_CODE_TYPE_STRING_LENGTH 32
+#define NVME_STATUS_CODE_STRING_LENGTH 62
+        char statusCodeTypeString[NVME_STATUS_CODE_TYPE_STRING_LENGTH] = { 0 };
+        char statusCodeString[NVME_STATUS_CODE_STRING_LENGTH] = { 0 };
         //also print out the phase tag, CID. NOTE: These aren't available in Linux!
         switch (statusCodeType)
         {
         case NVME_SCT_GENERIC_COMMAND_STATUS://generic
-            snprintf(statusCodeTypeString, 60, "Generic Status");
+            snprintf(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Generic Status");
             switch (statusCode)
             {
             case NVME_GEN_SC_SUCCESS_:
-                snprintf(statusCodeString, 60, "Success");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Success");
                 break;
             case NVME_GEN_SC_INVALID_OPCODE_:
-                snprintf(statusCodeString, 60, "Invalid Command Opcode");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Command Opcode");
                 break;
             case NVME_GEN_SC_INVALID_FIELD_:
-                snprintf(statusCodeString, 60, "Invalid Field in Command");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Field in Command");
                 break;
             case NVME_GEN_SC_CMDID_CONFLICT_:
-                snprintf(statusCodeString, 60, "Command ID Conflict");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Command ID Conflict");
                 break;
             case NVME_GEN_SC_DATA_XFER_ERROR_:
-                snprintf(statusCodeString, 60, "Data Transfer Error");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Data Transfer Error");
                 break;
             case NVME_GEN_SC_POWER_LOSS_:
-                snprintf(statusCodeString, 60, "Commands Aborted due to Power Less Notification");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Commands Aborted due to Power Less Notification");
                 break;
             case NVME_GEN_SC_INTERNAL_:
-                snprintf(statusCodeString, 60, "Internal Error");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Internal Error");
                 break;
             case NVME_GEN_SC_ABORT_REQ_:
-                snprintf(statusCodeString, 60, "Command Abort Requested");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Command Abort Requested");
                 break;
             case NVME_GEN_SC_ABORT_QUEUE_:
-                snprintf(statusCodeString, 60, "Command Aborted due to SQ Deletion");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Command Aborted due to SQ Deletion");
                 break;
             case NVME_GEN_SC_FUSED_FAIL_:
-                snprintf(statusCodeString, 60, "Command Aborted due to Failed Fused Command");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Command Aborted due to Failed Fused Command");
                 break;
             case NVME_GEN_SC_FUSED_MISSING_:
-                snprintf(statusCodeString, 60, "Command Aborted due to Missing Fused Command");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Command Aborted due to Missing Fused Command");
                 break;
             case NVME_GEN_SC_INVALID_NS_:
-                snprintf(statusCodeString, 60, "Invalid Namespace or Format");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Namespace or Format");
                 break;
             case NVME_GEN_SC_CMD_SEQ_ERROR_:
-                snprintf(statusCodeString, 60, "Command Sequence Error");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Command Sequence Error");
                 break;
             case NVME_GEN_SC_INVALID_SGL_SEGMENT_DESCRIPTOR:
-                snprintf(statusCodeString, 60, "Invalid SGL Segment Descriptor");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid SGL Segment Descriptor");
                 break;
             case NVME_GEN_SC_INVALID_NUMBER_OF_SGL_DESCRIPTORS:
-                snprintf(statusCodeString, 60, "Invalid Number of SGL Descriptors");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Number of SGL Descriptors");
                 break;
             case NVME_GEN_SC_DATA_SGL_LENGTH_INVALID:
-                snprintf(statusCodeString, 60, "Data SGL Length Invalid");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Data SGL Length Invalid");
                 break;
             case NVME_GEN_SC_METADATA_SGL_LENGTH_INVALID:
-                snprintf(statusCodeString, 60, "Metadata SGL Length Invalid");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Metadata SGL Length Invalid");
                 break;
             case NVME_GEN_SC_SGL_DESCRIPTOR_TYPE_INVALID:
-                snprintf(statusCodeString, 60, "SGL Descriptor Type Invalid");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "SGL Descriptor Type Invalid");
                 break;
             case NVME_GEN_SC_INVALID_USE_OF_CONTROLLER_MEMORY_BUFFER:
-                snprintf(statusCodeString, 60, "Invalid Use of Controller Memory Buffer");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Use of Controller Memory Buffer");
                 break;
             case NVME_GEN_SC_PRP_OFFSET_INVALID:
-                snprintf(statusCodeString, 60, "PRP Offset Invalid");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "PRP Offset Invalid");
                 break;
             case NVME_GEN_SC_ATOMIC_WRITE_UNIT_EXCEEDED:
-                snprintf(statusCodeString, 60, "Atomic Write Unit Exceeded");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Atomic Write Unit Exceeded");
                 break;
             case NVME_GEN_SC_OPERATION_DENIED:
-                snprintf(statusCodeString, 60, "Operation Denied");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Operation Denied");
                 break;
             case NVME_GEN_SC_SGL_OFFSET_INVALID:
-                snprintf(statusCodeString, 60, "SGL Offset Invalid");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "SGL Offset Invalid");
                 break;
             case NVME_GEN_SC_HOST_IDENTIFIER_INCONSISTENT_FORMAT:
-                snprintf(statusCodeString, 60, "Host Identifier Inconsistent Format");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Host Identifier Inconsistent Format");
                 break;
             case NVME_GEN_SC_KEEP_ALIVE_TIMEOUT_EXPIRED:
-                snprintf(statusCodeString, 60, "Keep Alive Timeout Expired");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Keep Alive Timeout Expired");
                 break;
             case NVME_GEN_SC_KEEP_ALIVE_TIMEOUT_INVALID:
-                snprintf(statusCodeString, 60, "Keel Alive Timeout Invalid");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Keel Alive Timeout Invalid");
                 break;
             case NVME_GEN_SC_COMMAND_ABORTED_DUE_TO_PREEMPT_AND_ABORT:
-                snprintf(statusCodeString, 60, "Command Aborted due to Preempt and Abort");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Command Aborted due to Preempt and Abort");
                 break;
             case NVME_GEN_SC_SANITIZE_FAILED:
-                snprintf(statusCodeString, 60, "Sanitize Failed");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Sanitize Failed");
                 break;
             case NVME_GEN_SC_SANITIZE_IN_PROGRESS:
-                snprintf(statusCodeString, 60, "Sanitize In Progress");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Sanitize In Progress");
                 break;
             case NVME_GEN_SC_SGL_DATA_BLOCK_GRANULARITY_INVALID:
-                snprintf(statusCodeString, 60, "SGL Data Block Granularity Invalid");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "SGL Data Block Granularity Invalid");
                 break;
             case NVME_GEN_SC_COMMAND_NOT_SUPPORTED_FOR_QUEUE_IN_CMB:
-                snprintf(statusCodeString, 60, "Command Not Supported for Queue in CMB");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Command Not Supported for Queue in CMB");
+                break;
+            case NVME_GEN_SC_NS_IS_WRITE_PROTECTED:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Namespace is Write Protected");
+                break;
+            case NVME_GEN_SC_COMMAND_INTERRUPTED:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Command Interrupted");
+                break;
+            case NVME_GEN_SC_TRANSIENT_TRANSPORT_ERROR:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Transient Transport Error");
+                break;
+            case NVME_GEN_SC_COMMAND_PROHIBITED_BY_CMD_AND_FEAT_LOCKDOWN:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Command Prohibited by Command and Feature Lockdown");
+                break;
+            case NVME_GEN_SC_ADMIN_COMMAND_MEDIA_NOT_READY:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Admin Command Media Not Ready");
                 break;
                 //80-BF are NVM command set specific                
             case NVME_GEN_SC_LBA_RANGE_:
-                snprintf(statusCodeString, 60, "LBA Out of Range");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "LBA Out of Range");
                 break;
             case NVME_GEN_SC_CAP_EXCEEDED_:
-                snprintf(statusCodeString, 60, "Capacity Exceeded");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Capacity Exceeded");
                 break;
             case NVME_GEN_SC_NS_NOT_READY_:
-                snprintf(statusCodeString, 60, "Namespace Not Ready");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Namespace Not Ready");
                 break;
             case NVME_GEN_SC_RESERVATION_CONFLICT:
-                snprintf(statusCodeString, 60, "Reservation Conflict");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Reservation Conflict");
                 break;
             case NVME_GEN_SC_FORMAT_IN_PROGRESS:
-                snprintf(statusCodeString, 60, "Format In Progress");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Format In Progress");
+                break;
+            case NVME_GEN_SC_INVALID_VALUE_SIZE:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Value Size");
+                break;
+            case NVME_GEN_SC_INVALID_KEY_SIZE:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Key Size");
+                break;
+            case NVME_GEN_SC_KV_KEY_DOES_NOT_EXIST:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "KV Key Does Not Exist");
+                break;
+            case NVME_GEN_SC_UNRECOVERED_ERROR:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unrecovered Error");
+                break;
+            case NVME_GEN_SC_KEY_EXISTS:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Key Exists");
                 break;
             default:
-                snprintf(statusCodeString, 60, "Unknown");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unknown");
                 break;
             }
             break;
         case NVME_SCT_COMMAND_SPECIFIC_STATUS://command specific
-            snprintf(statusCodeTypeString, 60, "Command Specific Status");
+            snprintf(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Command Specific Status");
             switch (statusCode)
             {
             case NVME_CMD_SP_SC_CQ_INVALID_:
-                snprintf(statusCodeString, 60, "Completion Queue Invalid");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Completion Queue Invalid");
                 break;
             case NVME_CMD_SP_SC_QID_INVALID_:
-                snprintf(statusCodeString, 60, "Invalid Queue Identifier");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Queue Identifier");
                 break;
             case NVME_CMD_SP_SC_QUEUE_SIZE_:
-                snprintf(statusCodeString, 60, "Invalid Queue Size");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Queue Size");
                 break;
             case NVME_CMD_SP_SC_ABORT_LIMIT_:
-                snprintf(statusCodeString, 60, "Aborted Command Limit Exceeded");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Aborted Command Limit Exceeded");
                 break;
                 //NVME_CMD_SP_SC_ABORT_MISSING_ = 0x04,//reserved in NVMe specs
             case NVME_CMD_SP_SC_ASYNC_LIMIT_:
-                snprintf(statusCodeString, 60, "Asynchronous Event Request Limit Exceeded");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Asynchronous Event Request Limit Exceeded");
                 break;
             case NVME_CMD_SP_SC_INVALID_FIRMWARE_SLOT_:
-                snprintf(statusCodeString, 60, "Invalid Firmware Slot");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Firmware Slot");
                 break;
             case NVME_CMD_SP_SC_INVALIDFIRMWARE_IMAGE_:
-                snprintf(statusCodeString, 60, "Invalid Firmware Image");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Firmware Image");
                 break;
             case NVME_CMD_SP_SC_INVALID_INTERRUPT_VECTOR_:
-                snprintf(statusCodeString, 60, "Invalid Interrupt Vector");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Interrupt Vector");
                 break;
             case NVME_CMD_SP_SC_INVALID_LOG_PAGE_:
-                snprintf(statusCodeString, 60, "Invalid Log Page");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Log Page");
                 break;
             case NVME_CMD_SP_SC_INVALID_FORMAT_:
-                snprintf(statusCodeString, 60, "Invalid Format");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Format");
                 break;
             case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
-                snprintf(statusCodeString, 60, "Firmware Activation Requires Conventional Reset");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Firmware Activation Requires Conventional Reset");
                 break;
             case NVME_CMD_SP_SC_INVALID_QUEUE_DELETION:
-                snprintf(statusCodeString, 60, "Invalid Queue Deletion");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Queue Deletion");
                 break;
             case NVME_CMD_SP_SC_FEATURE_IDENTIFIER_NOT_SAVABLE:
-                snprintf(statusCodeString, 60, "Feature Identifier Not Savable");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Feature Identifier Not Savable");
                 break;
             case NVME_CMD_SP_SC_FEATURE_NOT_CHANGEABLE:
-                snprintf(statusCodeString, 60, "Feature Not Changeable");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Feature Not Changeable");
                 break;
             case NVME_CMD_SP_SC_FEATURE_NOT_NAMESPACE_SPECIFC:
-                snprintf(statusCodeString, 60, "Feature Not Namespace Specific");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Feature Not Namespace Specific");
                 break;
             case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
-                snprintf(statusCodeString, 60, "Firmware Activation Requires NVM Subsystem Reset");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Firmware Activation Requires NVM Subsystem Reset");
                 break;
             case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
-                snprintf(statusCodeString, 60, "Firmware Activation Requires Reset");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Firmware Activation Requires Reset");
                 break;
             case NVME_CMD_SP_SC_FW_ACT_REQ_MAX_TIME_VIOALTION:
-                snprintf(statusCodeString, 60, "Firmware Activation Requires Maximum Time Violation");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Firmware Activation Requires Maximum Time Violation");
                 break;
             case NVME_CMD_SP_SC_FW_ACT_PROHIBITED:
-                snprintf(statusCodeString, 60, "Firmware Activation Prohibited");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Firmware Activation Prohibited");
                 break;
             case NVME_CMD_SP_SC_OVERLAPPING_RANGE:
-                snprintf(statusCodeString, 60, "Overlapping Range");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Overlapping Range");
                 break;
             case NVME_CMD_SP_SC_NS_INSUFFICIENT_CAP:
-                snprintf(statusCodeString, 60, "Namespace Insufficient Capacity");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Namespace Insufficient Capacity");
                 break;
             case NVME_CMD_SP_SC_NS_ID_UNAVAILABLE:
-                snprintf(statusCodeString, 60, "Namespace Identifier Unavailable");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Namespace Identifier Unavailable");
                 break;
             case NVME_CMD_SP_SC_NS_ALREADY_ATTACHED:
-                snprintf(statusCodeString, 60, "Namespace Already Attached");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Namespace Already Attached");
                 break;
             case NVME_CMD_SP_SC_NS_IS_PRIVATE:
-                snprintf(statusCodeString, 60, "Namespace Is Private");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Namespace Is Private");
                 break;
             case NVME_CMD_SP_SC_NS_NOT_ATTACHED:
-                snprintf(statusCodeString, 60, "Namespace Not Attached");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Namespace Not Attached");
                 break;
             case NVME_CMD_SP_SC_THIN_PROVISIONING_NOT_SUPPORTED:
-                snprintf(statusCodeString, 60, "Thin Provisioning Not Supported");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Thin Provisioning Not Supported");
                 break;
             case NVME_CMD_SP_SC_CONTROLLER_LIST_INVALID:
-                snprintf(statusCodeString, 60, "Controller List Invalid");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Controller List Invalid");
                 break;
             case NVME_CMD_SP_SC_DEVICE_SELF_TEST_IN_PROGRESS:
-                snprintf(statusCodeString, 60, "Device Self-test In Progress");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Device Self-test In Progress");
                 break;
             case NVME_CMD_SP_SC_BOOT_PARTITION_WRITE_PROHIBITED:
-                snprintf(statusCodeString, 60, "Boot Partition Write Prohibited");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Boot Partition Write Prohibited");
                 break;
             case NVME_CMD_SP_SC_INVALID_CONTROLLER_IDENTIFIER:
-                snprintf(statusCodeString, 60, "Invalid Controller Identifier");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Controller Identifier");
                 break;
             case NVME_CMD_SP_SC_INVALID_SECONDARY_CONTROLLER_STATE:
-                snprintf(statusCodeString, 60, "Invalid Secondary Controller State");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Secondary Controller State");
                 break;
             case NVME_CMD_SP_SC_INVALID_NUMBER_OF_CONTROLLER_RESOURCES:
-                snprintf(statusCodeString, 60, "Invalid Number of Controller Resources");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Number of Controller Resources");
                 break;
             case NVME_CMD_SP_SC_INVALID_RESOURCE_IDENTIFIER:
-                snprintf(statusCodeString, 60, "Invalid Resource Identifier");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Resource Identifier");
+                break;
+            case NVME_CMD_SP_SC_SANITIZE_PROHIBITED_WHILE_PERSISTENT_MEMORY_REGION_IS_ENABLED:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Sanitize Prohibited While Persistent Memory Region is Enabled");
+                break;
+            case NVME_CMD_SP_SC_ANA_GROUP_IDENTIFIER_INVALID:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "ANA Group Identifier Invalid");
+                break;
+            case NVME_CMD_SP_SC_ANA_ATTACH_FAILED:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "ANA Attach Failed");
+                break;
+            case NVME_CMD_SP_SC_INSUFFICIENT_CAPACITY:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unsufficient Capacity");
+                break;
+            case NVME_CMD_SP_SC_NAMESPACE_ATTACHMENT_LIMIT_EXCEEDED:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Namespace Attachment Limit Exceeded");
+                break;
+            case NVME_CMD_SP_SC_PROHIBITION_OF_COMMAND_EXECUTION_NOT_SUPPORTED:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Prohibition of Command Execution Not Supported");
+                break;
+            case NVME_CMD_SP_SC_IO_COMMAND_SET_NOT_SUPPORTED:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "I/O Command Set Not Supported");
+                break;
+            case NVME_CMD_SP_SC_IO_COMMAND_SET_NOT_ENABLED:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "I/O Command Set Not Enabled");
+                break;
+            case NVME_CMD_SP_SC_IO_COMMAND_SET_COMBINATION_REJECTED:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "I/O Command Set Combination Rejected");
+                break;
+            case NVME_CMD_SP_SC_INVALID_IO_COMMAND_SET:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid I/O Command Set");
+                break;
+            case NVME_CMD_SP_SC_IDENTIFIER_UNAVAILABLE:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Identifier Unavailable");
                 break;
                 //80-BF are NVM command set specific                 
             case NVME_CMD_SP_SC_CONFLICTING_ATTRIBUTES_:
-                snprintf(statusCodeString, 60, "Conflicting Attributes");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Conflicting Attributes");
                 break;
             case NVME_CMD_SP_SC_INVALID_PROTECTION_INFORMATION:
-                snprintf(statusCodeString, 60, "Invalid Protection Information");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Protection Information");
                 break;
             case NVME_CMD_SP_SC_ATTEMPTED_WRITE_TO_READ_ONLY_RANGE:
-                snprintf(statusCodeString, 60, "Attempted Write to Read Only Range");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Attempted Write to Read Only Range");
+                break;
+            case NVME_CMD_SP_SC_COMMAND_SIZE_LIMIT_EXCEEDED:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Command Size Limit Exceeded");
+                break;
+            case NVME_CMD_SP_SC_ZONED_BOUNDARY_ERROR:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Zoned Boundary Error");
+                break;
+            case NVME_CMD_SP_SC_ZONE_IS_FULL:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Zone is Full");
+                break;
+            case NVME_CMD_SP_SC_ZONE_IS_READ_ONLY:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Zone is Read-Only");
+                break;
+            case NVME_CMD_SP_SC_ZONE_IS_OFFLINE:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Zone is Offline");
+                break;
+            case NVME_CMD_SP_SC_ZONE_INVALID_WRITE:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Zone Invalid Write");
+                break;
+            case NVME_CMD_SP_SC_TOO_MANY_ACTIVE_ZONES:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Too Many Active Zones");
+                break;
+            case NVME_CMD_SP_SC_TOO_MANY_OPEN_ZONES:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Too Many Open Zones");
+                break;
+            case NVME_CMD_SP_SC_INVALID_ZONE_STATE_TRANSITION:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Invalid Zone State Transition");
                 break;
             default:
-                snprintf(statusCodeString, 60, "Unknown");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unknown");
                 break;
             }
             break;
         case NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS://media or data errors
-            snprintf(statusCodeTypeString, 60, "Media And Data Integrity Errors");
+            snprintf(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Media And Data Integrity Errors");
             switch (statusCode)
             {
             case NVME_MED_ERR_SC_WRITE_FAULT_:
-                snprintf(statusCodeString, 60, "Write Fault");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Write Fault");
                 break;
             case NVME_MED_ERR_SC_UNREC_READ_ERROR_:
-                snprintf(statusCodeString, 60, "Unrecovered Read Error");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unrecovered Read Error");
                 break;
             case NVME_MED_ERR_SC_ETE_GUARD_CHECK_:
-                snprintf(statusCodeString, 60, "End-to-end Guard Check Error");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "End-to-end Guard Check Error");
                 break;
             case NVME_MED_ERR_SC_ETE_APPTAG_CHECK_:
-                snprintf(statusCodeString, 60, "End-to-end Application Tag Check Error");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "End-to-end Application Tag Check Error");
                 break;
             case NVME_MED_ERR_SC_ETE_REFTAG_CHECK_:
-                snprintf(statusCodeString, 60, "End-to-end Reference Tag Check Error");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "End-to-end Reference Tag Check Error");
                 break;
             case NVME_MED_ERR_SC_COMPARE_FAILED_:
-                snprintf(statusCodeString, 60, "Compare Failure");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Compare Failure");
                 break;
             case NVME_MED_ERR_SC_ACCESS_DENIED_:
-                snprintf(statusCodeString, 60, "Access Denied");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Access Denied");
                 break;
             case NVME_MED_ERR_SC_DEALLOCATED_OR_UNWRITTEN_LOGICAL_BLOCK:
-                snprintf(statusCodeString, 60, "Deallocated or Unwritten Logical Block");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Deallocated or Unwritten Logical Block");
+                break;
+            case NVME_MED_ERR_SC_END_TO_END_STORAGE_TAG_CHECK_ERROR:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "End-To-End Storage Tag Check Error");
                 break;
             default:
-                snprintf(statusCodeString, 60, "Unknown");
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unknown");
+                break;
+            }
+            break;
+        case NVME_SCT_PATH_RELATED_STATUS:
+            snprintf(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Path Related Status Errors");
+            switch (statusCode)
+            {
+            case NVME_PATH_SC_INTERNAL_PATH_ERROR:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Internal Path Error");
+                break;
+            case NVME_PATH_SC_ASYMMETRIC_ACCESS_PERSISTENT_LOSS:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Asymmetric Access Persistent Loss");
+                break;
+            case NVME_PATH_SC_ASYMMETRIC_ACCESS_INACCESSIBLE:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Asymmetric Access Inaccessible");
+                break;
+            case NVME_PATH_SC_ASYMMETRIC_ACCESS_TRANSITION:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Asymmetric Access Transition");
+                break;
+            case NVME_PATH_SC_CONTROLLER_PATHING_ERROR:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Controller Pathing Error");
+                break;
+            case NVME_PATH_SC_HOST_PATHING_ERROR:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Host Pathing Error");
+                break;
+            case NVME_PATH_SC_COMMAND_ABORTED_BY_HOST:
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Command Aborted By Host");
+                break;
+            default: 
+                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unknown");
                 break;
             }
             break;
         case NVME_SCT_VENDOR_SPECIFIC_STATUS:
-            snprintf(statusCodeTypeString, 60, "Vendor Specific");
-            snprintf(statusCodeString, 60, "Unknown");
+            snprintf(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Vendor Specific");
+            snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unknown");
             break;
         default:
-            snprintf(statusCodeTypeString, 60, "Unknown");
-            snprintf(statusCodeString, 60, "Unknown");
+            snprintf(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Unknown");
+            snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unknown");
             break;
         }
         printf("\t\tStatus Code Type: %s (%" PRIX8 "h)\n", statusCodeTypeString, statusCodeType);
@@ -870,11 +1018,11 @@ int nvme_Get_SMART_Log_Page(tDevice *device, uint32_t nsid, uint8_t * pData, uin
     }
 
     memset(&cmdOpts,0,sizeof(nvmeGetLogPageCmdOpts));
-    smartLog = (nvmeSmartLog *)pData;
+    smartLog = C_CAST(nvmeSmartLog *, pData);
 
     cmdOpts.nsid = nsid;
-    //cmdOpts.addr = (uint64_t)smartLog;
-    cmdOpts.addr = (uint8_t*)smartLog;
+    //cmdOpts.addr = C_CAST(uint64_t, smartLog);
+    cmdOpts.addr = C_CAST(uint8_t*, smartLog);
     cmdOpts.dataLen = NVME_SMART_HEALTH_LOG_LEN;
     cmdOpts.lid = NVME_LOG_SMART_ID;
 
@@ -976,7 +1124,7 @@ int nvme_Get_DevSelfTest_Log_Page(tDevice *device, uint8_t * pData, uint32_t dat
     memset(&cmdOpts,0,sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr = pData;
     cmdOpts.dataLen = dataLen;
-    cmdOpts.lid = NVME_LOG_DEV_SELF_TEST;
+    cmdOpts.lid = NVME_LOG_DEV_SELF_TEST_ID;
     
     ret = nvme_Get_Log_Page(device, &cmdOpts);
 #ifdef _DEBUG
@@ -993,7 +1141,7 @@ int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *ExtdSMARTInfo)
     getExtSMARTLog.dataLen = sizeof(EXTENDED_SMART_INFO_T);
     getExtSMARTLog.lid = 0xC4;
     getExtSMARTLog.nsid = device->drive_info.namespaceID;
-    getExtSMARTLog.addr = (uint8_t*)ExtdSMARTInfo;
+    getExtSMARTLog.addr = C_CAST(uint8_t*, ExtdSMARTInfo);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1006,5 +1154,3 @@ int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *ExtdSMARTInfo)
     }
     return ret;
 }
-
-#endif

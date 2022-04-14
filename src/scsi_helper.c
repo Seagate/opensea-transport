@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,9 +14,7 @@
 #include "ata_helper_func.h"
 #include <ctype.h>//for checking for printable characters
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper_func.h"
-#endif
 
 uint16_t calculate_Logical_Block_Guard(uint8_t *buffer, uint32_t userDataLength, uint32_t totalDataLength)
 {
@@ -205,7 +203,6 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
             print_sense_key("Invalid sense key!", senseKey);
         }
         return BAD_PARAMETER;
-        break;
     }
     //now check the asc and ascq combination...this is going to be very large set of switch cases to do this...
     //FYI there is no rhyme or reason to the order...I just went through the massive table in SPC4...and only things for direct access block devices were implemented - TJE
@@ -1358,6 +1355,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x0F:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -4200,6 +4199,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x3C:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -5054,14 +5055,9 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         }
         break;
     case 0x4D:
-        switch (ascq)
+        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
         {
-        default:
-            if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-            {
-                printf("asc & ascq: %" PRIX8 "h - %" PRIX8 "h = Tagged Overlapped Commands. Task Tag = %02" PRIX8 "h\n", asc, ascq, ascq);
-            }
-            break;
+            printf("asc & ascq: %" PRIX8 "h - %" PRIX8 "h = Tagged Overlapped Commands. Task Tag = %02" PRIX8 "h\n", asc, ascq, ascq);
         }
         break;
     case 0x4E:
@@ -5093,6 +5089,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x4F:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -5496,6 +5494,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x56:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -6467,6 +6467,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x5F:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7537,6 +7539,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x75:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7556,6 +7560,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x76:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7575,6 +7581,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x77:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7594,6 +7602,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x78:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7613,6 +7623,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x79:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7632,6 +7644,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x7A:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7651,6 +7665,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x7B:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7670,6 +7686,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x7C:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7689,6 +7707,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x7D:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7708,6 +7728,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x7E:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -7727,6 +7749,8 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     case 0x7F:
         switch (ascq)
         {
+        case 0: //shutting up C4065 in VS2019 with this fallthough
+            M_FALLTHROUGH
         default:
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -8499,7 +8523,7 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
                 printf("Actual Retry Count: %" PRIu16 "\n", senseFields->senseKeySpecificInformation.retryCount.actualRetryCount);
                 break;
             case SENSE_KEY_SPECIFIC_PROGRESS_INDICATION:
-                printf("Progress: %0.02f%%\n", (double)senseFields->senseKeySpecificInformation.progress.progressIndication / 65536.0);
+                printf("Progress: %0.02f%%\n", C_CAST(double, senseFields->senseKeySpecificInformation.progress.progressIndication) / 65536.0);
                 break;
             case SENSE_KEY_SPECIFIC_SEGMENT_POINTER:
                 if (senseFields->senseKeySpecificInformation.segment.segmentDescriptor)
@@ -8633,7 +8657,7 @@ void copy_Inquiry_Data( uint8_t *pbuf, driveInfo *info )
 // \brief copy the serial number off of 0x80 VPD page data.
 void copy_Serial_Number( uint8_t *pbuf, char *serialNumber )
 {
-    uint16_t snLen = ((uint16_t)pbuf[2] << 8) | pbuf[3];
+    uint16_t snLen = M_BytesTo2ByteValue(pbuf[2], pbuf[3]);
     memcpy(serialNumber, &pbuf[4], M_Min(snLen,SERIAL_NUM_LEN));
     serialNumber[M_Min(snLen,SERIAL_NUM_LEN)]='\0';
     remove_Leading_Whitespace(serialNumber);
@@ -8651,7 +8675,7 @@ void copy_Read_Capacity_Info(uint32_t *logicalBlockSize, uint32_t *physicalBlock
         *logicalBlockSize = M_BytesTo4ByteValue(ptrBuf[8], ptrBuf[9], ptrBuf[10], ptrBuf[11]);
         //get the physical sector size
         sectorSizeExponent = ptrBuf[13] & 0x0F;
-        *physicalBlockSize = (uint32_t)(*logicalBlockSize * power_Of_Two(sectorSizeExponent));
+        *physicalBlockSize = C_CAST(uint32_t, *logicalBlockSize * power_Of_Two(sectorSizeExponent));
         //set the sector alignment info
         *sectorAlignment = M_GETBITRANGE(M_BytesTo2ByteValue(ptrBuf[14], ptrBuf[15]), 13, 0);
     }
@@ -8680,57 +8704,60 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
         //DO NOT try a SAT identify on these devices if we already know what they are. These should be treated as SCSI since they are either SCSI or ATA packet devices
         return NOT_SUPPORTED;
     }
-    uint8_t *ataInformation = (uint8_t *)calloc_aligned(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
-    if (!ataInformation)
+    if (!device->drive_info.passThroughHacks.scsiHacks.noVPDPages && !device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage)//if this is set, then the device is known to not support VPD pages, so just skip to the SAT identify
     {
-        perror("Error allocating memory to read the ATA Information VPD page");
-        return MEMORY_FAILURE;
-    }
-    if (SUCCESS == scsi_Inquiry(device, ataInformation, VPD_ATA_INFORMATION_LEN, ATA_INFORMATION, true, false))
-    {
-        if (ataInformation[1] == ATA_INFORMATION)
+        uint8_t *ataInformation = C_CAST(uint8_t *, calloc_aligned(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        if (!ataInformation)
         {
-            //set some of the bridge info in the device structure
-            memcpy(&device->drive_info.bridge_info.t10SATvendorID[0], &ataInformation[8], 8);
-            memcpy(&device->drive_info.bridge_info.SATproductID[0], &ataInformation[16], 16);
-            memcpy(&device->drive_info.bridge_info.SATfwRev[0], &ataInformation[32], 4);
+            perror("Error allocating memory to read the ATA Information VPD page");
+            return MEMORY_FAILURE;
+        }
+        if (SUCCESS == scsi_Inquiry(device, ataInformation, VPD_ATA_INFORMATION_LEN, ATA_INFORMATION, true, false))
+        {
+            if (ataInformation[1] == ATA_INFORMATION)
+            {
+                //set some of the bridge info in the device structure
+                memcpy(&device->drive_info.bridge_info.t10SATvendorID[0], &ataInformation[8], 8);
+                memcpy(&device->drive_info.bridge_info.SATproductID[0], &ataInformation[16], 16);
+                memcpy(&device->drive_info.bridge_info.SATfwRev[0], &ataInformation[32], 4);
 
-            if (ataInformation[36] == 0) //checking for PATA drive
-            {
-                if (ataInformation[43] & DEVICE_SELECT_BIT)//ATA signature device register is here. Checking for the device select bit being set to know it's device 1 (Not that we really need it)
+                if (ataInformation[36] == 0) //checking for PATA drive
                 {
-                    device->drive_info.ata_Options.isDevice1 = true;
+                    if (ataInformation[43] & DEVICE_SELECT_BIT)//ATA signature device register is here. Checking for the device select bit being set to know it's device 1 (Not that we really need it)
+                    {
+                        device->drive_info.ata_Options.isDevice1 = true;
+                    }
                 }
-            }
-            
-            if (ataInformation[56] == ATA_IDENTIFY || ataInformation[56] == ATA_READ_LOG_EXT || ataInformation[56] == ATA_READ_LOG_EXT_DMA)//Added read log commands here since they are in SAT4. Only HDD/SSD should use these.
-            {
-                issueSATIdentify = true;
-                device->drive_info.media_type = MEDIA_HDD;
-                device->drive_info.drive_type = ATA_DRIVE;
-            }
-            else if (ataInformation[56] == ATAPI_IDENTIFY)
-            {
-                issueSATIdentify = false;//Do not read it since we want to treat ATAPI as SCSI/with SCSI commands (at least for now)-TJE
-                device->drive_info.media_type = MEDIA_OPTICAL;
-                device->drive_info.drive_type = ATAPI_DRIVE;
+
+                if (ataInformation[56] == ATA_IDENTIFY || ataInformation[56] == ATA_READ_LOG_EXT || ataInformation[56] == ATA_READ_LOG_EXT_DMA)//Added read log commands here since they are in SAT4. Only HDD/SSD should use these.
+                {
+                    issueSATIdentify = true;
+                    device->drive_info.media_type = MEDIA_HDD;
+                    device->drive_info.drive_type = ATA_DRIVE;
+                }
+                else if (ataInformation[56] == ATAPI_IDENTIFY)
+                {
+                    issueSATIdentify = false;//Do not read it since we want to treat ATAPI as SCSI/with SCSI commands (at least for now)-TJE
+                    device->drive_info.media_type = MEDIA_OPTICAL;
+                    device->drive_info.drive_type = ATAPI_DRIVE;
+                }
+                else
+                {
+                    issueSATIdentify = true;
+                }
+                ret = SUCCESS;
             }
             else
             {
                 issueSATIdentify = true;
             }
-            ret = SUCCESS;
         }
-        else
+        else if (device->drive_info.interface_type == MMC_INTERFACE || device->drive_info.interface_type == NVME_INTERFACE || device->drive_info.interface_type == SD_INTERFACE)
         {
-            issueSATIdentify = true;
+            return NOT_SUPPORTED;
         }
+        safe_Free_aligned(ataInformation)
     }
-    else if (device->drive_info.interface_type == MMC_INTERFACE || device->drive_info.interface_type == NVME_INTERFACE || device->drive_info.interface_type == SD_INTERFACE)
-    {
-        return NOT_SUPPORTED;
-    }
-    safe_Free_aligned(ataInformation);
     if (issueSATIdentify)
     {
         if (SUCCESS == fill_In_ATA_Drive_Info(device))
@@ -8747,7 +8774,7 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
     return ret;
 }
 
-bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
+static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
 {
     bool passthroughTypeSet = false;
     char vendorID[9] = { 0 };
@@ -8792,6 +8819,7 @@ bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
             {
                 passthroughTypeSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_NEC;
+                device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
             }
         }
         else if (strcmp(vendorID, "Seagate") == 0)
@@ -8810,6 +8838,25 @@ bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
             {
                 device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
                 //TODO: this device previously had a hack that SMART check isn't supported, so need to migrate that too.
+            }
+            else
+            {
+                //setup some defaults that will most likely work for most current products
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //TODO: since we may find SATA or NVMe adapters, we cannot set below due to a union being used. May need to remove that or find another solution
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
             }
         }
         else if (strcmp(vendorID, "Samsung") == 0)
@@ -8898,6 +8945,18 @@ bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
     return passthroughTypeSet;
 }
 
+bool is_Seagate_USB_Vendor_ID(tDevice* device)
+{
+    if (strcmp(device->drive_info.T10_vendor_ident, "Seagate") == 0)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 // \fn fill_In_Device_Info(device device)
 // \brief Sends a set of INQUIRY commands & fills in the device information
 // \param device device struture
@@ -8908,7 +8967,23 @@ int fill_In_Device_Info(tDevice *device)
     #ifdef _DEBUG
     printf("%s: -->\n",__FUNCTION__);
     #endif
-    uint8_t *inq_buf = (uint8_t*)calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment);
+
+    bool mediumNotPresent = false;//assume medium is available until we find out otherwise.
+    scsiStatus turStatus;
+    memset(&turStatus, 0, sizeof(scsiStatus));
+    scsi_Test_Unit_Ready(device, &turStatus);
+    if (turStatus.senseKey != SENSE_KEY_NO_ERROR)
+    {
+        if (turStatus.senseKey == SENSE_KEY_NOT_READY)
+        {
+            if (turStatus.asc == 0x3A)//NOTE: 3A seems to be all the "medium not present" status's, so not currently checking for ascq - TJE
+            {
+                mediumNotPresent = true;
+            }
+        }
+    }
+
+    uint8_t *inq_buf = C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!inq_buf)
     {
         perror("Error allocating memory for standard inquiry data (scsi)");
@@ -9112,6 +9187,57 @@ int fill_In_Device_Info(tDevice *device)
             device->drive_info.media_type = MEDIA_UNKNOWN;
             break;
         }
+
+        bool foundUSBStandardDescriptor = false;
+        bool foundSATStandardDescriptor = false;
+        bool foundATAStandardDescriptor = false;
+
+        //check version descriptors first (If returned sense data is long enough and reports all of this)
+        //This can help improve SAT detection and other passthrough quirks
+        for (uint16_t versionIter = 0, offset = 58; versionIter < 7 && offset < (inq_buf[4] + 4); ++versionIter, offset += 2)
+        {
+            uint16_t versionDescriptor = M_BytesTo2ByteValue(device->drive_info.scsiVpdData.inquiryData[offset + 0], device->drive_info.scsiVpdData.inquiryData[offset + 1]);
+            if (!foundUSBStandardDescriptor && (is_Standard_Supported(versionDescriptor, STANDARD_CODE_USB)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_UAS)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_UAS2)))
+            {
+                foundUSBStandardDescriptor = true;
+            }
+            else if (!foundSATStandardDescriptor && (is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT2)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT3)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT4)))
+            {
+                foundSATStandardDescriptor = true;
+            }
+            else if (!foundATAStandardDescriptor && (is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI6)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI7)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI8)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ACSx)))
+            {
+                foundATAStandardDescriptor = true;
+            }
+        }
+
+        //special USB detection case. If not already USB interface, do a few more checks to get the interface correct
+        if (device->drive_info.interface_type == SCSI_INTERFACE)
+        {
+            if (foundUSBStandardDescriptor)
+            {
+                device->drive_info.interface_type = USB_INTERFACE;
+            }
+            
+            //Only rely on this as a last resort. Try using version descriptors when possible
+            //NOTE: This is different from SAS where the ID is in all CAPS, which makes this identification possible.
+            //TODO: LaCie? Need to make sure this only catches USB and not something else like thunderbolt
+            if (device->drive_info.interface_type == SCSI_INTERFACE && is_Seagate_USB_Vendor_ID(device))
+            {
+                device->drive_info.interface_type = USB_INTERFACE;
+            }
+        }
+        bool hisup = M_ToBool(inq_buf[3] & BIT4);//historical support...this is set to 1 for nvme (SNTL) and not specified in SAT...may be useful later - TJE
+        bool rmb = M_ToBool(inq_buf[1] & BIT1);//removable medium. This should be zero for all modern HDDs and any SSD, even over USB, but USB sometimes plays by it's own rules. - TJE
+        bool cmdQueue = M_ToBool(inq_buf[7] & BIT1);//set to 1 for nvme, unspecified for SAT
         //check for additional bits to try and filter out when to check for SAT
         if (checkForSAT && !device->drive_info.passThroughHacks.hacksSetByReportedID)
         {
@@ -9189,7 +9315,7 @@ int fill_In_Device_Info(tDevice *device)
 
         //As per NVM Express SCSI Translation Reference. 
         //NOTE: Setting this type here allows us to skip sending some extra commands. (e.g. SAT compliant)
-        if (memcmp(device->drive_info.T10_vendor_ident, "NVMe",4) == 0 )
+        if (memcmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0 )
         {
             //DO NOT set the drive type to NVMe here. We need to treat it as a SCSI device since we can only issue SCSI translatable commands!!!
             //device->drive_info.drive_type  = NVME_DRIVE;
@@ -9208,12 +9334,44 @@ int fill_In_Device_Info(tDevice *device)
             checkForSAT = false;
         }
 
+        bool knownMemoryStickID = false;
+        //Checking the product identification for "Generic-" device to see if they are MMC, SD, etc type devices
+        if (strcmp(device->drive_info.T10_vendor_ident, "Generic-") == 0)
+        {
+            if (strcmp(device->drive_info.product_identification, "MS/MS-PRO") == 0 ||
+                strcmp(device->drive_info.product_identification, "MS/MS-Pro") == 0 ||
+                strcmp(device->drive_info.product_identification, "xD-Picture") == 0 ||
+                strcmp(device->drive_info.product_identification, "SD/MMC") == 0 ||
+                strcmp(device->drive_info.product_identification, "SD/MemoryStick") == 0 ||
+                strcmp(device->drive_info.product_identification, "SM/xD-Picture") == 0 ||
+                strcmp(device->drive_info.product_identification, "Compact Flash") == 0 //TODO: Keep this here? This can be an ATA device, but that may depend on the interface - TJE
+                )
+            {
+                //TODO: We have "FLASH_DRIVE" as a type, but it won't ba handled well in the rest of the library.
+                //      Either need to start using it, or make more changes to handle it better -TJE
+                //device->drive_info.drive_type = FLASH_DRIVE;
+                device->drive_info.media_type = MEDIA_SSM_FLASH;
+                if (strcmp(device->drive_info.product_identification, "Compact Flash") != 0 || mediumNotPresent)
+                {
+                    //Only check for SAT on compact flash since it uses ATA commands. May need another case for CFast as well.
+                    checkForSAT = false;
+                }
+                knownMemoryStickID = true;
+            }
+        }
+
         //If this is a suspected NVMe device, specifically ASMedia 236X chip, need to do an inquiry with EXACTLY 38bytes to check for a specific signature
         //This will check for some known outputs to know when to do the additional inquiry command for ASMedia detection. This may not catch everything. - TJE
-        if (!(device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
+        if (!knownMemoryStickID && !device->drive_info.passThroughHacks.hacksSetByReportedID  && !(device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
             &&
             (strncmp(device->drive_info.T10_vendor_ident, "ASMT", 4) == 0 || strncmp(device->drive_info.T10_vendor_ident, "ASMedia", 7) == 0 
-            || strstr(device->drive_info.product_identification, "ASM236X") || strstr(device->drive_info.product_identification, "NVME"))
+            || strstr(device->drive_info.product_identification, "ASM236X") || strstr(device->drive_info.product_identification, "NVME")
+            || is_Seagate_USB_Vendor_ID(device) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the ASmedia NVMe chips
+            //TODO: Check when FWRev is set to 2364? At least one device I have does this, but not sure this is a good thing to add in here or not -TJE
+            && !hisup && !rmb //hisup shoiuld be 1 and rmb should be zero...on the asmedia chips I have tested, hisup is zero
+            && responseFormat >= 2 //filter out any weird old drives with bizarre responses
+            && inq_buf[4] == 0x47 //SNTL says 1F, but a couple of adapter I have sets 47h...using this for now to help filter the list
+            && cmdQueue //should be set for all NVMe SNTL translators
             )
         {
             //This is likely a ASMedia 236X device. Need to do another inquiry command in order to confirm.
@@ -9223,13 +9381,14 @@ int fill_In_Device_Info(tDevice *device)
                 if (asmtInq[36] == 0x60 && asmtInq[37] == 0x23)//todo: add checking length ahead of this for improved backwards compatibility with SCSI 2 devices.
                 {
                     //This is an ASMedia device with the 236X chip which supports USB to NVMe passthrough
-                    //This code will setup known hacks for these devices since it wasn't already detected by lower layers based on VID/PID reported over the USB interface
-                    checkForSAT = false;
-                    device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_ASMEDIA_BASIC;
+                    //will attempt to check for full passthrough support first
+                    uint8_t* nvmeIdentify = C_CAST(uint8_t*, calloc_aligned(NVME_IDENTIFY_DATA_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    bool fullCmdSupport = false;
+                    //setup hacks/flags common for both types of passthrough
+                    device->drive_info.drive_type = NVME_DRIVE;
                     device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                     device->drive_info.passThroughHacks.turfValue = 33;
                     device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in the case an ATA passthrough command is attempted, it won't try this opcode since it can cause performance problems or crash the bridge
-                    device->drive_info.drive_type = NVME_DRIVE;
                     device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
                     device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
                     device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
@@ -9237,52 +9396,74 @@ int fill_In_Device_Info(tDevice *device)
                     device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
                     device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                     device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
-                    device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
-                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
-                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric = true;
+                    if (nvmeIdentify)
+                    {
+                        device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_ASMEDIA;
+                        //attempt the full passthrough
+                        if (SUCCESS == nvme_Identify(device, nvmeIdentify, 0, NVME_IDENTIFY_CTRL))
+                        {
+                            fullCmdSupport = true;
+                        }
+                        safe_Free_aligned(nvmeIdentify);
+                    }
+                    //This code will setup known hacks for these devices since it wasn't already detected by lower layers based on VID/PID reported over the USB interface
+                    checkForSAT = false;
+                    if (!fullCmdSupport)
+                    {
+                        //if the full cmd above failed, but we are here, that means it supports the basic passthrough
+                        //change to this passthrough and set the limited capabilities flags
+                        device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_ASMEDIA_BASIC;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric = true;
+                    }
+                    checkForSAT = false;
                 }
             }
         }
 
         //Need to check version descriptors here since they may be useful below, but also because it can be used to help rule-out some USB to NVMe devices.
         bool satVersionDescriptorFound = false;
-        if (!device->drive_info.passThroughHacks.hacksSetByReportedID && version >= 4 && (inq_buf[4] + 4 > 57))//if less than this length, then there definitely won't be a reason to check version descriptors
+        if(strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0 || strstr(device->drive_info.product_identification, "NVME") || strstr(device->drive_info.product_identification, "NVMe"))
         {
-            uint16_t versionDescriptor = 0;
-            if(strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0 || strstr(device->drive_info.product_identification, "NVME"))
+            //This means we most likely have some sort of NVMe device, so SAT (ATA passthrough) makes no sense to check for.
+            checkForSAT = false;
+        }
+        else
+        {
+            if (foundSATStandardDescriptor || foundATAStandardDescriptor)
             {
-                //This means we most likely have some sort of NVMe device, so SAT (ATA passthrough) makes no sense to check for.
-                checkForSAT = false;
-            }
-            else
-            {
-                for (uint16_t versionIter = 0, offset = 58; versionIter < 7 && offset < (inq_buf[4] + 4); ++versionIter, offset += 2)
+                if (strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0 || strstr(device->drive_info.product_identification, "NVME") == NULL || strstr(device->drive_info.product_identification, "NVMe") == NULL)
                 {
-                    versionDescriptor = M_BytesTo2ByteValue(device->drive_info.scsiVpdData.inquiryData[offset + 0], device->drive_info.scsiVpdData.inquiryData[offset + 1]);
-                    if (is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT2)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT3)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT4)
-                        //Next version descriptors aren't sat but should only appear on a SAT interface...at least we know they are ATA/ATAPI so it won't hurt to try issuing a command to the drive.
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI6)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI7)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI8)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ACSx)
-                        )
-                    {
-                        //This is a workaround for some USB to NVMe adapters that list a SAT descriptor, which makes no sense.
-                        if (strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0 || strstr(device->drive_info.product_identification, "NVME") == NULL)
-                        {
-                            satVersionDescriptorFound = true;
-                        }
-                        else
-                        {
-                            checkForSAT = false;
-                        }
-                        break;
-                    }
+                    satVersionDescriptorFound = true;
+                }
+                else
+                {
+                    checkForSAT = false;
                 }
             }
+        }
+
+        bool checkJMicronNVMe = false;
+        if (!device->drive_info.passThroughHacks.hacksSetByReportedID && checkForSAT && !(device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
+            && (
+                strncmp(device->drive_info.T10_vendor_ident, "JMicron", 4) == 0 || //check anything coming up as Jmicron
+                (strncmp(device->drive_info.T10_vendor_ident, "JMicron", 4) == 0 && strncmp(device->drive_info.product_identification, "Tech", 4) == 0 && (strncmp(device->drive_info.product_revision, "0204", 4) == 0 || strncmp(device->drive_info.product_revision, "0205", 4) == 0)) //this is specific to known Jmicron-nvme adapters
+                || is_Seagate_USB_Vendor_ID(device) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the Jmicron NVMe chips
+            && foundSATStandardDescriptor && !foundATAStandardDescriptor //these chips report SAT, but not an ATA standard...might reduce how often this check is performed - TJE
+            && hisup && !rmb //hisup shoiuld be 1 and rmb should be zero...this should filter SOME, but not all USB adapters that are actually SATA drives - TJE
+            && responseFormat >= 2 //filter out any weird old drives with bizarre responses
+            //&& inq_buf[4] == 0x5b //SNTL says 1F, but one adapter I have sets 5B...need to make sure other adapters do the same before we enforce this check - TJE
+            && cmdQueue //should be set for all NVMe SNTL translators
+            )
+        {
+            //this is some additional checks for JMicron NVMe passthrough
+            checkJMicronNVMe = true;
+            //Do not turn off SAT checks because there is not enough information to filter down into a known NVMe vs known SATA device in this "auto-detect" case
+            //checking for this will come, most likely, after SAT check.
+            //TODO: Further improvement: Detect A1h command supported, but 85h is NOT. A1 is the opcode supported by this device's passthrough and anything supporting 85h will have to be SAT, not this unique NVMe passthrough - TJE
+            //      note: there is not currently a good way to track the results from these commands in fill_ATA_Drive_Info...that is something we can work on going forward.
+            //      A1 SAT identify should return "Invalid field in CDB" and 85h should return "Invalid operation code". While SOME SAT device may do this too, this will reduce commanmds sent to genuine SAT devices.
         }
 
         if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE)
@@ -9297,18 +9478,46 @@ int fill_In_Device_Info(tDevice *device)
                )
             {
                 ret = fill_In_ATA_Drive_Info(device);
+                if (ret != SUCCESS && checkJMicronNVMe)
+                {
+                    device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
+                    ret = fill_In_NVMe_Device_Info(device);
+                    if (ret == SUCCESS)
+                    {
+                        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                        device->drive_info.passThroughHacks.turfValue = 13;
+                        device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in 
+                        device->drive_info.drive_type = NVME_DRIVE;
+                        device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                        device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = false;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                        device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
+                    }
+                    else
+                    {
+                        device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                        ret = SUCCESS;//do not fail here since this should otherwise be treated as a SCSI drive
+                    }
+                }
             }
-            safe_Free_aligned(inq_buf);
+            safe_Free_aligned(inq_buf)
             return ret;
         }
 
         if (M_Word0(device->dFlags) == FAST_SCAN)
         {
-            if (version >= 2 || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable)//unit serial number added in SCSI2
+            if ((!device->drive_info.passThroughHacks.scsiHacks.noVPDPages || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable) && (version >= 2 || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable))//unit serial number added in SCSI2
             {
                 //I'm reading only the unit serial number page here for a quick scan and the device information page for WWN - TJE
                 uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
-                uint8_t *unitSerialNumber = (uint8_t*)calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment);
+                uint8_t *unitSerialNumber = C_CAST(uint8_t*, calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!unitSerialNumber)
                 {
                     perror("Error allocating memory to read the unit serial number");
@@ -9342,7 +9551,7 @@ int fill_In_Device_Info(tDevice *device)
                         memset(device->drive_info.serialNumber, 0, SERIAL_NUM_LEN);
                     }
                 }
-                safe_Free_aligned(unitSerialNumber);
+                safe_Free_aligned(unitSerialNumber)
             }
             else
             {
@@ -9358,13 +9567,13 @@ int fill_In_Device_Info(tDevice *device)
                     }
                 }
             }
-            if (version >= 3)//device identification added in SPC
+            if (version >= 3 && !device->drive_info.passThroughHacks.scsiHacks.noVPDPages)//device identification added in SPC
             {
-                uint8_t *deviceIdentification = (uint8_t*)calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment);
+                uint8_t *deviceIdentification = C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!deviceIdentification)
                 {
                     perror("Error allocating memory to read device identification VPD page");
-                    safe_Free_aligned(inq_buf);
+                    safe_Free_aligned(inq_buf)
                     return MEMORY_FAILURE;
                 }
                 if (SUCCESS == scsi_Inquiry(device, deviceIdentification, INQ_RETURN_DATA_LENGTH, DEVICE_IDENTIFICATION, true, false))
@@ -9376,14 +9585,41 @@ int fill_In_Device_Info(tDevice *device)
                         byte_Swap_64(&device->drive_info.worldWideName);
                     }
                 }
-                safe_Free_aligned(deviceIdentification);
+                safe_Free_aligned(deviceIdentification)
             }
             //One last thing...Need to do a SAT scan...
             if (checkForSAT)
             {
-                check_SAT_Compliance_And_Set_Drive_Type(device);
+                if (SUCCESS != check_SAT_Compliance_And_Set_Drive_Type(device) && checkJMicronNVMe)
+                {
+                    device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
+                    ret = fill_In_NVMe_Device_Info(device);
+                    if (ret == SUCCESS)
+                    {
+                        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                        device->drive_info.passThroughHacks.turfValue = 13;
+                        device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in 
+                        device->drive_info.drive_type = NVME_DRIVE;
+                        device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                        device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = false;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                        device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
+                    }
+                    else
+                    {
+                        device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                        ret = SUCCESS;//do not fail here since this should otherwise be treated as a SCSI drive
+                    }
+                }
             }
-            safe_Free_aligned(inq_buf);
+            safe_Free_aligned(inq_buf)
             return ret;
         }
 
@@ -9409,7 +9645,7 @@ int fill_In_Device_Info(tDevice *device)
 
         bool satVPDPageRead = false;
         bool satComplianceChecked = false;
-        if (version >= 2 || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable) //SCSI 2 added VPD pages
+        if ((!device->drive_info.passThroughHacks.scsiHacks.noVPDPages || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable) && (version >= 2 || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable)) //SCSI 2 added VPD pages
         {
             //from here on we need to check if a VPD page is supported and read it if there is anything in it that we care about to store info in the device struct
             memset(inq_buf, 0, INQ_RETURN_DATA_LENGTH);
@@ -9467,7 +9703,7 @@ int fill_In_Device_Info(tDevice *device)
                         inq_buf[offset] = DEVICE_IDENTIFICATION;
                         ++offset;
                     }
-                    if (checkForSAT)
+                    if (checkForSAT && !device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage)
                     {
                         inq_buf[offset] = ATA_INFORMATION;
                         ++offset;
@@ -9489,11 +9725,11 @@ int fill_In_Device_Info(tDevice *device)
             }
             //first, get the length of the supported pages
             uint16_t supportedVPDPagesLength = M_BytesTo2ByteValue(inq_buf[2], inq_buf[3]);
-            uint8_t *supportedVPDPages = (uint8_t*)calloc(supportedVPDPagesLength, sizeof(uint8_t));
+            uint8_t *supportedVPDPages = C_CAST(uint8_t*, calloc(supportedVPDPagesLength, sizeof(uint8_t)));
             if (!supportedVPDPages)
             {
                 perror("Error allocating memory for supported VPD pages!\n");
-                safe_Free_aligned(inq_buf);
+                safe_Free_aligned(inq_buf)
                 return MEMORY_FAILURE;
             }
             memcpy(supportedVPDPages, &inq_buf[4], supportedVPDPagesLength);
@@ -9506,7 +9742,7 @@ int fill_In_Device_Info(tDevice *device)
                 case UNIT_SERIAL_NUMBER://Device serial number (only grab 20 characters worth since that's what we need for the device struct)
                 {
                     uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
-                    uint8_t *unitSerialNumber = (uint8_t*)calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment);
+                    uint8_t *unitSerialNumber = C_CAST(uint8_t*, calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment));
                     if (!unitSerialNumber)
                     {
                         perror("Error allocating memory to read the unit serial number");
@@ -9532,12 +9768,12 @@ int fill_In_Device_Info(tDevice *device)
                             }
                         }
                     }
-                    safe_Free_aligned(unitSerialNumber);
+                    safe_Free_aligned(unitSerialNumber)
                     break;
                 }
                 case DEVICE_IDENTIFICATION://World wide name
                 {
-                    uint8_t *deviceIdentification = (uint8_t*)calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment);
+                    uint8_t *deviceIdentification = C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
                     if (!deviceIdentification)
                     {
                         perror("Error allocating memory to read device identification VPD page");
@@ -9552,7 +9788,7 @@ int fill_In_Device_Info(tDevice *device)
                             byte_Swap_64(&device->drive_info.worldWideName);
                         }
                     }
-                    safe_Free_aligned(deviceIdentification);
+                    safe_Free_aligned(deviceIdentification)
                     break;
                 }
                 case ATA_INFORMATION: //use this to determine if it's SAT compliant
@@ -9569,6 +9805,35 @@ int fill_In_Device_Info(tDevice *device)
                         {
                             //send test unit ready to get the device responding again (For better performance on some USB devices that don't support this page)
                             scsi_Test_Unit_Ready(device, NULL);
+                            //TODO: Check jmicron here???
+                            if (checkJMicronNVMe)
+                            {
+                                device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
+                                ret = fill_In_NVMe_Device_Info(device);
+                                if (ret == SUCCESS)
+                                {
+                                    device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                                    device->drive_info.passThroughHacks.turfValue = 13;
+                                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in 
+                                    device->drive_info.drive_type = NVME_DRIVE;
+                                    device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = false;
+                                    device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
+                                }
+                                else
+                                {
+                                    device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                                    ret = SUCCESS;//do not fail here since this should otherwise be treated as a SCSI drive
+                                }
+                            }
                         }
                         satComplianceChecked = true;
                     }
@@ -9576,7 +9841,7 @@ int fill_In_Device_Info(tDevice *device)
                 }
                 case BLOCK_DEVICE_CHARACTERISTICS: //use this to determine if it's SSD or HDD and whether it's a HDD or not
                 {
-                    uint8_t *blockDeviceCharacteristics = (uint8_t*)calloc_aligned(VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
+                    uint8_t *blockDeviceCharacteristics = C_CAST(uint8_t*, calloc_aligned(VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
                     if (!blockDeviceCharacteristics)
                     {
                         perror("Error allocating memory to read block device characteistics VPD page");
@@ -9588,25 +9853,26 @@ int fill_In_Device_Info(tDevice *device)
                         {
                             uint16_t mediumRotationRate = M_BytesTo2ByteValue(blockDeviceCharacteristics[4], blockDeviceCharacteristics[5]);
                             uint8_t productType = blockDeviceCharacteristics[6];
-                            if (mediumRotationRate == 0x0001)
+                            if (device->drive_info.media_type != MEDIA_SSM_FLASH)//if this is already set, we don't want to change it because this is a helpful filter for some card-reader type devices.
                             {
-                                if (!satVPDPageRead)
+                                if (mediumRotationRate == 0x0001)
                                 {
-                                    device->drive_info.media_type = MEDIA_SSD;
+                                    if (!satVPDPageRead)
+                                    {
+                                        device->drive_info.media_type = MEDIA_SSD;
+                                    }
                                 }
-                            }
-                            else if (mediumRotationRate >= 0x401 && mediumRotationRate <= 0xFFFE)
-                            {
-                                if (!satVPDPageRead)
+                                else if (mediumRotationRate >= 0x401 && mediumRotationRate <= 0xFFFE)
                                 {
-                                    device->drive_info.media_type = MEDIA_HDD;
-                                }
-                            }
-                            else
-                            {
-                                if (!satVPDPageRead)
-                                {
-                                    device->drive_info.media_type = MEDIA_UNKNOWN;
+                                    if (!satVPDPageRead)
+                                    {
+                                        device->drive_info.media_type = MEDIA_HDD;
+                                    }
+                                    if (checkJMicronNVMe)
+                                    {
+                                        //The logic here is that there are no NVMe HDDs that will use this bridge, so do not do a SAT check, and instead check only for JMicron NVMe adapter - TJE
+                                        checkForSAT = false;
+                                    }
                                 }
                             }
                             switch (productType)
@@ -9649,7 +9915,7 @@ int fill_In_Device_Info(tDevice *device)
                             }
                         }
                     }
-                    safe_Free_aligned(blockDeviceCharacteristics);
+                    safe_Free_aligned(blockDeviceCharacteristics)
                     break;
                 }
                 default:
@@ -9657,7 +9923,7 @@ int fill_In_Device_Info(tDevice *device)
                     break;
                 }
             }
-            safe_Free(supportedVPDPages);
+            safe_Free(supportedVPDPages)
         }
         else
         {
@@ -9674,16 +9940,16 @@ int fill_In_Device_Info(tDevice *device)
             }
         }
 
-        if (readCapacity)
+        if (readCapacity && !mediumNotPresent)
         {
             //if inquiry says SPC or lower (3), then only do read capacity 10
             //Anything else can have read capacity 16 command available
 
             //send a read capacity command to get the device's logical block size...read capacity 10 should be enough for this
-            uint8_t *readCapBuf = (uint8_t*)calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
+            uint8_t *readCapBuf = C_CAST(uint8_t*, calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
             if (!readCapBuf)
             {
-                safe_Free_aligned(inq_buf);
+                safe_Free_aligned(inq_buf)
                 return MEMORY_FAILURE;
             }
             if (SUCCESS == scsi_Read_Capacity_10(device, readCapBuf, READ_CAPACITY_10_LEN))
@@ -9692,11 +9958,11 @@ int fill_In_Device_Info(tDevice *device)
                 if (version > 3)//SPC2 and higher can reference SBC2 and higher which introduced read capacity 16
                 {
                     //try a read capacity 16 anyways and see if the data from that was valid or not since that will give us a physical sector size whereas readcap10 data will not
-                    uint8_t* temp = (uint8_t*)realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment);
+                    uint8_t* temp = C_CAST(uint8_t*, realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
                     if (!temp)
                     {
-                        safe_Free_aligned(readCapBuf);
-                        safe_Free_aligned(inq_buf);
+                        safe_Free_aligned(readCapBuf)
+                        safe_Free_aligned(inq_buf)
                         return MEMORY_FAILURE;
                     }
                     readCapBuf = temp;
@@ -9721,6 +9987,7 @@ int fill_In_Device_Info(tDevice *device)
                         if (readCapBuf[12] & BIT0)
                         {
                             device->drive_info.currentProtectionType = M_GETBITRANGE(readCapBuf[12], 3, 1) + 1;
+                            checkForSAT = false;
                         }
                     }
                 }
@@ -9728,11 +9995,11 @@ int fill_In_Device_Info(tDevice *device)
             else
             {
                 //try read capacity 16, if that fails we are done trying
-                uint8_t* temp = (uint8_t*)realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment);
+                uint8_t* temp = C_CAST(uint8_t*, realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
                 if (temp == NULL)
                 {
-                    safe_Free_aligned(readCapBuf);
-                    safe_Free_aligned(inq_buf);
+                    safe_Free_aligned(readCapBuf)
+                    safe_Free_aligned(inq_buf)
                     return MEMORY_FAILURE;
                 }
                 readCapBuf = temp;
@@ -9745,10 +10012,11 @@ int fill_In_Device_Info(tDevice *device)
                     if (readCapBuf[12] & BIT0)
                     {
                         device->drive_info.currentProtectionType = M_GETBITRANGE(readCapBuf[12], 3, 1) + 1;
+                        checkForSAT = false;
                     }
                 }
             }
-            safe_Free_aligned(readCapBuf);
+            safe_Free_aligned(readCapBuf)
             if (device->drive_info.devicePhyBlockSize == 0)
             {
                 //If we did not get a physical blocksize, we need to set it to the blocksize (logical).
@@ -9757,23 +10025,59 @@ int fill_In_Device_Info(tDevice *device)
             }
         }
 
-        //printf("passthrough type set to %d\n", device->drive_info.passThroughHacks.passthroughType);
+        //NOTE: You would think that checking if physical and logical block sizes don't match you can filter NVMe (they are supposed to be the same in translation),
+        //      but this DOES NOT WORK. For whatever reason, some report 512B logical, 4k physical....for no apparent reason. - TJE
 
+        //printf("passthrough type set to %d\n", device->drive_info.passThroughHacks.passthroughType);
+        int satCheck = FAILURE;
         //if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just issue a SAT identify in here to set things up...might reduce multiple commands later
         if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE) 
             && device->drive_info.media_type != MEDIA_UNKNOWN && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
         {
-            check_SAT_Compliance_And_Set_Drive_Type(device);
+            satCheck = check_SAT_Compliance_And_Set_Drive_Type(device);
         }
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         //Because we may find an NVMe over USB device, if we find one of these, perform a little more discovery...
-        if (device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
+        if ((device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
+            ||
+            (satCheck != SUCCESS && checkJMicronNVMe)
+            )
         {
+            int scsiRet = ret;
+            if (checkJMicronNVMe)
+            {
+                device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
+            }
             //NOTE: It is OK if this fails since it will fall back to treating as SCSI
-            fill_In_NVMe_Device_Info(device);
+            ret = fill_In_NVMe_Device_Info(device);
+            if (ret == SUCCESS && checkJMicronNVMe)
+            {
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 13;
+                device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in 
+                device->drive_info.drive_type = NVME_DRIVE;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = false;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
+            }
+            else if(checkJMicronNVMe)
+            {
+                device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                ret = scsiRet;//do not fail here since this should otherwise be treated as a SCSI drive
+            }
+            else
+            {
+                ret = scsiRet;//do not fail here since this should otherwise be treated as a SCSI drive
+            }
         }
-#endif
     }
     else
     {
@@ -9783,7 +10087,7 @@ int fill_In_Device_Info(tDevice *device)
         }
         ret = COMMAND_FAILURE;
     }
-    safe_Free_aligned(inq_buf);
+    safe_Free_aligned(inq_buf)
 
     #ifdef _DEBUG
     printf("\nscsi helper\n");
@@ -9815,377 +10119,377 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
     {
             //1 - 8 architecture model
     case STANDARD_CODE_SAM:
-        sprintf(versionString, "SAM");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM");
         break;
     case STANDARD_CODE_SAM2:
-        sprintf(versionString, "SAM-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM-2");
         break;
     case STANDARD_CODE_SAM3:
-        sprintf(versionString, "SAM-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM-3");
         break;
     case STANDARD_CODE_SAM4:
-        sprintf(versionString, "SAM-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM-4");
         break;
     case STANDARD_CODE_SAM5:
-        sprintf(versionString, "SAM-5");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM-5");
         break;
     case STANDARD_CODE_SAM6:
-        sprintf(versionString, "SAM-6");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM-6");
         break;
             //9-64 Command Set
     case STANDARD_CODE_SPC:
-        sprintf(versionString, "SPC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPC");
         break;
     case STANDARD_CODE_MMC:
-        sprintf(versionString, "MMC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC");
         break;
     case STANDARD_CODE_SCC:
-        sprintf(versionString, "SCC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SCC");
         break;
     case STANDARD_CODE_SBC:
-        sprintf(versionString, "SBC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBC");
         break;
     case STANDARD_CODE_SMC:
-        sprintf(versionString, "SMC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SMC");
         break;
     case STANDARD_CODE_SES:
-        sprintf(versionString, "SES");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SES");
         break;
     case STANDARD_CODE_SCC2:
-        sprintf(versionString, "SCC-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SCC-2");
         break;
     case STANDARD_CODE_SSC:
-        sprintf(versionString, "SSC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSC");
         break;
     case STANDARD_CODE_RBC:
-        sprintf(versionString, "RBC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "RBC");
         break;
     case STANDARD_CODE_MMC2:
-        sprintf(versionString, "MMC-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC-2");
         break;
     case STANDARD_CODE_SPC2:
-        sprintf(versionString, "SPC-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPC-2");
         break;
     case STANDARD_CODE_OCRW:
-        sprintf(versionString, "OCRW");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "OCRW");
         break;
     case STANDARD_CODE_MMC3:
-        sprintf(versionString, "MMC-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC-3");
         break;
     case STANDARD_CODE_RMC:
-        sprintf(versionString, "RMC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "RMC");
         break;
     case STANDARD_CODE_SMC2:
-        sprintf(versionString, "SMC-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SMC-2");
         break;
     case STANDARD_CODE_SPC3:
-        sprintf(versionString, "SPC-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPC-3");
         break;
     case STANDARD_CODE_SBC2:
-        sprintf(versionString, "SBC-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBC-2");
         break;
     case STANDARD_CODE_OSD:
-        sprintf(versionString, "OSD");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "OSD");
         break;
     case STANDARD_CODE_SSC2:
-        sprintf(versionString, "SSC-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSC-2");
         break;
     case STANDARD_CODE_BCC:
-        sprintf(versionString, "BCC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "BCC");
         break;
     case STANDARD_CODE_MMC4:
-        sprintf(versionString, "MMC-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC-4");
         break;
     case STANDARD_CODE_ADC:
-        sprintf(versionString, "ADC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADC");
         break;
     case STANDARD_CODE_SES2:
-        sprintf(versionString, "SES-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SES-2");
         break;
     case STANDARD_CODE_SSC3:
-        sprintf(versionString, "SSC-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSC-3");
         break;
     case STANDARD_CODE_MMC5:
-        sprintf(versionString, "MMC-5");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC-5");
         break;
     case STANDARD_CODE_OSD2:
-        sprintf(versionString, "OSD-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "OSD-2");
         break;
     case STANDARD_CODE_SPC4:
-        sprintf(versionString, "SPC-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPC-4");
         break;
     case STANDARD_CODE_SMC3:
-        sprintf(versionString, "SMC-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SMC-3");
         break;
     case STANDARD_CODE_ADC2:
-        sprintf(versionString, "ADC-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADC-2");
         break;
     case STANDARD_CODE_SBC3:
-        sprintf(versionString, "SBC-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBC-3");
         break;
     case STANDARD_CODE_MMC6:
-        sprintf(versionString, "MMC-6");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC-6");
         break;
     case STANDARD_CODE_ADC3:
-        sprintf(versionString, "ADC-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADC-3");
         break;
     case STANDARD_CODE_SSC4:
-        sprintf(versionString, "SSC-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSC-4");
         break;
     case STANDARD_CODE_OSD3:
-        sprintf(versionString, "OSD-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "OSD-3");
         break;
     case STANDARD_CODE_SES3:
-        sprintf(versionString, "SES-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SES-3");
         break;
     case STANDARD_CODE_SSC5:
-        sprintf(versionString, "SSC-5");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSC-5");
         break;
     case STANDARD_CODE_SPC5:
-        sprintf(versionString, "SPC-5");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPC-5");
         break;
     case STANDARD_CODE_SFSC:
-        sprintf(versionString, "SFSC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SFSC");
         break;
     case STANDARD_CODE_SBC4:
-        sprintf(versionString, "SBC-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBC-4");
         break;
     case STANDARD_CODE_ZBC:
-        sprintf(versionString, "ZBC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ZBC");
         break;
     case STANDARD_CODE_ADC4:
-        sprintf(versionString, "ADC-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADC-4");
         break;
     case STANDARD_CODE_ZBC2:
-        sprintf(versionString, "ZBC-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ZBC-2");
         break;
     case STANDARD_CODE_SES4:
-        sprintf(versionString, "SES-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SES-4");
         break;
             //65 - 84 Physical Mapping protocol
     case STANDARD_CODE_SSA_TL2:
-        sprintf(versionString, "SSA-TL2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-TL2");
         break;
     case STANDARD_CODE_SSA_TL1:
-        sprintf(versionString, "SSA-TL1");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-TL1");
         break;
     case STANDARD_CODE_SSA_S3P:
-        sprintf(versionString, "SSA-S3P");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-S3P");
         break;
     case STANDARD_CODE_SSA_S2P:
-        sprintf(versionString, "SSA-S2P");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-S2P");
         break;
     case STANDARD_CODE_SIP:
-        sprintf(versionString, "SIP");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SIP");
         break;
     case STANDARD_CODE_FCP:
-        sprintf(versionString, "FCP");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FCP");
         break;
     case STANDARD_CODE_SBP2:
-        sprintf(versionString, "SBP-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBP-2");
         break;
     case STANDARD_CODE_FCP2:
-        sprintf(versionString, "FCP-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FCP-2");
         break;
     case STANDARD_CODE_SST:
-        sprintf(versionString, "SST");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SST");
         break;
     case STANDARD_CODE_SRP:
-        sprintf(versionString, "SRP");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SRP");
         break;
     case STANDARD_CODE_iSCSI:
-        sprintf(versionString, "iSCSI");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "iSCSI");
         break;
     case STANDARD_CODE_SBP3:
-        sprintf(versionString, "SBP-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBP-3");
         break;
     case STANDARD_CODE_SRP2:
-        sprintf(versionString, "SRP-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SRP-2");
         break;
     case STANDARD_CODE_ADP:
-        sprintf(versionString, "ADP");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADP");
         break;
     case STANDARD_CODE_ADT:
-        sprintf(versionString, "ADT");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADT");
         break;
     case STANDARD_CODE_FCP3:
-        sprintf(versionString, "FCP-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FCP-3");
         break;
     case STANDARD_CODE_ADT2:
-        sprintf(versionString, "ADT-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADT-2");
         break;
     case STANDARD_CODE_FCP4:
-        sprintf(versionString, "FCP-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FCP-4");
         break;
     case STANDARD_CODE_ADT3:
-        sprintf(versionString, "ADT-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADT-3");
         break;
             //85 - 94 Parallel SCSI Physical
     case STANDARD_CODE_SPI:
-        sprintf(versionString, "SPI");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPI");
         break;
     case STANDARD_CODE_FAST20:
-        sprintf(versionString, "Fast-20");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "Fast-20");
         break;
     case STANDARD_CODE_SPI2:
-        sprintf(versionString, "SPI-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPI-2");
         break;
     case STANDARD_CODE_SPI3:
-        sprintf(versionString, "SPI-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPI-3");
         break;
     case STANDARD_CODE_EPI:
-        sprintf(versionString, "EPI");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "EPI");
         break;
     case STANDARD_CODE_SPI4:
-        sprintf(versionString, "SPI-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPI-4");
         break;
     case STANDARD_CODE_SPI5:
-        sprintf(versionString, "SPI-5");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPI-5");
         break;
             //95 - 104 Serial Attached SCSI
     case STANDARD_CODE_SAS:
-        sprintf(versionString, "SAS");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS");
         break;
     case STANDARD_CODE_SAS1_1:
-        sprintf(versionString, "SAS-1.1");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS-1.1");
         break;
     case STANDARD_CODE_SAS2:
-        sprintf(versionString, "SAS-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS-2");
         break;
     case STANDARD_CODE_SAS2_1:
-        sprintf(versionString, "SAS-2.1");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS-2.1");
         break;
     case STANDARD_CODE_SAS3:
-        sprintf(versionString, "SAS-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS-3");
         break;
     case STANDARD_CODE_SAS4:
-        sprintf(versionString, "SAS-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS-4");
         break;
             //105 - 154 Fibre Channel
     case STANDARD_CODE_FC_PH:
-        sprintf(versionString, "FC-PH");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PH");
         break;
     case STANDARD_CODE_FC_AL:
-        sprintf(versionString, "FC-AL");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-AL");
         break;
     case STANDARD_CODE_FC_AL2:
-        sprintf(versionString, "FC-AL-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-AL-2");
         break;
     case STANDARD_CODE_AC_PH3:
-        sprintf(versionString, "FC-PH-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PH-3");
         break;
     case STANDARD_CODE_FC_FS:
-        sprintf(versionString, "FC-FS");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-FS");
         break;
     case STANDARD_CODE_FC_PI:
-        sprintf(versionString, "FC-PI");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI");
         break;
     case STANDARD_CODE_FC_PI2:
-        sprintf(versionString, "FC-PI-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI-2");
         break;
     case STANDARD_CODE_FC_FS2:
-        sprintf(versionString, "FC-FS-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-FS-2");
         break;
     case STANDARD_CODE_FC_LS:
-        sprintf(versionString, "FC-LS");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-LS");
         break;
     case STANDARD_CODE_FC_SP:
-        sprintf(versionString, "FC-SP");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-SP");
         break;
     case STANDARD_CODE_FC_PI3:
-        sprintf(versionString, "FC-PI-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI-3");
         break;
     case STANDARD_CODE_FC_PI4:
-        sprintf(versionString, "FC-PI-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI-4");
         break;
     case STANDARD_CODE_FC_10GFC:
-        sprintf(versionString, "FC 10GFC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC 10GFC");
         break;
     case STANDARD_CODE_FC_SP2:
-        sprintf(versionString, "FC-SP-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-SP-2");
         break;
     case STANDARD_CODE_FC_FS3:
-        sprintf(versionString, "FC-FS-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-FS-3");
         break;
     case STANDARD_CODE_FC_LS2:
-        sprintf(versionString, "FC-LS-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-LS-2");
         break;
     case STANDARD_CODE_FC_PI5:
-        sprintf(versionString, "FC-PI-5");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI-5");
         break;
     case STANDARD_CODE_FC_PI6:
-        sprintf(versionString, "FC-PI-6");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI-6");
         break;
     case STANDARD_CODE_FC_FS4:
-        sprintf(versionString, "FC-FS-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-FS-4");
         break;
     case STANDARD_CODE_FC_LS3:
-        sprintf(versionString, "FC-LS-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-LS-3");
         break;
     case STANDARD_CODE_FC_SCM:
-        sprintf(versionString, "FC-SCM");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-SCM");
         break;
     case STANDARD_CODE_FC_DA2:
-        sprintf(versionString, "FC-DA-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-DA-2");
         break;
     case STANDARD_CODE_FC_DA:
-        sprintf(versionString, "FC-DA");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-DA");
         break;
     case STANDARD_CODE_FC_TAPE:
-        sprintf(versionString, "FC-Tape");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-Tape");
         break;
     case STANDARD_CODE_FC_FLA:
-        sprintf(versionString, "FC-FLA");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-FLA");
         break;
     case STANDARD_CODE_FC_PLDA:
-        sprintf(versionString, "FC-PLDA");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PLDA");
         break;
             //155 - 164 SSA
     case STANDARD_CODE_SSA_PH2:
-        sprintf(versionString, "SSA-PH2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-PH2");
         break;
     case STANDARD_CODE_SSA_PH3:
-        sprintf(versionString, "SSA-PH3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-PH3");
         break;
             //165 - 174 IEEE 1394
     case STANDARD_CODE_IEEE_1394_1995:
-        sprintf(versionString, "IEEE-1394-1995");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "IEEE-1394-1995");
         break;
     case STANDARD_CODE_IEEE_1394a:
-        sprintf(versionString, "IEEE-1394a");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "IEEE-1394a");
         break;
     case STANDARD_CODE_IEEE_1394b:
-        sprintf(versionString, "IEEE-1394b");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "IEEE-1394b");
         break;
             //175 - 200 ATAPI & USB
     case STANDARD_CODE_ATA_ATAPI6:
-        sprintf(versionString, "ATA/ATAPI-6");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ATA/ATAPI-6");
         break;
     case STANDARD_CODE_ATA_ATAPI7:
-        sprintf(versionString, "ATA/ATAPI-7");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ATA/ATAPI-7");
         break;
     case STANDARD_CODE_ATA_ATAPI8:
-        sprintf(versionString, "ATA8-ACS");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ATA8-ACS");
         break;
     case STANDARD_CODE_USB:
         switch (versionDescriptor)
         {
         case 0x1728: //USB 1.1
-            sprintf(versionString, "USB-1.1");
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "USB-1.1");
             break;
         case 0x1729: //USB 2.0
-            sprintf(versionString, "USB-2.0");
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "USB-2.0");
             break;
         case 0x1730: //USB BOT
-            sprintf(versionString, "USB-BOT");
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "USB-BOT");
             break;
         default:
-            sprintf(versionString, "USB");
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "USB");
             break;
         }
         break;
     case STANDARD_CODE_UAS:
-        sprintf(versionString, "UAS");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "UAS");
         break;
     case STANDARD_CODE_ACSx:
         //special case, look at the version descriptor to set an exact version number
@@ -10193,75 +10497,75 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
         {
         case 0x1761: //ACS-2
         case 0x1762:
-            sprintf(versionString, "ACS-2");
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ACS-2");
             break;
         case 0x1765: //ACS-3
         case 0x1766: //ACS-3 INCITS 522-2014
-            sprintf(versionString, "ACS-3");
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ACS-3");
             break;
         case 0x1767: //ACS-4 INCITS 529-2018
-            sprintf(versionString, "ACS-4");
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ACS-4");
             break;
         default:
-            sprintf(versionString, "ACS-x");
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ACS-x");
             break;
         }
         break;
     case STANDARD_CODE_UAS2:
-        sprintf(versionString, "UAS-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "UAS-2");
         break;
             //201 - 224 Networking
             //225 - 244 ATM
             //245 - 260 Translators
     case STANDARD_CODE_SAT:
-        sprintf(versionString, "SAT");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAT");
         break;
     case STANDARD_CODE_SAT2:
-        sprintf(versionString, "SAT-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAT-2");
         break;
     case STANDARD_CODE_SAT3:
-        sprintf(versionString, "SAT-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAT-3");
         break;
     case STANDARD_CODE_SAT4:
-        sprintf(versionString, "SAT-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAT-4");
         break;
             //261 - 270 SAS Transport Protocols
     case STANDARD_CODE_SPL:
-        sprintf(versionString, "SPL");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPL");
         break;
     case STANDARD_CODE_SPL2:
-        sprintf(versionString, "SPL-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPL-2");
         break;
     case STANDARD_CODE_SPL3:
-        sprintf(versionString, "SPL-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPL-3");
         break;
     case STANDARD_CODE_SPL4:
-        sprintf(versionString, "SPL-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPL-4");
         break;
             //271 - 290 SCSI over PCI Extress Transport Protocols
     case STANDARD_CODE_SOP:
-        sprintf(versionString, "SOP");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SOP");
         break;
     case STANDARD_CODE_PQI:
-        sprintf(versionString, "PQI");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "PQI");
         break;
     case STANDARD_CODE_SOP2:
-        sprintf(versionString, "SOP-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SOP-2");
         break;
     case STANDARD_CODE_PQI2:
-        sprintf(versionString, "PQI-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "PQI-2");
         break;
             //291 - 2045 Reserved for Expansion
     case STANDARD_CODE_IEEE_1667:
-        sprintf(versionString, "IEEE-1667");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "IEEE-1667");
         break;
     case STANDARD_CODE_RESERVED:
-        sprintf(versionString, "RESERVED");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "RESERVED");
         break;
     case STANDARD_CODE_NOT_SUPPORTED:
     default:
-        sprintf(versionString, "----");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "----");
         break;
     }
-    strcat(versionString, "\0");
+    return;
 }

@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -18,9 +18,7 @@
 #include "scsi_helper.h"
 #include "sat_helper.h"
 #include "common_public.h"
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper.h"
-#endif
 
 #if defined (__cplusplus)
 extern "C"
@@ -65,7 +63,7 @@ extern "C"
 #define CAM_MAX_CMD_TIMEOUT_SECONDS 4294967
 
     //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
-    bool os_Is_Infinite_Timeout_Supported();
+    bool os_Is_Infinite_Timeout_Supported(void);
 
     //-----------------------------------------------------------------------------
     //
@@ -160,7 +158,6 @@ extern "C"
     //-----------------------------------------------------------------------------
     int os_Controller_Reset(tDevice *device);
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
     //-----------------------------------------------------------------------------
     //
     //  pci_Read_Bar_Reg()
@@ -200,8 +197,6 @@ extern "C"
 
     int os_nvme_Subsystem_Reset(tDevice *device);
 
-#endif
-
     //-----------------------------------------------------------------------------
     //
     //  os_Lock_Device(tDevice *device)
@@ -231,6 +226,10 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     int os_Unlock_Device(tDevice *device);
+
+    int os_Update_File_System_Cache(tDevice* device);
+
+    int os_Unmount_File_Systems_On_Device(tDevice *device);
 
     #if defined (__cplusplus)
 }

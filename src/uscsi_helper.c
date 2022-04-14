@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -21,7 +21,8 @@
 #include <stropts.h>
 #include <sys/stat.h>
 #include <sys/scsi/impl/uscsi.h>
-
+#include <sys/mount.h> //unmounting disks
+#include <sys/mnttab.h> //reading mounted partition info
 #include "uscsi_helper.h"
 #include "cmds.h"
 #include "scsi_helper_func.h"
@@ -34,7 +35,7 @@
 extern bool validate_Device_Struct(versionBlock);
 
 //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
-bool os_Is_Infinite_Timeout_Supported()
+bool os_Is_Infinite_Timeout_Supported(void)
 {
     return false;//TODO: Documentation does not state if an infinite timeout is supported. If it actually is, need to define the infinite timeout value properly, and set it to the correct value
 }
@@ -46,7 +47,123 @@ e.g. return c?t?d? from /dev/rdsk/c?t?d?
 static void set_Device_Name(const char* filename, char * name, int sizeOfName)
 {
     char * s = strrchr(filename, '/') + 1;
-    strncpy(name, s, M_Min(strlen(s), sizeOfName));
+    snprintf(name, sizeOfName, "%s", s);
+}
+
+//This API is very similar to the linux API.
+//TODO: May need to use handle without rdsk in the name
+//      We use the rdsk for issuing passthrough commands, but the other handle is probably what will really be needed to do this correctly
+//      I do not have a solaris machine or VM available to test this right now, so it's written as best I could to prevent needing changes. - TJE
+static int get_Partition_Count(const char* blockDeviceName)
+{
+    int result = 0;
+    FILE* mount = fopen("/etc/mnttab", "r");//we only need to know about mounted partitions. Mounted partitions need to be known so that they can be unmounted when necessary. - TJE
+    struct mnttab entry;
+    memset(&entry, 0, sizeof(struct mnttab));
+    if (mount)
+    {
+        while (0 == getmntent(mount, &entry))
+        {
+            if (strstr(entry.mnt_special, blockDeviceName))
+            {
+                //Found a match, increment result counter.
+                ++result;
+            }
+        }
+        fclose(mount);
+    }
+    return result;
+}
+
+#define PART_INFO_NAME_LENGTH (32)
+#define PART_INFO_PATH_LENGTH (64)
+typedef struct _spartitionInfo
+{
+    char fsName[PART_INFO_NAME_LENGTH];
+    char mntPath[PART_INFO_PATH_LENGTH];
+}spartitionInfo, * ptrsPartitionInfo;
+//partitionInfoList is a pointer to the beginning of the list
+//listCount is the number of these structures, which should be returned by get_Partition_Count
+static int get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
+{
+    int result = SUCCESS;
+    int matchesFound = 0;
+    if (listCount > 0)
+    {
+        FILE* mount = fopen("/etc/mnttab", "r");//we only need to know about mounted partitions. Mounted partitions need to be known so that they can be unmounted when necessary. - TJE
+        if (mount)
+        {
+            struct mnttab entry;
+            memset(&entry, 0, sizeof(struct mnttab));
+            while (0 == getmntent(mount, &entry))
+            {
+                if (strstr(entry.mnt_special, blockDeviceName))
+                {
+                    //found a match, copy it to the list
+                    if (matchesFound < listCount)
+                    {
+                        snprintf((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s", entry.mnt_special);
+                        snprintf((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH, "%s", entry.mnt_mountp);
+                        ++matchesFound;
+                    }
+                    else
+                    {
+                        result = MEMORY_FAILURE;//out of memory to copy all results to the list.
+                    }
+                }
+            }
+            fclose(mount);
+        }
+    }
+    return result;
+}
+
+static int set_Device_Partition_Info(tDevice* device)
+{
+    int ret = SUCCESS;
+    int partitionCount = 0;
+    char blockHandle[OS_HANDLE_NAME_MAX_LENGTH] = {0};
+    snprintf(blockHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/");
+    set_Device_Name(device->os_info.name, &blockHandle[strlen("/dev/")], OS_HANDLE_NAME_MAX_LENGTH - strlen("/dev/"));
+    //note: this mess above is to get rid of /rdsk/ in the file handle as that raw disk handle won't be part of the information in the mount tab file.
+    partitionCount = get_Partition_Count(blockHandle);
+#if defined (_DEBUG)
+    printf("Partition count for %s = %d\n", blockHandle, partitionCount);
+#endif
+    if (partitionCount > 0)
+    {
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
+        if (parts)
+        {
+            if (SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
+            {
+                int iter = 0;
+                for (; iter < partitionCount; ++iter)
+                {
+                    //since we found a partition, set the "has file system" bool to true
+                    device->os_info.fileSystemInfo.hasFileSystem = true;
+#if defined (_DEBUG)
+                    printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
+#endif
+                    //check if one of the partitions is /boot and mark the system disk when this is found
+                    //TODO: Should / be treated as a system disk too?
+                    if (strncmp((parts + iter)->mntPath, "/boot", 5) == 0)
+                    {
+                        device->os_info.fileSystemInfo.isSystemDisk = true;
+#if defined (_DEBUG)
+                        printf("found system disk\n");
+#endif
+                    }
+                }
+            }
+            safe_Free(parts);
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
+    }
+    return ret;
 }
 
 int get_Device(const char *filename, tDevice *device)
@@ -73,9 +190,10 @@ int get_Device(const char *filename, tDevice *device)
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
         //set the name
-        strcpy(device->os_info.name, filename);
+        snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, filename);
+        set_Device_Partition_Info(device);
         //set the friendly name
-        set_Device_Name(filename, device->os_info.friendlyName, sizeof(device->os_info.friendlyName));
+        set_Device_Name(filename, device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
 
         //set the OS Type
         device->os_info.osType = OS_SOLARIS;
@@ -228,11 +346,11 @@ int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
             uscsi_io.uscsi_timeout = 15;//default to 15 second timeout
         }
     }
-    uscsi_io.uscsi_cdb = (caddr_t)scsiIoCtx->cdb;
+    uscsi_io.uscsi_cdb = C_CAST(caddr_t, scsiIoCtx->cdb);
     uscsi_io.uscsi_cdblen = scsiIoCtx->cdbLength;
-    uscsi_io.uscsi_rqbuf = (caddr_t)scsiIoCtx->psense;
+    uscsi_io.uscsi_rqbuf = C_CAST(caddr_t, scsiIoCtx->psense);
     uscsi_io.uscsi_rqlen = scsiIoCtx->senseDataSize;
-    uscsi_io.uscsi_bufaddr = (caddr_t)scsiIoCtx->pdata;
+    uscsi_io.uscsi_bufaddr = C_CAST(caddr_t, scsiIoCtx->pdata);
     uscsi_io.uscsi_buflen = scsiIoCtx->dataLength;
 
     //set the uscsi flags for the command
@@ -348,9 +466,9 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     num_devs = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
     for (int iter = 0; iter < num_devs; ++iter)
     {
-        safe_Free(namelist[iter]);
+        safe_Free(namelist[iter])
     }
-    safe_Free(namelist);
+    safe_Free(namelist)
     *numberOfDevices = num_devs;
     M_USE_UNUSED(flags); 
     return SUCCESS;
@@ -392,17 +510,17 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     struct dirent **namelist;
     int num_devs = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
     
-    char **devs = (char **)calloc(num_devs + 1, sizeof(char *));
+    char **devs = C_CAST(char **, calloc(num_devs + 1, sizeof(char *)));
     int i = 0;
     for(; i < num_devs; i++)
     {
-        devs[i] = (char *)malloc((strlen("/dev/rdsk/") + strlen(namelist[i]->d_name) + 1) * sizeof(char));
-        strcpy(devs[i], "/dev/rdsk/");
-        strcat(devs[i], namelist[i]->d_name);
-        safe_Free(namelist[i]);
+        size_t handleSize = (strlen("/dev/rdsk/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
+        devs[i] = C_CAST(char *, malloc(handleSize));
+        snprintf(devs[i], handleSize, "/dev/rdsk/%s", namelist[i]->d_name);
+        safe_Free(namelist[i])
     }
     devs[i] = NULL;
-    safe_Free(namelist);
+    safe_Free(namelist)
 
     //TODO: Check if sizeInBytes is a multiple of 
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -417,14 +535,14 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
-        for (driveNumber = 0; ((driveNumber >= 0 && (unsigned int)driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_devs)) && (found < numberOfDevices)); ++driveNumber)
+        for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
             if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
             {
                 continue;
             }
             memset(name, 0, sizeof(name));//clear name before reusing it
-            strcpy(name, devs[driveNumber]);
+            snprintf(name, sizeof(name), "%s", devs[driveNumber]);
             fd = -1;
             //lets try to open the device.      
             fd = open(name, O_RDWR | O_NONBLOCK);
@@ -454,7 +572,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(devs[driveNumber]);
+            safe_Free(devs[driveNumber])
         }
         if (found == failedGetDeviceCount)
         {
@@ -469,16 +587,16 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_Free(devs);
+    safe_Free(devs)
     return returnValue;
 }
 
-int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool async, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool async, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
@@ -493,7 +611,6 @@ int os_Flush(M_ATTR_UNUSED tDevice *device)
     return NOT_SUPPORTED;
 }
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 int send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx *nvmeIoCtx)
 {
     return NOT_SUPPORTED;
@@ -513,7 +630,6 @@ int os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
-#endif
 
 int os_Lock_Device(tDevice *device)
 {
@@ -536,5 +652,68 @@ int os_Unlock_Device(tDevice *device)
     flags |= O_NONBLOCK;
     //Set Flags
     fcntl(device->os_info.fd, F_SETFL, flags);
+    return ret;
+}
+
+int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+{
+    //TODO: Complete this stub when this is figured out - TJE
+    return NOT_SUPPORTED;
+}
+
+int os_Unmount_File_Systems_On_Device(tDevice *device)
+{
+    int ret = SUCCESS;
+    int partitionCount = 0;
+    char blockHandle[OS_HANDLE_NAME_MAX_LENGTH] = {0};
+    snprintf(blockHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/");
+    set_Device_Name(device->os_info.name, &blockHandle[strlen("/dev/")], OS_HANDLE_NAME_MAX_LENGTH - strlen("/dev/"));
+    //note: this mess above is to get rid of /rdsk/ in the file handle as that raw disk handle won't be part of the information in the mount tab file.
+    partitionCount = get_Partition_Count(blockHandle);
+#if defined (_DEBUG)
+    printf("Partition count for %s = %d\n", blockHandle, partitionCount);
+#endif
+    if (partitionCount > 0)
+    {
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
+        if (parts)
+        {
+            if (SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
+            {
+                int iter = 0;
+                for (; iter < partitionCount; ++iter)
+                {
+#if defined (_DEBUG)
+                    printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
+#endif
+                    int umountResult = 0;
+                    if (0 > (umountResult = umount2((parts + iter)->mntPath, MS_FORCE)))
+                    {
+                        if (errno == ENOTSUP)
+                        {
+                            //try again without the force flag since it may not be supported.
+                            umountResult = umount2((parts + iter)->mntPath, 0);
+                        }
+                        if (0 > umountResult)
+                        {
+                            ret = FAILURE;
+                            device->os_info.last_error = errno;
+                            if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+                            {
+                                printf("Unable to unmount %s: \n", (parts + iter)->mntPath);
+                                print_Errno_To_Screen(errno);
+                                printf("\n");
+                            }
+                        }
+                    }
+                }
+            }
+            safe_Free(parts);
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
+    }
     return ret;
 }

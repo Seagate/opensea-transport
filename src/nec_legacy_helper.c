@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -127,7 +127,7 @@ int send_NEC_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *
     bool localSenseData = false;
     if (!ataCommandOptions->ptrSenseData)
     {
-        senseData = (uint8_t*)calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
+        senseData = C_CAST(uint8_t*, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!senseData)
         {
             return MEMORY_FAILURE;
@@ -178,7 +178,7 @@ int send_NEC_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *
     memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);//clear before copying over data
     memcpy(&device->drive_info.lastCommandSenseData[0], &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
     memcpy(&device->drive_info.lastCommandRTFRs, &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
-    safe_Free_aligned(senseData);
+    safe_Free_aligned(senseData)
     if (localSenseData)
     {
         ataCommandOptions->ptrSenseData = NULL;

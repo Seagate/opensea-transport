@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -16,14 +16,17 @@
 #include "ata_helper_func.h"
 #include "sat_helper_func.h"
 #include "usb_hacks.h"
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include <sys/ioctl.h>
 #include <libgen.h>
+#include <sys/param.h>
+#include <sys/ucred.h>
+#include <sys/mount.h>
 #include "nvme_helper_func.h"
 #include "sntl_helper.h"
+#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include <dev/nvme/nvme.h>
+#endif //DISABLE_NVME_PASSTHROUGH
 #include "common.h"
-#endif
 
 extern bool validate_Device_Struct(versionBlock);
 
@@ -42,7 +45,6 @@ bool os_Is_Infinite_Timeout_Supported()
     return true;
 }
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 bool is_NVMe_Handle(char *handle)
 {
 	bool isNVMeDevice = false;
@@ -55,7 +57,125 @@ bool is_NVMe_Handle(char *handle)
 	}
 	return isNVMeDevice;
 }
+
+static int get_Partition_Count(const char* blockDeviceName)
+{
+    int result = 0;
+    struct statfs* mountedFS = NULL;
+    int totalMounts = getmntinfo(&mountedFS, MNT_WAIT);//Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
+    if (totalMounts > 0 && mountedFS)
+    {
+        int entIter = 0;
+        for (entIter = 0; entIter < totalMounts; ++entIter)
+        {
+            if (strstr((mountedFS + entIter)->f_mntfromname, blockDeviceName))
+            {
+                //found a match for the current device handle
+                ++result;
+            }
+        }
+    }
+    safe_Free(mountedFS);
+    return result;
+}
+
+#define PART_INFO_NAME_LENGTH (32)
+#define PART_INFO_PATH_LENGTH (64)
+typedef struct _spartitionInfo
+{
+    char fsName[PART_INFO_NAME_LENGTH];
+    char mntPath[PART_INFO_PATH_LENGTH];
+}spartitionInfo, * ptrsPartitionInfo;
+//partitionInfoList is a pointer to the beginning of the list
+//listCount is the number of these structures, which should be returned by get_Partition_Count
+static int get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
+{
+    int result = SUCCESS;
+    int matchesFound = 0;
+    if (listCount > 0)
+    {
+        //This is written using getmntinfo, which seems to wrap getfsstat.
+        //https://www.freebsd.org/cgi/man.cgi?query=getmntinfo&manpath=FreeBSD+12.1-RELEASE+and+Ports
+        //This was chosen because it provides the info we want, and also claims to only show mounted devices.
+        //I also tried using getfsent, but that didn't return what we needed.
+        //If for any reason, getmntinfo is not available, I recommend switching to getfsstat. The code is similar
+        //but slightly different. I only had a VM to test with so my results showed the same between the APIs,
+        //but the description of getmntinfo was more along the lines of what has been implemented for
+        //other OS's we support. - TJE
+        int ret = SUCCESS;
+        struct statfs* mountedFS = NULL;
+        int totalMounts = getmntinfo(&mountedFS, MNT_WAIT);//Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
+        if (totalMounts > 0 && mountedFS)
+        {
+            int entIter = 0;
+            for (entIter = 0; entIter < totalMounts; ++entIter)
+            {
+                if (strstr((mountedFS + entIter)->f_mntfromname, blockDeviceName))
+                {
+                    //found a match for the current device handle
+                    //f_mntonname gives us the directory to unmount
+                    //found a match, copy it to the list
+                    if (matchesFound < listCount)
+                    {
+                        snprintf((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s", (mountedFS + entIter)->f_mntfromname);
+                        snprintf((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH, "%s", (mountedFS + entIter)->f_mntonname);
+                        ++matchesFound;
+                    }
+                    else
+                    {
+                        result = MEMORY_FAILURE;//out of memory to copy all results to the list.
+                    }
+                }
+            }
+        }
+        safe_Free(mountedFS);
+    }
+    return result;
+}
+
+static int set_Device_Partition_Info(tDevice* device)
+{
+    int ret = SUCCESS;
+    int partitionCount = 0;
+    partitionCount = get_Partition_Count(device->os_info.name);
+#if defined (_DEBUG)
+    printf("Partition count for %s = %d\n", device->os_info.name, partitionCount);
 #endif
+    if (partitionCount > 0)
+    {
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
+        if (parts)
+        {
+            if (SUCCESS == get_Partition_List(device->os_info.name, parts, partitionCount))
+            {
+                int iter = 0;
+                for (; iter < partitionCount; ++iter)
+                {
+                    //since we found a partition, set the "has file system" bool to true
+                    device->os_info.fileSystemInfo.hasFileSystem = true;
+#if defined (_DEBUG)
+                    printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
+#endif
+                    //check if one of the partitions is /boot and mark the system disk when this is found
+                    //TODO: Should / be treated as a system disk too?
+                    if (strncmp((parts + iter)->mntPath, "/boot", 5) == 0)
+                    {
+                        device->os_info.fileSystemInfo.isSystemDisk = true;
+#if defined (_DEBUG)
+                        printf("found system disk\n");
+#endif
+                    }
+                }
+            }
+            safe_Free(parts);
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
+    }
+    return ret;
+}
 
 int get_Device( const char *filename, tDevice *device )
 {
@@ -82,12 +202,12 @@ int get_Device( const char *filename, tDevice *device )
 			print_Errno_To_Screen(errno);
 			if (device->os_info.fd == EACCES)
 			{
-				safe_Free(deviceHandle);
+				safe_Free(deviceHandle)
 				return PERMISSION_DENIED;
 			}
 			else
 			{
-				safe_Free(deviceHandle);
+				safe_Free(deviceHandle)
 				return FAILURE;
 			}
 		}
@@ -109,12 +229,13 @@ int get_Device( const char *filename, tDevice *device )
 
 		char *baseLink = basename(deviceHandle);
 		// Now we will set up the device name, etc fields in the os_info structure
-		sprintf(device->os_info.name, "/dev/%s", baseLink);
-		sprintf(device->os_info.friendlyName, "%s", baseLink);
+		snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
+		snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
+        set_Device_Partition_Info(device);
 
 		ret = fill_Drive_Info_Data(device);
 
-		safe_Free(deviceHandle);
+		safe_Free(deviceHandle)
 		return ret;
 	} else
 #endif
@@ -133,9 +254,9 @@ int get_Device( const char *filename, tDevice *device )
         {
             //Set name and friendly name
             //name
-            strcpy(device->os_info.name, filename);
+            snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
             //friendly name
-            sprintf(device->os_info.friendlyName, "%s%d", devName, devUnit);
+            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s%d", devName, devUnit);
 
             device->os_info.fd = devUnit;
 
@@ -278,6 +399,7 @@ int get_Device( const char *filename, tDevice *device )
                             //      This will require some more research, but we should be able to do this now that we know the interface
                             setup_Passthrough_Hacks_By_ID(device);
                         }
+                        set_Device_Partition_Info(device);
                         ret = fill_Drive_Info_Data(device);
                     }
                     else
@@ -322,12 +444,10 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     {
         ret = send_Scsi_Cam_IO(scsiIoCtx);
     }
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	else if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)
 	{
 		ret = sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
 	}
-#endif
     else if (scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
     {
         if (scsiIoCtx->pAtaCmdOpts)
@@ -445,7 +565,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                        NULL,
                        direction, /*flags*/
                        MSG_SIMPLE_Q_TAG,
-                       (u_int8_t *)scsiIoCtx->pdata, /*data_ptr*/
+                       C_CAST(u_int8_t *, scsiIoCtx->pdata), /*data_ptr*/
                        scsiIoCtx->dataLength, /*dxfer_len*/
                        camTimeout);
 
@@ -971,46 +1091,35 @@ int close_Device(tDevice *dev)
 int get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 {
 	int  num_da_devs = 0, num_ada_devs = 0;
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	int num_nvme_devs = 0;
-#endif
 
     struct dirent **danamelist;
     struct dirent **adanamelist;
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	struct dirent **nvmenamelist;
-#endif
 
     num_da_devs = scandir("/dev", &danamelist, da_filter, alphasort);
     num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
-
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
-#endif
 
     //free the list of names to not leak memory
     for (int iter = 0; iter < num_da_devs; ++iter)
     {
-        safe_Free(danamelist[iter]);
+        safe_Free(danamelist[iter])
     }
-    safe_Free(danamelist);
+    safe_Free(danamelist)
     //free the list of names to not leak memory
     for (int iter = 0; iter < num_ada_devs; ++iter)
     {
-        safe_Free(adanamelist[iter]);
+        safe_Free(adanamelist[iter])
     }
-    safe_Free(adanamelist);
+    safe_Free(adanamelist)
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	//free the list of names to not leak memory
 	for (int iter = 0; iter < num_nvme_devs; ++iter)
 	{
-		safe_Free(nvmenamelist);
+		safe_Free(nvmenamelist)
 	}
 	*numberOfDevices = num_da_devs + num_ada_devs + num_nvme_devs;
-#else
-  *numberOfDevices = num_da_devs + num_ada_devs;
-#endif
     
     return SUCCESS;
 }
@@ -1051,51 +1160,41 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 	
     struct dirent **danamelist;
     struct dirent **adanamelist;
-
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	struct dirent **nvmenamelist;
-#endif
 
     num_da_devs = scandir("/dev", &danamelist, da_filter, alphasort);
     num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
-
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
-#endif
 
-    char **devs = (char **)calloc(num_da_devs + num_ada_devs + num_nvme_devs + 1, sizeof(char *));
+    char **devs = C_CAST(char **, calloc(num_da_devs + num_ada_devs + num_nvme_devs + 1, sizeof(char *)));
     int i = 0, j = 0, k=0;
     for (i = 0; i < num_da_devs; ++i)
     {
-        devs[i] = (char *)malloc((strlen("/dev/") + strlen(danamelist[i]->d_name) + 1) * sizeof(char));
-        strcpy(devs[i], "/dev/");
-        strcat(devs[i], danamelist[i]->d_name);
-        safe_Free(danamelist[i]);
+        size_t devNameStringLength = (strlen("/dev/") + strlen(danamelist[i]->d_name) + 1) * sizeof(char);
+        devs[i] = C_CAST(char *, malloc(devNameStringLength));
+        snprintf(devs[i], devNameStringLength, "/dev/%s", danamelist[i]->d_name);
+        safe_Free(danamelist[i])
     }
     for (j = 0; i < (num_da_devs + num_ada_devs) && j < num_ada_devs; ++i, j++)
     {
-        devs[i] = (char *)malloc((strlen("/dev/") + strlen(adanamelist[j]->d_name) + 1) * sizeof(char));
-        strcpy(devs[i], "/dev/");
-        strcat(devs[i], adanamelist[j]->d_name);
-        safe_Free(adanamelist[j]);
+        size_t devNameStringLength = (strlen("/dev/") + strlen(adanamelist[j]->d_name) + 1) * sizeof(char);
+        devs[i] = C_CAST(char *, malloc(devNameStringLength));
+        snprintf(devs[i], devNameStringLength, "/dev/%s", adanamelist[j]->d_name);
+        safe_Free(adanamelist[j])
     }
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 	for (k = 0; i < (num_da_devs + num_ada_devs + num_nvme_devs) && k < num_nvme_devs; ++i, ++j, ++k)
 	{
-		devs[i] = (char *)malloc((strlen("/dev/") + strlen(nvmenamelist[k]->d_name) + 1) * sizeof(char));
-		strcpy(devs[i], "/dev/");
-		strcat(devs[i], nvmenamelist[k]->d_name);
-		safe_Free(nvmenamelist[k]);
+        size_t devNameStringLength = (strlen("/dev/") + strlen(nvmenamelist[k]->d_name) + 1) * sizeof(char);
+		devs[i] = C_CAST(char *, malloc(devNameStringLength));
+        snprintf(devs[i], devNameStringLength, "/dev/%s", nvmenamelist[k]->d_name);
+		safe_Free(nvmenamelist[k])
 	}
-#endif
 
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
-    safe_Free(danamelist);
-    safe_Free(adanamelist);
-#if !defined(DISABLE_NVME_PASSTHROUGH)
-	safe_Free(nvmenamelist);
-#endif
+    safe_Free(danamelist)
+    safe_Free(adanamelist)
+	safe_Free(nvmenamelist)
 
     //TODO: Check if sizeInBytes is a multiple of 
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -1110,14 +1209,14 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
-        for (driveNumber = 0; ((driveNumber >= 0 && (unsigned int)driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_da_devs + num_ada_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
+        for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_da_devs + num_ada_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
             if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
             {
                 continue;
             }
             memset(name, 0, sizeof(name));//clear name before reusing it
-            strcpy(name, devs[driveNumber]);
+            snprintf(name, 80, "%s", devs[driveNumber]);
             fd = -1;
             //lets try to open the device.      
             fd = cam_get_device(name, d->os_info.name, sizeof(d->os_info.name), &d->os_info.fd);
@@ -1152,7 +1251,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(devs[driveNumber]);
+            safe_Free(devs[driveNumber])
         }
         if (found == failedGetDeviceCount)
         {
@@ -1167,16 +1266,16 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_Free(devs);
+    safe_Free(devs)
     return returnValue;
 }
 
-int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool async, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool async, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
@@ -1246,9 +1345,11 @@ int os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
+#if defined(DISABLE_NVME_PASSTHROUGH)
+    return OS_COMMAND_NOT_AVAILABLE;
+#else //DISABLE_NVME_PASSTHROUGH
 	int ret = SUCCESS;
 	int32_t ioctlResult = 0;
 	seatimer_t commandTimer;
@@ -1273,7 +1374,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 		pt.cpl.rsvd1 = nvmeIoCtx->cmd.adminCmd.rsvd1;
 		pt.cmd.rsvd2 = nvmeIoCtx->cmd.adminCmd.cdw2;
 		pt.cmd.rsvd3 = nvmeIoCtx->cmd.adminCmd.cdw3;
-		pt.cmd.mptr = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.adminCmd.metadata;
+		pt.cmd.mptr = C_CAST(uint64_t, C_CAST(uintptr_t, nvmeIoCtx->cmd.adminCmd.metadata));
 
 		pt.cmd.cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
 		pt.cmd.cdw11 = nvmeIoCtx->cmd.adminCmd.cdw11;
@@ -1297,7 +1398,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 		pt.cpl.rsvd1 = nvmeIoCtx->cmd.nvmCmd.commandId;
 		pt.cmd.rsvd2 = nvmeIoCtx->cmd.nvmCmd.cdw2;
 		pt.cmd.rsvd3 = nvmeIoCtx->cmd.nvmCmd.cdw3;
-		pt.cmd.mptr = (uint64_t)(uintptr_t)nvmeIoCtx->cmd.adminCmd.metadata;
+		pt.cmd.mptr = C_CAST(uint64_t, C_CAST(uintptr_t, nvmeIoCtx->cmd.adminCmd.metadata));
 
 		pt.cmd.cdw10 = nvmeIoCtx->cmd.nvmCmd.cdw10;
 		pt.cmd.cdw11 = nvmeIoCtx->cmd.nvmCmd.cdw11;
@@ -1349,10 +1450,12 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 	}
 
 	return ret;
+#endif //DISABLE_NVME_PASSTHROUGH
 }
 
 int os_nvme_Reset(tDevice *device)
 {
+#if !defined(DISABLE_NVME_PASSTHROUGH)
 	int ret = OS_PASSTHROUGH_FAILURE;
 	int handleToReset = device->os_info.fd;
 	seatimer_t commandTimer;
@@ -1389,6 +1492,9 @@ int os_nvme_Reset(tDevice *device)
 	}
 
     return ret;
+#else //DISABLE_NVME_PASSTHROUGH
+    return OS_COMMAND_NOT_AVAILABLE;
+#endif //DISABLE_NVME_PASSTHROUGH
 }
 
 int os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice *device)
@@ -1400,7 +1506,6 @@ int pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pDa
 {
     return NOT_SUPPORTED;
 }
-#endif
 
 int os_Lock_Device(M_ATTR_UNUSED tDevice *device)
 {
@@ -1412,4 +1517,70 @@ int os_Unlock_Device(M_ATTR_UNUSED tDevice *device)
 {
     //There is nothing to unlock since you cannot open a CAM device with O_NONBLOCK
     return SUCCESS;
+}
+
+//For the file syste cache update and unmount, these two functions may be useful:
+//getfsstat ??? https://www.freebsd.org/cgi/man.cgi?query=getfsstat&sektion=2&apropos=0&manpath=FreeBSD+13.0-RELEASE+and+Ports
+//statfs ??? https://www.freebsd.org/cgi/man.cgi?query=statfs&sektion=2&apropos=0&manpath=FreeBSD+13.0-RELEASE+and+Ports
+//fstab ??? https://www.freebsd.org/cgi/man.cgi?query=fstab&sektion=5&apropos=0&manpath=FreeBSD+13.0-RELEASE+and+Ports
+//This looks very similar to the Linux getmntent:
+//getfsent ???https://www.freebsd.org/cgi/man.cgi?query=getfsent&sektion=3&apropos=0&manpath=FreeBSD+13.0-RELEASE+and+Ports
+
+int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+{
+    //TODO: I have not found an analog to Linux which is usually the most helpful for figuring out what to do.
+    //      I haven't found any other API or IOCTL that reloads the partition table on the disk (which is pretty close)
+    //      Only thing that might work is a reload of an already mounted FS? At least that's a best guess.
+    //      I will need a better test setup to validate this than I currently have access to - TJE
+    //MNT_RELOAD ???
+    //sys/disk.h provides lots of info about the device. One of the IOCTLs may allow for a reread of the partition table.
+    return NOT_SUPPORTED;
+}
+
+int os_Unmount_File_Systems_On_Device(tDevice *device)
+{
+    int ret = SUCCESS;
+    int partitionCount = 0;
+    partitionCount = get_Partition_Count(device->os_info.name);
+#if defined (_DEBUG)
+    printf("Partition count for %s = %d\n", device->os_info.name, partitionCount);
+#endif
+    if (partitionCount > 0)
+    {
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
+        if (parts)
+        {
+            if (SUCCESS == get_Partition_List(device->os_info.name, parts, partitionCount))
+            {
+                int iter = 0;
+                for (; iter < partitionCount; ++iter)
+                {
+                    //since we found a partition, set the "has file system" bool to true
+#if defined (_DEBUG)
+                    printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
+#endif
+                    //Now that we have a name, unmount the file system
+                    //unmount is more line Linux unmount2
+                    //https://www.freebsd.org/cgi/man.cgi?query=unmount&sektion=2&apropos=0&manpath=FreeBSD+13.0-RELEASE
+                    if (0 > unmount((parts + iter)->mntPath, MNT_FORCE))
+                    {
+                        ret = FAILURE;
+                        device->os_info.last_error = errno;
+                        if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+                        {
+                            printf("Unable to unmount %s: \n", (parts + iter)->mntPath);
+                            print_Errno_To_Screen(errno);
+                            printf("\n");
+                        }
+                    }
+                }
+            }
+            safe_Free(parts);
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
+    }
+    return ret;
 }

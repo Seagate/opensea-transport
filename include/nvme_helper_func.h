@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,7 +14,6 @@
 
 #pragma once
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper.h"
 #if defined (__cplusplus)
 extern "C"
@@ -302,6 +301,8 @@ OPENSEA_TRANSPORT_API int nvme_Security_Receive(tDevice *device, uint8_t securit
 
 OPENSEA_TRANSPORT_API int nvme_Security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t nvmeSecuritySpecificField, uint8_t *ptrData, uint32_t dataLength);
 
+OPENSEA_TRANSPORT_API int nvme_Verify(tDevice* device, uint64_t startingLBA, bool limitedRetry, bool fua, uint16_t numberOfLogicalBlocks);
+
 OPENSEA_TRANSPORT_API int nvme_Write_Uncorrectable(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks);
 
 #define SANITIZE_NVM_EXIT_FAILURE_MODE 1
@@ -342,6 +343,4 @@ OPENSEA_TRANSPORT_API int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_
 
 #if defined (__cplusplus)
 }
-#endif
-
 #endif

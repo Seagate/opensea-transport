@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2018-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2018-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -17,12 +17,10 @@
 
 #include "scsi_helper.h"
 #include "sat_helper.h"
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "vm_nvme.h"
 #include "vm_nvme_lib.h"
 #include "vm_nvme_mgmt.h"
 #include "nvme_helper.h"
-#endif
 #include "common_public.h"
 
 #if defined (__cplusplus)
@@ -40,11 +38,15 @@ extern "C"
 // \todo Figure out which scsi.h & sg.h should we be including kernel specific or in /usr/..../include
     #include <scsi/sg.h>
     #include <scsi/scsi.h>
-#if !defined(DISABLE_NVME_PASSTHROUGH)
-
     #include "nvme_helper.h"
-#endif
 
+
+    //This is the maximum timeout a command can use in SG passthrough with linux...1193 hours
+    //NOTE: SG also supports an infinite timeout, but that is checked in a separate function
+#define SG_MAX_CMD_TIMEOUT_SECONDS 4294967
+
+    //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+    bool os_Is_Infinite_Timeout_Supported(void);
 
 //SG Driver status's since they are not available through standard includes we're using
 
@@ -225,7 +227,6 @@ int os_Bus_Reset(tDevice *device);
 int os_Controller_Reset(tDevice *device);
 
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 //-----------------------------------------------------------------------------
 //
 //  pci_Read_Bar_Reg()
@@ -252,8 +253,6 @@ int os_nvme_Reset(tDevice *device);
 
 int os_nvme_Subsystem_Reset(tDevice *device);
 
-#endif
-
 //int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **blockHandle);
 
 int device_Reset(int fd);
@@ -262,38 +261,42 @@ int bus_Reset(int fd);
 
 int host_Reset(int fd);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  os_Lock_Device(tDevice *device)
-    //
-    //! \brief   Description:  removes the O_NONBLOCK flag from the handle to get exclusive access to the device.
-    //
-    //  Entry:
-    //!   \param[in]  device = pointer to device context!   
-    //! 
-    //  Exit:
-    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
-    //
-    //-----------------------------------------------------------------------------
-    int os_Lock_Device(tDevice *device);
+//-----------------------------------------------------------------------------
+//
+//  os_Lock_Device(tDevice *device)
+//
+//! \brief   Description:  removes the O_NONBLOCK flag from the handle to get exclusive access to the device.
+//
+//  Entry:
+//!   \param[in]  device = pointer to device context!   
+//! 
+//  Exit:
+//!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+//
+//-----------------------------------------------------------------------------
+int os_Lock_Device(tDevice *device);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  os_Unlock_Device(tDevice *device)
-    //
-    //! \brief   Description:  adds the O_NONBLOCK flag to the handle to restore shared access to the device.
-    //
-    //  Entry:
-    //!   \param[in]  device = pointer to device context!   
-    //! 
-    //  Exit:
-    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
-    //
-    //-----------------------------------------------------------------------------
-    int os_Unlock_Device(tDevice *device);
+//-----------------------------------------------------------------------------
+//
+//  os_Unlock_Device(tDevice *device)
+//
+//! \brief   Description:  adds the O_NONBLOCK flag to the handle to restore shared access to the device.
+//
+//  Entry:
+//!   \param[in]  device = pointer to device context!   
+//! 
+//  Exit:
+//!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+//
+//-----------------------------------------------------------------------------
+int os_Unlock_Device(tDevice *device);
 
-    #if defined (__cplusplus)
+int os_Update_File_System_Cache(tDevice* device);
+
+int os_Unmount_File_Systems_On_Device(tDevice *device);
+
+#if defined (__cplusplus)
 }
-    #endif
+#endif
 
 #endif
