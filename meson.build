@@ -40,3 +40,7 @@ incdir = include_directories('include', 'include/vendor')
 
 opensea_transport_lib = static_library('opensea-transport', src_files, c_args : global_cpp_args, dependencies : [opensea_common_dep, os_deps], include_directories : incdir)
 opensea_transport_dep = declare_dependency(link_with : opensea_transport_lib, compile_args : global_cpp_args, dependencies : os_deps, include_directories : incdir)
+
+src_files += 'tests/test_scsi_helper.c'
+e = executable('test_scsi_helper', src_files, c_args : global_cpp_args, dependencies : [opensea_common_dep, os_deps], include_directories : incdir)
+test('name of test', e)
