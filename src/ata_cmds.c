@@ -568,7 +568,7 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
         ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
         break;
     case ATA_SMART_WRITE_LOG:
-        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_READ_LOG)
+        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_WRITE_LOG)
         {
             printf("Write Log - Log %02"PRIX8"h\n", lbaLo);
         }
