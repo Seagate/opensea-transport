@@ -326,7 +326,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                     }
                     if (flags & SCAN_IRONWOLF_NAS_ONLY)
                     {
-                        if (!is_Ironwolf_NAS_Drive(&deviceList[devIter], false))
+                        if (is_Ironwolf_NAS_Drive(&deviceList[devIter], false) == NON_IRONWOLF_NAS_DRIVE)
                         {
                             continue;
                         }
@@ -1137,9 +1137,9 @@ bool is_Vendor_A(tDevice *device, bool USBchildDrive)
     return isVendorA;
 }
 
-bool is_Ironwolf_NAS_Drive(tDevice * device, bool USBchildDrive)
+eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(tDevice * device, bool USBchildDrive)
 {
-    bool isIronWolfNASDrive = false;
+    eIronwolf_NAS_Drive isIronWolfNASDrive = NON_IRONWOLF_NAS_DRIVE;
     char *modelNumber = &device->drive_info.product_identification[0];
     if (USBchildDrive)
     {
@@ -1149,18 +1149,18 @@ bool is_Ironwolf_NAS_Drive(tDevice * device, bool USBchildDrive)
     if (strlen(modelNumber))
     {
         if (wildcard_Match("ST*VN*", modelNumber))   //check if Ironwolf HDD
-            isIronWolfNASDrive = true;
+            isIronWolfNASDrive = IRONWOLF_NAS_DRIVE;
         else if (wildcard_Match("ST*NE*", modelNumber) || wildcard_Match("ST*NT*", modelNumber))  //check if Ironwolf Pro HDD
-            isIronWolfNASDrive = true;
+            isIronWolfNASDrive = IRONWOLF_PRO_NAS_DRIVE;
         else if (wildcard_Match("*ZA*NM*", modelNumber))  //check if SATA Ironwolf SSD
-            isIronWolfNASDrive = true;
+            isIronWolfNASDrive = IRONWOLF_NAS_DRIVE;
         else if (wildcard_Match("*ZA*NX*", modelNumber))  //check if SATA Ironwolf Pro SSD
-            isIronWolfNASDrive = true;
+            isIronWolfNASDrive = IRONWOLF_PRO_NAS_DRIVE;
         else if (wildcard_Match("*ZP*NM*", modelNumber))  //check if PCIe Ironwolf SSD
-            isIronWolfNASDrive = true;
+            isIronWolfNASDrive = IRONWOLF_NAS_DRIVE;
     }
 
-    if (!USBchildDrive && !isIronWolfNASDrive)
+    if (!USBchildDrive && isIronWolfNASDrive == NON_IRONWOLF_NAS_DRIVE)
         return is_Ironwolf_NAS_Drive(device, true);
 
     return isIronWolfNASDrive;

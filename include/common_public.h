@@ -1755,6 +1755,13 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API bool is_Vendor_A(tDevice *device, bool USBchildDrive);
 
+    typedef enum _eIronwolf_NAS_Drive
+    {
+        IRONWOLF_NAS_DRIVE,
+        IRONWOLF_PRO_NAS_DRIVE,
+        NON_IRONWOLF_NAS_DRIVE,
+    } eIronwolf_NAS_Drive;
+
     //-----------------------------------------------------------------------------
     //
     //  is_Ironwolf_NAS_Drive(tDevice *device, bool USBchildDrive)
@@ -1766,10 +1773,10 @@ extern "C"
     //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
     //!
     //  Exit:
-    //!   \return 1 = It is a Ironwolf NAS Drive, 0 - Not a Ironwolf NAS Drive
+    //!   \return 0 = It is a Ironwolf NAS Drive, 1 - a Ironwolf Pro NAS Drive, 2 - Not a Ironwolf NAS Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_Ironwolf_NAS_Drive(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(tDevice *device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
