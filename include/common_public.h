@@ -1757,23 +1757,23 @@ extern "C"
 
     typedef enum _eIronwolf_NAS_Drive
     {
+        NON_IRONWOLF_NAS_DRIVE,
         IRONWOLF_NAS_DRIVE,
         IRONWOLF_PRO_NAS_DRIVE,
-        NON_IRONWOLF_NAS_DRIVE,
     } eIronwolf_NAS_Drive;
 
     //-----------------------------------------------------------------------------
     //
     //  is_Ironwolf_NAS_Drive(tDevice *device, bool USBchildDrive)
     //
-    //! \brief   Checks if the device is a Ironwolf NAS drive
+    //! \brief   Checks if the device is a Ironwolf or Ironwolf Pro NAS drive
     //
     //  Entry:
     //!   \param[in]  device - file descriptor
     //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
     //!
     //  Exit:
-    //!   \return 0 = It is a Ironwolf NAS Drive, 1 - a Ironwolf Pro NAS Drive, 2 - Not a Ironwolf NAS Drive
+    //!   \return 0 = Not a Ironwolf NAS Drive, 1 - a Ironwolf NAS Drive, 2 - a Ironwolf Pro NAS Drive
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(tDevice *device, bool USBchildDrive);
@@ -1793,6 +1793,29 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API bool is_Firecuda_Drive(tDevice *device, bool USBchildDrive);
+
+    typedef enum _eSkyhawk_Drive
+    {
+        NON_SKYHAWK_DRIVE,
+        SKYHAWK_DRIVE,
+        SKYHAWK_AI_DRIVE,
+    } eSkyhawk_Drive;
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Skyhawk_Drive(tDevice *device, bool USBchildDrive)
+    //
+    //! \brief   Checks if the device is a Skyhawk or Skyhawk AI drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 0 = Not a Skyhawk Drive, 1 - a Skyhawk Drive, 2 - a Skyhawk AI Drive
+    //
+    //-----------------------------------------------------------------------------
+        OPENSEA_TRANSPORT_API eSkyhawk_Drive is_Skyhawk_Drive(tDevice *device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //

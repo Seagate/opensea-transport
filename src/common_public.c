@@ -1191,6 +1191,29 @@ bool is_Firecuda_Drive(tDevice * device, bool USBchildDrive)
     return isFirecudaDrive;
 }
 
+eSkyhawk_Drive is_Skyhawk_Drive(tDevice * device, bool USBchildDrive)
+{
+    eSkyhawk_Drive isSkyhawkDrive = NON_SKYHAWK_DRIVE;
+    char *modelNumber = &device->drive_info.product_identification[0];
+    if (USBchildDrive)
+    {
+        modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
+    }
+
+    if (strlen(modelNumber))
+    {
+        if (wildcard_Match("ST*VX*", modelNumber))   //check if Skyhawk HDD
+            isSkyhawkDrive = SKYHAWK_DRIVE;
+        else if (wildcard_Match("ST*VE*", modelNumber))  //check if Skyhawk AI HDD
+            isSkyhawkDrive = SKYHAWK_AI_DRIVE;
+    }
+
+    if (!USBchildDrive && isSkyhawkDrive == NON_SKYHAWK_DRIVE)
+        return is_Skyhawk_Drive(device, true);
+
+    return isSkyhawkDrive;
+}
+
 bool is_Seagate_Model_Number_Vendor_B(tDevice *device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
@@ -1221,6 +1244,7 @@ bool is_Seagate_Model_Number_Vendor_B(tDevice *device, bool USBchildDrive)
     }
     return isSeagateVendor;
 }
+
 bool is_Seagate_Model_Number_Vendor_C(tDevice *device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
@@ -1296,6 +1320,7 @@ bool is_Seagate_Model_Number_Vendor_D(tDevice *device, bool USBchildDrive)
     }
     return isSeagateVendor;
 }
+
 bool is_Seagate_Model_Number_Vendor_E(tDevice *device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
