@@ -1773,6 +1773,22 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
+    //  is_Firecuda_Drive(tDevice *device, bool USBchildDrive)
+    //
+    //! \brief   Checks if the device is a Firecuda drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Firecuda Drive, 0 - Not a Firecuda Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Firecuda_Drive(tDevice *device, bool USBchildDrive);
+
+    //-----------------------------------------------------------------------------
+    //
     //  is_SSD( tDevice * device )
     //
     //! \brief   Checks if the device is an SSD or not. This just looks at the media type to see if it is MEDIA_SSD or MEDIA_NVM

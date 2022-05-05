@@ -1137,7 +1137,7 @@ bool is_Vendor_A(tDevice *device, bool USBchildDrive)
     return isVendorA;
 }
 
-OPENSEA_TRANSPORT_API bool is_Ironwolf_NAS_Drive(tDevice * device, bool USBchildDrive)
+bool is_Ironwolf_NAS_Drive(tDevice * device, bool USBchildDrive)
 {
     bool isIronWolfNASDrive = false;
     char *modelNumber = &device->drive_info.product_identification[0];
@@ -1164,6 +1164,31 @@ OPENSEA_TRANSPORT_API bool is_Ironwolf_NAS_Drive(tDevice * device, bool USBchild
         return is_Ironwolf_NAS_Drive(device, true);
 
     return isIronWolfNASDrive;
+}
+
+bool is_Firecuda_Drive(tDevice * device, bool USBchildDrive)
+{
+    bool isFirecudaDrive = false;
+    char *modelNumber = &device->drive_info.product_identification[0];
+    if (USBchildDrive)
+    {
+        modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
+    }
+
+    if (strlen(modelNumber))
+    {
+        if (wildcard_Match("ST*DX*", modelNumber))   //check if Firecuda HDD
+            isFirecudaDrive = true;
+        else if (wildcard_Match("*ZA*GM*", modelNumber))  //check if SATA Firecuda SSD
+            isFirecudaDrive = true;
+        else if (wildcard_Match("*ZP*GM*", modelNumber))  //check if PCIe Firecuda SSD
+            isFirecudaDrive = true;
+    }
+
+    if (!USBchildDrive && !isFirecudaDrive)
+        return is_Firecuda_Drive(device, true);
+
+    return isFirecudaDrive;
 }
 
 bool is_Seagate_Model_Number_Vendor_B(tDevice *device, bool USBchildDrive)
@@ -1725,6 +1750,7 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
     }
     return isSeagateFamily;
 }
+
 bool is_SSD(tDevice *device)
 {
     if (device->drive_info.media_type == MEDIA_NVM || device->drive_info.media_type == MEDIA_SSD)
