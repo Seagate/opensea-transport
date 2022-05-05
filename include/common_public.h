@@ -1363,6 +1363,7 @@ extern "C"
     #define ALLOW_DUPLICATE_DEVICE BIT24 //This is ONLY used by the scan_And_Print_Devs function to filter what is output from it. This does NOT affect get_Device_List.
     #define IGNORE_CSMI BIT25 //only works in Windows since Linux never adopted CSMI support. Set this to ignore CSMI devices, or compile opensea-transport without the ENABLE_CSMI preprocessor definition.
 #endif
+    #define SCAN_IRONWOLF_NAS_ONLY BIT26
 
     typedef enum _eZoneReportingOptions
     {
@@ -1753,6 +1754,22 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API bool is_Vendor_A(tDevice *device, bool USBchildDrive);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Ironwolf_NAS_Drive(tDevice *device, bool USBchildDrive)
+    //
+    //! \brief   Checks if the device is a Ironwolf NAS drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Ironwolf NAS Drive, 0 - Not a Ironwolf NAS Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Ironwolf_NAS_Drive(tDevice *device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
