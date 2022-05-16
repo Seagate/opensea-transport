@@ -37,7 +37,15 @@ int send_ATA_Read_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t page
     if (device->drive_info.ata_Options.generalPurposeLoggingSupported)
     {
         bool dmaRetry = false;
-        if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.readLogWriteLogDMASupported)
+        bool sataLogRequiresPIO = false;
+        if (!device->drive_info.ata_Options.sataReadLogDMASameAsPIO && (logAddress == ATA_LOG_NCQ_COMMAND_ERROR_LOG || logAddress == ATA_LOG_SATA_PHY_EVENT_COUNTERS_LOG))
+        {
+            //special case for SATA NCQ error log and Phy event counters log! 
+            // Old drives may require PIO mode to read these logs!
+            //This uses SATA id word 76 to identify the case and adjust which command to issue in this case.
+            sataLogRequiresPIO = true;
+        }
+        if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.readLogWriteLogDMASupported && !sataLogRequiresPIO)
         {
             //try a read log ext DMA command
             ret = ata_Read_Log_Ext(device, logAddress, pageNumber, ptrData, dataSize, true, featureRegister);
@@ -1065,11 +1073,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         {
             device->drive_info.ata_Options.taggedCommandQueuingSupported = true;
         }
-        //check for native command queuing support
-        if (ident_word[76] & BIT8)
-        {
-            device->drive_info.ata_Options.nativeCommandQueuingSupported = true;
-        }
+        
         //check if the device is parallel or serial
         uint8_t transportType = (ident_word[222] & (BIT15 | BIT14 | BIT13 | BIT12)) >> 12;
         switch (transportType)
@@ -1082,9 +1086,43 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         default:
             break;
         }
-        if (device->drive_info.IdentifyData.ata.Word076 > 0)//Only Serial ATA Devices will set the bits in words 76-79
+        //non-SATA compiant (PATA) devices will set this to 0 or FFFFh
+        if (device->drive_info.IdentifyData.ata.Word076 != 0 && device->drive_info.IdentifyData.ata.Word076 != UINT16_MAX)
         {
             device->drive_info.ata_Options.isParallelTransport = false;
+            device->drive_info.ata_Options.needLegacyDeviceHeadCompatBits = false;//TODO: May need to retry and test this just in case! Can use identify to validate. May be necessary for old controllers or drivers or weird controller modes
+            //check for native command queuing support
+            if (ident_word[76] & BIT8)
+            {
+                device->drive_info.ata_Options.nativeCommandQueuingSupported = true;
+            }
+            if (!device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
+            {
+                if (device->drive_info.IdentifyData.ata.Word076 & BIT15)
+                {
+                    device->drive_info.ata_Options.sataReadLogDMASameAsPIO = true;
+                }
+            }
+        }
+        else
+        {
+            device->drive_info.ata_Options.isParallelTransport = true;
+            device->drive_info.ata_Options.needLegacyDeviceHeadCompatBits = true;
+            //if parallel ATA, check the current mode. If not DMA, turn off ALL DMA command support since the HBA or OS or bridge may not support DMA mode and we don't want to lose communication with the host
+            //now check if any DMA mode is enabled...if none are enabled, then it's running in PIO mode
+            if (!(M_GETBITRANGE(ident_word[62], 10, 8) != 0 //SWDMA
+                || M_GETBITRANGE(ident_word[63], 10, 8) != 0 //MWDMA
+                || M_GETBITRANGE(ident_word[88], 14, 8) != 0 //UDMA
+                ))
+            {
+                //in this case, remove all the support flags for DMA versions of commands since that is the easiest way to handle the rest of the library
+                device->drive_info.ata_Options.dmaSupported = false;
+                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_NO_DMA;
+                device->drive_info.ata_Options.downloadMicrocodeDMASupported = false;
+                device->drive_info.ata_Options.readBufferDMASupported = false;
+                device->drive_info.ata_Options.readLogWriteLogDMASupported = false;
+                device->drive_info.ata_Options.writeBufferDMASupported = false;
+            }
         }
         if (ident_word[119] & BIT2 || ident_word[120] & BIT2)
         {
@@ -1113,25 +1151,6 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             memcpy(device->drive_info.product_revision, device->drive_info.bridge_info.childDriveFW, FW_REV_LEN);
             device->drive_info.worldWideName = device->drive_info.bridge_info.childWWN;
         }
-        //if parallel ATA, check the current mode. If not DMA, turn off ALL DMA command support since the HBA or OS or bridge may not support DMA mode and we don't want to lose communication with the host
-        if (ident_word[76] == 0 || ident_word[76] == UINT16_MAX)//Check for parallel ATA.
-        {
-            //now check if any DMA mode is enabled...if none are enabled, then it's running in PIO mode
-            if (!(M_GETBITRANGE(ident_word[62], 10, 8) != 0 //SWDMA
-                || M_GETBITRANGE(ident_word[63], 10, 8) != 0 //MWDMA
-                || M_GETBITRANGE(ident_word[88], 14, 8) != 0 //UDMA
-                ))
-            {
-                //in this case, remove all the support flags for DMA versions of commands since that is the easiest way to handle the rest of the library
-                device->drive_info.ata_Options.dmaSupported = false;
-                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_NO_DMA;
-                device->drive_info.ata_Options.downloadMicrocodeDMASupported = false;
-                device->drive_info.ata_Options.readBufferDMASupported = false;
-                device->drive_info.ata_Options.readLogWriteLogDMASupported = false;
-                device->drive_info.ata_Options.writeBufferDMASupported = false;
-            }
-        }
-
     }
     else
     {

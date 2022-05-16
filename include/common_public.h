@@ -720,6 +720,9 @@ extern "C"
         bool enableLegacyPassthroughDetectionThroughTrialAndError;//This must be set to true in order to work on legacy (ancient) passthrough if the VID/PID is not in the list and not read from the system.
         bool senseDataReportingEnabled;//this is to track when the RTFRs may contain a sense data bit so it can be read automatically.
         uint8_t forceSATCDBLength;//set this to 12, 16, or 32 to force a specific CDB length to use. If you set 12, but send an extended command 16B will be used if any extended registers are set. Same with 32B will be used if ICC or AUX are set.
+        bool sataReadLogDMASameAsPIO; //not all SATA drives allow reading SATA specific pages with the DMA command. This specifies that it is allowed. (NCQ error log, phy event counters log, etc)
+        bool needLegacyDeviceHeadCompatBits; //original ATA spec required bits 7 and 5 to be set to 1. This was removed a long time ago, but can affect just about any pata device. This helps change when to set them as they are not needed on SATA (or shouldn't be)
+        uint8_t reserved[7];//reserved padding to keep 8 byte aligned structure for any necessary flags in the future.
     }ataOptions;
 
     typedef enum _eZonedDeviceType {
@@ -1180,7 +1183,7 @@ extern "C"
 
     typedef int (*issue_io_func)( void * );
 
-    #define DEVICE_BLOCK_VERSION    (6)
+    #define DEVICE_BLOCK_VERSION    (7)
 
     // verification for compatibility checking
     typedef struct _versionBlock
