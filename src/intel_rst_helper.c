@@ -560,11 +560,6 @@ int send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx)
                 //assume SCSI write buffer if we made it this far. The is_Compatible_SCSI_FWDL_IO will filter out other commands since the opcode won't match
                 firmwareSlot = scsiIoCtx->cdb[2];//firmware slot or buffer ID are "the same" in SNTL
             }
-            //special case, if running in SCSI translation mode for NVMe, we should set the controller flag
-            if (strcmp(scsiIoCtx->device->drive_info.T10_vendor_ident, "NVMe") == 0)
-            {
-                flags |= INTEL_FIRMWARE_REQUEST_FLAG_CONTROLLER;
-            }
             ret = internal_Intel_FWDL_Function_Activate(scsiIoCtx->device, flags, &returnCode, firmwareSlot, timeout);
             //TODO: Dummy up sense data!
         }
@@ -892,7 +887,8 @@ int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx)
                     flags |= INTEL_FIRMWARE_REQUEST_FLAG_LAST_SEGMENT;
                 }
                 //send download command API
-                ret = internal_Intel_FWDL_Function_Download(nvmeIoCtx->device, flags, &returnCode, nvmeIoCtx->ptrData, nvmeIoCtx->cmd.adminCmd.cdw10, nvmeIoCtx->cmd.adminCmd.cdw11, firmwareSlot, nvmeIoCtx->timeout);
+                //NOTE: CDW10 and 11 are numbers of dwords! So shift by 2 (mul by 4) is required as this function is expecting a byte offset
+                ret = internal_Intel_FWDL_Function_Download(nvmeIoCtx->device, flags, &returnCode, nvmeIoCtx->ptrData, (nvmeIoCtx->cmd.adminCmd.cdw10 + 1) << 2, nvmeIoCtx->cmd.adminCmd.cdw11 << 2, firmwareSlot, nvmeIoCtx->timeout);
                 //Dummy up output data based on return code.
                 dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
             }
