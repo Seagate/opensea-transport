@@ -16,6 +16,37 @@
 #include "ata_helper_func.h"
 #include "scsi_helper_func.h"
 
+//This is a basic validity indicator for a given ATA identify word. Checks that it is non-zero and not FFFFh
+bool is_ATA_Identify_Word_Valid(uint16_t word)
+{
+    bool valid = false;
+    if (word != UINT16_C(0) && word != UINT16_MAX)
+    {
+        valid = true;
+    }
+    return valid;
+}
+
+bool is_ATA_Identify_Word_Valid_With_Bits_14_And_15(uint16_t word)
+{
+    bool valid = false;
+    if (is_ATA_Identify_Word_Valid(word) && (word & BIT15) == 0 && (word & BIT14) == BIT14)
+    {
+        valid = true;
+    }
+    return valid;
+}
+
+bool is_ATA_Identify_Word_Valid_SATA(uint16_t word)
+{
+    bool valid = false;
+    if (is_ATA_Identify_Word_Valid(word) && (word & BIT0) == 0)
+    {
+        valid = true;
+    }
+    return valid;
+}
+
 bool is_Buffer_Non_Zero(uint8_t* ptrData, uint32_t dataLen)
 {
     bool isNonZero = false;
@@ -909,7 +940,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         }
 
         //get the sector sizes from the identify data
-        if (((ident_word[106] & BIT14) == BIT14) && ((ident_word[106] & BIT15) == 0)) //making sure this word has valid data
+        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(ident_word[106])) //making sure this word has valid data
         {
             //word 117 is only valid when word 106 bit 12 is set
             if ((ident_word[106] & BIT12) == BIT12)
@@ -939,7 +970,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             *fillPhysicalSectorSize = LEGACY_DRIVE_SEC_SIZE;
         }
         //get the sector alignment
-        if (ident_word[209] & BIT14)
+        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(ident_word[209]))
         {
             //bits 13:0 are valid for alignment. bit 15 will be 0 and bit 14 will be 1. remove bit 14 with an xor
             *fillSectorAlignment = ident_word[209] ^ BIT14;
@@ -1093,7 +1124,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             break;
         }
         //non-SATA compiant (PATA) devices will set this to 0 or FFFFh
-        if (device->drive_info.IdentifyData.ata.Word076 != 0 && device->drive_info.IdentifyData.ata.Word076 != UINT16_MAX)
+        if (is_ATA_Identify_Word_Valid_SATA(device->drive_info.IdentifyData.ata.Word076))
         {
             device->drive_info.ata_Options.isParallelTransport = false;
             device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits = true;//TODO: May need to retry and test this just in case! Can use identify to validate. May be necessary for old controllers or drivers or weird controller modes

@@ -57,6 +57,14 @@ extern "C"
     #define DEVICE_SELECT_BIT BIT4 //On PATA, this is to select drive 1. Device/Head register
     #define DEVICE_REG_BACKWARDS_COMPATIBLE_BITS 0xA0 //device/head in ATA & ATA3 say these bits should be set on every command. New specs mark these obsolete in commands that are from old specs. New commands may use these for other purposes.
 
+    //This is a basic validity indicator for a given ATA identify word. Checks that it is non-zero and not FFFFh
+    OPENSEA_TRANSPORT_API bool is_ATA_Identify_Word_Valid(uint16_t word);
+    //This one is a little more advanced as some words specify bit 15 is zero and bit 14 is 1 as a key, so it checks for this in addition to checking non-zero and non FFFFh
+    //example: Word 83, 84, 87, 93 (pata), 106, 119, 120, 209
+    OPENSEA_TRANSPORT_API bool is_ATA_Identify_Word_Valid_With_Bits_14_And_15(uint16_t word);
+    //checks same as is_ATA_Identify_Word_Valid and that bit 0 is cleared to zero in the SATA words (76 - 79)
+    OPENSEA_TRANSPORT_API bool is_ATA_Identify_Word_Valid_SATA(uint16_t word);
+
     #define ATA_CHECKSUM_VALIDITY_INDICATOR 0xA5
 
     #define IDLE_IMMEDIATE_UNLOAD_LBA 0x0554E4C
@@ -960,7 +968,7 @@ extern "C"
        ATA_MINOR_VERSION_ATA8_ACS_REV_3C        = 0x0027, //ATA8-ACS version 3c
        ATA_MINOR_VERSION_ATA8_ACS_REV_6         = 0x0028, //ATA8-ACS version 6
        ATA_MINOR_VERSION_ATA8_ACS_REV_4         = 0x0029, //ATA8-ACS version 4
-
+       ATA_MINOR_VERSION_ACS5_REV_8             = 0x0030, //ACS-5 version 8
        ATA_MINOR_VERSION_ACS2_REV_2             = 0x0031, //ASC-2 Revision 2
 
        ATA_MINOR_VERSION_ATA8_ACS_REV_3E        = 0x0033, //ATA8-ACS version 3e
@@ -976,6 +984,8 @@ extern "C"
        ATA_MINOR_VERSION_ACS3_REV_5             = 0x006D, //ACS-3 Revision 5
 
        ATA_MINOR_VERSION_ACS_2_PUBLISHED        = 0x0082, //ACS-2 published, ANSI INCITS 482-2012
+
+       ATA_MINOR_VERSION_ACS4_PUBLISHED         = 0x009C, //ACS-4 published, ANSI, INCITS 529-2018
 
        ATA_MINOR_VERSION_ATA8_ACS_REV_2D        = 0x0107, //ATA8-ACS version 2d
 
