@@ -132,7 +132,13 @@ int send_ATA_SCT(tDevice *device, eDataTransferDirection direction, uint8_t logA
     {
         return BAD_PARAMETER;
     }
-    if (device->drive_info.ata_Options.generalPurposeLoggingSupported)
+    bool useGPL = device->drive_info.ata_Options.generalPurposeLoggingSupported;
+    //This is a hack for some USB drives. While a caller somewhere above this should handle this, this needs to be here to ensure we don't hang these devices.
+    if (device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly)
+    {
+        useGPL = false;
+    }
+    if (useGPL)
     {
         if (direction == XFER_DATA_IN)
         {

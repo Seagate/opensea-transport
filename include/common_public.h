@@ -1366,6 +1366,7 @@ extern "C"
     #define ALLOW_DUPLICATE_DEVICE BIT24 //This is ONLY used by the scan_And_Print_Devs function to filter what is output from it. This does NOT affect get_Device_List.
     #define IGNORE_CSMI BIT25 //only works in Windows since Linux never adopted CSMI support. Set this to ignore CSMI devices, or compile opensea-transport without the ENABLE_CSMI preprocessor definition.
 #endif
+    #define SCAN_IRONWOLF_NAS_ONLY BIT26
 
     typedef enum _eZoneReportingOptions
     {
@@ -1756,6 +1757,68 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API bool is_Vendor_A(tDevice *device, bool USBchildDrive);
+
+    typedef enum _eIronwolf_NAS_Drive
+    {
+        NON_IRONWOLF_NAS_DRIVE,
+        IRONWOLF_NAS_DRIVE,
+        IRONWOLF_PRO_NAS_DRIVE,
+    } eIronwolf_NAS_Drive;
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Ironwolf_NAS_Drive(tDevice *device, bool USBchildDrive)
+    //
+    //! \brief   Checks if the device is a Ironwolf or Ironwolf Pro NAS drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 0 = Not a Ironwolf NAS Drive, 1 - a Ironwolf NAS Drive, 2 - a Ironwolf Pro NAS Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(tDevice *device, bool USBchildDrive);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Firecuda_Drive(tDevice *device, bool USBchildDrive)
+    //
+    //! \brief   Checks if the device is a Firecuda drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Firecuda Drive, 0 - Not a Firecuda Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Firecuda_Drive(tDevice *device, bool USBchildDrive);
+
+    typedef enum _eSkyhawk_Drive
+    {
+        NON_SKYHAWK_DRIVE,
+        SKYHAWK_DRIVE,
+        SKYHAWK_AI_DRIVE,
+    } eSkyhawk_Drive;
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Skyhawk_Drive(tDevice *device, bool USBchildDrive)
+    //
+    //! \brief   Checks if the device is a Skyhawk or Skyhawk AI drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 0 = Not a Skyhawk Drive, 1 - a Skyhawk Drive, 2 - a Skyhawk AI Drive
+    //
+    //-----------------------------------------------------------------------------
+        OPENSEA_TRANSPORT_API eSkyhawk_Drive is_Skyhawk_Drive(tDevice *device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //

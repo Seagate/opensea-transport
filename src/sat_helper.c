@@ -4226,7 +4226,7 @@ static int translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCtx *scsiIoC
                     uint8_t pattern[4] = { 0 };//32bits set to zero
                     uint32_t currentTimeout = device->drive_info.defaultTimeoutSeconds;
                     device->drive_info.defaultTimeoutSeconds = UINT32_MAX;
-                    ret = ata_SCT_Write_Same(device, device->drive_info.ata_Options.generalPurposeLoggingSupported, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0x0101, logicalBlockAddress, numberOflogicalBlocks, &pattern[0], 4);
+                    ret = send_ATA_SCT_Write_Same(device, 0x0101, logicalBlockAddress, numberOflogicalBlocks, &pattern[0], 4);
                     device->drive_info.defaultTimeoutSeconds = currentTimeout;
                 }
                 else
@@ -4253,10 +4253,10 @@ static int translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCtx *scsiIoC
                 {
 #if SAT_SPEC_SUPPORTED > 2
                     //If SCT - function 102 (foreground). 1 or more SCT commands
-                    ret = ata_SCT_Write_Same(device, device->drive_info.ata_Options.generalPurposeLoggingSupported, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0x0102, logicalBlockAddress, numberOflogicalBlocks, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+                    ret = send_ATA_SCT_Write_Same(device, 0x0102, logicalBlockAddress, numberOflogicalBlocks, scsiIoCtx->pdata, scsiIoCtx->dataLength);
 #else
                     //If SCT - function 02 or 04 (background) 1 or more SCT commands
-                    ret = ata_SCT_Write_Same(device, device->drive_info.ata_Options.generalPurposeLoggingSupported, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0x0002, logicalBlockAddress, numberOflogicalBlocks, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+                    ret = send_ATA_SCT_Write_Same(device, 0x0002, logicalBlockAddress, numberOflogicalBlocks, scsiIoCtx->pdata, scsiIoCtx->dataLength);
 #endif
                 }
                 else
@@ -4975,7 +4975,7 @@ static int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIo
                             if (initializationPatternLength == 0x0004 && device->drive_info.IdentifyData.ata.Word206 & BIT0 && device->drive_info.IdentifyData.ata.Word206 & BIT2)
                             {
                                 //SCT write same
-                                ret = ata_SCT_Write_Same(device, device->drive_info.ata_Options.generalPurposeLoggingSupported, device->drive_info.ata_Options.readLogWriteLogDMASupported, WRITE_SAME_BACKGROUND_USE_PATTERN_FIELD, 0, device->drive_info.deviceMaxLba, initializationPatternPtr, initializationPatternLength);
+                                ret = send_ATA_SCT_Write_Same(device, WRITE_SAME_BACKGROUND_USE_PATTERN_FIELD, 0, device->drive_info.deviceMaxLba, initializationPatternPtr, initializationPatternLength);
                                 if (ret != SUCCESS)
                                 {
                                     set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
