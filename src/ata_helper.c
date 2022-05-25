@@ -1090,7 +1090,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         if (device->drive_info.IdentifyData.ata.Word076 != 0 && device->drive_info.IdentifyData.ata.Word076 != UINT16_MAX)
         {
             device->drive_info.ata_Options.isParallelTransport = false;
-            device->drive_info.ata_Options.needLegacyDeviceHeadCompatBits = false;//TODO: May need to retry and test this just in case! Can use identify to validate. May be necessary for old controllers or drivers or weird controller modes
+            device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits = true;//TODO: May need to retry and test this just in case! Can use identify to validate. May be necessary for old controllers or drivers or weird controller modes
             //check for native command queuing support
             if (ident_word[76] & BIT8)
             {
@@ -1107,7 +1107,8 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         else
         {
             device->drive_info.ata_Options.isParallelTransport = true;
-            device->drive_info.ata_Options.needLegacyDeviceHeadCompatBits = true;
+            device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits = false;//for PATA devices, continue setting these bits for backwards compatibility.
+            //NOTE: It may be possible to remove these bits on some PATA drives, but that will take more research that is likely not worth the time.-TJE
             //if parallel ATA, check the current mode. If not DMA, turn off ALL DMA command support since the HBA or OS or bridge may not support DMA mode and we don't want to lose communication with the host
             //now check if any DMA mode is enabled...if none are enabled, then it's running in PIO mode
             if (!(M_GETBITRANGE(ident_word[62], 10, 8) != 0 //SWDMA

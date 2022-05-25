@@ -2157,7 +2157,7 @@ static int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *sc
             ataInformation[40] = 0x01;//lbalo - 01h
             ataInformation[41] = 0x00;//lbamid - 00h
             ataInformation[42] = 0x00;//lbahi - 00h
-            if (device->drive_info.ata_Options.needLegacyDeviceHeadCompatBits)
+            if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
             {
                 ataInformation[43] |= DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;//device - NA
             }
@@ -2191,7 +2191,7 @@ static int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *sc
             ataInformation[40] = 0x01;//lbalo - 01h
             ataInformation[41] = 0x14;//lbamid - 14h
             ataInformation[42] = 0xEB;//lbahi - EBh
-            if (device->drive_info.ata_Options.needLegacyDeviceHeadCompatBits)
+            if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
             {
                 ataInformation[43] |= DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;//device - NA
             }
