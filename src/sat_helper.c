@@ -2157,7 +2157,10 @@ static int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *sc
             ataInformation[40] = 0x01;//lbalo - 01h
             ataInformation[41] = 0x00;//lbamid - 00h
             ataInformation[42] = 0x00;//lbahi - 00h
-            ataInformation[43] = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;//device - NA
+            if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+            {
+                ataInformation[43] |= DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;//device - NA
+            }
             if (device->drive_info.ata_Options.isDevice1)
             {
                 ataInformation[43] |= DEVICE_SELECT_BIT;
@@ -2188,7 +2191,10 @@ static int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *sc
             ataInformation[40] = 0x01;//lbalo - 01h
             ataInformation[41] = 0x14;//lbamid - 14h
             ataInformation[42] = 0xEB;//lbahi - EBh
-            ataInformation[43] = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;//device - NA
+            if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+            {
+                ataInformation[43] |= DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;//device - NA
+            }
             if (device->drive_info.ata_Options.isDevice1)
             {
                 ataInformation[43] |= DEVICE_SELECT_BIT;

@@ -57,6 +57,14 @@ extern "C"
     #define DEVICE_SELECT_BIT BIT4 //On PATA, this is to select drive 1. Device/Head register
     #define DEVICE_REG_BACKWARDS_COMPATIBLE_BITS 0xA0 //device/head in ATA & ATA3 say these bits should be set on every command. New specs mark these obsolete in commands that are from old specs. New commands may use these for other purposes.
 
+    //This is a basic validity indicator for a given ATA identify word. Checks that it is non-zero and not FFFFh
+    OPENSEA_TRANSPORT_API bool is_ATA_Identify_Word_Valid(uint16_t word);
+    //This one is a little more advanced as some words specify bit 15 is zero and bit 14 is 1 as a key, so it checks for this in addition to checking non-zero and non FFFFh
+    //example: Word 83, 84, 87, 93 (pata), 106, 119, 120, 209
+    OPENSEA_TRANSPORT_API bool is_ATA_Identify_Word_Valid_With_Bits_14_And_15(uint16_t word);
+    //checks same as is_ATA_Identify_Word_Valid and that bit 0 is cleared to zero in the SATA words (76 - 79)
+    OPENSEA_TRANSPORT_API bool is_ATA_Identify_Word_Valid_SATA(uint16_t word);
+
     #define ATA_CHECKSUM_VALIDITY_INDICATOR 0xA5
 
     #define IDLE_IMMEDIATE_UNLOAD_LBA 0x0554E4C
@@ -816,6 +824,38 @@ extern "C"
        ATA_LOG_CONCURRENT_POSITIONING_RANGES            = 0x47,
        ATA_LOG_SENSE_DATA                               = 0x53,
        //80h - 9F are host specific logs
+       ATA_LOG_HOST_SPECIFIC_80H                        = 0x80,
+       ATA_LOG_HOST_SPECIFIC_81H                        = 0x81,
+       ATA_LOG_HOST_SPECIFIC_82H                        = 0x82,
+       ATA_LOG_HOST_SPECIFIC_83H                        = 0x83,
+       ATA_LOG_HOST_SPECIFIC_84H                        = 0x84,
+       ATA_LOG_HOST_SPECIFIC_85H                        = 0x85,
+       ATA_LOG_HOST_SPECIFIC_86H                        = 0x86,
+       ATA_LOG_HOST_SPECIFIC_87H                        = 0x87,
+       ATA_LOG_HOST_SPECIFIC_88H                        = 0x88,
+       ATA_LOG_HOST_SPECIFIC_89H                        = 0x89,
+       ATA_LOG_HOST_SPECIFIC_8AH                        = 0x8A,
+       ATA_LOG_HOST_SPECIFIC_8BH                        = 0x8B,
+       ATA_LOG_HOST_SPECIFIC_8CH                        = 0x8C,
+       ATA_LOG_HOST_SPECIFIC_8DH                        = 0x8D,
+       ATA_LOG_HOST_SPECIFIC_8EH                        = 0x8E,
+       ATA_LOG_HOST_SPECIFIC_8FH                        = 0x8F,
+       ATA_LOG_HOST_SPECIFIC_90H                        = 0x90,
+       ATA_LOG_HOST_SPECIFIC_91H                        = 0x91,
+       ATA_LOG_HOST_SPECIFIC_92H                        = 0x92,
+       ATA_LOG_HOST_SPECIFIC_93H                        = 0x93,
+       ATA_LOG_HOST_SPECIFIC_94H                        = 0x94,
+       ATA_LOG_HOST_SPECIFIC_95H                        = 0x95,
+       ATA_LOG_HOST_SPECIFIC_96H                        = 0x96,
+       ATA_LOG_HOST_SPECIFIC_97H                        = 0x97,
+       ATA_LOG_HOST_SPECIFIC_98H                        = 0x98,
+       ATA_LOG_HOST_SPECIFIC_99H                        = 0x99,
+       ATA_LOG_HOST_SPECIFIC_9AH                        = 0x9A,
+       ATA_LOG_HOST_SPECIFIC_9BH                        = 0x9B,
+       ATA_LOG_HOST_SPECIFIC_9CH                        = 0x9C,
+       ATA_LOG_HOST_SPECIFIC_9DH                        = 0x9D,
+       ATA_LOG_HOST_SPECIFIC_9EH                        = 0x9E,
+       ATA_LOG_HOST_SPECIFIC_9FH                        = 0x9F,
        //A0-DF are vendor specific logs
        ATA_SCT_COMMAND_STATUS                           = 0xE0,
        ATA_SCT_DATA_TRANSFER                            = 0xE1,
@@ -960,7 +1000,7 @@ extern "C"
        ATA_MINOR_VERSION_ATA8_ACS_REV_3C        = 0x0027, //ATA8-ACS version 3c
        ATA_MINOR_VERSION_ATA8_ACS_REV_6         = 0x0028, //ATA8-ACS version 6
        ATA_MINOR_VERSION_ATA8_ACS_REV_4         = 0x0029, //ATA8-ACS version 4
-
+       ATA_MINOR_VERSION_ACS5_REV_8             = 0x0030, //ACS-5 version 8
        ATA_MINOR_VERSION_ACS2_REV_2             = 0x0031, //ASC-2 Revision 2
 
        ATA_MINOR_VERSION_ATA8_ACS_REV_3E        = 0x0033, //ATA8-ACS version 3e
@@ -976,6 +1016,8 @@ extern "C"
        ATA_MINOR_VERSION_ACS3_REV_5             = 0x006D, //ACS-3 Revision 5
 
        ATA_MINOR_VERSION_ACS_2_PUBLISHED        = 0x0082, //ACS-2 published, ANSI INCITS 482-2012
+
+       ATA_MINOR_VERSION_ACS4_PUBLISHED         = 0x009C, //ACS-4 published, ANSI, INCITS 529-2018
 
        ATA_MINOR_VERSION_ATA8_ACS_REV_2D        = 0x0107, //ATA8-ACS version 2d
 
