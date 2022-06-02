@@ -29,7 +29,8 @@ AR ?= ar
 #override CFLAGS = -Wall -c -fPIC -I. -std=gnu99
 CFLAGS ?= -Wall -Wextra 
 #setting std=c99 instead of std-gnu99 because we want __has_include to work. This means we must add -D_GNU_SOURCE to the project defines to keep the same functionality in Linux. NOTE: This seems to work in newGCC, but if you are unfortunate enough to HAVE to use old GCC within somehting like CentOS6, you must change back to gnu99.
-CFLAGS += -c -fPIC -I. -std=gnu99
+CFLAGS += -c -fPIC -I. -std=gnu99 -Wcast-align=strict -Wshadow=compatible-local -Wvla -Wfloat-equal -Wnull-dereference -Wunused-const-variable \
+	-Wduplicated-cond -Wjump-misses-init -Wstringop-overflow -Wlogical-op -Wshift-overflow=2 -Wsign-conversion -Wdouble-promotion -Wformat-security
 LFLAGS ?= -Wall ../../../opensea-common/Make/gcc/lib/$(FILE_OUTPUT_DIR)/libopensea-common.a
 LIB_SRC_FILES = \
 	$(SRC_DIR)ata_cmds.c\

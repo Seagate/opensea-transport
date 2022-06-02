@@ -2793,8 +2793,8 @@ static int translate_Zoned_Block_Device_Characteristics_VPD_Page_B6h(tDevice *de
     if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION, zonedDeviceInformation, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
     {
         //validate that we got a valid page from the ID Data log (it can return all zeros on this page if it isn't supported, but read successfully)
-        uint64_t *qwordPtr = (uint64_t*)&zonedDeviceInformation[0];
-        uint8_t pageNumber = M_Byte2(qwordPtr[0]);
+        uint64_t zonedQword = M_BytesTo8ByteValue(zonedDeviceInformation[7], zonedDeviceInformation[6], zonedDeviceInformation[5], zonedDeviceInformation[4], zonedDeviceInformation[3], zonedDeviceInformation[2], zonedDeviceInformation[1], zonedDeviceInformation[0]);
+        uint8_t pageNumber = M_Byte2(zonedQword);
         uint8_t zonedDeviceCharacteristics[64] = { 0 };
         uint8_t peripheralDevice = 0;
         if (device->drive_info.zonedType == ZONED_TYPE_DEVICE_MANAGED)
@@ -2805,13 +2805,13 @@ static int translate_Zoned_Block_Device_Characteristics_VPD_Page_B6h(tDevice *de
         zonedDeviceCharacteristics[1] = 0xB6;
         zonedDeviceCharacteristics[2] = 0x00;
         zonedDeviceCharacteristics[3] = 0x3C;
-        if (qwordPtr[0] & BIT63 && pageNumber == ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION)
+        if (zonedQword & BIT63 && pageNumber == ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION)
         {
-            uint32_t optimalNumberOfOpenSequentialWritePreferredZones = M_DoubleWord0(qwordPtr[3]);
-            uint32_t optimalNumberOfNonSequentiallyWrittenSequentialWritePreferredZones = M_DoubleWord0(qwordPtr[4]);
-            uint32_t maximumNumberOfOpenSequentialWriteRequiredZoned = M_DoubleWord0(qwordPtr[5]);
+            uint32_t optimalNumberOfOpenSequentialWritePreferredZones = M_BytesTo4ByteValue(zonedDeviceInformation[19], zonedDeviceInformation[18], zonedDeviceInformation[17], zonedDeviceInformation[16]);
+            uint32_t optimalNumberOfNonSequentiallyWrittenSequentialWritePreferredZones = M_BytesTo4ByteValue(zonedDeviceInformation[27], zonedDeviceInformation[26], zonedDeviceInformation[25], zonedDeviceInformation[24]);
+            uint32_t maximumNumberOfOpenSequentialWriteRequiredZoned = M_BytesTo4ByteValue(zonedDeviceInformation[35], zonedDeviceInformation[34], zonedDeviceInformation[33], zonedDeviceInformation[32]);
             //URSWRZ bit
-            if (qwordPtr[1] & BIT63 && qwordPtr[1] & BIT0)
+            if (zonedDeviceInformation[15] & BIT7 && zonedDeviceInformation[8] & BIT0)//checking bit63 of this qword and bit 0
             {
                 zonedDeviceCharacteristics[4] |= BIT0;
             }
@@ -5525,7 +5525,7 @@ static int translate_SCSI_Security_Protocol_In_Command(tDevice *device, ScsiIoCt
                         scsiIoCtx->pdata[2] = M_Byte1(certLength);
                         scsiIoCtx->pdata[3] = M_Byte0(certLength);
                     }
-                    else if (securityProtocol == 0 && securityProtocolSpecific == 1 && scsiIoCtx->pdata)
+                    else if (securityProtocol == 0 && securityProtocolSpecific == 2 && scsiIoCtx->pdata)
                     {
                         //need to byte swap the length of compliance descriptors, then any compliance descriptors that the drive reports.
                         uint32_t lengthOfComplianceDescriptors = M_BytesTo4ByteValue(scsiIoCtx->pdata[3], scsiIoCtx->pdata[2], scsiIoCtx->pdata[1], scsiIoCtx->pdata[0]);//ATA reports this as little endian - TJE
@@ -5618,7 +5618,7 @@ static int translate_SCSI_Security_Protocol_In_Command(tDevice *device, ScsiIoCt
                         tempSecurityMemory[2] = M_Byte1(certLength);
                         tempSecurityMemory[3] = M_Byte0(certLength);
                     }
-                    else if (securityProtocol == 0 && securityProtocolSpecific == 1)
+                    else if (securityProtocol == 0 && securityProtocolSpecific == 2)
                     {
                         //need to byte swap the length of compliance descriptors, then any compliance descriptors that the drive reports.
                         uint32_t lengthOfComplianceDescriptors = M_BytesTo4ByteValue(tempSecurityMemory[3], tempSecurityMemory[2], tempSecurityMemory[1], tempSecurityMemory[0]);//ATA reports this as little endian - TJE

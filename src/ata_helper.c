@@ -1013,14 +1013,14 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             //    head = identifyData[6];//Word3
             //    sector = identifyData[12];//Word6
             //}
-            uint32_t lba = cylinder * head * sector;
+            uint32_t lba = C_CAST(uint32_t, cylinder) * C_CAST(uint32_t, head) * C_CAST(uint32_t, sector);
             if (lba == 0)
             {
                 //Cannot use "current" settings on this drive...use default (really old drive)
                 cylinder = M_BytesTo2ByteValue(identifyData[3], identifyData[2]);//word 1
                 head = identifyData[6];//Word3
                 sector = identifyData[12];//Word6
-                lba = cylinder * head * sector;
+                lba = C_CAST(uint32_t, cylinder) * C_CAST(uint32_t, head) * C_CAST(uint32_t, sector);
             }
             *fillMaxLba = lba;
         }
@@ -1444,7 +1444,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
 
 uint32_t GetRevWord(uint8_t *tempbuf, uint32_t offset)
 {
-    return ((tempbuf[offset + 1] << 8) + tempbuf[offset]);
+    return M_BytesTo2ByteValue(tempbuf[offset + 1], tempbuf[offset]);
 }
 
 uint16_t ata_Is_Extended_Power_Conditions_Feature_Supported(uint16_t *pIdentify)
@@ -1787,7 +1787,7 @@ int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_
                     *head = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
                     *sector = C_CAST(uint8_t, (lba % sectorsPerTrack) + UINT8_C(1));
                     //check that this isn't above the value of words 58:57
-                    uint32_t currentSector = (*cylinder) * (*head) * (*sector);
+                    uint32_t currentSector = C_CAST(uint32_t, (*cylinder)) * C_CAST(uint32_t, (*head)) * C_CAST(uint32_t, (*sector));
                     if (currentSector > userAddressableCapacityCHS)
                     {
                         //change the return value, but leave the calculated values as they are
@@ -1801,9 +1801,9 @@ int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_
                     *cylinder = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder * sectorsPerTrack));
                     *head = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
                     *sector = C_CAST(uint8_t, (lba % sectorsPerTrack) + UINT8_C(1));
-                    userAddressableCapacityCHS = device->drive_info.IdentifyData.ata.Word001 * device->drive_info.IdentifyData.ata.Word003 * device->drive_info.IdentifyData.ata.Word006;
+                    userAddressableCapacityCHS = C_CAST(uint32_t, device->drive_info.IdentifyData.ata.Word001) * C_CAST(uint32_t, device->drive_info.IdentifyData.ata.Word003) * C_CAST(uint32_t, device->drive_info.IdentifyData.ata.Word006);
                     //check that this isn't above the value of words 58:57
-                    uint32_t currentSector = (*cylinder) * (*head) * (*sector);
+                    uint32_t currentSector = C_CAST(uint32_t, (*cylinder)) * C_CAST(uint32_t, (*head)) * C_CAST(uint32_t, (*sector));
                     if (currentSector > userAddressableCapacityCHS)
                     {
                         //change the return value, but leave the calculated values as they are
