@@ -272,7 +272,7 @@ int os_Bus_Reset(tDevice *device)
     return uscsi_Reset(device->os_info.fd, USCSI_RESET_ALL);
 }
 
-int os_Controller_Reset(tDevice *device)
+int os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
@@ -498,7 +498,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
+int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, M_ATTR_UNUSED uint64_t flags)
 {
     int returnValue = SUCCESS;
     int numberOfDevices = 0;
