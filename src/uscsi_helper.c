@@ -190,7 +190,7 @@ int get_Device(const char *filename, tDevice *device)
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
         //set the name
-        snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, filename);
+        snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
         set_Device_Partition_Info(device);
         //set the friendly name
         set_Device_Name(filename, device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
