@@ -12,6 +12,7 @@
 #include "common.h"
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
+#include "vendor/seagate/seagate_common_types.h"
 #include <ctype.h>//for checking for printable characters
 #include <stdlib.h> // for bsearch
 
@@ -2163,6 +2164,18 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
     return passthroughTypeSet;
 }
 
+bool is_LaCie_USB_Vendor_ID(tDevice* device)
+{
+    if (strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 bool is_Seagate_USB_Vendor_ID(tDevice* device)
 {
     if (strcmp(device->drive_info.T10_vendor_ident, "Seagate") == 0)
@@ -2173,6 +2186,48 @@ bool is_Seagate_USB_Vendor_ID(tDevice* device)
     {
         return false;
     }
+}
+
+bool is_Seagate_SAS_Vendor_ID(tDevice* device)
+{
+    if (strcmp(device->drive_info.T10_vendor_ident, "SEAGATE") == 0)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+void seagate_Serial_Number_Cleanup(tDevice* device)
+{
+    if (is_Seagate_USB_Vendor_ID(device))
+    {
+        //sometimes these report with padded zeroes at beginning or end. Detect this and remove the extra zeroes
+        //All of these SNs should be only 8 characters long.
+        char zeroes[SERIAL_NUM_LEN + 1] = { 0 };//making bigger than needed for now.
+        memset(zeroes, '0', SERIAL_NUM_LEN);
+        if (strncmp(zeroes, device->drive_info.serialNumber, SEAGATE_SERIAL_NUMBER_LEN) == 0)
+        {
+            //zeroes at the beginning. Strip them off
+            memmove(&device->drive_info.serialNumber[0], &device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+            memset(&device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+        }
+        else if (strncmp(zeroes, &device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN) == 0)
+        {
+            //zeroes at the end. Write nulls over them
+            memset(&device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+        }
+        //TODO: Add more cases if we observe other strange reporting behavior.
+    }
+    else if (is_Seagate_SAS_Vendor_ID(device))
+    {
+        //SAS Seagate drives have a maximum SN length of 8
+        //Other information in here is the PCBA SN
+        memset(&device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+    }
+    return;
 }
 
 // \fn fill_In_Device_Info(device device)
@@ -2448,9 +2503,12 @@ int fill_In_Device_Info(tDevice *device)
             //Only rely on this as a last resort. Try using version descriptors when possible
             //NOTE: This is different from SAS where the ID is in all CAPS, which makes this identification possible.
             //TODO: LaCie? Need to make sure this only catches USB and not something else like thunderbolt
-            if (device->drive_info.interface_type == SCSI_INTERFACE && is_Seagate_USB_Vendor_ID(device))
+            if (device->drive_info.interface_type == SCSI_INTERFACE)
             {
-                device->drive_info.interface_type = USB_INTERFACE;
+                if (is_Seagate_USB_Vendor_ID(device))
+                {
+                    device->drive_info.interface_type = USB_INTERFACE;
+                }
             }
         }
         bool hisup = M_ToBool(inq_buf[3] & BIT4);//historical support...this is set to 1 for nvme (SNTL) and not specified in SAT...may be useful later - TJE
@@ -2758,6 +2816,8 @@ int fill_In_Device_Info(tDevice *device)
                                     device->drive_info.serialNumber[iter] = ' ';
                                 }
                             }
+                            remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
+                            seagate_Serial_Number_Cleanup(device);
                         }
                         else
                         {
@@ -2983,6 +3043,8 @@ int fill_In_Device_Info(tDevice *device)
                                         device->drive_info.serialNumber[iter] = ' ';
                                     }
                                 }
+                                remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
+                                seagate_Serial_Number_Cleanup(device);
                             }
                         }
                     }

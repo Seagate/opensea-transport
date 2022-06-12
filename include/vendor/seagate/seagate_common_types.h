@@ -20,6 +20,9 @@
 extern "C"
 {
 #endif
+
+    //All Seagate products have a max SN length of 8
+    #define SEAGATE_SERIAL_NUMBER_LEN UINT8_C(8)
     
     //Seagate IDD
     #define SEAGATE_IDD_TIMEOUT UINT16_C(300) //this is set this long to help with drives coming back to ready to receive commands after the first part of IDD
