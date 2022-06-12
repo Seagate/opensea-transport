@@ -3962,7 +3962,7 @@ int ata_DCO_Set(tDevice *device, bool useDMA, uint8_t *ptrData, uint32_t dataSiz
 //    }
 //}
 
-int ata_ZAC_Management_In(tDevice *device, eZMAction action, uint8_t actionSpecificFeatureExt, uint16_t returnPageCount, uint64_t actionSpecificLBA, uint8_t *ptrData, uint32_t dataSize)
+int ata_ZAC_Management_In(tDevice *device, eZMAction action, uint8_t actionSpecificFeatureExt, uint8_t actionSpecificFeatureBits, uint16_t returnPageCount, uint64_t actionSpecificLBA, uint16_t actionSpecificAUX, uint8_t *ptrData, uint32_t dataSize)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -3971,8 +3971,9 @@ int ata_ZAC_Management_In(tDevice *device, eZMAction action, uint8_t actionSpeci
     ataCommandOptions.dataSize = dataSize;
     ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_ZONE_MANAGEMENT_IN;
+    actionSpecificFeatureBits &= UINT8_C(0xE0);//strip off bits 4:0 as these are the action bits
     ataCommandOptions.tfr.Feature48 = actionSpecificFeatureExt;
-    ataCommandOptions.tfr.ErrorFeature = C_CAST(uint8_t, action);
+    ataCommandOptions.tfr.ErrorFeature = C_CAST(uint8_t, action) | actionSpecificFeatureBits;
     ataCommandOptions.tfr.SectorCount = RESERVED;
     ataCommandOptions.tfr.SectorCount48 = RESERVED;
     if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
@@ -3990,9 +3991,19 @@ int ata_ZAC_Management_In(tDevice *device, eZMAction action, uint8_t actionSpeci
     ataCommandOptions.tfr.LbaLow48 = M_Byte3(actionSpecificLBA);
     ataCommandOptions.tfr.LbaMid48 = M_Byte4(actionSpecificLBA);
     ataCommandOptions.tfr.LbaHi48 = M_Byte5(actionSpecificLBA);
+    if (actionSpecificAUX)
+    {
+        ataCommandOptions.commandType = ATA_CMD_TYPE_COMPLETE_TASKFILE;
+        ataCommandOptions.tfr.aux4 = M_Byte1(actionSpecificAUX);
+        ataCommandOptions.tfr.aux3 = M_Byte0(actionSpecificAUX);
+    }
     switch (action)
     {
     case ZM_ACTION_REPORT_ZONES:
+    case ZM_ACTION_REPORT_REALMS:
+    case ZM_ACTION_REPORT_ZONE_DOMAINS:
+    case ZM_ACTION_ZONE_ACTIVATE:
+    case ZM_ACTION_ZONE_QUERY:
         switch (device->drive_info.ata_Options.dmaMode)
         {
         case ATA_DMA_MODE_NO_DMA:
@@ -4036,7 +4047,7 @@ int ata_ZAC_Management_In(tDevice *device, eZMAction action, uint8_t actionSpeci
     return ret;
 }
 
-int ata_ZAC_Management_Out(tDevice *device, eZMAction action, uint8_t actionSpecificFeatureExt, uint16_t pagesToSend_ActionSpecific, uint64_t actionSpecificLBA, uint8_t *ptrData, uint32_t dataSize)
+int ata_ZAC_Management_Out(tDevice *device, eZMAction action, uint8_t actionSpecificFeatureExt, uint16_t pagesToSend_ActionSpecific, uint64_t actionSpecificLBA, uint16_t actionSpecificAUX, uint8_t *ptrData, uint32_t dataSize)
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -4064,18 +4075,24 @@ int ata_ZAC_Management_Out(tDevice *device, eZMAction action, uint8_t actionSpec
     ataCommandOptions.tfr.LbaLow48 = M_Byte3(actionSpecificLBA);
     ataCommandOptions.tfr.LbaMid48 = M_Byte4(actionSpecificLBA);
     ataCommandOptions.tfr.LbaHi48 = M_Byte5(actionSpecificLBA);
+    if (actionSpecificAUX)
+    {
+        ataCommandOptions.commandType = ATA_CMD_TYPE_COMPLETE_TASKFILE;
+        ataCommandOptions.tfr.aux4 = M_Byte1(actionSpecificAUX);
+        ataCommandOptions.tfr.aux3 = M_Byte0(actionSpecificAUX);
+    }
     switch (action)
     {
     case ZM_ACTION_CLOSE_ZONE:
     case ZM_ACTION_FINISH_ZONE:
     case ZM_ACTION_OPEN_ZONE:
     case ZM_ACTION_RESET_WRITE_POINTERS:
+    case ZM_ACTION_SEQUENTIALIZE_ZONE:
         ataCommandOptions.commandDirection = XFER_NO_DATA;
         ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
         ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
         ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
         break;
-    case ZM_ACTION_REPORT_ZONES://this is a zone management in command, so return bad parameter
     default://Need to add new zm actions as they are defined in the spec
         return BAD_PARAMETER;
     }
@@ -4101,62 +4118,124 @@ int ata_ZAC_Management_Out(tDevice *device, eZMAction action, uint8_t actionSpec
     return ret;
 }
 
-int ata_Close_Zone_Ext(tDevice *device, bool closeAll, uint64_t zoneID)
+int ata_Close_Zone_Ext(tDevice *device, bool closeAll, uint64_t zoneID, uint16_t zoneCount)
 {
     if (closeAll)
     {
-        return ata_ZAC_Management_Out(device, ZM_ACTION_CLOSE_ZONE, BIT0, RESERVED, 0, NULL, 0);
+        return ata_ZAC_Management_Out(device, ZM_ACTION_CLOSE_ZONE, BIT0, zoneCount, 0, 0, NULL, 0);
     }
     else
     {
-        return ata_ZAC_Management_Out(device, ZM_ACTION_CLOSE_ZONE, RESERVED, RESERVED, zoneID, NULL, 0);
+        return ata_ZAC_Management_Out(device, ZM_ACTION_CLOSE_ZONE, RESERVED, zoneCount, zoneID, 0, NULL, 0);
     }
 }
 
-int ata_Finish_Zone_Ext(tDevice *device, bool finishAll, uint64_t zoneID)
+int ata_Finish_Zone_Ext(tDevice *device, bool finishAll, uint64_t zoneID, uint16_t zoneCount)
 {
     if (finishAll)
     {
-        return ata_ZAC_Management_Out(device, ZM_ACTION_FINISH_ZONE, BIT0, RESERVED, 0, NULL, 0);
+        return ata_ZAC_Management_Out(device, ZM_ACTION_FINISH_ZONE, BIT0, zoneCount, 0, 0, NULL, 0);
     }
     else
     {
-        return ata_ZAC_Management_Out(device, ZM_ACTION_FINISH_ZONE, RESERVED, RESERVED, zoneID, NULL, 0);
+        return ata_ZAC_Management_Out(device, ZM_ACTION_FINISH_ZONE, RESERVED, zoneCount, zoneID, 0, NULL, 0);
     }
 }
 
 
-int ata_Open_Zone_Ext(tDevice *device, bool openAll, uint64_t zoneID)
+int ata_Open_Zone_Ext(tDevice *device, bool openAll, uint64_t zoneID, uint16_t zoneCount)
 {
     if (openAll)
     {
-        return ata_ZAC_Management_Out(device, ZM_ACTION_OPEN_ZONE, BIT0, RESERVED, 0, NULL, 0);
+        return ata_ZAC_Management_Out(device, ZM_ACTION_OPEN_ZONE, BIT0, zoneCount, 0, 0, NULL, 0);
     }
     else
     {
-        return ata_ZAC_Management_Out(device, ZM_ACTION_OPEN_ZONE, RESERVED, RESERVED, zoneID, NULL, 0);
+        return ata_ZAC_Management_Out(device, ZM_ACTION_OPEN_ZONE, RESERVED, zoneCount, zoneID, 0, NULL, 0);
     }
 }
 
-int ata_Report_Zones_Ext(tDevice *device, eZoneReportingOptions reportingOptions, bool partial, uint16_t returnPageCount, uint64_t zoneLocator, uint8_t *ptrData, uint32_t dataSize)
+int ata_Reset_Write_Pointers_Ext(tDevice *device, bool resetAll, uint64_t zoneID, uint16_t zoneCount)
+{
+    if (resetAll)
+    {
+        return ata_ZAC_Management_Out(device, ZM_ACTION_RESET_WRITE_POINTERS, BIT0, zoneCount, 0, 0, NULL, 0);
+    }
+    else
+    {
+        return ata_ZAC_Management_Out(device, ZM_ACTION_RESET_WRITE_POINTERS, RESERVED, zoneCount, zoneID, 0, NULL, 0);
+    }
+}
+
+int ata_Sequentialize_Zone_Ext(tDevice* device, bool all, uint64_t zoneID, uint16_t zoneCount)
+{
+    if (all)
+    {
+        return ata_ZAC_Management_Out(device, ZM_ACTION_RESET_WRITE_POINTERS, BIT0, zoneCount, 0, 0, NULL, 0);
+    }
+    else
+    {
+        return ata_ZAC_Management_Out(device, ZM_ACTION_RESET_WRITE_POINTERS, RESERVED, zoneCount, zoneID, 0, NULL, 0);
+    }
+}
+
+int ata_Report_Zones_Ext(tDevice* device, eZoneReportingOptions reportingOptions, bool partial, uint16_t returnPageCount, uint64_t zoneLocator, uint8_t* ptrData, uint32_t dataSize)
 {
     uint8_t actionSpecificFeatureExt = C_CAST(uint8_t, reportingOptions);
     if (partial)
     {
         actionSpecificFeatureExt |= BIT7;
     }
-    return ata_ZAC_Management_In(device, ZM_ACTION_REPORT_ZONES, actionSpecificFeatureExt, returnPageCount, zoneLocator, ptrData, dataSize);
+    return ata_ZAC_Management_In(device, ZM_ACTION_REPORT_ZONES, actionSpecificFeatureExt, 0, returnPageCount, zoneLocator, 0, ptrData, dataSize);
 }
 
-int ata_Reset_Write_Pointers_Ext(tDevice *device, bool resetAll, uint64_t zoneID)
+int ata_Report_Realms_Ext(tDevice* device, eRealmsReportingOptions reportingOptions, uint16_t returnPageCount, uint64_t realmLocator, uint8_t* ptrData, uint32_t dataSize)
 {
-    if (resetAll)
+    return ata_ZAC_Management_In(device, ZM_ACTION_REPORT_REALMS, C_CAST(uint8_t, reportingOptions), 0, returnPageCount, realmLocator, 0, ptrData, dataSize);
+}
+
+int ata_Report_Zone_Domains_Ext(tDevice* device, eZoneDomainReportingOptions reportingOptions, uint16_t returnPageCount, uint64_t zoneDomainLocator, uint8_t* ptrData, uint32_t dataSize)
+{
+    return ata_ZAC_Management_In(device, ZM_ACTION_REPORT_ZONE_DOMAINS, C_CAST(uint8_t, reportingOptions), 0, returnPageCount, zoneDomainLocator, 0, ptrData, dataSize);
+}
+
+int ata_Zone_Activate_Ext(tDevice* device, bool all, uint16_t returnPageCount, uint64_t zoneID, bool numZonesSF, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint8_t* ptrData, uint32_t dataSize)
+{
+    uint8_t actionSpecificBits = 0;
+    if (all)
     {
-        return ata_ZAC_Management_Out(device, ZM_ACTION_RESET_WRITE_POINTERS, BIT0, RESERVED, 0, NULL, 0);
+        actionSpecificBits |= BIT7;
+    }
+    if (!numZonesSF)
+    {
+        //specify number of zones in aux
+        actionSpecificBits |= BIT5;
+        return ata_ZAC_Management_In(device, ZM_ACTION_ZONE_ACTIVATE, otherZoneDomainID, actionSpecificBits, returnPageCount, zoneID, numberOfZones, ptrData, dataSize);
     }
     else
     {
-        return ata_ZAC_Management_Out(device, ZM_ACTION_RESET_WRITE_POINTERS, RESERVED, RESERVED, zoneID, NULL, 0);
+        //number of zones was set by set features/identify device data log field last set by set features
+        return ata_ZAC_Management_In(device, ZM_ACTION_ZONE_ACTIVATE, otherZoneDomainID, actionSpecificBits, returnPageCount, zoneID, 0, ptrData, dataSize);
+    }
+}
+
+int ata_Zone_Query_Ext(tDevice* device, bool all, uint16_t returnPageCount, uint64_t zoneID, bool numZonesSF, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint8_t* ptrData, uint32_t dataSize)
+{
+    uint8_t actionSpecificBits = 0;
+    if (all)
+    {
+        actionSpecificBits |= BIT7;
+    }
+    if (!numZonesSF)
+    {
+        //specify number of zones in aux
+        actionSpecificBits |= BIT5;
+        return ata_ZAC_Management_In(device, ZM_ACTION_ZONE_QUERY, otherZoneDomainID, actionSpecificBits, returnPageCount, zoneID, numberOfZones, ptrData, dataSize);
+    }
+    else
+    {
+        //number of zones was set by set features/identify device data log field last set by set features
+        return ata_ZAC_Management_In(device, ZM_ACTION_ZONE_QUERY, otherZoneDomainID, actionSpecificBits, returnPageCount, zoneID, 0, ptrData, dataSize);
     }
 }
 
@@ -4508,6 +4587,61 @@ int ata_Remove_Element_And_Truncate(tDevice *device, uint32_t elementIdentifier,
     return ret;
 }
 
+int ata_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elementIdentifier)
+{
+    int ret = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions;
+    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    ataCommandOptions.commandDirection = XFER_NO_DATA;
+    ataCommandOptions.ptrData = NULL;
+    ataCommandOptions.dataSize = 0;
+    ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
+    ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
+    ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
+    ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
+    ataCommandOptions.tfr.CommandStatus = ATA_REMOVE_ELEMENT_AND_MODIFY_ZONES;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
+    ataCommandOptions.tfr.SectorCount = M_Byte0(elementIdentifier);
+    ataCommandOptions.tfr.SectorCount48 = M_Byte1(elementIdentifier);
+    ataCommandOptions.tfr.ErrorFeature = M_Byte2(elementIdentifier);
+    ataCommandOptions.tfr.Feature48 = M_Byte3(elementIdentifier);
+    if (os_Is_Infinite_Timeout_Supported())
+    {
+        ataCommandOptions.timeout = INFINITE_TIMEOUT_VALUE;
+    }
+    else
+    {
+        ataCommandOptions.timeout = MAX_CMD_TIMEOUT_SECONDS;
+    }
+    ataCommandOptions.tfr.LbaLow = RESERVED;
+    ataCommandOptions.tfr.LbaMid = RESERVED;
+    ataCommandOptions.tfr.LbaHi = RESERVED;
+    ataCommandOptions.tfr.LbaLow48 = RESERVED;
+    ataCommandOptions.tfr.LbaMid48 = RESERVED;
+    ataCommandOptions.tfr.LbaHi48 = RESERVED;
+
+
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending ATA Remove And Modify Zones\n");
+    }
+
+    ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Remove And Modify Zones", ret);
+    }
+    return ret;
+}
+
 int ata_Restore_Elements_And_Rebuild(tDevice *device)
 {
     int ret = UNKNOWN;
@@ -4559,6 +4693,65 @@ int ata_Restore_Elements_And_Rebuild(tDevice *device)
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Restore Elements and Rebuild", ret);
+    }
+    return ret;
+}
+
+int ata_Mutate_Ext(tDevice* device, bool requestMaximumAccessibleCapacity, uint32_t requestedConfigurationID)
+{
+    int ret = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions;
+    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    ataCommandOptions.commandDirection = XFER_NO_DATA;
+    ataCommandOptions.ptrData = NULL;
+    ataCommandOptions.dataSize = 0;
+    ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
+    ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
+    ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
+    ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
+    ataCommandOptions.tfr.CommandStatus = ATA_MUTATE_EXT;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
+    ataCommandOptions.tfr.SectorCount = RESERVED;
+    ataCommandOptions.tfr.SectorCount48 = RESERVED;
+    ataCommandOptions.tfr.ErrorFeature = RESERVED;
+    ataCommandOptions.tfr.Feature48 = RESERVED;
+    if (requestMaximumAccessibleCapacity)
+    {
+        ataCommandOptions.tfr.ErrorFeature |= BIT0;
+    }
+    if (os_Is_Infinite_Timeout_Supported())
+    {
+        ataCommandOptions.timeout = INFINITE_TIMEOUT_VALUE;
+    }
+    else
+    {
+        ataCommandOptions.timeout = MAX_CMD_TIMEOUT_SECONDS;
+    }
+    ataCommandOptions.tfr.LbaLow = M_Byte0(requestedConfigurationID);
+    ataCommandOptions.tfr.LbaMid = M_Byte1(requestedConfigurationID);
+    ataCommandOptions.tfr.LbaHi = M_Byte2(requestedConfigurationID);
+    ataCommandOptions.tfr.LbaLow48 = M_Byte3(requestedConfigurationID);
+    ataCommandOptions.tfr.LbaMid48 = RESERVED;
+    ataCommandOptions.tfr.LbaHi48 = RESERVED;
+
+
+    if (device->drive_info.ata_Options.isDevice1)
+    {
+        ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
+    }
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending ATA Mutate Ext\n");
+    }
+
+    ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Mutate Ext", ret);
     }
     return ret;
 }

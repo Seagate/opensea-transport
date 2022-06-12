@@ -1927,16 +1927,16 @@ int flush_Cache(tDevice *device)
     }
 }
 
-int close_Zone(tDevice *device, bool closeAll, uint64_t zoneID)
+int close_Zone(tDevice *device, bool closeAll, uint64_t zoneID, uint16_t zoneCount)
 {
     int ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
-        ret = ata_Close_Zone_Ext(device, closeAll, zoneID);
+        ret = ata_Close_Zone_Ext(device, closeAll, zoneID, zoneCount);
         break;
     case SCSI_DRIVE:
-        ret = scsi_Close_Zone(device, closeAll, zoneID);
+        ret = scsi_Close_Zone(device, closeAll, zoneID, zoneCount);
         break;
     default:
         ret = NOT_SUPPORTED;
@@ -1945,16 +1945,16 @@ int close_Zone(tDevice *device, bool closeAll, uint64_t zoneID)
     return ret;
 }
 
-int finish_Zone(tDevice *device, bool finishAll, uint64_t zoneID)
+int finish_Zone(tDevice *device, bool finishAll, uint64_t zoneID, uint16_t zoneCount)
 {
     int ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
-        ret = ata_Finish_Zone_Ext(device, finishAll, zoneID);
+        ret = ata_Finish_Zone_Ext(device, finishAll, zoneID, zoneCount);
         break;
     case SCSI_DRIVE:
-        ret = scsi_Finish_Zone(device, finishAll, zoneID);
+        ret = scsi_Finish_Zone(device, finishAll, zoneID, zoneCount);
         break;
     default:
         ret = NOT_SUPPORTED;
@@ -1963,16 +1963,16 @@ int finish_Zone(tDevice *device, bool finishAll, uint64_t zoneID)
     return ret;
 }
 
-int open_Zone(tDevice *device, bool openAll, uint64_t zoneID)
+int open_Zone(tDevice *device, bool openAll, uint64_t zoneID, uint16_t zoneCount)
 {
     int ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
-        ret = ata_Open_Zone_Ext(device, openAll, zoneID);
+        ret = ata_Open_Zone_Ext(device, openAll, zoneID, zoneCount);
         break;
     case SCSI_DRIVE:
-        ret = scsi_Open_Zone(device, openAll, zoneID);
+        ret = scsi_Open_Zone(device, openAll, zoneID, zoneCount);
         break;
     default:
         ret = NOT_SUPPORTED;
@@ -1981,16 +1981,16 @@ int open_Zone(tDevice *device, bool openAll, uint64_t zoneID)
     return ret;
 }
 
-int reset_Write_Pointer(tDevice *device, bool resetAll, uint64_t zoneID)
+int reset_Write_Pointer(tDevice *device, bool resetAll, uint64_t zoneID, uint16_t zoneCount)
 {
     int ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
-        ret = ata_Reset_Write_Pointers_Ext(device, resetAll, zoneID);
+        ret = ata_Reset_Write_Pointers_Ext(device, resetAll, zoneID, zoneCount);
         break;
     case SCSI_DRIVE:
-        ret = scsi_Reset_Write_Pointers(device, resetAll, zoneID);
+        ret = scsi_Reset_Write_Pointers(device, resetAll, zoneID, zoneCount);
         break;
     default:
         ret = NOT_SUPPORTED;

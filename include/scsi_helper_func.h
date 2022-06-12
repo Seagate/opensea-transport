@@ -1030,6 +1030,8 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int scsi_Format_Unit(tDevice *device, uint8_t fmtpInfo, bool longList, bool fmtData, bool cmplst, uint8_t defectListFormat, uint8_t vendorSpecific, uint8_t *ptrData, uint32_t dataSize, uint8_t ffmt, uint32_t timeoutSeconds);
 
+    OPENSEA_TRANSPORT_API int scsi_Format_With_Preset(tDevice* device, bool immed, bool fmtmaxlba, uint32_t presetID, uint32_t timeoutSeconds);
+
     //-----------------------------------------------------------------------------
     //
     //  scsi_get_lba_status()
@@ -1932,43 +1934,53 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Zone_Management_In(tDevice *device, eZMAction action, uint8_t actionSpecific, uint32_t allocationLength, uint64_t actionSpecificLBA, uint8_t *ptrData)
+    //  int scsi_Zone_Management_In_Report(tDevice* device, eZMAction action, uint8_t actionSpecific1, uint64_t location, bool partial, uint8_t reportingOptions, uint32_t allocationLength, uint8_t* ptrData)//95h
     //
-    //! \brief   Description:  Sends a zone management in command to a device.
+    //! \brief   Description:  Sends a zone management in command to a device for report zones, report realms, and report zone domains since they share a mostly common format. Recommend using help functions below
     //
     //  Entry:
     //!   \param[in] device = file descriptor
     //!   \param[in] action = set this to the zone management action to perform. (enum is in common_public.h)
-    //!   \param[in] actionSpecific = set the action specific bits. (cdb byte 14)
+    //!   \param[in] actionSpecific1 = set the action specific bits in byte 1
+    //!   \param[in] location = LBA, zone locator, realm locator, etc
+    //!   \param[in] partial = partial bit for report zones. Reserved otherwise
+    //!   \param[in] reportingOptions = reporting options. Specific to the type of report being requested.
     //!   \param[in] allocationLength = used on data transfer commands. This is how many bytes to transfer. Should be 0 for non-data commands
-    //!   \param[in] actionSpecificLBA = set the action specific LBA bytes.
     //!   \param[out] ptrData = pointer to the data buffer to use. Can be NULL for non-data actions
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Zone_Management_In(tDevice *device, eZMAction action, uint8_t actionSpecific, uint32_t allocationLength, uint64_t actionSpecificLBA, uint8_t *ptrData);//95h
+    OPENSEA_TRANSPORT_API int scsi_Zone_Management_In_Report(tDevice* device, eZMAction action, uint8_t actionSpecific1, uint64_t location, bool partial, uint8_t reportingOptions, uint32_t allocationLength, uint8_t* ptrData);//95h
+
+    //Command to help with zone activate and zone query since they have mostly common formatting. Recommend using helper function below
+    OPENSEA_TRANSPORT_API int scsi_Zone_Management_In_ZD(tDevice* device, eZMAction action, bool all, uint64_t zoneID, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint16_t allocationLength, uint8_t* ptrData);//95h
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Zone_Management_Out(tDevice *device, eZMAction action, uint8_t actionSpecific, uint32_t allocationLength, uint64_t actionSpecificLBA, uint8_t *ptrData)
+    //  scsi_Zone_Management_Out_Std_Format_CDB(tDevice *device, eZMAction action, uint8_t actionSpecific, uint32_t allocationLength, uint64_t actionSpecificLBA, uint8_t *ptrData)
     //
-    //! \brief   Description:  Sends a zone management out command to a device.
+    //! \brief   Description:  Sends a zone management out command to a device that uses the common format for certain commands (recommend using helper functions below)
     //
     //  Entry:
     //!   \param[in] device = file descriptor
     //!   \param[in] action = set this to the zone management action to perform. (enum is in common_public.h)
-    //!   \param[in] actionSpecific = set the action specific bits. (cdb byte 14)
+    //!   \param[in] zoneID = zoneID field
+    //!   \param[in] zoneCount = zone count to apply the action to. for backwards compatibiity with ZBC, use zero. On ZBC2 and later values of 0 and 1 mean one zone.
+    //!   \param[in] all = action affects all zones (zone ID and count should be zero)
+    //!   \param[in] commandSPecific_10_11 = command specific bytes 10 and 11
+    //!   \param[in] cmdSpecificBits1 = bits 7:5 in byte 1 of the CDB. All other bits will be stripped off.
+    //!   \param[in] actionSpecific14 = set the action specific bits. (cdb byte 14)
     //!   \param[in] allocationLength = used on data transfer commands. This is how many bytes to transfer. Should be 0 for non-data commands
-    //!   \param[in] actionSpecificLBA = set the action specific LBA bytes.
+    
     //!   \param[in] ptrData = pointer to the data buffer to use. Can be NULL for non-data actions
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Zone_Management_Out(tDevice *device, eZMAction action, uint8_t actionSpecific, uint32_t allocationLength, uint64_t actionSpecificLBA, uint8_t *ptrData);//94h
+    OPENSEA_TRANSPORT_API int scsi_Zone_Management_Out_Std_Format_CDB(tDevice* device, eZMAction action, uint64_t zoneID, uint16_t zoneCount, bool all, uint16_t commandSPecific_10_11, uint8_t cmdSpecificBits1, uint8_t actionSpecific14);//94h
 
     //-----------------------------------------------------------------------------
     //
@@ -1980,12 +1992,13 @@ extern "C"
     //!   \param[in] device = file descriptor
     //!   \param[in] closeAll = set the closeAll bit. If this is true, then the zoneID will be ignored by the device.
     //!   \param[in] zoneID = the zoneID to close
+    //!   \param[in] zoneCount = zone count to apply the action to. for backwards compatibiity with ZBC, use zero. On ZBC2 and later values of 0 and 1 mean one zone.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Close_Zone(tDevice *device, bool closeAll, uint64_t zoneID);
+    OPENSEA_TRANSPORT_API int scsi_Close_Zone(tDevice *device, bool closeAll, uint64_t zoneID, uint16_t zoneCount);
 
     //-----------------------------------------------------------------------------
     //
@@ -1997,12 +2010,13 @@ extern "C"
     //!   \param[in] device = file descriptor
     //!   \param[in] finishAll = set the finishAll bit. If this is true, then the zoneID will be ignored by the device.
     //!   \param[in] zoneID = the zoneID to finish
+    //!   \param[in] zoneCount = zone count to apply the action to. for backwards compatibiity with ZBC, use zero. On ZBC2 and later values of 0 and 1 mean one zone.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Finish_Zone(tDevice *device, bool finishAll, uint64_t zoneID);
+    OPENSEA_TRANSPORT_API int scsi_Finish_Zone(tDevice *device, bool finishAll, uint64_t zoneID, uint16_t zoneCount);
 
     //-----------------------------------------------------------------------------
     //
@@ -2014,12 +2028,15 @@ extern "C"
     //!   \param[in] device = file descriptor
     //!   \param[in] openAll = set the openAll bit. If this is true, then the zoneID will be ignored by the device.
     //!   \param[in] zoneID = the zoneID to open
+    //!   \param[in] zoneCount = zone count to apply the action to. for backwards compatibiity with ZBC, use zero. On ZBC2 and later values of 0 and 1 mean one zone.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Open_Zone(tDevice *device, bool openAll, uint64_t zoneID);
+    OPENSEA_TRANSPORT_API int scsi_Open_Zone(tDevice *device, bool openAll, uint64_t zoneID, uint16_t zoneCount);
+
+    OPENSEA_TRANSPORT_API int scsi_Sequentialize_Zone(tDevice* device, bool all, uint64_t zoneID, uint16_t zoneCount);
 
     //-----------------------------------------------------------------------------
     //
@@ -2041,6 +2058,14 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int scsi_Report_Zones(tDevice *device, eZoneReportingOptions reportingOptions, bool partial, uint32_t allocationLength, uint64_t zoneStartLBA, uint8_t *ptrData);
 
+    OPENSEA_TRANSPORT_API int scsi_Report_Realms(tDevice* device, eRealmsReportingOptions reportingOptions, uint32_t allocationLength, uint64_t realmLocator, uint8_t* ptrData);
+
+    OPENSEA_TRANSPORT_API int scsi_Report_Zone_Domains(tDevice* device, eZoneDomainReportingOptions reportingOptions, uint32_t allocationLength, uint64_t zoneDomainLocator, uint8_t* ptrData);
+
+    OPENSEA_TRANSPORT_API int scsi_Zone_Query(tDevice* device, bool all, uint64_t zoneID, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint16_t allocationLength, uint8_t* ptrData);
+
+    OPENSEA_TRANSPORT_API int scsi_Zone_Activate(tDevice* device, bool all, uint64_t zoneID, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint16_t allocationLength, uint8_t* ptrData);
+
     //-----------------------------------------------------------------------------
     //
     //  scsi_Reset_Write_Pointers_Ext(tDevice *device, bool resetAll, uint64_t zoneID)
@@ -2051,12 +2076,13 @@ extern "C"
     //!   \param[in] device = file descriptor
     //!   \param[in] resetAll = set the resetAll bit. If this is true, then the zoneID will be ignored by the device.
     //!   \param[in] zoneID = the zoneID to open
+    //!   \param[in] zoneCount = zone count to apply the action to. for backwards compatibiity with ZBC, use zero. On ZBC2 and later values of 0 and 1 mean one zone.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int scsi_Reset_Write_Pointers(tDevice *device, bool resetAll, uint64_t zoneID);
+    OPENSEA_TRANSPORT_API int scsi_Reset_Write_Pointers(tDevice *device, bool resetAll, uint64_t zoneID, uint16_t zoneCount);
 
     #define MAX_VERSION_DESCRIPTOR_STRING_LENGTH 16
     //-----------------------------------------------------------------------------
@@ -2126,6 +2152,8 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int scsi_Remove_And_Truncate(tDevice *device, uint64_t requestedCapacity, uint32_t elementIdentifier);
+
+    OPENSEA_TRANSPORT_API int scsi_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elementIdentifier);
 
     //-----------------------------------------------------------------------------
     //

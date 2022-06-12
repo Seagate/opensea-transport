@@ -213,6 +213,7 @@ extern "C"
         ATA_ACCESSABLE_MAX_ADDR                 = 0x78,
         ATA_REMOVE_AND_TRUNCATE                 = 0x7C,
         ATA_RESTORE_AND_REBUILD                 = 0x7D,
+        ATA_REMOVE_ELEMENT_AND_MODIFY_ZONES     = 0x7E,
         ATA_CFA_TRANSLATE_SECTOR                = 0x87,
         ATA_EXEC_DRV_DIAG                       = 0x90,
         ATA_INIT_DRV_PARAM                      = 0x91,
@@ -222,6 +223,7 @@ extern "C"
         ATA_LEGACY_ALT_STANDBY_IMMEDIATE        = 0x94,
         ATA_LEGACY_ALT_IDLE_IMMEDIATE           = 0x95,
         ATA_LEGACY_ALT_STANDBY                  = 0x96,
+        ATA_MUTATE_EXT                          = 0x96,
         ATA_LEGACY_ALT_IDLE                     = 0x97,
         ATA_LEGACY_ALT_CHECK_POWER_MODE         = 0x98,
         ATA_LEGACY_ALT_SLEEP                    = 0x99,
@@ -664,6 +666,8 @@ extern "C"
        SF_MAXIMUM_HOST_INTERFACE_SECTOR_TIMES                           = 0x43,
        SF_LEGACY_SET_VENDOR_SPECIFIC_ECC_BYTES_FOR_READ_WRITE_LONG      = 0x44,//defined in ATA, obsolete in ATA4
        SF_SET_RATE_BASIS                                                = 0x45,
+       SF_ZAC_ZONE_ACTIVATION_CONTROL                                   = 0x46,//ZAC2 to set the number of zones. Can affect the zone activate ext command or the zone query ext command
+       SF_ZAC_UPDATE_UNRESTRICTED_READ_S_WHILE_READING_ZONES            = 0x47,//ZAC2 update URSWRZ
        SF_EXTENDED_POWER_CONDITIONS                                     = 0x4A,
        SF_SET_CACHE_SEGMENTS                                            = 0x54,//defined in ATA3, obsolete in ATA4
        SF_DISABLE_READ_LOOK_AHEAD_FEATURE                               = 0x55,

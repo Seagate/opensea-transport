@@ -370,6 +370,7 @@ extern "C"
         COMPARE_AND_WRITE                           = 0x89,
         EXTENDED_COPY                               = 0x83,
         SCSI_FORMAT_UNIT_CMD                        = 0x04,
+        SCSI_FORMAT_WITH_PRESET_CMD                 = 0x38,
         CHANGE_ALIASES_CMD                          = 0xA4,
         GET_LBA_STATUS                              = 0x9E,
         INQUIRY_CMD                                 = 0x12,
