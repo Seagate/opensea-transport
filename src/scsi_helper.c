@@ -2202,7 +2202,7 @@ bool is_Seagate_SAS_Vendor_ID(tDevice* device)
 
 void seagate_Serial_Number_Cleanup(tDevice* device)
 {
-    if (is_Seagate_USB_Vendor_ID(device))
+    if (is_Seagate_USB_Vendor_ID(device) || is_LaCie_USB_Vendor_ID(device))
     {
         //sometimes these report with padded zeroes at beginning or end. Detect this and remove the extra zeroes
         //All of these SNs should be only 8 characters long.
@@ -2220,6 +2220,7 @@ void seagate_Serial_Number_Cleanup(tDevice* device)
             memset(&device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
         }
         //TODO: Add more cases if we observe other strange reporting behavior.
+        //NOTE: For LaCie, it is unknown what format their SNs were before Seagate acquired them, so may need to add different cases for these older LaCie products.
     }
     else if (is_Seagate_SAS_Vendor_ID(device))
     {
