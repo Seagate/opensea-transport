@@ -1443,6 +1443,8 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int get_Version_Block(versionBlock * ver);
 
+    OPENSEA_TRANSPORT_API bool validate_Device_Struct(versionBlock sanity);
+
     //-----------------------------------------------------------------------------
     //
     //  get_Device()
@@ -1757,6 +1759,27 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API bool is_Vendor_A(tDevice *device, bool USBchildDrive);
+
+    OPENSEA_TRANSPORT_API bool is_Conner_Model_Number(char *mn);
+    OPENSEA_TRANSPORT_API bool is_Conner_VendorID(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_Connor(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_CDC_VendorID(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_DEC_VendorID(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_MiniScribe_VendorID(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_Quantum_VendorID(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_Quantum_Model_Number(char* string);
+    OPENSEA_TRANSPORT_API bool is_Quantum(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_PrarieTek_VendorID(tDevice *device);
+
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_B(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_C(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_D(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_E(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_SSD_PJ(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_G(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_H(tDevice *device, bool USBchildDrive);
+
 
     typedef enum _eIronwolf_NAS_Drive
     {

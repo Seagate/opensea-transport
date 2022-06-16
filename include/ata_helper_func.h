@@ -1846,6 +1846,51 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
+    //  ata_Get_Media_Status(tDevice *device)
+    //
+    //! \brief   Description:  Sends a ATA get media status command to a device.
+    //
+    //  Entry:
+    //!   \param[in] device = file descriptor
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int ata_Get_Media_Status(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  ata_Media_Lock(tDevice *device)
+    //
+    //! \brief   Description:  Sends a ATA media lock command to a device.
+    //
+    //  Entry:
+    //!   \param[in] device = file descriptor
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int ata_Media_Lock(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  ata_Media_Unlock(tDevice *device)
+    //
+    //! \brief   Description:  Sends a ATA media unlock command to a device.
+    //
+    //  Entry:
+    //!   \param[in] device = file descriptor
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int ata_Media_Unlock(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
     //  ata_Zeros_Ext(tDevice *device, uint16_t numberOfLogicalSectors, uint64_t lba, bool trim)
     //
     //! \brief   Description:  Sends a ATA Zeros Ext command to a device.
@@ -1981,9 +2026,9 @@ extern "C"
     OPENSEA_TRANSPORT_API int set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize);
 
     //A couple helper functions to help with Legacu drives
-    bool is_LBA_Mode_Supported(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_LBA_Mode_Supported(tDevice *device);
 
-    bool is_CHS_Mode_Supported(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_CHS_Mode_Supported(tDevice *device);
 
     OPENSEA_TRANSPORT_API int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t *lba);
 
@@ -2010,6 +2055,10 @@ extern "C"
     OPENSEA_TRANSPORT_API int ata_Legacy_Read_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
 
     OPENSEA_TRANSPORT_API int ata_Legacy_Read_Verify_Sectors_CHS(tDevice *device, bool extendedCmd, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Verify_Sectors_No_Retry_CHS(tDevice *device, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector);
+
+    OPENSEA_TRANSPORT_API int ata_Read_Verify_Sectors_No_Retry(tDevice *device, uint16_t numberOfSectors, uint64_t LBA);
 
     OPENSEA_TRANSPORT_API int ata_Legacy_Write_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua);
 
@@ -2042,6 +2091,8 @@ extern "C"
     //last seen in ATA-3
     OPENSEA_TRANSPORT_API int ata_Legacy_Identify_Device_DMA(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
 
+    OPENSEA_TRANSPORT_API int ata_Legacy_Check_Power_Mode(tDevice *device, uint8_t *powerMode);
+
 
     //These functions below are commands that can be sent in PIO or DMA Mode.
     //They will automatically try DMA if it is supported, then retry with PIO mode if the Translator or Driver doesn't support issuing DMA mode commands.
@@ -2065,6 +2116,26 @@ extern "C"
     OPENSEA_TRANSPORT_API int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit);
     OPENSEA_TRANSPORT_API int send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags);
     OPENSEA_TRANSPORT_API int send_ATA_SCT_Data_Table(tDevice *device, uint16_t functionCode, uint16_t tableID, uint8_t *dataBuf, uint32_t dataSize);
+
+    //NCQ command definitions
+    //NOTE: You can try these all you want, but it is basically impossible to issue these in passthrough.
+    //      Some USB adapters will allow SOME of them.
+    //      libata in Linux will allow most of them.
+    //      No other HBAs or operating systems are known to support/allow these to be issued.
+    //      Stick to the synchronous commands whenever possible due to how limited support for these commands is.
+    OPENSEA_TRANSPORT_API int ata_NCQ_Non_Data(tDevice *device, uint8_t subCommand /*bits 4:0*/, uint16_t subCommandSpecificFeature /*bits 11:0*/, uint8_t subCommandSpecificCount, uint8_t ncqTag /*bits 5:0*/, uint64_t lba, uint32_t auxilary);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Abort_NCQ_Queue(tDevice *device, uint8_t abortType /*bits0:3*/, uint8_t prio /*bits 1:0*/, uint8_t ncqTag, uint8_t tTag);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Deadline_Handling(tDevice *device, bool rdnc, bool wdnc, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Set_Features(tDevice *device, eATASetFeaturesSubcommands subcommand, uint8_t subcommandCountField, uint8_t subcommandLBALo, uint8_t subcommandLBAMid, uint16_t subcommandLBAHi, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Zeros_Ext(tDevice *device, uint16_t numberOfLogicalSectors, uint64_t lba, bool trim, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Receive_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*/, uint16_t sectorCount /*ft*/, uint8_t prio /*bits 1:0*/, uint8_t ncqTag, uint64_t lba, uint32_t auxilary, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Read_Log_DMA_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint16_t featureRegister, uint8_t prio /*bits 1:0*/, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Send_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*/, uint16_t sectorCount /*ft*/, uint8_t prio /*bits 1:0*/, uint8_t ncqTag, uint64_t lba, uint32_t auxilary, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uint32_t dataSize, uint8_t prio /*bits 1:0*/, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Write_Log_DMA_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint8_t prio /*bits 1:0*/, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Read_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba, uint8_t *ptrData, uint16_t sectorCount, uint8_t prio, uint8_t ncqTag, uint8_t icc);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Write_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba, uint8_t *ptrData, uint16_t sectorCount, uint8_t prio, uint8_t ncqTag, uint8_t icc);
+
 
 
     #if defined (__cplusplus)

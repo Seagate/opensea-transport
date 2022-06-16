@@ -334,7 +334,7 @@ int send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
     return ret;
 }
 
-int jm_NVMe_Normal_Shutdown(tDevice *device)
+static int jm_NVMe_Normal_Shutdown(tDevice *device)
 {
     uint8_t cdb[JMICRON_NVME_CDB_SIZE] = { 0 };
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
@@ -352,7 +352,7 @@ int jm_NVMe_Normal_Shutdown(tDevice *device)
     return ret;
 }
 
-int jm_NVMe_MCU_Reset(tDevice *device)
+static int jm_NVMe_MCU_Reset(tDevice *device)
 {
     uint8_t cdb[JMICRON_NVME_CDB_SIZE] = { 0 };
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;

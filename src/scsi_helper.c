@@ -865,7 +865,7 @@ void print_Field_Replacable_Unit_Code(tDevice *device, const char *fruMessage, u
 }
 
 // Used with bsearch
-int cmp_Asc_Ascq(ascAscqRetDesc* a, ascAscqRetDesc* b)
+static int cmp_Asc_Ascq(ascAscqRetDesc* a, ascAscqRetDesc* b)
 {
     // compare ASC, if they are same, compare ASCQ
     int ret = a->asc - b->asc;
@@ -2164,7 +2164,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
     return passthroughTypeSet;
 }
 
-bool is_LaCie_USB_Vendor_ID(tDevice* device)
+static bool is_LaCie_USB_Vendor_ID(tDevice* device)
 {
     if (strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0)
     {
@@ -2176,7 +2176,7 @@ bool is_LaCie_USB_Vendor_ID(tDevice* device)
     }
 }
 
-bool is_Seagate_USB_Vendor_ID(tDevice* device)
+static bool is_Seagate_USB_Vendor_ID(tDevice* device)
 {
     if (strcmp(device->drive_info.T10_vendor_ident, "Seagate") == 0)
     {
@@ -2188,7 +2188,7 @@ bool is_Seagate_USB_Vendor_ID(tDevice* device)
     }
 }
 
-bool is_Seagate_SAS_Vendor_ID(tDevice* device)
+static bool is_Seagate_SAS_Vendor_ID(tDevice* device)
 {
     if (strcmp(device->drive_info.T10_vendor_ident, "SEAGATE") == 0)
     {
@@ -2200,7 +2200,7 @@ bool is_Seagate_SAS_Vendor_ID(tDevice* device)
     }
 }
 
-void seagate_Serial_Number_Cleanup(tDevice* device)
+static void seagate_Serial_Number_Cleanup(tDevice* device)
 {
     if (is_Seagate_USB_Vendor_ID(device) || is_LaCie_USB_Vendor_ID(device))
     {

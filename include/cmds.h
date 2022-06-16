@@ -509,6 +509,8 @@ extern "C"
 
     OPENSEA_TRANSPORT_API int scsi_Verify(tDevice *device, uint64_t lba, uint32_t range);
 
+    OPENSEA_TRANSPORT_API int nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range);
+
     OPENSEA_TRANSPORT_API int ata_Read_Verify(tDevice *device, uint64_t lba, uint32_t range);
 
     OPENSEA_TRANSPORT_API int ata_Flush_Cache_Command(tDevice *device);

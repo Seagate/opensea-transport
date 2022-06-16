@@ -47,7 +47,7 @@ bool is_ATA_Identify_Word_Valid_SATA(uint16_t word)
     return valid;
 }
 
-bool is_Buffer_Non_Zero(uint8_t* ptrData, uint32_t dataLen)
+static bool is_Buffer_Non_Zero(uint8_t* ptrData, uint32_t dataLen)
 {
     bool isNonZero = false;
     for (uint32_t iter = 0; iter < dataLen; ++iter)
@@ -1442,11 +1442,6 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     return ret;
 }
 
-uint32_t GetRevWord(uint8_t *tempbuf, uint32_t offset)
-{
-    return M_BytesTo2ByteValue(tempbuf[offset + 1], tempbuf[offset]);
-}
-
 uint16_t ata_Is_Extended_Power_Conditions_Feature_Supported(uint16_t *pIdentify)
 {
     ptAtaIdentifyData pIdent = C_CAST(ptAtaIdentifyData, pIdentify);
@@ -1681,7 +1676,7 @@ bool is_CHS_Mode_Supported(tDevice *device)
     return chsSupported;
 }
 
-bool is_Current_CHS_Info_Valid(tDevice *device)
+static bool is_Current_CHS_Info_Valid(tDevice *device)
 {
     bool chsSupported = true;
     uint8_t* identifyPtr = (uint8_t*)&device->drive_info.IdentifyData.ata.Word000;
