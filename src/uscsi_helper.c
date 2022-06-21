@@ -132,6 +132,9 @@ static int set_Device_Partition_Info(tDevice* device)
 #endif
     if (partitionCount > 0)
     {
+        device->os_info.fileSystemInfo.fileSystemInfoValid = true;
+        device->os_info.fileSystemInfo.hasFileSystem = false;
+        device->os_info.fileSystemInfo.isSystemDisk = false;
         ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
         if (parts)
         {
@@ -162,6 +165,12 @@ static int set_Device_Partition_Info(tDevice* device)
         {
             ret = MEMORY_FAILURE;
         }
+    }
+    else
+    {
+        device->os_info.fileSystemInfo.fileSystemInfoValid = true;
+        device->os_info.fileSystemInfo.hasFileSystem = false;
+        device->os_info.fileSystemInfo.isSystemDisk = false;
     }
     return ret;
 }

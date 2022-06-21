@@ -936,42 +936,45 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
     return UNKNOWN;
 }
 
-static int set_Device_Partition_Info(tDevice *device)
+static int set_Device_Partition_Info(tDevice* device)
 {
     int ret = SUCCESS;
     int partitionCount = 0;
-    char *blockHandle = device->os_info.name;
-    if(device->os_info.secondHandleValid && !is_Block_Device_Handle(blockHandle))
+    char* blockHandle = device->os_info.name;
+    if (device->os_info.secondHandleValid && !is_Block_Device_Handle(blockHandle))
     {
         blockHandle = device->os_info.secondName;
     }
     partitionCount = get_Partition_Count(blockHandle);
-    #if defined (_DEBUG)
+#if defined (_DEBUG)
     printf("Partition count for %s = %d\n", blockHandle, partitionCount);
-    #endif
-    if(partitionCount > 0)
+#endif
+    if (partitionCount > 0)
     {
+        device->os_info.fileSystemInfo.fileSystemInfoValid = true;
+        device->os_info.fileSystemInfo.hasFileSystem = false;
+        device->os_info.fileSystemInfo.isSystemDisk = false;
         ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
-        if(parts)
+        if (parts)
         {
-            if(SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
+            if (SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
             {
                 int iter = 0;
-                for(; iter < partitionCount; ++iter)
+                for (; iter < partitionCount; ++iter)
                 {
                     //since we found a partition, set the "has file system" bool to true
                     device->os_info.fileSystemInfo.hasFileSystem = true;
-                    #if defined (_DEBUG)
+#if defined (_DEBUG)
                     printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
-                    #endif
+#endif
                     //check if one of the partitions is /boot and mark the system disk when this is found
                     //TODO: Should / be treated as a system disk too?
-                    if(strncmp((parts + iter)->mntPath, "/boot", 5) == 0)
+                    if (strncmp((parts + iter)->mntPath, "/boot", 5) == 0)
                     {
                         device->os_info.fileSystemInfo.isSystemDisk = true;
-                        #if defined (_DEBUG)
+#if defined (_DEBUG)
                         printf("found system disk\n");
-                        #endif
+#endif
                     }
                 }
             }
@@ -981,6 +984,12 @@ static int set_Device_Partition_Info(tDevice *device)
         {
             ret = MEMORY_FAILURE;
         }
+    }
+    else
+    {
+        device->os_info.fileSystemInfo.fileSystemInfoValid = true;
+        device->os_info.fileSystemInfo.hasFileSystem = false;
+        device->os_info.fileSystemInfo.isSystemDisk = false;
     }
     return ret;
 }
