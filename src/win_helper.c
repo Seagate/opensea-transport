@@ -3862,7 +3862,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             {
                                 if (diskExtents->Extents[counter].DiskNumber == device->os_info.os_drive_number)
                                 {
-                                    device->os_info.fileSystemInfo.hasFileSystem = true;//We found a filesystem for this drive, so set this to true.
+                                    device->os_info.fileSystemInfo.hasActiveFileSystem = true;//We found a filesystem for this drive, so set this to true.
 
                                     //Set a bit to note that this particular volume (letter) is on this device
                                     device->os_info.volumeBitField |= (UINT32_C(1) << volumeCounter);
