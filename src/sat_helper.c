@@ -3417,7 +3417,7 @@ static int translate_SCSI_Read_Capacity_Command(tDevice *device, bool readCapaci
             //word 117 is only valid when word 106 bit 12 is set
             if ((ident_word[106] & BIT12) == BIT12)
             {
-                logicalSectorSize = ident_word[117] | (C_CAST(uint32_t, ident_word[118]) << 16);
+                logicalSectorSize = M_BytesTo2ByteValue(ident_word[118], ident_word[117]);
                 logicalSectorSize *= 2; //convert to words to bytes
             }
             else //means that logical sector size is 512bytes
