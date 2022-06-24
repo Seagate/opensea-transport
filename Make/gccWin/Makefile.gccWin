@@ -32,12 +32,29 @@ else ifneq (,$(findstring MINGW64,$(MYUNAME)))
 	UNAME = MINGW64
 endif
 
+MINGWINCPATH=
+
 ifneq (,$(findstring Linux,$(MYUNAME)))
 	CC = x86_64-w64-mingw32-gcc
 	AR = x86_64-w64-mingw32-ar
+	COMPPATH := $(shell $(echo $CC | cut -f1-3 -d -))
+	MINGWINCPATH = /usr/$COMPPATH/include
 else
 	CC = gcc
 	AR = ar
+	MINGWINCPATH = /mingw64/include
+endif
+
+#check if devpkey has all definitions we need
+grepdevhardid=$(shell grep "DEVPKEY_Device_HardwareIds" /usr/"$MINGWINCPATH"/include/devpkey.h)
+grepdevcompatid=$(shell grep "DEVPKEY_Device_CompatibleIds" /usr/"$MINGWINCPATH"/include/devpkey.h)
+
+ifeq ($(shell test -z"$grepdevhardid" && printf "yes")),yes)
+	PROJECT_DEFINES += -DNEED_DEVHARDID
+endif
+
+ifeq ($(shell test -z"$grepdevcompatid" && printf "yes")),yes)
+	PROJECT_DEFINES += -DNEED_DEVCOMPID
 endif
 
 #turning off format warnings because they are EVERYWHERE but only in minGW which is due to backwards compatibility warnings.
