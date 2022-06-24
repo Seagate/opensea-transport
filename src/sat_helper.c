@@ -536,13 +536,7 @@ int set_Transfer_Bits(uint8_t *satCDB, eATAPassthroughLength tLength, eATAPassth
         case ATA_PT_NO_DATA_TRANSFER:
             //no additional bits required to be set.
             break;
-        default:
-            ret = BAD_PARAMETER;
-            break;
         }
-                break;
-    default:
-        ret = BAD_PARAMETER;
         break;
     }
     return ret;
