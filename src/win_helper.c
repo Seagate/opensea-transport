@@ -3950,6 +3950,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     get_Windows_FWDL_IO_Support(device, device_desc->BusType);
                 }
 #else
+                M_USE_UNUSED(fwdlResult);
                 device->os_info.fwdlIOsupport.fwdlIOSupported = false;//this API is not available before Windows 10
 #endif
                 #if defined (_DEBUG)
@@ -11370,8 +11371,8 @@ int send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx)
 //Most of the code below has been updated according to these docs, however some things may be missing and those enhancements should be made to better improve support.
 static int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
-    int ret = OS_COMMAND_NOT_AVAILABLE;
 #if !defined (DISABLE_NVME_PASSTHROUGH)
+    int ret = OS_COMMAND_NOT_AVAILABLE;
     //TODO: Should we be checking the nsid in each command before issuing it? This should happen at some point, at least to filter out "all namespaces" for certain commands since MS won't let us issue some of them through their API - TJE
     if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
     {
@@ -11508,6 +11509,7 @@ static int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
     }
     return ret;
 #else //DISABLE_NVME_PASSTHROUGH
+    M_USE_UNUSED(nvmeIoCtx);
     return OS_COMMAND_NOT_AVAILABLE;
 #endif //DISBALE_NVME_PASSTHROUGH
 }
