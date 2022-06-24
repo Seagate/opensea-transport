@@ -829,7 +829,7 @@ static void dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, uint32_t returnCode)
         break;
     case INTEL_FIRMWARE_STATUS_INVALID_IMAGE:
         nvmeIoCtx->commandCompletionData.dw3Valid = true;
-        nvmeIoCtx->commandCompletionData.dw3 = DUMMY_NVME_STATUS(NVME_SCT_COMMAND_SPECIFIC_STATUS, 7);;
+        nvmeIoCtx->commandCompletionData.dw3 = DUMMY_NVME_STATUS(NVME_SCT_COMMAND_SPECIFIC_STATUS, 7);
         break;
     case INTEL_FIRMWARE_STATUS_ILLEGAL_LENGTH://overlapping range???
         nvmeIoCtx->commandCompletionData.dw3Valid = true;
