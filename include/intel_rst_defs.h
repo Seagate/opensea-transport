@@ -153,7 +153,11 @@ CTL_CODE(0xF000, 0x010, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #if defined (_MSC_VER)
 #pragma warning(push)
 #pragma warning(disable:4200) // nonstandard extension used : zero-sized array in struct/union
-#endif
+#endif //_MSC_VER
+#if defined (__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wzero-length-array"
+#endif //__clang__
     typedef struct _IOCTL_RAID_FIRMWARE_BUFFER {
         SRB_IO_CONTROL Header;
         RAID_FIRMWARE_REQUEST_BLOCK Request;
@@ -161,7 +165,10 @@ CTL_CODE(0xF000, 0x010, METHOD_BUFFERED, FILE_ANY_ACCESS)
     }IOCTL_RAID_FIRMWARE_BUFFER;
 #if defined (_MSC_VER)
 #pragma warning(pop)//disable warning 4200
-#endif
+#endif //_MSC_VER
+#if defined (__clang__)
+#pragma clang diagnostic pop
+#endif //__clang__
 
     //The RAID FW ioctl can send only STORAGE_FIRMWARE_INFO_V2, STORAGE_FIRMWARE_DOWNLOAD_V2, STORAGE_FIRMWARE_ACTIVATE
     //These are redefined here so that an up to date Windows API is not required to compile this code.
@@ -185,7 +192,11 @@ CTL_CODE(0xF000, 0x010, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #if defined (_MSC_VER)
 #pragma warning(push)
 #pragma warning(disable:4200) // nonstandard extension used : zero-sized array in struct/union
-#endif
+#endif //_MSC_VER
+#if defined (__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wzero-length-array"
+#endif //__clang__
     typedef struct _INTEL_STORAGE_FIRMWARE_INFO_V2 {
 
         ULONG   Version;        // INTEL_STORAGE_FIRMWARE_INFO_STRUCTURE_VERSION_V2
@@ -226,7 +237,10 @@ CTL_CODE(0xF000, 0x010, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
 #if defined (_MSC_VER)
 #pragma warning(pop)//disable warning 4200
-#endif
+#endif //_MSC_VER
+#if defined (__clang__)
+#pragma clang diagnostic pop
+#endif //__clang__
 
 #define INTEL_STORAGE_FIRMWARE_ACTIVATE_STRUCTURE_VERSION         0x1
 
