@@ -74,7 +74,7 @@ bool os_Is_Infinite_Timeout_Supported(void)
     #endif
 
 //This if is far from perfect. Please fine tune this if you can figure out which version these started being available in
-#if __MINGW64_VERSION_MAJOR < 10
+#if __MINGW64_VERSION_MAJOR < 8
     //TODO:  __MINGW32_VERSION_MAJOR checks ??
     //This is for looking up hardware IDs of devices for PCIe/USB, etc
     #if !defined (DEVPKEY_Device_HardwareIds)
