@@ -2169,7 +2169,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                         for (uint32_t raidSet = 0; !gotSASAddress && raidSet < raidInfo.Information.uNumRaidSets; ++raidSet)
                         {
                             //with the RAID info, now we can allocate and read the RAID config
-                            uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) - 1 + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
+                            uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
                             PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                             if (raidConfig)
                             {
@@ -2582,7 +2582,7 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
                     for (uint32_t raidSet = 0; raidSet < raidInfo.Information.uNumRaidSets && !foundDrive; ++raidSet)
                     {
                         //need to parse the RAID info to figure out how much memory to allocate and read the 
-                        uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) - 1 + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
+                        uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
                         PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                         if (!raidConfig)
                         {
@@ -2999,9 +2999,9 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 #if defined (_WIN32)
                 //Get the controller number from the scsi handle since we need it later!
                 int ret = sscanf(raidList->handle, "\\\\.\\SCSI%d:", &controllerNumber);
-                if (ret == 0 || ret != EOF)
+                if (ret == 0 || ret == EOF)
                 {
-                    printf("WARNING: Unable to scan controller number!\n");
+                    printf("WARNING: Unable to scan controller number! raid handle = %s\t ret = %d\n", raidList->handle, ret);
                 }
 
                 _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), raidList->handle);
@@ -3189,9 +3189,14 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                 }
                             }
                         }
-                        //This was a CSMI handle, remove it from the list!
-                        //This will also increment us to the next handle
+
+                        bool pointerAtBeginningOfRAIDList = raidList == *beginningOfList ? true : false;
                         raidList = remove_RAID_Handle(raidList, previousRaidListEntry);
+                        if (pointerAtBeginningOfRAIDList)
+                        {
+                            //if the first entry in the list was removed, we need up update the pointer before we exit so that the code that called here won't have an invalid pointer
+                            *beginningOfList = raidList;
+                        }
                         handleRemoved = true;
 #if !defined (_WIN32) //loop through controller numbers
                     }
