@@ -9179,20 +9179,20 @@ static int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         return OS_TIMEOUT_TOO_LARGE;
     }
 
-    if (nvmeIoCtx->timeout == 0)
+    if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > nvmeIoCtx->timeout)
     {
-        if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds)
+        protocolCommand->TimeOutValue = nvmeIoCtx->device->drive_info.defaultTimeoutSeconds;
+    }
+    else
+    {
+        if (nvmeIoCtx->timeout != 0)
         {
-            protocolCommand->TimeOutValue = nvmeIoCtx->device->drive_info.defaultTimeoutSeconds;
+            protocolCommand->TimeOutValue = nvmeIoCtx->timeout;
         }
         else
         {
             protocolCommand->TimeOutValue = 15;
         }
-    }
-    else
-    {
-        protocolCommand->TimeOutValue = nvmeIoCtx->timeout;
     }
 
     //Command has been set up, so send it!
