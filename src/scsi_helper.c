@@ -2217,7 +2217,33 @@ static void seagate_Serial_Number_Cleanup(tDevice* device)
         else if (strncmp(zeroes, &device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN) == 0)
         {
             //zeroes at the end. Write nulls over them
-            memset(&device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+            //This is not correct, reverse the string as this is a product defect.
+            char currentSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
+            char newSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
+            //backup current just in case
+            memcpy(currentSerialNumber, device->drive_info.serialNumber, SERIAL_NUM_LEN);
+            for (int8_t curSN = SERIAL_NUM_LEN, newSN = 0; curSN >= 0 && newSN < SERIAL_NUM_LEN; --curSN)
+            {
+                if (device->drive_info.serialNumber[curSN] != '\0')
+                {
+                    newSerialNumber[newSN] = device->drive_info.serialNumber[curSN];
+                    ++newSN;
+                }
+            }
+            memcpy(device->drive_info.serialNumber, newSerialNumber, SERIAL_NUM_LEN);
+            //At this point the zeroes will now all be at the end.
+            if (strncmp(zeroes, device->drive_info.serialNumber, SEAGATE_SERIAL_NUMBER_LEN) == 0)
+            {
+                //zeroes at the beginning. Strip them off
+                memmove(&device->drive_info.serialNumber[0], &device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+                memset(&device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+            }
+            else
+            {
+                //after string reverse, the SN still wasn't right, so go back to stripping off the zeroes from the end.
+                memcpy(device->drive_info.serialNumber, currentSerialNumber, SERIAL_NUM_LEN);
+                memset(&device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+            }
         }
         //TODO: Add more cases if we observe other strange reporting behavior.
         //NOTE: For LaCie, it is unknown what format their SNs were before Seagate acquired them, so may need to add different cases for these older LaCie products.
