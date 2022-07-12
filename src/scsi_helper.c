@@ -2164,95 +2164,125 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
     return passthroughTypeSet;
 }
 
-static bool is_LaCie_USB_Vendor_ID(tDevice* device)
+bool is_LaCie_USB_Vendor_ID(const char* t10VendorIdent)
 {
-    if (strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0)
+    if (t10VendorIdent)
     {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-static bool is_Seagate_USB_Vendor_ID(tDevice* device)
-{
-    if (strcmp(device->drive_info.T10_vendor_ident, "Seagate") == 0)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-static bool is_Seagate_SAS_Vendor_ID(tDevice* device)
-{
-    if (strcmp(device->drive_info.T10_vendor_ident, "SEAGATE") == 0)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-static void seagate_Serial_Number_Cleanup(tDevice* device)
-{
-    if (is_Seagate_USB_Vendor_ID(device) || is_LaCie_USB_Vendor_ID(device))
-    {
-        //sometimes these report with padded zeroes at beginning or end. Detect this and remove the extra zeroes
-        //All of these SNs should be only 8 characters long.
-        char zeroes[SERIAL_NUM_LEN + 1] = { 0 };//making bigger than needed for now.
-        memset(zeroes, '0', SERIAL_NUM_LEN);
-        if (strncmp(zeroes, device->drive_info.serialNumber, SEAGATE_SERIAL_NUMBER_LEN) == 0)
+        if (strncmp(t10VendorIdent, "LaCie", 5) == 0)
         {
-            //zeroes at the beginning. Strip them off
-            memmove(&device->drive_info.serialNumber[0], &device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
-            memset(&device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+            return true;
         }
-        else if (strncmp(zeroes, &device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN) == 0)
+        else
         {
-            //zeroes at the end. Write nulls over them
-            //This is not correct, reverse the string as this is a product defect.
-            char currentSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
-            char newSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
-            //backup current just in case
-            memcpy(currentSerialNumber, device->drive_info.serialNumber, SERIAL_NUM_LEN);
-            for (int8_t curSN = SERIAL_NUM_LEN, newSN = 0; curSN >= 0 && newSN < SERIAL_NUM_LEN; --curSN)
+            return false;
+        }
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool is_Seagate_USB_Vendor_ID(const char* t10VendorIdent)
+{
+    if (t10VendorIdent)
+    {
+        if (strncmp(t10VendorIdent, "Seagate", 7) == 0)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool is_Seagate_SAS_Vendor_ID(const char* t10VendorIdent)
+{
+    if (t10VendorIdent)
+    {
+        if (strncmp(t10VendorIdent, "SEAGATE", 7) == 0)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    else
+    {
+        return false;
+    }
+}
+
+void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSerialNumber, size_t unitSNSize)
+{
+    if (t10VendorIdent && unitSerialNumber && *unitSerialNumber)
+    {
+        if (is_Seagate_USB_Vendor_ID(t10VendorIdent) || is_LaCie_USB_Vendor_ID(t10VendorIdent))
+        {
+            //sometimes these report with padded zeroes at beginning or end. Detect this and remove the extra zeroes
+            //All of these SNs should be only 8 characters long.
+            char zeroes[SERIAL_NUM_LEN + 1] = { 0 };//making bigger than needed for now.
+            memset(zeroes, '0', SERIAL_NUM_LEN);
+            if (strncmp(zeroes, *unitSerialNumber, SEAGATE_SERIAL_NUMBER_LEN) == 0)
             {
-                if (device->drive_info.serialNumber[curSN] != '\0')
+                //8 zeroes at the beginning. Strip them off
+                memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+                memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+            }
+            else if (strncmp(zeroes, &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN) == 0)
+            {
+                //zeroes at the end. Write nulls over them
+                //This is not correct, reverse the string as this is a product defect.
+                char currentSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
+                char newSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
+                //backup current just in case
+                memcpy(currentSerialNumber, (*unitSerialNumber), M_Min(SERIAL_NUM_LEN, unitSNSize));
+                for (int8_t curSN = C_CAST(int8_t, M_Min(SERIAL_NUM_LEN, unitSNSize)), newSN = 0; curSN >= 0 && newSN < C_CAST(int8_t, M_Min(SERIAL_NUM_LEN, unitSNSize)); --curSN)
                 {
-                    newSerialNumber[newSN] = device->drive_info.serialNumber[curSN];
-                    ++newSN;
+                    if ((*unitSerialNumber)[curSN] != '\0')
+                    {
+                        newSerialNumber[newSN] = (*unitSerialNumber)[curSN];
+                        ++newSN;
+                    }
+                }
+                memcpy((*unitSerialNumber), newSerialNumber, M_Min(SERIAL_NUM_LEN, unitSNSize));
+                //At this point the zeroes will now all be at the end.
+                if (strncmp(zeroes, (*unitSerialNumber), SEAGATE_SERIAL_NUMBER_LEN) == 0)
+                {
+                    //zeroes at the beginning. Strip them off
+                    memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
+                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
+                }
+                else
+                {
+                    //after string reverse, the SN still wasn't right, so go back to stripping off the zeroes from the end.
+                    memcpy((*unitSerialNumber), currentSerialNumber, M_Min(SERIAL_NUM_LEN, unitSNSize));
+                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
                 }
             }
-            memcpy(device->drive_info.serialNumber, newSerialNumber, SERIAL_NUM_LEN);
-            //At this point the zeroes will now all be at the end.
-            if (strncmp(zeroes, device->drive_info.serialNumber, SEAGATE_SERIAL_NUMBER_LEN) == 0)
+            else if (strncmp(zeroes, (*unitSerialNumber), 4) == 0)
             {
-                //zeroes at the beginning. Strip them off
-                memmove(&device->drive_info.serialNumber[0], &device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
-                memset(&device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+                //4 zeroes at the beginning. Strip them off
+                memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[4], strlen((*unitSerialNumber)) - 4);
+                memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - 4);
             }
-            else
-            {
-                //after string reverse, the SN still wasn't right, so go back to stripping off the zeroes from the end.
-                memcpy(device->drive_info.serialNumber, currentSerialNumber, SERIAL_NUM_LEN);
-                memset(&device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
-            }
+            //TODO: Add more cases if we observe other strange reporting behavior.
+            //NOTE: For LaCie, it is unknown what format their SNs were before Seagate acquired them, so may need to add different cases for these older LaCie products.
         }
-        //TODO: Add more cases if we observe other strange reporting behavior.
-        //NOTE: For LaCie, it is unknown what format their SNs were before Seagate acquired them, so may need to add different cases for these older LaCie products.
-    }
-    else if (is_Seagate_SAS_Vendor_ID(device))
-    {
-        //SAS Seagate drives have a maximum SN length of 8
-        //Other information in here is the PCBA SN
-        memset(&device->drive_info.serialNumber[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen(device->drive_info.serialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+        else if (is_Seagate_SAS_Vendor_ID(t10VendorIdent))
+        {
+            //SAS Seagate drives have a maximum SN length of 8
+            //Other information in here is the PCBA SN
+            memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
+        }
     }
     return;
 }
@@ -2532,7 +2562,7 @@ int fill_In_Device_Info(tDevice *device)
             //TODO: LaCie? Need to make sure this only catches USB and not something else like thunderbolt
             if (device->drive_info.interface_type == SCSI_INTERFACE)
             {
-                if (is_Seagate_USB_Vendor_ID(device))
+                if (is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident))
                 {
                     device->drive_info.interface_type = USB_INTERFACE;
                 }
@@ -2669,7 +2699,7 @@ int fill_In_Device_Info(tDevice *device)
             &&
             (strncmp(device->drive_info.T10_vendor_ident, "ASMT", 4) == 0 || strncmp(device->drive_info.T10_vendor_ident, "ASMedia", 7) == 0 
             || strstr(device->drive_info.product_identification, "ASM236X") || strstr(device->drive_info.product_identification, "NVME")
-            || is_Seagate_USB_Vendor_ID(device) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the ASmedia NVMe chips
+            || is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the ASmedia NVMe chips
             //TODO: Check when FWRev is set to 2364? At least one device I have does this, but not sure this is a good thing to add in here or not -TJE
             && !hisup && !rmb //hisup shoiuld be 1 and rmb should be zero...on the asmedia chips I have tested, hisup is zero
             && responseFormat >= 2 //filter out any weird old drives with bizarre responses
@@ -2752,7 +2782,7 @@ int fill_In_Device_Info(tDevice *device)
             && (
                 strncmp(device->drive_info.T10_vendor_ident, "JMicron", 4) == 0 || //check anything coming up as Jmicron
                 (strncmp(device->drive_info.T10_vendor_ident, "JMicron", 4) == 0 && strncmp(device->drive_info.product_identification, "Tech", 4) == 0 && (strncmp(device->drive_info.product_revision, "0204", 4) == 0 || strncmp(device->drive_info.product_revision, "0205", 4) == 0)) //this is specific to known Jmicron-nvme adapters
-                || is_Seagate_USB_Vendor_ID(device) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the Jmicron NVMe chips
+                || is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the Jmicron NVMe chips
             && foundSATStandardDescriptor && !foundATAStandardDescriptor //these chips report SAT, but not an ATA standard...might reduce how often this check is performed - TJE
             && hisup && !rmb //hisup shoiuld be 1 and rmb should be zero...this should filter SOME, but not all USB adapters that are actually SATA drives - TJE
             && responseFormat >= 2 //filter out any weird old drives with bizarre responses
@@ -2844,7 +2874,9 @@ int fill_In_Device_Info(tDevice *device)
                                 }
                             }
                             remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
-                            seagate_Serial_Number_Cleanup(device);
+                            char* snPtr = device->drive_info.serialNumber;
+                            const char* t10VIDPtr = device->drive_info.T10_vendor_ident;
+                            seagate_Serial_Number_Cleanup(t10VIDPtr, &snPtr, SERIAL_NUM_LEN + 1);
                         }
                         else
                         {
@@ -3071,7 +3103,9 @@ int fill_In_Device_Info(tDevice *device)
                                     }
                                 }
                                 remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
-                                seagate_Serial_Number_Cleanup(device);
+                                char* snPtr = device->drive_info.serialNumber;
+                                const char* t10VIDPtr = device->drive_info.T10_vendor_ident;
+                                seagate_Serial_Number_Cleanup(t10VIDPtr, &snPtr, SERIAL_NUM_LEN + 1);
                             }
                         }
                     }
