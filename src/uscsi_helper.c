@@ -310,6 +310,16 @@ int send_IO (ScsiIoCtx *scsiIoCtx)
             printf("Target Device does not have a valid interface %d\n", scsiIoCtx->device->drive_info.interface_type);
         }
     }
+
+    if (scsiIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(scsiIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
+        }
+    }
+
     return ret;
 }
 

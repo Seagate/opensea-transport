@@ -482,6 +482,15 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
         }
     }
     //printf("<-- %s\n",__FUNCTION__);
+    if (scsiIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(scsiIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
+        }
+    }
+
     return ret;
 }
 
@@ -1449,6 +1458,14 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 		nvmeIoCtx->commandCompletionData.dw3Valid = true;
 	}
 
+    if (nvmeIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(nvmeIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", nvmeIoCtx->device->delay_io);
+        }
+    }
 	return ret;
 #endif //DISABLE_NVME_PASSTHROUGH
 }

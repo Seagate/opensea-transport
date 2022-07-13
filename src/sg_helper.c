@@ -1305,6 +1305,16 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
 #ifdef _DEBUG
     printf("<--%s (%d)\n",__FUNCTION__, ret);
 #endif
+
+    if (scsiIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(scsiIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
+        }
+    }
+
     return ret;
 }
 
@@ -2116,6 +2126,16 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         break;
     }
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+
+    if (nvmeIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(nvmeIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", nvmeIoCtx->device->delay_io);
+        }
+    }
+
     return ret;
 #else //DISABLE_NVME_PASSTHROUGH
     return OS_COMMAND_NOT_AVAILABLE;

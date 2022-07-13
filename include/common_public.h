@@ -1203,6 +1203,7 @@ extern "C"
         issue_io_func       issue_nvme_io;//nvme IO function pointer for raid or other driver/custom interface to send commands
         eDiscoveryOptions   dFlags;
         eVerbosityLevels    deviceVerbosity;
+        uint32_t            delay_io;
     }tDevice;
 
      //Common enum for getting/setting power states.
