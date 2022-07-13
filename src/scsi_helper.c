@@ -2261,6 +2261,12 @@ void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSeria
                     memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
                     memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
                 }
+                else if (strncmp(zeroes, (*unitSerialNumber), 4) == 0)
+                {
+                    //zeroes at the beginning. Strip them off
+                    memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[4], strlen((*unitSerialNumber)) - 4);
+                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - 4);
+                }
                 else
                 {
                     //after string reverse, the SN still wasn't right, so go back to stripping off the zeroes from the end.
