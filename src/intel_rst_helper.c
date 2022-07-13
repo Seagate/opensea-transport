@@ -397,7 +397,7 @@ bool supports_Intel_Firmware_Download(tDevice *device)
                 device->os_info.csmiDeviceData->intelRSTSupport.payloadAlignment = firmwareInfo->ImagePayloadAlignment;
             }
 #if defined (_DEBUG)
-            printf("Got Win10 FWDL Info\n");
+            printf("Got Intel FWDL Info\n");
             printf("\tSupported: %d\n", firmwareInfo->UpgradeSupport);
             printf("\tPayload Alignment: %ld\n", firmwareInfo->ImagePayloadAlignment);
             printf("\tmaxXferSize: %ld\n", firmwareInfo->ImagePayloadMaxSize);
@@ -891,6 +891,10 @@ int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx)
                 ret = internal_Intel_FWDL_Function_Download(nvmeIoCtx->device, flags, &returnCode, nvmeIoCtx->ptrData, (nvmeIoCtx->cmd.adminCmd.cdw10 + 1) << 2, nvmeIoCtx->cmd.adminCmd.cdw11 << 2, firmwareSlot, nvmeIoCtx->timeout);
                 //Dummy up output data based on return code.
                 dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
+                if (returnCode == INTEL_FIRMWARE_STATUS_POWER_CYCLE_REQUIRED)
+                {
+                    ret = POWER_CYCLE_REQUIRED;
+                }
             }
             else if (nvmeIoCtx->cmd.adminCmd.opcode == NVME_ADMIN_CMD_ACTIVATE_FW)
             {
@@ -906,6 +910,10 @@ int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx)
                 ret = internal_Intel_FWDL_Function_Activate(nvmeIoCtx->device, flags, &returnCode, firmwareSlot, nvmeIoCtx->timeout);
                 //Dummy up output data based on return code.
                 dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
+                if (returnCode == INTEL_FIRMWARE_STATUS_POWER_CYCLE_REQUIRED)
+                {
+                    ret = POWER_CYCLE_REQUIRED;
+                }
             }
             else
             {

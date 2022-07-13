@@ -2947,6 +2947,7 @@ static int dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, ULONG returnCode)
         nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 6);//internal error
         break;
     case FIRMWARE_STATUS_POWER_CYCLE_REQUIRED:
+        ret = POWER_CYCLE_REQUIRED;
         break;
 #if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
     case FIRMWARE_STATUS_INTERFACE_CRC_ERROR:
@@ -4058,7 +4059,6 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             if (!foundNVMePassthrough && device_Supports_CSMI_With_RST(device->os_info.scsiSRBHandle))
                             {
                                 //TODO: setup CSMI structure
-                                printf("Found intel RST NVMe\n");
                                 device->drive_info.drive_type = NVME_DRIVE;
                                 device->drive_info.interface_type = NVME_INTERFACE;
                                 device->os_info.intelNVMePassthroughSupported = true;
