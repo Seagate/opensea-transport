@@ -355,10 +355,10 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
             //loop through the device IDs and see if we find anything that matches.
             for (LPTSTR deviceID = listBuffer; *deviceID && !foundMatch; deviceID += _tcslen(deviceID) + 1)
             {
-                //convert the deviceID to uppercase to make matching easier
-                _tcsupr(deviceID);
                 DEVINST deviceInstance = 0;
                 //if a match is found, call locate devnode. If this is not present, it will fail and we need to continue through the loop
+                //convert the deviceID to uppercase to make matching easier
+                _tcsupr(deviceID);
                 cmRet = CM_Locate_DevNode(&deviceInstance, deviceID, CM_LOCATE_DEVNODE_NORMAL);
                 if (CR_SUCCESS == cmRet)
                 {
@@ -378,7 +378,8 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
                                 for (LPTSTR currentDeviceID = interfaceList; *currentDeviceID && !foundMatch; currentDeviceID += _tcslen(currentDeviceID) + 1)
                                 {
                                     //With this device path, open a handle and get the storage device number. This is a match for the PhysicalDriveX number and we can check that for a match
-                                    HANDLE deviceHandle = CreateFile(currentDeviceID,
+                                    HANDLE deviceHandle = INVALID_HANDLE_VALUE;
+                                    deviceHandle = CreateFile(currentDeviceID,
                                         GENERIC_WRITE | GENERIC_READ,
                                         FILE_SHARE_READ | FILE_SHARE_WRITE,
                                         NULL,
@@ -1984,7 +1985,9 @@ static int win_Get_SCSI_Address(HANDLE deviceHandle, PSCSI_ADDRESS scsiAddress)
     if (scsiAddress && deviceHandle != INVALID_HANDLE_VALUE)
     {
         DWORD returnedBytes = 0;
-        BOOL result = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_ADDRESS, NULL, 0, scsiAddress, sizeof(SCSI_ADDRESS), &returnedBytes, NULL);
+        BOOL result = FALSE;
+        memset(scsiAddress, 0, sizeof(SCSI_ADDRESS));
+        result = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_ADDRESS, NULL, 0, scsiAddress, sizeof(SCSI_ADDRESS), &returnedBytes, NULL);
         if (!result)
         {
             scsiAddress->PortNumber = UINT8_MAX;
@@ -3529,14 +3532,29 @@ static int win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *geom)
     int ret = FAILURE;
     DWORD bytesReturned = 0;
     DWORD diskGeomSize = sizeof(DISK_GEOMETRY);
-    *geom = C_CAST(PDISK_GEOMETRY, malloc(diskGeomSize));
-    if (DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, *geom, diskGeomSize, &bytesReturned, NULL))
+    if (geom)
     {
-        ret = SUCCESS;
+        *geom = C_CAST(PDISK_GEOMETRY, malloc(diskGeomSize));
+        if (*geom)
+        {
+            memset(*geom, 0, diskGeomSize);
+            if (DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, *geom, diskGeomSize, &bytesReturned, NULL))
+            {
+                ret = SUCCESS;
+            }
+            else
+            {
+                safe_Free(*geom)
+            }
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
     }
     else
     {
-        safe_Free(*geom)
+        ret = BAD_PARAMETER;
     }
     return ret;
 }
@@ -3577,14 +3595,29 @@ static int win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *geom)
 //    int ret = FAILURE;
 //    DWORD bytesReturned = 0;
 //    DWORD controllerNumberSize = sizeof(DISK_CONTROLLER_NUMBER);
-//    *numbers = C_CAST(PDISK_CONTROLLER_NUMBER, malloc(controllerNumberSize));
-//    if (DeviceIoControl(devHandle, IOCTL_DISK_CONTROLLER_NUMBER, NULL, 0, *numbers, controllerNumberSize, &bytesReturned, NULL))
+//    if (numbers)
 //    {
-//        ret = SUCCESS;
+//        *numbers = C_CAST(PDISK_CONTROLLER_NUMBER, malloc(controllerNumberSize));
+//        if (*numbers)
+//        {
+//            memset(*numbers, 0, controllerNumberSize);
+//            if (DeviceIoControl(devHandle, IOCTL_DISK_CONTROLLER_NUMBER, NULL, 0, *numbers, controllerNumberSize, &bytesReturned, NULL))
+//            {
+//                ret = SUCCESS;
+//            }
+//            else
+//            {
+//                safe_Free(*numbers)
+//            }
+//        }
+//        else
+//        {
+//            ret = MEMORY_FAILURE;
+//        }
 //    }
 //    else
 //    {
-//        safe_Free(*numbers)
+//        ret = BAD_PARAMETER;
 //    }
 //    return ret;
 //}
@@ -3616,6 +3649,7 @@ static int win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_EX *geom, 
         *geom = C_CAST(PDISK_GEOMETRY_EX, malloc(diskGeomSize));
         if (*geom)
         {
+            memset(*geom, 0, diskGeomSize);
             if (DeviceIoControl(devHandle,
                 IOCTL_DISK_GET_DRIVE_GEOMETRY_EX,
                 NULL,
@@ -3674,14 +3708,29 @@ static int win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_EX *geom, 
 //    int ret = FAILURE;
 //    DWORD bytesReturned = 0;
 //    DWORD lengthInfoSize = sizeof(GET_LENGTH_INFORMATION);
-//    *length = C_CAST(PGET_LENGTH_INFORMATION, malloc(lengthInfoSize));
-//    if (DeviceIoControl(devHandle, IOCTL_DISK_GET_LENGTH_INFO, NULL, 0, *length, lengthInfoSize, &bytesReturned, NULL))
+//    if (length)
 //    {
-//        ret = SUCCESS;
+//        *length = C_CAST(PGET_LENGTH_INFORMATION, malloc(lengthInfoSize));
+//        if (*length)
+//        {
+//            memset(*length, 0, lengthInfoSize);
+//            if (DeviceIoControl(devHandle, IOCTL_DISK_GET_LENGTH_INFO, NULL, 0, *length, lengthInfoSize, &bytesReturned, NULL))
+//            {
+//                ret = SUCCESS;
+//            }
+//            else
+//            {
+//                safe_Free(*length)
+//            }
+//        }
+//        else
+//        {
+//            ret = MEMORY_FAILURE;
+//        }
 //    }
 //    else
 //    {
-//        safe_Free(*length)
+//        ret = BAD_PARAMETER;
 //    }
 //    return ret;
 //}
@@ -3857,6 +3906,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     diskExtents = C_CAST(PVOLUME_DISK_EXTENTS, malloc(diskExtentsSizeBytes));
                     if (diskExtents)
                     {
+                        memset(diskExtents, 0, diskExtentsSizeBytes);
                         if (DeviceIoControl(letterHandle, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, NULL, 0, diskExtents, diskExtentsSizeBytes, &returnedBytes, NULL))
                         {
                             for (DWORD counter = 0; counter < diskExtents->NumberOfDiskExtents; ++counter)
@@ -5194,7 +5244,7 @@ static int send_SCSI_Pass_Through(ScsiIoCtx *scsiIoCtx)
         return MEMORY_FAILURE;
     }
     seatimer_t commandTimer;
-    memset(sptdioDB, 0, sizeof(scsiPassThroughIOStruct));
+    memset(sptdioDB, 0, sizeof(scsiPassThroughIOStruct) + scsiIoCtx->dataLength);
     memset(&commandTimer, 0, sizeof(seatimer_t));
     if (SUCCESS == convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(scsiIoCtx, sptdioDB))
     {
@@ -9104,6 +9154,10 @@ static int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         nvmePassthroughDataSize += nvmeIoCtx->dataSize;
     }
     uint8_t *commandBuffer = C_CAST(uint8_t*, _aligned_malloc(nvmePassthroughDataSize, 8));
+    if (!commandBuffer)
+    {
+        return MEMORY_FAILURE;
+    }
     memset(commandBuffer, 0, nvmePassthroughDataSize);
 
     //Setup the storage protocol command structure.
@@ -12144,6 +12198,7 @@ int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
     uint8_t *readData = C_CAST(uint8_t*, malloc(device->drive_info.deviceBlockSize * range));
     if (readData)
     {
+        memset(readData, 0, device->drive_info.deviceBlockSize * range);
         ret = os_Read(device, lba, false, readData, device->drive_info.deviceBlockSize * range);
         safe_Free(readData)
     }
