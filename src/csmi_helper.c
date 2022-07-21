@@ -2835,9 +2835,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                         //Check if it's a RAID capable controller. We only want to enumerate devices on those in this function
                         if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                             || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
-                            || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
-                            && strcmp(C_CAST(const char*, driverInfo.Information.szName), "arcsas") != 0 
-                            && strcmp(C_CAST(const char*, driverInfo.Information.szName), "HpCISSS3.sys") != 0) //skip arcsas and HpCISSS3.sys due to an unknown bug below in the scan that we have not yet resolved. It crashes the tool and it is not clear why at this time-TJE
+                            || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY))
                         {
                             //Get RAID info
                             CSMI_SAS_RAID_INFO_BUFFER csmiRAIDInfo;
@@ -3054,9 +3052,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                             //Check if it's a RAID capable controller. We only want to enumerate devices on those in this function
                             if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                                 || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
-                                || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
-                                && strcmp(C_CAST(const char*, driverInfo.Information.szName), "arcsas") != 0
-                                && strcmp(C_CAST(const char*, driverInfo.Information.szName), "HpCISSS3.sys") != 0) //skip arcsas and HpCISSS3.sys due to an unknown bug below in the scan that we have not yet resolved. It crashes the tool and it is not clear why at this time-TJE
+                                || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY))
                             {
                                 //Get RAID info & Phy info. Need to match the RAID config (below) to some of the phy info as best we can...-TJE
 #if defined (_WIN32)
