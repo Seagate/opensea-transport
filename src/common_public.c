@@ -1247,6 +1247,29 @@ bool is_Nytro_Drive(tDevice * device, bool USBchildDrive)
     return isNytroDrive;
 }
 
+bool is_Exos_Drive(tDevice * device, bool USBchildDrive)
+{
+    bool isExosDrive = false;
+    char *modelNumber = &device->drive_info.product_identification[0];
+    if (USBchildDrive)
+    {
+        modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
+    }
+
+    if (strlen(modelNumber))
+    {
+        if (wildcard_Match("ST*NM*", modelNumber))   //Exos X-series
+            isExosDrive = true;
+        else if (wildcard_Match("*ST*MP*", modelNumber) || wildcard_Match("*ST*MM*", modelNumber) || wildcard_Match("*ST*NX*", modelNumber))  //Exos E-series
+            isExosDrive = true;
+    }
+
+    if (!USBchildDrive && !isExosDrive)
+        return is_Firecuda_Drive(device, true);
+
+    return isExosDrive;
+}
+
 bool is_Seagate_Model_Number_Vendor_B(tDevice *device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
