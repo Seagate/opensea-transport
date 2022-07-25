@@ -1270,6 +1270,37 @@ bool is_Exos_Drive(tDevice * device, bool USBchildDrive)
     return isExosDrive;
 }
 
+bool is_Barracuda_Drive(tDevice * device, bool USBchildDrive)
+{
+    bool isBarracudaDrive = false;
+    char *modelNumber = &device->drive_info.product_identification[0];
+    if (USBchildDrive)
+    {
+        modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
+    }
+
+    if (strlen(modelNumber))
+    {
+        if (wildcard_Match("ST*LM*", modelNumber))   //Barracuda 2.5 inhces
+            isBarracudaDrive = true;
+        else if (wildcard_Match("ST*DM*", modelNumber))   //Barracuda 3.5 inhces
+            isBarracudaDrive = true;
+        else if (wildcard_Match("*ZA*CV*", modelNumber))  //Barracuda Q1
+            isBarracudaDrive = true;
+        else if (wildcard_Match("*ZP*CV*", modelNumber))  //Barracuda Q5
+            isBarracudaDrive = true;
+        else if (wildcard_Match("*ZA*CM*", modelNumber))  //Barracuda 120
+            isBarracudaDrive = true;
+        else if (wildcard_Match("*ZP*CM*", modelNumber))  //Barracuda 510
+            isBarracudaDrive = true;
+    }
+
+    if (!USBchildDrive && !isBarracudaDrive)
+        return is_Firecuda_Drive(device, true);
+
+    return isBarracudaDrive;
+}
+
 bool is_Seagate_Model_Number_Vendor_B(tDevice *device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
