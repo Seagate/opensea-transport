@@ -1181,7 +1181,7 @@ bool is_Firecuda_Drive(tDevice * device, bool USBchildDrive)
             isFirecudaDrive = true;
         else if (wildcard_Match("*ZA*GM*", modelNumber))  //check if SATA Firecuda SSD
             isFirecudaDrive = true;
-        else if (wildcard_Match("*ZP*GM*", modelNumber))  //check if PCIe Firecuda SSD
+        else if (wildcard_Match("*ZP*GM*", modelNumber) || wildcard_Match("*ZP*GV*", modelNumber))  //check if PCIe Firecuda SSD
             isFirecudaDrive = true;
     }
 
