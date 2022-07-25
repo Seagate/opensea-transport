@@ -1239,6 +1239,8 @@ bool is_Nytro_Drive(tDevice * device, bool USBchildDrive)
             isNytroDrive = true;
         else if (wildcard_Match("*XP*LE*", modelNumber))  //Nytro 5910
             isNytroDrive = true;
+        else if (wildcard_Match("*XP*EX*", modelNumber) || wildcard_Match("*XP*DC*", modelNumber))  //Nytro 510
+            isNytroDrive = true;
     }
 
     if (!USBchildDrive && !isNytroDrive)
