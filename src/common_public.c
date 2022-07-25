@@ -1214,6 +1214,39 @@ eSkyhawk_Drive is_Skyhawk_Drive(tDevice * device, bool USBchildDrive)
     return isSkyhawkDrive;
 }
 
+bool is_Nytro_Drive(tDevice * device, bool USBchildDrive)
+{
+    bool isNytroDrive = false;
+    char *modelNumber = &device->drive_info.product_identification[0];
+    if (USBchildDrive)
+    {
+        modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
+    }
+
+    if (strlen(modelNumber))
+    {
+        if (wildcard_Match("XS*SE*", modelNumber))   //Nytro 3332, Nytro 3331, Nytro 2332
+            isNytroDrive = true;
+        else if (wildcard_Match("*XS*LE*", modelNumber))  //Nytro 3532, Nytro 3531, Nytro 2532
+            isNytroDrive = true;
+        else if (wildcard_Match("*XS*ME*", modelNumber))  //Nytro 3732, Nytro 3731
+            isNytroDrive = true;
+        else if (wildcard_Match("*XS*TE*", modelNumber))  //Nytro 3131
+            isNytroDrive = true;
+        else if (wildcard_Match("*XA*LE*", modelNumber))  //Nytro 1351
+            isNytroDrive = true;
+        else if (wildcard_Match("*XS*ME*", modelNumber))  //Nytro 1551
+            isNytroDrive = true;
+        else if (wildcard_Match("*XP*LE*", modelNumber))  //Nytro 5910
+            isNytroDrive = true;
+    }
+
+    if (!USBchildDrive && !isNytroDrive)
+        return is_Firecuda_Drive(device, true);
+
+    return isNytroDrive;
+}
+
 bool is_Seagate_Model_Number_Vendor_B(tDevice *device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
