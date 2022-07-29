@@ -95,7 +95,10 @@ int ata_Identify(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
     identify.commandDirection = XFER_DATA_IN;
     identify.commadProtocol = ATA_PROTOCOL_PIO;
     identify.tfr.SectorCount = 1;//some controllers have issues when this isn't set to 1
-    identify.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        identify.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     identify.tfr.CommandStatus = ATA_IDENTIFY;
     identify.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     identify.ataTransferBlocks = ATA_PT_512B_BLOCKS;
@@ -160,7 +163,10 @@ int ata_Sanitize_Command(tDevice *device, eATASanitizeFeature sanitizeFeature, u
     ataSanitizeCmd.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataSanitizeCmd.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
     ataSanitizeCmd.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
-    ataSanitizeCmd.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataSanitizeCmd.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataSanitizeCmd.tfr.CommandStatus = ATA_SANITIZE;
     ataSanitizeCmd.tfr.SectorCount = M_Byte0(sectorCount);
     ataSanitizeCmd.tfr.SectorCount48 = M_Byte1(sectorCount);
@@ -386,8 +392,10 @@ int ata_Read_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, u
     ataCommandOptions.tfr.SectorCount48 = M_Byte1(dataSize / LEGACY_DRIVE_SEC_SIZE);
     ataCommandOptions.tfr.ErrorFeature = M_Byte0(featureRegister);
     ataCommandOptions.tfr.Feature48 = M_Byte1(featureRegister);
-
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -508,8 +516,10 @@ int ata_Write_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, 
 
     ataCommandOptions.tfr.ErrorFeature = 0; // ?? ATA Spec says Log spcecific
     ataCommandOptions.tfr.Feature48 = 0;
-
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -568,7 +578,7 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
         ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
         break;
     case ATA_SMART_WRITE_LOG:
-        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_READ_LOG)
+        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_WRITE_LOG)
         {
             printf("Write Log - Log %02"PRIX8"h\n", lbaLo);
         }
@@ -653,8 +663,10 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
     }
 
     ataCommandOptions.tfr.ErrorFeature = feature;
-
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -850,7 +862,10 @@ int ata_Security_Disable_Password(tDevice *device, uint8_t *ptrData)
     ataCommandOptions.dataSize = LEGACY_DRIVE_SEC_SIZE; //spec defines that this command always transfers this much data
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.tfr.CommandStatus = ATA_SECURITY_DISABLE_PASS;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -880,7 +895,10 @@ int ata_Security_Erase_Prepare(tDevice *device)
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE; //28bit command
     ataCommandOptions.tfr.CommandStatus = ATA_SECURITY_ERASE_PREP;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -914,7 +932,10 @@ int ata_Security_Erase_Unit(tDevice *device, uint8_t *ptrData, uint32_t timeout)
     ataCommandOptions.dataSize = LEGACY_DRIVE_SEC_SIZE; //spec defines that this command always transfers this much data
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.tfr.CommandStatus = ATA_SECURITY_ERASE_UNIT_CMD;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -949,7 +970,10 @@ int ata_Security_Set_Password(tDevice *device, uint8_t *ptrData)
     ataCommandOptions.dataSize = LEGACY_DRIVE_SEC_SIZE; //spec defines that this command always transfers this much data
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.tfr.CommandStatus = ATA_SECURITY_SET_PASS;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -983,7 +1007,10 @@ int ata_Security_Unlock(tDevice *device, uint8_t *ptrData)
     ataCommandOptions.dataSize = LEGACY_DRIVE_SEC_SIZE; //spec defines that this command always transfers this much data
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.tfr.CommandStatus = ATA_SECURITY_UNLOCK_CMD;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -1015,7 +1042,10 @@ int ata_Security_Freeze_Lock(tDevice *device)
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE; //28bit command
     ataCommandOptions.tfr.CommandStatus = ATA_SECURITY_FREEZE_LOCK_CMD;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -1049,7 +1079,10 @@ int ata_Accessible_Max_Address_Feature(tDevice *device, uint16_t feature, uint64
     ataCommandOptions.dataSize = 0; //non-data command
     ataCommandOptions.ptrData = NULL;
     ataCommandOptions.tfr.CommandStatus = ATA_ACCESSABLE_MAX_ADDR;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataCommandOptions.tfr.ErrorFeature = M_Byte0(feature);
     ataCommandOptions.tfr.Feature48 = M_Byte1(feature);
     ataCommandOptions.tfr.LbaLow = M_Byte0(lba);
@@ -1121,7 +1154,10 @@ int ata_Read_Native_Max_Address(tDevice *device, uint64_t *nativeMaxLBA, bool ex
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.dataSize = 0; //non-data command
     ataCommandOptions.ptrData = NULL;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
     if (device->drive_info.ata_Options.isDevice1)
     {
@@ -1185,7 +1221,10 @@ int ata_Set_Max(tDevice *device, eHPAFeature setMaxFeature, uint32_t newMaxLBA, 
     ataCommandOptions.dataSize = dataSize;
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.tfr.CommandStatus = ATA_SET_MAX;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataCommandOptions.tfr.ErrorFeature = C_CAST(uint8_t, setMaxFeature);
 
     switch (setMaxFeature)
@@ -1281,7 +1320,10 @@ int ata_Set_Max_Address_Ext(tDevice *device, uint64_t newMaxLBA, bool volatileVa
     ataCommandOptions.tfr.LbaLow48 = M_Byte3(newMaxLBA);
     ataCommandOptions.tfr.LbaMid48 = M_Byte4(newMaxLBA);
     ataCommandOptions.tfr.LbaHi48 = M_Byte5(newMaxLBA);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
     if (device->drive_info.ata_Options.isDevice1)
     {
@@ -1337,7 +1379,10 @@ int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subComman
         ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
         ataCommandOptions.tfr.CommandStatus = ATA_DOWNLOAD_MICROCODE;
     }
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -1406,419 +1451,6 @@ int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subComman
     return ret;
 }
 
-int ata_SCT(tDevice *device, bool useGPL, bool useDMA, eDataTransferDirection direction, uint8_t logAddress, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs)
-{
-    int ret = UNKNOWN;
-    if (logAddress != ATA_SCT_COMMAND_STATUS && logAddress != ATA_SCT_DATA_TRANSFER)
-    {
-        return BAD_PARAMETER;
-    }
-    //This is a hack for some USB drives. While a caller somewhere above this should handle this, this needs to be here to ensure we don't hang these devices.
-    if (device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly)
-    {
-        useGPL = false;
-    }
-    if (useGPL)
-    {
-        if (direction == XFER_DATA_IN)
-        {
-            ret = ata_Read_Log_Ext(device,logAddress,0,dataBuf,dataSize, useDMA, 0);
-        }
-        else if (direction == XFER_DATA_OUT)
-        {
-            ret = ata_Write_Log_Ext(device, logAddress, 0, dataBuf, dataSize, useDMA, forceRTFRs);
-        }
-        else
-        {
-            ret = BAD_PARAMETER;
-        }
-    }
-    else
-    {
-        if (direction == XFER_DATA_IN)//data in
-        {
-            ret = ata_SMART_Read_Log(device, logAddress, dataBuf, dataSize); 
-        }
-        else if (direction == XFER_DATA_OUT)
-        {
-            ret = ata_SMART_Write_Log(device, logAddress, dataBuf, dataSize, forceRTFRs);
-        }
-        else
-        {
-            ret = BAD_PARAMETER;
-        }
-    }
-    return ret; 
-}
-
-int ata_SCT_Status(tDevice *device, bool useGPL, bool useDMA, uint8_t *dataBuf, uint32_t dataSize)
-{
-    int ret = UNKNOWN;
-    if (dataSize < LEGACY_DRIVE_SEC_SIZE)
-    {
-        return FAILURE;
-    }
-    ret = ata_SCT(device, useGPL, useDMA, XFER_DATA_IN, ATA_SCT_COMMAND_STATUS, dataBuf, LEGACY_DRIVE_SEC_SIZE, false);
-
-    return ret;
-}
-
-int ata_SCT_Command(tDevice *device, bool useGPL, bool useDMA, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs)
-{
-    int ret = UNKNOWN;
-    if (dataSize < LEGACY_DRIVE_SEC_SIZE)
-    {
-        return FAILURE;
-    }
-    ret = ata_SCT(device, useGPL, useDMA, XFER_DATA_OUT, ATA_SCT_COMMAND_STATUS, dataBuf, LEGACY_DRIVE_SEC_SIZE, forceRTFRs);
-
-    return ret;
-}
-
-int ata_SCT_Data_Transfer(tDevice *device, bool useGPL, bool useDMA, eDataTransferDirection direction, uint8_t *dataBuf, uint32_t dataSize)
-{
-    int ret = UNKNOWN;
-
-    ret = ata_SCT(device, useGPL, useDMA, direction, ATA_SCT_DATA_TRANSFER, dataBuf, dataSize, false);
-
-    return ret;
-}
-
-int ata_SCT_Check_Status(tDevice *device, uint32_t retries, uint16_t actionCode, uint16_t functionCode)
-{
-    int ret = UNKNOWN;
-
-    uint32_t numRetries = 0;
-    const uint32_t runningInBackgroundTimeout = 15 * 60; //Nidhi - should it be changed to smaller interval
-    uint32_t runningInBackgroundTimer = 0;
-
-    while (true)
-    {
-        numRetries++;
-
-        uint8_t commandBuffer[LEGACY_DRIVE_SEC_SIZE] = { 0 };
-
-        ret = ata_SCT_Status(device, false, false, commandBuffer, LEGACY_DRIVE_SEC_SIZE);
-
-        if (ret != SUCCESS)
-        {
-            return ret;
-        }
-
-        // check if Action code and Status code matches the SCT status response(byte 16-17 which is Action code for command currently being processed
-        // and byte 18-19 which is Function code for command currently bein processed), if value doesn't matches, then some different SCT command has been sent to drive,
-        // and we should abort and send interrupt status.
-        if ((((functionCode & 0xFF00) >> 8) != commandBuffer[19])
-            || ((functionCode & 0x00FF) != commandBuffer[18])
-            || (((actionCode & 0xFF00) >> 8) != commandBuffer[17])
-            || ((actionCode & 0x00FF) != commandBuffer[16]))
-        {
-            return COMMAND_INTERRUPTED;
-        }
-        // check SCT status response byte 10 which is Device State, if set to 0, then we are good, and can return
-        else if ((commandBuffer[10] == 0)
-            && (((functionCode & 0xFF00) >> 8) == commandBuffer[19]) && ((functionCode & 0x00FF) == commandBuffer[18])
-            && (((actionCode & 0xFF00) >> 8) == commandBuffer[17]) && ((actionCode & 0x00FF) == commandBuffer[16]))
-        {
-            ret = ((0x0000FFFF & commandBuffer[15]) << 8) + commandBuffer[14];
-            return ret;
-        }
-        // check if SCT command is still bein processed, with SCT status response byte 14-15, which is Extended Status code, 
-        // if  value of this field is FFFFh, then we'll wait for it to be finished
-        else if (0x0000FFFF == ((0x0000FFFF & commandBuffer[15]) << 8) + commandBuffer[14])
-        {
-            runningInBackgroundTimer++;
-
-            if (runningInBackgroundTimer > runningInBackgroundTimeout)
-            {
-                return COMMAND_TIMEOUT;
-            }
-        }
-        //if we exhausted all the number of retries, then return
-        else if (numRetries > retries)
-        {
-            return COMMAND_TIMEOUT;
-        }
-
-        delay_Milliseconds(1000);
-    }
-
-    return ret;
-}
-
-int ata_SCT_Read_Write_Long(tDevice *device, bool useGPL, bool useDMA, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested)
-{
-    int ret = UNKNOWN;
-    uint8_t readWriteLongCommandSector[LEGACY_DRIVE_SEC_SIZE] = { 0 };
-
-    //action code
-    readWriteLongCommandSector[0] = M_Byte0(SCT_READ_WRITE_LONG);
-    readWriteLongCommandSector[1] = M_Byte1(SCT_READ_WRITE_LONG);
-    //function code set in if below
-    //LBA
-    readWriteLongCommandSector[4] = M_Byte0(lba);
-    readWriteLongCommandSector[5] = M_Byte1(lba);
-    readWriteLongCommandSector[6] = M_Byte2(lba);
-    readWriteLongCommandSector[7] = M_Byte3(lba);
-    readWriteLongCommandSector[8] = M_Byte4(lba);
-    readWriteLongCommandSector[9] = M_Byte5(lba);
-    readWriteLongCommandSector[10] = RESERVED;
-    readWriteLongCommandSector[11] = RESERVED;
-
-    if (mode == SCT_RWL_READ_LONG)
-    {
-        readWriteLongCommandSector[2] = M_Byte0(SCT_RWL_READ_LONG);
-        readWriteLongCommandSector[3] = M_Byte1(SCT_RWL_READ_LONG);
-
-        //send a SCT command
-        if (SUCCESS == ata_SCT_Command(device, useGPL, useDMA, readWriteLongCommandSector, LEGACY_DRIVE_SEC_SIZE, true))
-        {
-            if (numberOfECCCRCBytes)
-            {
-                *numberOfECCCRCBytes = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
-            }
-            if (numberOfBlocksRequested)
-            {
-                *numberOfBlocksRequested = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaHi, device->drive_info.lastCommandRTFRs.lbaMid);
-            }
-            //Read the SCT data log
-            ret = ata_SCT_Data_Transfer(device, useGPL, useDMA, XFER_DATA_IN, dataBuf, dataSize);
-        }
-    }
-    else if (mode == SCT_RWL_WRITE_LONG)
-    {
-        readWriteLongCommandSector[2] = M_Byte0(SCT_RWL_WRITE_LONG);
-        readWriteLongCommandSector[3] = M_Byte1(SCT_RWL_WRITE_LONG);
-
-        //send a SCT command
-        if (SUCCESS == ata_SCT_Command(device, useGPL, useDMA, readWriteLongCommandSector, LEGACY_DRIVE_SEC_SIZE, true))
-        {
-            if (numberOfECCCRCBytes)
-            {
-                *numberOfECCCRCBytes = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
-            }
-            if (numberOfBlocksRequested)
-            {
-                *numberOfBlocksRequested = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaHi, device->drive_info.lastCommandRTFRs.lbaMid);
-            }
-            //Write the SCT data log
-            ret = ata_SCT_Data_Transfer(device, useGPL, useDMA, XFER_DATA_OUT, dataBuf, dataSize);
-        }
-    }
-    else
-    {
-        ret = NOT_SUPPORTED;
-    }
-    return ret;
-}
-
-int ata_SCT_Write_Same(tDevice *device, bool useGPL, bool useDMA, eSCTWriteSameFunctions functionCode, uint64_t startLBA, uint64_t fillCount, uint8_t *pattern, uint64_t patternLength)
-{
-    int ret = UNKNOWN;
-    uint8_t *writeSameBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
-    if (!writeSameBuffer)
-    {
-        perror("Calloc failure!\n");
-        return MEMORY_FAILURE;
-    }
-    //action code
-    writeSameBuffer[0] = M_Byte0(SCT_WRITE_SAME);
-    writeSameBuffer[1] = M_Byte1(SCT_WRITE_SAME);
-    //function code
-    writeSameBuffer[2] = M_Byte0(functionCode);
-    writeSameBuffer[3] = M_Byte1(functionCode);
-    //start
-    writeSameBuffer[4] = M_Byte0(startLBA);
-    writeSameBuffer[5] = M_Byte1(startLBA);
-    writeSameBuffer[6] = M_Byte2(startLBA);
-    writeSameBuffer[7] = M_Byte3(startLBA);
-    writeSameBuffer[8] = M_Byte4(startLBA);
-    writeSameBuffer[9] = M_Byte5(startLBA);
-    writeSameBuffer[10] = RESERVED;
-    writeSameBuffer[11] = RESERVED;
-    //Fill Count
-    writeSameBuffer[12] = M_Byte0(fillCount);
-    writeSameBuffer[13] = M_Byte1(fillCount);
-    writeSameBuffer[14] = M_Byte2(fillCount);
-    writeSameBuffer[15] = M_Byte3(fillCount);
-    writeSameBuffer[16] = M_Byte4(fillCount);
-    writeSameBuffer[17] = M_Byte5(fillCount);
-    writeSameBuffer[18] = M_Byte6(fillCount);
-    writeSameBuffer[19] = M_Byte7(fillCount);
-    //Pattern field (when it applies)
-    if (functionCode == WRITE_SAME_BACKGROUND_USE_PATTERN_FIELD || functionCode == WRITE_SAME_FOREGROUND_USE_PATTERN_FIELD)
-    {
-        uint32_t thePattern = 0;
-        uint64_t patternIter = 0;
-        //copy at most a 32bit pattern into thePattern
-        for (patternIter = 0; patternIter < patternLength && patternIter < 4; patternIter++)
-        {
-            thePattern |= pattern[patternIter];
-            if ((patternIter + 1) == 4)
-            {
-                break;
-            }
-            thePattern = thePattern << 8;
-        }
-        writeSameBuffer[20] = M_Byte0(thePattern);
-        writeSameBuffer[21] = M_Byte1(thePattern);
-        writeSameBuffer[22] = M_Byte2(thePattern);
-        writeSameBuffer[23] = M_Byte3(thePattern);
-    }
-    //pattern length (when it applies)
-    if (functionCode == WRITE_SAME_BACKGROUND_USE_MULTIPLE_LOGICAL_SECTORS || functionCode == WRITE_SAME_FOREGROUND_USE_MULTIPLE_LOGICAL_SECTORS)
-    {
-        writeSameBuffer[24] = M_Byte0(patternLength);
-        writeSameBuffer[25] = M_Byte1(patternLength);
-        writeSameBuffer[26] = M_Byte2(patternLength);
-        writeSameBuffer[27] = M_Byte3(patternLength);
-        writeSameBuffer[28] = M_Byte4(patternLength);
-        writeSameBuffer[29] = M_Byte5(patternLength);
-        writeSameBuffer[30] = M_Byte6(patternLength);
-        writeSameBuffer[31] = M_Byte7(patternLength);
-    }
-
-    ret = ata_SCT_Command(device,useGPL,useDMA,writeSameBuffer,LEGACY_DRIVE_SEC_SIZE, false);
-
-    if (functionCode == WRITE_SAME_BACKGROUND_USE_MULTIPLE_LOGICAL_SECTORS || functionCode == WRITE_SAME_FOREGROUND_USE_MULTIPLE_LOGICAL_SECTORS
-        || functionCode == WRITE_SAME_BACKGROUND_USE_SINGLE_LOGICAL_SECTOR || functionCode == WRITE_SAME_FOREGROUND_USE_SINGLE_LOGICAL_SECTOR)
-    {
-        //send the pattern to the data transfer log
-        ret = ata_SCT_Data_Transfer(device, useGPL, useDMA, XFER_DATA_OUT, pattern, C_CAST(uint32_t, patternLength * device->drive_info.deviceBlockSize));
-    }
-
-    safe_Free_aligned(writeSameBuffer)
-    return ret;
-}
-
-int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit)
-{
-    int ret = UNKNOWN;
-    uint8_t *errorRecoveryBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
-    if (!errorRecoveryBuffer)
-    {
-        perror("Calloc failure!\n");
-        return MEMORY_FAILURE;
-    }
-    //if we are retrieving the current values, then we better have a good pointer...no point in sending the command if we don't
-    if (functionCode == 0x0002 && !currentValue)
-    {
-        safe_Free_aligned(errorRecoveryBuffer)
-        return BAD_PARAMETER;
-    }
-
-    //action code
-    errorRecoveryBuffer[0] = M_Byte0(SCT_ERROR_RECOVERY_CONTROL);
-    errorRecoveryBuffer[1] = M_Byte1(SCT_ERROR_RECOVERY_CONTROL);
-    //function code
-    errorRecoveryBuffer[2] = M_Byte0(functionCode);
-    errorRecoveryBuffer[3] = M_Byte1(functionCode);
-    //selection code
-    errorRecoveryBuffer[4] = M_Byte0(selectionCode);
-    errorRecoveryBuffer[5] = M_Byte1(selectionCode);
-    //recovery time limit
-    errorRecoveryBuffer[6] = M_Byte0(recoveryTimeLimit);
-    errorRecoveryBuffer[7] = M_Byte1(recoveryTimeLimit);
-
-    ret = ata_SCT_Command(device, useGPL, useDMA, errorRecoveryBuffer, LEGACY_DRIVE_SEC_SIZE, true);
-
-    if (functionCode == 0x0002 && currentValue != NULL)
-    {
-        *currentValue = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
-    }
-    safe_Free_aligned(errorRecoveryBuffer)
-    return ret;
-}
-
-int ata_SCT_Feature_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags)
-{
-    int ret = UNKNOWN;
-    uint8_t *featureControlBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
-    if (!featureControlBuffer)
-    {
-        perror("Calloc Failure!\n");
-        return MEMORY_FAILURE;
-    }
-    //make sure we have valid pointers for state and optionFlags
-    if (!state || !optionFlags)
-    {
-        safe_Free_aligned(featureControlBuffer)
-        return BAD_PARAMETER;
-    }
-    //clear the state and option flags out, unless we are setting something
-    if (functionCode != 0x0001)
-    {
-        *state = 0;
-        *optionFlags = 0;
-    }
-    //fill in the buffer with the correct information
-    //action code
-    featureControlBuffer[0] = M_Byte0(SCT_FEATURE_CONTROL);
-    featureControlBuffer[1] = M_Byte1(SCT_FEATURE_CONTROL);
-    //function code
-    featureControlBuffer[2] = M_Byte0(functionCode);
-    featureControlBuffer[3] = M_Byte1(functionCode);
-    //feature code
-    featureControlBuffer[4] = M_Byte0(featureCode);
-    featureControlBuffer[5] = M_Byte1(featureCode);
-    //state
-    featureControlBuffer[6] = M_Byte0(*state);
-    featureControlBuffer[7] = M_Byte1(*state);
-    //option flags
-    featureControlBuffer[8] = M_Byte0(*optionFlags);
-    featureControlBuffer[9] = M_Byte1(*optionFlags);
-
-    ret = ata_SCT_Command(device,useGPL,useDMA,featureControlBuffer,LEGACY_DRIVE_SEC_SIZE, true);
-
-    //add in copying rtfrs into status or option flags here
-    if (ret == SUCCESS)
-    {
-        if (functionCode == 0x0002)
-        {
-            *state = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
-        }
-        else if (functionCode == 0x0003)
-        {
-            *optionFlags = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
-        }
-    }
-    safe_Free_aligned(featureControlBuffer)
-    return ret; 
-}
-
-int ata_SCT_Data_Table(tDevice *device, bool useGPL, bool useDMA, uint16_t functionCode, uint16_t tableID, uint8_t *dataBuf, uint32_t dataSize)
-{
-    int ret = UNKNOWN;
-
-    if (!dataBuf)
-    {
-        return BAD_PARAMETER;
-    }
-    //Action code
-    dataBuf[0] = M_Byte0(SCT_DATA_TABLES);
-    dataBuf[1] = M_Byte1(SCT_DATA_TABLES);
-    //Function code
-    dataBuf[2] = M_Byte0(functionCode);
-    dataBuf[3] = M_Byte1(functionCode);
-    //Table ID
-    dataBuf[4] = M_Byte0(tableID);
-    dataBuf[5] = M_Byte1(tableID);
-
-    ret = ata_SCT_Command(device, useGPL, useDMA, dataBuf, LEGACY_DRIVE_SEC_SIZE, false);
-
-    if (ret == SUCCESS)
-    {
-        if (functionCode == 0x0001)
-        {
-            //now read the log that tells us the table we requested
-            memset(dataBuf,0,dataSize);//clear the buffer before we read in data since we are done with what we had to send to the drive
-            ret = ata_SCT_Data_Transfer(device, useGPL, useDMA, XFER_DATA_IN, dataBuf, dataSize);
-        }
-        //else we need to add functionality since something new was added to the spec
-    }
-    return ret;
-}
-
 int ata_Check_Power_Mode(tDevice *device, uint8_t *powerMode)
 {
     int ret = UNKNOWN;
@@ -1832,7 +1464,10 @@ int ata_Check_Power_Mode(tDevice *device, uint8_t *powerMode)
     ataCommandOptions.dataSize = 0; //non-data command
     ataCommandOptions.ptrData = NULL;
     ataCommandOptions.tfr.CommandStatus = ATA_CHECK_POWER_MODE;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -1875,7 +1510,10 @@ int ata_Configure_Stream(tDevice *device, uint8_t streamID, bool addRemoveStream
     ataCommandOptions.ptrData = NULL;
     ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_CONFIGURE_STREAM;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -1942,7 +1580,10 @@ int ata_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uin
     {
         ataCommandOptions.tfr.CommandStatus = ATA_DATA_SET_MANAGEMENT_CMD;
     }
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -2002,7 +1643,10 @@ int ata_Execute_Device_Diagnostic(tDevice *device, uint8_t* diagnosticCode)
     ataCommandOptions.dataSize = 0;
     ataCommandOptions.ptrData = NULL;
     ataCommandOptions.tfr.CommandStatus = ATA_EXEC_DRV_DIAG;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -2048,7 +1692,10 @@ int ata_Flush_Cache(tDevice *device, bool extendedCommand)
         ataCommandOptions.tfr.CommandStatus = ATA_FLUSH_CACHE;
         ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     }
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -2092,7 +1739,10 @@ int ata_Idle(tDevice *device, uint8_t standbyTimerPeriod)
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_IDLE;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -2122,7 +1772,10 @@ int ata_Idle_Immediate(tDevice *device, bool unloadFeature)
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_IDLE_IMMEDIATE_CMD;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -2183,7 +1836,10 @@ int ata_Read_Buffer(tDevice *device, uint8_t *ptrData, bool useDMA)
         ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
         ataCommandOptions.tfr.CommandStatus = ATA_READ_BUF;
     }
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -2244,7 +1900,10 @@ int ata_Read_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t secto
         ataCommandOptions.commadProtocol = ATA_PROTOCOL_DMA;
         break;
     }
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -2320,7 +1979,10 @@ int ata_Read_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t 
     ataCommandOptions.tfr.LbaMid = M_Byte1(LBA);
     ataCommandOptions.tfr.LbaHi = M_Byte2(LBA);
     ataCommandOptions.tfr.SectorCount = M_Byte0(sectorCount);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -2399,7 +2061,10 @@ int ata_Read_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t s
     ataCommandOptions.tfr.LbaMid = M_Byte1(LBA);
     ataCommandOptions.tfr.LbaHi = M_Byte2(LBA);
     ataCommandOptions.tfr.SectorCount = M_Byte0(sectorCount);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -2470,7 +2135,10 @@ int ata_Read_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, u
     ataCommandOptions.tfr.LbaMid = M_Byte1(LBA);
     ataCommandOptions.tfr.LbaHi = M_Byte2(LBA);
     ataCommandOptions.tfr.SectorCount = M_Byte0(sectorCount);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -2520,7 +2188,10 @@ int ata_Read_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID, bool not
     ataCommandOptions.tfr.LbaHi48 = M_Byte5(LBA);
     ataCommandOptions.tfr.SectorCount = M_Byte0(dataSize / device->drive_info.deviceBlockSize);
     ataCommandOptions.tfr.SectorCount48 = M_Byte1(dataSize / device->drive_info.deviceBlockSize);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
     if (device->drive_info.ata_Options.isDevice1)
     {
@@ -2612,7 +2283,10 @@ int ata_Read_Verify_Sectors(tDevice *device, bool extendedCmd, uint16_t numberOf
     ataCommandOptions.tfr.LbaMid = M_Byte1(LBA);
     ataCommandOptions.tfr.LbaHi = M_Byte2(LBA);
     ataCommandOptions.tfr.SectorCount = M_Byte0(numberOfSectors);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
     if (device->drive_info.ata_Options.isDevice1)
     {
@@ -2676,7 +2350,10 @@ int ata_Request_Sense_Data(tDevice *device, uint8_t *senseKey, uint8_t *addition
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_REQUEST_SENSE_DATA;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -2721,7 +2398,10 @@ int ata_Set_Date_And_Time(tDevice *device, uint64_t timeStamp)
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
     ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_SET_DATE_AND_TIME_EXT;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataCommandOptions.tfr.LbaLow = M_Byte0(timeStamp);
     ataCommandOptions.tfr.LbaMid = M_Byte1(timeStamp);
     ataCommandOptions.tfr.LbaHi = M_Byte2(timeStamp);
@@ -2761,7 +2441,10 @@ int ata_Set_Multiple_Mode(tDevice *device, uint8_t drqDataBlockCount)
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_SET_MULTIPLE;
     ataCommandOptions.tfr.SectorCount = drqDataBlockCount;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -2793,7 +2476,10 @@ int ata_Sleep(tDevice *device)
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_SLEEP_CMD;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -2827,7 +2513,10 @@ int ata_Standby(tDevice *device, uint8_t standbyTimerPeriod)
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_STANDBY;
     ataCommandOptions.tfr.SectorCount = standbyTimerPeriod;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -2860,7 +2549,10 @@ int ata_Standby_Immediate(tDevice *device)
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_STANDBY_IMMD;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -2896,7 +2588,10 @@ int ata_Trusted_Non_Data(tDevice *device, uint8_t securityProtocol, bool trusted
     ataCommandOptions.tfr.ErrorFeature = securityProtocol;
     ataCommandOptions.tfr.LbaMid = M_Byte0(securityProtocolSpecific);
     ataCommandOptions.tfr.LbaHi = M_Byte1(securityProtocolSpecific);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -2954,7 +2649,10 @@ int ata_Trusted_Receive(tDevice *device, bool useDMA, uint8_t securityProtocol, 
         ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
         ataCommandOptions.tfr.CommandStatus = ATA_TRUSTED_RECEIVE;
     }
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataCommandOptions.tfr.ErrorFeature = securityProtocol;
     ataCommandOptions.tfr.SectorCount = M_Byte0(dataSize / LEGACY_DRIVE_SEC_SIZE);
     ataCommandOptions.tfr.LbaLow = M_Byte1(dataSize / LEGACY_DRIVE_SEC_SIZE);
@@ -3032,7 +2730,10 @@ int ata_Trusted_Send(tDevice *device, bool useDMA, uint8_t securityProtocol, uin
         ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
         ataCommandOptions.tfr.CommandStatus = ATA_TRUSTED_SEND;
     }
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataCommandOptions.tfr.ErrorFeature = securityProtocol;
     ataCommandOptions.tfr.SectorCount = M_Byte0(dataSize / LEGACY_DRIVE_SEC_SIZE);
     ataCommandOptions.tfr.LbaLow = M_Byte1(dataSize / LEGACY_DRIVE_SEC_SIZE);
@@ -3089,7 +2790,10 @@ int ata_Write_Buffer(tDevice *device, uint8_t *ptrData, bool useDMA)
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.dataSize = LEGACY_DRIVE_SEC_SIZE;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -3178,7 +2882,10 @@ int ata_Write_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t data
     ataCommandOptions.tfr.LbaMid = M_Byte1(LBA);
     ataCommandOptions.tfr.LbaHi = M_Byte2(LBA);
     ataCommandOptions.tfr.SectorCount = M_Byte0(dataSize / device->drive_info.deviceBlockSize);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
     if (device->drive_info.ata_Options.isDevice1)
     {
@@ -3257,7 +2964,10 @@ int ata_Write_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t
     ataCommandOptions.tfr.LbaMid = M_Byte1(LBA);
     ataCommandOptions.tfr.LbaHi = M_Byte2(LBA);
     ataCommandOptions.tfr.SectorCount = M_Byte0(dataSize / device->drive_info.deviceBlockSize);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -3352,7 +3062,10 @@ int ata_Write_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t 
     ataCommandOptions.tfr.LbaMid = M_Byte1(LBA);
     ataCommandOptions.tfr.LbaHi = M_Byte2(LBA);
     ataCommandOptions.tfr.SectorCount = M_Byte0(dataSize / device->drive_info.deviceBlockSize);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -3423,7 +3136,10 @@ int ata_Write_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, 
     ataCommandOptions.tfr.LbaMid = M_Byte1(LBA);
     ataCommandOptions.tfr.LbaHi = M_Byte2(LBA);
     ataCommandOptions.tfr.SectorCount = M_Byte0(dataSize / device->drive_info.deviceBlockSize);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -3472,7 +3188,10 @@ int ata_Write_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID, bool fl
     ataCommandOptions.tfr.LbaHi48 = M_Byte5(LBA);
     ataCommandOptions.tfr.SectorCount = M_Byte0(dataSize / device->drive_info.deviceBlockSize);
     ataCommandOptions.tfr.SectorCount48 = M_Byte1(dataSize / device->drive_info.deviceBlockSize);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
     if (device->drive_info.ata_Options.isDevice1)
     {
@@ -3568,7 +3287,10 @@ int ata_Write_Uncorrectable(tDevice *device, uint8_t unrecoverableOptions, uint1
     ataCommandOptions.tfr.LbaHi48 = M_Byte5(LBA);
     ataCommandOptions.tfr.SectorCount = M_Byte0(numberOfSectors);
     ataCommandOptions.tfr.SectorCount48 = M_Byte1(numberOfSectors);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -3872,7 +3594,10 @@ int ata_Set_Features(tDevice *device, uint8_t subcommand, uint8_t subcommandCoun
     ataCommandOptions.tfr.LbaLow = subcommandLBALo;
     ataCommandOptions.tfr.LbaMid = subcommandLBAMid;
     ataCommandOptions.tfr.LbaHi = M_Byte0(subcommandLBAHi);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -4001,7 +3726,10 @@ int ata_Identify_Packet_Device(tDevice *device, uint8_t *ptrData, uint32_t dataS
     ataCommandOptions.tfr.ErrorFeature = 0;
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
     ataCommandOptions.tfr.CommandStatus = ATAPI_IDENTIFY;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -4267,7 +3995,10 @@ int ata_ZAC_Management_In(tDevice *device, eZMAction action, uint8_t actionSpeci
     ataCommandOptions.tfr.ErrorFeature = C_CAST(uint8_t, action);
     ataCommandOptions.tfr.SectorCount = RESERVED;
     ataCommandOptions.tfr.SectorCount48 = RESERVED;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
     if (device->drive_info.ata_Options.isDevice1)
     {
@@ -4338,7 +4069,10 @@ int ata_ZAC_Management_Out(tDevice *device, eZMAction action, uint8_t actionSpec
     ataCommandOptions.tfr.ErrorFeature = C_CAST(uint8_t, action);
     ataCommandOptions.tfr.SectorCount = RESERVED;
     ataCommandOptions.tfr.SectorCount48 = RESERVED;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
     if (device->drive_info.ata_Options.isDevice1)
     {
@@ -4459,7 +4193,10 @@ int ata_Media_Eject(tDevice *device)
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_MEDIA_EJECT;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -4492,7 +4229,10 @@ int ata_Get_Media_Status(tDevice *device)
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_GET_MEDIA_STATUS;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -4525,7 +4265,10 @@ int ata_Media_Lock(tDevice *device)
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_DOOR_LOCK;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -4558,7 +4301,10 @@ int ata_Media_Unlock(tDevice *device)
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_DOOR_UNLOCK;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -4599,7 +4345,10 @@ int ata_Zeros_Ext(tDevice *device, uint16_t numberOfLogicalSectors, uint64_t lba
     ataCommandOptions.tfr.LbaLow48 = M_Byte4(lba);
     ataCommandOptions.tfr.LbaMid48 = M_Byte5(lba);
     ataCommandOptions.tfr.LbaHi48 = M_Byte6(lba);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
     if (device->drive_info.ata_Options.isDevice1)
     {
@@ -4642,7 +4391,10 @@ int ata_Set_Sector_Configuration_Ext(tDevice *device, uint16_t commandCheck, uin
     ataCommandOptions.tfr.SectorCount = sectorConfigurationDescriptorIndex & 0x07;
     ataCommandOptions.tfr.Feature48 = M_Byte1(commandCheck);
     ataCommandOptions.tfr.ErrorFeature = M_Byte0(commandCheck);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (os_Is_Infinite_Timeout_Supported())
     {
         ataCommandOptions.timeout = INFINITE_TIMEOUT_VALUE;
@@ -4705,7 +4457,10 @@ int ata_Get_Physical_Element_Status(tDevice *device, uint8_t filter, uint8_t rep
     ataCommandOptions.tfr.LbaLow48 = M_Byte3(startingElement);
     ataCommandOptions.tfr.LbaMid48 = M_Byte4(startingElement);
     ataCommandOptions.tfr.LbaHi48 = M_Byte5(startingElement);
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -4738,7 +4493,10 @@ int ata_Remove_Element_And_Truncate(tDevice *device, uint32_t elementIdentifier,
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
     ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_REMOVE_AND_TRUNCATE;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataCommandOptions.tfr.SectorCount = M_Byte0(elementIdentifier);
     ataCommandOptions.tfr.SectorCount48 = M_Byte1(elementIdentifier);
     ataCommandOptions.tfr.ErrorFeature = M_Byte2(elementIdentifier);
@@ -4790,7 +4548,10 @@ int ata_Restore_Elements_And_Rebuild(tDevice *device)
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
     ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_RESTORE_AND_REBUILD;
-    ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
+    {
+        ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    }
     ataCommandOptions.tfr.SectorCount = RESERVED;
     ataCommandOptions.tfr.SectorCount48 = RESERVED;
     ataCommandOptions.tfr.ErrorFeature = RESERVED;
@@ -4830,7 +4591,7 @@ int ata_Restore_Elements_And_Rebuild(tDevice *device)
 }
 
 /////////////////////////////////////////////
-/// Asynchronous Commands below this line /// //NOTE: Not in the header file at this time since lower layer code isn't asynchronous yet
+/// Asynchronous Commands below this line ///
 /////////////////////////////////////////////
 
 int ata_NCQ_Non_Data(tDevice *device, uint8_t subCommand /*bits 4:0*/, uint16_t subCommandSpecificFeature /*bits 11:0*/, uint8_t subCommandSpecificCount, uint8_t ncqTag /*bits 5:0*/, uint64_t lba, uint32_t auxilary)
@@ -4882,7 +4643,7 @@ int ata_NCQ_Abort_NCQ_Queue(tDevice *device, uint8_t abortType /*bits0:3*/, uint
     return ata_NCQ_Non_Data(device, 0, abortType, C_CAST(uint16_t, prio) << 6, ncqTag, C_CAST(uint64_t, tTag) << 3, 0);
 }
 
-int ata_NCQ_Deadline_Handlinge(tDevice *device, bool rdnc, bool wdnc, uint8_t ncqTag)
+int ata_NCQ_Deadline_Handling(tDevice *device, bool rdnc, bool wdnc, uint8_t ncqTag)
 {
     uint16_t ft = 0;
     if (rdnc)

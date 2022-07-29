@@ -132,6 +132,9 @@ static int set_Device_Partition_Info(tDevice* device)
 #endif
     if (partitionCount > 0)
     {
+        device->os_info.fileSystemInfo.fileSystemInfoValid = true;
+        device->os_info.fileSystemInfo.hasActiveFileSystem = false;
+        device->os_info.fileSystemInfo.isSystemDisk = false;
         ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
         if (parts)
         {
@@ -141,7 +144,7 @@ static int set_Device_Partition_Info(tDevice* device)
                 for (; iter < partitionCount; ++iter)
                 {
                     //since we found a partition, set the "has file system" bool to true
-                    device->os_info.fileSystemInfo.hasFileSystem = true;
+                    device->os_info.fileSystemInfo.hasActiveFileSystem = true;
 #if defined (_DEBUG)
                     printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
 #endif
@@ -162,6 +165,12 @@ static int set_Device_Partition_Info(tDevice* device)
         {
             ret = MEMORY_FAILURE;
         }
+    }
+    else
+    {
+        device->os_info.fileSystemInfo.fileSystemInfoValid = true;
+        device->os_info.fileSystemInfo.hasActiveFileSystem = false;
+        device->os_info.fileSystemInfo.isSystemDisk = false;
     }
     return ret;
 }
@@ -190,7 +199,7 @@ int get_Device(const char *filename, tDevice *device)
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
         //set the name
-        snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, filename);
+        snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
         set_Device_Partition_Info(device);
         //set the friendly name
         set_Device_Name(filename, device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
@@ -272,7 +281,7 @@ int os_Bus_Reset(tDevice *device)
     return uscsi_Reset(device->os_info.fd, USCSI_RESET_ALL);
 }
 
-int os_Controller_Reset(tDevice *device)
+int os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
@@ -498,7 +507,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
+int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, M_ATTR_UNUSED uint64_t flags)
 {
     int returnValue = SUCCESS;
     int numberOfDevices = 0;

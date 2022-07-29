@@ -16,7 +16,38 @@
 #include "ata_helper_func.h"
 #include "scsi_helper_func.h"
 
-bool is_Buffer_Non_Zero(uint8_t* ptrData, uint32_t dataLen)
+//This is a basic validity indicator for a given ATA identify word. Checks that it is non-zero and not FFFFh
+bool is_ATA_Identify_Word_Valid(uint16_t word)
+{
+    bool valid = false;
+    if (word != UINT16_C(0) && word != UINT16_MAX)
+    {
+        valid = true;
+    }
+    return valid;
+}
+
+bool is_ATA_Identify_Word_Valid_With_Bits_14_And_15(uint16_t word)
+{
+    bool valid = false;
+    if (is_ATA_Identify_Word_Valid(word) && (word & BIT15) == 0 && (word & BIT14) == BIT14)
+    {
+        valid = true;
+    }
+    return valid;
+}
+
+bool is_ATA_Identify_Word_Valid_SATA(uint16_t word)
+{
+    bool valid = false;
+    if (is_ATA_Identify_Word_Valid(word) && (word & BIT0) == 0)
+    {
+        valid = true;
+    }
+    return valid;
+}
+
+static bool is_Buffer_Non_Zero(uint8_t* ptrData, uint32_t dataLen)
 {
     bool isNonZero = false;
     for (uint32_t iter = 0; iter < dataLen; ++iter)
@@ -37,7 +68,15 @@ int send_ATA_Read_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t page
     if (device->drive_info.ata_Options.generalPurposeLoggingSupported)
     {
         bool dmaRetry = false;
-        if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.readLogWriteLogDMASupported)
+        bool sataLogRequiresPIO = false;
+        if (!device->drive_info.ata_Options.sataReadLogDMASameAsPIO && (logAddress == ATA_LOG_NCQ_COMMAND_ERROR_LOG || logAddress == ATA_LOG_SATA_PHY_EVENT_COUNTERS_LOG))
+        {
+            //special case for SATA NCQ error log and Phy event counters log! 
+            // Old drives may require PIO mode to read these logs!
+            //This uses SATA id word 76 to identify the case and adjust which command to issue in this case.
+            sataLogRequiresPIO = true;
+        }
+        if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.readLogWriteLogDMASupported && !sataLogRequiresPIO)
         {
             //try a read log ext DMA command
             ret = ata_Read_Log_Ext(device, logAddress, pageNumber, ptrData, dataSize, true, featureRegister);
@@ -124,7 +163,13 @@ int send_ATA_SCT(tDevice *device, eDataTransferDirection direction, uint8_t logA
     {
         return BAD_PARAMETER;
     }
-    if (device->drive_info.ata_Options.generalPurposeLoggingSupported)
+    bool useGPL = device->drive_info.ata_Options.generalPurposeLoggingSupported;
+    //This is a hack for some USB drives. While a caller somewhere above this should handle this, this needs to be here to ensure we don't hang these devices.
+    if (device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly)
+    {
+        useGPL = false;
+    }
+    if (useGPL)
     {
         if (direction == XFER_DATA_IN)
         {
@@ -895,7 +940,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         }
 
         //get the sector sizes from the identify data
-        if (((ident_word[106] & BIT14) == BIT14) && ((ident_word[106] & BIT15) == 0)) //making sure this word has valid data
+        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(ident_word[106])) //making sure this word has valid data
         {
             //word 117 is only valid when word 106 bit 12 is set
             if ((ident_word[106] & BIT12) == BIT12)
@@ -925,7 +970,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             *fillPhysicalSectorSize = LEGACY_DRIVE_SEC_SIZE;
         }
         //get the sector alignment
-        if (ident_word[209] & BIT14)
+        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(ident_word[209]))
         {
             //bits 13:0 are valid for alignment. bit 15 will be 0 and bit 14 will be 1. remove bit 14 with an xor
             *fillSectorAlignment = ident_word[209] ^ BIT14;
@@ -968,14 +1013,14 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             //    head = identifyData[6];//Word3
             //    sector = identifyData[12];//Word6
             //}
-            uint32_t lba = cylinder * head * sector;
+            uint32_t lba = C_CAST(uint32_t, cylinder) * C_CAST(uint32_t, head) * C_CAST(uint32_t, sector);
             if (lba == 0)
             {
                 //Cannot use "current" settings on this drive...use default (really old drive)
                 cylinder = M_BytesTo2ByteValue(identifyData[3], identifyData[2]);//word 1
                 head = identifyData[6];//Word3
                 sector = identifyData[12];//Word6
-                lba = cylinder * head * sector;
+                lba = C_CAST(uint32_t, cylinder) * C_CAST(uint32_t, head) * C_CAST(uint32_t, sector);
             }
             *fillMaxLba = lba;
         }
@@ -1065,11 +1110,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         {
             device->drive_info.ata_Options.taggedCommandQueuingSupported = true;
         }
-        //check for native command queuing support
-        if (ident_word[76] & BIT8)
-        {
-            device->drive_info.ata_Options.nativeCommandQueuingSupported = true;
-        }
+        
         //check if the device is parallel or serial
         uint8_t transportType = (ident_word[222] & (BIT15 | BIT14 | BIT13 | BIT12)) >> 12;
         switch (transportType)
@@ -1082,9 +1123,44 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         default:
             break;
         }
-        if (device->drive_info.IdentifyData.ata.Word076 > 0)//Only Serial ATA Devices will set the bits in words 76-79
+        //non-SATA compiant (PATA) devices will set this to 0 or FFFFh
+        if (is_ATA_Identify_Word_Valid_SATA(device->drive_info.IdentifyData.ata.Word076))
         {
             device->drive_info.ata_Options.isParallelTransport = false;
+            device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits = true;//TODO: May need to retry and test this just in case! Can use identify to validate. May be necessary for old controllers or drivers or weird controller modes
+            //check for native command queuing support
+            if (ident_word[76] & BIT8)
+            {
+                device->drive_info.ata_Options.nativeCommandQueuingSupported = true;
+            }
+            if (!device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
+            {
+                if (device->drive_info.IdentifyData.ata.Word076 & BIT15)
+                {
+                    device->drive_info.ata_Options.sataReadLogDMASameAsPIO = true;
+                }
+            }
+        }
+        else
+        {
+            device->drive_info.ata_Options.isParallelTransport = true;
+            device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits = false;//for PATA devices, continue setting these bits for backwards compatibility.
+            //NOTE: It may be possible to remove these bits on some PATA drives, but that will take more research that is likely not worth the time.-TJE
+            //if parallel ATA, check the current mode. If not DMA, turn off ALL DMA command support since the HBA or OS or bridge may not support DMA mode and we don't want to lose communication with the host
+            //now check if any DMA mode is enabled...if none are enabled, then it's running in PIO mode
+            if (!(M_GETBITRANGE(ident_word[62], 10, 8) != 0 //SWDMA
+                || M_GETBITRANGE(ident_word[63], 10, 8) != 0 //MWDMA
+                || M_GETBITRANGE(ident_word[88], 14, 8) != 0 //UDMA
+                ))
+            {
+                //in this case, remove all the support flags for DMA versions of commands since that is the easiest way to handle the rest of the library
+                device->drive_info.ata_Options.dmaSupported = false;
+                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_NO_DMA;
+                device->drive_info.ata_Options.downloadMicrocodeDMASupported = false;
+                device->drive_info.ata_Options.readBufferDMASupported = false;
+                device->drive_info.ata_Options.readLogWriteLogDMASupported = false;
+                device->drive_info.ata_Options.writeBufferDMASupported = false;
+            }
         }
         if (ident_word[119] & BIT2 || ident_word[120] & BIT2)
         {
@@ -1113,25 +1189,6 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             memcpy(device->drive_info.product_revision, device->drive_info.bridge_info.childDriveFW, FW_REV_LEN);
             device->drive_info.worldWideName = device->drive_info.bridge_info.childWWN;
         }
-        //if parallel ATA, check the current mode. If not DMA, turn off ALL DMA command support since the HBA or OS or bridge may not support DMA mode and we don't want to lose communication with the host
-        if (ident_word[76] == 0 || ident_word[76] == UINT16_MAX)//Check for parallel ATA.
-        {
-            //now check if any DMA mode is enabled...if none are enabled, then it's running in PIO mode
-            if (!(M_GETBITRANGE(ident_word[62], 10, 8) != 0 //SWDMA
-                || M_GETBITRANGE(ident_word[63], 10, 8) != 0 //MWDMA
-                || M_GETBITRANGE(ident_word[88], 14, 8) != 0 //UDMA
-                ))
-            {
-                //in this case, remove all the support flags for DMA versions of commands since that is the easiest way to handle the rest of the library
-                device->drive_info.ata_Options.dmaSupported = false;
-                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_NO_DMA;
-                device->drive_info.ata_Options.downloadMicrocodeDMASupported = false;
-                device->drive_info.ata_Options.readBufferDMASupported = false;
-                device->drive_info.ata_Options.readLogWriteLogDMASupported = false;
-                device->drive_info.ata_Options.writeBufferDMASupported = false;
-            }
-        }
-
     }
     else
     {
@@ -1385,11 +1442,6 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     return ret;
 }
 
-uint32_t GetRevWord(uint8_t *tempbuf, uint32_t offset)
-{
-    return ((tempbuf[offset + 1] << 8) + tempbuf[offset]);
-}
-
 uint16_t ata_Is_Extended_Power_Conditions_Feature_Supported(uint16_t *pIdentify)
 {
     ptAtaIdentifyData pIdent = C_CAST(ptAtaIdentifyData, pIdentify);
@@ -1624,7 +1676,7 @@ bool is_CHS_Mode_Supported(tDevice *device)
     return chsSupported;
 }
 
-bool is_Current_CHS_Info_Valid(tDevice *device)
+static bool is_Current_CHS_Info_Valid(tDevice *device)
 {
     bool chsSupported = true;
     uint8_t* identifyPtr = (uint8_t*)&device->drive_info.IdentifyData.ata.Word000;
@@ -1730,7 +1782,7 @@ int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_
                     *head = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
                     *sector = C_CAST(uint8_t, (lba % sectorsPerTrack) + UINT8_C(1));
                     //check that this isn't above the value of words 58:57
-                    uint32_t currentSector = (*cylinder) * (*head) * (*sector);
+                    uint32_t currentSector = C_CAST(uint32_t, (*cylinder)) * C_CAST(uint32_t, (*head)) * C_CAST(uint32_t, (*sector));
                     if (currentSector > userAddressableCapacityCHS)
                     {
                         //change the return value, but leave the calculated values as they are
@@ -1744,9 +1796,9 @@ int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_
                     *cylinder = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder * sectorsPerTrack));
                     *head = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
                     *sector = C_CAST(uint8_t, (lba % sectorsPerTrack) + UINT8_C(1));
-                    userAddressableCapacityCHS = device->drive_info.IdentifyData.ata.Word001 * device->drive_info.IdentifyData.ata.Word003 * device->drive_info.IdentifyData.ata.Word006;
+                    userAddressableCapacityCHS = C_CAST(uint32_t, device->drive_info.IdentifyData.ata.Word001) * C_CAST(uint32_t, device->drive_info.IdentifyData.ata.Word003) * C_CAST(uint32_t, device->drive_info.IdentifyData.ata.Word006);
                     //check that this isn't above the value of words 58:57
-                    uint32_t currentSector = (*cylinder) * (*head) * (*sector);
+                    uint32_t currentSector = C_CAST(uint32_t, (*cylinder)) * C_CAST(uint32_t, (*head)) * C_CAST(uint32_t, (*sector));
                     if (currentSector > userAddressableCapacityCHS)
                     {
                         //change the return value, but leave the calculated values as they are

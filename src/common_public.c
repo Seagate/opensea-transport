@@ -13,7 +13,7 @@
 
 #include "platform_helper.h"
 
-int load_Bin_Buf( char *filename, void *myBuf, size_t bufSize )
+int load_Bin_Buf(char *filename, void *myBuf, size_t bufSize)
 {
     //int ret = UNKNOWN;
     FILE     *fp;
@@ -105,7 +105,7 @@ bool scan_Interface_Type_Filter(tDevice *device, uint32_t scanFlags)
     //filter out other flags that don't matter here
     scanFlags &= ALL_INTERFACES;
     //if no filter flags are being used, then we need to just return true to show the device
-    if (scanFlags == DEFAULT_SCAN )
+    if (scanFlags == DEFAULT_SCAN)
     {
         showInterface = true;
     }
@@ -238,7 +238,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             if (outputInfo->outputFileName && *outputInfo->outputFileName && strlen(*outputInfo->outputFileName))
                             {
                                 char *dup = strdup(fileNameAndPath);
-                                if(dup)
+                                if (dup)
                                 {
                                     snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s%s", dup, *outputInfo->outputFileName);
                                     safe_Free(dup)
@@ -251,7 +251,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             else
                             {
                                 char *dup = strdup(fileNameAndPath);
-                                if(dup)
+                                if (dup)
                                 {
                                     snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%sscanOutput", dup);
                                     safe_Free(dup)
@@ -262,7 +262,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                                 }
                             }
                             char *dup = strdup(fileNameAndPath);
-                            if(dup)
+                            if (dup)
                             {
                                 snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s.txt", dup);
                                 safe_Free(dup)
@@ -320,6 +320,13 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                     if (flags & SCAN_SEAGATE_ONLY)
                     {
                         if (is_Seagate_Family(&deviceList[devIter]) == NON_SEAGATE)
+                        {
+                            continue;
+                        }
+                    }
+                    if (flags & SCAN_IRONWOLF_NAS_ONLY)
+                    {
+                        if (is_Ironwolf_NAS_Drive(&deviceList[devIter], false) == NON_IRONWOLF_NAS_DRIVE)
                         {
                             continue;
                         }
@@ -465,7 +472,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
 }
 
 bool validate_Device_Struct(versionBlock sanity)
-{   
+{
     size_t tdevSize = sizeof(tDevice);
     if ((sanity.size == tdevSize) && (sanity.version == DEVICE_BLOCK_VERSION))
     {
@@ -1130,6 +1137,83 @@ bool is_Vendor_A(tDevice *device, bool USBchildDrive)
     return isVendorA;
 }
 
+eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(tDevice * device, bool USBchildDrive)
+{
+    eIronwolf_NAS_Drive isIronWolfNASDrive = NON_IRONWOLF_NAS_DRIVE;
+    char *modelNumber = &device->drive_info.product_identification[0];
+    if (USBchildDrive)
+    {
+        modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
+    }
+
+    if (strlen(modelNumber))
+    {
+        if (wildcard_Match("ST*VN*", modelNumber))   //check if Ironwolf HDD
+            isIronWolfNASDrive = IRONWOLF_NAS_DRIVE;
+        else if (wildcard_Match("ST*NE*", modelNumber) || wildcard_Match("ST*NT*", modelNumber))  //check if Ironwolf Pro HDD
+            isIronWolfNASDrive = IRONWOLF_PRO_NAS_DRIVE;
+        else if (wildcard_Match("*ZA*NM*", modelNumber))  //check if SATA Ironwolf SSD
+            isIronWolfNASDrive = IRONWOLF_NAS_DRIVE;
+        else if (wildcard_Match("*ZA*NX*", modelNumber))  //check if SATA Ironwolf Pro SSD
+            isIronWolfNASDrive = IRONWOLF_PRO_NAS_DRIVE;
+        else if (wildcard_Match("*ZP*NM*", modelNumber))  //check if PCIe Ironwolf SSD
+            isIronWolfNASDrive = IRONWOLF_NAS_DRIVE;
+    }
+
+    if (!USBchildDrive && isIronWolfNASDrive == NON_IRONWOLF_NAS_DRIVE)
+        return is_Ironwolf_NAS_Drive(device, true);
+
+    return isIronWolfNASDrive;
+}
+
+bool is_Firecuda_Drive(tDevice * device, bool USBchildDrive)
+{
+    bool isFirecudaDrive = false;
+    char *modelNumber = &device->drive_info.product_identification[0];
+    if (USBchildDrive)
+    {
+        modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
+    }
+
+    if (strlen(modelNumber))
+    {
+        if (wildcard_Match("ST*DX*", modelNumber))   //check if Firecuda HDD
+            isFirecudaDrive = true;
+        else if (wildcard_Match("*ZA*GM*", modelNumber))  //check if SATA Firecuda SSD
+            isFirecudaDrive = true;
+        else if (wildcard_Match("*ZP*GM*", modelNumber))  //check if PCIe Firecuda SSD
+            isFirecudaDrive = true;
+    }
+
+    if (!USBchildDrive && !isFirecudaDrive)
+        return is_Firecuda_Drive(device, true);
+
+    return isFirecudaDrive;
+}
+
+eSkyhawk_Drive is_Skyhawk_Drive(tDevice * device, bool USBchildDrive)
+{
+    eSkyhawk_Drive isSkyhawkDrive = NON_SKYHAWK_DRIVE;
+    char *modelNumber = &device->drive_info.product_identification[0];
+    if (USBchildDrive)
+    {
+        modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
+    }
+
+    if (strlen(modelNumber))
+    {
+        if (wildcard_Match("ST*VX*", modelNumber))   //check if Skyhawk HDD
+            isSkyhawkDrive = SKYHAWK_DRIVE;
+        else if (wildcard_Match("ST*VE*", modelNumber))  //check if Skyhawk AI HDD
+            isSkyhawkDrive = SKYHAWK_AI_DRIVE;
+    }
+
+    if (!USBchildDrive && isSkyhawkDrive == NON_SKYHAWK_DRIVE)
+        return is_Skyhawk_Drive(device, true);
+
+    return isSkyhawkDrive;
+}
+
 bool is_Seagate_Model_Number_Vendor_B(tDevice *device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
@@ -1160,6 +1244,7 @@ bool is_Seagate_Model_Number_Vendor_B(tDevice *device, bool USBchildDrive)
     }
     return isSeagateVendor;
 }
+
 bool is_Seagate_Model_Number_Vendor_C(tDevice *device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
@@ -1235,6 +1320,7 @@ bool is_Seagate_Model_Number_Vendor_D(tDevice *device, bool USBchildDrive)
     }
     return isSeagateVendor;
 }
+
 bool is_Seagate_Model_Number_Vendor_E(tDevice *device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
@@ -1375,33 +1461,33 @@ bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
             ((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
                 && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CM") == 7))
             ||
-			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CV") == 7))
-			||
-			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "MC") == 7))
-			|| 
-			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "GM") == 7))
-			||
-			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "MC") == 7))
-			||
-			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "NM10002") == 7)) //Vendor_F and Vendor_G has same model# except for last part, so need more chars for comparison
-			||
-			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "NX") == 7))
-			||
-			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "ZG") == 7))
-			||
-			((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "ZH") == 7))
-			||
-			((strstr(device->drive_info.bridge_info.childDriveMN, "ZP") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CV") == 7))
-			||
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CV") == 7))
+            ||
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "MC") == 7))
+            ||
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "GM") == 7))
+            ||
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "MC") == 7))
+            ||
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "NM10002") == 7)) //Vendor_F and Vendor_G has same model# except for last part, so need more chars for comparison
+            ||
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "NX") == 7))
+            ||
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "ZG") == 7))
+            ||
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "ZH") == 7))
+            ||
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "ZP") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CV") == 7))
+            ||
             ((strstr(device->drive_info.bridge_info.childDriveMN, "YA") != NULL)
                 && (find_last_occurrence_in_string(device->drive_info.bridge_info.childDriveMN, "CM") == 7))
             ||
@@ -1426,34 +1512,33 @@ bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
             ((strstr(device->drive_info.product_identification, "ZA") != NULL)
                 && (find_last_occurrence_in_string(device->drive_info.product_identification, "CM") == 7))
             ||
-			((strstr(device->drive_info.product_identification, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "CV") == 7))
-			||
-
-			((strstr(device->drive_info.product_identification, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "MC") == 7))
-			|| 
-			((strstr(device->drive_info.product_identification, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "GM") == 7))
-			||
-			((strstr(device->drive_info.product_identification, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "MC") == 7))
-			||
-			((strstr(device->drive_info.product_identification, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "NM10002") == 7)) //Vendor_F and Vendor_G has same model# except for last part, so need more chars for comparison
-			||
-			((strstr(device->drive_info.product_identification, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "NX") == 7))
-			||
-			((strstr(device->drive_info.product_identification, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "ZH") == 7))
-			||
-			((strstr(device->drive_info.product_identification, "ZA") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "ZG") == 7))
-			||
-			((strstr(device->drive_info.product_identification, "ZP") != NULL)
-				&& (find_last_occurrence_in_string(device->drive_info.product_identification, "CV") == 7))
-			||
+            ((strstr(device->drive_info.product_identification, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.product_identification, "CV") == 7))
+            ||
+            ((strstr(device->drive_info.product_identification, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.product_identification, "MC") == 7))
+            ||
+            ((strstr(device->drive_info.product_identification, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.product_identification, "GM") == 7))
+            ||
+            ((strstr(device->drive_info.product_identification, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.product_identification, "MC") == 7))
+            ||
+            ((strstr(device->drive_info.product_identification, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.product_identification, "NM10002") == 7)) //Vendor_F and Vendor_G has same model# except for last part, so need more chars for comparison
+            ||
+            ((strstr(device->drive_info.product_identification, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.product_identification, "NX") == 7))
+            ||
+            ((strstr(device->drive_info.product_identification, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.product_identification, "ZH") == 7))
+            ||
+            ((strstr(device->drive_info.product_identification, "ZA") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.product_identification, "ZG") == 7))
+            ||
+            ((strstr(device->drive_info.product_identification, "ZP") != NULL)
+                && (find_last_occurrence_in_string(device->drive_info.product_identification, "CV") == 7))
+            ||
             ((strstr(device->drive_info.product_identification, "YA") != NULL)
                 && (find_last_occurrence_in_string(device->drive_info.product_identification, "CM") == 7))
             ||
@@ -1560,7 +1645,7 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
             if (is_Samsung_HDD(device, false))
             {
                 //If this is an NVMe drive, we need to check if it's Seagate since both Samsung HDD's and Seagate NVMe drives use the same IEEE OUI
-                if(device->drive_info.drive_type == NVME_DRIVE)
+                if (device->drive_info.drive_type == NVME_DRIVE)
                 {
                     if (is_Seagate(device, false))
                     {
@@ -1690,6 +1775,7 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
     }
     return isSeagateFamily;
 }
+
 bool is_SSD(tDevice *device)
 {
     if (device->drive_info.media_type == MEDIA_NVM || device->drive_info.media_type == MEDIA_SSD)
@@ -1737,17 +1823,17 @@ bool is_Sector_Size_Emulation_Active(tDevice *device)
 int calculate_Checksum(uint8_t *pBuf, uint32_t blockSize)
 {
     if (
-        (blockSize > LEGACY_DRIVE_SEC_SIZE) 
+        (blockSize > LEGACY_DRIVE_SEC_SIZE)
         || (blockSize == 0)
         || (pBuf == NULL)
         )
     {
         return BAD_PARAMETER;
     }
-    
-    printf("%s: blksize %d, pBuf %p\n",__FUNCTION__, blockSize, C_CAST(void*, pBuf));
-    
-    uint8_t checksum = 0; 
+
+    printf("%s: blksize %d, pBuf %p\n", __FUNCTION__, blockSize, C_CAST(void*, pBuf));
+
+    uint8_t checksum = 0;
     uint32_t counter = 0;
     for (counter = 0; counter < 511; counter++)
     {
@@ -1755,7 +1841,7 @@ int calculate_Checksum(uint8_t *pBuf, uint32_t blockSize)
     }
     pBuf[511] = (~checksum + 1);
 
-    printf("%s: counter %d\n",__FUNCTION__, counter);
+    printf("%s: counter %d\n", __FUNCTION__, counter);
 
     return SUCCESS;
 }
@@ -2037,12 +2123,12 @@ int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDe
 
 
     /*
-    Go through all the devices in the list. 
+    Go through all the devices in the list.
     */
     for (i = 0; i < *numberOfDevices - 1; i++)
     {
         /*
-        Go compare it to all the rest of the drives i + 1. 
+        Go compare it to all the rest of the drives i + 1.
         */
         for (j = i + 1; j < *numberOfDevices; j++)
 
@@ -2053,12 +2139,12 @@ int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDe
             ret = SUCCESS;
             sameSlNo = false;
 
-            if ( ((deviceList + i) && strlen((deviceList + i)->drive_info.serialNumber) > 0) &&
-                 ((deviceList + j) && strlen((deviceList + j)->drive_info.serialNumber) > 0) )
+            if (((deviceList + i) && strlen((deviceList + i)->drive_info.serialNumber) > 0) &&
+                ((deviceList + j) && strlen((deviceList + j)->drive_info.serialNumber) > 0))
             {
-                 sameSlNo = (strncmp((deviceList + i)->drive_info.serialNumber,
-                     (deviceList + j)->drive_info.serialNumber,
-                     strlen((deviceList + i)->drive_info.serialNumber)) == 0);
+                sameSlNo = (strncmp((deviceList + i)->drive_info.serialNumber,
+                    (deviceList + j)->drive_info.serialNumber,
+                    strlen((deviceList + i)->drive_info.serialNumber)) == 0);
             }
 
             if (sameSlNo)
@@ -2193,21 +2279,21 @@ bool is_Removable_Media(tDevice *device)
     bool result = false;
     uint8_t scsiDevType;
 
-    if(device->drive_info.interface_type == IDE_INTERFACE) 
+    if (device->drive_info.interface_type == IDE_INTERFACE)
     {
-        if(device->drive_info.drive_type == UNKNOWN_DRIVE || 
-           device->drive_info.drive_type == FLASH_DRIVE ||
-           device->drive_info.drive_type == ATAPI_DRIVE || 
-           device->drive_info.media_type == MEDIA_OPTICAL || 
-           device->drive_info.media_type == MEDIA_SSM_FLASH || 
-           device->drive_info.media_type == MEDIA_TAPE || 
-           device->drive_info.media_type == MEDIA_UNKNOWN ||
-           (device->drive_info.IdentifyData.ata.Word000 & BIT7) )
+        if (device->drive_info.drive_type == UNKNOWN_DRIVE ||
+            device->drive_info.drive_type == FLASH_DRIVE ||
+            device->drive_info.drive_type == ATAPI_DRIVE ||
+            device->drive_info.media_type == MEDIA_OPTICAL ||
+            device->drive_info.media_type == MEDIA_SSM_FLASH ||
+            device->drive_info.media_type == MEDIA_TAPE ||
+            device->drive_info.media_type == MEDIA_UNKNOWN ||
+            (device->drive_info.IdentifyData.ata.Word000 & BIT7))
         {
             result = true;
         }
     }
-    else if(device->drive_info.interface_type == SCSI_INTERFACE) 
+    else if (device->drive_info.interface_type == SCSI_INTERFACE)
     {
         scsiDevType = device->drive_info.scsiVpdData.inquiryData[0] & 0x1F;
 
@@ -2229,10 +2315,10 @@ bool is_Removable_Media(tDevice *device)
         {
             result = true;
         }
-        
+
 
     }
-    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES )
+    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
         printf("Calling from file : %s function : %s line : %li \n", __FILE__, __FUNCTION__, C_CAST(long int, __LINE__));
         if (result)
@@ -2358,6 +2444,29 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
                 break;
+            case 0x200D://Game Drive XBox
+            case 0x200F://Game Drive XBox
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 34;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
+                break;
             case 0x2020://Firecuda HDD
                 passthroughHacksSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
@@ -2442,6 +2551,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 0;
                 break;
             case 0x2030://Expansion HDD
+            case 0x2031://Expansion HDD
                 passthroughHacksSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
@@ -2451,6 +2561,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
                 device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
@@ -2491,6 +2602,29 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
+                break;
+            case 0x204B://FireCuda HDD
+            case 0x204C://FireCuda HDDv
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 34;//test one showed 3...
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
@@ -3658,6 +3792,29 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly = true;
                 device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 0;
+                break;
+            case 0x1105://Mobile Drive
+            case 0x1106://Mobile Drive
+            case 0x1107://Mobile Secure
+                //oddly I cannot get a security protocol in command to work on this device (1107) despite how it is marketted. May need to recheck this in the future in case this was a mislabbelled drive
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 34;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             default:
                 //setup some defaults that will most likely work for most current products

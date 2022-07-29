@@ -720,6 +720,9 @@ extern "C"
         bool enableLegacyPassthroughDetectionThroughTrialAndError;//This must be set to true in order to work on legacy (ancient) passthrough if the VID/PID is not in the list and not read from the system.
         bool senseDataReportingEnabled;//this is to track when the RTFRs may contain a sense data bit so it can be read automatically.
         uint8_t forceSATCDBLength;//set this to 12, 16, or 32 to force a specific CDB length to use. If you set 12, but send an extended command 16B will be used if any extended registers are set. Same with 32B will be used if ICC or AUX are set.
+        bool sataReadLogDMASameAsPIO; //not all SATA drives allow reading SATA specific pages with the DMA command. This specifies that it is allowed. (NCQ error log, phy event counters log, etc)
+        bool noNeedLegacyDeviceHeadCompatBits; //original ATA spec required bits 7 and 5 to be set to 1. This was removed a long time ago, but can affect just about any pata device. This helps change when to set them as they are not needed on SATA (or shouldn't be)
+        uint8_t reserved[7];//reserved padding to keep 8 byte aligned structure for any necessary flags in the future.
     }ataOptions;
 
     typedef enum _eZonedDeviceType {
@@ -1156,7 +1159,10 @@ extern "C"
         unsigned int        last_error; // errno in Linux or GetLastError in Windows.
         struct {
             bool fileSystemInfoValid;//This must be set to true for the other bools to have any meaning. This is here because some OS's may not have support for detecting this information
-            bool hasFileSystem;//This will only be true for filesystems the current OS can detect. Ex: Windows will only set this for mounted volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem types since it can handle more than Windows by default
+            union {
+                bool hasFileSystem;//[deprecated], use the hasActiveFileSystem below. This will only be true for filesystems the current OS can detect. Ex: Windows will only set this for mounted volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem types since it can handle more than Windows by default
+                bool hasActiveFileSystem;//This is a bit more clear that the filesystem detected was mounted and is in use within the OS.
+            };
             bool isSystemDisk;//This will be set if the drive has a file system and the OS is running off of it. Ex: Windows' C:\Windows\System32, Linux's / & /boot, etc
         }fileSystemInfo;
         ptrCsmiDeviceInfo csmiDeviceData;//This is a pointer because it will only be allocated when CSMI is supported. This is also used by Intel RST NVMe passthrough which is basically an extension of CSMI
@@ -1180,7 +1186,7 @@ extern "C"
 
     typedef int (*issue_io_func)( void * );
 
-    #define DEVICE_BLOCK_VERSION    (6)
+    #define DEVICE_BLOCK_VERSION    (7)
 
     // verification for compatibility checking
     typedef struct _versionBlock
@@ -1363,6 +1369,7 @@ extern "C"
     #define ALLOW_DUPLICATE_DEVICE BIT24 //This is ONLY used by the scan_And_Print_Devs function to filter what is output from it. This does NOT affect get_Device_List.
     #define IGNORE_CSMI BIT25 //only works in Windows since Linux never adopted CSMI support. Set this to ignore CSMI devices, or compile opensea-transport without the ENABLE_CSMI preprocessor definition.
 #endif
+    #define SCAN_IRONWOLF_NAS_ONLY BIT26
 
     typedef enum _eZoneReportingOptions
     {
@@ -1438,6 +1445,8 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int get_Version_Block(versionBlock * ver);
+
+    OPENSEA_TRANSPORT_API bool validate_Device_Struct(versionBlock sanity);
 
     //-----------------------------------------------------------------------------
     //
@@ -1753,6 +1762,89 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API bool is_Vendor_A(tDevice *device, bool USBchildDrive);
+
+    OPENSEA_TRANSPORT_API bool is_Conner_Model_Number(char *mn);
+    OPENSEA_TRANSPORT_API bool is_Conner_VendorID(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_Connor(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_CDC_VendorID(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_DEC_VendorID(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_MiniScribe_VendorID(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_Quantum_VendorID(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_Quantum_Model_Number(char* string);
+    OPENSEA_TRANSPORT_API bool is_Quantum(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_PrarieTek_VendorID(tDevice *device);
+
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_B(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_C(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_D(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_E(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_SSD_PJ(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_G(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_H(tDevice *device, bool USBchildDrive);
+
+
+    typedef enum _eIronwolf_NAS_Drive
+    {
+        NON_IRONWOLF_NAS_DRIVE,
+        IRONWOLF_NAS_DRIVE,
+        IRONWOLF_PRO_NAS_DRIVE,
+    } eIronwolf_NAS_Drive;
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Ironwolf_NAS_Drive(tDevice *device, bool USBchildDrive)
+    //
+    //! \brief   Checks if the device is a Ironwolf or Ironwolf Pro NAS drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 0 = Not a Ironwolf NAS Drive, 1 - a Ironwolf NAS Drive, 2 - a Ironwolf Pro NAS Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(tDevice *device, bool USBchildDrive);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Firecuda_Drive(tDevice *device, bool USBchildDrive)
+    //
+    //! \brief   Checks if the device is a Firecuda drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Firecuda Drive, 0 - Not a Firecuda Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Firecuda_Drive(tDevice *device, bool USBchildDrive);
+
+    typedef enum _eSkyhawk_Drive
+    {
+        NON_SKYHAWK_DRIVE,
+        SKYHAWK_DRIVE,
+        SKYHAWK_AI_DRIVE,
+    } eSkyhawk_Drive;
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Skyhawk_Drive(tDevice *device, bool USBchildDrive)
+    //
+    //! \brief   Checks if the device is a Skyhawk or Skyhawk AI drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 0 = Not a Skyhawk Drive, 1 - a Skyhawk Drive, 2 - a Skyhawk AI Drive
+    //
+    //-----------------------------------------------------------------------------
+        OPENSEA_TRANSPORT_API eSkyhawk_Drive is_Skyhawk_Drive(tDevice *device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //

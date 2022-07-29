@@ -6472,7 +6472,7 @@ static int sntl_Translate_Persistent_Reserve_In(tDevice * device, ScsiIoCtx * sc
             return ret;
         }
         uint16_t numberOfRegisteredControllers = M_BytesTo2ByteValue(nvmeReportKeys[5], nvmeReportKeys[6]);
-        persistentReserveDataLength = (numberOfRegisteredControllers * 8) + 8;
+        persistentReserveDataLength = (C_CAST(uint32_t, numberOfRegisteredControllers) * UINT8_C(8)) + UINT32_C(8);
         //allocate the memory we need.
         persistentReserveData = C_CAST(uint8_t*, calloc(persistentReserveDataLength, sizeof(uint8_t)));
         if (persistentReserveData)
@@ -6682,7 +6682,7 @@ static int sntl_Translate_Persistent_Reserve_In(tDevice * device, ScsiIoCtx * sc
             return ret;
         }
         uint16_t numberOfRegisteredControllers = M_BytesTo2ByteValue(nvmeReport[5], nvmeReport[6]);
-        persistentReserveDataLength = (numberOfRegisteredControllers * 32) + 8;//data structure size for full status is 32 bytes
+        persistentReserveDataLength = (C_CAST(uint32_t, numberOfRegisteredControllers) * UINT32_C(32)) + UINT32_C(8);//data structure size for full status is 32 bytes
         //allocate the memory we need.
         persistentReserveData = C_CAST(uint8_t*, calloc(persistentReserveDataLength, sizeof(uint8_t)));
         if (persistentReserveData)
