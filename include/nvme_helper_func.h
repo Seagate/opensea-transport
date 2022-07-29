@@ -295,6 +295,10 @@ OPENSEA_TRANSPORT_API int nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegiste
 
 OPENSEA_TRANSPORT_API int nvme_Abort_Command(tDevice *device, uint16_t commandIdentifier, uint16_t submissionQueueIdentifier);
 
+//Do not use the asynchronous event request at this time. More work is required at low levels to properly support this.
+//This definition is here for completeness at this time.
+OPENSEA_TRANSPORT_API int nvme_Asynchronous_Event_Request(tDevice *device, uint8_t *logPageIdentifier, uint8_t *asynchronousEventInformation, uint8_t *asynchronousEventType);
+
 OPENSEA_TRANSPORT_API int nvme_Device_Self_Test(tDevice *device, uint32_t nsid, uint8_t selfTestCode);
 
 OPENSEA_TRANSPORT_API int nvme_Security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t nvmeSecuritySpecificField, uint8_t *ptrData, uint32_t dataLength);

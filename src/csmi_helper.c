@@ -2169,7 +2169,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                         for (uint32_t raidSet = 0; !gotSASAddress && raidSet < raidInfo.Information.uNumRaidSets; ++raidSet)
                         {
                             //with the RAID info, now we can allocate and read the RAID config
-                            uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) - 1 + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
+                            uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
                             PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                             if (raidConfig)
                             {
@@ -2582,7 +2582,7 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
                     for (uint32_t raidSet = 0; raidSet < raidInfo.Information.uNumRaidSets && !foundDrive; ++raidSet)
                     {
                         //need to parse the RAID info to figure out how much memory to allocate and read the 
-                        uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) - 1 + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
+                        uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
                         PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                         if (!raidConfig)
                         {
@@ -2835,9 +2835,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                         //Check if it's a RAID capable controller. We only want to enumerate devices on those in this function
                         if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                             || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
-                            || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
-                            && strcmp(C_CAST(const char*, driverInfo.Information.szName), "arcsas") != 0 
-                            && strcmp(C_CAST(const char*, driverInfo.Information.szName), "HpCISSS3.sys") != 0) //skip arcsas and HpCISSS3.sys due to an unknown bug below in the scan that we have not yet resolved. It crashes the tool and it is not clear why at this time-TJE
+                            || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY))
                         {
                             //Get RAID info
                             CSMI_SAS_RAID_INFO_BUFFER csmiRAIDInfo;
@@ -2999,9 +2997,9 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 #if defined (_WIN32)
                 //Get the controller number from the scsi handle since we need it later!
                 int ret = sscanf(raidList->handle, "\\\\.\\SCSI%d:", &controllerNumber);
-                if (ret == 0 || ret != EOF)
+                if (ret == 0 || ret == EOF)
                 {
-                    printf("WARNING: Unable to scan controller number!\n");
+                    printf("WARNING: Unable to scan controller number! raid handle = %s\t ret = %d\n", raidList->handle, ret);
                 }
 
                 _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), raidList->handle);
@@ -3054,9 +3052,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                             //Check if it's a RAID capable controller. We only want to enumerate devices on those in this function
                             if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                                 || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
-                                || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
-                                && strcmp(C_CAST(const char*, driverInfo.Information.szName), "arcsas") != 0
-                                && strcmp(C_CAST(const char*, driverInfo.Information.szName), "HpCISSS3.sys") != 0) //skip arcsas and HpCISSS3.sys due to an unknown bug below in the scan that we have not yet resolved. It crashes the tool and it is not clear why at this time-TJE
+                                || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY))
                             {
                                 //Get RAID info & Phy info. Need to match the RAID config (below) to some of the phy info as best we can...-TJE
 #if defined (_WIN32)
@@ -3189,9 +3185,14 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                 }
                             }
                         }
-                        //This was a CSMI handle, remove it from the list!
-                        //This will also increment us to the next handle
+
+                        bool pointerAtBeginningOfRAIDList = raidList == *beginningOfList ? true : false;
                         raidList = remove_RAID_Handle(raidList, previousRaidListEntry);
+                        if (pointerAtBeginningOfRAIDList)
+                        {
+                            //if the first entry in the list was removed, we need up update the pointer before we exit so that the code that called here won't have an invalid pointer
+                            *beginningOfList = raidList;
+                        }
                         handleRemoved = true;
 #if !defined (_WIN32) //loop through controller numbers
                     }

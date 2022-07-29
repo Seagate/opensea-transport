@@ -4591,7 +4591,7 @@ int ata_Restore_Elements_And_Rebuild(tDevice *device)
 }
 
 /////////////////////////////////////////////
-/// Asynchronous Commands below this line /// //NOTE: Not in the header file at this time since lower layer code isn't asynchronous yet
+/// Asynchronous Commands below this line ///
 /////////////////////////////////////////////
 
 int ata_NCQ_Non_Data(tDevice *device, uint8_t subCommand /*bits 4:0*/, uint16_t subCommandSpecificFeature /*bits 11:0*/, uint8_t subCommandSpecificCount, uint8_t ncqTag /*bits 5:0*/, uint64_t lba, uint32_t auxilary)
@@ -4643,7 +4643,7 @@ int ata_NCQ_Abort_NCQ_Queue(tDevice *device, uint8_t abortType /*bits0:3*/, uint
     return ata_NCQ_Non_Data(device, 0, abortType, C_CAST(uint16_t, prio) << 6, ncqTag, C_CAST(uint64_t, tTag) << 3, 0);
 }
 
-int ata_NCQ_Deadline_Handlinge(tDevice *device, bool rdnc, bool wdnc, uint8_t ncqTag)
+int ata_NCQ_Deadline_Handling(tDevice *device, bool rdnc, bool wdnc, uint8_t ncqTag)
 {
     uint16_t ft = 0;
     if (rdnc)

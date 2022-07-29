@@ -936,6 +936,11 @@ extern "C"
         SCSI_PROTOCOL_ID_NO_SPECIFIC_PROTOCOL   = 0xF
     }eSCSIProtocolID;
 
+    OPENSEA_TRANSPORT_API bool is_LaCie_USB_Vendor_ID(const char* t10VendorIdent);
+    OPENSEA_TRANSPORT_API bool is_Seagate_USB_Vendor_ID(const char* t10VendorIdent);
+    OPENSEA_TRANSPORT_API bool is_Seagate_SAS_Vendor_ID(const char* t10VendorIdent);
+    OPENSEA_TRANSPORT_API void seagate_Serial_Number_Cleanup(const char* t10VendorIdent, char** unitSerialNumber, size_t unitSNSize);
+
 
     #if defined (__cplusplus)
 } //extern "C"
