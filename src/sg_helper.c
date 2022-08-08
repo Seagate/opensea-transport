@@ -439,7 +439,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 								pciPath = dirname(pciPath);//remove driver from the end
 								char *driverName = C_CAST(char *, calloc(PATH_MAX, sizeof(char)));
 								common_String_Concat(pciPath, PATH_MAX, "/driver");
-								ssize_t len = readlink(pciPath, device->drive_info.driver_info.driverPath, PATH_MAX);
+								ssize_t len = readlink(pciPath, device->drive_info.driver_info.driverPath, OPENSEA_PATH_MAX);
 								if (len != -1)
 								{
 									driverName = basename(&device->drive_info.driver_info.driverPath);
