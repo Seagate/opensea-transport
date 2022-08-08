@@ -72,6 +72,7 @@ extern "C"
     #define OPENSEA_MAX_CONTROLLERS (8U)
     #define MAX_DEVICES_PER_CONTROLLER (256U)
     #define MAX_DEVICES_TO_SCAN (OPENSEA_MAX_CONTROLLERS * MAX_DEVICES_PER_CONTROLLER)
+	#define MAX_DRIVER_NAME			40
 
     #define SERIAL_NUM_LEN          (20) //Going with ATA lengths
     #define MODEL_NUM_LEN           (40)
@@ -668,8 +669,8 @@ extern "C"
 
 	typedef struct _driverInfo
 	{
-		char driverPath[PATH_MAX];
-		char driverName[40];
+		char driverPath[OPENSEA_PATH_MAX];
+		char driverName[MAX_DRIVER_NAME];
 	} driverInfo;
 
     typedef enum _eATASynchronousDMAMode
