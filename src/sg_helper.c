@@ -371,6 +371,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                         //example sas device link: ../../devices/pci0000:00/0000:00:1c.0/0000:02:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_generic/sg3
                         //example firewire device link: ../../devices/pci0000:00/0000:00:1c.5/0000:04:00.0/0000:05:09.0/0000:0b:00.0/0000:0c:02.0/fw1/fw1.0/host13/target13:0:0/13:0:0:0/scsi_generic/sg3
                         //example sata over sas device link: ../../devices/pci0000:00/0000:00:1c.0/0000:02:00.0/host0/port-0:1/end_device-0:1/target0:0:1/0:0:1:0/scsi_generic/sg5
+						char *driverName = C_CAST(char *, calloc(PATH_MAX, sizeof(char)));
                         if (strstr(inHandleLink,"ata") != 0)
                         {
                             #if defined (_DEBUG)
@@ -437,7 +438,6 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 }
 								//Get Driver Information.
 								pciPath = dirname(pciPath);//remove driver from the end
-								char *driverName = C_CAST(char *, calloc(PATH_MAX, sizeof(char)));
 								common_String_Concat(pciPath, PATH_MAX, "/driver");
 								ssize_t len = readlink(pciPath, device->drive_info.driver_info.driverPath, OPENSEA_PATH_MAX);
 								if (len != -1)
@@ -643,10 +643,20 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                     fclose(temp);
                                     temp = NULL;
                                 }
+								//Store Driver Information
+								pciPath = dirname(pciPath);
+								common_String_Concat(pciPath, PATH_MAX, "/driver");
+								printf("\npciPath: %s", pciPath);
+								ssize_t len = readlink(pciPath, device->drive_info.driver_info.driverPath, OPENSEA_PATH_MAX);
+								driverName = basename(&device->drive_info.driver_info.driverPath);
+								strcpy(device->drive_info.driver_info.driverName, driverName);
+								printf("\nPath: %s\tname: %s", device->drive_info.driver_info.driverPath,
+									device->drive_info.driver_info.driverName);
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
                                 safe_Free(pciPath)
                             }
                         }
+						//safe_Free(driverName);
                         char *baseLink = basename(inHandleLink);
                         //Now we will set up the device name, etc fields in the os_info structure.
                         if (bsg)
