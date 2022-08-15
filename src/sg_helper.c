@@ -443,7 +443,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 								if (len != -1)
 								{
 									driverName = basename(&device->drive_info.driver_info.driverPath);
-									strcpy(device->drive_info.driver_info.driverName, driverName);
+									snprintf(device->drive_info.driver_info.driverName, OPENSEA_PATH_MAX, "%s", driverName);
 								}
 								safe_Free(pciPath);
 								//safe_Free(driverName);  //Commenting this part for now, as it is fiving a seg fault here
@@ -649,7 +649,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 								printf("\npciPath: %s", pciPath);
 								ssize_t len = readlink(pciPath, device->drive_info.driver_info.driverPath, OPENSEA_PATH_MAX);
 								driverName = basename(&device->drive_info.driver_info.driverPath);
-								strcpy(device->drive_info.driver_info.driverName, driverName);
+								snprintf(device->drive_info.driver_info.driverName, OPENSEA_PATH_MAX, "%s", driverName);
 								printf("\nPath: %s\tname: %s", device->drive_info.driver_info.driverPath,
 									device->drive_info.driver_info.driverName);
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
