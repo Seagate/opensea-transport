@@ -143,6 +143,9 @@ static int set_Device_Partition_Info(tDevice* device)
 #endif
     if (partitionCount > 0)
     {
+        device->os_info.fileSystemInfo.fileSystemInfoValid = true;
+        device->os_info.fileSystemInfo.hasActiveFileSystem = false;
+        device->os_info.fileSystemInfo.isSystemDisk = false;
         ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
         if (parts)
         {
@@ -152,7 +155,7 @@ static int set_Device_Partition_Info(tDevice* device)
                 for (; iter < partitionCount; ++iter)
                 {
                     //since we found a partition, set the "has file system" bool to true
-                    device->os_info.fileSystemInfo.hasFileSystem = true;
+                    device->os_info.fileSystemInfo.hasActiveFileSystem = true;
 #if defined (_DEBUG)
                     printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
 #endif
@@ -173,6 +176,12 @@ static int set_Device_Partition_Info(tDevice* device)
         {
             ret = MEMORY_FAILURE;
         }
+    }
+    else
+    {
+        device->os_info.fileSystemInfo.fileSystemInfoValid = true;
+        device->os_info.fileSystemInfo.hasActiveFileSystem = false;
+        device->os_info.fileSystemInfo.isSystemDisk = false;
     }
     return ret;
 }

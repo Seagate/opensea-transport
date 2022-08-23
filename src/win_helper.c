@@ -74,11 +74,11 @@ bool os_Is_Infinite_Timeout_Supported(void)
     #endif
 
     //This is for looking up hardware IDs of devices for PCIe/USB, etc
-    #if !defined (DEVPKEY_Device_HardwareIds)
-        DEFINE_DEVPROPKEY(DEVPKEY_Device_HardwareIds,            0xa45c254e, 0xdf1c, 0x4efd, 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0, 3); 
+    #if defined (NEED_DEVHARDID)
+        DEFINE_DEVPROPKEY(DEVPKEY_Device_HardwareIds, 0xa45c254e, 0xdf1c, 0x4efd, 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0, 3); 
     #endif
 
-    #if !defined (DEVPKEY_Device_CompatibleIds)
+    #if defined (NEED_DEVCOMPID)
         DEFINE_DEVPROPKEY(DEVPKEY_Device_CompatibleIds, 0xa45c254e, 0xdf1c, 0x4efd, 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0, 4);
     #endif
 
@@ -212,27 +212,27 @@ void print_bus_type( BYTE type )
 #endif
 
 //This function is only used in get_Adapter_IDs which is why it's here. If this is useful for something else in the future, move it to opensea-common.
-static void convert_String_Spaces_To_Underscores(char *stringToChange)
-{
-    size_t stringLen = 0, iter = 0;
-    if (stringToChange == NULL)
-    {
-        return;
-    }
-    stringLen = strlen(stringToChange);
-    if (stringLen == 0)
-    {
-        return;
-    }
-    while (iter <= stringLen)
-    {
-        if (isspace(stringToChange[iter]))
-        {
-            stringToChange[iter] = '_';
-        }
-        iter++;
-    }
-}
+//static void convert_String_Spaces_To_Underscores(char *stringToChange)
+//{
+//    size_t stringLen = 0, iter = 0;
+//    if (stringToChange == NULL)
+//    {
+//        return;
+//    }
+//    stringLen = strlen(stringToChange);
+//    if (stringLen == 0)
+//    {
+//        return;
+//    }
+//    while (iter <= stringLen)
+//    {
+//        if (isspace(stringToChange[iter]))
+//        {
+//            stringToChange[iter] = '_';
+//        }
+//        iter++;
+//    }
+//}
 
 //This function uses cfgmgr32 for figuring out the adapter information. 
 //It is possible to do this with setupapi as well. cfgmgr32 is supposedly available in some form for universal apps, whereas setupapi is not.
@@ -355,10 +355,10 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
             //loop through the device IDs and see if we find anything that matches.
             for (LPTSTR deviceID = listBuffer; *deviceID && !foundMatch; deviceID += _tcslen(deviceID) + 1)
             {
-                //convert the deviceID to uppercase to make matching easier
-                _tcsupr(deviceID);
                 DEVINST deviceInstance = 0;
                 //if a match is found, call locate devnode. If this is not present, it will fail and we need to continue through the loop
+                //convert the deviceID to uppercase to make matching easier
+                _tcsupr(deviceID);
                 cmRet = CM_Locate_DevNode(&deviceInstance, deviceID, CM_LOCATE_DEVNODE_NORMAL);
                 if (CR_SUCCESS == cmRet)
                 {
@@ -378,7 +378,8 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
                                 for (LPTSTR currentDeviceID = interfaceList; *currentDeviceID && !foundMatch; currentDeviceID += _tcslen(currentDeviceID) + 1)
                                 {
                                     //With this device path, open a handle and get the storage device number. This is a match for the PhysicalDriveX number and we can check that for a match
-                                    HANDLE deviceHandle = CreateFile(currentDeviceID,
+                                    HANDLE deviceHandle = INVALID_HANDLE_VALUE;
+                                    deviceHandle = CreateFile(currentDeviceID,
                                         GENERIC_WRITE | GENERIC_READ,
                                         FILE_SHARE_READ | FILE_SHARE_WRITE,
                                         NULL,
@@ -1984,7 +1985,9 @@ static int win_Get_SCSI_Address(HANDLE deviceHandle, PSCSI_ADDRESS scsiAddress)
     if (scsiAddress && deviceHandle != INVALID_HANDLE_VALUE)
     {
         DWORD returnedBytes = 0;
-        BOOL result = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_ADDRESS, NULL, 0, scsiAddress, sizeof(SCSI_ADDRESS), &returnedBytes, NULL);
+        BOOL result = FALSE;
+        memset(scsiAddress, 0, sizeof(SCSI_ADDRESS));
+        result = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_ADDRESS, NULL, 0, scsiAddress, sizeof(SCSI_ADDRESS), &returnedBytes, NULL);
         if (!result)
         {
             scsiAddress->PortNumber = UINT8_MAX;
@@ -2139,7 +2142,7 @@ static int send_Win_Firmware_Miniport_Command(HANDLE deviceHandle, eVerbosityLev
     overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (overlappedStruct.hEvent == NULL)
     {
-        safe_Free_aligned(buffer);
+        safe_Free_aligned(buffer)
         return OS_PASSTHROUGH_FAILURE;
     }
     SetLastError(ERROR_SUCCESS);
@@ -2197,7 +2200,7 @@ static int send_Win_Firmware_Miniport_Command(HANDLE deviceHandle, eVerbosityLev
     {
         *lastError = getLastError;
     }
-    safe_Free_aligned(buffer);
+    safe_Free_aligned(buffer)
     return ret;
 }
 
@@ -2243,7 +2246,7 @@ static int get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool controllerRe
                 }
 #endif
             }
-            safe_Free(firmwareInfo);
+            safe_Free(firmwareInfo)
         }
         else
         {
@@ -2293,7 +2296,7 @@ static int get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool controllerRe
                 }
 #endif
             }
-            safe_Free(firmwareInfo);
+            safe_Free(firmwareInfo)
         }
         else
         {
@@ -2745,7 +2748,7 @@ static int win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             {
                 //get offset from the tfrs
                 firmwareDownload->Offset = C_CAST(DWORDLONG, M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaHi, scsiIoCtx->pAtaCmdOpts->tfr.LbaMid)) * LEGACY_DRIVE_SEC_SIZE;
-                firmwareDownload->BufferSize = firmwareDownload->ImageSize = C_CAST(DWORDLONG, M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.SectorCount, scsiIoCtx->pAtaCmdOpts->tfr.LbaLow)) * LEGACY_DRIVE_SEC_SIZE;;
+                firmwareDownload->BufferSize = firmwareDownload->ImageSize = C_CAST(DWORDLONG, M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.SectorCount, scsiIoCtx->pAtaCmdOpts->tfr.LbaLow)) * C_CAST(DWORDLONG, LEGACY_DRIVE_SEC_SIZE);
             }
             else if (scsiIoCtx)
             {
@@ -2784,7 +2787,7 @@ static int win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             {
                 ret = dummy_Up_SCSI_Sense_FWDL(scsiIoCtx, returnCode);
             }
-            safe_Free(firmwareDownload);
+            safe_Free(firmwareDownload)
         }
         else
         {
@@ -2813,7 +2816,7 @@ static int win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
                 {
                     //get offset from the tfrs
                     firmwareDownload->Offset = C_CAST(DWORDLONG, M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.LbaHi, scsiIoCtx->pAtaCmdOpts->tfr.LbaMid)) * LEGACY_DRIVE_SEC_SIZE;
-                    firmwareDownload->BufferSize = C_CAST(DWORDLONG, M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.SectorCount, scsiIoCtx->pAtaCmdOpts->tfr.LbaLow)) * LEGACY_DRIVE_SEC_SIZE;;
+                    firmwareDownload->BufferSize = C_CAST(DWORDLONG, M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.SectorCount, scsiIoCtx->pAtaCmdOpts->tfr.LbaLow)) * LEGACY_DRIVE_SEC_SIZE;
                 }
                 else if (scsiIoCtx)
                 {
@@ -2836,7 +2839,7 @@ static int win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
                 {
                     ret = dummy_Up_SCSI_Sense_FWDL(scsiIoCtx, returnCode);
                 }
-                safe_Free(firmwareDownload);
+                safe_Free(firmwareDownload)
             }
             else
             {
@@ -2881,7 +2884,7 @@ static int win_FW_Activate_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             {
                 ret = dummy_Up_SCSI_Sense_FWDL(scsiIoCtx, returnCode);
             }
-            safe_Free(firmwareActivate);
+            safe_Free(firmwareActivate)
         }
         else
         {
@@ -2939,7 +2942,7 @@ static int dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, ULONG returnCode)
         break;
     case FIRMWARE_STATUS_INVALID_IMAGE:
         nvmeIoCtx->commandCompletionData.dw3Valid = true;
-        nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_COMMAND_SPECIFIC_STATUS, 7);;
+        nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_COMMAND_SPECIFIC_STATUS, 7);
         break;
     case FIRMWARE_STATUS_DEVICE_ERROR:
     case FIRMWARE_STATUS_CONTROLLER_ERROR:
@@ -2947,6 +2950,7 @@ static int dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, ULONG returnCode)
         nvmeIoCtx->commandCompletionData.dw3 = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 6);//internal error
         break;
     case FIRMWARE_STATUS_POWER_CYCLE_REQUIRED:
+        ret = POWER_CYCLE_REQUIRED;
         break;
 #if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
     case FIRMWARE_STATUS_INTERFACE_CRC_ERROR:
@@ -3004,7 +3008,7 @@ static int send_Win_NVME_Firmware_Miniport_Download(nvmeCmdCtx* nvmeIoCtx)
             firmwareDownload->Size = sizeof(STORAGE_FIRMWARE_DOWNLOAD_V2);
             firmwareDownload->Offset = C_CAST(ULONGLONG, nvmeIoCtx->cmd.adminCmd.cdw11) << 2;//multiply by 4 to convert words to bytes
             firmwareDownload->BufferSize = C_CAST(ULONGLONG, nvmeIoCtx->cmd.adminCmd.cdw10 + 1) << 2;//add one since this is zeroes based then multiply by 4 to convert words to bytes
-            firmwareDownload->ImageSize = C_CAST(ULONGLONG, nvmeIoCtx->cmd.adminCmd.cdw10 + 1) << 2;//add one since this is zeroes based then multiply by 4 to convert words to bytes
+            firmwareDownload->ImageSize = C_CAST(ULONG, nvmeIoCtx->cmd.adminCmd.cdw10 + 1) << 2;//add one since this is zeroes based then multiply by 4 to convert words to bytes
             firmwareDownload->Slot = STORAGE_FIRMWARE_INFO_INVALID_SLOT;//TODO: SHould this be zero? It technically shouldn't be used in this command in the NVMe spec - TJE
 
             //copy the image to ImageBuffer
@@ -3030,7 +3034,7 @@ static int send_Win_NVME_Firmware_Miniport_Download(nvmeCmdCtx* nvmeIoCtx)
             {
                 ret = dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
             }
-            safe_Free(firmwareDownload);
+            safe_Free(firmwareDownload)
         }
         else
         {
@@ -3063,7 +3067,7 @@ static int send_Win_NVME_Firmware_Miniport_Download(nvmeCmdCtx* nvmeIoCtx)
             {
                 ret = dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
             }
-            safe_Free(firmwareDownload);
+            safe_Free(firmwareDownload)
     }
         else
         {
@@ -3104,7 +3108,7 @@ static int send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIoCtx)
             {
                 ret = dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
             }
-            safe_Free(firmwareActivate);
+            safe_Free(firmwareActivate)
         }
         else
         {
@@ -3116,16 +3120,16 @@ static int send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIoCtx)
 
 #endif //WINVER >= SEA_WIN32_WINNT_WINBLUE
 
-static int get_os_drive_number( char *filename )
-{
-    int  drive_num = -1;
-    char *pdev     = NULL;
-    //char * next_token = NULL;
-    pdev = strrchr(filename, 'e');
-    if (pdev != NULL)
-        drive_num = atoi(pdev + 1);
-    return drive_num;
-}
+//static int get_os_drive_number( char *filename )
+//{
+//    int  drive_num = -1;
+//    char *pdev     = NULL;
+//    //char * next_token = NULL;
+//    pdev = strrchr(filename, 'e');
+//    if (pdev != NULL)
+//        drive_num = atoi(pdev + 1);
+//    return drive_num;
+//}
 
 static int close_SCSI_SRB_Handle(tDevice *device)
 {
@@ -3338,16 +3342,16 @@ static int win_Get_Adapter_Descriptor(HANDLE deviceHandle, PSTORAGE_ADAPTER_DESC
 }
 
 //SCSI VPD device IDs
-static int win_Get_Device_ID_Property(HANDLE deviceHandle, PSTORAGE_DEVICE_ID_DESCRIPTOR *deviceIdData)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceIdProperty, C_CAST(void**, deviceIdData), sizeof(STORAGE_DEVICE_ID_DESCRIPTOR));
-}
+//static int win_Get_Device_ID_Property(HANDLE deviceHandle, PSTORAGE_DEVICE_ID_DESCRIPTOR *deviceIdData)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceIdProperty, C_CAST(void**, deviceIdData), sizeof(STORAGE_DEVICE_ID_DESCRIPTOR));
+//}
 
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_VISTA
-static int win_Get_Write_Cache_Info(HANDLE *deviceHandle, PSTORAGE_WRITE_CACHE_PROPERTY *writeCacheInfo)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceWriteCacheProperty, C_CAST(void**, writeCacheInfo), sizeof(STORAGE_WRITE_CACHE_PROPERTY));
-}
+//static int win_Get_Write_Cache_Info(HANDLE *deviceHandle, PSTORAGE_WRITE_CACHE_PROPERTY *writeCacheInfo)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceWriteCacheProperty, C_CAST(void**, writeCacheInfo), sizeof(STORAGE_WRITE_CACHE_PROPERTY));
+//}
 
 static int win_Get_Access_Alignment_Descriptor(HANDLE *deviceHandle, PSTORAGE_ACCESS_ALIGNMENT_DESCRIPTOR *alignmentDescriptor)
 {
@@ -3356,71 +3360,71 @@ static int win_Get_Access_Alignment_Descriptor(HANDLE *deviceHandle, PSTORAGE_AC
 #endif //SEA_WIN32_WINNT_VISTA
 
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN7
-static int win_Get_Seek_Time_Penalty(HANDLE *deviceHandle, PDEVICE_SEEK_PENALTY_DESCRIPTOR *seekTimePenaltyDescriptor)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceSeekPenaltyProperty, C_CAST(void**, seekTimePenaltyDescriptor), sizeof(DEVICE_SEEK_PENALTY_DESCRIPTOR));
-}
+//static int win_Get_Seek_Time_Penalty(HANDLE *deviceHandle, PDEVICE_SEEK_PENALTY_DESCRIPTOR *seekTimePenaltyDescriptor)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceSeekPenaltyProperty, C_CAST(void**, seekTimePenaltyDescriptor), sizeof(DEVICE_SEEK_PENALTY_DESCRIPTOR));
+//}
 
-static int win_Get_Trim(HANDLE *deviceHandle, PDEVICE_TRIM_DESCRIPTOR *trimDescriptor)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceTrimProperty, C_CAST(void**, trimDescriptor), sizeof(DEVICE_TRIM_DESCRIPTOR));
-}
+//static int win_Get_Trim(HANDLE *deviceHandle, PDEVICE_TRIM_DESCRIPTOR *trimDescriptor)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceTrimProperty, C_CAST(void**, trimDescriptor), sizeof(DEVICE_TRIM_DESCRIPTOR));
+//}
 #endif //SEA_WIN32_WINNT_WIN7
 
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
-static int win_Get_Logical_Block_Provisioning(HANDLE *deviceHandle, PDEVICE_LB_PROVISIONING_DESCRIPTOR *lbProvisioningDescriptor)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceLBProvisioningProperty, C_CAST(void**, lbProvisioningDescriptor), sizeof(DEVICE_LB_PROVISIONING_DESCRIPTOR));
-}
+//static int win_Get_Logical_Block_Provisioning(HANDLE *deviceHandle, PDEVICE_LB_PROVISIONING_DESCRIPTOR *lbProvisioningDescriptor)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceLBProvisioningProperty, C_CAST(void**, lbProvisioningDescriptor), sizeof(DEVICE_LB_PROVISIONING_DESCRIPTOR));
+//}
 
-static int win_Get_Power_Property(HANDLE *deviceHandle, PDEVICE_POWER_DESCRIPTOR *powerDescriptor)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDevicePowerProperty, C_CAST(void**, powerDescriptor), sizeof(DEVICE_POWER_DESCRIPTOR));
-}
+//static int win_Get_Power_Property(HANDLE *deviceHandle, PDEVICE_POWER_DESCRIPTOR *powerDescriptor)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDevicePowerProperty, C_CAST(void**, powerDescriptor), sizeof(DEVICE_POWER_DESCRIPTOR));
+//}
 
-static int win_Get_Copy_Offload(HANDLE *deviceHandle, PDEVICE_COPY_OFFLOAD_DESCRIPTOR *copyOffloadDescriptor)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceCopyOffloadProperty, C_CAST(void**, copyOffloadDescriptor), sizeof(DEVICE_COPY_OFFLOAD_DESCRIPTOR));
-}
+//static int win_Get_Copy_Offload(HANDLE *deviceHandle, PDEVICE_COPY_OFFLOAD_DESCRIPTOR *copyOffloadDescriptor)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceCopyOffloadProperty, C_CAST(void**, copyOffloadDescriptor), sizeof(DEVICE_COPY_OFFLOAD_DESCRIPTOR));
+//}
 
-static int win_Get_Resiliency_Descriptor(HANDLE *deviceHandle, PSTORAGE_DEVICE_RESILIENCY_DESCRIPTOR *resiliencyDescriptor)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceResiliencyProperty, C_CAST(void**, resiliencyDescriptor), sizeof(STORAGE_DEVICE_RESILIENCY_DESCRIPTOR));
-}
+//static int win_Get_Resiliency_Descriptor(HANDLE *deviceHandle, PSTORAGE_DEVICE_RESILIENCY_DESCRIPTOR *resiliencyDescriptor)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceResiliencyProperty, C_CAST(void**, resiliencyDescriptor), sizeof(STORAGE_DEVICE_RESILIENCY_DESCRIPTOR));
+//}
 #endif //#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
 
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WINBLUE
-static int win_Get_Medium_Product_Type(HANDLE *deviceHandle, PSTORAGE_MEDIUM_PRODUCT_TYPE_DESCRIPTOR  *mediumType)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceMediumProductType, C_CAST(void**, mediumType), sizeof(STORAGE_MEDIUM_PRODUCT_TYPE_DESCRIPTOR));
-}
+//static int win_Get_Medium_Product_Type(HANDLE *deviceHandle, PSTORAGE_MEDIUM_PRODUCT_TYPE_DESCRIPTOR  *mediumType)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceMediumProductType, C_CAST(void**, mediumType), sizeof(STORAGE_MEDIUM_PRODUCT_TYPE_DESCRIPTOR));
+//}
 #endif //SEA_WIN32_WINNT_WINBLUE a.k.a. 8.1
 
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN10
-static int win_Get_IO_Capability(HANDLE *deviceHandle, PSTORAGE_DEVICE_IO_CAPABILITY_DESCRIPTOR *capabilityDescriptor)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceIoCapabilityProperty, C_CAST(void**, capabilityDescriptor), sizeof(STORAGE_DEVICE_IO_CAPABILITY_DESCRIPTOR));
-}
+//static int win_Get_IO_Capability(HANDLE *deviceHandle, PSTORAGE_DEVICE_IO_CAPABILITY_DESCRIPTOR *capabilityDescriptor)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceIoCapabilityProperty, C_CAST(void**, capabilityDescriptor), sizeof(STORAGE_DEVICE_IO_CAPABILITY_DESCRIPTOR));
+//}
 
-static int win_Get_Adapter_Temperature(HANDLE *deviceHandle, PSTORAGE_TEMPERATURE_DATA_DESCRIPTOR *temperatureDescriptor)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageAdapterTemperatureProperty, C_CAST(void**, temperatureDescriptor), sizeof(STORAGE_TEMPERATURE_DATA_DESCRIPTOR));
-}
+//static int win_Get_Adapter_Temperature(HANDLE *deviceHandle, PSTORAGE_TEMPERATURE_DATA_DESCRIPTOR *temperatureDescriptor)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageAdapterTemperatureProperty, C_CAST(void**, temperatureDescriptor), sizeof(STORAGE_TEMPERATURE_DATA_DESCRIPTOR));
+//}
 
-static int win_Get_Device_Temperature(HANDLE *deviceHandle, PSTORAGE_TEMPERATURE_DATA_DESCRIPTOR *temperatureDescriptor)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceTemperatureProperty, C_CAST(void**, temperatureDescriptor), sizeof(STORAGE_TEMPERATURE_DATA_DESCRIPTOR));
-}
+//static int win_Get_Device_Temperature(HANDLE *deviceHandle, PSTORAGE_TEMPERATURE_DATA_DESCRIPTOR *temperatureDescriptor)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceTemperatureProperty, C_CAST(void**, temperatureDescriptor), sizeof(STORAGE_TEMPERATURE_DATA_DESCRIPTOR));
+//}
 
-static int win_Get_Adapter_Physical_Topology(HANDLE *deviceHandle, PSTORAGE_PHYSICAL_TOPOLOGY_DESCRIPTOR  *topologyDescriptor)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageAdapterPhysicalTopologyProperty, C_CAST(void**, topologyDescriptor), sizeof(STORAGE_PHYSICAL_TOPOLOGY_DESCRIPTOR));
-}
+//static int win_Get_Adapter_Physical_Topology(HANDLE *deviceHandle, PSTORAGE_PHYSICAL_TOPOLOGY_DESCRIPTOR  *topologyDescriptor)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageAdapterPhysicalTopologyProperty, C_CAST(void**, topologyDescriptor), sizeof(STORAGE_PHYSICAL_TOPOLOGY_DESCRIPTOR));
+//}
 
-static int win_Get_Device_Physical_Topology(HANDLE *deviceHandle, PSTORAGE_PHYSICAL_TOPOLOGY_DESCRIPTOR  *topologyDescriptor)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDevicePhysicalTopologyProperty, C_CAST(void**, topologyDescriptor), sizeof(STORAGE_PHYSICAL_TOPOLOGY_DESCRIPTOR));
-}
+//static int win_Get_Device_Physical_Topology(HANDLE *deviceHandle, PSTORAGE_PHYSICAL_TOPOLOGY_DESCRIPTOR  *topologyDescriptor)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDevicePhysicalTopologyProperty, C_CAST(void**, topologyDescriptor), sizeof(STORAGE_PHYSICAL_TOPOLOGY_DESCRIPTOR));
+//}
 
 #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_10586
 /*
@@ -3431,64 +3435,64 @@ static int win_Get_Device_Physical_Topology(HANDLE *deviceHandle, PSTORAGE_PHYSI
 #define STORAGE_ATTRIBUTE_ASYNC_EVENT_NOTIFICATION  0x10
 #define STORAGE_ATTRIBUTE_PERF_SIZE_INDEPENDENT     0x20
 */
-static int win_Get_Device_Attributes(HANDLE *deviceHandle, PSTORAGE_DEVICE_ATTRIBUTES_DESCRIPTOR *deviceAttributes)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceAttributesProperty, C_CAST(void**, deviceAttributes), sizeof(STORAGE_DEVICE_ATTRIBUTES_DESCRIPTOR));
-}
+//static int win_Get_Device_Attributes(HANDLE *deviceHandle, PSTORAGE_DEVICE_ATTRIBUTES_DESCRIPTOR *deviceAttributes)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceAttributesProperty, C_CAST(void**, deviceAttributes), sizeof(STORAGE_DEVICE_ATTRIBUTES_DESCRIPTOR));
+//}
 #endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_10586
 
 #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
-static int win_Get_Rpmb(HANDLE *deviceHandle, PSTORAGE_RPMB_DESCRIPTOR *rpmbDescriptor)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageAdapterRpmbProperty, C_CAST(void**, rpmbDescriptor), sizeof(STORAGE_RPMB_DESCRIPTOR));
-}
+//static int win_Get_Rpmb(HANDLE *deviceHandle, PSTORAGE_RPMB_DESCRIPTOR *rpmbDescriptor)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageAdapterRpmbProperty, C_CAST(void**, rpmbDescriptor), sizeof(STORAGE_RPMB_DESCRIPTOR));
+//}
 
-static int win_Get_Device_Management_Status(HANDLE *deviceHandle, PSTORAGE_DEVICE_MANAGEMENT_STATUS *managementStatus)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceManagementStatus, C_CAST(void**, managementStatus), sizeof(STORAGE_DEVICE_MANAGEMENT_STATUS));
-}
+//static int win_Get_Device_Management_Status(HANDLE *deviceHandle, PSTORAGE_DEVICE_MANAGEMENT_STATUS *managementStatus)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceManagementStatus, C_CAST(void**, managementStatus), sizeof(STORAGE_DEVICE_MANAGEMENT_STATUS));
+//}
 
-static int win_Get_Adapter_Serial_Number(HANDLE *deviceHandle, PSTORAGE_ADAPTER_SERIAL_NUMBER *adapterSerialNumber)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageAdapterSerialNumberProperty, C_CAST(void**, adapterSerialNumber), sizeof(STORAGE_ADAPTER_SERIAL_NUMBER));
-}
+//static int win_Get_Adapter_Serial_Number(HANDLE *deviceHandle, PSTORAGE_ADAPTER_SERIAL_NUMBER *adapterSerialNumber)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageAdapterSerialNumberProperty, C_CAST(void**, adapterSerialNumber), sizeof(STORAGE_ADAPTER_SERIAL_NUMBER));
+//}
 
-static int win_Get_Device_Location(HANDLE *deviceHandle, PSTORAGE_DEVICE_LOCATION_DESCRIPTOR *deviceLocation)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceLocationProperty, C_CAST(void**, deviceLocation), sizeof(STORAGE_DEVICE_LOCATION_DESCRIPTOR));
-}
+//static int win_Get_Device_Location(HANDLE *deviceHandle, PSTORAGE_DEVICE_LOCATION_DESCRIPTOR *deviceLocation)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceLocationProperty, C_CAST(void**, deviceLocation), sizeof(STORAGE_DEVICE_LOCATION_DESCRIPTOR));
+//}
 #endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
 
 #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
-static int win_Get_Crypto_Property(HANDLE *deviceHandle, PSTORAGE_CRYPTO_DESCRIPTOR *cryptoDescriptor)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageAdapterCryptoProperty, C_CAST(void**, cryptoDescriptor), sizeof(STORAGE_CRYPTO_DESCRIPTOR));
-}
+//static int win_Get_Crypto_Property(HANDLE *deviceHandle, PSTORAGE_CRYPTO_DESCRIPTOR *cryptoDescriptor)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageAdapterCryptoProperty, C_CAST(void**, cryptoDescriptor), sizeof(STORAGE_CRYPTO_DESCRIPTOR));
+//}
 
 //STORAGE_DEVICE_NUMA_NODE_UNKNOWN
-static int win_Get_Device_Numa_Property(HANDLE *deviceHandle, PSTORAGE_DEVICE_NUMA_PROPERTY *numaProperty)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceNumaProperty, C_CAST(void**, numaProperty), sizeof(STORAGE_DEVICE_NUMA_PROPERTY));
-}
+//static int win_Get_Device_Numa_Property(HANDLE *deviceHandle, PSTORAGE_DEVICE_NUMA_PROPERTY *numaProperty)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceNumaProperty, C_CAST(void**, numaProperty), sizeof(STORAGE_DEVICE_NUMA_PROPERTY));
+//}
 #endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
 
 #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
-static int win_Get_Device_Zoned_Property(HANDLE *deviceHandle, PSTORAGE_ZONED_DEVICE_DESCRIPTOR *zonedProperty)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceZonedDeviceProperty, C_CAST(void**, zonedProperty), sizeof(STORAGE_ZONED_DEVICE_DESCRIPTOR));
-}
+//static int win_Get_Device_Zoned_Property(HANDLE *deviceHandle, PSTORAGE_ZONED_DEVICE_DESCRIPTOR *zonedProperty)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceZonedDeviceProperty, C_CAST(void**, zonedProperty), sizeof(STORAGE_ZONED_DEVICE_DESCRIPTOR));
+//}
 
-static int win_Get_Device_Unsafe_Shutdown_Count(HANDLE *deviceHandle, PSTORAGE_DEVICE_UNSAFE_SHUTDOWN_COUNT *unsafeShutdownCount)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceUnsafeShutdownCount, C_CAST(void**, unsafeShutdownCount), sizeof(STORAGE_DEVICE_UNSAFE_SHUTDOWN_COUNT));
-}
+//static int win_Get_Device_Unsafe_Shutdown_Count(HANDLE *deviceHandle, PSTORAGE_DEVICE_UNSAFE_SHUTDOWN_COUNT *unsafeShutdownCount)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceUnsafeShutdownCount, C_CAST(void**, unsafeShutdownCount), sizeof(STORAGE_DEVICE_UNSAFE_SHUTDOWN_COUNT));
+//}
 #endif //#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
 
 #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_18362
-static int win_Get_Device_Endurance(HANDLE *deviceHandle, PSTORAGE_HW_ENDURANCE_DATA_DESCRIPTOR *enduranceProperty)
-{
-    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceEnduranceProperty, C_CAST(void**, enduranceProperty), sizeof(STORAGE_HW_ENDURANCE_DATA_DESCRIPTOR));
-}
+//static int win_Get_Device_Endurance(HANDLE *deviceHandle, PSTORAGE_HW_ENDURANCE_DATA_DESCRIPTOR *enduranceProperty)
+//{
+//    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceEnduranceProperty, C_CAST(void**, enduranceProperty), sizeof(STORAGE_HW_ENDURANCE_DATA_DESCRIPTOR));
+//}
 #endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_18362
 
 #endif //SEA_WIN32_WINNT_WIN10
@@ -3497,7 +3501,7 @@ static int win_Get_Device_Endurance(HANDLE *deviceHandle, PSTORAGE_HW_ENDURANCE_
 
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WINXP 
 //This function is supposed to update partition table information after it has been changed...this should work after an erase has been done to a drive - TJE
-int win_Update_Disk_Properties(HANDLE* deviceHandle)
+static int win_Update_Disk_Properties(HANDLE* deviceHandle)
 {
     int ret = NOT_SUPPORTED;
     DWORD bytesReturned = 0;
@@ -3528,65 +3532,95 @@ static int win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *geom)
     int ret = FAILURE;
     DWORD bytesReturned = 0;
     DWORD diskGeomSize = sizeof(DISK_GEOMETRY);
-    *geom = C_CAST(PDISK_GEOMETRY, malloc(diskGeomSize));
-    if (DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, *geom, diskGeomSize, &bytesReturned, NULL))
+    if (geom)
     {
-        ret = SUCCESS;
+        *geom = C_CAST(PDISK_GEOMETRY, malloc(diskGeomSize));
+        if (*geom)
+        {
+            memset(*geom, 0, diskGeomSize);
+            if (DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, *geom, diskGeomSize, &bytesReturned, NULL))
+            {
+                ret = SUCCESS;
+            }
+            else
+            {
+                safe_Free(*geom)
+            }
+        }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
     }
     else
     {
-        safe_Free(*geom)
+        ret = BAD_PARAMETER;
     }
     return ret;
 }
 
-static int win_Disk_Is_Writable(HANDLE devHandle, bool *writable)
-{
-    int ret = SUCCESS;
-    DWORD bytesReturned = 0;
-    if (!writable)
-    {
-        return BAD_PARAMETER;
-    }
-    if (DeviceIoControl(devHandle, IOCTL_DISK_IS_WRITABLE, NULL, 0, NULL, 0, &bytesReturned, NULL))
-    {
-        *writable = true;
-    }
-    else
-    {
-        *writable = false;
-        DWORD lastError = GetLastError();
-        switch (lastError)
-        {
-        case ERROR_WRITE_PROTECT:
-            *writable = false;
-            break;
-        default:
-            *writable = true;
-            break;
-        }
-        print_Windows_Error_To_Screen(lastError);
-    }
-    return ret;
-}
+//static int win_Disk_Is_Writable(HANDLE devHandle, bool *writable)
+//{
+//    int ret = SUCCESS;
+//    DWORD bytesReturned = 0;
+//    if (!writable)
+//    {
+//        return BAD_PARAMETER;
+//    }
+//    if (DeviceIoControl(devHandle, IOCTL_DISK_IS_WRITABLE, NULL, 0, NULL, 0, &bytesReturned, NULL))
+//    {
+//        *writable = true;
+//    }
+//    else
+//    {
+//        *writable = false;
+//        DWORD lastError = GetLastError();
+//        switch (lastError)
+//        {
+//        case ERROR_WRITE_PROTECT:
+//            *writable = false;
+//            break;
+//        default:
+//            *writable = true;
+//            break;
+//        }
+//        print_Windows_Error_To_Screen(lastError);
+//    }
+//    return ret;
+//}
 
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN2K
-static int win_Get_IDE_Disk_Controller_Number_And_Disk_Number(HANDLE *devHandle, PDISK_CONTROLLER_NUMBER *numbers)
-{
-    int ret = FAILURE;
-    DWORD bytesReturned = 0;
-    DWORD controllerNumberSize = sizeof(DISK_CONTROLLER_NUMBER);
-    *numbers = C_CAST(PDISK_CONTROLLER_NUMBER, malloc(controllerNumberSize));
-    if (DeviceIoControl(devHandle, IOCTL_DISK_CONTROLLER_NUMBER, NULL, 0, *numbers, controllerNumberSize, &bytesReturned, NULL))
-    {
-        ret = SUCCESS;
-    }
-    else
-    {
-        safe_Free(*numbers)
-    }
-    return ret;
-}
+//static int win_Get_IDE_Disk_Controller_Number_And_Disk_Number(HANDLE *devHandle, PDISK_CONTROLLER_NUMBER *numbers)
+//{
+//    int ret = FAILURE;
+//    DWORD bytesReturned = 0;
+//    DWORD controllerNumberSize = sizeof(DISK_CONTROLLER_NUMBER);
+//    if (numbers)
+//    {
+//        *numbers = C_CAST(PDISK_CONTROLLER_NUMBER, malloc(controllerNumberSize));
+//        if (*numbers)
+//        {
+//            memset(*numbers, 0, controllerNumberSize);
+//            if (DeviceIoControl(devHandle, IOCTL_DISK_CONTROLLER_NUMBER, NULL, 0, *numbers, controllerNumberSize, &bytesReturned, NULL))
+//            {
+//                ret = SUCCESS;
+//            }
+//            else
+//            {
+//                safe_Free(*numbers)
+//            }
+//        }
+//        else
+//        {
+//            ret = MEMORY_FAILURE;
+//        }
+//    }
+//    else
+//    {
+//        ret = BAD_PARAMETER;
+//    }
+//    return ret;
+//}
 #endif //SEA_WIN32_WINNT_NT4
 
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN2K
@@ -3615,6 +3649,7 @@ static int win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_EX *geom, 
         *geom = C_CAST(PDISK_GEOMETRY_EX, malloc(diskGeomSize));
         if (*geom)
         {
+            memset(*geom, 0, diskGeomSize);
             if (DeviceIoControl(devHandle,
                 IOCTL_DISK_GET_DRIVE_GEOMETRY_EX,
                 NULL,
@@ -3668,71 +3703,86 @@ static int win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_EX *geom, 
     return ret;
 }
 
-static int win_Get_Length_Information(HANDLE *devHandle, PGET_LENGTH_INFORMATION *length)
-{
-    int ret = FAILURE;
-    DWORD bytesReturned = 0;
-    DWORD lengthInfoSize = sizeof(GET_LENGTH_INFORMATION);
-    *length = C_CAST(PGET_LENGTH_INFORMATION, malloc(lengthInfoSize));
-    if (DeviceIoControl(devHandle, IOCTL_DISK_GET_LENGTH_INFO, NULL, 0, *length, lengthInfoSize, &bytesReturned, NULL))
-    {
-        ret = SUCCESS;
-    }
-    else
-    {
-        safe_Free(*length)
-    }
-    return ret;
-}
+//static int win_Get_Length_Information(HANDLE *devHandle, PGET_LENGTH_INFORMATION *length)
+//{
+//    int ret = FAILURE;
+//    DWORD bytesReturned = 0;
+//    DWORD lengthInfoSize = sizeof(GET_LENGTH_INFORMATION);
+//    if (length)
+//    {
+//        *length = C_CAST(PGET_LENGTH_INFORMATION, malloc(lengthInfoSize));
+//        if (*length)
+//        {
+//            memset(*length, 0, lengthInfoSize);
+//            if (DeviceIoControl(devHandle, IOCTL_DISK_GET_LENGTH_INFO, NULL, 0, *length, lengthInfoSize, &bytesReturned, NULL))
+//            {
+//                ret = SUCCESS;
+//            }
+//            else
+//            {
+//                safe_Free(*length)
+//            }
+//        }
+//        else
+//        {
+//            ret = MEMORY_FAILURE;
+//        }
+//    }
+//    else
+//    {
+//        ret = BAD_PARAMETER;
+//    }
+//    return ret;
+//}
 
 #endif //SEA_WIN32_WINNT_WIN2K
 
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
-static int win_SCSI_Get_Inquiry_Data(HANDLE deviceHandle, PSCSI_ADAPTER_BUS_INFO *scsiBusInfo)
-{
-    int ret = SUCCESS;
-    UCHAR busCount = 1, luCount = 1;
-    DWORD inquiryDataSize = sizeof(SCSI_INQUIRY_DATA) + INQUIRYDATABUFFERSIZE;//this is supposed to be rounded up to an alignment boundary??? but that is not well described...
-    DWORD busDataLength = sizeof(SCSI_ADAPTER_BUS_INFO) + busCount * sizeof(SCSI_BUS_DATA) + luCount * inquiryDataSize;//Start with this, but more memory may be necessary.
-    *scsiBusInfo = C_CAST(PSCSI_ADAPTER_BUS_INFO, calloc_aligned(busDataLength, sizeof(uint8_t), 8));
-    if (scsiBusInfo)
-    {
-        BOOL success = FALSE;
-        DWORD returnedBytes = 0;
-        while (!success)
-        {
-            //try this ioctl and reallocate memory if not enough space error is returned until it can be read!
-            success = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_INQUIRY_DATA, NULL, 0, scsiBusInfo, busDataLength, &returnedBytes, NULL);
-            if (!success)
-            {
-                DWORD error = GetLastError();
-                //figure out what the error was to see if we need to allocate more memory, or exit with errors.
-                if (error == ERROR_INSUFFICIENT_BUFFER)
-                {
-                    //MSFT recommends doubling the buffer size until this passes.
-                    void *tempBuf = NULL;
-                    busDataLength *= 2;
-                    tempBuf = realloc_aligned(scsiBusInfo, busDataLength / 2, busDataLength, 8);
-                    if (tempBuf)
-                    {
-                        scsiBusInfo = tempBuf;
-                    }
-                }
-                else
-                {
-                    print_Windows_Error_To_Screen(error);
-                    ret = FAILURE;
-                    break;
-                }
-            }
-        }
-    }
-    else
-    {
-        ret = MEMORY_FAILURE;
-    }
-    return ret;
-}
+//static int win_SCSI_Get_Inquiry_Data(HANDLE deviceHandle, PSCSI_ADAPTER_BUS_INFO *scsiBusInfo)
+//{
+//    int ret = SUCCESS;
+//    UCHAR busCount = 1, luCount = 1;
+//    DWORD inquiryDataSize = sizeof(SCSI_INQUIRY_DATA) + INQUIRYDATABUFFERSIZE;//this is supposed to be rounded up to an alignment boundary??? but that is not well described...
+//    DWORD busDataLength = sizeof(SCSI_ADAPTER_BUS_INFO) + busCount * sizeof(SCSI_BUS_DATA) + luCount * inquiryDataSize;//Start with this, but more memory may be necessary.
+//    *scsiBusInfo = C_CAST(PSCSI_ADAPTER_BUS_INFO, calloc_aligned(busDataLength, sizeof(uint8_t), 8));
+//    if (scsiBusInfo)
+//    {
+//        BOOL success = FALSE;
+//        DWORD returnedBytes = 0;
+//        while (!success)
+//        {
+//            //try this ioctl and reallocate memory if not enough space error is returned until it can be read!
+//            success = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_INQUIRY_DATA, NULL, 0, scsiBusInfo, busDataLength, &returnedBytes, NULL);
+//            if (!success)
+//            {
+//                DWORD error = GetLastError();
+//                //figure out what the error was to see if we need to allocate more memory, or exit with errors.
+//                if (error == ERROR_INSUFFICIENT_BUFFER)
+//                {
+//                    //MSFT recommends doubling the buffer size until this passes.
+//                    void *tempBuf = NULL;
+//                    busDataLength *= 2;
+//                    tempBuf = realloc_aligned(scsiBusInfo, busDataLength / 2, busDataLength, 8);
+//                    if (tempBuf)
+//                    {
+//                        scsiBusInfo = tempBuf;
+//                    }
+//                }
+//                else
+//                {
+//                    print_Windows_Error_To_Screen(error);
+//                    ret = FAILURE;
+//                    break;
+//                }
+//            }
+//        }
+//    }
+//    else
+//    {
+//        ret = MEMORY_FAILURE;
+//    }
+//    return ret;
+//}
 #endif //SEA_WIN32_WINNT_WIN8
 
 #define MAX_VOL_BITS (32)
@@ -3856,13 +3906,14 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     diskExtents = C_CAST(PVOLUME_DISK_EXTENTS, malloc(diskExtentsSizeBytes));
                     if (diskExtents)
                     {
+                        memset(diskExtents, 0, diskExtentsSizeBytes);
                         if (DeviceIoControl(letterHandle, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, NULL, 0, diskExtents, diskExtentsSizeBytes, &returnedBytes, NULL))
                         {
                             for (DWORD counter = 0; counter < diskExtents->NumberOfDiskExtents; ++counter)
                             {
                                 if (diskExtents->Extents[counter].DiskNumber == device->os_info.os_drive_number)
                                 {
-                                    device->os_info.fileSystemInfo.hasFileSystem = true;//We found a filesystem for this drive, so set this to true.
+                                    device->os_info.fileSystemInfo.hasActiveFileSystem = true;//We found a filesystem for this drive, so set this to true.
 
                                     //Set a bit to note that this particular volume (letter) is on this device
                                     device->os_info.volumeBitField |= (UINT32_C(1) << volumeCounter);
@@ -3950,6 +4001,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     get_Windows_FWDL_IO_Support(device, device_desc->BusType);
                 }
 #else
+                M_USE_UNUSED(fwdlResult);
                 device->os_info.fwdlIOsupport.fwdlIOSupported = false;//this API is not available before Windows 10
 #endif
                 #if defined (_DEBUG)
@@ -4057,7 +4109,6 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             if (!foundNVMePassthrough && device_Supports_CSMI_With_RST(device->os_info.scsiSRBHandle))
                             {
                                 //TODO: setup CSMI structure
-                                printf("Found intel RST NVMe\n");
                                 device->drive_info.drive_type = NVME_DRIVE;
                                 device->drive_info.interface_type = NVME_INTERFACE;
                                 device->os_info.intelNVMePassthroughSupported = true;
@@ -4614,7 +4665,7 @@ typedef struct _scsiPassThroughEXIOStruct
 } scsiPassThroughEXIOStruct, *ptrSCSIPassThroughEXIOStruct;
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-int convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx, ptrSCSIPassThroughEXIOStruct psptd)
+static int convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx, ptrSCSIPassThroughEXIOStruct psptd)
 {
     int ret = SUCCESS;
     memset(&psptd->scsiPassThroughEX, 0, sizeof(SCSI_PASS_THROUGH_EX));
@@ -4694,7 +4745,7 @@ int convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx, ptrSCSIPassTh
     return ret;
 }
 
-int send_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx)
+static int send_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx)
 {
     int           ret = FAILURE;
     BOOL          success = FALSE;
@@ -4821,7 +4872,7 @@ int send_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx)
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-int convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx, ptrSCSIPassThroughEXIOStruct psptd, uint8_t *alignedPointer)
+static int convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx, ptrSCSIPassThroughEXIOStruct psptd, uint8_t *alignedPointer)
 {
     int ret = SUCCESS;
     memset(&psptd->scsiPassThroughEXDirect, 0, sizeof(SCSI_PASS_THROUGH_DIRECT_EX));
@@ -4901,7 +4952,7 @@ int convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx, ptrSCS
     return ret;
 }
 
-int send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
+static int send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
 {
     int           ret = FAILURE;
     BOOL          success = FALSE;
@@ -5193,7 +5244,7 @@ static int send_SCSI_Pass_Through(ScsiIoCtx *scsiIoCtx)
         return MEMORY_FAILURE;
     }
     seatimer_t commandTimer;
-    memset(sptdioDB, 0, sizeof(scsiPassThroughIOStruct));
+    memset(sptdioDB, 0, sizeof(scsiPassThroughIOStruct) + scsiIoCtx->dataLength);
     memset(&commandTimer, 0, sizeof(seatimer_t));
     if (SUCCESS == convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(scsiIoCtx, sptdioDB))
     {
@@ -6385,43 +6436,43 @@ static int send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
 
 //This is untested code, but may work if an old system needed it.
 //https://community.osr.com/discussion/64468/scsiop-ata-passthrough-0xcc
-#define UNDOCUMENTED_SCSI_IDE_PT_OP_CODE 0xCC
-static int send_SCSI_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
-{
-    int ret = FAILURE;
-    ScsiIoCtx ideCtx;
-    memset(&ideCtx, 0, sizeof(ScsiIoCtx));
-    if (scsiIoCtx->pAtaCmdOpts->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
-    {
-        return OS_COMMAND_NOT_AVAILABLE;
-    }
-    
-    ideCtx.cdb[0] = UNDOCUMENTED_SCSI_IDE_PT_OP_CODE;
-    ideCtx.cdb[1] = RESERVED;
-    ideCtx.cdb[2] = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature; // Features Register
-    ideCtx.cdb[3] = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount; // Sector Count Reg
-    ideCtx.cdb[4] = scsiIoCtx->pAtaCmdOpts->tfr.LbaLow; // Sector Number ( or LBA Lo )
-    ideCtx.cdb[5] = scsiIoCtx->pAtaCmdOpts->tfr.LbaMid; // Cylinder Low ( or LBA Mid )
-    ideCtx.cdb[6] = scsiIoCtx->pAtaCmdOpts->tfr.LbaHi; // Cylinder High (or LBA Hi)
-    ideCtx.cdb[7] = scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead; // Device/Head Register
-    ideCtx.cdb[8] = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus; // Command Register
-    ideCtx.cdb[9] = 0;//control register
-
-    ideCtx.cdbLength = 10;
-    ideCtx.dataLength = scsiIoCtx->dataLength;
-    ideCtx.device = scsiIoCtx->device;
-    ideCtx.direction = scsiIoCtx->direction;
-    ideCtx.pdata = scsiIoCtx->pdata;
-    ideCtx.psense = scsiIoCtx->psense;
-    ideCtx.senseDataSize = scsiIoCtx->senseDataSize;
-    ideCtx.timeout = scsiIoCtx->timeout;
-
-    ret = send_SCSI_Pass_Through(&ideCtx);
-
-    //TODO: Turn sense data into RTFRs
-
-    return ret;
-}
+//#define UNDOCUMENTED_SCSI_IDE_PT_OP_CODE 0xCC
+//static int send_SCSI_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
+//{
+//    int ret = FAILURE;
+//    ScsiIoCtx ideCtx;
+//    memset(&ideCtx, 0, sizeof(ScsiIoCtx));
+//    if (scsiIoCtx->pAtaCmdOpts->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
+//    {
+//        return OS_COMMAND_NOT_AVAILABLE;
+//    }
+//    
+//    ideCtx.cdb[0] = UNDOCUMENTED_SCSI_IDE_PT_OP_CODE;
+//    ideCtx.cdb[1] = RESERVED;
+//    ideCtx.cdb[2] = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature; // Features Register
+//    ideCtx.cdb[3] = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount; // Sector Count Reg
+//    ideCtx.cdb[4] = scsiIoCtx->pAtaCmdOpts->tfr.LbaLow; // Sector Number ( or LBA Lo )
+//    ideCtx.cdb[5] = scsiIoCtx->pAtaCmdOpts->tfr.LbaMid; // Cylinder Low ( or LBA Mid )
+//    ideCtx.cdb[6] = scsiIoCtx->pAtaCmdOpts->tfr.LbaHi; // Cylinder High (or LBA Hi)
+//    ideCtx.cdb[7] = scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead; // Device/Head Register
+//    ideCtx.cdb[8] = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus; // Command Register
+//    ideCtx.cdb[9] = 0;//control register
+//
+//    ideCtx.cdbLength = 10;
+//    ideCtx.dataLength = scsiIoCtx->dataLength;
+//    ideCtx.device = scsiIoCtx->device;
+//    ideCtx.direction = scsiIoCtx->direction;
+//    ideCtx.pdata = scsiIoCtx->pdata;
+//    ideCtx.psense = scsiIoCtx->psense;
+//    ideCtx.senseDataSize = scsiIoCtx->senseDataSize;
+//    ideCtx.timeout = scsiIoCtx->timeout;
+//
+//    ret = send_SCSI_Pass_Through(&ideCtx);
+//
+//    //TODO: Turn sense data into RTFRs
+//
+//    return ret;
+//}
 
 #if WINVER >= SEA_WIN32_WINNT_WIN10
 //TODO: handle more than 1 firmware slot per device.-TJE
@@ -9111,6 +9162,10 @@ static int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         nvmePassthroughDataSize += nvmeIoCtx->dataSize;
     }
     uint8_t *commandBuffer = C_CAST(uint8_t*, _aligned_malloc(nvmePassthroughDataSize, 8));
+    if (!commandBuffer)
+    {
+        return MEMORY_FAILURE;
+    }
     memset(commandBuffer, 0, nvmePassthroughDataSize);
 
     //Setup the storage protocol command structure.
@@ -9186,20 +9241,20 @@ static int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         return OS_TIMEOUT_TOO_LARGE;
     }
 
-    if (nvmeIoCtx->timeout == 0)
+    if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > nvmeIoCtx->timeout)
     {
-        if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds)
+        protocolCommand->TimeOutValue = nvmeIoCtx->device->drive_info.defaultTimeoutSeconds;
+    }
+    else
+    {
+        if (nvmeIoCtx->timeout != 0)
         {
-            protocolCommand->TimeOutValue = nvmeIoCtx->device->drive_info.defaultTimeoutSeconds;
+            protocolCommand->TimeOutValue = nvmeIoCtx->timeout;
         }
         else
         {
             protocolCommand->TimeOutValue = 15;
         }
-    }
-    else
-    {
-        protocolCommand->TimeOutValue = nvmeIoCtx->timeout;
     }
 
     //Command has been set up, so send it!
@@ -9372,7 +9427,7 @@ static int win10_Translate_Identify_Active_Namespace_ID_List(nvmeCmdCtx* nvmeIoC
             {
                 ret = OS_PASSTHROUGH_FAILURE;
             }
-            safe_Free_aligned(reportLunsData);
+            safe_Free_aligned(reportLunsData)
         }
         else
         {
@@ -10470,98 +10525,98 @@ static int send_NVMe_Set_Features_Win10(nvmeCmdCtx *nvmeIoCtx, bool *useNVMPasst
     return ret;
 }
 
-static int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
-{
-    int ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
-    uint32_t reservedBitsDWord10 = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 12);
-    uint8_t secureEraseSettings = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 11, 9);
-    bool pil = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8;
-    uint8_t pi = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 5);
-    bool mset = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT4;
-    uint8_t lbaFormat = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 3, 0);
-    nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-    if (reservedBitsDWord10 == 0 && secureEraseSettings == 0 && !pil && mset)//we dont want to miss parameters that are currently reserved and we cannot do a secure erase with this translation
-    {
-        //mode select with mode descriptor (if needed for block size changes)
-        //First we need to map the incoming LBA format to a size in bytes to send in a mode select
-        int16_t powerOfTwo = C_CAST(int16_t, nvmeIoCtx->device->drive_info.IdentifyData.nvme.ns.lbaf[lbaFormat].lbaDS);
-        uint32_t lbaSize = 1;
-        while (powerOfTwo >= 0)
-        {
-            lbaSize = lbaSize << UINT32_C(1);//multiply by 2
-            --powerOfTwo;
-        }
-        if (lbaSize >= LEGACY_DRIVE_SEC_SIZE && lbaSize != nvmeIoCtx->device->drive_info.deviceBlockSize)//make sure the value is greater than 512 as required by spec and that it is different than what it is already set as! - TJE
-        {
-            //send a mode select command with a data block descriptor set to the new size
-            //but first read the control mode page with a block descriptor
-            uint8_t controlPageAndBD[36] = { 0 };
-            if (SUCCESS == scsi_Mode_Sense_10(nvmeIoCtx->device, MP_CONTROL, 36, 0, false, true, MPC_CURRENT_VALUES, controlPageAndBD))
-            {
-                //got the block descriptor...so lets modify it as we need to...then send it back to the drive(r)
-                //set number of logical blocks to all F's to make this as big as possible...
-                controlPageAndBD[MODE_HEADER_LENGTH10 + 0] = 0xFF;
-                controlPageAndBD[MODE_HEADER_LENGTH10 + 1] = 0xFF;
-                controlPageAndBD[MODE_HEADER_LENGTH10 + 2] = 0xFF;
-                controlPageAndBD[MODE_HEADER_LENGTH10 + 3] = 0xFF;
-                controlPageAndBD[MODE_HEADER_LENGTH10 + 4] = 0xFF;
-                controlPageAndBD[MODE_HEADER_LENGTH10 + 5] = 0xFF;
-                controlPageAndBD[MODE_HEADER_LENGTH10 + 6] = 0xFF;
-                controlPageAndBD[MODE_HEADER_LENGTH10 + 7] = 0xFF;
-                //set the block size
-                controlPageAndBD[MODE_HEADER_LENGTH10 + 12] = M_Byte3(lbaSize);
-                controlPageAndBD[MODE_HEADER_LENGTH10 + 13] = M_Byte2(lbaSize);
-                controlPageAndBD[MODE_HEADER_LENGTH10 + 14] = M_Byte1(lbaSize);
-                controlPageAndBD[MODE_HEADER_LENGTH10 + 15] = M_Byte0(lbaSize);
-                //Leave everything else alone! Just send it to the drive now :)
-                if (SUCCESS != scsi_Mode_Select_10(nvmeIoCtx->device, 36, true, true, false, controlPageAndBD, 36))
-                {
-                    return OS_COMMAND_NOT_AVAILABLE;
-                }
-            }
-            else
-            {
-                return OS_COMMAND_NOT_AVAILABLE;
-            }
-        }
-        //format unit command
-        //set up parameter data if necessary and send the scsi format unit command to be translated and sent to the drive. The mode sense/select should have been cached to be used by the format command.
-        //if (pi == 0)
-        //{
-        //    //send without parameter data
-        //    ret = scsi_Format_Unit(nvmeIoCtx->device, 0, false, false, false, 0, 0, NULL, 0, 0, 60);
-        //}
-        //else
-        //{
-        //send with parameter data
-        uint8_t formatParameterData[4] = { 0 };//short header
-        uint8_t fmtpInfo = 0;
-        uint8_t piUsage = 0;
-        switch (pi)
-        {
-        case 0:
-            break;
-        case 1:
-            fmtpInfo = 0x2;
-            break;
-        case 2:
-            fmtpInfo = 0x3;
-            break;
-        case 3:
-            fmtpInfo = 0x3;
-            piUsage = 1;
-            break;
-        default:
-            return OS_COMMAND_NOT_AVAILABLE;
-        }
-        formatParameterData[0] = M_GETBITRANGE(piUsage, 2, 0);
-        ret = scsi_Format_Unit(nvmeIoCtx->device, fmtpInfo, false, true, false, 0, 0, formatParameterData, 4, 0, 60);
-        //}
-    }
-    nvmeIoCtx->device->deviceVerbosity = inVerbosity;
-    return ret;
-}
+//static int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
+//{
+//    int ret = OS_COMMAND_NOT_AVAILABLE;
+//    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+//    uint32_t reservedBitsDWord10 = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 12);
+//    uint8_t secureEraseSettings = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 11, 9);
+//    bool pil = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8;
+//    uint8_t pi = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 5);
+//    bool mset = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT4;
+//    uint8_t lbaFormat = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 3, 0);
+//    nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
+//    if (reservedBitsDWord10 == 0 && secureEraseSettings == 0 && !pil && mset)//we dont want to miss parameters that are currently reserved and we cannot do a secure erase with this translation
+//    {
+//        //mode select with mode descriptor (if needed for block size changes)
+//        //First we need to map the incoming LBA format to a size in bytes to send in a mode select
+//        int16_t powerOfTwo = C_CAST(int16_t, nvmeIoCtx->device->drive_info.IdentifyData.nvme.ns.lbaf[lbaFormat].lbaDS);
+//        uint32_t lbaSize = 1;
+//        while (powerOfTwo >= 0)
+//        {
+//            lbaSize = lbaSize << UINT32_C(1);//multiply by 2
+//            --powerOfTwo;
+//        }
+//        if (lbaSize >= LEGACY_DRIVE_SEC_SIZE && lbaSize != nvmeIoCtx->device->drive_info.deviceBlockSize)//make sure the value is greater than 512 as required by spec and that it is different than what it is already set as! - TJE
+//        {
+//            //send a mode select command with a data block descriptor set to the new size
+//            //but first read the control mode page with a block descriptor
+//            uint8_t controlPageAndBD[36] = { 0 };
+//            if (SUCCESS == scsi_Mode_Sense_10(nvmeIoCtx->device, MP_CONTROL, 36, 0, false, true, MPC_CURRENT_VALUES, controlPageAndBD))
+//            {
+//                //got the block descriptor...so lets modify it as we need to...then send it back to the drive(r)
+//                //set number of logical blocks to all F's to make this as big as possible...
+//                controlPageAndBD[MODE_HEADER_LENGTH10 + 0] = 0xFF;
+//                controlPageAndBD[MODE_HEADER_LENGTH10 + 1] = 0xFF;
+//                controlPageAndBD[MODE_HEADER_LENGTH10 + 2] = 0xFF;
+//                controlPageAndBD[MODE_HEADER_LENGTH10 + 3] = 0xFF;
+//                controlPageAndBD[MODE_HEADER_LENGTH10 + 4] = 0xFF;
+//                controlPageAndBD[MODE_HEADER_LENGTH10 + 5] = 0xFF;
+//                controlPageAndBD[MODE_HEADER_LENGTH10 + 6] = 0xFF;
+//                controlPageAndBD[MODE_HEADER_LENGTH10 + 7] = 0xFF;
+//                //set the block size
+//                controlPageAndBD[MODE_HEADER_LENGTH10 + 12] = M_Byte3(lbaSize);
+//                controlPageAndBD[MODE_HEADER_LENGTH10 + 13] = M_Byte2(lbaSize);
+//                controlPageAndBD[MODE_HEADER_LENGTH10 + 14] = M_Byte1(lbaSize);
+//                controlPageAndBD[MODE_HEADER_LENGTH10 + 15] = M_Byte0(lbaSize);
+//                //Leave everything else alone! Just send it to the drive now :)
+//                if (SUCCESS != scsi_Mode_Select_10(nvmeIoCtx->device, 36, true, true, false, controlPageAndBD, 36))
+//                {
+//                    return OS_COMMAND_NOT_AVAILABLE;
+//                }
+//            }
+//            else
+//            {
+//                return OS_COMMAND_NOT_AVAILABLE;
+//            }
+//        }
+//        //format unit command
+//        //set up parameter data if necessary and send the scsi format unit command to be translated and sent to the drive. The mode sense/select should have been cached to be used by the format command.
+//        //if (pi == 0)
+//        //{
+//        //    //send without parameter data
+//        //    ret = scsi_Format_Unit(nvmeIoCtx->device, 0, false, false, false, 0, 0, NULL, 0, 0, 60);
+//        //}
+//        //else
+//        //{
+//        //send with parameter data
+//        uint8_t formatParameterData[4] = { 0 };//short header
+//        uint8_t fmtpInfo = 0;
+//        uint8_t piUsage = 0;
+//        switch (pi)
+//        {
+//        case 0:
+//            break;
+//        case 1:
+//            fmtpInfo = 0x2;
+//            break;
+//        case 2:
+//            fmtpInfo = 0x3;
+//            break;
+//        case 3:
+//            fmtpInfo = 0x3;
+//            piUsage = 1;
+//            break;
+//        default:
+//            return OS_COMMAND_NOT_AVAILABLE;
+//        }
+//        formatParameterData[0] = M_GETBITRANGE(piUsage, 2, 0);
+//        ret = scsi_Format_Unit(nvmeIoCtx->device, fmtpInfo, false, true, false, 0, 0, formatParameterData, 4, 0, 60);
+//        //}
+//    }
+//    nvmeIoCtx->device->deviceVerbosity = inVerbosity;
+//    return ret;
+//}
 
 static int win10_Translate_Write_Uncorrectable(nvmeCmdCtx *nvmeIoCtx)
 {
@@ -11378,8 +11433,8 @@ int send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx)
 //Most of the code below has been updated according to these docs, however some things may be missing and those enhancements should be made to better improve support.
 static int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
-    int ret = OS_COMMAND_NOT_AVAILABLE;
 #if !defined (DISABLE_NVME_PASSTHROUGH)
+    int ret = OS_COMMAND_NOT_AVAILABLE;
     //TODO: Should we be checking the nsid in each command before issuing it? This should happen at some point, at least to filter out "all namespaces" for certain commands since MS won't let us issue some of them through their API - TJE
     if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
     {
@@ -11516,6 +11571,7 @@ static int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
     }
     return ret;
 #else //DISABLE_NVME_PASSTHROUGH
+    M_USE_UNUSED(nvmeIoCtx);
     return OS_COMMAND_NOT_AVAILABLE;
 #endif //DISBALE_NVME_PASSTHROUGH
 }
@@ -12160,6 +12216,7 @@ int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
     uint8_t *readData = C_CAST(uint8_t*, malloc(device->drive_info.deviceBlockSize * range));
     if (readData)
     {
+        memset(readData, 0, device->drive_info.deviceBlockSize * range);
         ret = os_Read(device, lba, false, readData, device->drive_info.deviceBlockSize * range);
         safe_Free(readData)
     }

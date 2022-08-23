@@ -41,7 +41,8 @@ bool os_Is_Infinite_Timeout_Supported(void)
 extern bool validate_Device_Struct(versionBlock);
 
 // Local helper functions for debugging
-void print_io_hdr( sg_io_hdr_t *pIo )
+#if defined (_DEBUG)
+static void print_io_hdr( sg_io_hdr_t *pIo )
 {
     time_t time_now;
     char timeFormat[TIME_STRING_LENGTH];
@@ -72,6 +73,7 @@ void print_io_hdr( sg_io_hdr_t *pIo )
     printf("type unsigned int info 0x%x\n", pIo->info);          /* [o] */
     printf("-----------------------------------------\n");
 }
+#endif //_DEBUG
 
 static int sg_filter( const struct dirent *entry )
 {
@@ -153,7 +155,7 @@ static int sd_filter( const struct dirent *entry )
 //    return linkMappingSupported;
 //}
 
-bool is_Block_Device_Handle(const char *handle)
+static bool is_Block_Device_Handle(const char *handle)
 {
     bool isBlockDevice = false;
     if (handle && strlen(handle))
@@ -166,7 +168,7 @@ bool is_Block_Device_Handle(const char *handle)
     return isBlockDevice;
 }
 
-bool is_SCSI_Generic_Handle(const char *handle)
+static bool is_SCSI_Generic_Handle(const char *handle)
 {
     bool isGenericDevice = false;
     if (handle && strlen(handle))
@@ -179,7 +181,7 @@ bool is_SCSI_Generic_Handle(const char *handle)
     return isGenericDevice;
 }
 
-bool is_Block_SCSI_Generic_Handle(const char *handle)
+static bool is_Block_SCSI_Generic_Handle(const char *handle)
 {
     bool isBlockGenericDevice = false;
     if (handle && strlen(handle))
@@ -215,7 +217,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
             bool bsg = false;
             char incomingHandleClassPath[PATH_MAX] = { 0 };
             //char *incomingClassName = NULL;
-            common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class");
+            common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
             if (is_Block_Device_Handle(handle))
             {
                 common_String_Concat(incomingHandleClassPath, PATH_MAX, "block/");
@@ -675,7 +677,7 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
         struct stat inHandleStat;
         if (stat(incomingHandleClassPath, &inHandleStat) == 0 && S_ISDIR(inHandleStat.st_mode))
         {
-            common_String_Concat(incomingHandleClassPath, PATH_MAX, basename(handle));
+            common_String_Concat(incomingHandleClassPath, PATH_MAX, basename(C_CAST(char*, handle)));
             //now read the link with the handle appended on the end
             char inHandleLink[PATH_MAX] = { 0 };
             if (readlink(incomingHandleClassPath, inHandleLink, PATH_MAX) > 0)
@@ -778,13 +780,13 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
                                 {
                                     if (incomingBlock)
                                     {
-                                        *blockHandle = strndup(basename(handle), strlen(basename(handle)));
+                                        *blockHandle = strndup(basename(C_CAST(char*, handle)), strlen(basename(C_CAST(char*, handle))));
                                         *genericHandle = strdup(basename(classPtr));
                                     }
                                     else
                                     {
                                         *blockHandle = strndup(basename(classPtr), strlen(basename(classPtr)));
-                                        *genericHandle = strdup(basename(handle));
+                                        *genericHandle = strdup(basename(C_CAST(char *, handle)));
                                     }
                                     safe_Free(className)
                                     safe_Free(incomingClassName)

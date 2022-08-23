@@ -1159,7 +1159,10 @@ extern "C"
         unsigned int        last_error; // errno in Linux or GetLastError in Windows.
         struct {
             bool fileSystemInfoValid;//This must be set to true for the other bools to have any meaning. This is here because some OS's may not have support for detecting this information
-            bool hasFileSystem;//This will only be true for filesystems the current OS can detect. Ex: Windows will only set this for mounted volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem types since it can handle more than Windows by default
+            union {
+                bool hasFileSystem;//[deprecated], use the hasActiveFileSystem below. This will only be true for filesystems the current OS can detect. Ex: Windows will only set this for mounted volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem types since it can handle more than Windows by default
+                bool hasActiveFileSystem;//This is a bit more clear that the filesystem detected was mounted and is in use within the OS.
+            };
             bool isSystemDisk;//This will be set if the drive has a file system and the OS is running off of it. Ex: Windows' C:\Windows\System32, Linux's / & /boot, etc
         }fileSystemInfo;
         ptrCsmiDeviceInfo csmiDeviceData;//This is a pointer because it will only be allocated when CSMI is supported. This is also used by Intel RST NVMe passthrough which is basically an extension of CSMI
@@ -1443,6 +1446,8 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int get_Version_Block(versionBlock * ver);
+
+    OPENSEA_TRANSPORT_API bool validate_Device_Struct(versionBlock sanity);
 
     //-----------------------------------------------------------------------------
     //
@@ -1759,6 +1764,27 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API bool is_Vendor_A(tDevice *device, bool USBchildDrive);
 
+    OPENSEA_TRANSPORT_API bool is_Conner_Model_Number(char *mn);
+    OPENSEA_TRANSPORT_API bool is_Conner_VendorID(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_Connor(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_CDC_VendorID(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_DEC_VendorID(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_MiniScribe_VendorID(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_Quantum_VendorID(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_Quantum_Model_Number(char* string);
+    OPENSEA_TRANSPORT_API bool is_Quantum(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_PrarieTek_VendorID(tDevice *device);
+
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_B(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_C(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_D(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_E(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_SSD_PJ(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_G(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_H(tDevice *device, bool USBchildDrive);
+
+
     typedef enum _eIronwolf_NAS_Drive
     {
         NON_IRONWOLF_NAS_DRIVE,
@@ -1819,7 +1845,55 @@ extern "C"
     //!   \return 0 = Not a Skyhawk Drive, 1 - a Skyhawk Drive, 2 - a Skyhawk AI Drive
     //
     //-----------------------------------------------------------------------------
-        OPENSEA_TRANSPORT_API eSkyhawk_Drive is_Skyhawk_Drive(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API eSkyhawk_Drive is_Skyhawk_Drive(tDevice *device, bool USBchildDrive);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Nytro_Drive(tDevice *device, bool USBchildDrive)
+    //
+    //! \brief   Checks if the device is a Firecuda drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Nytro Drive, 0 - Not a Nytro Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Nytro_Drive(tDevice *device, bool USBchildDrive);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Exos_Drive(tDevice *device, bool USBchildDrive)
+    //
+    //! \brief   Checks if the device is a Firecuda drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Exos Drive, 0 - Not a Exos Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Exos_Drive(tDevice *device, bool USBchildDrive);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Barracuda_Drive(tDevice *device, bool USBchildDrive)
+    //
+    //! \brief   Checks if the device is a Firecuda drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Barracuda Drive, 0 - Not a Barracuda Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Barracuda_Drive(tDevice *device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //

@@ -1,4 +1,4 @@
-project('opensea-transport', 'c', license: 'MPL-2.0', version: '2.2.3', default_options : ['warning_level=2'])
+project('opensea-transport', 'c', license: 'MPL-2.0', version: '3.0.1', default_options : ['warning_level=2'])
 
 c = meson.get_compiler('c')
 
@@ -19,7 +19,11 @@ warning_flags = [
 	'-Wlogical-op',
 	'-Wshift-overflow=2',
 	'-Wdouble-promotion',
-	'-Wformat-security'
+	'-Wformat-security',
+  '-Wold-style-definition',
+  '-Wstrict-prototypes',
+  '-Wmissing-declarations',
+  '-Wmissing-prototypes'
 ]
 
 add_project_arguments(c.get_supported_arguments(warning_flags), language : 'c')

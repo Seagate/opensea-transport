@@ -1369,7 +1369,7 @@ int ata_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrD
     return ret;
 }
 
-void get_SCSI_DPO_FUA_Support(tDevice* device)
+static void get_SCSI_DPO_FUA_Support(tDevice* device)
 {
     if (!device->drive_info.dpoFUAvalid)
     {

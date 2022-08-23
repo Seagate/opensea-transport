@@ -1177,11 +1177,11 @@ bool is_Firecuda_Drive(tDevice * device, bool USBchildDrive)
 
     if (strlen(modelNumber))
     {
-        if (wildcard_Match("ST*DX*", modelNumber))   //check if Firecuda HDD
+        if (wildcard_Match("ST*DX*", modelNumber) || wildcard_Match("ST*LX*", modelNumber))   //check if Firecuda HDD
             isFirecudaDrive = true;
         else if (wildcard_Match("*ZA*GM*", modelNumber))  //check if SATA Firecuda SSD
             isFirecudaDrive = true;
-        else if (wildcard_Match("*ZP*GM*", modelNumber))  //check if PCIe Firecuda SSD
+        else if (wildcard_Match("*ZP*GM*", modelNumber) || wildcard_Match("*ZP*GV*", modelNumber))  //check if PCIe Firecuda SSD
             isFirecudaDrive = true;
     }
 
@@ -1212,6 +1212,95 @@ eSkyhawk_Drive is_Skyhawk_Drive(tDevice * device, bool USBchildDrive)
         return is_Skyhawk_Drive(device, true);
 
     return isSkyhawkDrive;
+}
+
+bool is_Nytro_Drive(tDevice * device, bool USBchildDrive)
+{
+    bool isNytroDrive = false;
+    char *modelNumber = &device->drive_info.product_identification[0];
+    if (USBchildDrive)
+    {
+        modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
+    }
+
+    if (strlen(modelNumber))
+    {
+        if (wildcard_Match("XS*SE*", modelNumber))   //Nytro 3332, Nytro 3331, Nytro 2332
+            isNytroDrive = true;
+        else if (wildcard_Match("*XS*LE*", modelNumber))  //Nytro 3532, Nytro 3531, Nytro 2532
+            isNytroDrive = true;
+        else if (wildcard_Match("*XS*ME*", modelNumber))  //Nytro 3732, Nytro 3731
+            isNytroDrive = true;
+        else if (wildcard_Match("*XS*TE*", modelNumber))  //Nytro 3131
+            isNytroDrive = true;
+        else if (wildcard_Match("*XA*LE*", modelNumber))  //Nytro 1351
+            isNytroDrive = true;
+        else if (wildcard_Match("*XS*ME*", modelNumber))  //Nytro 1551
+            isNytroDrive = true;
+        else if (wildcard_Match("*XP*LE*", modelNumber))  //Nytro 5910
+            isNytroDrive = true;
+        else if (wildcard_Match("*XP*EX*", modelNumber) || wildcard_Match("*XP*DC*", modelNumber))  //Nytro 510
+            isNytroDrive = true;
+    }
+
+    if (!USBchildDrive && !isNytroDrive)
+        return is_Firecuda_Drive(device, true);
+
+    return isNytroDrive;
+}
+
+bool is_Exos_Drive(tDevice * device, bool USBchildDrive)
+{
+    bool isExosDrive = false;
+    char *modelNumber = &device->drive_info.product_identification[0];
+    if (USBchildDrive)
+    {
+        modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
+    }
+
+    if (strlen(modelNumber))
+    {
+        if (wildcard_Match("ST*NM*", modelNumber))   //Exos X-series
+            isExosDrive = true;
+        else if (wildcard_Match("*ST*MP*", modelNumber) || wildcard_Match("*ST*MM*", modelNumber) || wildcard_Match("*ST*NX*", modelNumber))  //Exos E-series
+            isExosDrive = true;
+    }
+
+    if (!USBchildDrive && !isExosDrive)
+        return is_Firecuda_Drive(device, true);
+
+    return isExosDrive;
+}
+
+bool is_Barracuda_Drive(tDevice * device, bool USBchildDrive)
+{
+    bool isBarracudaDrive = false;
+    char *modelNumber = &device->drive_info.product_identification[0];
+    if (USBchildDrive)
+    {
+        modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
+    }
+
+    if (strlen(modelNumber))
+    {
+        if (wildcard_Match("ST*LM*", modelNumber))   //Barracuda 2.5 inhces
+            isBarracudaDrive = true;
+        else if (wildcard_Match("ST*DM*", modelNumber))   //Barracuda 3.5 inhces
+            isBarracudaDrive = true;
+        else if (wildcard_Match("*ZA*CV*", modelNumber))  //Barracuda Q1
+            isBarracudaDrive = true;
+        else if (wildcard_Match("*ZP*CV*", modelNumber))  //Barracuda Q5
+            isBarracudaDrive = true;
+        else if (wildcard_Match("*ZA*CM*", modelNumber))  //Barracuda 120
+            isBarracudaDrive = true;
+        else if (wildcard_Match("*ZP*CM*", modelNumber))  //Barracuda 510
+            isBarracudaDrive = true;
+    }
+
+    if (!USBchildDrive && !isBarracudaDrive)
+        return is_Firecuda_Drive(device, true);
+
+    return isBarracudaDrive;
 }
 
 bool is_Seagate_Model_Number_Vendor_B(tDevice *device, bool USBchildDrive)

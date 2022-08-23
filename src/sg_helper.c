@@ -104,7 +104,8 @@ bool os_Is_Infinite_Timeout_Supported(void)
 extern bool validate_Device_Struct(versionBlock);
 
 // Local helper functions for debugging
-void print_io_hdr( sg_io_hdr_t *pIo )
+#if defined (_DEBUG)
+static void print_io_hdr( sg_io_hdr_t *pIo )
 {
     time_t time_now;
     char timeFormat[TIME_STRING_LENGTH];
@@ -135,6 +136,7 @@ void print_io_hdr( sg_io_hdr_t *pIo )
     printf("type unsigned int info 0x%x\n", pIo->info);          /* [o] */
     printf("-----------------------------------------\n");
 }
+#endif //_DEBUG
 
 static int sg_filter( const struct dirent *entry )
 {
@@ -178,7 +180,7 @@ static int sd_filter( const struct dirent *entry )
 //    return linkMappingSupported;
 //}
 
-bool is_Block_Device_Handle(const char *handle)
+static bool is_Block_Device_Handle(const char *handle)
 {
     bool isBlockDevice = false;
     if (handle && strlen(handle))
@@ -191,7 +193,7 @@ bool is_Block_Device_Handle(const char *handle)
     return isBlockDevice;
 }
 
-bool is_SCSI_Generic_Handle(const char *handle)
+static bool is_SCSI_Generic_Handle(const char *handle)
 {
     bool isGenericDevice = false;
     if (handle && strlen(handle))
@@ -204,7 +206,7 @@ bool is_SCSI_Generic_Handle(const char *handle)
     return isGenericDevice;
 }
 
-bool is_Block_SCSI_Generic_Handle(const char *handle)
+static bool is_Block_SCSI_Generic_Handle(const char *handle)
 {
     bool isBlockGenericDevice = false;
     if (handle && strlen(handle))
@@ -217,7 +219,7 @@ bool is_Block_SCSI_Generic_Handle(const char *handle)
     return isBlockGenericDevice;
 }
 
-bool is_NVMe_Handle(char *handle)
+static bool is_NVMe_Handle(char *handle)
 {
     bool isNvmeDevice = false;
     if (handle && strlen(handle))
@@ -934,55 +936,45 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
     return UNKNOWN;
 }
 
-//only to be used by get_Device to set up an os_specific structure
-//This could be useful to put into a function for all nix systems to use since it could be useful for them too.
-long get_Device_Page_Size(void)
-{
-#if defined (_POSIX_VERSION) && _POSIX_VERSION >= 200112L
-    //use sysconf: http://man7.org/linux/man-pages/man3/sysconf.3.html
-    return sysconf(_SC_PAGESIZE);
-#else
-    //use get page size: http://man7.org/linux/man-pages/man2/getpagesize.2.html
-    return C_CAST(long, getpagesize());
-#endif
-}
-
-static int set_Device_Partition_Info(tDevice *device)
+static int set_Device_Partition_Info(tDevice* device)
 {
     int ret = SUCCESS;
     int partitionCount = 0;
-    char *blockHandle = device->os_info.name;
-    if(device->os_info.secondHandleValid && !is_Block_Device_Handle(blockHandle))
+    char* blockHandle = device->os_info.name;
+    if (device->os_info.secondHandleValid && !is_Block_Device_Handle(blockHandle))
     {
         blockHandle = device->os_info.secondName;
     }
     partitionCount = get_Partition_Count(blockHandle);
-    #if defined (_DEBUG)
+#if defined (_DEBUG)
     printf("Partition count for %s = %d\n", blockHandle, partitionCount);
-    #endif
-    if(partitionCount > 0)
+#endif
+    if (partitionCount > 0)
     {
+        device->os_info.fileSystemInfo.fileSystemInfoValid = true;
+        device->os_info.fileSystemInfo.hasActiveFileSystem = false;
+        device->os_info.fileSystemInfo.isSystemDisk = false;
         ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
-        if(parts)
+        if (parts)
         {
-            if(SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
+            if (SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
             {
                 int iter = 0;
-                for(; iter < partitionCount; ++iter)
+                for (; iter < partitionCount; ++iter)
                 {
                     //since we found a partition, set the "has file system" bool to true
-                    device->os_info.fileSystemInfo.hasFileSystem = true;
-                    #if defined (_DEBUG)
+                    device->os_info.fileSystemInfo.hasActiveFileSystem = true;
+#if defined (_DEBUG)
                     printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
-                    #endif
+#endif
                     //check if one of the partitions is /boot and mark the system disk when this is found
                     //TODO: Should / be treated as a system disk too?
-                    if(strncmp((parts + iter)->mntPath, "/boot", 5) == 0)
+                    if (strncmp((parts + iter)->mntPath, "/boot", 5) == 0)
                     {
                         device->os_info.fileSystemInfo.isSystemDisk = true;
-                        #if defined (_DEBUG)
+#if defined (_DEBUG)
                         printf("found system disk\n");
-                        #endif
+#endif
                     }
                 }
             }
@@ -992,6 +984,12 @@ static int set_Device_Partition_Info(tDevice *device)
         {
             ret = MEMORY_FAILURE;
         }
+    }
+    else
+    {
+        device->os_info.fileSystemInfo.fileSystemInfoValid = true;
+        device->os_info.fileSystemInfo.hasActiveFileSystem = false;
+        device->os_info.fileSystemInfo.isSystemDisk = false;
     }
     return ret;
 }
@@ -1211,7 +1209,7 @@ int get_Device(const char *filename, tDevice *device)
 }
 //http://www.tldp.org/HOWTO/SCSI-Generic-HOWTO/scsi_reset.html
 //sgResetType should be one of the values from the link above...so bus or device...controller will work but that shouldn't be done ever.
-int sg_reset(int fd, int resetType)
+static int sg_reset(int fd, int resetType)
 {
     int ret = UNKNOWN;
     
@@ -2142,7 +2140,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 #endif //DISABLE_NVME_PASSTHROUGH
 }
 
-int linux_NVMe_Reset(tDevice *device, bool subsystemReset)
+static int linux_NVMe_Reset(tDevice *device, bool subsystemReset)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     //Can only do a reset on a controller handle. Need to get the controller handle if this is a namespace handle!!!
@@ -2267,9 +2265,11 @@ int os_nvme_Subsystem_Reset(tDevice *device)
 //to be used with a deep scan???
 //fd must be a controller handle
 //TODO: Should we rework the linux_NVMe_Reset call to handle this too?
-int nvme_Namespace_Rescan(int fd)
+#if defined (_DEBUG)
+//making this a debug flagged call since it is currently an unused function. We should look into how to appropriately support this.-TJE
+static int nvme_Namespace_Rescan(int fd)
 {
-#if !defined(DISABLE_NVME_PASSTHROUGH) && defined (NVME_IOCTL_RESCAN) //This IOCTL is not available on older kernels, which is why this is checked like this - TJE
+#if defined (NVME_IOCTL_RESCAN) //This IOCTL is not available on older kernels, which is why this is checked like this - TJE
    int ret = OS_PASSTHROUGH_FAILURE;
    int ioRes = ioctl(fd, NVME_IOCTL_RESCAN);
    if (ioRes < 0)
@@ -2288,6 +2288,7 @@ int nvme_Namespace_Rescan(int fd)
     return OS_COMMAND_NOT_AVAILABLE;
 #endif
 }
+#endif //_DEBUG
 
 //Case to remove this from sg_helper.h/c and have a platform/lin/pci-herlper.h vs platform/win/pci-helper.c 
 
