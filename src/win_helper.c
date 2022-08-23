@@ -9135,6 +9135,14 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
 #if WINVER >= SEA_WIN32_WINNT_WIN10
     }
 #endif
+    if (scsiIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(scsiIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
+        }
+    }
     return ret;
 }
 
@@ -11614,6 +11622,16 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         ret = BAD_PARAMETER;
         break;
     }
+
+    if (nvmeIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(nvmeIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", nvmeIoCtx->device->delay_io);
+        }
+    }
+
     return ret;
 }
 

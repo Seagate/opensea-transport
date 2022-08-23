@@ -1011,6 +1011,7 @@ extern "C"
         completionQueueEntry    commandCompletionData;
         bool                    fwdlFirstSegment; //fwdl unique flag to help low-level OS code
         bool                    fwdlLastSegment; //fwdl unique flag to help low-level OS code
+        uint32_t                delay_io;
     } nvmeCmdCtx;
 
     //Smart attribute IDs
