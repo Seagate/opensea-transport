@@ -161,6 +161,14 @@ ifeq ($(UNAME),FreeBSD)
 	endif
 endif
 
+ifeq ($(UNAME),AIX)
+	LIB_SRC_FILES += $(SRC_DIR)aix_helper.c
+	AIX_NVME_H = /usr/include/sys/nvme.h
+	ifneq ($(shell test -f $(AIX_NVME_H) && printf "yes"),yes)
+		PROJECT_DEFINES += -DDISABLE_NVME_PASSTHROUGH
+	endif
+endif
+
 #setting std=c99 instead of std-gnu99 because we want __has_include to work. This means we must add -D_GNU_SOURCE to the project defines to keep the same functionality in Linux
 #PROJECT_DEFINES += -D_GNU_SOURCE -DDISABLE_NVME_PASSTHROUGH #-D_DEBUG
 PROJECT_DEFINES += -D_GNU_SOURCE 
