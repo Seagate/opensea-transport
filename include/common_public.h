@@ -1027,7 +1027,31 @@ extern "C"
         WIN_IOCTL_FORCE_ALWAYS_DOUBLE_BUFFERED,
         WIN_IOCTL_MAX_METHOD
     }eWindowsIOCTLMethod;
-#endif
+#endif //defined (_WIN32) && !defined(UEFI_C_SOURCE)
+
+#if defined (_AIX)
+    //AIX specific structures/enums/etc
+    typedef enum _eAIXPassthroughType
+    {
+        AIX_PASSTHROUGH_NOT_SET = 0,
+        AIX_PASSTHROUGH_SCSI,
+        AIX_PASSTHROUGH_IDE_ATA,
+        AIX_PASSTHROUGH_IDE_ATAPI,
+        AIX_PASSTHROUGH_SATA,
+        AIX_PASSTHROUGH_NVME,
+    }eAIXPassthroughType;
+
+    typedef enum _eAIXAdapterType
+    {
+        AIX_ADAPTER_UNKNOWN = 0,
+        AIX_ADAPTER_SCSI,//as in parallel SCSI
+        AIX_ADAPTER_IDE,
+        AIX_ADAPTER_SAS,
+        AIX_ADAPTER_SATA,
+        AIX_ADAPTER_FC, //fibre channel
+        AIX_ADAPTER_NVME,
+    }eAIXAdapterType;
+#endif //_AIX
 
     //forward declare csmi info to avoid including csmi_helper.h
     typedef struct _csmiDeviceInfo csmiDeviceInfo,*ptrCsmiDeviceInfo;
@@ -1159,10 +1183,21 @@ extern "C"
         #else
             uint8_t freeBSDPadding[106];//padding on 32bit OS
         #endif
-        #else
+        #elif defined (_AIX)
+        int fd;//rhdisk handle
+        int ctrlfd;//handle to the controller (required for NVMe, may not be used for SCSI/SATA)
+        bool ctrlfdValid;
+        bool diagnosticModeFlagInUse;//handle was opened with the diagnostic mode flag set, which allows some other IOCTLs which require this flag-TJE
+        uint64_t scsiID;
+        uint64_t lunID;//nvme namespace for NVME devices-TJE
+        eAIXPassthroughType ptType;//used to route the command to the correct passthrough for the device/controller combination
+        eAIXAdapterType adapterType;//can be helpful as there are some minor differences in required fields between adapter types
+        uint32_t maxXferLength;//maximum transfer length that was reported by the controller
+        uint8_t aixPadding[76];//padding the structure out to keep same size as other OSs
+        #else //OS preprocessor checks
         int                 fd;//some other nix system that only needs a integer file handle
         uint8_t otherPadd[110];
-        #endif
+        #endif //OS preprocessor checks
         bool                osReadWriteRecommended;//This will be set to true when it is recommended that OS read/write calls are used instead of IO read/write (typically when using SMART or IDE IOCTLs in Windows since they may not work right for read/write)
         unsigned int        last_error; // errno in Linux or GetLastError in Windows.
         struct {
@@ -1420,6 +1455,8 @@ extern "C"
         #define MAX_CMD_TIMEOUT_SECONDS 4294967
     #elif defined (__sun)
         #define MAX_CMD_TIMEOUT_SECONDS 65535
+    #elif defined (_AIX)
+        #define MAX_CMD_TIMEOUT_SECONDS (UINT32_MAX - 1) //TODO: This may not be correct but the field that sets this is a uint32. Setting to 1 less than infinite's current value -TJE
     #else
         #error "Need to set MAX_CMD_TIMEOUT_SECONDS for this OS"
     #endif
