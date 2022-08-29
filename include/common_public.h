@@ -72,6 +72,7 @@ extern "C"
     #define OPENSEA_MAX_CONTROLLERS (8U)
     #define MAX_DEVICES_PER_CONTROLLER (256U)
     #define MAX_DEVICES_TO_SCAN (OPENSEA_MAX_CONTROLLERS * MAX_DEVICES_PER_CONTROLLER)
+	#define MAX_DRIVER_NAME			40
 
     #define SERIAL_NUM_LEN          (20) //Going with ATA lengths
     #define MODEL_NUM_LEN           (40)
@@ -666,6 +667,12 @@ extern "C"
         uint32_t specifierID;//Used on IEEE1394 only
     }adapterInfo;
 
+	typedef struct _driverInfo
+	{
+		char driverPath[OPENSEA_PATH_MAX];
+		char driverName[MAX_DRIVER_NAME];
+	} driverInfo;
+
     typedef enum _eATASynchronousDMAMode
     {
         ATA_DMA_MODE_NO_DMA,
@@ -966,6 +973,7 @@ extern "C"
         //TODO: a union or something so that we don't need to keep adding more bytes for drive types that won't use the ATA stuff or NVMe stuff in this struct.
         bridgeInfo      bridge_info;
         adapterInfo     adapter_info;
+		driverInfo		driver_info;
         ataOptions      ata_Options;
         uint64_t        lastCommandTimeNanoSeconds;//The time the last command took in nanoseconds
         softwareSATFlags softSATFlags;//This is used by the software SAT translation layer. DO NOT Update this directly. This should only be updated by the lower layers of opensea-transport.
