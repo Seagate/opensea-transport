@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
+#include "common.h"
 
 #include "vm_nvme_lib.h"
 
@@ -447,7 +448,7 @@ int Nvme_FWFindSlot(struct nvme_handle *handle, int *slot)
       struct smart_log smartLog;
       struct firmware_slot_log fwSlotLog;
    } log;
-   unsigned char fw_rev_slot[MAX_FW_SLOT][FW_REV_LEN];
+   unsigned char fw_rev_slot[MAX_FW_SLOT][VM_FW_REV_LEN];
    int rc = -1;
    int i;
 
