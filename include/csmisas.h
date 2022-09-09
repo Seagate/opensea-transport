@@ -548,6 +548,7 @@ typedef struct _IOCTL_HEADER {
 #define CSMI_SAS_RAID_DATA_DRIVES           0
 #define CSMI_SAS_RAID_DATA_DEVICE_ID        1
 #define CSMI_SAS_RAID_DATA_ADDITIONAL_DATA  2
+#define CSMI_SAS_RAID_DATA_INTEL_DRIVES     53 //for unknown reasons, this is what intel is setting in this field, but the data is drive data-TJE
 
 // RAID Drive Status
 // (bDriveStatus)

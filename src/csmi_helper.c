@@ -2856,6 +2856,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                                             switch (csmiRAIDConfig->Configuration.bDataType)
                                             {
                                             case CSMI_SAS_RAID_DATA_DRIVES:
+                                            case CSMI_SAS_RAID_DATA_INTEL_DRIVES:
                                                 switch (csmiRAIDConfig->Configuration.Drives[iter].bDriveUsage)
                                                 {
                                                 case CSMI_SAS_DRIVE_CONFIG_NOT_USED:
@@ -3086,6 +3087,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                 switch (csmiRAIDConfig->Configuration.bDataType)
                                                 {
                                                 case CSMI_SAS_RAID_DATA_DRIVES:
+                                                case CSMI_SAS_RAID_DATA_INTEL_DRIVES:
                                                     switch (csmiRAIDConfig->Configuration.Drives[iter].bDriveUsage)
                                                     {
                                                     case CSMI_SAS_DRIVE_CONFIG_NOT_USED:
