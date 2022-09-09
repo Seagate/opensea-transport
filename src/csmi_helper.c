@@ -2853,10 +2853,23 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                                         //make sure we got all the drive information...if now, we need to reallocate with some more memory
                                         for (uint32_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet; ++iter)
                                         {
-                                            switch (csmiRAIDConfig->Configuration.bDataType)
+                                            bool driveInfoValid = true;//for version 81 and earlier, assume this is true.
+                                            if (driverInfo.Information.usCSMIMinorRevision > 81)
                                             {
-                                            case CSMI_SAS_RAID_DATA_DRIVES:
-                                            case CSMI_SAS_RAID_DATA_INTEL_DRIVES:
+                                                switch (csmiRAIDConfig->Configuration.bDataType)
+                                                {
+                                                case CSMI_SAS_RAID_DATA_DRIVES:
+                                                case CSMI_SAS_RAID_DATA_INTEL_DRIVES://left here just in case since Intel's driver is setting something in this field which is reserved in v0.81
+                                                    break;
+                                                case CSMI_SAS_RAID_DATA_DEVICE_ID:
+                                                case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
+                                                default:
+                                                    driveInfoValid = false;
+                                                    break;
+                                                }
+                                            }
+                                            if (driveInfoValid)
+                                            {
                                                 switch (csmiRAIDConfig->Configuration.Drives[iter].bDriveUsage)
                                                 {
                                                 case CSMI_SAS_DRIVE_CONFIG_NOT_USED:
@@ -2872,11 +2885,6 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                                                 default:
                                                     break;
                                                 }
-                                                break;
-                                            case CSMI_SAS_RAID_DATA_DEVICE_ID:
-                                            case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
-                                            default:
-                                                break;
                                             }
                                         }
                                     }
@@ -3084,10 +3092,23 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                             {
                                                 bool foundDevice = false;
                                                 char handle[20] = { 0 };
-                                                switch (csmiRAIDConfig->Configuration.bDataType)
+                                                bool driveInfoValid = true;//for version 81 and earlier, assume this is true.
+                                                if (driverInfo.Information.usCSMIMinorRevision > 81)
                                                 {
-                                                case CSMI_SAS_RAID_DATA_DRIVES:
-                                                case CSMI_SAS_RAID_DATA_INTEL_DRIVES:
+                                                    switch (csmiRAIDConfig->Configuration.bDataType)
+                                                    {
+                                                    case CSMI_SAS_RAID_DATA_DRIVES:
+                                                    case CSMI_SAS_RAID_DATA_INTEL_DRIVES://left here just in case since Intel's driver is setting something in this field which is reserved in v0.81
+                                                        break;
+                                                    case CSMI_SAS_RAID_DATA_DEVICE_ID:
+                                                    case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
+                                                    default:
+                                                        driveInfoValid = false;
+                                                        break;
+                                                    }
+                                                }
+                                                if (driveInfoValid)
+                                                {
                                                     switch (csmiRAIDConfig->Configuration.Drives[iter].bDriveUsage)
                                                     {
                                                     case CSMI_SAS_DRIVE_CONFIG_NOT_USED:
@@ -3174,11 +3195,6 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                     default:
                                                         break;
                                                     }
-                                                    break;
-                                                case CSMI_SAS_RAID_DATA_DEVICE_ID:
-                                                case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
-                                                default:
-                                                    break;
                                                 }
                                             }
                                         }
