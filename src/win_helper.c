@@ -4445,11 +4445,11 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
                     memset(&scsiAddress, 0, sizeof(SCSI_ADDRESS));
                     if (SUCCESS == win_Get_SCSI_Address(fd, &scsiAddress))
                     {
-                        char raidHandle[15] = { 0 };
+                        char raidHandle[RAID_HANDLE_STRING_MAX_LEN] = { 0 };
                         raidTypeHint raidHint;
                         memset(&raidHint, 0, sizeof(raidTypeHint));
                         raidHint.unknownRAID = true;//TODO: Find a better way to hint at what type of raid we thing this might be. Can look at T10 vendor ID, low-level PCI/PCIe identifiers, etc.
-                        snprintf(raidHandle, 15, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
+                        snprintf(raidHandle, RAID_HANDLE_STRING_MAX_LEN, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
                         raidHandleList = add_RAID_Handle_If_Not_In_List(beginRaidHandleList, raidHandleList, raidHandle, raidHint);
                         if (!beginRaidHandleList)
                         {
@@ -4575,11 +4575,11 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                             memset(&scsiAddress, 0, sizeof(SCSI_ADDRESS));
                             if (SUCCESS == win_Get_SCSI_Address(d->os_info.fd, &scsiAddress))
                             {
-                                char raidHandle[15] = { 0 };
+                                char raidHandle[RAID_HANDLE_STRING_MAX_LEN] = { 0 };
                                 raidTypeHint raidHint;
                                 memset(&raidHint, 0, sizeof(raidTypeHint));
                                 raidHint.unknownRAID = true;//TODO: Find a better way to hint at what type of raid we thing this might be. Can look at T10 vendor ID, low-level PCI/PCIe identifiers, etc.
-                                snprintf(raidHandle, 15, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
+                                snprintf(raidHandle, RAID_HANDLE_STRING_MAX_LEN, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
                                 raidHandleList = add_RAID_Handle_If_Not_In_List(beginRaidHandleList, raidHandleList, raidHandle, raidHint);
                                 if (!beginRaidHandleList)
                                 {
