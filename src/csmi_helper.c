@@ -2991,6 +2991,20 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
     ptrRaidHandleToScan previousRaidListEntry = NULL;
     uint32_t controllerNumber = 0;
     int found = 0;
+
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
+    {
+        csmiCountVerbosity = VERBOSITY_COMMAND_NAMES;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE)
+    {
+        csmiCountVerbosity = VERBOSITY_COMMAND_VERBOSE;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_BUFFERS)
+    {
+        csmiCountVerbosity = VERBOSITY_BUFFERS;
+    }
+
 #if defined (CSMI_DEBUG)
     printf("GDC: Begin\n");
 #endif //CSMI_DEBUG
@@ -3225,6 +3239,19 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 #endif
     eVerbosityLevels csmiListVerbosity = VERBOSITY_DEFAULT;//If debugging, change this and down below where this is set per device will also need changing
     
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
+    {
+        csmiListVerbosity = VERBOSITY_COMMAND_NAMES;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE)
+    {
+        csmiListVerbosity = VERBOSITY_COMMAND_VERBOSE;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_BUFFERS)
+    {
+        csmiListVerbosity = VERBOSITY_BUFFERS;
+    }
+
 #if defined (CSMI_DEBUG)
     printf("GDL: Begin\n");
 #endif //CSMI_DEBUG
