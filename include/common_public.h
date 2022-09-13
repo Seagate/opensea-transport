@@ -1229,6 +1229,9 @@ extern "C"
         FORCE_ATA_DMA_SAT_MODE = BIT17, //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
         FORCE_ATA_UDMA_SAT_MODE = BIT18, //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
         GET_DEVICE_FUNCS_IGNORE_CSMI = BIT19, //use this bit in get_Device_Count and get_Device_List to ignore CSMI devices.
+        GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES = BIT20, //matches v2
+        GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE = BIT21, //matches v3
+        GET_DEVICE_FUNCS_VERBOSE_BUFFERS = BIT22, //matches v4
     } eDiscoveryOptions;
 
     typedef int (*issue_io_func)( void * );
