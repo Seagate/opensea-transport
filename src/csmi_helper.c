@@ -2209,7 +2209,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                                         {
                                             bool driveInfoValid = true;//for version 81 and earlier, assume this is true.
 #if defined (CSMI_DEBUG)
-                                            printf("JSCI: Checking CSMI Revision: %" CPRIu32 ".%" CPRIu32 "\n", driverInfo.Information.usCSMIMajorRevision, driverInfo.Information.usCSMIMinorRevision);
+                                            printf("JSCI: Checking CSMI Revision: %" CPRIu16 ".%" CPRIu16 "\n", driverInfo.Information.usCSMIMajorRevision, driverInfo.Information.usCSMIMinorRevision);
 #endif //CSMI_DEBUG
                                             if (driverInfo.Information.usCSMIMajorRevision > 0 || driverInfo.Information.usCSMIMinorRevision > 81)
                                             {
@@ -3059,7 +3059,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                         if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                             || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
                             || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
-                            && !strstr(driverInfo.Information.szName, "arcsas")
+                            && !strstr(C_CAST(const char*, driverInfo.Information.szName), "arcsas")
                             )
                         {
 #if defined (CSMI_DEBUG)
@@ -3093,7 +3093,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                                         {
                                             bool driveInfoValid = true;//for version 81 and earlier, assume this is true.
 #if defined (CSMI_DEBUG)
-                                            printf("GDC: Checking CSMI Revision: %" CPRIu32 ".%" CPRIu32 "\n", driverInfo.Information.usCSMIMajorRevision, driverInfo.Information.usCSMIMinorRevision);
+                                            printf("GDC: Checking CSMI Revision: %" CPRIu16 ".%" CPRIu16 "\n", driverInfo.Information.usCSMIMajorRevision, driverInfo.Information.usCSMIMinorRevision);
 #endif //CSMI_DEBUG
                                             if (driverInfo.Information.usCSMIMajorRevision > 0 || driverInfo.Information.usCSMIMinorRevision > 81)
                                             {
@@ -3346,7 +3346,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                             if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                                 || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
                                 || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
-                                && !strstr(driverInfo.Information.szName, "arcsas")
+                                && !strstr(C_CAST(const char*, driverInfo.Information.szName), "arcsas")
                                 )
                             {
                                 //Get RAID info & Phy info. Need to match the RAID config (below) to some of the phy info as best we can...-TJE
@@ -3395,7 +3395,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                 char handle[RAID_HANDLE_STRING_MAX_LEN] = { 0 };
                                                 bool driveInfoValid = true;//for version 81 and earlier, assume this is true.
 #if defined (CSMI_DEBUG)
-                                                printf("GDL: Checking CSMI Revision: %" CPRIu32 ".%" CPRIu32 "\n", driverInfo.Information.usCSMIMajorRevision, driverInfo.Information.usCSMIMinorRevision);
+                                                printf("GDL: Checking CSMI Revision: %" CPRIu16 ".%" CPRIu16 "\n", driverInfo.Information.usCSMIMajorRevision, driverInfo.Information.usCSMIMinorRevision);
 #endif //CSMI_DEBUG
                                                 if (driverInfo.Information.usCSMIMajorRevision > 0 || driverInfo.Information.usCSMIMinorRevision > 81)
                                                 {
