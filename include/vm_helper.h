@@ -48,6 +48,9 @@ extern "C"
     //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
     bool os_Is_Infinite_Timeout_Supported(void);
 
+
+    int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char **blockHandle);
+
 //SG Driver status's since they are not available through standard includes we're using
 
 #ifndef OPENSEA_SG_ERR_DRIVER_MASK
