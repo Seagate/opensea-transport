@@ -442,8 +442,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 								ssize_t len = readlink(pciPath, device->drive_info.driver_info.driverPath, OPENSEA_PATH_MAX);
 								if (len != -1)
 								{
-									driverName = basename(&device->drive_info.driver_info.driverPath);
-									snprintf(device->drive_info.driver_info.driverName, OPENSEA_PATH_MAX, "%s", driverName);
+									driverName = basename(&device->drive_info.driver_info.driverPath[0]);
+									snprintf(device->drive_info.driver_info.driverName, MAX_DRIVER_NAME, "%s", driverName);
 								}
 								safe_Free(pciPath);
 								device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
@@ -645,9 +645,11 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 								//Store Driver Information
 								pciPath = dirname(pciPath);
 								common_String_Concat(pciPath, PATH_MAX, "/driver");
-								ssize_t len = readlink(pciPath, device->drive_info.driver_info.driverPath, OPENSEA_PATH_MAX);
-								driverName = basename(&device->drive_info.driver_info.driverPath);
-								snprintf(device->drive_info.driver_info.driverName, OPENSEA_PATH_MAX, "%s", driverName);
+								if (-1 != readlink(pciPath, device->drive_info.driver_info.driverPath, OPENSEA_PATH_MAX))
+                                {
+                                    driverName = basename(&device->drive_info.driver_info.driverPath[0]);
+                                    snprintf(device->drive_info.driver_info.driverName, MAX_DRIVER_NAME, "%s", driverName);
+                                }
 								//printf("\nPath: %s\tname: %s", device->drive_info.driver_info.driverPath,
 								//	device->drive_info.driver_info.driverName);
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
