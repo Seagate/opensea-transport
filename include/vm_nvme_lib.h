@@ -26,7 +26,7 @@
 //TODO: confirm max transfer size
 #define NVME_MAX_XFER_SIZE            (8*1024)
 #define MAX_FW_SLOT                   7
-#define FW_REV_LEN                    8
+#define VM_FW_REV_LEN                    8
 #define MAX_ADAPTER_NAME_LEN  64
 #define MAX_FW_PATH_LEN       512
 

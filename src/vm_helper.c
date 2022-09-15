@@ -21,6 +21,7 @@
 #include <sys/ioctl.h>
 #include <errno.h>
 #include <libgen.h>//for basename and dirname
+#include <string.h>
 #include "vm_helper.h"
 #include "cmds.h"
 #include "scsi_helper_func.h"
@@ -1712,7 +1713,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     {
         size_t deviceHandleLen = (strlen("/dev/disks/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, malloc(deviceHandleLen));
-        snprintf(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name)
+        snprintf(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name);
         safe_Free(namelist[i])
     }
     safe_Free(namelist)
@@ -1744,7 +1745,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 #if defined (DEGUG_SCAN_TIME)
         start_Timer(&getDeviceListTimer);
 #endif
-        for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_sg_devs + num_sd_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
+        for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_sg_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
             if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
             {
@@ -1801,7 +1802,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         {
             returnValue = FAILURE;
         }
-        else if(permissionDeniedCount == (num_sg_devs + num_sd_devs + num_nvme_devs))
+        else if(permissionDeniedCount == (num_sg_devs + num_nvme_devs))
         {
             returnValue = PERMISSION_DENIED;
         }
