@@ -502,7 +502,7 @@ static bool is_Compatible_SCSI_FWDL_IO(ScsiIoCtx *scsiIoCtx, bool *isActivate)
             }
         }
     }
-    else if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
+    else if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_CMD|| scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
     {
         if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0E)
         {
