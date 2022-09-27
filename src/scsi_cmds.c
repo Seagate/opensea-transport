@@ -93,7 +93,7 @@ int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields)
 
     if ((scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > scsiIoCtx->timeout)
     {
-        ret = COMMAND_TIMEOUT;
+        ret = OS_COMMAND_TIMEOUT;
     }
 
     //Send a test unit ready command if a problem was found to keep the device performing optimally

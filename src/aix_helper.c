@@ -31,6 +31,7 @@
 #include <sys/devinfo.h> //to read info about device/controller from openned handle
 #if defined (DF_NVME) //this will be defined in devinfo.h if NVMe devices are supported(should be in AIX7 and up)
     #include <sys/nvme.h>
+    #include <sntl_helper.h>
 #else
     #if !defined (DISABLE_NVME_PASSTHROUGH)
         #define DISABLE_NVME_PASSTHROUGH
@@ -38,6 +39,7 @@
 #endif
 
 #include "aix_helper.h"
+#include "cmds.h"
 
 bool os_Is_Infinite_Timeout_Supported(void)
 {
@@ -78,9 +80,9 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
         case DD_SCTAPE:
             printf(" - SCSI tape\n");
             break;
-        case DD_TTY:
-            printf(" - terminal\n");
-            break;
+        // case DD_TTY:
+        //     printf(" - terminal\n");
+        //     break;
         case DD_DISK:
             printf(" - disk\n");
             break;
@@ -129,9 +131,9 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
         case DD_DUMP:
             printf(" - dump device driver\n");
             break;
-        case DD_SCCD:
-            printf(" - SCSI CDROM\n");
-            break;
+        // case DD_SCCD:
+        //     printf(" - SCSI CDROM\n");
+        //     break;
         case DD_CIO:
             printf(" - common communications device driver\n");
             break;
@@ -185,7 +187,7 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
             break;
         }
         printf("\tdevsubtype = %c", devInfoData->devsubtype);
-        switch(devinfo->devsubtype)
+        switch(devInfoData->devsubtype)
         {
         case DS_DLCETHER: /* DLC - Standard Ethernet */
             printf(" - DLC - Standard Ethernet\n");
@@ -223,9 +225,9 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
         case DS_SATA:      /* SATA adapter */
             printf(" - SATA adapter\n");
             break;
-        case DS_PP:     /* Parallel printer */
-            printf(" - Parallel printer\n");
-            break;
+        // case DS_PP:     /* Parallel printer */
+        //     printf(" - Parallel printer\n");
+        //     break;
         case DS_SP:     /* Serial printer   */
             printf(" - Serial Printer\n");
             break;
@@ -247,21 +249,23 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
         case DS_FCP:     /* FC SCSI adapter        */
             printf(" - FC SCSI Adapter\n");
             break;
+#if !defined (DISABLE_NVME_PASSTHROUGH)
         case DS_FCNVME:  /* FC-NVMe device       */
             printf(" - FC-NVMe device\n");
             break;
+#endif //DISABLE_NVME_PASSTHROUGH
         case DS_VM:     /* VM logical volume */
             printf(" - VM Logical volume\n");
             break;
-        case DS_QIO:     /* Quick IO logical volume */
-            printf(" - Quick IO logical volume\n");
-            break;
+        // case DS_QIO:     /* Quick IO logical volume */
+        //     printf(" - Quick IO logical volume\n");
+        //     break;
         case DS_ISCSI:    /* iSCSI adapter           */
             printf(" - iSCSI adapter\n");
             break;
-        case DS_LVZ:	/* New logical volume type */
-            M_FALLTHROUGH
-        case DS_LV0 DS_LVZ	/* New logical volume type */
+        // case DS_LVZ:	/* New logical volume type */
+        //     M_FALLTHROUGH
+        case DS_LV0:	/* New logical volume type */
             printf(" - New logical volume type\n");
             break;
         case DS_VMZ:     /* VM logical volume */
@@ -270,9 +274,9 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
         case DS_VDEVICE:  /* Virtual deivce or bus   */
             printf(" - Virtual device or bus\n");
             break;
-        case DS_CVSCSI:   /* Virtual SCSI Client (hosteD)  */
-            printf(" - Virtual SCSI Client (hosteD)\n");
-            break;
+        // case DS_CVSCSI:   /* Virtual SCSI Client (hosteD)  */
+        //     printf(" - Virtual SCSI Client (hosteD)\n");
+        //     break;
         case DS_SVSCSI:   /* Virtual SCSI Server (hostinG) */
             printf(" - Virtual SCSI Server (hostinG)\n");
             break;
@@ -282,18 +286,24 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
         case DS_ACCEL:    /* Accel device */
             printf(" - Accel device\n");
             break;
+#if defined (DS_CAPI_IO)
         case DS_CAPI_IO:  /* CAPI Storage device */
             printf(" - CAPI Storage device\n");
             break;
+#endif //DS_CAPI_IO
+#if defined (DS_VRTSCSI)
         case DS_VRTSCSI:  /* VirtIO SCSI Client Adapter */
             printf(" - VirtIO SCSI Client Adapter\n");
             break;
+#endif //DS_VRTSCSI
         case DS_VSD:     /* VSD type device */
             printf(" - VSD Type Device\n");
             break;
+#if !defined (DISABLE_NVME_PASSTHROUGH)
         case DS_NVME:     /* non-volatile Memory controller   */
             printf(" - Non-Volatile Memory Controller (NVMe)\n");
             break;
+#endif //DISABLE_NVME_PASSTHROUGH
         default:
             printf(" - Unknown\n");
             break;
@@ -333,7 +343,7 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
             printf("\t\t\tlun_id: %" PRIu8 "\n", devInfoData->un.tmscsi.lun_id);
             printf("\t\t\tbuf_size: %" PRIu32 "\n", devInfoData->un.tmscsi.buf_size);
             printf("\t\t\tnum_bufs: %" PRIu32 "\n", devInfoData->un.tmscsi.num_bufs);
-            printf("\t\t\tmax_transfer: %" PRId32 "\n", devInfoData->un.tmscsi.max_transfer);
+            printf("\t\t\tmax_transfer: %ld\n", devInfoData->un.tmscsi.max_transfer);
             printf("\t\t\tadapter_devno: %" PRIu32 "\n", devInfoData->un.tmscsi.adapter_devno);
             break;
         case DD_SCSITM:
@@ -345,7 +355,7 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
             printf("\t\t\thi_lun_id: %" PRIu8 "\n", devInfoData->un.scsitm.hi_lun_id);
             printf("\t\t\tbuf_size: %" PRIu32 "\n", devInfoData->un.scsitm.buf_size);
             printf("\t\t\tnum_bufs: %" PRIu32 "\n", devInfoData->un.scsitm.num_bufs);
-            printf("\t\t\tmax_transfer: %" PRId32 "\n", devInfoData->un.scsitm.max_transfer);
+            printf("\t\t\tmax_transfer: %ld\n", devInfoData->un.scsitm.max_transfer);
             printf("\t\t\tadapter_devno: %" PRIu32 "\n", devInfoData->un.scsitm.adapter_devno);
             break;
         case DD_LP:
@@ -386,9 +396,6 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
             }
             printf("\t\t\tblksize: %" PRId32 "\n", devInfoData->un.scmt.blksize);
             break;
-        case DD_TTY:
-            //do we care?
-            break;
         case DD_DISK:
             //devInfoData->un.dk
             //dk64 //DF_LGDSK flag must be set
@@ -404,11 +411,11 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
                     printf("\t\t\tflags = %" PRIu16 "\n", devInfoData->un.dk64.flags);
                     //TODO: Print out flags???
                 }
-                printf("\t\t\tlo_numblks = %" PRId32 "\n", devInfoData->un.dk64.lo_numblks);
+                printf("\t\t\tlo_numblks = %ld\n", devInfoData->un.dk64.lo_numblks);
                 printf("\t\t\tsegment_size = %" PRIu32 "\n", devInfoData->un.dk64.segment_size);
                 printf("\t\t\tsegment_count = %" PRIu32 "\n", devInfoData->un.dk64.segment_count);
                 printf("\t\t\tbyte_count = %" PRIu32 "\n", devInfoData->un.dk64.byte_count);
-                printf("\t\t\thi_numblks = %" PRId32 "\n", devInfoData->un.dk64.hi_numblks);
+                printf("\t\t\thi_numblks = %ld\n", devInfoData->un.dk64.hi_numblks);
             }
             else
             {
@@ -417,13 +424,14 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
                 printf("\t\t\tbytpsec = %" PRIu16 "\n", devInfoData->un.dk.bytpsec);
                 printf("\t\t\tsecptrk = %" PRIu16 "\n", devInfoData->un.dk.secptrk);
                 printf("\t\t\ttrkpcyl = %" PRIu16 "\n", devInfoData->un.dk.trkpcyl);
-                printf("\t\t\tnumblks = %" PRId32 "\n", devInfoData->un.dk.numblks);
+                printf("\t\t\tnumblks = %ld\n", devInfoData->un.dk.numblks);
                 printf("\t\t\tsegment_size = %" PRIu32 "\n", devInfoData->un.dk.segment_size);
                 printf("\t\t\tsegment_count = %" PRIu32 "\n", devInfoData->un.dk.segment_count);
                 printf("\t\t\tbyte_count = %" PRIu32 "\n", devInfoData->un.dk.byte_count);
             }
             break;
         case DD_CDROM:
+        //case DD_SCCD:
             //devInfoData->un.sccd, idecd;
             //sccd64, idecd64 //DF_LGDSK flag must be set
             if (devInfoData->flags & DF_LGDSK)
@@ -434,14 +442,14 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
                 {
                     printf("\t\t\tflags = %" PRIu16 "\n", devInfoData->un.sccd64.flags);
                 }
-                printf("\t\t\tlo_numblks = %" PRIu32 "\n", devInfoData->un.sccd64.lo_numblks);
-                printf("\t\t\thi_numblks = %" PRIu32 "\n", devInfoData->un.sccd64.hi_numblks);
+                printf("\t\t\tlo_numblks = %ld\n", devInfoData->un.sccd64.lo_numblks);
+                printf("\t\t\thi_numblks = %ld\n", devInfoData->un.sccd64.hi_numblks);
             }
             else
             {
                 printf("\t\tsccd\n");
                 printf("\t\t\tblksize = %" PRIu16 "\n", devInfoData->un.sccd.blksize);
-                printf("\t\t\tnumblks = %" PRIu32 "\n", devInfoData->un.sccd.numblks);
+                printf("\t\t\tnumblks = %ld\n", devInfoData->un.sccd.numblks);
             }
             break;
         case DD_DLC:
@@ -462,38 +470,51 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
                     {
                         printf("\t\t\t\tSSD\n");
                     }
+                    #if defined (DF_CFLASH)
                     if (devInfoData->un.scdk64.flags & DF_CFLASH)
                     {
                         printf("\t\t\t\tCAPI Flash disk\n");
                     }
+                    #endif //DF_CFLASH
+                    #if defined (DF_LBP)
                     if (devInfoData->un.scdk64.flags & DF_LBP)
                     {
                         printf("\t\t\t\tLBP fields are valid\n");
                     }
+                    #endif //DF_LBP
+                    #if defined (DF_NVME)
                     if (devInfoData->un.scdk64.flags & DF_NVME)
                     {
                         printf("\t\t\t\tNVMe\n");
                     }
+                    #endif //DF_NVME
+                    #if defined (DF_4B_ALIGNED)
                     if (devInfoData->un.scdk64.flags & DF_4B_ALIGNED)
                     {
                         printf("\t\t\t\t4B alignment required\n");
                     }
+                    #endif //DF_4B_ALIGNED
+                    #if defined (DF_NVMEM)
                     if (devInfoData->un.scdk64.flags & DF_NVMEM)
                     {
                         printf("\t\t\t\tNVMEM disk\n");
                     }
+                    #endif //DF_NVMEM
+                    #if defined (DF_VPMEM)
                     if (devInfoData->un.scdk64.flags & DF_VPMEM)
                     {
                         printf("\t\t\t\tContents are no persistent across CEC reboot\n");
                     }
+                    #endif //DF_VPMEM
                 }
-                printf("\t\t\tlo_numblks = %" PRId32 "\n", devInfoData->un.scdk64.lo_numblks);
-                printf("\t\t\tlo_max_request = %" PRId32 "\n", devInfoData->un.scdk64.lo_max_request);
+                printf("\t\t\tlo_numblks = %ld\n", devInfoData->un.scdk64.lo_numblks);
+                printf("\t\t\tlo_max_request = %ld\n", devInfoData->un.scdk64.lo_max_request);
                 printf("\t\t\tsegment_size = %" PRIu32 "\n", devInfoData->un.scdk64.segment_size);
                 printf("\t\t\tsegment_count = %" PRIu32 "\n", devInfoData->un.scdk64.segment_count);
                 printf("\t\t\tbyte_count = %" PRIu32 "\n", devInfoData->un.scdk64.byte_count);
-                printf("\t\t\thi_numblks = %" PRId32 "\n", devInfoData->un.scdk64.hi_numblks);
-                printf("\t\t\thi_max_request = %" PRId32 "\n", devInfoData->un.scdk64.hi_max_request);
+                printf("\t\t\thi_numblks = %ld\n", devInfoData->un.scdk64.hi_numblks);
+                printf("\t\t\thi_max_request = %ld\n", devInfoData->un.scdk64.hi_max_request);
+                #if defined (DF_LBP)
                 if (devInfoData->un.scdk64.flags & DF_LBP)
                 {
                     //lbp_flags to check what other fields to print out
@@ -547,13 +568,14 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
                         printf("\t\t\tlbp_alignment = %" PRIu32 "\n", devInfoData->un.scdk64.lbp_alignment);
                     }
                 }
+                #endif //DF_LBP
             }
             else
             {
                 printf("\t\tscdk\n");
                 printf("\t\t\tblksize = %" PRIu16 "\n", devInfoData->un.scdk.blksize);
-                printf("\t\t\tnumblks = %" PRId32 "\n", devInfoData->un.scdk.numblks);
-                printf("\t\t\tmax_request = %" PRId32 "\n", devInfoData->un.scdk.max_request);
+                printf("\t\t\tnumblks = %ld\n", devInfoData->un.scdk.numblks);
+                printf("\t\t\tmax_request = %ld\n", devInfoData->un.scdk.max_request);
                 printf("\t\t\tsegment_size = %" PRIu32 "\n", devInfoData->un.scdk.segment_size);
                 printf("\t\t\tsegment_count = %" PRIu32 "\n", devInfoData->un.scdk.segment_count);
                 printf("\t\t\tbyte_count = %" PRIu32 "\n", devInfoData->un.scdk.byte_count);
@@ -595,27 +617,6 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
         case DD_DUMP:
             //do we care?
             break;
-        case DD_SCCD:
-            //devInfoData->un.sccd, idecd;
-            //sccd64, idecd64 //DF_LGDSK flag must be set
-            if (devInfoData->flags & DF_LGDSK)
-            {
-                printf("\t\tsccd64\n");
-                printf("\t\t\tblksize = %" PRIu16 "\n", devInfoData->un.sccd64.blksize);
-                if (devInfoData->flags & DF_IVAL)
-                {
-                    printf("\t\t\tflags = %" PRIu16 "\n", devInfoData->un.sccd64.flags);
-                }
-                printf("\t\t\tlo_numblks = %" PRIu32 "\n", devInfoData->un.sccd64.lo_numblks);
-                printf("\t\t\thi_numblks = %" PRIu32 "\n", devInfoData->un.sccd64.hi_numblks);
-            }
-            else
-            {
-                printf("\t\tsccd\n");
-                printf("\t\t\tblksize = %" PRIu16 "\n", devInfoData->un.sccd.blksize);
-                printf("\t\t\tnumblks = %" PRIu32 "\n", devInfoData->un.sccd.numblks);
-            }
-            break;
         case DD_CIO:
             //do we care?
             break;
@@ -624,17 +625,17 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
             //adapters for SCSI controllers will show up with this
             //https://www.ibm.com/docs/en/aix/7.1?topic=drivers-sam-adapter-ioctl-operations
             //check the subtype for specific info
-            switch(devinfo->devsubtype)
+            switch(devInfoData->devsubtype)
             {
             case DS_SCSI:     /* SCSI adapter */
                 printf("\t\tscsi\n");
                 printf("\t\t\tcard_scsi_id = %" PRId8 "\n", devInfoData->un.scsi.card_scsi_id);
-                printf("\t\t\tmax_transfer = %" PRIu32 "\n", devInfoData->un.scsi.max_transfer);
+                printf("\t\t\tmax_transfer = %ld\n", devInfoData->un.scsi.max_transfer);
                 break;
             case DS_IDE:     /* IDE adapter  */
                 printf("\t\tide\n");
                 printf("\t\t\tresv1 = %" PRId8 "\n", devInfoData->un.ide.resv1);
-                printf("\t\t\tmax_transfer = %" PRIu32 "\n", devInfoData->un.ide.max_transfer);
+                printf("\t\t\tmax_transfer = %ld\n", devInfoData->un.ide.max_transfer);
                 break;
             case DS_SAS:      /* SAS adapter  */
                 printf("\t\tsas\n");
@@ -676,15 +677,20 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
             case DS_FCP:     /* FC SCSI adapter        */
                 //TODO: fcp structure
                 break;
+#if !defined (DISABLE_NVME_PASSTHROUGH)
             case DS_FCNVME:  /* FC-NVMe device       */
                 //TODO: nvmeof_transport structure
                 break;
+#endif //DISABLE_NVME_PASSTHROUGH
             case DS_ISCSI:    /* iSCSI adapter           */
                 //TODO: iscsi structure
                 break;
+#if defined (DS_CAPI_IO)
             case DS_CAPI_IO:  /* CAPI Storage device */
                 //TODO: capi_io structure
                 break;
+#endif //DS_CAPI_IO
+#if !defined (DISABLE_NVME_PASSTHROUGH)
             case DS_NVME:     /* non-volatile Memory controller   */
                 printf("\t\tnvme\n");
                 printf("\t\t\treserved1 = %" PRIu32 "\n", devInfoData->un.nvme.reserved1);
@@ -722,12 +728,14 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
                 printf("\t\t\tmax_transfer = %" PRId32 "\n", devInfoData->un.nvme.max_transfer);
                 printf("\t\t\tioctl_max_transfer = %" PRId32 "\n", devInfoData->un.nvme.ioctl_max_transfer);
                 break;
+#endif //DISABLE_NVME_PASSTHROUGH
             case DS_CVSCSI:   /* Virtual SCSI Client (hosteD)  */
                 //TODO: vscsi
                 break;
             case DS_SVSCSI:   /* Virtual SCSI Server (hostinG) */
                 //TODO: vscsi_host
                 break;
+#if defined (DS_VRTSCSI)
             case DS_VRTSCSI:  /* VirtIO SCSI Client Adapter */
                 printf("\t\tvrt_scsi\n");
                 printf("\t\t\tvrtscsi_id = %" PRId8 "\n", devInfoData->un.vrt_scsi.vrtscsi_id);
@@ -736,6 +744,7 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
                 printf("\t\t\treserved2 = %" PRId32 "\n", devInfoData->un.vrt_scsi.reserved2);
                 printf("\t\t\treserved3 = %" PRId32 "\n", devInfoData->un.vrt_scsi.reserved3);
                 break;
+#endif //DS_VRTSCSI
             default:
                 //Do nothing for now. We can parse more things out when we need to in the future -TJE
                 break;
@@ -829,7 +838,7 @@ static void print_ODM_Error(int odmError)
     case ODMI_BAD_CLASSNAME:
         printf("ODMI bad classname\n");
         break;
-    case ODMI_UNLINKCLASS_ERR
+    case ODMI_UNLINKCLASS_ERR:
         printf("ODMI unlinkclass error\n");
         break;
     case ODMI_UNLINKCLXN_ERR:
@@ -907,20 +916,20 @@ static void print_CuDv_Struct (struct CuDv *cudv)
     char cudvlocation[17] = { 0 };
     char cudvparent[17] = { 0 };
     char cudvconnwhere[17] = { 0 };
-    char cudvPdDvLnLvalue[49] = { 0 };
+    //char cudvPdDvLnLvalue[49] = { 0 };
     snprintf(cudvName, 17, "%s", cudv->name);
     snprintf(cudvddins, 17, "%s", cudv->ddins);
     snprintf(cudvlocation, 17, "%s", cudv->location);
     snprintf(cudvparent, 17, "%s", cudv->parent);
     snprintf(cudvconnwhere, 17, "%s", cudv->connwhere);
-    snprintf(cudvPdDvLnLvalue, 49, "%s", cudv->cudvPdDvLnLvalue);
+    //snprintf(cudvPdDvLnLvalue, 49, "%s", cudv->PdDvLn_Lvalue);
     printf("CuDv:\n");
-    printf("\tid: %" PRId32 "\n", cudv->_id);
-    printf("\treserved: %" PRId32 "\n", cudv->_reserved);
-    printf("\tscratch: %" PRId32 "\n", cudv->_scratch);
+    printf("\tid: %ld\n", cudv->_id);
+    printf("\treserved: %ld\n", cudv->_reserved);
+    printf("\tscratch: %ld\n", cudv->_scratch);
     printf("\tname: %s\n", cudvName);
     printf("\tstatus: %" PRId16 "\n", cudv->status);
-    printf("\tcngstatus: %" PRId16 "\n", cudv->cngstatus);
+    printf("\tchgstatus: %" PRId16 "\n", cudv->chgstatus);
     printf("\tddins: %s\n", cudvddins);
     printf("\tlocation: %s\n", cudvlocation);
     printf("\tparent: %s\n", cudvparent);
@@ -943,39 +952,39 @@ static void print_CuDv_Struct (struct CuDv *cudv)
         char pddvStop[257] = { 0 };
         char pddvuniquetype[49] = { 0 };
         //making copies to ensure null termination - TJE
-        snprintf(pddvtype, 17, "%s", cudv->PdDvLn.type);
-        snprintf(pddvclass, 17, "%s", cudv->PdDvLn.class);
-        snprintf(pddvsubclass, 17, "%s", cudv->PdDvLn.subclass);
-        snprintf(pddvprefix, 17, "%s", cudv->PdDvLn.prefix);
-        snprintf(pddvdevid, 17, "%s", cudv->PdDvLn.devid);
-        snprintf(pddvcatalog, 17, "%s", cudv->PdDvLn.catalog);
-        snprintf(pddvDvDr, 17, "%s", cudv->PdDvLn.DvDr);
-        snprintf(pddvDefine, 257, "%s", cudv->PdDvLn.Define);
-        snprintf(pddvConfigure, 257, "%s", cudv->PdDvLn.Configure);
-        snprintf(pddvChange, 257, "%s", cudv->PdDvLn.Change);
-        snprintf(pddvUnconfigure, 257, "%s", cudv->PdDvLn.Unconfigure);
-        snprintf(pddvUndefine, 257, "%s", cudv->PdDvLn.Undefine);
-        snprintf(pddvStart, 257, "%s", cudv->PdDvLn.Start);
-        snprintf(pddvStop, 257, "%s", cudv->PdDvLn.Stop);
-        snprintf(pddvuniquetype, 49, "%s", cudv->PdDvLn.uniquetype);
+        snprintf(pddvtype, 17, "%s", cudv->PdDvLn->type);
+        snprintf(pddvclass, 17, "%s", cudv->PdDvLn->class);
+        snprintf(pddvsubclass, 17, "%s", cudv->PdDvLn->subclass);
+        snprintf(pddvprefix, 17, "%s", cudv->PdDvLn->prefix);
+        snprintf(pddvdevid, 17, "%s", cudv->PdDvLn->devid);
+        snprintf(pddvcatalog, 17, "%s", cudv->PdDvLn->catalog);
+        snprintf(pddvDvDr, 17, "%s", cudv->PdDvLn->DvDr);
+        snprintf(pddvDefine, 257, "%s", cudv->PdDvLn->Define);
+        snprintf(pddvConfigure, 257, "%s", cudv->PdDvLn->Configure);
+        snprintf(pddvChange, 257, "%s", cudv->PdDvLn->Change);
+        snprintf(pddvUnconfigure, 257, "%s", cudv->PdDvLn->Unconfigure);
+        snprintf(pddvUndefine, 257, "%s", cudv->PdDvLn->Undefine);
+        snprintf(pddvStart, 257, "%s", cudv->PdDvLn->Start);
+        snprintf(pddvStop, 257, "%s", cudv->PdDvLn->Stop);
+        snprintf(pddvuniquetype, 49, "%s", cudv->PdDvLn->uniquetype);
         printf("\tPdDv\n");
-        printf("\t\tid: %" PRId32 "\n", cudv->PdDvLn._id);
-        printf("\t\treserved: %" PRId32 "\n", cudv->PdDvLn._reserved);
-        printf("\t\tscratch: %" PRId32 "\n", cudv->PdDvLn._scratch);
+        printf("\t\tid: %ld\n", cudv->PdDvLn->_id);
+        printf("\t\treserved: %ld\n", cudv->PdDvLn->_reserved);
+        printf("\t\tscratch: %ld\n", cudv->PdDvLn->_scratch);
         printf("\t\ttype: %s\n", pddvtype);
         printf("\t\tclass: %s\n", pddvclass);
         printf("\t\tsubclass: %s\n", pddvsubclass);
         printf("\t\tprefix: %s\n", pddvprefix);
         printf("\t\tdevid: %s\n", pddvdevid);
-        printf("\t\tbase: %" PRId16 "\n", cudv->PdDvLn.base);
-        printf("\t\thas_vpd: %" PRId16 "\n", cudv->PdDvLn.has_vpd);
-        printf("\t\tdetectable: %" PRId16 "\n", cudv->PdDvLn.detectable);
-        printf("\t\tchgstatus: %" PRId16 "\n", cudv->PdDvLn.chgstatus);
-        printf("\t\tbus_ext: %" PRId16 "\n", cudv->PdDvLn.bus_ext);
-        printf("\t\tfru: %" PRId16 "\n", cudv->PdDvLn.fru);
-        printf("\t\tled: %" PRId16 "\n", cudv->PdDvLn.led);
-        printf("\t\tsetno: %" PRId16 "\n", cudv->PdDvLn.setno);
-        printf("\t\tmsgno: %" PRId16 "\n", cudv->PdDvLn.msgno);
+        printf("\t\tbase: %" PRId16 "\n", cudv->PdDvLn->base);
+        printf("\t\thas_vpd: %" PRId16 "\n", cudv->PdDvLn->has_vpd);
+        printf("\t\tdetectable: %" PRId16 "\n", cudv->PdDvLn->detectable);
+        printf("\t\tchgstatus: %" PRId16 "\n", cudv->PdDvLn->chgstatus);
+        printf("\t\tbus_ext: %" PRId16 "\n", cudv->PdDvLn->bus_ext);
+        printf("\t\tfru: %" PRId16 "\n", cudv->PdDvLn->fru);
+        printf("\t\tled: %" PRId16 "\n", cudv->PdDvLn->led);
+        printf("\t\tsetno: %" PRId16 "\n", cudv->PdDvLn->setno);
+        printf("\t\tmsgno: %" PRId16 "\n", cudv->PdDvLn->msgno);
         printf("\t\tcatalog: %s\n", pddvcatalog);
         printf("\t\tDvDr: %s\n", pddvDvDr);
         printf("\t\tDefine: %s\n", pddvDefine);
@@ -985,7 +994,7 @@ static void print_CuDv_Struct (struct CuDv *cudv)
         printf("\t\tUndefine: %s\n", pddvUndefine);
         printf("\t\tStart: %s\n", pddvStart);
         printf("\t\tStop: %s\n", pddvStop);
-        printf("\t\tinventory_only: %" PRId16 "\n", cudv->PdDvLn.inventory_only);
+        printf("\t\tinventory_only: %" PRId16 "\n", cudv->PdDvLn->inventory_only);
         printf("\t\tuniquetype: %s\n", pddvuniquetype);
     }
     if (cudv->PdDvLn_info)
@@ -993,15 +1002,15 @@ static void print_CuDv_Struct (struct CuDv *cudv)
         //making copies to ensure null termination -TJE
         char listinfoClassname[MAX_ODMI_NAME + 1] = { 0 };
         char listinfoCrit[MAX_ODMI_CRIT + 1] = { 0 };
-        snprintf(listinfoClassname, MAX_ODMI_NAME + 1, "%s", cudv->PdDvLn_info.classname);
-        snprintf(listinfoCrit, MAX_ODMI_CRIT + 1, "%s", cudv->PdDvLn_info.crit);
+        snprintf(listinfoClassname, MAX_ODMI_NAME + 1, "%s", cudv->PdDvLn_info->classname);
+        snprintf(listinfoCrit, MAX_ODMI_CRIT + 1, "%s", cudv->PdDvLn_info->crit);
         printf("\t\tlistinfo:\n");
         printf("\t\t\tclassname: %s\n", listinfoClassname);
         printf("\t\t\tcrit: %s\n", listinfoCrit);
-        printf("\t\t\tnum: %d\n", cudv->PdDvLn_info.num);
-        printf("\t\t\tnum: %d\n", cudv->PdDvLn_info.valid);
+        printf("\t\t\tnum: %d\n", cudv->PdDvLn_info->num);
+        printf("\t\t\tnum: %d\n", cudv->PdDvLn_info->valid);
         //TODO: Print out this structure...this seems to get deeper and deeper that I'm stopping here for now - TJE
-        // if (cudv->PdDvLn_info.class)//note: In C++ this is named ____class
+        // if (cudv->PdDvLn_info->class)//note: In C++ this is named ____class
         // {
         //     //print out this structure
         //     // struct Class {
@@ -1024,7 +1033,7 @@ static void print_CuDv_Struct (struct CuDv *cudv)
         //     // };  
         // }
     }
-    printf("\tconnwhere: %s\n", PdDvLn_Lvalue);
+    //printf("\tPdDvLn_Lvalue: %s\n", cudvPdDvLnLvalue);
     return;
 }
 
@@ -1045,7 +1054,7 @@ int get_Device(const char *filename, tDevice *device)
     //SC_SINGLE - places device in exclusive access mode. (Reservation exclusive access mode???)
     //SC_PR_SHARED_REGISTER - persistent reserve, register and ignore key is used when opening
     int ret = SUCCESS;
-    if ((device->os_info.fd = openx(filename, 0, 0, 0)))//path, OFlag, Mode, Extension
+    if ((device->os_info.fd = openx(C_CAST(char *, filename), 0, 0, 0)))//path, OFlag, Mode, Extension
     {
         //able to open the device. Read the devinfo, then open controller and read its devinfo -TJE
         struct devinfo driveInfo;
@@ -1085,7 +1094,7 @@ int get_Device(const char *filename, tDevice *device)
                         //open the controller handle and get the IOCINFO for it -TJE
                         char controllerHandle[OS_HANDLE_NAME_MAX_LENGTH] = { 0 };
                         snprintf(controllerHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s\n", ptrcudv->parent);
-                        if ((device->os_info.ctrlfd = openx(filename, 0, 0, 0)))
+                        if ((device->os_info.ctrlfd = openx(controllerHandle, 0, 0, 0)))
                         {
                             //successfully opened the controller's handle
                             device->os_info.ctrlfdValid = true;
@@ -1137,6 +1146,7 @@ int get_Device(const char *filename, tDevice *device)
                                         device->drive_info.drive_type = ATA_DRIVE;
                                         device->drive_info.interface_type = IDE_INTERFACE;
                                         break;
+#if defined (DS_NVME) && !defined (DISABLE_NVME_PASSTHROUGH)
                                     case DS_NVME:     /* non-volatile Memory controller   */
                                         device->os_info.adapterType = AIX_ADAPTER_NVME;
                                         device->os_info.ptType = AIX_PASSTHROUGH_NVME;
@@ -1144,6 +1154,7 @@ int get_Device(const char *filename, tDevice *device)
                                         device->drive_info.drive_type = NVME_DRIVE;
                                         device->drive_info.interface_type = NVME_INTERFACE;
                                         break;
+#endif //DS_NVME and DISBALE_NVME_PASSTHROUGH
                                     default:
                                         //unknown adapter type. Currently do nothing.
                                         break;
@@ -1176,6 +1187,7 @@ int get_Device(const char *filename, tDevice *device)
                             if (driveInfo.flags & DF_LGDSK && driveInfo.flags & DF_IVAL)
                             {
                                 //check if NVMe
+#if defined (DF_NVME) && !defined (DISABLE_NVME_PASSTHROUGH)
                                 if (driveInfo.un.scdk64.flags & DF_NVME)
                                 {
                                     //NVMe device & interface. NOTE: need to make sure we were able to successfully
@@ -1193,6 +1205,7 @@ int get_Device(const char *filename, tDevice *device)
                                     }
                                 }
                                 else //not NVMe
+#endif //DF_NVME && DISABLE_NVME_PASSTHROUGH
                                 {
                                     if (device->os_info.ctrlfdValid)
                                     {
@@ -1246,18 +1259,18 @@ int get_Device(const char *filename, tDevice *device)
     return ret;
 }
 
-int os_Device_Reset(tDevice *device)
+int os_Device_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Bus_Reset(tDevice *device)
+int os_Bus_Reset(M_ATTR_UNUSED tDevice *device)
 {
     //if unable to find another way to do this, can close and reopen with SC_FORCED_OPEN
     return NOT_SUPPORTED;
 }
 
-int os_Controller_Reset(tDevice *device)
+int os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
@@ -1536,7 +1549,7 @@ int send_AIX_SCSI_Diag_IO(ScsiIoCtx *scsiIoCtx)
         }
 
         aixIoCmd.q_tag_msg = 0;//SC_NO_Q, SC_SIMPLE_Q, SC_HEAD_OF_Q, SC_ORDERED_Q, SC_ACA_Q
-        aixIoCmd.devflags = SC_QUIESCE_IO;//or SC_MIX_IO? Leaving as quiesce for now -TJE
+        aixIoCmd.flags = SC_QUIESCE_IO;//or SC_MIX_IO? Leaving as quiesce for now -TJE
         aixIoCmd.q_flags = 0;//SC_Q_CLR, SC_Q_RESUME, SC_CLEAR_ACA
         //setup flags
         //These two are available, but not currently used
@@ -1648,7 +1661,7 @@ int send_AIX_SCSI_Diag_IO(ScsiIoCtx *scsiIoCtx)
         memset(&commandTimer, 0, sizeof(seatimer_t));
 
         aixIoCmd.q_tag_msg = 0;//SC_NO_Q, SC_SIMPLE_Q, SC_HEAD_OF_Q, SC_ORDERED_Q, SC_ACA_Q
-        aixIoCmd.devflags = SC_QUIESCE_IO;//or SC_MIX_IO? Leaving as quiesce for now -TJE
+        aixIoCmd.flags = SC_QUIESCE_IO;//or SC_MIX_IO? Leaving as quiesce for now -TJE
         aixIoCmd.q_flags = 0;//SC_Q_CLR, SC_Q_RESUME, SC_CLEAR_ACA
         //setup flags
         //These two are available, but not currently used
@@ -1772,7 +1785,7 @@ int send_AIX_SCSI_Diag_IO(ScsiIoCtx *scsiIoCtx)
         }
 
         aixIoCmd.q_tag_msg = 0;//SC_NO_Q, SC_SIMPLE_Q, SC_HEAD_OF_Q, SC_ORDERED_Q, SC_ACA_Q
-        aixIoCmd.devflags = SC_QUIESCE_IO;//or SC_MIX_IO? Leaving as quiesce for now -TJE
+        aixIoCmd.flags = SC_QUIESCE_IO;//or SC_MIX_IO? Leaving as quiesce for now -TJE
         aixIoCmd.q_flags = 0;//SC_Q_CLR, SC_Q_RESUME, SC_CLEAR_ACA
         aixIoCmd.flags = B_READ;
 
@@ -2423,11 +2436,11 @@ int send_AIX_SATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         sataPassthrough.ata_cmd.feature = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature;
         sataPassthrough.ata_cmd.sector_cnt_cmd = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount;
         //note: can use CHS offsets or set the LBA as one value.
-        sataPassthrough.ata_cmd.startblk.sector = scsiIoCtx->pAtaCmdOpts->tfr.LbaLow;
-        sataPassthrough.ata_cmd.startblk.cyl_lo = scsiIoCtx->pAtaCmdOpts->tfr.LbaMid;
-        sataPassthrough.ata_cmd.startblk.cyl_hi = scsiIoCtx->pAtaCmdOpts->tfr.LbaHi;
+        sataPassthrough.ata_cmd.startblk.chs.sector = scsiIoCtx->pAtaCmdOpts->tfr.LbaLow;
+        sataPassthrough.ata_cmd.startblk.chs.cyl_lo = scsiIoCtx->pAtaCmdOpts->tfr.LbaMid;
+        sataPassthrough.ata_cmd.startblk.chs.cyl_hi = scsiIoCtx->pAtaCmdOpts->tfr.LbaHi;
         //only setting the "head" or upper-most LBA bits since the other device handles dev bit
-        sataPassthrough.ata_cmd.startblk.head = M_Nibble0(scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead);
+        sataPassthrough.ata_cmd.startblk.chs.head = M_Nibble0(scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead);
         if (scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead & DEVICE_SELECT_BIT)
         {
             sataPassthrough.ata_cmd.device = 1; //DEV bit set to 1
@@ -2502,10 +2515,10 @@ int send_AIX_SATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         scsiIoCtx->pAtaCmdOpts->rtfr.status = sataPassthrough.ata_cmd.status;
         scsiIoCtx->pAtaCmdOpts->rtfr.error = sataPassthrough.ata_cmd.errval;
         scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = sataPassthrough.ata_cmd.sector_cnt_ret;
-        scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow = sataPassthrough.ata_cmd.endblk.sector;
-        scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid = sataPassthrough.ata_cmd.endblk.cyl_lo;
-        scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi = sataPassthrough.ata_cmd.endblk.cyl_hi;
-        scsiIoCtx->pAtaCmdOpts->rtfr.device = sataPassthrough.ata_cmd.endblk.head;
+        scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow = sataPassthrough.ata_cmd.endblk.chs.sector;
+        scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid = sataPassthrough.ata_cmd.endblk.chs.cyl_lo;
+        scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi = sataPassthrough.ata_cmd.endblk.chs.cyl_hi;
+        scsiIoCtx->pAtaCmdOpts->rtfr.device = sataPassthrough.ata_cmd.endblk.chs.head;
         //LBA mode, backwards compat bits, and dev bit should match what went in, so just take those from the tfr that was sent -TJE
         if (scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead & DEVICE_SELECT_BIT)
         {
@@ -2557,9 +2570,11 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
             break;
         }
         break;
+#if !defined (DISABLE_NVME_PASSTHROUGH)
     case NVME_INTERFACE:
         ret = sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
         break;
+#endif //DISABLE_NVME_PASSTHROUGH
     case RAID_INTERFACE:
         if (scsiIoCtx->device->issue_io != NULL)
         {
@@ -2784,7 +2799,7 @@ int close_Device(tDevice *dev)
         retValue = close(dev->os_info.fd);
         dev->os_info.last_error = errno;
 
-        if (dev->os_info.secondHandleValid && dev->os_info.secondHandleOpened)
+        if (dev->os_info.ctrlfdValid)
         {
             if (close(dev->os_info.ctrlfd) == 0)
             {
@@ -3065,7 +3080,7 @@ int os_Unlock_Device(tDevice *device)
 }
 
 //use mount/vmount with the remount option??? (see links below)
-int os_Update_File_System_Cache(tDevice* device)
+int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
 {
     return NOT_SUPPORTED;
 }
@@ -3075,7 +3090,7 @@ int os_Update_File_System_Cache(tDevice* device)
 //https://www.ibm.com/docs/en/aix/7.3?topic=files-fullstath-file
 //https://www.ibm.com/docs/en/aix/7.3?topic=u-umount-uvmount-subroutine#umount
 //https://www.ibm.com/docs/en/aix/7.3?topic=m-mntctl-subroutine
-int os_Unmount_File_Systems_On_Device(tDevice *device)
+int os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
