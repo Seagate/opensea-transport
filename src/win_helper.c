@@ -7056,7 +7056,7 @@ static DWORD io_For_SMART_Cmd(ScsiIoCtx *scsiIoCtx)
         {
             return INVALID_IOCTL;
         }
-    case ATA_SMART:
+    case ATA_SMART_CMD:
         if (scsiIoCtx->device->os_info.winSMARTCmdSupport.smartSupported)
         {
             //check that the feature field matches something Microsoft documents support for...using MS defines - TJE
@@ -9367,7 +9367,7 @@ static int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     //check how long it took to set timeout error if necessary
     if (get_Seconds(commandTimer) > protocolCommand->TimeOutValue)
     {
-        ret = COMMAND_TIMEOUT;
+        ret = OS_COMMAND_TIMEOUT;
     }
     _aligned_free(commandBuffer);
     commandBuffer = NULL;
@@ -11995,7 +11995,7 @@ int os_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrDat
     //check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= timeoutInSeconds)
     {
-        ret = COMMAND_TIMEOUT;
+        ret = OS_COMMAND_TIMEOUT;
     }
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
@@ -12116,7 +12116,7 @@ int os_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrDa
     //check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= timeoutInSeconds)
     {
-        ret = COMMAND_TIMEOUT;
+        ret = OS_COMMAND_TIMEOUT;
     }
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
@@ -12198,7 +12198,7 @@ int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
     //check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= timeoutInSeconds)
     {
-        ret = COMMAND_TIMEOUT;
+        ret = OS_COMMAND_TIMEOUT;
     }
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
@@ -12288,7 +12288,7 @@ int os_Flush(tDevice *device)
     //check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= timeoutInSeconds)
     {
-        ret = COMMAND_TIMEOUT;
+        ret = OS_COMMAND_TIMEOUT;
     }
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {

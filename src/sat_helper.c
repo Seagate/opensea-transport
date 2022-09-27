@@ -1230,7 +1230,7 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
             }
 
             //Windows has a problem where if a command fails, the next command that is sent will return the same stale status even if it was good. We need to flush the command out with a check power more command
-            if (device->os_info.osType == OS_WINDOWS && device->drive_info.interface_type == IDE_INTERFACE && ret != SUCCESS && ataCommandOptions->tfr.CommandStatus != ATA_CHECK_POWER_MODE)
+            if (device->os_info.osType == OS_WINDOWS && device->drive_info.interface_type == IDE_INTERFACE && ret != SUCCESS && ataCommandOptions->tfr.CommandStatus != ATA_CHECK_POWER_MODE_CMD)
             {
                 //On Windows AHCI controller (IDE Interface), for whatever reason, the controller sometimes caches the bad status and will return it on the very next command we issue
                 //...SO send a "check Power Mode" command to force it to refresh and prevent this issue from happening again..basically a test unit ready command - TJE
@@ -1254,7 +1254,7 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
     safe_Free_aligned(satCDB)
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)
     {
-        ret = COMMAND_TIMEOUT;
+        ret = OS_COMMAND_TIMEOUT;
     }
     memcpy(&device->drive_info.lastCommandRTFRs, &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
     safe_Free_aligned(senseData)
@@ -3599,9 +3599,9 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
             }
             switch (commandOpCodeToCheck)
             {
-            case ATA_READ_MULTIPLE:
+            case ATA_READ_MULTIPLE_CMD:
             case ATA_READ_READ_MULTIPLE_EXT:
-            case ATA_WRITE_MULTIPLE:
+            case ATA_WRITE_MULTIPLE_CMD:
             case ATA_WRITE_MULTIPLE_EXT:
             case ATA_WRITE_MULTIPLE_FUA_EXT:
                 break;

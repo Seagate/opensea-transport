@@ -223,7 +223,7 @@ int send_CSMI_Legacy_ATA_Passthrough(tDevice *device, ataPassthroughCommand  *at
     }
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)
     {
-        ret = COMMAND_TIMEOUT;
+        ret = OS_COMMAND_TIMEOUT;
     }
     return ret;
 }
