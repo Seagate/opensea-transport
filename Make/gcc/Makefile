@@ -97,8 +97,15 @@ else
 			-Wold-style-definition -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes
 	endif
 endif
+UNAME := $(shell uname -s)
 
-LFLAGS ?= -Wall ../../../opensea-common/Make/gcc/lib/$(FILE_OUTPUT_DIR)/libopensea-common.a
+LDFLAGS ?= -Wall -L../../../opensea-common/Make/gcc/$(FILE_OUTPUT_DIR)/ -lopensea-common -lm 
+
+#AIX wants all linker libraries for the .so. Need libodm and libcfg in addition to the above to resolve all symbols
+ifeq ($(UNAME),AIX)
+	LDFLAGS += -lodm -lcfg
+endif
+
 LIB_SRC_FILES = \
 	$(SRC_DIR)ata_cmds.c\
 	$(SRC_DIR)ata_legacy_cmds.c\
@@ -193,7 +200,7 @@ opensea-libs:
 $(LIBS): $(LIB_OBJ_FILES) opensea-libs
 	rm -f $(FILE_OUTPUT_DIR)/$@
 	$(AR) cq $(FILE_OUTPUT_DIR)/$@ $(LIB_OBJ_FILES)
-	$(CC) -shared $(LIB_OBJ_FILES) -o $(FILE_OUTPUT_DIR)/lib$(NAME).so.$(VERSION)
+	$(CC) -shared $(LIB_OBJ_FILES) -o $(FILE_OUTPUT_DIR)/lib$(NAME).so.$(VERSION) $(LDFLAGS)
 	cd $(FILE_OUTPUT_DIR) && ln -s lib$(NAME).so* lib$(NAME).so
 	
 clean:
