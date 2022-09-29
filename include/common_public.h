@@ -1041,6 +1041,10 @@ extern "C"
         AIX_ADAPTER_SAS,
         AIX_ADAPTER_SATA,
         AIX_ADAPTER_FC, //fibre channel
+        AIX_ADAPTER_USB,
+        AIX_ADAPTER_VSCSI,
+        AIX_ADAPTER_ISCSI,
+        AIX_ADAPTER_DASD,
         AIX_ADAPTER_NVME,
     }eAIXAdapterType;
 #endif //_AIX
