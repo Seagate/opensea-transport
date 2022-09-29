@@ -20,7 +20,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <errno.h>
-//#include <libgen.h>//for basename and dirname
+#include <libgen.h>//for basename and dirname
 
 #include <sys/scsi.h>
 #include <sys/ide.h>
@@ -49,7 +49,7 @@ bool os_Is_Infinite_Timeout_Supported(void)
 extern bool validate_Device_Struct(versionBlock);
 
 //in future, when code is written, use internal API used by the other FS/unmount options to figure this out.-TJE
-static int set_Device_Partition_Info(tDevice* device)
+static int set_Device_Partition_Info(M_ATTR_UNUSED tDevice* device)
 {
     return NOT_SUPPORTED;
 }
@@ -1054,11 +1054,19 @@ int get_Device(const char *filename, tDevice *device)
     //SC_SINGLE - places device in exclusive access mode. (Reservation exclusive access mode???)
     //SC_PR_SHARED_REGISTER - persistent reserve, register and ignore key is used when opening
     int ret = SUCCESS;
+    if (device->deviceVerbosity > VERBOSITY_DEFAULT)
+    {
+        printf("\nAIX attempting to open device: %s\n", filename);
+    }
     if ((device->os_info.fd = openx(C_CAST(char *, filename), 0, 0, 0)))//path, OFlag, Mode, Extension
     {
         //able to open the device. Read the devinfo, then open controller and read its devinfo -TJE
         struct devinfo driveInfo;
         memset(&driveInfo, 0, sizeof(struct devinfo));
+        if (device->deviceVerbosity > VERBOSITY_DEFAULT)
+        {
+            printf("Attempting device IOCINFO\n");
+        }
         if (!ioctl(device->os_info.fd, IOCINFO, &driveInfo))
         {
             //Got the devinfo, now parse the data into something we can use for later
@@ -1069,6 +1077,10 @@ int get_Device(const char *filename, tDevice *device)
             }
             device->os_info.minimumAlignment = sizeof(void*);//for now use this. There are some devices that require 4B alignment, but this will most likely take care of that -TJE
             //Now get the parent handle, open it and request the IOCINFO for the parent since that fill provide more details -TJE
+            //set name and friendly name
+            snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
+            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", basename(filename));
+
             struct CuDv cudv;
             struct CuDv * ptrcudv;
             memset(&cudv, 0, sizeof(struct CuDv));
@@ -1094,85 +1106,98 @@ int get_Device(const char *filename, tDevice *device)
                         //open the controller handle and get the IOCINFO for it -TJE
                         char controllerHandle[OS_HANDLE_NAME_MAX_LENGTH] = { 0 };
                         snprintf(controllerHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s\n", ptrcudv->parent);
+
+                        if (device->deviceVerbosity > VERBOSITY_DEFAULT)
+                        {
+                            printf("\nAIX attempting to open controller: %s\n", controllerHandle);
+                        }
                         if ((device->os_info.ctrlfd = openx(controllerHandle, 0, 0, 0)))
                         {
                             //successfully opened the controller's handle
                             device->os_info.ctrlfdValid = true;
+                            //note: IOCINFO does not seem to work on controllers.
+                            //commented out code remains, but will no longer be used.
+                            //it may be possible to use odm/cfgodm to figure out more info if we need it.
+
                             //read the iocinfo for the controller to set more flags
-                            struct devinfo controllerInfo;
-                            memset(&controllerInfo, 0, sizeof(struct devinfo));
-                            if (!ioctl(device->os_info.ctrlfd, IOCINFO, &controllerInfo))
-                            {
-                                //Got the devinfo, now parse the data into something we can use for later
-                                //TODO: Filter out invalid device types we do not support.-TJE
-                                if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-                                {
-                                    print_devinfo_struct(&controllerInfo);
-                                }
-                                //We can now read from the controllerInfo what device type this is and store some data
-                                if (controllerInfo.devtype == DD_BUS)
-                                {
-                                    //adapters for SCSI controllers will show up with this
-                                    //https://www.ibm.com/docs/en/aix/7.1?topic=drivers-sam-adapter-ioctl-operations
-                                    //check the subtype for specific info
-                                    switch(controllerInfo.devsubtype)
-                                    {
-                                    case DS_SCSI:     /* SCSI adapter */
-                                        //TODO: save card_scsi_id?
-                                        device->os_info.adapterType = AIX_ADAPTER_SCSI;
-                                        device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
-                                        device->os_info.maxXferLength = controllerInfo.un.scsi.max_transfer;
-                                        device->drive_info.drive_type = SCSI_DRIVE;
-                                        device->drive_info.interface_type = SCSI_INTERFACE;
-                                        break;
-                                    case DS_IDE:     /* IDE adapter  */
-                                        device->os_info.adapterType = AIX_ADAPTER_IDE;
-                                        device->os_info.ptType = AIX_PASSTHROUGH_IDE_ATA;//If we ever get a handle other than rhdisk, switch to atapi for those handles-TJE
-                                        device->os_info.maxXferLength = controllerInfo.un.ide.max_transfer;
-                                        device->drive_info.drive_type = ATA_DRIVE;
-                                        device->drive_info.interface_type = IDE_INTERFACE;
-                                        break;
-                                    case DS_SAS:      /* SAS adapter  */
-                                        device->os_info.adapterType = AIX_ADAPTER_SAS;
-                                        device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
-                                        device->os_info.maxXferLength = controllerInfo.un.sas.max_transfer;
-                                        device->drive_info.drive_type = SCSI_DRIVE;
-                                        device->drive_info.interface_type = SCSI_INTERFACE;
-                                        break;
-                                    case DS_SATA:      /* SATA adapter */
-                                        device->os_info.adapterType = AIX_ADAPTER_SATA;
-                                        device->os_info.ptType = AIX_PASSTHROUGH_SATA;
-                                        device->os_info.maxXferLength = controllerInfo.un.sata.max_transfer;
-                                        device->drive_info.drive_type = ATA_DRIVE;
-                                        device->drive_info.interface_type = IDE_INTERFACE;
-                                        break;
-#if defined (DS_NVME) && !defined (DISABLE_NVME_PASSTHROUGH)
-                                    case DS_NVME:     /* non-volatile Memory controller   */
-                                        device->os_info.adapterType = AIX_ADAPTER_NVME;
-                                        device->os_info.ptType = AIX_PASSTHROUGH_NVME;
-                                        device->os_info.maxXferLength = controllerInfo.un.nvme.ioctl_max_transfer;
-                                        device->drive_info.drive_type = NVME_DRIVE;
-                                        device->drive_info.interface_type = NVME_INTERFACE;
-                                        break;
-#endif //DS_NVME and DISBALE_NVME_PASSTHROUGH
-                                    default:
-                                        //unknown adapter type. Currently do nothing.
-                                        break;
-                                    }
-                                }
-                                //TODO: Read CuAt_CLASS data to get scsi_id, lun_id, world_wide_name, node_name, target_name
-                                device->os_info.scsiID = 0;
-                                device->os_info.lunID = 0;
-                            }
-                            else
-                            {
-                                device->os_info.last_error = errno;
-                                if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-                                {
-                                    printf("Controller IOCINFO Error: ");
-                                    print_Errno_To_Screen(device->os_info.last_error);
-                                }
-                            }
+//                             struct devinfo controllerInfo;
+//                             memset(&controllerInfo, 0, sizeof(struct devinfo));
+//                             if (device->deviceVerbosity > VERBOSITY_DEFAULT)
+//                             {
+//                                 printf("Attempting controller IOCINFO\n");
+//                             }
+//                             if (!ioctl(device->os_info.ctrlfd, IOCINFO, &controllerInfo))
+//                             {
+//                                 //Got the devinfo, now parse the data into something we can use for later
+//                                 //TODO: Filter out invalid device types we do not support.-TJE
+//                                 if (device->deviceVerbosity > VERBOSITY_DEFAULT)
+//                                 {
+//                                     print_devinfo_struct(&controllerInfo);
+//                                 }
+//                                 //We can now read from the controllerInfo what device type this is and store some data
+//                                 if (controllerInfo.devtype == DD_BUS)
+//                                 {
+//                                     //adapters for SCSI controllers will show up with this
+//                                     //https://www.ibm.com/docs/en/aix/7.1?topic=drivers-sam-adapter-ioctl-operations
+//                                     //check the subtype for specific info
+//                                     switch(controllerInfo.devsubtype)
+//                                     {
+//                                     case DS_SCSI:     /* SCSI adapter */
+//                                         //TODO: save card_scsi_id?
+//                                         device->os_info.adapterType = AIX_ADAPTER_SCSI;
+//                                         device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
+//                                         device->os_info.maxXferLength = controllerInfo.un.scsi.max_transfer;
+//                                         device->drive_info.drive_type = SCSI_DRIVE;
+//                                         device->drive_info.interface_type = SCSI_INTERFACE;
+//                                         break;
+//                                     case DS_IDE:     /* IDE adapter  */
+//                                         device->os_info.adapterType = AIX_ADAPTER_IDE;
+//                                         device->os_info.ptType = AIX_PASSTHROUGH_IDE_ATA;//If we ever get a handle other than rhdisk, switch to atapi for those handles-TJE
+//                                         device->os_info.maxXferLength = controllerInfo.un.ide.max_transfer;
+//                                         device->drive_info.drive_type = ATA_DRIVE;
+//                                         device->drive_info.interface_type = IDE_INTERFACE;
+//                                         break;
+//                                     case DS_SAS:      /* SAS adapter  */
+//                                         device->os_info.adapterType = AIX_ADAPTER_SAS;
+//                                         device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
+//                                         device->os_info.maxXferLength = controllerInfo.un.sas.max_transfer;
+//                                         device->drive_info.drive_type = SCSI_DRIVE;
+//                                         device->drive_info.interface_type = SCSI_INTERFACE;
+//                                         break;
+//                                     case DS_SATA:      /* SATA adapter */
+//                                         device->os_info.adapterType = AIX_ADAPTER_SATA;
+//                                         device->os_info.ptType = AIX_PASSTHROUGH_SATA;
+//                                         device->os_info.maxXferLength = controllerInfo.un.sata.max_transfer;
+//                                         device->drive_info.drive_type = ATA_DRIVE;
+//                                         device->drive_info.interface_type = IDE_INTERFACE;
+//                                         break;
+// #if defined (DS_NVME) && !defined (DISABLE_NVME_PASSTHROUGH)
+//                                     case DS_NVME:     /* non-volatile Memory controller   */
+//                                         device->os_info.adapterType = AIX_ADAPTER_NVME;
+//                                         device->os_info.ptType = AIX_PASSTHROUGH_NVME;
+//                                         device->os_info.maxXferLength = controllerInfo.un.nvme.ioctl_max_transfer;
+//                                         device->drive_info.drive_type = NVME_DRIVE;
+//                                         device->drive_info.interface_type = NVME_INTERFACE;
+//                                         break;
+// #endif //DS_NVME and DISBALE_NVME_PASSTHROUGH
+//                                     default:
+//                                         //unknown adapter type. Currently do nothing.
+//                                         break;
+//                                     }
+//                                 }
+//                                 //TODO: Read CuAt_CLASS data to get scsi_id, lun_id, world_wide_name, node_name, target_name
+//                                 device->os_info.scsiID = 0;
+//                                 device->os_info.lunID = 0;
+//                             }
+//                             else
+//                             {
+//                                 device->os_info.last_error = errno;
+//                                 if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
+//                                 {
+//                                     printf("Controller IOCINFO Error: ");
+//                                     print_Errno_To_Screen(device->os_info.last_error);
+//                                 }
+//                             }
                         }
                         else
                         {
@@ -1182,44 +1207,126 @@ int get_Device(const char *filename, tDevice *device)
                                 print_Errno_To_Screen(errno);
                             }
                         }
-                        if (driveInfo.devtype == DD_SCDISK)
+                        //based off the name of the controller, set up the interface info.
+                        if (strstr(ptrcudv->parent, "sata"))
                         {
-                            if (driveInfo.flags & DF_LGDSK && driveInfo.flags & DF_IVAL)
-                            {
-                                //check if NVMe
-#if defined (DF_NVME) && !defined (DISABLE_NVME_PASSTHROUGH)
-                                if (driveInfo.un.scdk64.flags & DF_NVME)
-                                {
-                                    //NVMe device & interface. NOTE: need to make sure we were able to successfully
-                                    //able to open the controller handle before we enable the following code or
-                                    //unexpected behavior will likely occur. -TJE
-                                    if (device->os_info.ctrlfdValid)
-                                    {
-                                        device->drive_info.drive_type = NVME_DRIVE;
-                                        device->drive_info.interface_type = NVME_INTERFACE;
-                                    }
-                                    else
-                                    {
-                                        device->drive_info.drive_type = SCSI_DRIVE;
-                                        device->drive_info.interface_type = SCSI_INTERFACE;
-                                    }
-                                }
-                                else //not NVMe
-#endif //DF_NVME && DISABLE_NVME_PASSTHROUGH
-                                {
-                                    if (device->os_info.ctrlfdValid)
-                                    {
-                                        //set additional flags???
-                                    }
-                                }
-                            }
+                            //set up SATA passthrough
+                            device->os_info.adapterType = AIX_ADAPTER_SATA;
+                            device->os_info.ptType = AIX_PASSTHROUGH_SATA;//If we ever get a handle other than rhdisk, switch to atapi or SCSI for those handles-TJE
+                            device->drive_info.drive_type = ATA_DRIVE;
+                            device->drive_info.interface_type = IDE_INTERFACE;
                         }
+                        else if (strstr(ptrcudv->parent, "ide"))
+                        {
+                            //setup IDE passthrough
+                            device->os_info.adapterType = AIX_ADAPTER_IDE;
+                            device->os_info.ptType = AIX_PASSTHROUGH_IDE_ATA;//If we ever get a handle other than rhdisk, switch to atapi for those handles-TJE
+                            device->drive_info.drive_type = ATA_DRIVE;
+                            device->drive_info.interface_type = IDE_INTERFACE;
+                        }
+                        else if (strstr(ptrcudv->parent, "fscsi")) //fibre channel
+                        {
+                            device->os_info.adapterType = AIX_ADAPTER_FC;
+                            device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
+                            device->drive_info.drive_type = SCSI_DRIVE;
+                            device->drive_info.interface_type = SCSI_INTERFACE;
+                        }
+                        else if (strstr(ptrcudv->parent, "vscsi")) //virtual scsi?
+                        {
+                            device->os_info.adapterType = AIX_ADAPTER_VSCSI;
+                            device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
+                            device->drive_info.drive_type = SCSI_DRIVE;
+                            device->drive_info.interface_type = SCSI_INTERFACE;
+                        }
+                        else if (strstr(ptrcudv->parent, "iscsi")) //iSCSI
+                        {
+                            device->os_info.adapterType = AIX_ADAPTER_ISCSI;
+                            device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
+                            device->drive_info.drive_type = SCSI_DRIVE;
+                            device->drive_info.interface_type = SCSI_INTERFACE;
+                        }
+                        else if (strstr(ptrcudv->parent, "scsi"))//note this is parallel scsi
+                        {
+                            //SCSI passthrough.
+                            //TODO: do old scsi parents support the much bigger passthorugh vs the smaller 12B or less IOCTLs?
+                            device->os_info.adapterType = AIX_ADAPTER_SCSI;
+                            device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
+                            device->drive_info.drive_type = SCSI_DRIVE;
+                            device->drive_info.interface_type = SCSI_INTERFACE;
+                        }
+                        else if (strstr(ptrcudv->parent, "sas"))
+                        {
+                            device->os_info.adapterType = AIX_ADAPTER_SAS;
+                            device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
+                            device->drive_info.drive_type = SCSI_DRIVE;
+                            device->drive_info.interface_type = SCSI_INTERFACE;
+                        }
+                        else if (strstr(ptrcudv->parent, "nvme"))
+                        {
+                            device->os_info.adapterType = AIX_ADAPTER_NVME;
+                            device->os_info.ptType = AIX_PASSTHROUGH_NVME;
+                            device->drive_info.drive_type = NVME_DRIVE;
+                            device->drive_info.interface_type = NVME_INTERFACE;
+                        }
+                        else if (strstr(ptrcudv->parent, "serdasd"))
+                        {
+                            device->os_info.adapterType = AIX_ADAPTER_DASD;
+                            device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
+                            device->drive_info.drive_type = SCSI_DRIVE;
+                            device->drive_info.interface_type = USB_INTERFACE;
+                        }
+                        else if (strstr(ptrcudv->parent, "usb"))
+                        {
+                            device->os_info.adapterType = AIX_ADAPTER_USB;
+                            device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
+                            device->drive_info.drive_type = SCSI_DRIVE;
+                            device->drive_info.interface_type = USB_INTERFACE;
+                        }
+                        else
+                        {
+                            //assume SCSI???
+                            //or try a bunch until it works?
+                        }
+
+//                         if (driveInfo.devtype == DD_SCDISK)
+//                         {
+//                             if (driveInfo.flags & DF_LGDSK && driveInfo.flags & DF_IVAL)
+//                             {
+//                                 //check if NVMe
+// #if defined (DF_NVME) && !defined (DISABLE_NVME_PASSTHROUGH)
+//                                 if (driveInfo.un.scdk64.flags & DF_NVME)
+//                                 {
+//                                     //NVMe device & interface. NOTE: need to make sure we were able to successfully
+//                                     //able to open the controller handle before we enable the following code or
+//                                     //unexpected behavior will likely occur. -TJE
+//                                     if (device->os_info.ctrlfdValid)
+//                                     {
+//                                         device->drive_info.drive_type = NVME_DRIVE;
+//                                         device->drive_info.interface_type = NVME_INTERFACE;
+//                                     }
+//                                     else
+//                                     {
+//                                         device->drive_info.drive_type = SCSI_DRIVE;
+//                                         device->drive_info.interface_type = SCSI_INTERFACE;
+//                                     }
+//                                 }
+//                                 else //not NVMe
+// #endif //DF_NVME && DISABLE_NVME_PASSTHROUGH
+//                                 {
+//                                     if (device->os_info.ctrlfdValid)
+//                                     {
+//                                         //set additional flags???
+//                                     }
+//                                 }
+//                             }
+//                         }
+                        ret = fill_Drive_Info_Data(device);
                     }
                     else
                     {
                         if (device->deviceVerbosity > VERBOSITY_DEFAULT)
                         {
-                            printf("Warning: Parent is empty\n");
+                            printf("Warning: Parent is empty!\n");
                         }
                     }
                 }
@@ -1229,6 +1336,7 @@ int get_Device(const char *filename, tDevice *device)
                     if (device->deviceVerbosity > VERBOSITY_DEFAULT)
                     {
                         printf("Unable to get parent for %s\n", filename);
+                        print_ODM_Error(odmerrno);
                     }
                 }
             }
@@ -1529,7 +1637,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
     return;
 }
 
-int send_AIX_SCSI_Diag_IO(ScsiIoCtx *scsiIoCtx)
+static int send_AIX_SCSI_Diag_IO(ScsiIoCtx *scsiIoCtx)
 {
     //uses the DKIOCMD when opened with the diagnostic mode flag so that this command is issued with nothing else in queue
     //and more or less exclusive access to the device.
@@ -1572,7 +1680,7 @@ int send_AIX_SCSI_Diag_IO(ScsiIoCtx *scsiIoCtx)
             break;
         }
         aixIoCmd.data_length = scsiIoCtx->dataLength;
-        aixIoCmd.buffer = scsiIoCtx->pdata;
+        aixIoCmd.buffer = C_CAST(char *, scsiIoCtx->pdata);
 
         if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
         {
@@ -1685,7 +1793,7 @@ int send_AIX_SCSI_Diag_IO(ScsiIoCtx *scsiIoCtx)
         }
 
         aixIoCmd.data_length = scsiIoCtx->dataLength;
-        aixIoCmd.buffer = scsiIoCtx->pdata;
+        aixIoCmd.buffer = C_CAST(char *, scsiIoCtx->pdata);
 
         if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
         {
@@ -1790,7 +1898,7 @@ int send_AIX_SCSI_Diag_IO(ScsiIoCtx *scsiIoCtx)
         aixIoCmd.flags = B_READ;
 
         aixIoCmd.data_length = scsiIoCtx->senseDataSize;
-        aixIoCmd.buffer = scsiIoCtx->psense;
+        aixIoCmd.buffer = C_CAST(char *, scsiIoCtx->psense);
         aixIoCmd.timeout_value = 15;//default to 15 second timeout
         //setup the CDB
         aixIoCmd.scsi_cdb[0] = REQUEST_SENSE_CMD;
@@ -1860,7 +1968,7 @@ int send_AIX_SCSI_Diag_IO(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int send_AIX_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
+static int send_AIX_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
     int         ret          = SUCCESS;
     //uses passthrough structure
@@ -1906,8 +2014,8 @@ int send_AIX_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
     memcpy(&aixPassthrough.scsi_cdb[0], scsiIoCtx->cdb, scsiIoCtx->cdbLength);
     aixPassthrough.autosense_length = scsiIoCtx->senseDataSize;
     aixPassthrough.data_length = scsiIoCtx->dataLength;
-    aixPassthrough.buffer = scsiIoCtx->pdata;
-    aixPassthrough.autosense_buffer_ptr = scsiIoCtx->psense;
+    aixPassthrough.buffer = C_CAST(char *, scsiIoCtx->pdata);
+    aixPassthrough.autosense_buffer_ptr = C_CAST(char *, scsiIoCtx->psense);
 
     aixPassthrough.scsi_id = 0;//TODO: Do we need to discover this and save it?
     aixPassthrough.lun_id = 0;//TODO: Do we need to discover this and save it?
@@ -2036,7 +2144,7 @@ int send_AIX_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
 
 //NOTE: This issues the IDE_ATA passthrough. There is a separate ATAPI passthrough if we need to handle those
 //      using that IOCTL instead of the SCSI passthrough IOCTLs. Can be done later as we currently do not handle CD/DVDs, etc -TJE
-int send_AIX_IDE_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
+static int send_AIX_IDE_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     //sends the IDE passthrough IOCTL
@@ -2149,7 +2257,7 @@ int send_AIX_IDE_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
+static int send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
     //sends the IDE passthrough IOCTL
@@ -2320,7 +2428,7 @@ int send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int send_AIX_SATA_Passthrough(ScsiIoCtx *scsiIoCtx)
+static int send_AIX_SATA_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
     //sends the SATA passthrough IOCTL
     //TODO: Figure out when we need this over SCSI passthrough
@@ -2407,6 +2515,9 @@ int send_AIX_SATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     case ATA_PROTOCOL_DMA_QUE:
     case ATA_PROTOCOL_UDMA:
         sataPassthrough.xfer_flag |= ATA_DMA_XFER;
+        break;
+    default:
+        //TODO: catch unsupported values
         break;
     }
 
@@ -2975,6 +3086,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 
     return ret;
 #else
+    M_USE_UNUSED(nvmeIoCtx);
     return OS_COMMAND_NOT_AVAILABLE;
 #endif
 }
@@ -3011,6 +3123,7 @@ int os_nvme_Reset(tDevice *device)
     }
     return ret;
 #else //DISABLE_NVME_PASSTHROUGH
+    M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 #endif //DISABLE_NVME_PASSTHROUGH
 }
@@ -3020,11 +3133,12 @@ int os_nvme_Subsystem_Reset(tDevice *device)
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     return OS_COMMAND_NOT_AVAILABLE;
 #else //DISABLE_NVME_PASSTHROUGH
+    M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 #endif //DISABLE_NVME_PASSTHROUGH
 }
 
-int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
+int pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pData, M_ATTR_UNUSED uint32_t dataSize )
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     return OS_COMMAND_NOT_AVAILABLE;
