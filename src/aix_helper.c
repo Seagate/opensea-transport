@@ -1079,8 +1079,9 @@ int get_Device(const char *filename, tDevice *device)
             //Now get the parent handle, open it and request the IOCINFO for the parent since that fill provide more details -TJE
             //set name and friendly name
             snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", basename(filename));
-
+            char *friendlyName = strdup(filename);
+            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", basename(friendlyName));
+            safe_Free(friendlyName);
             struct CuDv cudv;
             struct CuDv * ptrcudv;
             memset(&cudv, 0, sizeof(struct CuDv));
