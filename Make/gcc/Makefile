@@ -201,7 +201,7 @@ $(LIBS): $(LIB_OBJ_FILES) opensea-libs
 	rm -f $(FILE_OUTPUT_DIR)/$@
 	$(AR) cq $(FILE_OUTPUT_DIR)/$@ $(LIB_OBJ_FILES)
 	$(CC) -shared $(LIB_OBJ_FILES) -o $(FILE_OUTPUT_DIR)/lib$(NAME).so.$(VERSION) $(LDFLAGS)
-	cd $(FILE_OUTPUT_DIR) && ln -s lib$(NAME).so* lib$(NAME).so
+	cd $(FILE_OUTPUT_DIR) && ln -sf lib$(NAME).so.$(VERSION) lib$(NAME).so
 	
 clean:
 	rm -f $(FILE_OUTPUT_DIR)/lib$(NAME).a $(FILE_OUTPUT_DIR)/lib$(NAME).so* *.o ../../src/*.o
