@@ -1054,11 +1054,29 @@ int get_Device(const char *filename, tDevice *device)
     //SC_SINGLE - places device in exclusive access mode. (Reservation exclusive access mode???)
     //SC_PR_SHARED_REGISTER - persistent reserve, register and ignore key is used when opening
     int ret = SUCCESS;
+    long extensionFlags = 0;
+    bool handleOpened = false;
     if (device->deviceVerbosity > VERBOSITY_DEFAULT)
     {
         printf("\nAIX attempting to open device: %s\n", filename);
     }
-    if ((device->os_info.fd = openx(C_CAST(char *, filename), 0, 0, 0)))//path, OFlag, Mode, Extension
+    if ((device->os_info.fd = openx(C_CAST(char *, filename), 0, 0, extensionFlags)) >= 0)//path, OFlag, Mode, Extension
+    {
+        handleOpened = true;
+    }
+    else //retry with the diadnostic flag set
+    {
+        extensionFlags = SC_DIAGNOSTIC;
+        if ((device->os_info.fd = openx(C_CAST(char *, filename), 0, 0, extensionFlags)) >= 0)//path, OFlag, Mode, Extension
+        {
+            handleOpened = true;
+        }
+        else 
+        {
+            ret = FAILURE;
+        }
+    }
+    if (handleOpened)
     {
         //able to open the device. Read the devinfo, then open controller and read its devinfo -TJE
         struct devinfo driveInfo;
@@ -1067,6 +1085,11 @@ int get_Device(const char *filename, tDevice *device)
         {
             printf("Attempting device IOCINFO\n");
         }
+        if (extensionFlags & SC_DIAGNOSTIC)
+        {
+            device->os_info.diagnosticModeFlagInUse = true;
+        }
+        //TODO: Use more of the info in this IOCTL? It's helpful for debugging right now -TJE
         if (!ioctl(device->os_info.fd, IOCINFO, &driveInfo))
         {
             //Got the devinfo, now parse the data into something we can use for later
@@ -1075,52 +1098,72 @@ int get_Device(const char *filename, tDevice *device)
             {
                 print_devinfo_struct(&driveInfo);
             }
-            device->os_info.minimumAlignment = sizeof(void*);//for now use this. There are some devices that require 4B alignment, but this will most likely take care of that -TJE
-            //Now get the parent handle, open it and request the IOCINFO for the parent since that fill provide more details -TJE
-            //set name and friendly name
-            snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
-            char *friendlyName = strdup(filename);
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", basename(friendlyName));
-            safe_Free(friendlyName);
-            struct CuDv cudv;
-            struct CuDv * ptrcudv;
-            memset(&cudv, 0, sizeof(struct CuDv));
-
-            odm_initialize();
-            char odmCriteria[MAX_ODMI_CRIT] = { 0 };//256
-            char *diskFullName = strdup(filename);
-            char *diskName = strrchr(diskFullName, 'r');//point to r in /dev/rhdisk#
-            if (diskName)
+        }
+        else
+        {
+            //TODO: check errno for what failed when trying this IOCTL to give better info
+            device->os_info.last_error = errno;
+            if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
             {
-                diskName++;//point just past the r so that it is only hdisk#
-                snprintf(odmCriteria, MAX_ODMI_CRIT, "name='%s'", diskName);
-                ptrcudv = odm_get_obj(CuDv_CLASS, odmCriteria, &cudv, ODM_FIRST);
-                if (ptrcudv)
+                printf("Device IOCINFO Error: ");
+                print_Errno_To_Screen(device->os_info.last_error);
+            }
+            if (device->os_info.last_error == EACCES)
+            {
+                ret = PERMISSION_DENIED;
+            }
+            //TODO: translate other errors into more specific return codes
+            else
+            {
+                ret = FAILURE;
+            }
+        }
+        device->os_info.minimumAlignment = sizeof(void*);//for now use this. There are some devices that require 4B alignment, but this will most likely take care of that -TJE
+        //Now get the parent handle, open it and request the IOCINFO for the parent since that fill provide more details -TJE
+        //set name and friendly name
+        snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
+        char *friendlyName = strdup(filename);
+        snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", basename(friendlyName));
+        safe_Free(friendlyName);
+        struct CuDv cudv;
+        struct CuDv * ptrcudv;
+        memset(&cudv, 0, sizeof(struct CuDv));
+
+        odm_initialize();
+        char odmCriteria[MAX_ODMI_CRIT] = { 0 };//256
+        char *diskFullName = strdup(filename);
+        char *diskName = strrchr(diskFullName, 'r');//point to r in /dev/rhdisk#
+        if (diskName)
+        {
+            diskName++;//point just past the r so that it is only hdisk#
+            snprintf(odmCriteria, MAX_ODMI_CRIT, "name='%s'", diskName);
+            ptrcudv = odm_get_obj(CuDv_CLASS, odmCriteria, &cudv, ODM_FIRST);
+            if (ptrcudv)
+            {
+                //the parent should be available in ptrcudv now.
+                if (device->deviceVerbosity > VERBOSITY_DEFAULT)
                 {
-                    //the parent should be available in ptrcudv now.
+                    print_CuDv_Struct(ptrcudv);
+                }
+                if (strlen(ptrcudv->parent) > 0)
+                {
+                    //open the controller handle and get the IOCINFO for it -TJE
+                    char controllerHandle[OS_HANDLE_NAME_MAX_LENGTH] = { 0 };
+                    snprintf(controllerHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s\n", ptrcudv->parent);
+
                     if (device->deviceVerbosity > VERBOSITY_DEFAULT)
                     {
-                        print_CuDv_Struct(ptrcudv);
+                        printf("\nAIX attempting to open controller: %s\n", controllerHandle);
                     }
-                    if (strlen(ptrcudv->parent) > 0)
+                    if ((device->os_info.ctrlfd = openx(controllerHandle, 0, 0, 0)))
                     {
-                        //open the controller handle and get the IOCINFO for it -TJE
-                        char controllerHandle[OS_HANDLE_NAME_MAX_LENGTH] = { 0 };
-                        snprintf(controllerHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s\n", ptrcudv->parent);
+                        //successfully opened the controller's handle
+                        device->os_info.ctrlfdValid = true;
+                        //note: IOCINFO does not seem to work on controllers.
+                        //commented out code remains, but will no longer be used.
+                        //it may be possible to use odm/cfgodm to figure out more info if we need it.
 
-                        if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-                        {
-                            printf("\nAIX attempting to open controller: %s\n", controllerHandle);
-                        }
-                        if ((device->os_info.ctrlfd = openx(controllerHandle, 0, 0, 0)))
-                        {
-                            //successfully opened the controller's handle
-                            device->os_info.ctrlfdValid = true;
-                            //note: IOCINFO does not seem to work on controllers.
-                            //commented out code remains, but will no longer be used.
-                            //it may be possible to use odm/cfgodm to figure out more info if we need it.
-
-                            //read the iocinfo for the controller to set more flags
+                        //read the iocinfo for the controller to set more flags
 //                             struct devinfo controllerInfo;
 //                             memset(&controllerInfo, 0, sizeof(struct devinfo));
 //                             if (device->deviceVerbosity > VERBOSITY_DEFAULT)
@@ -1199,95 +1242,95 @@ int get_Device(const char *filename, tDevice *device)
 //                                     print_Errno_To_Screen(device->os_info.last_error);
 //                                 }
 //                             }
-                        }
-                        else
+                    }
+                    else
+                    {
+                        if (device->deviceVerbosity > VERBOSITY_DEFAULT)
                         {
-                            if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-                            {
-                                printf("Unable to open controller handle: %s - ", ptrcudv->parent);
-                                print_Errno_To_Screen(errno);
-                            }
+                            printf("Unable to open controller handle: %s - ", ptrcudv->parent);
+                            print_Errno_To_Screen(errno);
                         }
-                        //based off the name of the controller, set up the interface info.
-                        if (strstr(ptrcudv->parent, "sata"))
-                        {
-                            //set up SATA passthrough
-                            device->os_info.adapterType = AIX_ADAPTER_SATA;
-                            device->os_info.ptType = AIX_PASSTHROUGH_SATA;//If we ever get a handle other than rhdisk, switch to atapi or SCSI for those handles-TJE
-                            device->drive_info.drive_type = ATA_DRIVE;
-                            device->drive_info.interface_type = IDE_INTERFACE;
-                        }
-                        else if (strstr(ptrcudv->parent, "ide"))
-                        {
-                            //setup IDE passthrough
-                            device->os_info.adapterType = AIX_ADAPTER_IDE;
-                            device->os_info.ptType = AIX_PASSTHROUGH_IDE_ATA;//If we ever get a handle other than rhdisk, switch to atapi for those handles-TJE
-                            device->drive_info.drive_type = ATA_DRIVE;
-                            device->drive_info.interface_type = IDE_INTERFACE;
-                        }
-                        else if (strstr(ptrcudv->parent, "fscsi")) //fibre channel
-                        {
-                            device->os_info.adapterType = AIX_ADAPTER_FC;
-                            device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
-                            device->drive_info.drive_type = SCSI_DRIVE;
-                            device->drive_info.interface_type = SCSI_INTERFACE;
-                        }
-                        else if (strstr(ptrcudv->parent, "vscsi")) //virtual scsi?
-                        {
-                            device->os_info.adapterType = AIX_ADAPTER_VSCSI;
-                            device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
-                            device->drive_info.drive_type = SCSI_DRIVE;
-                            device->drive_info.interface_type = SCSI_INTERFACE;
-                        }
-                        else if (strstr(ptrcudv->parent, "iscsi")) //iSCSI
-                        {
-                            device->os_info.adapterType = AIX_ADAPTER_ISCSI;
-                            device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
-                            device->drive_info.drive_type = SCSI_DRIVE;
-                            device->drive_info.interface_type = SCSI_INTERFACE;
-                        }
-                        else if (strstr(ptrcudv->parent, "scsi"))//note this is parallel scsi
-                        {
-                            //SCSI passthrough.
-                            //TODO: do old scsi parents support the much bigger passthorugh vs the smaller 12B or less IOCTLs?
-                            device->os_info.adapterType = AIX_ADAPTER_SCSI;
-                            device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
-                            device->drive_info.drive_type = SCSI_DRIVE;
-                            device->drive_info.interface_type = SCSI_INTERFACE;
-                        }
-                        else if (strstr(ptrcudv->parent, "sas"))
-                        {
-                            device->os_info.adapterType = AIX_ADAPTER_SAS;
-                            device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
-                            device->drive_info.drive_type = SCSI_DRIVE;
-                            device->drive_info.interface_type = SCSI_INTERFACE;
-                        }
-                        else if (strstr(ptrcudv->parent, "nvme"))
-                        {
-                            device->os_info.adapterType = AIX_ADAPTER_NVME;
-                            device->os_info.ptType = AIX_PASSTHROUGH_NVME;
-                            device->drive_info.drive_type = NVME_DRIVE;
-                            device->drive_info.interface_type = NVME_INTERFACE;
-                        }
-                        else if (strstr(ptrcudv->parent, "serdasd"))
-                        {
-                            device->os_info.adapterType = AIX_ADAPTER_DASD;
-                            device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
-                            device->drive_info.drive_type = SCSI_DRIVE;
-                            device->drive_info.interface_type = USB_INTERFACE;
-                        }
-                        else if (strstr(ptrcudv->parent, "usb"))
-                        {
-                            device->os_info.adapterType = AIX_ADAPTER_USB;
-                            device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
-                            device->drive_info.drive_type = SCSI_DRIVE;
-                            device->drive_info.interface_type = USB_INTERFACE;
-                        }
-                        else
-                        {
-                            //assume SCSI???
-                            //or try a bunch until it works?
-                        }
+                    }
+                    //based off the name of the controller, set up the interface info.
+                    if (strstr(ptrcudv->parent, "sata"))
+                    {
+                        //set up SATA passthrough
+                        device->os_info.adapterType = AIX_ADAPTER_SATA;
+                        device->os_info.ptType = AIX_PASSTHROUGH_SATA;//If we ever get a handle other than rhdisk, switch to atapi or SCSI for those handles-TJE
+                        device->drive_info.drive_type = ATA_DRIVE;
+                        device->drive_info.interface_type = IDE_INTERFACE;
+                    }
+                    else if (strstr(ptrcudv->parent, "ide"))
+                    {
+                        //setup IDE passthrough
+                        device->os_info.adapterType = AIX_ADAPTER_IDE;
+                        device->os_info.ptType = AIX_PASSTHROUGH_IDE_ATA;//If we ever get a handle other than rhdisk, switch to atapi for those handles-TJE
+                        device->drive_info.drive_type = ATA_DRIVE;
+                        device->drive_info.interface_type = IDE_INTERFACE;
+                    }
+                    else if (strstr(ptrcudv->parent, "fscsi")) //fibre channel
+                    {
+                        device->os_info.adapterType = AIX_ADAPTER_FC;
+                        device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
+                        device->drive_info.drive_type = SCSI_DRIVE;
+                        device->drive_info.interface_type = SCSI_INTERFACE;
+                    }
+                    else if (strstr(ptrcudv->parent, "vscsi")) //virtual scsi?
+                    {
+                        device->os_info.adapterType = AIX_ADAPTER_VSCSI;
+                        device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
+                        device->drive_info.drive_type = SCSI_DRIVE;
+                        device->drive_info.interface_type = SCSI_INTERFACE;
+                    }
+                    else if (strstr(ptrcudv->parent, "iscsi")) //iSCSI
+                    {
+                        device->os_info.adapterType = AIX_ADAPTER_ISCSI;
+                        device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
+                        device->drive_info.drive_type = SCSI_DRIVE;
+                        device->drive_info.interface_type = SCSI_INTERFACE;
+                    }
+                    else if (strstr(ptrcudv->parent, "scsi"))//note this is parallel scsi
+                    {
+                        //SCSI passthrough.
+                        //TODO: do old scsi parents support the much bigger passthorugh vs the smaller 12B or less IOCTLs?
+                        device->os_info.adapterType = AIX_ADAPTER_SCSI;
+                        device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
+                        device->drive_info.drive_type = SCSI_DRIVE;
+                        device->drive_info.interface_type = SCSI_INTERFACE;
+                    }
+                    else if (strstr(ptrcudv->parent, "sas"))
+                    {
+                        device->os_info.adapterType = AIX_ADAPTER_SAS;
+                        device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
+                        device->drive_info.drive_type = SCSI_DRIVE;
+                        device->drive_info.interface_type = SCSI_INTERFACE;
+                    }
+                    else if (strstr(ptrcudv->parent, "nvme"))
+                    {
+                        device->os_info.adapterType = AIX_ADAPTER_NVME;
+                        device->os_info.ptType = AIX_PASSTHROUGH_NVME;
+                        device->drive_info.drive_type = NVME_DRIVE;
+                        device->drive_info.interface_type = NVME_INTERFACE;
+                    }
+                    else if (strstr(ptrcudv->parent, "serdasd"))
+                    {
+                        device->os_info.adapterType = AIX_ADAPTER_DASD;
+                        device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
+                        device->drive_info.drive_type = SCSI_DRIVE;
+                        device->drive_info.interface_type = USB_INTERFACE;
+                    }
+                    else if (strstr(ptrcudv->parent, "usb"))
+                    {
+                        device->os_info.adapterType = AIX_ADAPTER_USB;
+                        device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
+                        device->drive_info.drive_type = SCSI_DRIVE;
+                        device->drive_info.interface_type = USB_INTERFACE;
+                    }
+                    else
+                    {
+                        //assume SCSI???
+                        //or try a bunch until it works?
+                    }
 
 //                         if (driveInfo.devtype == DD_SCDISK)
 //                         {
@@ -1321,49 +1364,29 @@ int get_Device(const char *filename, tDevice *device)
 //                                 }
 //                             }
 //                         }
-                        ret = fill_Drive_Info_Data(device);
-                    }
-                    else
-                    {
-                        if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-                        {
-                            printf("Warning: Parent is empty!\n");
-                        }
-                    }
+                    ret = fill_Drive_Info_Data(device);
                 }
                 else
                 {
-                    //print error???
                     if (device->deviceVerbosity > VERBOSITY_DEFAULT)
                     {
-                        printf("Unable to get parent for %s\n", filename);
-                        print_ODM_Error(odmerrno);
+                        printf("Warning: Parent is empty!\n");
                     }
                 }
             }
-            //done with using odm, so terminate it
-            (void)odm_terminate();
-            safe_Free(diskFullName);
-        }
-        else
-        {
-            //TODO: check errno for what failed when trying this IOCTL to give better info
-            device->os_info.last_error = errno;
-            if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-            {
-                printf("Device IOCINFO Error: ");
-                print_Errno_To_Screen(device->os_info.last_error);
-            }
-            if (device->os_info.last_error == EACCES)
-            {
-                ret = PERMISSION_DENIED;
-            }
-            //TODO: translate other errors into more specific return codes
             else
             {
-                ret = FAILURE;
+                //print error???
+                if (device->deviceVerbosity > VERBOSITY_DEFAULT)
+                {
+                    printf("Unable to get parent for %s\n", filename);
+                    print_ODM_Error(odmerrno);
+                }
             }
         }
+        //done with using odm, so terminate it
+        (void)odm_terminate();
+        safe_Free(diskFullName);
     }
     return ret;
 }
@@ -2707,10 +2730,15 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     return ret;
 }
 
+//TODO: Adjust filter to only get rhdisk# and not rhdiskl (or other letters?)
 static int rhdisk_filter( const struct dirent *entry )
 {
     return !strncmp("rhdisk",entry->d_name, 6);
 }
+
+//TODO: In a RAID configuration, physical disks in the RAID get a /dev/pdsk handle
+//      Maybe this can be used to passthrough commands? 
+//      https://www.ibm.com/docs/en/power6?topic=srcao-disk-arrays
 
 
 //-----------------------------------------------------------------------------
@@ -2779,12 +2807,6 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     char name[80] = { 0 }; //Because get device needs char
     int fd;
     tDevice * d = NULL;
-#if defined (DEGUG_SCAN_TIME)
-    seatimer_t getDeviceTimer;
-    seatimer_t getDeviceListTimer;
-    memset(&getDeviceTimer, 0, sizeof(seatimer_t));
-    memset(&getDeviceListTimer, 0, sizeof(seatimer_t));
-#endif
 
     int  num_devs = 0;
     struct dirent **namelist;
@@ -2793,7 +2815,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 
     char **devs = C_CAST(char **, calloc(num_devs + 1, sizeof(char *)));
     int i = 0;
-    //add sg/sd devices to the list
+    //add rhdisk devices to the list
     for (; i < (num_devs); i++)
     {
         size_t handleSize = (strlen("/dev/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
@@ -2817,9 +2839,6 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
-#if defined (DEGUG_SCAN_TIME)
-        start_Timer(&getDeviceListTimer);
-#endif
         for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
             if (!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
@@ -2830,8 +2849,27 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             snprintf(name, sizeof(name), "%s", devs[driveNumber]);
             fd = -1;
             //lets try to open the device.
-            fd = open(name, O_RDWR | O_NONBLOCK);
+            //NOTE: When opening a handle, there may be an issue if SC_DIAGNOSTIC is not specified.
+            //This can be an issue when there is somethign not quite right with the drive.
+            //This cannot be used all the time though. You cannot use it on the system drive.
+            //So first try without it, then try again if it won't open with SC_DIAGNOSTIC.
+            long extensionFlag = 0;//start with no additional flags - TJE
+            bool opened = false;
+            fd = openx(name, 0, 0, extensionFlag);
             if (fd >= 0)
+            {
+                opened = true;
+            }
+            else
+            {
+                extensionFlag = SC_DIAGNOSTIC;
+                fd = openx(name, 0, 0, extensionFlag);
+                if (fd >= 0)
+                {
+                    opened = true;
+                }
+            }
+            if (opened)
             {
                 close(fd);
                 eVerbosityLevels temp = d->deviceVerbosity;
@@ -2839,17 +2877,8 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 d->deviceVerbosity = temp;
                 d->sanity.size = ver.size;
                 d->sanity.version = ver.version;
-#if defined (DEGUG_SCAN_TIME)
-                seatimer_t getDeviceTimer;
-                memset(&getDeviceTimer, 0, sizeof(seatimer_t));
-                start_Timer(&getDeviceTimer);
-#endif
                 d->dFlags = flags;
                 int ret = get_Device(name, d);
-#if defined (DEGUG_SCAN_TIME)
-                stop_Timer(&getDeviceTimer);
-                printf("Time to get %s = %fms\n", name, get_Milli_Seconds(getDeviceTimer));
-#endif
                 if (ret != SUCCESS)
                 {
                     failedGetDeviceCount++;
@@ -2869,10 +2898,6 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             //free the dev[deviceNumber] since we are done with it now.
             safe_Free(devs[driveNumber])
         }
-#if defined (DEGUG_SCAN_TIME)
-        stop_Timer(&getDeviceListTimer);
-        printf("Time to get all device = %fms\n", get_Milli_Seconds(getDeviceListTimer));
-#endif
 	    if (found == failedGetDeviceCount)
 	    {
 	        returnValue = FAILURE;
