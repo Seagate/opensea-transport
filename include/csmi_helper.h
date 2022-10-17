@@ -50,6 +50,16 @@ extern "C"
         #define CSMI_INVALID_HANDLE -1
     #endif
 
+    //TODO: This may need expanding if specific versions of each driver need tracking uniquely due to significant differences in reporting or behavior.
+    typedef enum _eKnownCSMIDriver
+    {
+        CSMI_DRIVER_UNKNOWN = 0,
+        CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY,
+        CSMI_DRIVER_INTEL_VROC,
+        CSMI_DRIVER_AMD_RCRAID,
+        CSMI_DRIVER_HPCISS,
+        CSMI_DRIVER_ARCSAS,
+    }eKnownCSMIDriver;
 
     //This is all the data, minus the IOCTL header, of the CSMI_SAS_GET_SCSI_ADDRESS_BUFFER
     //Defined here since I don't want to be responsible for adding it onto the csmisas.h file - TJE
@@ -100,6 +110,7 @@ extern "C"
             uint32_t maxXferSize; //From MSDN: The image payload maximum size, this is used for a single command
         }intelRSTSupport;
         eCSMISecurityAccess securityAccess;//mostly for Windows...
+        eKnownCSMIDriver csmiKnownDriverType;//can be used to work around specific known implementation differences/bugs. -TJE
     }csmiDeviceInfo, *ptrCsmiDeviceInfo;
 
     #if defined (_WIN32)
