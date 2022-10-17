@@ -3676,8 +3676,8 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                                 //NOTE: SATA controllers will set SASAddress to zero (unless It's Intel, they fill this in anyways), so this is not enough of a check.
                                                                 //      If there is a non-zero SASAddress, use it. Otherwise, we need to roll back to matching MN, SN, with an Identify command -TJE
                                                                 //Special case for Intel drivers as an all zero SASAddress is valid on Intel Drivers
-                                                                if ((knownCSMIDriver == CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY || knownCSMIDriver == CSMI_DRIVER_INTEL_VROC ||
-                                                                    !is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8) && !is_Empty(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, 8))
+                                                                if ((knownCSMIDriver == CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY || knownCSMIDriver == CSMI_DRIVER_INTEL_VROC) ||
+                                                                    !is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8) && !is_Empty(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, 8)
                                                                     && memcmp(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8) == 0)
                                                                 {
 #if defined (CSMI_DEBUG)
@@ -3703,8 +3703,6 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 #if defined (CSMI_DEBUG)
                                                                             printf("GDL: Error converting SASLun to SCSI Address lun!\n");
 #endif //CSMI_DEBUG
-                                                                            //TODO: This is likely actually enough for a SCSI drive to work, but we would need to change more code to accept a full SAS Address and SAS Lun style handle.
-                                                                            break;
                                                                         }
                                                                     }
                                                                     switch (phyInfo.Information.Phy[phyIter].Attached.bDeviceType)
@@ -3934,7 +3932,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                                 }
                                                                 else
                                                                 {
-                                                                raidInfoIncomplete = true;
+                                                                    raidInfoIncomplete = true;
 #if defined (CSMI_DEBUG)
                                                                     printf("GDL: Cannot use SASAddress or MN+SN to match drives. Trying final possibility: PhyInfo\n");
 #endif //CSMI_DEBUG
