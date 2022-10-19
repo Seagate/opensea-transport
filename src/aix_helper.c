@@ -916,13 +916,13 @@ static void print_CuDv_Struct (struct CuDv *cudv)
     char cudvlocation[17] = { 0 };
     char cudvparent[17] = { 0 };
     char cudvconnwhere[17] = { 0 };
-    //char cudvPdDvLnLvalue[49] = { 0 };
+    char cudvPdDvLnLvalue[49] = { 0 };
     snprintf(cudvName, 17, "%s", cudv->name);
     snprintf(cudvddins, 17, "%s", cudv->ddins);
     snprintf(cudvlocation, 17, "%s", cudv->location);
     snprintf(cudvparent, 17, "%s", cudv->parent);
     snprintf(cudvconnwhere, 17, "%s", cudv->connwhere);
-    //snprintf(cudvPdDvLnLvalue, 49, "%s", cudv->PdDvLn_Lvalue);
+    snprintf(cudvPdDvLnLvalue, 49, "%s", cudv->PdDvLn_Lvalue);
     printf("CuDv:\n");
     printf("\tid: %ld\n", cudv->_id);
     printf("\treserved: %ld\n", cudv->_reserved);
@@ -1033,7 +1033,7 @@ static void print_CuDv_Struct (struct CuDv *cudv)
         //     // };  
         // }
     }
-    //printf("\tPdDvLn_Lvalue: %s\n", cudvPdDvLnLvalue);
+    printf("\tPdDvLn_Lvalue: %s\n", cudvPdDvLnLvalue);
     return;
 }
 
