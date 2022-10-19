@@ -38,6 +38,8 @@
     #endif
 #endif
 
+//#include <mntent.h> //for determining mounted file systems
+
 #include "aix_helper.h"
 #include "cmds.h"
 
@@ -48,11 +50,72 @@ bool os_Is_Infinite_Timeout_Supported(void)
 
 extern bool validate_Device_Struct(versionBlock);
 
-//in future, when code is written, use internal API used by the other FS/unmount options to figure this out.-TJE
-static int set_Device_Partition_Info(M_ATTR_UNUSED tDevice* device)
-{
-    return NOT_SUPPORTED;
-}
+//File systems are /dev/hd?, but block disks are /dev/hdisk? and raw disks are /dev/rhdisk?
+//There is some way these are related, but I'm not sure how to get the mapping between them.
+//The code below will compile and run, but you need to know what input to give it to do anything useful.
+//If we can figure out how /dev/hd is on /dev/hdisk or the other way around, this should be usable, or can be modified to work better-TJE
+
+// static int get_Partition_Count(const char * blockDeviceName)
+// {
+//     int result = 0;
+//     FILE *mount = setmntent(MOUNTED, "r");//MNTTAB or MOUNTED. MOUNTED is virtual file
+//     struct mntent *entry = NULL;
+//     while(NULL != (entry = getmntent(mount)))
+//     {
+//         if(strstr(entry->mnt_fsname, blockDeviceName))
+//         {
+//             //Found a match, increment result counter.
+//             ++result;
+//         }
+//     }
+//     endmntent(mount);
+//     return result;
+// }
+
+// #define PART_INFO_NAME_LENGTH (32)
+// #define PART_INFO_PATH_LENGTH (64)
+// typedef struct _spartitionInfo
+// {
+//     char fsName[PART_INFO_NAME_LENGTH];
+//     char mntPath[PART_INFO_PATH_LENGTH];
+// }spartitionInfo, *ptrsPartitionInfo;
+// //partitionInfoList is a pointer to the beginning of the list
+// //listCount is the number of these structures, which should be returned by get_Partition_Count
+// static int get_Partition_List(const char * blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
+// {
+//     int result = SUCCESS;
+//     int matchesFound = 0;
+//     if(listCount > 0)
+//     {
+//         FILE *mount = setmntent(MOUNTED, "r");//MNTTAB or MOUNTED. MOUNTED is virtual file
+//         struct mntent *entry = NULL;
+//         while(NULL != (entry = getmntent(mount)))
+//         {
+//             if(strstr(entry->mnt_fsname, blockDeviceName))
+//             {
+//                 //found a match, copy it to the list
+//                 if(matchesFound < listCount)
+//                 {
+//                     snprintf((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s", entry->mnt_fsname);
+//                     snprintf((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH, "%s", entry->mnt_dir);
+//                     ++matchesFound;
+//                 }
+//                 else
+//                 {
+//                     result = MEMORY_FAILURE;//out of memory to copy all results to the list.
+//                 }
+//             }
+//         }
+//         endmntent(mount);
+//     }
+//     return result;
+// }
+
+// //in future, when code is written, use internal API used by the other FS/unmount options to figure this out.-TJE
+// static int set_Device_Partition_Info(M_ATTR_UNUSED tDevice* device)
+// {
+//     return NOT_SUPPORTED;
+// }
 
 //This may be useful for debug level prints - TJE
 static void print_devinfo_struct(struct devinfo *devInfoData)
@@ -1037,6 +1100,72 @@ static void print_CuDv_Struct (struct CuDv *cudv)
     return;
 }
 
+static int get_Adapter_IDs(tDevice *device, char *name)
+{
+    int ret = 0;
+    struct CuDv cudv;
+    struct CuDv * ptrcudv;
+    memset(&cudv, 0, sizeof(struct CuDv));
+
+    //odm_initialize();
+    char odmCriteria[MAX_ODMI_CRIT] = { 0 };//256
+    if (name && strlen(name) > 0)
+    {
+        snprintf(odmCriteria, MAX_ODMI_CRIT, "name='%s'", name);
+        ptrcudv = odm_get_obj(CuDv_CLASS, odmCriteria, &cudv, ODM_FIRST);
+        if (ptrcudv)
+        {
+            //the parent should be available in ptrcudv now.
+            if (device->deviceVerbosity > VERBOSITY_DEFAULT)
+            {
+                print_CuDv_Struct(ptrcudv);
+            }
+
+            //first check if PdDvLn = "adapter/pci... in it. If it does, then this is the result we are looking for
+            if (strstr(ptrcudv->PdDvLn_Lvalue, "adapter/pci"))
+            {
+                //Through trial and error testing and searching, this is a typical output we want to find and parse:
+                //adapter/pci/pcividpid
+                //or
+                //adapter/pciex/pcividpid
+                //Note that the vid and pid are not in the correct order. These are reported as little endian,
+                //but the big endian AIX system does not seem to swap them to the correct order for it...looks like
+                //it just copies them which leaves them in the wrong order.
+                
+                //Set a char pointer to the last / + 1
+                const char *ids = strrchr(ptrcudv->PdDvLn_Lvalue, '/') + 1;
+                //now convert this out to a uint32, then byte swap it, then separate into VID and PID
+                uint32_t idCombo = strtoul(ids, NULL, 16);
+                #if defined (__BIG_ENDIAN__) || defined (__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+                //wrapping this as if there was little endian AIX, I doubt it would exhibit the same issue
+                byte_Swap_32(&idCombo);
+                word_Swap_32(&idCombo);//This is done after the byte swap since it will change the order of VID and PID back to expected place
+                #endif //BIG ENDIAN check
+                device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
+                device->drive_info.adapter_info.vendorID = M_Word1(idCombo);
+                device->drive_info.adapter_info.productID = M_Word0(idCombo);
+                device->drive_info.adapter_info.vendorIDValid = true;
+                device->drive_info.adapter_info.productIDValid = true;
+                ret = 1;
+            }
+            else
+            {
+                //Check the parent. from hdisk, this is usually 2 parents up from what I've seen -TJE
+                ret = get_Adapter_IDs(device, ptrcudv->parent);
+            }
+        }
+        else
+        {
+            ret = -1;//some kind of error
+        }
+    }
+    else
+    {
+        ret = -1;
+    }
+    return ret;
+}
+
 //While we are unlikely to see many, if any, USB devices in AIX,
 //it is possible to read the vendor/product IDs somewhere in the attributes:
 //https://www.ibm.com/docs/en/aix/7.3?topic=subsystem-usblibdd-passthru-driver
@@ -1364,6 +1493,8 @@ int get_Device(const char *filename, tDevice *device)
 //                                 }
 //                             }
 //                         }
+                    //call the recursive function to get the adapter id. It uses odm to get this, which may need to work through multiple layers-TJE
+                    get_Adapter_IDs(device, diskName);
                     ret = fill_Drive_Info_Data(device);
                 }
                 else
@@ -1661,336 +1792,340 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
     return;
 }
 
-static int send_AIX_SCSI_Diag_IO(ScsiIoCtx *scsiIoCtx)
-{
-    //uses the DKIOCMD when opened with the diagnostic mode flag so that this command is issued with nothing else in queue
-    //and more or less exclusive access to the device.
-    //NOTE: This does not issue request sense upon an error! This will need to be done manually!
-    int         ret          = SUCCESS;
-    bool issueRequestSense = false;
-    if (scsiIoCtx->cdbLength <= 12)
-    {
-        int ioctlCode = DKIOCMD;
-        seatimer_t commandTimer;
-        struct sc_iocmd aixIoCmd;
-        memset(&aixIoCmd, 0, sizeof(struct sc_iocmd));
-        memset(&commandTimer, 0, sizeof(seatimer_t));
-        if (scsiIoCtx->device->os_info.adapterType != AIX_ADAPTER_SCSI)//TODO: expand this list further???
-        {
-            ioctlCode = DKIOLCMD;
-        }
+//This function is not currently in use, but will work with up to 16B CDBs.
+//up to 12B for older devices.
+//Trying to use the big passthrough as it allows much larger CDBs and even variable length CDBs instead.
+//Enable using this is we ever need it for compatibility or it does something different than normal passthrough that we need-TJE
+// static int send_AIX_SCSI_Diag_IO(ScsiIoCtx *scsiIoCtx)
+// {
+//     //uses the DKIOCMD when opened with the diagnostic mode flag so that this command is issued with nothing else in queue
+//     //and more or less exclusive access to the device.
+//     //NOTE: This does not issue request sense upon an error! This will need to be done manually!
+//     int         ret          = SUCCESS;
+//     bool issueRequestSense = false;
+//     if (scsiIoCtx->cdbLength <= 12)
+//     {
+//         int ioctlCode = DKIOCMD;
+//         seatimer_t commandTimer;
+//         struct sc_iocmd aixIoCmd;
+//         memset(&aixIoCmd, 0, sizeof(struct sc_iocmd));
+//         memset(&commandTimer, 0, sizeof(seatimer_t));
+//         if (scsiIoCtx->device->os_info.adapterType != AIX_ADAPTER_SCSI)//TODO: expand this list further???
+//         {
+//             ioctlCode = DKIOLCMD;
+//         }
 
-        aixIoCmd.q_tag_msg = 0;//SC_NO_Q, SC_SIMPLE_Q, SC_HEAD_OF_Q, SC_ORDERED_Q, SC_ACA_Q
-        aixIoCmd.flags = SC_QUIESCE_IO;//or SC_MIX_IO? Leaving as quiesce for now -TJE
-        aixIoCmd.q_flags = 0;//SC_Q_CLR, SC_Q_RESUME, SC_CLEAR_ACA
-        //setup flags
-        //These two are available, but not currently used
-        //#define SC_NODISC   0x80        /* don't allow disconnections */
-        //#define SC_ASYNC    0x08        /* asynchronous data xfer */
-        switch(scsiIoCtx->direction)
-        {
-        case XFER_DATA_IN:
-            aixIoCmd.flags = B_READ;
-            break;
-        case XFER_DATA_OUT:
-            aixIoCmd.flags = B_WRITE;
-            break;
-        case XFER_NO_DATA:
-            aixIoCmd.flags = B_READ;
-            break;
-        case XFER_DATA_IN_OUT:
-        case XFER_DATA_OUT_IN:
-            aixIoCmd.flags = B_READ | B_WRITE;
-            break;
-        }
-        aixIoCmd.data_length = scsiIoCtx->dataLength;
-        aixIoCmd.buffer = C_CAST(char *, scsiIoCtx->pdata);
+//         aixIoCmd.q_tag_msg = 0;//SC_NO_Q, SC_SIMPLE_Q, SC_HEAD_OF_Q, SC_ORDERED_Q, SC_ACA_Q
+//         aixIoCmd.flags = SC_QUIESCE_IO;//or SC_MIX_IO? Leaving as quiesce for now -TJE
+//         aixIoCmd.q_flags = 0;//SC_Q_CLR, SC_Q_RESUME, SC_CLEAR_ACA
+//         //setup flags
+//         //These two are available, but not currently used
+//         //#define SC_NODISC   0x80        /* don't allow disconnections */
+//         //#define SC_ASYNC    0x08        /* asynchronous data xfer */
+//         switch(scsiIoCtx->direction)
+//         {
+//         case XFER_DATA_IN:
+//             aixIoCmd.flags = B_READ;
+//             break;
+//         case XFER_DATA_OUT:
+//             aixIoCmd.flags = B_WRITE;
+//             break;
+//         case XFER_NO_DATA:
+//             aixIoCmd.flags = B_READ;
+//             break;
+//         case XFER_DATA_IN_OUT:
+//         case XFER_DATA_OUT_IN:
+//             aixIoCmd.flags = B_READ | B_WRITE;
+//             break;
+//         }
+//         aixIoCmd.data_length = scsiIoCtx->dataLength;
+//         aixIoCmd.buffer = C_CAST(char *, scsiIoCtx->pdata);
 
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
-        {
-            aixIoCmd.timeout_value = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
-            {
-                aixIoCmd.timeout_value = UINT32_MAX;//no timeout or maximum timeout
-            }
-        }
-        else
-        {
-            if (scsiIoCtx->timeout != 0)
-            {
-                aixIoCmd.timeout_value = scsiIoCtx->timeout;
-                if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
-                {
-                    aixIoCmd.timeout_value = UINT32_MAX;//no timeout or maximum timeout
-                }
-            }
-            else
-            {
-                aixIoCmd.timeout_value = 15;//default to 15 second timeout
-            }
-        }
-        aixIoCmd.command_length = scsiIoCtx->cdbLength;
-        memcpy(&aixIoCmd.scsi_cdb[0], scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+//         if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+//         {
+//             aixIoCmd.timeout_value = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+//             if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+//             {
+//                 aixIoCmd.timeout_value = UINT32_MAX;//no timeout or maximum timeout
+//             }
+//         }
+//         else
+//         {
+//             if (scsiIoCtx->timeout != 0)
+//             {
+//                 aixIoCmd.timeout_value = scsiIoCtx->timeout;
+//                 if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+//                 {
+//                     aixIoCmd.timeout_value = UINT32_MAX;//no timeout or maximum timeout
+//                 }
+//             }
+//             else
+//             {
+//                 aixIoCmd.timeout_value = 15;//default to 15 second timeout
+//             }
+//         }
+//         aixIoCmd.command_length = scsiIoCtx->cdbLength;
+//         memcpy(&aixIoCmd.scsi_cdb[0], scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
-        aixIoCmd.lun = 0;//if greater than 7, must be used to ignore LUN bits in SCSI 1 commands
+//         aixIoCmd.lun = 0;//if greater than 7, must be used to ignore LUN bits in SCSI 1 commands
 
-        start_Timer(&commandTimer);
-        ret = ioctl(scsiIoCtx->device->os_info.fd, ioctlCode, &aixIoCmd);
-        stop_Timer(&commandTimer);
-        scsiIoCtx->device->os_info.last_error = errno;
-        if (ret < 0)
-        {
-            ret = OS_PASSTHROUGH_FAILURE;
-            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-            {
-                if (scsiIoCtx->device->os_info.last_error != 0)
-                {
-                    printf("Error: ");
-                    print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
-                }
-                print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status, ioctlCode == DKIOCMD ? SC_ADAP_SC_ERR : SC_ADAP_SAM_ERR, aixIoCmd.adapter_status);
-                print_Adapter_Queue_Status(aixIoCmd.adap_q_status);
-            }
-        }
-        if (aixIoCmd.status_validity == 0)
-        {
-            ret = SUCCESS;
-        }
-        else if (aixIoCmd.status_validity == 1)
-        {
-            switch(aixIoCmd.scsi_bus_status & SCSI_STATUS_MASK)
-            {
-            case SC_GOOD_STATUS:
-                ret = SUCCESS;
-                break;
-            case SC_CHECK_CONDITION:
-                ret = SUCCESS;//succesfully issued the IO, so pass sense data back up the stack
-                issueRequestSense = true;
-                break;
-            case SC_BUSY_STATUS:
-            case SC_INTMD_GOOD:
-            case SC_RESERVATION_CONFLICT:
-            case SC_COMMAND_TERMINATED:
-            case SC_QUEUE_FULL:
-            case SC_ACA_ACTIVE:
-            case SC_TASK_ABORTED:
-            default:
-                ret = OS_PASSTHROUGH_FAILURE;
-                break;
-            }
-        }
-        else
-        {
-            ret = OS_PASSTHROUGH_FAILURE;
-        }
-        scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    }
-    else if (scsiIoCtx->cdbLength <= 16)
-    {
-        seatimer_t commandTimer;
-        struct sc_iocmd16cdb aixIoCmd;
-        memset(&aixIoCmd, 0, sizeof(struct sc_iocmd16cdb));
-        memset(&commandTimer, 0, sizeof(seatimer_t));
+//         start_Timer(&commandTimer);
+//         ret = ioctl(scsiIoCtx->device->os_info.fd, ioctlCode, &aixIoCmd);
+//         stop_Timer(&commandTimer);
+//         scsiIoCtx->device->os_info.last_error = errno;
+//         if (ret < 0)
+//         {
+//             ret = OS_PASSTHROUGH_FAILURE;
+//             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+//             {
+//                 if (scsiIoCtx->device->os_info.last_error != 0)
+//                 {
+//                     printf("Error: ");
+//                     print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
+//                 }
+//                 print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status, ioctlCode == DKIOCMD ? SC_ADAP_SC_ERR : SC_ADAP_SAM_ERR, aixIoCmd.adapter_status);
+//                 print_Adapter_Queue_Status(aixIoCmd.adap_q_status);
+//             }
+//         }
+//         if (aixIoCmd.status_validity == 0)
+//         {
+//             ret = SUCCESS;
+//         }
+//         else if (aixIoCmd.status_validity == 1)
+//         {
+//             switch(aixIoCmd.scsi_bus_status & SCSI_STATUS_MASK)
+//             {
+//             case SC_GOOD_STATUS:
+//                 ret = SUCCESS;
+//                 break;
+//             case SC_CHECK_CONDITION:
+//                 ret = SUCCESS;//succesfully issued the IO, so pass sense data back up the stack
+//                 issueRequestSense = true;
+//                 break;
+//             case SC_BUSY_STATUS:
+//             case SC_INTMD_GOOD:
+//             case SC_RESERVATION_CONFLICT:
+//             case SC_COMMAND_TERMINATED:
+//             case SC_QUEUE_FULL:
+//             case SC_ACA_ACTIVE:
+//             case SC_TASK_ABORTED:
+//             default:
+//                 ret = OS_PASSTHROUGH_FAILURE;
+//                 break;
+//             }
+//         }
+//         else
+//         {
+//             ret = OS_PASSTHROUGH_FAILURE;
+//         }
+//         scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+//     }
+//     else if (scsiIoCtx->cdbLength <= 16)
+//     {
+//         seatimer_t commandTimer;
+//         struct sc_iocmd16cdb aixIoCmd;
+//         memset(&aixIoCmd, 0, sizeof(struct sc_iocmd16cdb));
+//         memset(&commandTimer, 0, sizeof(seatimer_t));
 
-        aixIoCmd.q_tag_msg = 0;//SC_NO_Q, SC_SIMPLE_Q, SC_HEAD_OF_Q, SC_ORDERED_Q, SC_ACA_Q
-        aixIoCmd.flags = SC_QUIESCE_IO;//or SC_MIX_IO? Leaving as quiesce for now -TJE
-        aixIoCmd.q_flags = 0;//SC_Q_CLR, SC_Q_RESUME, SC_CLEAR_ACA
-        //setup flags
-        //These two are available, but not currently used
-        //#define SC_NODISC   0x80        /* don't allow disconnections */
-        //#define SC_ASYNC    0x08        /* asynchronous data xfer */
-        switch(scsiIoCtx->direction)
-        {
-        case XFER_DATA_IN:
-            aixIoCmd.flags = B_READ;
-            break;
-        case XFER_DATA_OUT:
-            aixIoCmd.flags = B_WRITE;
-            break;
-        case XFER_NO_DATA:
-            aixIoCmd.flags = B_READ;
-            break;
-        case XFER_DATA_IN_OUT:
-        case XFER_DATA_OUT_IN:
-            aixIoCmd.flags = B_READ | B_WRITE;
-            break;
-        }
+//         aixIoCmd.q_tag_msg = 0;//SC_NO_Q, SC_SIMPLE_Q, SC_HEAD_OF_Q, SC_ORDERED_Q, SC_ACA_Q
+//         aixIoCmd.flags = SC_QUIESCE_IO;//or SC_MIX_IO? Leaving as quiesce for now -TJE
+//         aixIoCmd.q_flags = 0;//SC_Q_CLR, SC_Q_RESUME, SC_CLEAR_ACA
+//         //setup flags
+//         //These two are available, but not currently used
+//         //#define SC_NODISC   0x80        /* don't allow disconnections */
+//         //#define SC_ASYNC    0x08        /* asynchronous data xfer */
+//         switch(scsiIoCtx->direction)
+//         {
+//         case XFER_DATA_IN:
+//             aixIoCmd.flags = B_READ;
+//             break;
+//         case XFER_DATA_OUT:
+//             aixIoCmd.flags = B_WRITE;
+//             break;
+//         case XFER_NO_DATA:
+//             aixIoCmd.flags = B_READ;
+//             break;
+//         case XFER_DATA_IN_OUT:
+//         case XFER_DATA_OUT_IN:
+//             aixIoCmd.flags = B_READ | B_WRITE;
+//             break;
+//         }
 
-        aixIoCmd.data_length = scsiIoCtx->dataLength;
-        aixIoCmd.buffer = C_CAST(char *, scsiIoCtx->pdata);
+//         aixIoCmd.data_length = scsiIoCtx->dataLength;
+//         aixIoCmd.buffer = C_CAST(char *, scsiIoCtx->pdata);
 
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
-        {
-            aixIoCmd.timeout_value = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
-            {
-                aixIoCmd.timeout_value = UINT32_MAX;//no timeout or maximum timeout
-            }
-        }
-        else
-        {
-            if (scsiIoCtx->timeout != 0)
-            {
-                aixIoCmd.timeout_value = scsiIoCtx->timeout;
-                if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
-                {
-                    aixIoCmd.timeout_value = UINT32_MAX;//no timeout or maximum timeout
-                }
-            }
-            else
-            {
-                aixIoCmd.timeout_value = 15;//default to 15 second timeout
-            }
-        }
-        aixIoCmd.command_length = scsiIoCtx->cdbLength;
-        memcpy(&aixIoCmd.scsi_cdb[0], scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+//         if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+//         {
+//             aixIoCmd.timeout_value = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+//             if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+//             {
+//                 aixIoCmd.timeout_value = UINT32_MAX;//no timeout or maximum timeout
+//             }
+//         }
+//         else
+//         {
+//             if (scsiIoCtx->timeout != 0)
+//             {
+//                 aixIoCmd.timeout_value = scsiIoCtx->timeout;
+//                 if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+//                 {
+//                     aixIoCmd.timeout_value = UINT32_MAX;//no timeout or maximum timeout
+//                 }
+//             }
+//             else
+//             {
+//                 aixIoCmd.timeout_value = 15;//default to 15 second timeout
+//             }
+//         }
+//         aixIoCmd.command_length = scsiIoCtx->cdbLength;
+//         memcpy(&aixIoCmd.scsi_cdb[0], scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
-        aixIoCmd.lun = 0;//if greater than 7, must be used to ignore LUN bits in SCSI 1 commands
+//         aixIoCmd.lun = 0;//if greater than 7, must be used to ignore LUN bits in SCSI 1 commands
 
-        start_Timer(&commandTimer);
-        ret = ioctl(scsiIoCtx->device->os_info.fd, DKIOCMD16, &aixIoCmd);
-        stop_Timer(&commandTimer);
-        scsiIoCtx->device->os_info.last_error = errno;
-        if (ret < 0)
-        {
-            ret = OS_PASSTHROUGH_FAILURE;
-            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-            {
-                if (scsiIoCtx->device->os_info.last_error != 0)
-                {
-                    printf("Error: ");
-                    print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
-                }
-                print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status, SC_ADAP_SAM_ERR, aixIoCmd.adapter_status);
-                print_Adapter_Queue_Status(aixIoCmd.adap_q_status);
-            }
-        }
-        if (aixIoCmd.status_validity == 0)
-        {
-            ret = SUCCESS;
-        }
-        else if (aixIoCmd.status_validity == 1)
-        {
-            switch(aixIoCmd.scsi_bus_status & SCSI_STATUS_MASK)
-            {
-            case SC_GOOD_STATUS:
-                ret = SUCCESS;
-                break;
-            case SC_CHECK_CONDITION:
-                ret = SUCCESS;//succesfully issued the IO, so pass sense data back up the stack
-                issueRequestSense = true;
-                break;
-            case SC_BUSY_STATUS:
-            case SC_INTMD_GOOD:
-            case SC_RESERVATION_CONFLICT:
-            case SC_COMMAND_TERMINATED:
-            case SC_QUEUE_FULL:
-            case SC_ACA_ACTIVE:
-            case SC_TASK_ABORTED:
-            default:
-                ret = OS_PASSTHROUGH_FAILURE;
-                break;
-            }
-        }
-        else
-        {
-            ret = OS_PASSTHROUGH_FAILURE;
-        }
-        scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    }
-    else
-    {
-        //TODO: Send this with the passthrough command instead???
-        //      There are not a lot of commands larger than 16B being sent today -TJE
-        ret = OS_COMMAND_NOT_AVAILABLE;
-    }
-    if (issueRequestSense && scsiIoCtx->psense)
-    {
-        int ioctlCode = DKIOCMD;
-        seatimer_t commandTimer;
-        struct sc_iocmd aixIoCmd;
-        memset(&aixIoCmd, 0, sizeof(struct sc_iocmd));
-        memset(&commandTimer, 0, sizeof(seatimer_t));
-        if (scsiIoCtx->device->os_info.adapterType != AIX_ADAPTER_SCSI)//TODO: expand this list further???
-        {
-            ioctlCode = DKIOLCMD;
-        }
+//         start_Timer(&commandTimer);
+//         ret = ioctl(scsiIoCtx->device->os_info.fd, DKIOCMD16, &aixIoCmd);
+//         stop_Timer(&commandTimer);
+//         scsiIoCtx->device->os_info.last_error = errno;
+//         if (ret < 0)
+//         {
+//             ret = OS_PASSTHROUGH_FAILURE;
+//             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+//             {
+//                 if (scsiIoCtx->device->os_info.last_error != 0)
+//                 {
+//                     printf("Error: ");
+//                     print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
+//                 }
+//                 print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status, SC_ADAP_SAM_ERR, aixIoCmd.adapter_status);
+//                 print_Adapter_Queue_Status(aixIoCmd.adap_q_status);
+//             }
+//         }
+//         if (aixIoCmd.status_validity == 0)
+//         {
+//             ret = SUCCESS;
+//         }
+//         else if (aixIoCmd.status_validity == 1)
+//         {
+//             switch(aixIoCmd.scsi_bus_status & SCSI_STATUS_MASK)
+//             {
+//             case SC_GOOD_STATUS:
+//                 ret = SUCCESS;
+//                 break;
+//             case SC_CHECK_CONDITION:
+//                 ret = SUCCESS;//succesfully issued the IO, so pass sense data back up the stack
+//                 issueRequestSense = true;
+//                 break;
+//             case SC_BUSY_STATUS:
+//             case SC_INTMD_GOOD:
+//             case SC_RESERVATION_CONFLICT:
+//             case SC_COMMAND_TERMINATED:
+//             case SC_QUEUE_FULL:
+//             case SC_ACA_ACTIVE:
+//             case SC_TASK_ABORTED:
+//             default:
+//                 ret = OS_PASSTHROUGH_FAILURE;
+//                 break;
+//             }
+//         }
+//         else
+//         {
+//             ret = OS_PASSTHROUGH_FAILURE;
+//         }
+//         scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+//     }
+//     else
+//     {
+//         //TODO: Send this with the passthrough command instead???
+//         //      There are not a lot of commands larger than 16B being sent today -TJE
+//         ret = OS_COMMAND_NOT_AVAILABLE;
+//     }
+//     if (issueRequestSense && scsiIoCtx->psense)
+//     {
+//         int ioctlCode = DKIOCMD;
+//         seatimer_t commandTimer;
+//         struct sc_iocmd aixIoCmd;
+//         memset(&aixIoCmd, 0, sizeof(struct sc_iocmd));
+//         memset(&commandTimer, 0, sizeof(seatimer_t));
+//         if (scsiIoCtx->device->os_info.adapterType != AIX_ADAPTER_SCSI)//TODO: expand this list further???
+//         {
+//             ioctlCode = DKIOLCMD;
+//         }
 
-        aixIoCmd.q_tag_msg = 0;//SC_NO_Q, SC_SIMPLE_Q, SC_HEAD_OF_Q, SC_ORDERED_Q, SC_ACA_Q
-        aixIoCmd.flags = SC_QUIESCE_IO;//or SC_MIX_IO? Leaving as quiesce for now -TJE
-        aixIoCmd.q_flags = 0;//SC_Q_CLR, SC_Q_RESUME, SC_CLEAR_ACA
-        aixIoCmd.flags = B_READ;
+//         aixIoCmd.q_tag_msg = 0;//SC_NO_Q, SC_SIMPLE_Q, SC_HEAD_OF_Q, SC_ORDERED_Q, SC_ACA_Q
+//         aixIoCmd.flags = SC_QUIESCE_IO;//or SC_MIX_IO? Leaving as quiesce for now -TJE
+//         aixIoCmd.q_flags = 0;//SC_Q_CLR, SC_Q_RESUME, SC_CLEAR_ACA
+//         aixIoCmd.flags = B_READ;
 
-        aixIoCmd.data_length = scsiIoCtx->senseDataSize;
-        aixIoCmd.buffer = C_CAST(char *, scsiIoCtx->psense);
-        aixIoCmd.timeout_value = 15;//default to 15 second timeout
-        //setup the CDB
-        aixIoCmd.scsi_cdb[0] = REQUEST_SENSE_CMD;
-        aixIoCmd.scsi_cdb[1] = 0;//TODO: Descriptor bit? Can either track support early on in discovery, or infer from the command that was sent what to do-TJE
-        aixIoCmd.scsi_cdb[2] = RESERVED;
-        aixIoCmd.scsi_cdb[3] = RESERVED;
-        aixIoCmd.scsi_cdb[4] = M_Min(252, scsiIoCtx->senseDataSize);
-        aixIoCmd.scsi_cdb[5] = 0;//control byte
+//         aixIoCmd.data_length = scsiIoCtx->senseDataSize;
+//         aixIoCmd.buffer = C_CAST(char *, scsiIoCtx->psense);
+//         aixIoCmd.timeout_value = 15;//default to 15 second timeout
+//         //setup the CDB
+//         aixIoCmd.scsi_cdb[0] = REQUEST_SENSE_CMD;
+//         aixIoCmd.scsi_cdb[1] = 0;//TODO: Descriptor bit? Can either track support early on in discovery, or infer from the command that was sent what to do-TJE
+//         aixIoCmd.scsi_cdb[2] = RESERVED;
+//         aixIoCmd.scsi_cdb[3] = RESERVED;
+//         aixIoCmd.scsi_cdb[4] = M_Min(252, scsiIoCtx->senseDataSize);
+//         aixIoCmd.scsi_cdb[5] = 0;//control byte
 
-        aixIoCmd.lun = 0;//if greater than 7, must be used to ignore LUN bits in SCSI 1 commands
+//         aixIoCmd.lun = 0;//if greater than 7, must be used to ignore LUN bits in SCSI 1 commands
 
-        start_Timer(&commandTimer);
-        ret = ioctl(scsiIoCtx->device->os_info.fd, ioctlCode, &aixIoCmd);
-        stop_Timer(&commandTimer);
-        scsiIoCtx->device->os_info.last_error = errno;
-        if (ret < 0)
-        {
-            ret = OS_PASSTHROUGH_FAILURE;
-            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-            {
-                if (scsiIoCtx->device->os_info.last_error != 0)
-                {
-                    printf("Error: ");
-                    print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
-                }
-                print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status, ioctlCode == DKIOCMD ? SC_ADAP_SC_ERR : SC_ADAP_SAM_ERR, aixIoCmd.adapter_status);
-                print_Adapter_Queue_Status(aixIoCmd.adap_q_status);
-            }
-        }
-        if (aixIoCmd.status_validity == 0)
-        {
-            ret = SUCCESS;
-        }
-        else if (aixIoCmd.status_validity == 1)
-        {
-            switch(aixIoCmd.scsi_bus_status & SCSI_STATUS_MASK)
-            {
-            case SC_GOOD_STATUS:
-                ret = SUCCESS;
-                break;
-            case SC_CHECK_CONDITION:
-                ret = OS_PASSTHROUGH_FAILURE;//this means that something bad happened during request sense, so consider this a bigger failure-TJE
-                break;
-            case SC_BUSY_STATUS:
-            case SC_INTMD_GOOD:
-            case SC_RESERVATION_CONFLICT:
-            case SC_COMMAND_TERMINATED:
-            case SC_QUEUE_FULL:
-            case SC_ACA_ACTIVE:
-            case SC_TASK_ABORTED:
-            default:
-                ret = OS_PASSTHROUGH_FAILURE;
-                break;
-            }
-        }
-        else
-        {
-            ret = OS_PASSTHROUGH_FAILURE;
-        }
-        //add the extra time for the request sense
-        scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds += get_Nano_Seconds(commandTimer);
-    }
-    else if (scsiIoCtx->psense)
-    {
-        memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-    }
-    return ret;
-}
+//         start_Timer(&commandTimer);
+//         ret = ioctl(scsiIoCtx->device->os_info.fd, ioctlCode, &aixIoCmd);
+//         stop_Timer(&commandTimer);
+//         scsiIoCtx->device->os_info.last_error = errno;
+//         if (ret < 0)
+//         {
+//             ret = OS_PASSTHROUGH_FAILURE;
+//             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+//             {
+//                 if (scsiIoCtx->device->os_info.last_error != 0)
+//                 {
+//                     printf("Error: ");
+//                     print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
+//                 }
+//                 print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status, ioctlCode == DKIOCMD ? SC_ADAP_SC_ERR : SC_ADAP_SAM_ERR, aixIoCmd.adapter_status);
+//                 print_Adapter_Queue_Status(aixIoCmd.adap_q_status);
+//             }
+//         }
+//         if (aixIoCmd.status_validity == 0)
+//         {
+//             ret = SUCCESS;
+//         }
+//         else if (aixIoCmd.status_validity == 1)
+//         {
+//             switch(aixIoCmd.scsi_bus_status & SCSI_STATUS_MASK)
+//             {
+//             case SC_GOOD_STATUS:
+//                 ret = SUCCESS;
+//                 break;
+//             case SC_CHECK_CONDITION:
+//                 ret = OS_PASSTHROUGH_FAILURE;//this means that something bad happened during request sense, so consider this a bigger failure-TJE
+//                 break;
+//             case SC_BUSY_STATUS:
+//             case SC_INTMD_GOOD:
+//             case SC_RESERVATION_CONFLICT:
+//             case SC_COMMAND_TERMINATED:
+//             case SC_QUEUE_FULL:
+//             case SC_ACA_ACTIVE:
+//             case SC_TASK_ABORTED:
+//             default:
+//                 ret = OS_PASSTHROUGH_FAILURE;
+//                 break;
+//             }
+//         }
+//         else
+//         {
+//             ret = OS_PASSTHROUGH_FAILURE;
+//         }
+//         //add the extra time for the request sense
+//         scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds += get_Nano_Seconds(commandTimer);
+//     }
+//     else if (scsiIoCtx->psense)
+//     {
+//         memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
+//     }
+//     return ret;
+// }
 
 static int send_AIX_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
