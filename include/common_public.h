@@ -1359,6 +1359,35 @@ extern "C"
         IEEE1394_Vendor_MaxValue    = 0xFFFFFF //this should be the the highest possible value for an IEEE OUI as they are 24bits in size.
     }e1394OUIs; //a.k.a. vendor IDs
 
+    //There are multiple resources that can be used to find these:
+    //https://pcisig.com/membership/member-companies?combine=&order=field_vendor_id&sort=asc
+    //https://www.pcilookup.com/
+    //https://pci-ids.ucw.cz/
+    //Not used at this time, but have added IDs that have been found in use for HBAs
+    typedef enum _ePCIVendorIDs
+    {
+        PCI_VENDOR_UNKNOWN          = 0,
+        PCI_VENDOR_LSI              = 0x1000,//now broadcom
+        PCI_VENDOR_IBM              = 0x1014,
+        PCI_VENDOR_AMD              = 0x1022,
+        PCI_VENDOR_HP               = 0x103C,
+        PCI_VENDOR_SILICON_IMAGE    = 0x1095,
+        PCI_VENDOR_HIGHPOINT        = 0x1103,
+        PCI_VENDOR_MICROCHIP        = 0x11F8,//or PMC?
+        PCI_VENDOR_SEAGATE          = 0x1BB1,
+        PCI_VENDOR_3WARE            = 0x13C1,
+        PCI_VENDOR_BROADCOM         = 0x14E4,
+        PCI_VENDOR_HPE              = 0x1590,
+        PCI_VENDOR_ARECA            = 0x17D3,
+        PCI_VENDOR_JMICRON          = 0x197B,
+        PCI_VENDOR_AVAGO            = 0x1A1F,
+        PCI_VENDOR_ASMEDIA          = 0x1B21,
+        PCI_VENDOR_MARVEL           = 0x1DCA,
+        PCI_VENDOR_INTEL            = 0x8086,
+        PCI_VENDOR_ADAPTEC          = 0x9004,
+        PCI_VENDOR_ADAPTEC_2        = 0x9005,
+    } ePCIVendorIDs;
+
     typedef enum _eSeagateFamily
     {
         NON_SEAGATE = 0,
