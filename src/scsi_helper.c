@@ -882,7 +882,7 @@ static int cmp_Asc_Ascq(ascAscqRetDesc* a, ascAscqRetDesc* b)
 int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t asc, uint8_t ascq, uint8_t fru)
 {
     int ret = UNKNOWN;//if this gets returned from this function, then something is not right...
-    ascAscqRetDesc* asc_ascq_result = 0;
+    ascAscqRetDesc* asc_ascq_result = NULL;
     ascAscqRetDesc asc_ascq_key = {asc, ascq, 0, 0};
     //first check the senseKey
     senseKey = senseKey & 0x0F;//strip off bits that are not part of the sense key
@@ -949,11 +949,11 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         }
         break;
     default:
-        asc_ascq_result = (ascAscqRetDesc*) bsearch(
+        asc_ascq_result = C_CAST(ascAscqRetDesc*, bsearch(
             &asc_ascq_key, ascAscqLookUp,
             sizeof(ascAscqLookUp) / sizeof(ascAscqLookUp[0]), sizeof(ascAscqLookUp[0]),
             (int (*)(const void*, const void*))cmp_Asc_Ascq
-        );
+        ));
         if (asc_ascq_result)
         {
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
@@ -963,7 +963,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
             // Return code of -1 means follow return code determined by sense key, do not change
             if (asc_ascq_result->ret > -1)
             {
-                ret = (eReturnValues) asc_ascq_result->ret;
+                ret = C_CAST(eReturnValues, asc_ascq_result->ret);
             }
         }
         else
@@ -1012,7 +1012,7 @@ void get_Sense_Key_ASC_ASCQ_FRU(uint8_t *pbuf, uint32_t pbufSize, uint8_t *sense
 {
     uint8_t format = pbuf[0] & 0x7F; //Stripping the last bit.
     uint8_t additionalSenseLength = pbuf[7];//total sense data length
-    uint32_t iter = 8;//set to beginning of the descriptors
+    uint32_t iter = UINT32_C(8);//set to beginning of the descriptors
     //clear everything to zero first
     *senseKey = 0;
     *asc = 0;
@@ -1036,7 +1036,7 @@ void get_Sense_Key_ASC_ASCQ_FRU(uint8_t *pbuf, uint32_t pbufSize, uint8_t *sense
         *asc = pbuf[2];
         *ascq = pbuf[3];
         //for descriptor format we have to loop through the buffer until we find the FRU descriptor (if available)
-        while (iter < SPC3_SENSE_LEN && iter < pbufSize && iter < (C_CAST(uint32_t, additionalSenseLength) + UINT16_C(8)))
+        while (iter < SPC3_SENSE_LEN && iter < pbufSize && iter < (C_CAST(uint32_t, additionalSenseLength) + UINT32_C(8)))
         {
             bool gotFRU = false;
             uint8_t descriptorType = pbuf[iter];
