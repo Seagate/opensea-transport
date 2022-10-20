@@ -3332,12 +3332,24 @@ int os_Flush(M_ATTR_UNUSED tDevice *device)
 int os_Lock_Device(tDevice *device)
 {
     int ret = SUCCESS;
-    //Get flags
-    int flags = fcntl(device->os_info.fd, F_GETFL);
-    //disable O_NONBLOCK
-    flags &= ~O_NONBLOCK;
-    //Set Flags
-    fcntl(device->os_info.fd, F_SETFL, flags);
+    if (!device->os_info.diagnosticModeFlagInUse)
+    {
+        close(device->os_info.fd);//this must be done first or the openx will fail!
+        //try opening with the diagnostic flag.
+        long extensionFlag = SC_DIAGNOSTIC;
+        device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
+        if (device->os_info.fd >= 0)
+        {
+            device->os_info.diagnosticModeFlagInUse = true;
+        }
+        else
+        {
+            //reopen original fd without SC_DIAGNOSTIC
+            extensionFlag = 0;
+            device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
+            ret = FAILURE;
+        }
+    }
     return ret;
 }
 
@@ -3345,12 +3357,24 @@ int os_Lock_Device(tDevice *device)
 int os_Unlock_Device(tDevice *device)
 {
     int ret = SUCCESS;
-    //Get flags
-    int flags = fcntl(device->os_info.fd, F_GETFL);
-    //enable O_NONBLOCK
-    flags |= O_NONBLOCK;
-    //Set Flags
-    fcntl(device->os_info.fd, F_SETFL, flags);
+    if (device->os_info.diagnosticModeFlagInUse)
+    {
+        close(device->os_info.fd);//this must be done first or the openx will fail!
+        //try opening without the diagnostic flag. 
+        long extensionFlag = 0;
+        device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
+        if (device->os_info.fd >= 0)
+        {
+            device->os_info.diagnosticModeFlagInUse = false;
+        }
+        else
+        {
+            //reopen original fd without SC_DIAGNOSTIC
+            extensionFlag = SC_DIAGNOSTIC;
+            device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
+            ret = FAILURE;
+        }
+    }
     return ret;
 }
 
