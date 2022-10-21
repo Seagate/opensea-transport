@@ -50,6 +50,8 @@ bool os_Is_Infinite_Timeout_Supported(void)
 
 extern bool validate_Device_Struct(versionBlock);
 
+//http://ps-2.kev009.com/tl/techlib/manuals/adoclib/aixprggd/kernextc/scsisubs.htm#A350C983af
+
 //File systems are /dev/hd?, but block disks are /dev/hdisk? and raw disks are /dev/rhdisk?
 //There is some way these are related, but I'm not sure how to get the mapping between them.
 //The code below will compile and run, but you need to know what input to give it to do anything useful.
@@ -3308,6 +3310,9 @@ int pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pDa
 #endif
 }
 
+//supposedly, when not in diagnostic mode, the read(), write(), lseek() can all be used.
+//This is currently not needed though.
+//Another thing we may want to implement here is the read/write ioctl codes that are available.
 int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
