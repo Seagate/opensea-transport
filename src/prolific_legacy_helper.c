@@ -184,7 +184,7 @@ int send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPassthroughComm
     }
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)
     {
-        ret = COMMAND_TIMEOUT;
+        ret = OS_COMMAND_TIMEOUT;
     }
     return ret;
 }

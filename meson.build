@@ -56,6 +56,12 @@ elif target_machine.system() == 'freebsd'
   os_deps += [cam_dep]
 elif target_machine.system() == 'sunos'
   src_files += ['src/uscsi_helper.c']
+elif target_machine.system() == 'aix'
+  src_files += ['src/aix_helper.c']
+  odm_dep = c.find_library('odm')
+  os_deps += [odm_dep]
+  cfg_dep = c.find_library('cfg')
+  os_deps += [cfg_dep]
 elif target_machine.system() == 'windows'
   src_files += ['src/win_helper.c']
   if c.get_define('__MINGW32__') != ''

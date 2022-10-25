@@ -33,7 +33,7 @@
 #elif defined (_WIN32)
 #include "win_helper.h"
 #elif defined (_AIX)//IBM Unix
-#error "Need a AIX passthrough helper file"
+#include "aix_helper.h"
 #elif defined (__hpux)//HP Unix
 #error "Need a HP UX passthrough helper file"
 #elif defined (__APPLE__)

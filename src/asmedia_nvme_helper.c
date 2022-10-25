@@ -538,7 +538,7 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     }
 
     bool senseDataIsAllWeGot = true;
-    if (sendRet != COMMAND_TIMEOUT)
+    if (sendRet != OS_COMMAND_TIMEOUT)
     {
         //3. get the command completion
         uint8_t completionData[ASM_NVMP_RESPONSE_DATA_SIZE] = { 0 };

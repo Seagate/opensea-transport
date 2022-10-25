@@ -297,7 +297,7 @@ int send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
     //Need to request the response information from the command.
     //TODO: There may be some sense data outputs where the return response info won't work or isn't necessary, but they don't seem documented today. Most likely only for illegal requests.
     bool senseDataIsAllWeGot = true;
-    if (sendRet != COMMAND_TIMEOUT)
+    if (sendRet != OS_COMMAND_TIMEOUT)
     {
         //3. build CDB for response info
         //send CDB for response info
