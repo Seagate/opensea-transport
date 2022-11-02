@@ -387,6 +387,12 @@ Examples from different drivers/configurations:
     Driver Version: 7.5.59005.0
     CSMI Version: 0.82
 
+====CSMI Driver Info==== //NOTE: This was seen on an Intel system with a VROC NVMe RAID. No drives listed in the raid config for CSMI.
+    Driver Name: iaStorVD
+    Description: Intel(R) Rapid Storage Technology
+    Driver Version: 19.2.0.1003
+    CSMI Version: 0.81
+
 */
 eKnownCSMIDriver get_Known_CSMI_Driver_Type(PCSMI_SAS_DRIVER_INFO driverInfo)
 {
