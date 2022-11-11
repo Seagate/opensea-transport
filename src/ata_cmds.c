@@ -116,7 +116,7 @@ int ata_Identify(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
     }
     ret = ata_Passthrough_Command(device, &identify);
 
-    if (ret == SUCCESS && ptrData != (uint8_t*)&device->drive_info.IdentifyData.ata.Word000)
+    if (ret == SUCCESS && ptrData != C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000))
     {
         //copy the data to the device structure so that it's not (as) stale
         memcpy(&device->drive_info.IdentifyData.ata.Word000, ptrData, sizeof(tAtaIdentifyData));

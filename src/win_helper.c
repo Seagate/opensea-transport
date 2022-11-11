@@ -4403,11 +4403,29 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //ARM requires 10.0.16299.0 API to get cfgmgr32 library!
     //TODO: add better check for API version and ARM to turn this on and off.
     //try forcing a system rescan before opening the list. This should help with crappy drivers or bad hotplug support - TJE
+    eVerbosityLevels winCountVerbosity = VERBOSITY_DEFAULT;
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
+    {
+        winCountVerbosity = VERBOSITY_COMMAND_NAMES;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE)
+    {
+        winCountVerbosity = VERBOSITY_COMMAND_VERBOSE;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_BUFFERS)
+    {
+        winCountVerbosity = VERBOSITY_BUFFERS;
+    }
+
     if (flags & BUS_RESCAN_ALLOWED)
     {
         DEVINST deviceInstance;
         DEVINSTID tree = NULL;//set to null for root of device tree
         ULONG locateNodeFlags = 0;//add flags here if we end up needing them
+        if (VERBOSITY_COMMAND_NAMES <= winCountVerbosity)
+        {
+            printf("Running CM_Locate_Devnode on root to force system wide rescan\n");
+        }
         if (CR_SUCCESS == CM_Locate_DevNode(&deviceInstance, tree, locateNodeFlags))
         {
             ULONG reenumerateFlags = 0;
@@ -4440,16 +4458,24 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
             {
                 if (adapterData->BusType == BusTypeRAID)
                 {
+                    if (VERBOSITY_COMMAND_NAMES <= winCountVerbosity)
+                    {
+                        _tprintf_s(TEXT("Detected RAID adapter: %s\n"), deviceName);
+                    }
                     //get the SCSI address for this device and save it to the RAID handle list so it can be scanned for additional types of RAID interfaces.
                     SCSI_ADDRESS scsiAddress;
                     memset(&scsiAddress, 0, sizeof(SCSI_ADDRESS));
                     if (SUCCESS == win_Get_SCSI_Address(fd, &scsiAddress))
                     {
-                        char raidHandle[15] = { 0 };
+                        char raidHandle[RAID_HANDLE_STRING_MAX_LEN] = { 0 };
                         raidTypeHint raidHint;
                         memset(&raidHint, 0, sizeof(raidTypeHint));
                         raidHint.unknownRAID = true;//TODO: Find a better way to hint at what type of raid we thing this might be. Can look at T10 vendor ID, low-level PCI/PCIe identifiers, etc.
-                        snprintf(raidHandle, 15, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
+                        snprintf(raidHandle, RAID_HANDLE_STRING_MAX_LEN, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
+                        if (VERBOSITY_COMMAND_NAMES <= winCountVerbosity)
+                        {
+                            printf("Adding SCSI port handle to RAID list to check for compatible devices: %s\n", raidHandle);
+                        }
                         raidHandleList = add_RAID_Handle_If_Not_In_List(beginRaidHandleList, raidHandleList, raidHandle, raidHint);
                         if (!beginRaidHandleList)
                         {
@@ -4474,6 +4500,10 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
         {
             *numberOfDevices += csmiDeviceCount;
         }
+    }
+    else if (VERBOSITY_COMMAND_NAMES <= winCountVerbosity)
+    {
+        printf("CSMI Raid scan was skipped due to flag\n");
     }
 #endif
 
@@ -4519,6 +4549,19 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     tDevice * d = NULL;
     ptrRaidHandleToScan raidHandleList = NULL;
     ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
+    eVerbosityLevels winListVerbosity = VERBOSITY_DEFAULT;
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
+    {
+        winListVerbosity = VERBOSITY_COMMAND_NAMES;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE)
+    {
+        winListVerbosity = VERBOSITY_COMMAND_VERBOSE;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_BUFFERS)
+    {
+        winListVerbosity = VERBOSITY_BUFFERS;
+    }
 
     //TODO: Check if sizeInBytes is a multiple of
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -4573,13 +4616,21 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                             //get the SCSI address for this device and save it to the RAID handle list so it can be scanned for additional types of RAID interfaces.
                             SCSI_ADDRESS scsiAddress;
                             memset(&scsiAddress, 0, sizeof(SCSI_ADDRESS));
+                            if (VERBOSITY_COMMAND_NAMES <= winListVerbosity)
+                            {
+                                printf("Detected RAID adapter for %s\n", name);
+                            }
                             if (SUCCESS == win_Get_SCSI_Address(d->os_info.fd, &scsiAddress))
                             {
-                                char raidHandle[15] = { 0 };
+                                char raidHandle[RAID_HANDLE_STRING_MAX_LEN] = { 0 };
                                 raidTypeHint raidHint;
                                 memset(&raidHint, 0, sizeof(raidTypeHint));
                                 raidHint.unknownRAID = true;//TODO: Find a better way to hint at what type of raid we thing this might be. Can look at T10 vendor ID, low-level PCI/PCIe identifiers, etc.
-                                snprintf(raidHandle, 15, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
+                                snprintf(raidHandle, RAID_HANDLE_STRING_MAX_LEN, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
+                                if (VERBOSITY_COMMAND_NAMES <= winListVerbosity)
+                                {
+                                    printf("Adding %s to RAID handle list to scan for compatible devices\n", raidHandle);
+                                }
                                 raidHandleList = add_RAID_Handle_If_Not_In_List(beginRaidHandleList, raidHandleList, raidHandle, raidHint);
                                 if (!beginRaidHandleList)
                                 {
@@ -4628,6 +4679,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 }
             }
         }
+        else if(VERBOSITY_COMMAND_NAMES <= winListVerbosity)
+        {
+            printf("CSMI Scan skipped due to flag\n");
+        }
 #endif
         if (found == failedGetDeviceCount)
         {
@@ -4643,6 +4698,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         }
         //Clean up RAID handle list
         delete_RAID_List(beginRaidHandleList);
+    }
+    if (VERBOSITY_COMMAND_NAMES <= winListVerbosity)
+    {
+        printf("Win get device list returning %d\n", returnValue);
     }
 
     return returnValue;

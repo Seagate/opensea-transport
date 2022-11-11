@@ -50,12 +50,15 @@ bool is_ATA_Identify_Word_Valid_SATA(uint16_t word)
 static bool is_Buffer_Non_Zero(uint8_t* ptrData, uint32_t dataLen)
 {
     bool isNonZero = false;
-    for (uint32_t iter = 0; iter < dataLen; ++iter)
+    if (ptrData)
     {
-        if (ptrData[iter] != 0)
+        for (uint32_t iter = 0; iter < dataLen; ++iter)
         {
-            isNonZero = true;
-            break;
+            if (ptrData[iter] != 0)
+            {
+                isNonZero = true;
+                break;
+            }
         }
     }
     return isNonZero;
@@ -847,9 +850,8 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     {
         if (device->drive_info.interface_type == IDE_INTERFACE && device->drive_info.scsiVersion == SCSI_VERSION_NO_STANDARD)
         {
-            device->drive_info.scsiVersion = SCSI_VERSION_SPC_5;//SPC5. This is what software translator will set at the moment. Can make this configurable later, but this should be ok
+            device->drive_info.scsiVersion = SCSI_VERSION_SPC_5;//SPC5. This is what software translator will set at the moment. Can make this configurable later, but this should be OK
         }
-        //print_Data_Buffer(C_CAST(uint8_t*, ident_word), 512, true);
         ret = SUCCESS;
         if (device->drive_info.lastCommandRTFRs.device & DEVICE_SELECT_BIT)//Checking for the device select bit being set to know it's device 1 (Not that we really need it). This may not always be reported correctly depending on the lower layers of the OS and hardware. - TJE
         {
@@ -880,7 +882,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         uint16_t *fillSectorAlignment = &device->drive_info.sectorAlignment;
         uint64_t *fillMaxLba = &device->drive_info.deviceMaxLba;
 
-        //IDE interface means we're connected to a native SATA/PATA inferface so we leave the default pointer alone and don't touch the drive info that was filled in by the scsi commands since that is how the OS talks to it for read/write and we don't want to disrupt that
+        //IDE interface means we're connected to a native SATA/PATA interface so we leave the default pointer alone and don't touch the drive info that was filled in by the SCSI commands since that is how the OS talks to it for read/write and we don't want to disrupt that
         //Everything else is some sort of SAT interface (UDS, SAS, IEEE1394, etc) so we want to fill in bridge info here
         if ((device->drive_info.interface_type != IDE_INTERFACE) && (device->drive_info.interface_type != RAID_INTERFACE))
         {
@@ -1006,13 +1008,6 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             uint16_t cylinder = M_BytesTo2ByteValue(identifyData[109], identifyData[108]);//word 54
             uint8_t head = identifyData[110];//Word55
             uint8_t sector = identifyData[112];//Word56
-            //if (cylinder == 0 && head == 0 && sector == 0)
-            //{
-            //    //current inforation isn't there....so use default values
-            //    cylinder = M_BytesTo2ByteValue(identifyData[3], identifyData[2]);//word 1
-            //    head = identifyData[6];//Word3
-            //    sector = identifyData[12];//Word6
-            //}
             uint32_t lba = C_CAST(uint32_t, cylinder) * C_CAST(uint32_t, head) * C_CAST(uint32_t, sector);
             if (lba == 0)
             {
@@ -1123,7 +1118,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         default:
             break;
         }
-        //non-SATA compiant (PATA) devices will set this to 0 or FFFFh
+        //non-SATA compliant (PATA) devices will set this to 0 or FFFFh
         if (is_ATA_Identify_Word_Valid_SATA(device->drive_info.IdentifyData.ata.Word076))
         {
             device->drive_info.ata_Options.isParallelTransport = false;

@@ -545,6 +545,8 @@ typedef struct _IOCTL_HEADER {
 
 // RAID Data Type
 // (bDataType)
+//NOTE: In v0.81, this was reserved. Any odd reporting that does not match below definitions should be ignored.
+//     Use the CSMI version info from the driver to determine when to check these values -TJE
 #define CSMI_SAS_RAID_DATA_DRIVES           0
 #define CSMI_SAS_RAID_DATA_DEVICE_ID        1
 #define CSMI_SAS_RAID_DATA_ADDITIONAL_DATA  2
@@ -1245,7 +1247,7 @@ typedef struct _CSMI_SAS_RAID_CONFIG {
    __u8  bStatus;
    __u8  bInformation;
    __u8  bDriveCount;
-   __u8  bDataType;
+   __u8  bDataType;          //Important NOTE: v81 this is reserved until the drives structure(20B). Intel uses this to store the ASCII name assigned to the RAID starting at this location. - TJE
    __u8  bReserved[11];
    __u32 uFailureCode;
    __u32 uChangeCount;

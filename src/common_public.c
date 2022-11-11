@@ -182,10 +182,29 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
     uint32_t csmiDeviceCount = 0;
     bool csmiDeviceCountValid = false;
 #endif
-    uint32_t getCountFlags = 0;
+    uint64_t getCountFlags = 0;
+    uint64_t getDeviceflags = FAST_SCAN;
     if (flags & AGRESSIVE_SCAN)
     {
         getCountFlags |= BUS_RESCAN_ALLOWED;
+    }
+    //set the verbose flags to send onwards to the getDeviceList and getDeviceCount functions.
+    switch (scanVerbosity)
+    {
+    case VERBOSITY_BUFFERS:
+        getCountFlags |= GET_DEVICE_FUNCS_VERBOSE_BUFFERS;
+        getDeviceflags |= GET_DEVICE_FUNCS_VERBOSE_BUFFERS;
+        M_FALLTHROUGH
+    case VERBOSITY_COMMAND_VERBOSE:
+        getCountFlags |= GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE;
+        getDeviceflags |= GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE;
+        M_FALLTHROUGH
+    case VERBOSITY_COMMAND_NAMES:
+        getCountFlags |= GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES;
+        getDeviceflags |= GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES;
+        M_FALLTHROUGH
+    default:
+        break;
     }
     if (SUCCESS == get_Device_Count(&deviceCount, getCountFlags))
     {
@@ -203,7 +222,6 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
             memset(&version, 0, sizeof(versionBlock));
             version.size = sizeof(tDevice);
             version.version = DEVICE_BLOCK_VERSION;
-            uint64_t getDeviceflags = FAST_SCAN;
 
             //set the verbosity for all devices before the scan
             for (uint32_t devi = 0; devi < deviceCount; ++devi)
