@@ -2182,7 +2182,7 @@ static int send_Win_Firmware_Miniport_Command(HANDLE deviceHandle, eVerbosityLev
         if (VERBOSITY_COMMAND_VERBOSE <= verboseLevel)
         {
             printf("Firmware Miniport Status: ");
-            print_Firmware_Miniport_SRB_Status(getLastError);
+            print_Firmware_Miniport_SRB_Status(srbControl->ReturnCode);
         }
     }
     else
@@ -2193,7 +2193,7 @@ static int send_Win_Firmware_Miniport_Command(HANDLE deviceHandle, eVerbosityLev
             printf("Windows Error: ");
             print_Windows_Error_To_Screen(getLastError);
             printf("Firmware Miniport Status: ");
-            print_Firmware_Miniport_SRB_Status(getLastError);
+            print_Firmware_Miniport_SRB_Status(srbControl->ReturnCode);
         }
     }
     if (lastError)
