@@ -59,6 +59,8 @@ extern "C"
         CSMI_DRIVER_AMD_RCRAID,
         CSMI_DRIVER_HPCISS,
         CSMI_DRIVER_ARCSAS,
+        CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY_VD, //iastorvd....not sure how this differs from other drivers
+        CSMI_DRIVER_INTEL_GENERIC, //use this if we cannot figure out a better classification. It's a "catch-all" for intel based on iaStor....there are a few variants above that we already catch.
     }eKnownCSMIDriver;
 
     //This is all the data, minus the IOCTL header, of the CSMI_SAS_GET_SCSI_ADDRESS_BUFFER

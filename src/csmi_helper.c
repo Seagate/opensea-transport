@@ -364,10 +364,10 @@ Examples from different drivers/configurations:
     CSMI Version: 0.76
 
 ====CSMI Driver Info====
-        Driver Name: iaStorAC
-        Description: Intel(R) Rapid Storage Technology
-        Driver Version: 17.8.0.1065
-        CSMI Version: 0.81
+    Driver Name: iaStorAC
+    Description: Intel(R) Rapid Storage Technology
+    Driver Version: 17.8.0.1065
+    CSMI Version: 0.81
 
 ====CSMI Driver Info====
     Driver Name: iaStorAC
@@ -376,10 +376,10 @@ Examples from different drivers/configurations:
     CSMI Version: 0.81
 
 ====CSMI Driver Info====
-        Driver Name: HpCISSS3.sys
-        Description: Smart Array SAS/SATA Controller Storport Driver
-        Driver Version: 63.12.0.64
-        CSMI Version: 0.82
+    Driver Name: HpCISSS3.sys
+    Description: Smart Array SAS/SATA Controller Storport Driver
+    Driver Version: 63.12.0.64
+    CSMI Version: 0.82
 
 ====CSMI Driver Info====
     Driver Name: arcsas
@@ -387,14 +387,14 @@ Examples from different drivers/configurations:
     Driver Version: 7.5.59005.0
     CSMI Version: 0.82
 
-====CSMI Driver Info==== //NOTE: This was seen on an Intel system with a VROC NVMe RAID. No drives listed in the raid config for CSMI.
+====CSMI Driver Info====
     Driver Name: iaStorVD
     Description: Intel(R) Rapid Storage Technology
     Driver Version: 19.2.0.1003
     CSMI Version: 0.81
 
 */
-eKnownCSMIDriver get_Known_CSMI_Driver_Type(PCSMI_SAS_DRIVER_INFO driverInfo)
+static eKnownCSMIDriver get_Known_CSMI_Driver_Type(PCSMI_SAS_DRIVER_INFO driverInfo)
 {
     eKnownCSMIDriver csmiDriverType = CSMI_DRIVER_UNKNOWN;
     if (driverInfo)
@@ -409,6 +409,17 @@ eKnownCSMIDriver get_Known_CSMI_Driver_Type(PCSMI_SAS_DRIVER_INFO driverInfo)
         {
             //intel virtual raid on chip (VROC)
             csmiDriverType = CSMI_DRIVER_INTEL_VROC;
+        }
+        else if (strstr(C_CAST(const char*, driverInfo->szName), "iaStorVD"))
+        {
+            //intel rapid storage technology VD driver. No idea what VD means or how it differs yet.
+            csmiDriverType = CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY_VD;
+        }
+        //Check for a generic Intel match LAST. Check all other intel driver variants above this condition to have a better intel driver classification!
+        else if (strstr(C_CAST(const char*, driverInfo->szName), "iaStor"))
+        {
+            //some kind of intel driver. Not sure all of the capabilities, but we are unable to further discover anything else about it for now.
+            csmiDriverType = CSMI_DRIVER_INTEL_GENERIC;
         }
         else if (strstr(C_CAST(const char*, driverInfo->szName), "rcraid"))
         {
@@ -426,6 +437,23 @@ eKnownCSMIDriver get_Known_CSMI_Driver_Type(PCSMI_SAS_DRIVER_INFO driverInfo)
         //TODO: As more driver names found, check them here.
     }
     return csmiDriverType;
+}
+
+static bool is_Intel_Driver(eKnownCSMIDriver knownDriver)
+{
+    bool isIntel = false;
+    switch (knownDriver)
+    {
+    case CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY:
+    case CSMI_DRIVER_INTEL_VROC:
+    case CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY_VD:
+    case CSMI_DRIVER_INTEL_GENERIC:
+        isIntel = true;
+        break;
+    default:
+        break;
+    }
+    return isIntel;
 }
 
 //More for debugging than anything else
@@ -790,6 +818,32 @@ static void print_CSMI_RAID_Info(PCSMI_SAS_RAID_INFO raidInfo)
     return;
 }
 
+//Sample RAID info outputs from some drivers:
+//AMD rcraid: - 1 non-RAID drive and 1 RAID with 2 drives.
+//====CSMI RAID Info====
+//	Number of RAID Sets: 3
+//	Maximum # of drives per set: 16
+//	Maximum # of RAID Sets: 16
+//	Maximum # of RAID Types: 14
+//	Minimum RAID Set Blocks: 2048
+//	Maximum RAID Set Blocks: 18446744073709551615
+//	Maximum Physical Drives: 16
+//	Maximum Extents: 1
+//	Maximum Modules: 0
+//	Maximum Transformational Memory: 0
+//	Change Count: 0
+
+//Intel iaStorE: - 1 raid with 2 drives
+//====CSMI RAID Info====
+//	Number of RAID Sets: 1
+//	Maximum # of drives per set: 2
+
+//ArcSAS - all "raids" are individual drives. RAID config does NOT work
+//====CSMI RAID Info====
+//	Number of RAID Sets: 23
+//	Maximum # of drives per set: 128
+
+
 int csmi_Get_RAID_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_INFO_BUFFER raidInfoBuffer, eVerbosityLevels verbosity)
 {
     int ret = SUCCESS;
@@ -1082,6 +1136,118 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
     return;
 }
 
+//example RAID config output from different drives:
+
+//AMD Rcraid:
+//====CSMI RAID Configuration====
+//	RAID Set Index: 0 <- non-raid individual drive
+//	Capacity (MB): 122104
+//	Stripe Size (KB): 0
+//	RAID Type: Other
+//	Status: OK
+//	Drive Count: 1
+//	----RAID Drive 0----
+//		Model #: 
+//		Firmware: 
+//		Serial #: 
+//		SAS Address: 0000000000000000h
+//		SAS LUN: 0000000000000000h
+//		Drive Status: OK
+//		Drive Usage: Member
+//		Block Size: 512
+//		Drive Type: SATA
+//		Drive Index: 1
+//		Total User Blocks: 0
+//====CSMI RAID Configuration====
+//	RAID Set Index: 1 <-raid 1 of 2 drives
+//	Capacity (MB): 17165814
+//	Stripe Size (KB): 0
+//	RAID Type: 1
+//	Status: OK
+//	Drive Count: 2
+//	----RAID Drive 0----
+//		Model #: 
+//		Firmware: 
+//		Serial #: 
+//		SAS Address: 0000000000000000h
+//		SAS LUN: 0000000000000000h
+//		Drive Status: OK
+//		Drive Usage: Member
+//		Block Size: 512
+//		Drive Type: SATA
+//		Drive Index: 0
+//		Total User Blocks: 0
+//	----RAID Drive 1----
+//		Model #: 
+//		Firmware: 
+//		Serial #: 
+//		SAS Address: 0000000000000000h
+//		SAS LUN: 0000000000000000h
+//		Drive Status: OK
+//		Drive Usage: Member
+//		Block Size: 512
+//		Drive Type: SATA
+//		Drive Index: 2
+//		Total User Blocks: 0
+//====CSMI RAID Configuration====
+//	RAID Set Index: 2 <-appears to be duplicate of index 1 for some reason
+//	Capacity (MB): 17165814
+//	Stripe Size (KB): 0
+//	RAID Type: 1
+//	Status: OK
+//	Drive Count: 2
+//	----RAID Drive 0----
+//		Model #: 
+//		Firmware: 
+//		Serial #: 
+//		SAS Address: 0000000000000000h
+//		SAS LUN: 0000000000000000h
+//		Drive Status: OK
+//		Drive Usage: Member
+//		Block Size: 512
+//		Drive Type: SATA
+//		Drive Index: 0
+//		Total User Blocks: 0
+//	----RAID Drive 1----
+//		Model #: 
+//		Firmware: 
+//		Serial #: 
+//		SAS Address: 0000000000000000h
+//		SAS LUN: 0000000000000000h
+//		Drive Status: OK
+//		Drive Usage: Member
+//		Block Size: 512
+//		Drive Type: SATA
+//		Drive Index: 2
+//		Total User Blocks: 0
+
+//Intel isStorE:
+//====CSMI RAID Configuration====
+//	RAID Set Index: 0 <- raid of 2 drives
+//	Capacity (MB): 16308008
+//	Stripe Size (KB): 64
+//	RAID Type: 1
+//	Status: OK
+//	Drive Count: 2
+//	Failure Code: 0
+//	Change Count: 0
+//	----RAID Drive 0----
+//		Model #: ST18000NM000J-2TV103                    
+//		Firmware: SN02    
+//		Serial #:             WR507HEG
+//		SAS Address: 0000040400000000h
+//		SAS LUN: 0000000000000000h
+//		Drive Status: OK
+//		Drive Usage: Member
+//	----RAID Drive 1----
+//		Model #: ST18000NM000J-2TV103                    
+//		Firmware: SN02    
+//		Serial #:             WR5081B1
+//		SAS Address: 0000050500000000h
+//		SAS LUN: 0000000000000000h
+//		Drive Status: OK
+//		Drive Usage: Member
+
 //NOTE: This buffer should be allocated as sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES)) at minimum. If the device identification VPD page is returned instead, it may be longer
 //      RAID set index must be lower than the number of raid sets listed as supported by RAID INFO
 //NOTE: Dataype field may not be supported depending on which version of CSMI is supported. Intel RST will not support this.
@@ -1340,6 +1506,510 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
     }
     return;
 }
+
+//NOTE: AMD's rcraid driver seems to treat non-raid drives slightly different in the phy info output. In the case I observed, the raid drives were in the phy info, but the
+//      non-RAID drive was not shown here at all. However in the RAID IOCTLs, it does show as a separate single drive raid (but no MN or SN info to match to it).
+//      So it does not appear possible to issue a CSMI passthrough command to non-raid drives. This is completely opposite of what the Intel drivers do.
+//      Intel's drivers show every drive attached, RAID or non-RAID in the phy info.
+//      This may be something we want to detect in the future to reduce the number of IOCTLs sent, but for now, it works ok. We can optimize this more later. -TJE
+
+//Below are some sample outputs of the Phy Info:
+
+//AMD rcraid:
+//====CSMI Phy Info====
+//	Number Of Phys: 2
+//	----Phy 0----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//		Port Identifier: 0
+//		Negotiated Link Rate: 6.0 Gb/s
+//		Minimum Link Rate: 6.0 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Complete
+//		Phy Features: Virtual SMP
+//		Attached:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 1----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 1
+//			Signal Class: Unknown
+//		Port Identifier: 5
+//		Negotiated Link Rate: 6.0 Gb/s
+//		Minimum Link Rate: 6.0 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Complete
+//		Phy Features: Virtual SMP
+//		Attached:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+
+//Intel iaStorE - 7.7.0.1260
+//====CSMI Phy Info====
+//	Number Of Phys: 8
+//	----Phy 0----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: 
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//		Port Identifier: 0
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: Unknown
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: 
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 1----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: 
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 1
+//			Signal Class: Unknown
+//		Port Identifier: 1
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: Unknown
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: 
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000010000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 2----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: 
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 2
+//			Signal Class: Unknown
+//		Port Identifier: 2
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: Unknown
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: 
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000020000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 3----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: 
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 3
+//			Signal Class: Unknown
+//		Port Identifier: 3
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: Unknown
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: 
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000030000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 4----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: 
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 4
+//			Signal Class: Unknown
+//		Port Identifier: 4
+//		Negotiated Link Rate: 6.0 Gb/s
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: 
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000040000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 5----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: 
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 5
+//			Signal Class: Unknown
+//		Port Identifier: 5
+//		Negotiated Link Rate: 6.0 Gb/s
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: 
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000050000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 6----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: 
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 6
+//			Signal Class: Unknown
+//		Port Identifier: 6
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: Unknown
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: 
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000060000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 7----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: 
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 7
+//			Signal Class: Unknown
+//		Port Identifier: 7
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: Unknown
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: 
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000070000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+
+//Intel iaStorAC phy info:
+//====CSMI Phy Info====
+//	Number Of Phys: 8
+//	----Phy 0----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA
+//			Target Port Protocol: Unknown
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//		Port Identifier: 0
+//		Negotiated Link Rate: 6.0 Gb/s
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: Unknown
+//			Target Port Protocol: SATA
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 1----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA
+//			Target Port Protocol: Unknown
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 1
+//			Signal Class: Unknown
+//		Port Identifier: 1
+//		Negotiated Link Rate: 6.0 Gb/s
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: Unknown
+//			Target Port Protocol: SATA
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0001000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 2----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA
+//			Target Port Protocol: Unknown
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 2
+//			Signal Class: Unknown
+//		Port Identifier: 2
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: Unknown
+//			Target Port Protocol: SATA
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0002000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 3----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA
+//			Target Port Protocol: Unknown
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 3
+//			Signal Class: Unknown
+//		Port Identifier: 3
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: Unknown
+//			Target Port Protocol: SATA
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0003000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 4----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA
+//			Target Port Protocol: Unknown
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 4
+//			Signal Class: Unknown
+//		Port Identifier: 4
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: Unknown
+//			Target Port Protocol: SATA
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0004000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 5----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA
+//			Target Port Protocol: Unknown
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 5
+//			Signal Class: Unknown
+//		Port Identifier: 5
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: Unknown
+//			Target Port Protocol: SATA
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0005000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 6----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA
+//			Target Port Protocol: Unknown
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 6
+//			Signal Class: Unknown
+//		Port Identifier: 6
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: Unknown
+//			Target Port Protocol: SATA
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0006000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 7----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA
+//			Target Port Protocol: Unknown
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 7
+//			Signal Class: Unknown
+//		Port Identifier: 7
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: Unknown
+//			Target Port Protocol: SATA
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0007000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+
 //Caller allocated full buffer, then we fill in the rest and send it. Data length not needed since this one is a fixed size
 int csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_PHY_INFO_BUFFER phyInfoBuffer, eVerbosityLevels verbosity)
 {
@@ -2319,7 +2989,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                                 if (SUCCESS == csmi_Get_RAID_Config(device->os_info.csmiDeviceData->csmiDevHandle, 0, raidConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, device->deviceVerbosity))
                                 {
 #if defined (CSMI_DEBUG)
-                                    printf("JSCI: Checking drive count (%" CPRIu8 "\n", raidConfig->Configuration.bDriveCount);
+                                    printf("JSCI: Checking drive count (%" CPRIu8 ")\n", raidConfig->Configuration.bDriveCount);
 #endif //CSMI_DEBUG
                                     if (raidConfig->Configuration.bDriveCount < CSMI_SAS_RAID_DRIVE_COUNT_TOO_BIG)
                                     {
@@ -2356,8 +3026,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                                                     memcpy(device->os_info.csmiDeviceData->sasAddress, raidConfig->Configuration.Drives[driveIter].bSASAddress, 8);
                                                     memcpy(device->os_info.csmiDeviceData->sasLUN, raidConfig->Configuration.Drives[driveIter].bSASLun, 8);
                                                     //Intel drivers are known to support a SASAddress that is all zeroes as a valid address, so trust this result for these drivers -TJE
-                                                    if (device->os_info.csmiDeviceData->csmiKnownDriverType == CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY || device->os_info.csmiDeviceData->csmiKnownDriverType == CSMI_DRIVER_INTEL_VROC
-                                                        || !is_Empty(device->os_info.csmiDeviceData->sasAddress, 8)) //an empty (all zeros) SAS address means it is not valid, such as on a SATA controller. NOTE: Some SATA controllers will fill this is, but this is not guaranteed-TJE
+                                                    if (is_Intel_Driver(device->os_info.csmiDeviceData->csmiKnownDriverType) || !is_Empty(device->os_info.csmiDeviceData->sasAddress, 8)) //an empty (all zeros) SAS address means it is not valid, such as on a SATA controller. NOTE: Some SATA controllers will fill this is, but this is not guaranteed-TJE
                                                     {
 #if defined (CSMI_DEBUG)
                                                         printf("JSCI: Found matching drive data. Can send CSMI IOs in addition to normal system IOs\n");
@@ -2377,6 +3046,11 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
             }
 
             //Attempt to read phy info to get phy identifier and port identifier data...this may not work on RST NVMe if this code is hit...that's OK since we are unlikely to see that.
+            //NOTE: AMD's rcraid driver seems to treat non-raid drives slightly different in the phy info output. In the case I observed, the raid drives were in the phy info, but the
+            //      non-RAID drive was not shown here at all. However in the RAID IOCTLs, it does show as a separate single drive raid (but no MN or SN info to match to it).
+            //      So it does not appear possible to issue a CSMI passthrough command to non-raid drives. This is completely opposite of what the Intel drivers do.
+            //      Intel's drivers show every drive attached, RAID or non-RAID in the phy info.
+            //      This may be something we want to detect in the future to reduce the number of IOCTLs sent, but for now, it works ok. We can optimize this more later. -TJE
             CSMI_SAS_PHY_INFO_BUFFER phyInfo;
             bool foundPhyInfo = false;
 #if defined (CSMI_DEBUG)
@@ -2607,7 +3281,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
         ret = MEMORY_FAILURE;
     }
 #if defined (CSMI_DEBUG)
-    printf("JSCIL Returning %d\n", ret);
+    printf("JSCI: Returning %d\n", ret);
 #endif //CSMI_DEBUG
     return ret;
 }
@@ -2823,6 +3497,11 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
 #if defined (CSMI_DEBUG)
             printf("GRD: Getting phy info\n");
 #endif //CSMI_DEBUG
+            //NOTE: AMD's rcraid driver seems to treat non-raid drives slightly different in the phy info output. In the case I observed, the raid drives were in the phy info, but the
+            //      non-RAID drive was not shown here at all. However in the RAID IOCTLs, it does show as a separate single drive raid (but no MN or SN info to match to it).
+            //      So it does not appear possible to issue a CSMI passthrough command to non-raid drives. This is completely opposite of what the Intel drivers do.
+            //      Intel's drivers show every drive attached, RAID or non-RAID in the phy info.
+            //      This may be something we want to detect in the future to reduce the number of IOCTLs sent, but for now, it works ok. We can optimize this more later. -TJE
             if (SUCCESS == csmi_Get_Phy_Info(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &phyInfo, device->deviceVerbosity))
             {
                 //Using the data we've already gotten, we need to save phy identifier, port identifier, port protocol, and SAS address.
@@ -3270,7 +3949,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                                                 case CSMI_SAS_DRIVE_CONFIG_SRT_DATA:
                                                     ++raidConfigDrivesFound;
                                                     //check if SAS address is non-Zero (non-Intel drivers) or if MN/SN are available.
-                                                    if (!raidConfigIncomplete && knownDriver != CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY && knownDriver != CSMI_DRIVER_INTEL_VROC
+                                                    if (!raidConfigIncomplete && !is_Intel_Driver(knownDriver)
                                                         && ((is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bModel, 40) || is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSerialNumber, 40))
                                                             || is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8)))
                                                     {
@@ -3308,6 +3987,11 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
 #if defined (CSMI_DEBUG)
                                 printf("GDC: Getting phy info due to incomplete RAID configuration info.\n");
 #endif //CSMI_DEBUG
+                                //NOTE: AMD's rcraid driver seems to treat non-raid drives slightly different in the phy info output. In the case I observed, the raid drives were in the phy info, but the
+                                //      non-RAID drive was not shown here at all. However in the RAID IOCTLs, it does show as a separate single drive raid (but no MN or SN info to match to it).
+                                //      So it does not appear possible to issue a CSMI passthrough command to non-raid drives. This is completely opposite of what the Intel drivers do.
+                                //      Intel's drivers show every drive attached, RAID or non-RAID in the phy info.
+                                //      This may be something we want to detect in the future to reduce the number of IOCTLs sent, but for now, it works ok. We can optimize this more later. -TJE
                                 if (SUCCESS == csmi_Get_Phy_Info(fd, controllerNumber, &phyInfo, csmiCountVerbosity))
                                 {
                                     for (uint8_t phyIter = 0; phyIter < 32 && phyInfoDrivesFound < phyInfo.Information.bNumberOfPhys; ++phyIter)
@@ -3569,6 +4253,11 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 #if defined (CSMI_DEBUG)
                                 printf("GDL: Getting phy info\n");
 #endif //CSMI_DEBUG
+                                //NOTE: AMD's rcraid driver seems to treat non-raid drives slightly different in the phy info output. In the case I observed, the raid drives were in the phy info, but the
+                                //      non-RAID drive was not shown here at all. However in the RAID IOCTLs, it does show as a separate single drive raid (but no MN or SN info to match to it).
+                                //      So it does not appear possible to issue a CSMI passthrough command to non-raid drives. This is completely opposite of what the Intel drivers do.
+                                //      Intel's drivers show every drive attached, RAID or non-RAID in the phy info.
+                                //      This may be something we want to detect in the future to reduce the number of IOCTLs sent, but for now, it works ok. We can optimize this more later. -TJE
                                 csmi_Get_Phy_Info(fd, controllerNumber, &phyInfo, csmiListVerbosity);
 #if defined (_WIN32)
                                 if (knownCSMIDriver == CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY || knownCSMIDriver == CSMI_DRIVER_INTEL_VROC)
