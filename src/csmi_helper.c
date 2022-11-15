@@ -3693,68 +3693,168 @@ bool is_CSMI_Handle(const char * filename)
     return isCSMI;
 }
 
+//There are 2 possible keys depending on if this is a port or miniport driver.
+//Miniport will use an ASCII string in DriverParameter for CSMI=accessLevel
+//Storport will use a DWORD named CSMI set to a value between 0 and 3 (0=no access, 3 = full access)
+//The following link describes where to find the DriverParameter key:
+//https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/registry-entries-for-storport-miniport-drivers
+//Miniport scope: HKLM\System\CurrentControlSet\Services<miniport name>\Parameters\Device
+//Adapter scope:  HKLM\System\CurrentControlSet\Services<miniport name>\Parameters\Device<adapter#>
+//Storport key location
+//HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\<PortDriverName>\Parameters\CSMI = dword value
 eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
 {
     eCSMISecurityAccess access = CSMI_SECURITY_ACCESS_NONE;
 #if defined (_WIN32)
-    HKEY keyHandle;
-    TCHAR *baseRegKeyPath = TEXT("SYSTEM\\CurrentControlSet\\Services\\");
-    TCHAR *paramRegKeyPath = TEXT("\\Parameters");
-    size_t tdriverNameLength = (strlen(driverName) + 1) * sizeof(TCHAR);
-    size_t registryKeyStringLength = _tcslen(baseRegKeyPath) + tdriverNameLength + _tcslen(paramRegKeyPath);
-    TCHAR *registryKey = C_CAST(TCHAR*, calloc(registryKeyStringLength, sizeof(TCHAR)));
-    TCHAR *tdriverName = C_CAST(TCHAR*, calloc(tdriverNameLength, sizeof(TCHAR)));
-    if (tdriverName)
+    if (strstr(driverName, "iaStor"))//TODO: Expand this list as other drives not using these registry keys are found-TJE
     {
-        _stprintf_s(tdriverName, tdriverNameLength, TEXT("%hs"), driverName);
+        //Intel's driver does not use these registry keys
+        access = CSMI_SECURITY_ACCESS_FULL;
     }
-    if (registryKey)
+    else
     {
-        _stprintf_s(registryKey, registryKeyStringLength, TEXT("%s%s%s"), baseRegKeyPath, tdriverName, paramRegKeyPath);
-    }
-    if (tdriverName && registryKey && _tcslen(tdriverName) > 0 && _tcslen(registryKey) > 0)
-    {
-        if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_LOCAL_MACHINE, registryKey, 0, KEY_READ, &keyHandle))
+        HKEY keyHandle;
+        TCHAR* baseRegKeyPath = TEXT("SYSTEM\\CurrentControlSet\\Services\\");
+        TCHAR* paramRegKeyPath = TEXT("\\Parameters");
+        size_t tdriverNameLength = (strlen(driverName) + 1) * sizeof(TCHAR);
+        size_t registryKeyStringLength = _tcslen(baseRegKeyPath) + tdriverNameLength + _tcslen(paramRegKeyPath);
+        TCHAR* registryKey = C_CAST(TCHAR*, calloc(registryKeyStringLength, sizeof(TCHAR)));
+        TCHAR* tdriverName = C_CAST(TCHAR*, calloc(tdriverNameLength, sizeof(TCHAR)));
+        if (tdriverName)
         {
-            //Found the driver's parameters. Now search for CSMI DWORD
-            DWORD dataLen = 4;
-            BYTE regData[4] = { 0 };
-            TCHAR *valueName = TEXT("CSMI");
-            DWORD valueType = REG_DWORD;
-            if (ERROR_SUCCESS == RegQueryValueEx(keyHandle, valueName, NULL, &valueType, regData, &dataLen))
+            _stprintf_s(tdriverName, tdriverNameLength, TEXT("%hs"), driverName);
+        }
+        if (registryKey)
+        {
+            _stprintf_s(registryKey, registryKeyStringLength, TEXT("%s%s%s"), baseRegKeyPath, tdriverName, paramRegKeyPath);
+        }
+        if (tdriverName && registryKey && _tcslen(tdriverName) > 0 && _tcslen(registryKey) > 0)
+        {
+            LSTATUS openKeyStatus = RegOpenKeyEx(HKEY_LOCAL_MACHINE, registryKey, 0, KEY_READ, &keyHandle);
+            if (ERROR_SUCCESS == openKeyStatus)
             {
-                int32_t dwordVal = C_CAST(int32_t, M_BytesTo4ByteValue(regData[3], regData[2], regData[1], regData[0]));
-                switch (dwordVal)
+                //Found the driver's parameters. Now search for CSMI DWORD for port drivers
+                DWORD storportdataLen = 4;
+                BYTE storportregData[4] = { 0 };
+                TCHAR* storportvalueName = TEXT("CSMI");
+                DWORD storportvalueType = REG_DWORD;
+                LSTATUS regQueryStatus = RegQueryValueEx(keyHandle, storportvalueName, NULL, &storportvalueType, storportregData, &storportdataLen);
+                if (ERROR_SUCCESS == regQueryStatus)
                 {
-                case 0:
-                    access = CSMI_SECURITY_ACCESS_NONE;
-                    break;
-                case 1:
-                    access = CSMI_SECURITY_ACCESS_RESTRICTED;
-                    break;
-                case 2:
+                    int32_t dwordVal = C_CAST(int32_t, M_BytesTo4ByteValue(storportregData[3], storportregData[2], storportregData[1], storportregData[0]));
+                    switch (dwordVal)
+                    {
+                    case 0:
+                        access = CSMI_SECURITY_ACCESS_NONE;
+                        break;
+                    case 1:
+                        access = CSMI_SECURITY_ACCESS_RESTRICTED;
+                        break;
+                    case 2:
+                        access = CSMI_SECURITY_ACCESS_LIMITED;
+                        break;
+                    case 3:
+                    default:
+                        access = CSMI_SECURITY_ACCESS_FULL;
+                        break;
+                    }
+                    RegCloseKey(keyHandle);
+                }
+                else if (ERROR_FILE_NOT_FOUND == regQueryStatus)
+                {
+                    RegCloseKey(keyHandle);
+                    //the CSMI key did not exist. Check for miniport/adapter keys
+                    //No port driver key found. Check for the miniport driver key in DriverParameter for Device or Device#
+                    TCHAR* paramDeviceKeyPath = TEXT("\\Device");
+                    size_t paramDeviceKeyPathLength = _tcsclen(paramDeviceKeyPath);
+                    registryKeyStringLength += paramDeviceKeyPathLength + 3;//Adding 3 for if we need to check for a device number (adapter number)
+                    TCHAR* temp = realloc(registryKey, registryKeyStringLength * sizeof(TCHAR));
+                    if (temp)
+                    {
+                        registryKey = temp;
+                        _stprintf_s(registryKey, registryKeyStringLength, TEXT("%s%s%s%s"), baseRegKeyPath, tdriverName, paramRegKeyPath, paramDeviceKeyPath);
+                        if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_LOCAL_MACHINE, registryKey, 0, KEY_READ, &keyHandle))
+                        {
+                            DWORD dataLen = 0;
+                            BYTE* regData = NULL;//will be allocated to correct length
+                            TCHAR* valueName = TEXT("DriverParameter");
+                            DWORD valueType = REG_SZ;
+                            regQueryStatus = RegQueryValueEx(keyHandle, valueName, NULL, &valueType, regData, &dataLen);
+                            if (regQueryStatus == ERROR_SUCCESS)//since we had no memory allocated, this returned success rather than ERROR_MORE_DATA so we can go and allocate then read it.-TJE
+                            {
+                                //found, now allocate memory
+                                regData = calloc(dataLen, sizeof(BYTE));
+                                if (regData)
+                                {
+                                    regQueryStatus = RegQueryValueEx(keyHandle, valueName, NULL, &valueType, regData, &dataLen);
+                                    if (regQueryStatus == ERROR_SUCCESS)
+                                    {
+                                        //now interpret the regData as a string
+                                        TCHAR* driverParamterVal = C_CAST(TCHAR*, regData);
+                                        TCHAR* csmiConfig = _tcsstr(driverParamterVal, TEXT("CSMI="));
+                                        if (csmiConfig)
+                                        {
+                                            //interpret the value and set proper level
+                                            //Possible values are "None, Restricted, Limited, Full"
+                                            //Note: Case sensitive match for now. Switch to _tcsnicmp if needing to eliminate case sensitivity-TJE
+                                            //TODO: spec shows terminating with a semi-colon...is this necessary to check for this terminating character?
+                                            if (0 == _tcsncmp(csmiConfig, TEXT("CSMI=None"), 9))
+                                            {
+                                                access = CSMI_SECURITY_ACCESS_NONE;
+                                            }
+                                            else if (0 == _tcsncmp(csmiConfig, TEXT("CSMI=Restricted"), 15))
+                                            {
+                                                access = CSMI_SECURITY_ACCESS_RESTRICTED;
+                                            }
+                                            else if (0 == _tcsncmp(csmiConfig, TEXT("CSMI=Limited"), 12))
+                                            {
+                                                access = CSMI_SECURITY_ACCESS_LIMITED;
+                                            }
+                                            else if (0 == _tcsncmp(csmiConfig, TEXT("CSMI=Full"), 9))
+                                            {
+                                                access = CSMI_SECURITY_ACCESS_FULL;
+                                            }
+                                            else
+                                            {
+                                                access = CSMI_SECURITY_ACCESS_LIMITED;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            //No CSMI level specified
+                                            access = CSMI_SECURITY_ACCESS_LIMITED;
+                                        }
+                                        safe_Free(regData);
+                                    }
+                                }
+                            }
+                            else if (regQueryStatus == ERROR_FILE_NOT_FOUND)
+                            {
+                                //No driver parameter
+                                access = CSMI_SECURITY_ACCESS_LIMITED;
+                            }
+                            RegCloseKey(keyHandle);
+                        }
+                        else //ERROR_FILE_NOT_FOUND
+                        {
+                            //TODO: Handle looping through adapters. Should always start and find adapter zero \\Device0. If this doesn't exist, then the driver isn't enumerating this way at all and we can exit-TJE
+                        }
+                    }
+                }
+                else
+                {
                     access = CSMI_SECURITY_ACCESS_LIMITED;
-                    break;
-                case 3:
-                default:
-                    access = CSMI_SECURITY_ACCESS_FULL;
-                    break;
                 }
             }
             else
             {
-                //This key doesn't exist. It is not entirely clear what this means when it is not present, so for now, this returns "FULL" since that matches what I see for intel drivers - TJE
-                access = CSMI_SECURITY_ACCESS_FULL;
+                //This shouldn't happen, but it could happen...setting Limited for now - TJE
+                access = CSMI_SECURITY_ACCESS_LIMITED;
             }
         }
-        else
-        {
-            //This shouldn't happen, but it could happen...setting Limited for now - TJE
-            access = CSMI_SECURITY_ACCESS_LIMITED;
-        }
+        safe_Free(tdriverName)
+        safe_Free(registryKey)
     }
-    safe_Free(tdriverName)
-    safe_Free(registryKey)
 #else //not windows, need root, otherwise not available at all. Return FULL if running as root
     if (is_Running_Elevated())
     {
@@ -3897,7 +3997,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                             for (uint32_t raidSet = 0; raidSet < csmiRAIDInfo.Information.uNumRaidSets; ++raidSet)
                             {
                                 //start with a length that adds no padding for extra drives, then reallocate to a new size when we know the new size
-                                uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES);
+                                uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES);//Intel driver recommends allocating for 8 drives to make sure nothing is missed. Maybe check if maxdriverperset less than this to allcoate for 8???
                                 PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                                 if (csmiRAIDConfig)
                                 {
