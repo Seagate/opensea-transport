@@ -2402,24 +2402,26 @@ int os_Flush(M_ATTR_UNUSED tDevice *device)
 int os_Lock_Device(tDevice *device)
 {
     int ret = SUCCESS;
-    //Get flags
-    int flags = fcntl(device->os_info.fd, F_GETFL);
-    //disable O_NONBLOCK
-    flags &= ~O_NONBLOCK;
-    //Set Flags
-    fcntl(device->os_info.fd, F_SETFL, flags);
+    //close the handle, then reopen without O_NONBLOCK
+    close_Device(device);
+    if ((device->os_info.fd = open(device->os_info.name, O_RDWR)) < 0)
+    {
+        //failed to open without O_NONBLOCK, so reopen original handle (unlikely to happen)
+        device->os_info.fd = open(device->os_info.name, O_RDWR | O_NONBLOCK);
+    }
     return ret;
 }
 
 int os_Unlock_Device(tDevice *device)
 {
     int ret = SUCCESS;
-    //Get flags
-    int flags = fcntl(device->os_info.fd, F_GETFL);
-    //enable O_NONBLOCK
-    flags |= O_NONBLOCK;
-    //Set Flags
-    fcntl(device->os_info.fd, F_SETFL, flags);
+    //close the handle, then reopen with O_NONBLOCK
+    close_Device(device);
+    if ((device->os_info.fd = open(device->os_info.name, O_RDWR | O_NONBLOCK)) < 0)
+    {
+        //failed to open with O_NONBLOCK, so reopen the handle without it (unlikely to happen)
+        device->os_info.fd = open(device->os_info.name, O_RDWR);
+    }
     return ret;
 }
 
