@@ -668,7 +668,7 @@ static void print_CSMI_Controller_Status(PCSMI_SAS_CNTLR_STATUS status)
             printf("Unknown\n");
             break;
         }
-        if (status->uStatus)
+        if (status->uStatus == CSMI_SAS_CNTLR_STATUS_OFFLINE)
         {
             printf("\tOffline Reason: ");
             switch (status->uOfflineReason)
@@ -2842,7 +2842,7 @@ int csmi_Get_Connector_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber,
     return ret;
 }
 
-static int csmi_Get_Driver_And_Controller_Data(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_DRIVER_INFO_BUFFER driverInfo, PCSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig, eVerbosityLevels verbosity)
+static int csmi_Get_Basic_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_DRIVER_INFO_BUFFER driverInfo, PCSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig, PCSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus, eVerbosityLevels verbosity)
 {
     int ret = SUCCESS;
     if (deviceHandle != CSMI_INVALID_HANDLE && driverInfo && controllerConfig)
@@ -2852,6 +2852,10 @@ static int csmi_Get_Driver_And_Controller_Data(CSMI_HANDLE deviceHandle, uint32_
             ret = FAILURE;
         }
         if (SUCCESS != csmi_Get_Controller_Configuration(deviceHandle, controllerNumber, controllerConfig, verbosity))
+        {
+            ret = FAILURE;
+        }
+        if (SUCCESS != csmi_Get_Controller_Status(deviceHandle, controllerNumber, controllerStatus, verbosity))
         {
             ret = FAILURE;
         }
@@ -2875,9 +2879,11 @@ bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, eVerbosityLevels verbosit
         //int csmi_Get_Controller_Configuration(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_CONFIG_BUFFER ctrlConfigBuffer, eVerbosityLevels verbosity)
         CSMI_SAS_DRIVER_INFO_BUFFER driverInfo;
         CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
+        CSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus;
         memset(&driverInfo, 0, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
         memset(&controllerConfig, 0, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
-        if (SUCCESS == csmi_Get_Driver_And_Controller_Data(deviceHandle, 0, &driverInfo, &controllerConfig, verbosity))
+        memset(&controllerStatus, 0, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
+        if (SUCCESS == csmi_Get_Basic_Info(deviceHandle, 0, &driverInfo, &controllerConfig, &controllerStatus, verbosity))
         {
             csmiSupported = true;
         }
@@ -2922,10 +2928,14 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
         //Read controller info, driver info, get phy info for this device too...in non-RAID mode, Windows scsi address should match the csmi scsi address
         CSMI_SAS_DRIVER_INFO_BUFFER driverInfo;
         CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
+        CSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus;
+        memset(&driverInfo, 0, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
+        memset(&controllerConfig, 0, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
+        memset(&controllerStatus, 0, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
 #if defined (CSMI_DEBUG)
-        printf("JSCI: Getting driver Info and controller config\n");
+        printf("JSCI: Getting driver Info, controller config, and controller status\n");
 #endif //CSMI_DEBUG
-        if (SUCCESS == csmi_Get_Driver_And_Controller_Data(device->os_info.csmiDeviceData->csmiDevHandle, 0, &driverInfo, &controllerConfig, device->deviceVerbosity))
+        if (SUCCESS == csmi_Get_Basic_Info(device->os_info.csmiDeviceData->csmiDevHandle, 0, &driverInfo, &controllerConfig, &controllerStatus, device->deviceVerbosity))
         {
             bool gotSASAddress = false;
             device->os_info.csmiDeviceData->csmiMajorVersion = driverInfo.Information.usCSMIMajorRevision;
@@ -3964,12 +3974,14 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                     //first, check if this handle supports CSMI before we try anything else
                     CSMI_SAS_DRIVER_INFO_BUFFER driverInfo;
                     CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
+                    CSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus;
                     memset(&driverInfo, 0, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
                     memset(&controllerConfig, 0, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
+                    memset(&controllerStatus, 0, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
 #if defined (CSMI_DEBUG)
-                    printf("GDC: Getting controller config and driver info\n");
+                    printf("GDC: Getting controller config, controller status, and driver info\n");
 #endif //CSMI_DEBUG
-                    if (SUCCESS == csmi_Get_Driver_And_Controller_Data(fd, controllerNumber, &driverInfo, &controllerConfig, csmiCountVerbosity))
+                    if (SUCCESS == csmi_Get_Basic_Info(fd, controllerNumber, &driverInfo, &controllerConfig, &controllerStatus, csmiCountVerbosity))
                     {
 #if defined (CSMI_DEBUG)
                         printf("GDC: Checking controller flags: %" CPRIX32 "h\n", controllerConfig.Configuration.uControllerFlags);
@@ -4300,13 +4312,15 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                         //first, check if this handle supports CSMI before we try anything else
                         CSMI_SAS_DRIVER_INFO_BUFFER driverInfo;
                         CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
+                        CSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus;
                         memset(&driverInfo, 0, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
                         memset(&controllerConfig, 0, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
+                        memset(&controllerStatus, 0, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
                         csmiListVerbosity = d->deviceVerbosity;//this is to preserve any verbosity set when coming into this function
 #if defined (CSMI_DEBUG)
-                        printf("GDL: Getting controller config and driver info\n");
+                        printf("GDL: Getting controller config, controller status, and driver info\n");
 #endif //CSMI_DEBUG
-                        if (SUCCESS == csmi_Get_Driver_And_Controller_Data(fd, controllerNumber, &driverInfo, &controllerConfig, csmiListVerbosity))
+                        if (SUCCESS == csmi_Get_Basic_Info(fd, controllerNumber, &driverInfo, &controllerConfig, &controllerStatus, csmiListVerbosity))
                         {
                             eKnownCSMIDriver knownCSMIDriver = get_Known_CSMI_Driver_Type(&driverInfo.Information);
 #if defined (CSMI_DEBUG)
