@@ -373,8 +373,8 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
                         }
                     }
                 }
-                ret = nvme_Firmware_Commit(device, commitAction, slotNumber, timeoutSeconds);
-                if (ret == SUCCESS && (commitAction == NVME_CA_REPLACE_ACTIVITE_ON_RST || commitAction == NVME_CA_ACTIVITE_ON_RST) && !forceDisableReset)
+                ret = nvme_Firmware_Commit(device, nvmeCommitAction, slotNumber, timeoutSeconds);
+                if (ret == SUCCESS && (nvmeCommitAction == NVME_CA_REPLACE_ACTIVITE_ON_RST || nvmeCommitAction == NVME_CA_ACTIVITE_ON_RST) && !forceDisableReset)
                 {
                     issueReset = true;
                 }
@@ -391,6 +391,43 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
                     case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
                     case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
                         issueReset = true;
+                        break;
+                    case NVME_CMD_SP_SC_FW_ACT_REQ_MAX_TIME_VIOALTION:
+                        if (!nvmeForceCA) //only retry when not forcing a specific mode
+                        {
+                            //needs to be reissued for an activate on reset instead due to maximum time violation.
+                            if (existingImage)
+                            {
+                                nvmeCommitAction = NVME_CA_ACTIVITE_ON_RST;
+                            }
+                            else
+                            {
+                                nvmeCommitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
+
+                            }
+                            ret = nvme_Firmware_Commit(device, nvmeCommitAction, slotNumber, timeoutSeconds);
+                            get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &doNotRetry, &more, &statusCodeType, &statusCode);
+                            if (statusCodeType == NVME_SCT_COMMAND_SPECIFIC_STATUS)
+                            {
+                                switch (statusCode)
+                                {
+                                case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
+                                    issueReset = true;
+                                    subsystem = true;
+                                    break;
+                                case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
+                                case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
+                                    issueReset = true;
+                                    break;
+                                default:
+                                    break;
+                                }
+                            }
+                            if (!forceDisableReset)
+                            {
+                                issueReset = true;
+                            }
+                        }
                         break;
                     default:
                         break;
@@ -411,7 +448,7 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
                         nvme_Reset(device);
                     }
                 }
-                else
+                else if (nvmeCommitAction != NVME_CA_ACTIVITE_IMMEDIATE)
                 {
                     //Set this return code since the reset was bypassed.
                     ret = POWER_CYCLE_REQUIRED;
