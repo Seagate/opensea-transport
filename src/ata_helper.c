@@ -922,6 +922,29 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         byte_Swap_String(fillSerialNumber);
         byte_Swap_String(fillFWRev);
 #endif
+        //before removing whitespace, go through MN, SN, and FW and remove any invalid characters.
+        // This shouldn't be a problem, but in rare cases a device may return garbage here and we don't want to cause a crash-TJE
+        for (uint8_t iter = 0; iter < MODEL_NUM_LEN; ++iter)
+        {
+            if (!is_ASCII(fillModelNumber[iter]) || !isprint(fillModelNumber[iter]))
+            {
+                fillModelNumber[iter] = ' ';//replace with a space
+            }
+        }
+        for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
+        {
+            if (!is_ASCII(fillSerialNumber[iter]) || !isprint(fillSerialNumber[iter]))
+            {
+                fillSerialNumber[iter] = ' ';//replace with a space
+            }
+        }
+        for (uint8_t iter = 0; iter < FW_REV_LEN; ++iter)
+        {
+            if (!is_ASCII(fillFWRev[iter]) || !isprint(fillFWRev[iter]))
+            {
+                fillFWRev[iter] = ' ';//replace with a space
+            }
+        }
         //remove leading and trailing whitespace
         remove_Leading_And_Trailing_Whitespace(fillModelNumber);
         remove_Leading_And_Trailing_Whitespace(fillSerialNumber);

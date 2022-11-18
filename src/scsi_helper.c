@@ -1868,6 +1868,31 @@ void copy_Inquiry_Data( uint8_t *pbuf, driveInfo *info )
     info->product_identification[INQ_DATA_PRODUCT_ID_LEN] = '\0';
     memcpy(info->product_revision, &pbuf[32], INQ_DATA_PRODUCT_REV_LEN);
     info->product_revision[INQ_DATA_PRODUCT_REV_LEN] = '\0';
+    //Need to check if vendor ID, MN, and FWRev are printable or not
+    //vendor ID
+    for (uint8_t iter = 0; iter < T10_VENDOR_ID_LEN; ++iter)
+    {
+        if (!is_ASCII(info->T10_vendor_ident[iter]) || !isprint(info->T10_vendor_ident[iter]))
+        {
+            info->T10_vendor_ident[iter] = ' ';
+        }
+    }
+    //product ID
+    for (uint8_t iter = 0; iter < MODEL_NUM_LEN && iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
+    {
+        if (!is_ASCII(info->product_identification[iter]) || !isprint(info->product_identification[iter]))
+        {
+            info->product_identification[iter] = ' ';
+        }
+    }
+    //FWRev
+    for (uint8_t iter = 0; iter < FW_REV_LEN && iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
+    {
+        if (!is_ASCII(info->product_revision[iter]) || !isprint(info->product_revision[iter]))
+        {
+            info->product_revision[iter] = ' ';
+        }
+    }
     remove_Leading_And_Trailing_Whitespace(info->product_identification);
     remove_Leading_And_Trailing_Whitespace(info->product_revision);
     remove_Leading_And_Trailing_Whitespace(info->T10_vendor_ident);
@@ -1878,9 +1903,15 @@ void copy_Serial_Number( uint8_t *pbuf, char *serialNumber )
 {
     uint16_t snLen = M_BytesTo2ByteValue(pbuf[2], pbuf[3]);
     memcpy(serialNumber, &pbuf[4], M_Min(snLen,SERIAL_NUM_LEN));
-    serialNumber[M_Min(snLen,SERIAL_NUM_LEN)]='\0';
-    remove_Leading_Whitespace(serialNumber);
-    remove_Trailing_Whitespace(serialNumber);
+    serialNumber[M_Min(snLen,SERIAL_NUM_LEN)] = '\0';
+    for (uint8_t iter = 0; iter < SERIAL_NUM_LEN && iter < snLen; ++iter)
+    {
+        if (!is_ASCII(serialNumber[iter]) || !isprint(serialNumber[iter]))
+        {
+            serialNumber[iter] = ' ';
+        }
+    }
+    remove_Leading_And_Trailing_Whitespace(serialNumber);
 }
 
 void copy_Read_Capacity_Info(uint32_t *logicalBlockSize, uint32_t *physicalBlockSize, uint64_t *maxLBA, uint16_t *sectorAlignment, uint8_t *ptrBuf, bool readCap16)
@@ -2005,6 +2036,27 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
         memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], 8);
         memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], 16);
         memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], 4);
+        for (uint8_t iter = 0; iter < 9; ++iter)
+        {
+            if (!is_ASCII(vendorID[iter]) || !isprint(vendorID[iter]))
+            {
+                vendorID[iter] = ' ';
+            }
+        }
+        for (uint8_t iter = 0; iter < 17; ++iter)
+        {
+            if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
+            {
+                productID[iter] = ' ';
+            }
+        }
+        for (uint8_t iter = 0; iter < 5; ++iter)
+        {
+            if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
+            {
+                revision[iter] = ' ';
+            }
+        }
         remove_Leading_And_Trailing_Whitespace(vendorID);
         remove_Leading_And_Trailing_Whitespace(productID);
         remove_Leading_And_Trailing_Whitespace(revision);
@@ -2123,15 +2175,44 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
         cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ����������������
         */
         memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], 8);
+
+        for (uint8_t iter = 0; iter < 9; ++iter)
+        {
+            if (!is_ASCII(vendorID[iter]) || !isprint(vendorID[iter]))
+            {
+                vendorID[iter] = ' ';
+            }
+        }
         remove_Leading_And_Trailing_Whitespace(vendorID);
         if (strcmp(vendorID, "Seagate") == 0)
         {
             char internalModel[41] = { 0 };//this may or may not be useful...
             memcpy(internalModel, &device->drive_info.scsiVpdData.inquiryData[54], 40);
+            for (uint8_t iter = 0; iter < 41; ++iter)
+            {
+                if (!is_ASCII(internalModel[iter]) || !isprint(internalModel[iter]))
+                {
+                    internalModel[iter] = ' ';
+                }
+            }
             remove_Leading_And_Trailing_Whitespace(internalModel);
             //this looks like format 2 data, but doesn't report that way...
             memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], 16);
             memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], 4);
+            for (uint8_t iter = 0; iter < 17; ++iter)
+            {
+                if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
+                {
+                    productID[iter] = ' ';
+                }
+            }
+            for (uint8_t iter = 0; iter < 5; ++iter)
+            {
+                if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
+                {
+                    revision[iter] = ' ';
+                }
+            }
             remove_Leading_And_Trailing_Whitespace(vendorID);
             remove_Leading_And_Trailing_Whitespace(productID);
             if (strcmp(productID, "External Drive") == 0 && strlen(internalModel))//doing strlen of internal model number to catch others of this type with something set here
@@ -2144,6 +2225,20 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
         {
             memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], 16);
             memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[36], 4);
+            for (uint8_t iter = 0; iter < 17; ++iter)
+            {
+                if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
+                {
+                    productID[iter] = ' ';
+                }
+            }
+            for (uint8_t iter = 0; iter < 5; ++iter)
+            {
+                if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
+                {
+                    revision[iter] = ' ';
+                }
+            }
             remove_Leading_And_Trailing_Whitespace(vendorID);
             remove_Leading_And_Trailing_Whitespace(productID);
         }
@@ -2151,6 +2246,20 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
         {
             memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[8], 16);
             memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], 4);
+            for (uint8_t iter = 0; iter < 17; ++iter)
+            {
+                if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
+                {
+                    productID[iter] = ' ';
+                }
+            }
+            for (uint8_t iter = 0; iter < 5; ++iter)
+            {
+                if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
+                {
+                    revision[iter] = ' ';
+                }
+            }
             remove_Leading_And_Trailing_Whitespace(productID);
             remove_Leading_And_Trailing_Whitespace(revision);
             if (strcmp(productID, "ST9120826A") == 0)
@@ -2391,34 +2500,6 @@ int fill_In_Device_Info(tDevice *device)
         }
 
         uint8_t responseFormat = M_GETBITRANGE(inq_buf[3], 3, 0);
-        if (responseFormat < 2)
-        {
-            //Need to check if vendor ID, MN, and FWRev are printable or not
-            //vendor ID
-            for (uint8_t iter = 0; iter < T10_VENDOR_ID_LEN; ++iter)
-            {
-                if (!is_ASCII(device->drive_info.T10_vendor_ident[iter]) || !isprint(device->drive_info.T10_vendor_ident[iter]))
-                {
-                    device->drive_info.T10_vendor_ident[iter] = ' ';
-                }
-            }
-            //product ID
-            for (uint8_t iter = 0; iter < MODEL_NUM_LEN && iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
-            {
-                if (!is_ASCII(device->drive_info.product_identification[iter]) ||!isprint(device->drive_info.product_identification[iter]))
-                {
-                    device->drive_info.product_identification[iter] = ' ';
-                }
-            }
-            //FWRev
-            for (uint8_t iter = 0; iter < FW_REV_LEN && iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
-            {
-                if (!is_ASCII(device->drive_info.product_revision[iter]) ||!isprint(device->drive_info.product_revision[iter]))
-                {
-                    device->drive_info.product_revision[iter] = ' ';
-                }
-            }
-        }
         uint8_t version = inq_buf[2];
         switch (version) //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
         {
@@ -2871,10 +2952,9 @@ int fill_In_Device_Info(tDevice *device)
                         {
                             memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
                             device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
-                            remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
                             for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
                             {
-                                if (!isprint(device->drive_info.serialNumber[iter]))
+                                if (!is_ASCII(device->drive_info.serialNumber[iter]) || !isprint(device->drive_info.serialNumber[iter]))
                                 {
                                     device->drive_info.serialNumber[iter] = ' ';
                                 }
@@ -3100,10 +3180,9 @@ int fill_In_Device_Info(tDevice *device)
                             {
                                 memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
                                 device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
-                                remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
                                 for (size_t iter = 0; iter < SERIAL_NUM_LEN && iter < strlen(device->drive_info.serialNumber); ++iter)
                                 {
-                                    if (!isprint(device->drive_info.serialNumber[iter]))
+                                    if (!is_ASCII(device->drive_info.serialNumber[iter]) || !isprint(device->drive_info.serialNumber[iter]))
                                     {
                                         device->drive_info.serialNumber[iter] = ' ';
                                     }
