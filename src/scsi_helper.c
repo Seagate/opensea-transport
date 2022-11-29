@@ -2143,33 +2143,33 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
     return ret;
 }
 
-static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
+static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
 {
     bool passthroughTypeSet = false;
-    char vendorID[9] = { 0 };
-    char productID[17] = { 0 };
-    char revision[5] = { 0 };
+    char vendorID[INQ_DATA_T10_VENDOR_ID_LEN + 1] = { 0 };
+    char productID[INQ_DATA_PRODUCT_ID_LEN + 1] = { 0 };
+    char revision[INQ_DATA_PRODUCT_REV_LEN + 1] = { 0 };
     uint8_t responseFormat = M_Nibble0(device->drive_info.scsiVpdData.inquiryData[3]);
     if (responseFormat == 2)
     {
-        memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], 8);
-        memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], 16);
-        memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], 4);
-        for (uint8_t iter = 0; iter < 9; ++iter)
+        memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], INQ_DATA_T10_VENDOR_ID_LEN);
+        memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], INQ_DATA_PRODUCT_ID_LEN);
+        memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN);
+        for (uint8_t iter = 0; iter < INQ_DATA_T10_VENDOR_ID_LEN; ++iter)
         {
             if (!is_ASCII(vendorID[iter]) || !isprint(vendorID[iter]))
             {
                 vendorID[iter] = ' ';
             }
         }
-        for (uint8_t iter = 0; iter < 17; ++iter)
+        for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
         {
             if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
             {
                 productID[iter] = ' ';
             }
         }
-        for (uint8_t iter = 0; iter < 5; ++iter)
+        for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
         {
             if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
             {
@@ -2258,7 +2258,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
                 //TODO: this device previously had a hack that SMART check isn't supported, so need to migrate that too.
             }
-        } 
+        }
         else
         {
             //Don't set anything! We don't know!
@@ -2271,10 +2271,10 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
         //Returned inq example:
         /*
         00 00 00 00 1f 00 00 00 53 54 39 31 32 30 38 32  ........ST912082
-        36 41 20 20 20 20 20 20 20 20 20 20 20 20 20 20  6A              
+        36 41 20 20 20 20 20 20 20 20 20 20 20 20 20 20  6A
         30 30 30 30 00 00 00 00 00 00 00 00 04 00 41 41  0000..........AA
         33 41 30 35 20 20 54 53 31 39 30 32 32 38 41 36  3A05  TS190228A6
-        20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20                  
+        20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20
         20 20 20 20 20 20 20 20 20 20 20 20 20 20 01 80                .�
         00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
         //Example 2:
@@ -2293,9 +2293,9 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
         cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ����������������
         cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ����������������
         */
-        memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], 8);
+        memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], INQ_DATA_T10_VENDOR_ID_LEN);
 
-        for (uint8_t iter = 0; iter < 9; ++iter)
+        for (uint8_t iter = 0; iter < INQ_DATA_T10_VENDOR_ID_LEN; ++iter)
         {
             if (!is_ASCII(vendorID[iter]) || !isprint(vendorID[iter]))
             {
@@ -2305,9 +2305,9 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
         remove_Leading_And_Trailing_Whitespace(vendorID);
         if (strcmp(vendorID, "Seagate") == 0)
         {
-            char internalModel[41] = { 0 };//this may or may not be useful...
-            memcpy(internalModel, &device->drive_info.scsiVpdData.inquiryData[54], 40);
-            for (uint8_t iter = 0; iter < 41; ++iter)
+            char internalModel[MODEL_NUM_LEN + 1] = { 0 };//this may or may not be useful...
+            memcpy(internalModel, &device->drive_info.scsiVpdData.inquiryData[54], MODEL_NUM_LEN);
+            for (uint8_t iter = 0; iter < MODEL_NUM_LEN; ++iter)
             {
                 if (!is_ASCII(internalModel[iter]) || !isprint(internalModel[iter]))
                 {
@@ -2316,16 +2316,16 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
             }
             remove_Leading_And_Trailing_Whitespace(internalModel);
             //this looks like format 2 data, but doesn't report that way...
-            memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], 16);
-            memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], 4);
-            for (uint8_t iter = 0; iter < 17; ++iter)
+            memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], INQ_DATA_PRODUCT_ID_LEN);
+            memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN);
+            for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
             {
                 if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
                 {
                     productID[iter] = ' ';
                 }
             }
-            for (uint8_t iter = 0; iter < 5; ++iter)
+            for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
             {
                 if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
                 {
@@ -2342,16 +2342,16 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
         }
         else if (strcmp(vendorID, "Samsung") == 0)
         {
-            memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], 16);
-            memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[36], 4);
-            for (uint8_t iter = 0; iter < 17; ++iter)
+            memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], INQ_DATA_PRODUCT_ID_LEN);
+            memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[36], INQ_DATA_PRODUCT_REV_LEN);
+            for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
             {
                 if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
                 {
                     productID[iter] = ' ';
                 }
             }
-            for (uint8_t iter = 0; iter < 5; ++iter)
+            for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
             {
                 if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
                 {
@@ -2363,16 +2363,16 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
         }
         else
         {
-            memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[8], 16);
-            memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], 4);
-            for (uint8_t iter = 0; iter < 17; ++iter)
+            memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[8], INQ_DATA_PRODUCT_ID_LEN);
+            memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN);
+            for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
             {
                 if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
                 {
                     productID[iter] = ' ';
                 }
             }
-            for (uint8_t iter = 0; iter < 5; ++iter)
+            for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
             {
                 if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
                 {
@@ -2383,7 +2383,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
             remove_Leading_And_Trailing_Whitespace(revision);
             if (strcmp(productID, "ST9120826A") == 0)
             {
-                memset(vendorID, 0, 8);
+                memset(vendorID, 0, INQ_DATA_T10_VENDOR_ID_LEN);
                 passthroughTypeSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
             }
