@@ -73,6 +73,7 @@ extern "C"
     #define MAX_DEVICES_PER_CONTROLLER (256U)
     #define MAX_DEVICES_TO_SCAN (OPENSEA_MAX_CONTROLLERS * MAX_DEVICES_PER_CONTROLLER)
 	#define MAX_DRIVER_NAME			40
+    #define MAX_DRIVER_VER_STR      24
 
     #define SERIAL_NUM_LEN          (20) //Going with ATA lengths
     #define MODEL_NUM_LEN           (40)
@@ -671,6 +672,12 @@ extern "C"
 	{
 		char driverPath[OPENSEA_PATH_MAX];//This is not needed. We need to find a way to remove this as it adds a lot of unnecessary storage-TJE
 		char driverName[MAX_DRIVER_NAME];
+        char driverVersionString[MAX_DRIVER_VER_STR];//raw, unparsed string in case parsing into below values goes wrong due to variability in how this is reported between linux drivers.-TJE
+        bool majorVerValid;
+        bool minorVerValid;
+        bool revisionVerValid;
+        bool buildVerValid;
+        uint8_t reserved[4];
         uint32_t driverMajorVersion;
         uint32_t driverMinorVersion;
         uint32_t driverRevision;

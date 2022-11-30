@@ -2032,11 +2032,17 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
                                                                             {
                                                                                 if (property && (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && wcslen(property))
                                                                                 {
+                                                                                    snprintf(device->drive_info.driver_info.driverVersionString, MAX_DRIVER_VER_STR, "%ls", property);
                                                                                     int scanfRet = swscanf(property, L"%u.%u.%u.%u", &device->drive_info.driver_info.driverMajorVersion, &device->drive_info.driver_info.driverMinorVersion, &device->drive_info.driver_info.driverRevision, &device->drive_info.driver_info.driverBuildNumber);
                                                                                     if (scanfRet < 4 || scanfRet == EOF)
                                                                                     {
                                                                                         printf("Fatal error getting driver version!\n");
                                                                                     }
+                                                                                    //TODO: Handle parsing not getting all version info. This is unlikely to be an issue in Windows since all version numbers are a consistent format enforced by MSFT-TJE
+                                                                                    device->drive_info.driver_info.majorVerValid = true;
+                                                                                    device->drive_info.driver_info.minorVerValid = true;
+                                                                                    device->drive_info.driver_info.revisionVerValid = true;
+                                                                                    device->drive_info.driver_info.buildVerValid = true;
                                                                                 }
                                                                             }
                                                                         }
