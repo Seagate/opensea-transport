@@ -669,8 +669,12 @@ extern "C"
 
 	typedef struct _driverInfo
 	{
-		char driverPath[OPENSEA_PATH_MAX];
+		char driverPath[OPENSEA_PATH_MAX];//This is not needed. We need to find a way to remove this as it adds a lot of unnecessary storage-TJE
 		char driverName[MAX_DRIVER_NAME];
+        uint32_t driverMajorVersion;
+        uint32_t driverMinorVersion;
+        uint32_t driverRevision;
+        uint32_t driverBuildNumber;//Likely Windows only
 	} driverInfo;
 
     typedef enum _eATASynchronousDMAMode

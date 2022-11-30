@@ -234,6 +234,165 @@ void print_bus_type( BYTE type )
 //    }
 //}
 
+static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bufferLength, tDevice* device)
+{
+    bool success = true;
+    CONFIGRET cmRet = CR_SUCCESS;
+    //here is where we need to parse the USB VID/PID or TODO: PCI Vendor, Product, and Revision numbers
+    if (_tcsncmp(TEXT("USB"), buffer, _tcsclen(TEXT("USB"))) == 0)
+    {
+        ULONG propertyBufLen = 0;
+        DEVPROPTYPE propertyType = 0;
+#if defined (_MSC_VER) && _MSC_VER < SEA_MSC_VER_VS2015
+        //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
+        int scannedVals = _sntscanf_s(buffer, bufferLength, TEXT("USB\\VID_%x&PID_%x\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
+#else
+        int scannedVals = _sntscanf_s(buffer, bufferLength, TEXT("USB\\VID_%") TEXT(SCNx32) TEXT("&PID_%") TEXT(SCNx32) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
+#endif
+        device->drive_info.adapter_info.vendorIDValid = true;
+        device->drive_info.adapter_info.productIDValid = true;
+        if (scannedVals < 2)
+        {
+#if defined (_DEBUG)
+            printf("Could not scan all values. Scanned %d values\n", scannedVals);
+#endif
+        }
+        device->drive_info.adapter_info.infoType = ADAPTER_INFO_USB;
+        //unfortunately, this device ID doesn't have a revision in it for USB.
+        //We can do this other property request to read it, but it's wide characters only. No TCHARs allowed.
+        cmRet = CM_Get_DevNode_PropertyW(instance, &DEVPKEY_Device_HardwareIds, &propertyType, NULL, &propertyBufLen, 0);
+        if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
+        {
+            PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
+            if (propertyBuf)
+            {
+                propertyBufLen += 1;
+                //NOTE: This key contains all 3 parts, VID, PID, and REV from the "parentInst": Example: USB\VID_174C&PID_2362&REV_0100
+                if (CR_SUCCESS == CM_Get_DevNode_PropertyW(instance, &DEVPKEY_Device_HardwareIds, &propertyType, propertyBuf, &propertyBufLen, 0))
+                {
+                    //multiple strings can be returned.
+                    for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + 1)
+                    {
+                        if (property && (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && wcslen(property))
+                        {
+                            LPWSTR revisionStr = wcsstr(property, L"REV_");
+                            if (revisionStr)
+                            {
+                                if (1 == swscanf(revisionStr, L"REV_%x", &device->drive_info.adapter_info.revision))
+                                {
+                                    device->drive_info.adapter_info.revisionValid = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                safe_Free(propertyBuf)
+            }
+        }
+    }
+    else if (_tcsncmp(TEXT("PCI"), buffer, _tcsclen(TEXT("PCI"))) == 0)
+    {
+        uint32_t subsystem = 0;
+        uint32_t revision = 0;
+#if defined (_MSC_VER) && _MSC_VER  < SEA_MSC_VER_VS2015
+        //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
+        int scannedVals = _sntscanf_s(buffer, bufferLength, TEXT("PCI\\VEN_%lx&DEV_%lx&SUBSYS_%lx&REV_%lx\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
+#else
+        int scannedVals = _sntscanf_s(buffer, bufferLength, TEXT("PCI\\VEN_%") TEXT(SCNx32) TEXT("&DEV_%") TEXT(SCNx32) TEXT("&SUBSYS_%") TEXT(SCNx32) TEXT("&REV_%") TEXT(SCNx32) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
+#endif
+        device->drive_info.adapter_info.vendorIDValid = true;
+        device->drive_info.adapter_info.productIDValid = true;
+        device->drive_info.adapter_info.revision = revision;
+        device->drive_info.adapter_info.revisionValid = true;
+        device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
+        if (scannedVals < 4)
+        {
+#if defined (_DEBUG)
+            printf("Could not scan all values. Scanned %d values\n", scannedVals);
+#endif
+        }
+        //can also read DEVPKEY_Device_HardwareIds for parentInst to get all this data
+    }
+    else if (_tcsncmp(TEXT("1394"), buffer, _tcsclen(TEXT("1394"))) == 0)
+    {
+        //Parent buffer already contains the vendor ID as part of the buffer where a full WWN is reported...we just need first 6 bytes. example, brackets added for clarity: 1394\Maxtor&5000DV__v1.00.00\[0010B9]20003D9D6E
+        //DEVPKEY_Device_CompatibleIds gets use 1394 specifier ID for the device instance
+        //DEVPKEY_Device_CompatibleIds gets revision and specifier ID for the parent instance: 1394\<specifier>&<revision>
+        //DEVPKEY_Device_ConfigurationId gets revision and specifier ID for parent instance: sbp2.inf:1394\609E&10483,sbp2_install
+        //NOTE: There is no currently known way to get the product ID for this interface
+        ULONG propertyBufLen = 0;
+        DEVPROPTYPE propertyType = 0;
+        const DEVPROPKEY* propertyKey = &DEVPKEY_Device_CompatibleIds;
+        //scan buffer to get vendor
+        TCHAR* nextToken = NULL;
+        TCHAR* token = _tcstok_s(buffer, TEXT("\\"), &nextToken);
+        while (token && nextToken && _tcsclen(nextToken) > 0)
+        {
+            token = _tcstok_s(NULL, TEXT("\\"), &nextToken);
+        }
+        if (token)
+        {
+            //at this point, the token contains only the part we care about reading
+            //We need the first 6 characters to convert into hex for the vendor ID
+            TCHAR vendorIDString[7] = { 0 };
+            _tcsncpy_s(vendorIDString, 7, token, 6);
+            _tprintf(TEXT("%s\n"), vendorIDString);
+#if defined (_MSC_VER) && _MSC_VER  < SEA_MSC_VER_VS2015
+            //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
+            int result = _stscanf(token, TEXT("%06lx"), &device->drive_info.adapter_info.vendorID);
+#else
+            int result = _stscanf(token, TEXT("%06") TEXT(SCNx32), &device->drive_info.adapter_info.vendorID);
+#endif
+
+            if (result == 1)
+            {
+                device->drive_info.adapter_info.vendorIDValid = true;
+            }
+        }
+
+        device->drive_info.adapter_info.infoType = ADAPTER_INFO_IEEE1394;
+        cmRet = CM_Get_DevNode_PropertyW(instance, propertyKey, &propertyType, NULL, &propertyBufLen, 0);
+        if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
+        {
+            PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
+            if (propertyBuf)
+            {
+                propertyBufLen += 1;
+                if (CR_SUCCESS == CM_Get_DevNode_PropertyW(instance, propertyKey, &propertyType, propertyBuf, &propertyBufLen, 0))
+                {
+                    //multiple strings can be returned for some properties. This one will most likely only return one.
+                    for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + 1)
+                    {
+                        if (property && (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && wcslen(property))
+                        {
+                            int scannedVals = _snwscanf_s(C_CAST(const wchar_t*, propertyBuf), propertyBufLen, L"1394\\%x&%x", &device->drive_info.adapter_info.specifierID, &device->drive_info.adapter_info.revision);
+                            if (scannedVals < 2)
+                            {
+#if defined (_DEBUG)
+                                printf("Could not scan all values. Scanned %d values\n", scannedVals);
+#endif
+                            }
+                            else
+                            {
+                                device->drive_info.adapter_info.specifierIDValid = true;
+                                device->drive_info.adapter_info.revisionValid = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                safe_Free(propertyBuf)
+            }
+        }
+    }
+    else
+    {
+        success = false;
+    }
+    return success;
+}
+
 //This function uses cfgmgr32 for figuring out the adapter information. 
 //It is possible to do this with setupapi as well. cfgmgr32 is supposedly available in some form for universal apps, whereas setupapi is not.
 static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDescriptor, ULONG deviceDescriptorLength)
@@ -1797,152 +1956,91 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
                                                                 /*/
                                                                 //*/
 
-                                                                //here is where we need to parse the USB VID/PID or TODO: PCI Vendor, Product, and Revision numbers
-                                                                if (_tcsncmp(TEXT("USB"), parentBuffer, _tcsclen(TEXT("USB"))) == 0)
+                                                                if (!get_IDs_From_TCHAR_String(parentInst, parentBuffer, parentLen, device))
                                                                 {
-                                                                    ULONG propertyBufLen = 0;
-                                                                    DEVPROPTYPE propertyType = 0;
-        #if defined (_MSC_VER) && _MSC_VER < SEA_MSC_VER_VS2015
-                                                                    //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
-                                                                    int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%x&PID_%x\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
-        #else
-                                                                    int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%") TEXT(SCNx32) TEXT("&PID_%") TEXT(SCNx32) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
-        #endif
-                                                                    device->drive_info.adapter_info.vendorIDValid = true;
-                                                                    device->drive_info.adapter_info.productIDValid = true;
-                                                                    if (scannedVals < 2)
+                                                                    //try the parent's parent. There are some cases where this seems to be necessary to get this data.
+                                                                    //one known case is AMD's RAID driver. There may be others
+                                                                    DEVINST pparentInst = 0;
+                                                                    cmRet = CM_Get_Parent(&pparentInst, parentInst, 0);
+                                                                    if (CR_SUCCESS == cmRet)
                                                                     {
-        #if defined (_DEBUG)
-                                                                        printf("Could not scan all values. Scanned %d values\n", scannedVals);
-        #endif
-                                                                    }
-                                                                    device->drive_info.adapter_info.infoType = ADAPTER_INFO_USB;
-                                                                    //unfortunately, this device ID doesn't have a revision in it for USB.
-                                                                    //We can do this other property request to read it, but it's wide characters only. No TCHARs allowed.
-                                                                    cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_HardwareIds, &propertyType, NULL, &propertyBufLen, 0);
-                                                                    if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
-                                                                    {
-                                                                        PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
-                                                                        if (propertyBuf)
+                                                                        ULONG pparentLen = 0;
+                                                                        cmRet = CM_Get_Device_ID_Size(&pparentLen, pparentInst, 0);
+                                                                        pparentLen += 1;
+                                                                        if (CR_SUCCESS == cmRet)
                                                                         {
-                                                                            propertyBufLen += 1;
-                                                                            //NOTE: This key contains all 3 parts, VID, PID, and REV from the "parentInst": Example: USB\VID_174C&PID_2362&REV_0100
-                                                                            if (CR_SUCCESS == CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_HardwareIds, &propertyType, propertyBuf, &propertyBufLen, 0))
+                                                                            TCHAR* pparentBuffer = C_CAST(TCHAR*, calloc(pparentLen, sizeof(TCHAR)));
+                                                                            if (pparentBuffer)
                                                                             {
-                                                                                //multiple strings can be returned.
-                                                                                for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + 1)
+                                                                                cmRet = CM_Get_Device_ID(pparentInst, pparentBuffer, pparentLen, 0);
+                                                                                if (CR_SUCCESS == cmRet)
                                                                                 {
-                                                                                    if (property && (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && wcslen(property))
+                                                                                    if (!get_IDs_From_TCHAR_String(pparentInst, pparentBuffer, pparentLen, device))
                                                                                     {
-                                                                                        LPWSTR revisionStr = wcsstr(property, L"REV_");
-                                                                                        if (revisionStr)
-                                                                                        {
-                                                                                            if (1 == swscanf(revisionStr, L"REV_%x", &device->drive_info.adapter_info.revision))
-                                                                                            {
-                                                                                                device->drive_info.adapter_info.revisionValid = true;
-                                                                                                break;
-                                                                                            }
-                                                                                        }
+                                                                                        printf("Fatal error getting device IDs\n");
                                                                                     }
                                                                                 }
+                                                                                safe_Free(pparentBuffer);
                                                                             }
-                                                                            safe_Free(propertyBuf)
                                                                         }
                                                                     }
                                                                 }
-                                                                else if (_tcsncmp(TEXT("PCI"), parentBuffer, _tcsclen(TEXT("PCI"))) == 0)
-                                                                {
-                                                                    uint32_t subsystem = 0;
-                                                                    uint32_t revision = 0;
-        #if defined (_MSC_VER) && _MSC_VER  < SEA_MSC_VER_VS2015
-                                                                    //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
-                                                                    int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("PCI\\VEN_%lx&DEV_%lx&SUBSYS_%lx&REV_%lx\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
-        #else
-                                                                    int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("PCI\\VEN_%") TEXT(SCNx32) TEXT("&DEV_%") TEXT(SCNx32) TEXT("&SUBSYS_%") TEXT(SCNx32) TEXT("&REV_%") TEXT(SCNx32) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
-        #endif
-                                                                    device->drive_info.adapter_info.vendorIDValid = true;
-                                                                    device->drive_info.adapter_info.productIDValid = true;
-                                                                    device->drive_info.adapter_info.revision = revision;
-                                                                    device->drive_info.adapter_info.revisionValid = true;
-                                                                    device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
-                                                                    if (scannedVals < 4)
-                                                                    {
-        #if defined (_DEBUG)
-                                                                        printf("Could not scan all values. Scanned %d values\n", scannedVals);
-        #endif
-                                                                    }
-                                                                    //can also read DEVPKEY_Device_HardwareIds for parentInst to get all this data
-                                                                }
-                                                                else if (_tcsncmp(TEXT("1394"), parentBuffer, _tcsclen(TEXT("1394"))) == 0)
-                                                                {
-                                                                    //Parent buffer already contains the vendor ID as part of the buffer where a full WWN is reported...we just need first 6 bytes. example, brackets added for clarity: 1394\Maxtor&5000DV__v1.00.00\[0010B9]20003D9D6E
-                                                                    //DEVPKEY_Device_CompatibleIds gets use 1394 specifier ID for the device instance
-                                                                    //DEVPKEY_Device_CompatibleIds gets revision and specifier ID for the parent instance: 1394\<specifier>&<revision>
-                                                                    //DEVPKEY_Device_ConfigurationId gets revision and specifier ID for parent instance: sbp2.inf:1394\609E&10483,sbp2_install
-                                                                    //NOTE: There is no currently known way to get the product ID for this interface
-                                                                    ULONG propertyBufLen = 0;
-                                                                    DEVPROPTYPE propertyType = 0;
-                                                                    const DEVPROPKEY *propertyKey = &DEVPKEY_Device_CompatibleIds;
-                                                                    //scan parentBuffer to get vendor
-                                                                    TCHAR *nextToken = NULL;
-                                                                    TCHAR *token = _tcstok_s(parentBuffer, TEXT("\\"), &nextToken);
-                                                                    while (token && nextToken &&  _tcsclen(nextToken) > 0)
-                                                                    {
-                                                                        token = _tcstok_s(NULL, TEXT("\\"), &nextToken);
-                                                                    }
-                                                                    if (token)
-                                                                    {
-                                                                        //at this point, the token contains only the part we care about reading
-                                                                        //We need the first 6 characters to convert into hex for the vendor ID
-                                                                        TCHAR vendorIDString[7] = { 0 };
-                                                                        _tcsncpy_s(vendorIDString, 7 * sizeof(TCHAR), token, 6);
-                                                                        _tprintf(TEXT("%s\n"), vendorIDString);
-        #if defined (_MSC_VER) && _MSC_VER  < SEA_MSC_VER_VS2015
-                                                                        //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
-                                                                        int result = _stscanf(token, TEXT("%06lx"), &device->drive_info.adapter_info.vendorID);
-        #else
-                                                                        int result = _stscanf(token, TEXT("%06") TEXT(SCNx32), &device->drive_info.adapter_info.vendorID);
-        #endif
-                                                                
-                                                                        if (result == 1)
-                                                                        {
-                                                                            device->drive_info.adapter_info.vendorIDValid = true;
-                                                                        }
-                                                                    }
 
-                                                                    device->drive_info.adapter_info.infoType = ADAPTER_INFO_IEEE1394;
-                                                                    cmRet = CM_Get_DevNode_PropertyW(parentInst, propertyKey, &propertyType, NULL, &propertyBufLen, 0);
-                                                                    if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
+                                                                //For driver name and version data, request the following with the parent's instance. (don't need parent's parent)
+                                                                // 1. DEVPKEY_Device_Service <- gives the driver's name
+                                                                // 2. DEVPKEY_Device_DriverVersion
+                                                                //Both return strings that we can parse as needed. DEVPKEY_Device_DriverDesc gives the driver's "displayable" name, which is not always helpful since it's usually marketting crap
+                                                                ULONG propertyBufLen = 0;
+                                                                DEVPROPTYPE propertyType = 0;
+                                                                cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_Service, &propertyType, NULL, &propertyBufLen, 0);
+                                                                if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
+                                                                {
+                                                                    PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
+                                                                    if (propertyBuf)
                                                                     {
-                                                                        PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
-                                                                        if (propertyBuf)
+                                                                        propertyBufLen += 1;
+                                                                        cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_Service, &propertyType, propertyBuf, &propertyBufLen, 0);
+                                                                        if (CR_SUCCESS == cmRet)
                                                                         {
-                                                                            propertyBufLen += 1;
-                                                                            if (CR_SUCCESS == CM_Get_DevNode_PropertyW(parentInst, propertyKey, &propertyType, propertyBuf, &propertyBufLen, 0))
+                                                                            DEVPROPTYPE propertyModifier = propertyType & DEVPROP_MASK_TYPEMOD;
+                                                                            uint8_t propListAdditionalLen = propertyModifier == DEVPROP_TYPEMOD_LIST ? 1 : 0;//this adjusts the loop because if this ISN'T set, then we don't need any more length than the string length
+                                                                            for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + propListAdditionalLen)
                                                                             {
-                                                                                //multiple strings can be returned for some properties. This one will most likely only return one.
-                                                                                for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + 1)
+                                                                                if (property && (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && wcslen(property))
                                                                                 {
-                                                                                    if (property && (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && wcslen(property))
+                                                                                    snprintf(device->drive_info.driver_info.driverName, MAX_DRIVER_NAME, "%ls", property);//this should convert the driver name to ascii string.-TJE
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                        safe_Free(propertyBuf)
+                                                                    }
+                                                                }
+                                                                propertyBufLen = 0;//reset to zero before going into this function to read the string again.-TJE
+                                                                cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_DriverVersion, &propertyType, NULL, &propertyBufLen, 0);
+                                                                if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
+                                                                {
+                                                                    PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
+                                                                    if (propertyBuf)
+                                                                    {
+                                                                        propertyBufLen += 1;
+                                                                        cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_DriverVersion, &propertyType, propertyBuf, &propertyBufLen, 0);
+                                                                        if (CR_SUCCESS == cmRet)
+                                                                        {
+                                                                            DEVPROPTYPE propertyModifier = propertyType & DEVPROP_MASK_TYPEMOD;
+                                                                            uint8_t propListAdditionalLen = propertyModifier == DEVPROP_TYPEMOD_LIST ? 1 : 0;//this adjusts the loop because if this ISN'T set, then we don't need any more length than the string length
+                                                                            for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + propListAdditionalLen)
+                                                                            {
+                                                                                if (property && (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && wcslen(property))
+                                                                                {
+                                                                                    int scanfRet = swscanf(property, L"%u.%u.%u.%u", &device->drive_info.driver_info.driverMajorVersion, &device->drive_info.driver_info.driverMinorVersion, &device->drive_info.driver_info.driverRevision, &device->drive_info.driver_info.driverBuildNumber);
+                                                                                    if (scanfRet < 4 || scanfRet == EOF)
                                                                                     {
-                                                                                        int scannedVals = _snwscanf_s(C_CAST(const wchar_t*, propertyBuf), propertyBufLen, L"1394\\%x&%x", &device->drive_info.adapter_info.specifierID, &device->drive_info.adapter_info.revision);
-                                                                                        if (scannedVals < 2)
-                                                                                        {
-        #if defined (_DEBUG)
-                                                                                            printf("Could not scan all values. Scanned %d values\n", scannedVals);
-        #endif
-                                                                                        }
-                                                                                        else
-                                                                                        {
-                                                                                            device->drive_info.adapter_info.specifierIDValid = true;
-                                                                                            device->drive_info.adapter_info.revisionValid = true;
-                                                                                            break;
-                                                                                        }
+                                                                                        printf("Fatal error getting driver version!\n");
                                                                                     }
                                                                                 }
                                                                             }
-                                                                            safe_Free(propertyBuf)
                                                                         }
+                                                                        safe_Free(propertyBuf)
                                                                     }
                                                                 }
                                                             }
