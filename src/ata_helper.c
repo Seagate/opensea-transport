@@ -15,6 +15,7 @@
 #include "ata_helper.h"
 #include "ata_helper_func.h"
 #include "scsi_helper_func.h"
+#include <ctype.h> //for isprint
 
 //This is a basic validity indicator for a given ATA identify word. Checks that it is non-zero and not FFFFh
 bool is_ATA_Identify_Word_Valid(uint16_t word)
