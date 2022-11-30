@@ -302,6 +302,93 @@ static int get_Partition_List(const char * blockDeviceName, ptrsPartitionInfo pa
     return result;
 }
 
+static void get_Driver_Version_Info_From_Path(char* driverPath, tDevice *device)
+{
+    //driverPath now has the full path with the name of the driver.
+    //the version number can be found in driverPath/module/version if this file exists.
+    //Read this file and save the version information
+    char* driverVersionFilePath = C_CAST(char*, calloc(OPENSEA_PATH_MAX, sizeof(char)));
+    if (driverVersionFilePath)
+    {
+        snprintf(driverVersionFilePath, OPENSEA_PATH_MAX, "%s/module/version", driverPath);
+        //convert relative path to a full path. Basically replace ../'s with /sys/ since this will always be ../../bus and we need /sys/buf
+        char* busPtr = strstr(driverVersionFilePath, "/bus");
+        size_t busPtrLen = strlen(busPtr);
+        //magic number 4 is for the length of the string "/sys" which is what is being set in the beginning of the path.
+        //This is a bit of a mess, but a simple call to realpath was not working, likely due to the current directory not being exactly what we want to start with to allow
+        //that function to correctly figure out the path.
+        memmove(&driverVersionFilePath[4], busPtr, busPtrLen);
+        memset(&driverVersionFilePath[busPtrLen + 4], 0, OPENSEA_PATH_MAX - (busPtrLen + 4));
+        driverVersionFilePath[0] = '/';
+        driverVersionFilePath[1] = 's';
+        driverVersionFilePath[2] = 'y';
+        driverVersionFilePath[3] = 's';
+
+        FILE* versionFile = fopen(driverVersionFilePath, "r");
+        if (versionFile)
+        {
+            size_t versionFileSize = get_File_Size(versionFile);
+            char* versionFileData = C_CAST(char*, calloc(versionFileSize + 1, sizeof(char)));
+            if (versionFileData)
+            {
+                if (0 < fread(versionFileData, sizeof(char), versionFileSize, versionFile))
+                {
+                    snprintf(device->drive_info.driver_info.driverVersionString, MAX_DRIVER_VER_STR, "%s", versionFileData);
+                    //There are a few formats that I have seen for this data:
+                    //major.minor
+                    //major.minor.rev
+                    //major.minor.rev[build]-string
+                    //There may be more. Will attempt to write a method of parsing this that makes some sense
+                    //The most common are the first 2, so those will be checked first.
+                    char extraVerInfo[21] = { 0 };
+                    int scanfres = sscanf(versionFileData, "%" SCNu32 ".%" SCNu32 ".%" SCNu32 "%20s", &device->drive_info.driver_info.driverMajorVersion, &device->drive_info.driver_info.driverMinorVersion, &device->drive_info.driver_info.driverRevision, extraVerInfo);
+                    switch (scanfres)
+                    {
+                    case 4:
+                        //try figuring out what is in the extraVerInfo string
+                        device->drive_info.driver_info.majorVerValid = true;
+                        device->drive_info.driver_info.minorVerValid = true;
+                        device->drive_info.driver_info.revisionVerValid = true;
+                        scanfres = sscanf(extraVerInfo, "[%" SCNu32 "]", &device->drive_info.driver_info.driverBuildNumber);
+                        if (scanfres > 0)
+                        {
+                            device->drive_info.driver_info.buildVerValid = true;
+                        }
+                        else
+                        {
+                            //need a different scan of the remaining data to parse out other relevant info.-TJE
+                            device->drive_info.driver_info.driverBuildNumber = 0;
+                        }
+                        break;
+                    case 3:
+                        device->drive_info.driver_info.majorVerValid = true;
+                        device->drive_info.driver_info.minorVerValid = true;
+                        device->drive_info.driver_info.revisionVerValid = true;
+                        break;
+                    case 2:
+                        device->drive_info.driver_info.majorVerValid = true;
+                        device->drive_info.driver_info.minorVerValid = true;
+                        break;
+                    default:
+                        //error reading the string! consider the whole scanf a failure!
+                        //Will need to add other format parsing here if there is something else to read instead.-TJE
+                        device->drive_info.driver_info.driverMajorVersion = 0;
+                        device->drive_info.driver_info.driverMinorVersion = 0;
+                        device->drive_info.driver_info.driverRevision = 0;
+                        device->drive_info.driver_info.driverBuildNumber = 0;
+                        break;
+                    }
+                }
+                safe_Free(versionFileData)
+            }
+            fclose(versionFile);
+        }
+        safe_Free(driverVersionFilePath)
+    }
+    snprintf(device->drive_info.driver_info.driverName, MAX_DRIVER_NAME, "%s", basename(driverPath));
+    return;
+}
+
 //while similar to the function below, this is used only by get_Device to set up some fields in the device structure for the above layers
 static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 {
@@ -371,7 +458,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                         //example sas device link: ../../devices/pci0000:00/0000:00:1c.0/0000:02:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_generic/sg3
                         //example firewire device link: ../../devices/pci0000:00/0000:00:1c.5/0000:04:00.0/0000:05:09.0/0000:0b:00.0/0000:0c:02.0/fw1/fw1.0/host13/target13:0:0/13:0:0:0/scsi_generic/sg3
                         //example sata over sas device link: ../../devices/pci0000:00/0000:00:1c.0/0000:02:00.0/host0/port-0:1/end_device-0:1/target0:0:1/0:0:1:0/scsi_generic/sg5
-						char *driverName = C_CAST(char *, calloc(OPENSEA_PATH_MAX, sizeof(char)));
+						char *driverPath = C_CAST(char *, calloc(OPENSEA_PATH_MAX, sizeof(char)));
                         if (strstr(inHandleLink,"ata") != 0)
                         {
                             #if defined (_DEBUG)
@@ -439,11 +526,10 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 								//Get Driver Information.
 								pciPath = dirname(pciPath);//remove driver from the end
 								common_String_Concat(pciPath, PATH_MAX, "/driver");
-								ssize_t len = readlink(pciPath, device->drive_info.driver_info.driverPath, OPENSEA_PATH_MAX);
+								ssize_t len = readlink(pciPath, driverPath, OPENSEA_PATH_MAX);
 								if (len != -1)
 								{
-									driverName = basename(&device->drive_info.driver_info.driverPath[0]);
-									snprintf(device->drive_info.driver_info.driverName, MAX_DRIVER_NAME, "%s", driverName);
+                                    get_Driver_Version_Info_From_Path(driverPath, device);
 								}
 								safe_Free(pciPath);
 								device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
@@ -645,10 +731,9 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 								//Store Driver Information
 								pciPath = dirname(pciPath);
 								common_String_Concat(pciPath, PATH_MAX, "/driver");
-								if (-1 != readlink(pciPath, device->drive_info.driver_info.driverPath, OPENSEA_PATH_MAX))
+								if (-1 != readlink(pciPath, driverPath, OPENSEA_PATH_MAX))
                                 {
-                                    driverName = basename(&device->drive_info.driver_info.driverPath[0]);
-                                    snprintf(device->drive_info.driver_info.driverName, MAX_DRIVER_NAME, "%s", driverName);
+                                    get_Driver_Version_Info_From_Path(driverPath, device);
                                 }
 								//printf("\nPath: %s\tname: %s", device->drive_info.driver_info.driverPath,
 								//	device->drive_info.driver_info.driverName);
@@ -656,7 +741,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 safe_Free(pciPath)
                             }
                         }
-						//safe_Free(driverName);
+						safe_Free(driverPath);
                         char *baseLink = basename(inHandleLink);
                         //Now we will set up the device name, etc fields in the os_info structure.
                         if (bsg)
@@ -854,7 +939,6 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
                 int numberOfItems = scandir(classPath, &classList, NULL /*not filtering anything. Just go through each item*/, alphasort);
                 for (int iter = 0; iter < numberOfItems; ++iter)
                 {
-                    //printf("item = %s: %d of %d\n", classList[iter]->d_name,iter,numberOfItems);
                     //now we need to read the link for classPath/d_name into a buffer...then compare it to the one we read earlier.
                     size_t tempLen = strlen(classPath) + strlen(classList[iter]->d_name) + 1;
                     char *temp = C_CAST(char*, calloc(tempLen, sizeof(char)));
@@ -926,6 +1010,7 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
                                         safe_Free(classList[remains])
                                     }
                                     safe_Free(classList)
+                                    safe_Free(temp)
                                     // end PRH valgrind fixes.
                                     return SUCCESS;
                                     break;//found a match, exit the loop

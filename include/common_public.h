@@ -670,7 +670,6 @@ extern "C"
 
 	typedef struct _driverInfo
 	{
-		char driverPath[OPENSEA_PATH_MAX];//This is not needed. We need to find a way to remove this as it adds a lot of unnecessary storage-TJE
 		char driverName[MAX_DRIVER_NAME];
         char driverVersionString[MAX_DRIVER_VER_STR];//raw, unparsed string in case parsing into below values goes wrong due to variability in how this is reported between linux drivers.-TJE
         bool majorVerValid;
@@ -2131,7 +2130,7 @@ extern "C"
 
     #if defined (_DEBUG)
     //This function is more for debugging than anything else!
-    void print_tDevice_Size();
+    void print_tDevice_Size(void);
     #endif//_DEBUG
 
 #if defined (__cplusplus)

@@ -2349,7 +2349,7 @@ bool is_CSMI_Device(tDevice *device)
 #if defined (_DEBUG)
 //This function is more for debugging than anything else!
 #include <stddef.h>
-void print_tDevice_Size()
+void print_tDevice_Size(void)
 {
     printf("==Device struct information==\n");
     printf("--structure sizes--\n");
