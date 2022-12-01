@@ -4789,14 +4789,18 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                         if (phyInfo.Information.Phy[phyIter].Attached.bDeviceType == CSMI_SAS_NO_DEVICE_ATTACHED)
                                         {
                                             //nothing here, so continue
+#if defined (CSMI_DEBUG)
                                             printf("GDL: skipping %" PRIu8 " as attached data shows no device connected.\n", phyIter);
+#endif //CSMI_DEBUG
                                             continue;
                                         }
                                         ++physFound;//increment since we have found a valid phy to check information on.
                                         //Each attached device will be considered a "found device" in this case.
                                         char handle[RAID_HANDLE_STRING_MAX_LEN] = { 0 };
                                         snprintf(handle, RAID_HANDLE_STRING_MAX_LEN, "csmi:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber, phyInfo.Information.Phy[phyIter].bPortIdentifier, phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier, 0);
+#if defined (CSMI_DEBUG)
                                         printf("GDL: Phy Info last resort device handle found and set as %s\n", handle);
+#endif //CSMI_DEBUG
                                         memset(d, 0, sizeof(tDevice));
                                         d->sanity.size = ver.size;
                                         d->sanity.version = ver.version;
@@ -5165,6 +5169,34 @@ void print_CSMI_Device_Info(tDevice *device)
             break;
         case CSMI_SECURITY_ACCESS_FULL:
             printf("Full\n");
+            break;
+        }
+        printf("\tCSMI Known driver type: ");
+        switch (device->os_info.csmiDeviceData->csmiKnownDriverType)
+        {
+        case CSMI_DRIVER_UNKNOWN:
+            printf("Unknown\n");
+            break;
+        case CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY:
+            printf("Intel Rapid Storage Technology\n");
+            break;
+        case CSMI_DRIVER_INTEL_VROC:
+            printf("Intel VROC\n");
+            break;
+        case CSMI_DRIVER_AMD_RCRAID:
+            printf("AMD RCRAID\n");
+            break;
+        case CSMI_DRIVER_HPCISS:
+            printf("HPCISS\n");
+            break;
+        case CSMI_DRIVER_ARCSAS:
+            printf("ARCSAS\n");
+            break;
+        case CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY_VD:
+            printf("Intel RST VD\n");
+            break;
+        case CSMI_DRIVER_INTEL_GENERIC:
+            printf("Generic Intel\n");
             break;
         }
         if (device->os_info.csmiDeviceData->intelRSTSupport.intelRSTSupported && device->os_info.csmiDeviceData->intelRSTSupport.nvmePassthrough)
