@@ -870,6 +870,8 @@ extern "C"
                 NOMMPIO - noMultipleModeCommands
                 MPTXFER - maxTransferLength (bytes)
                 TPID - tpsiu on identify (limited use tpsiu)
+                NCHK - do not use check condition bit at all
+                CHKE - accepts the check condition bit, but returns empty data
                 //TODO: Add more hacks below as needed to workaround other weird behavior for ATA passthrough.
                 */
                 bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
@@ -944,7 +946,7 @@ extern "C"
         eZonedDeviceType zonedType;//most drives will report ZONED_TYPE_NOT_ZONED
         uint32_t       deviceBlockSize; //This is the logical block size reported by the drive
         uint32_t       devicePhyBlockSize; // This is the physical block size reported by the drive.
-        uint32_t       dataTransferSize;//this the block size that will be transfered
+        uint32_t       dataTransferSize;//this is obsolete! Do not use this
         uint16_t       sectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
         uint8_t padd0[2];
         uint64_t       deviceMaxLba;
@@ -1181,13 +1183,15 @@ extern "C"
         bool fwdlMiniportSupported;//Miniport IOCTL for FWDL is supported. This should be in the structure above, but it is here for compatibility at this time - TJE
         HANDLE forceUnitAccessRWfd;//used for os_read and os_Write when using the force unit access option
         uint32_t volumeBitField;//This is a bitfield that is stored to prevent rereading, mounting, waking all systems on the system. Since we read this up front, this will be stored so taht each partition on a device can be unmouted later if necessary. - TJE
+        uint8_t adapterDescBusType;//bus type reported in adapter descriptor
+        uint8_t deviceDescBusType;//bus type reported in the device descriptor
         //TODO: Store the device path! This may occasionally be useful to have. Longest one will probably be no more that MAX_DEVICE_ID_LEN characters. (This is defined as 200)
         //padding to keep same size as other OSs. This is to keep things similar across OSs.
         //Variable sizes based on 32 vs 64bit since handle is a void*
         #if defined (_WIN64)
-            uint8_t paddWin[34];
+            uint8_t paddWin[32];
         #else
-            uint8_t paddWin[46];
+            uint8_t paddWin[44];
         #endif //Win64 for padding
         #elif defined (__FreeBSD__)
         int fd;//used when cam is not being used (legacy ATA or NVMe IO without CAM....which may not be supported, but kept here just in case)
@@ -2132,6 +2136,21 @@ extern "C"
     //This function is more for debugging than anything else!
     void print_tDevice_Size(void);
     #endif//_DEBUG
+
+    //-----------------------------------------------------------------------------
+    //
+    //  print_Low_Level_Info(tDevice* device)
+    //
+    //! \brief   Description:  Printfs out useful low-level information from the device structure to the screen
+    //
+    //  Entry:
+    //!   \param[in] device = file descriptor from an opened device
+    //!
+    //  Exit:
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API void print_Low_Level_Info(tDevice* device);
+
 
 #if defined (__cplusplus)
 } //extern "C"

@@ -4074,6 +4074,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
             //saving max transfer size (in bytes)
             device->os_info.adapterMaxTransferSize = adapter_desc->MaximumTransferLength;
 
+
             //saving the SRB type so that we know when an adapter supports the new SCSI Passthrough EX IOCTLS - TJE
 #if WINVER >= SEA_WIN32_WINNT_WIN8 //If this check is wrong, make sure minGW is properly defining WINVER in the makefile.
             if (is_Windows_8_Or_Higher())//from opensea-common now to remove versionhelpes.h include
@@ -4093,6 +4094,11 @@ static int get_Win_Device(const char *filename, tDevice *device )
                 bool checkForCSMI = false;
                 bool checkForNVMe = false;
                 int fwdlResult = NOT_SUPPORTED;
+
+                //save the bus types to the tDevice struct since they may be helpful in certain debug scenarios
+                device->os_info.adapterDescBusType = adapter_desc->BusType;
+                device->os_info.deviceDescBusType = device_desc->BusType;
+
                 get_Adapter_IDs(device, device_desc, device_desc->Size);
 
 #if WINVER >= SEA_WIN32_WINNT_WINBLUE && defined (IOCTL_SCSI_MINIPORT_FIRMWARE)
