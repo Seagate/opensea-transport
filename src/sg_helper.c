@@ -603,6 +603,14 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                     fclose(temp);
                                     temp = NULL;
                                 }
+                                //Get Driver Information.
+                                usbPath = dirname(usbPath);//remove idProduct from the end
+                                common_String_Concat(usbPath, PATH_MAX, "/driver");
+                                ssize_t len = readlink(usbPath, driverPath, OPENSEA_PATH_MAX);
+                                if (len != -1)
+                                {
+                                    get_Driver_Version_Info_From_Path(driverPath, device);
+                                }
                                 safe_Free(usbPath)
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_USB;
                             }
@@ -652,6 +660,14 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                     temp = NULL;
                                 }
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_IEEE1394;
+                                //Get Driver Information.
+                                fwPath = dirname(fwPath);//remove idProduct from the end
+                                common_String_Concat(fwPath, PATH_MAX, "/driver");
+                                ssize_t len = readlink(fwPath, driverPath, OPENSEA_PATH_MAX);
+                                if (len != -1)
+                                {
+                                    get_Driver_Version_Info_From_Path(driverPath, device);
+                                }
                                 safe_Free(fwPath)
                             }
 
