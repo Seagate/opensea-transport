@@ -1904,7 +1904,7 @@ void copy_Serial_Number( uint8_t *pbuf, char *serialNumber )
     uint16_t snLen = M_BytesTo2ByteValue(pbuf[2], pbuf[3]);
     memcpy(serialNumber, &pbuf[4], M_Min(snLen,SERIAL_NUM_LEN));
     serialNumber[M_Min(snLen,SERIAL_NUM_LEN)] = '\0';
-    for (uint8_t iter = 0; iter < SERIAL_NUM_LEN && iter < snLen; ++iter)
+    for (uint16_t iter = 0; iter < SERIAL_NUM_LEN && iter < snLen; ++iter)
     {
         if (!is_ASCII(serialNumber[iter]) || !isprint(serialNumber[iter]))
         {
