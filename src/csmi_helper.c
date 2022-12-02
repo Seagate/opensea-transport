@@ -3369,6 +3369,13 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
 #if defined (CSMI_DEBUG)
             printf("GRD: Detected standard CSMI handle format\n");
 #endif //CSMI_DEBUG
+            if (portID == CSMI_SAS_IGNORE_PORT && phyID == CSMI_SAS_USE_PORT_IDENTIFIER)
+            {
+#if defined (CSMI_DEBUG)
+                printf("GRD: ERROR - portID and phyID both set to FFh, which is not allowed!\n");
+#endif //CSMI_DEBUG
+                return BAD_PARAMETER;
+            }
             snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, portID, phyID, lun);
         }
         else
@@ -3526,7 +3533,10 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
 #if defined (CSMI_DEBUG)
                     printf("GRD: Checking for portID and phyID match\n");
 #endif //CSMI_DEBUG
-                    if (phyInfo.Information.Phy[portNum].bPortIdentifier == portID && phyInfo.Information.Phy[portNum].Attached.bPhyIdentifier == phyID)
+                    if (phyInfo.Information.Phy[portNum].bPortIdentifier == portID && phyInfo.Information.Phy[portNum].Attached.bPhyIdentifier == phyID
+                        || (portID == CSMI_SAS_IGNORE_PORT && phyInfo.Information.Phy[portNum].Attached.bPhyIdentifier == phyID)
+                        || (phyInfo.Information.Phy[portNum].bPortIdentifier == portID && phyID == CSMI_SAS_USE_PORT_IDENTIFIER)
+                        )
                     {
 #if defined (CSMI_DEBUG)
                         printf("GRD: Port and phy ID match found\n");
