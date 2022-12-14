@@ -412,20 +412,22 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
                                 switch (statusCode)
                                 {
                                 case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
-                                    issueReset = true;
-                                    subsystem = true;
+                                    if (!forceDisableReset)
+                                    {
+                                        issueReset = true;
+                                        subsystem = true;
+                                    }
                                     break;
                                 case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
                                 case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
-                                    issueReset = true;
+                                    if (!forceDisableReset)
+                                    {
+                                        issueReset = true;
+                                    }
                                     break;
                                 default:
                                     break;
                                 }
-                            }
-                            if (!forceDisableReset)
-                            {
-                                issueReset = true;
                             }
                         }
                         break;
