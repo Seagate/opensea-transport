@@ -2856,6 +2856,7 @@ int fill_In_Device_Info(tDevice *device)
                 if (strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0 || strstr(device->drive_info.product_identification, "NVME") == NULL || strstr(device->drive_info.product_identification, "NVMe") == NULL)
                 {
                     satVersionDescriptorFound = true;
+                    checkForSAT = true; //Setting it as true, since some Marvell controller set SYNC bit, which is preventing our auto-discovery as ATA drive and sending SAT commands.
                 }
                 else
                 {
