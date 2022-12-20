@@ -9766,6 +9766,43 @@ typedef union _MSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4 {
     ULONG  AsUlong;
 }MSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4, *PMSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4;
 
+//WIN_API_TARGET_WIN10_17763 gave offset fields to the get log page through a subvalue input.
+//The documentation online states 1903(WIN_API_TARGET_WIN10_18362) and up support read buffer 16...it is unclear what version first supported the read buffer 16 method to read the telemetry log
+//This function has been defined to read telemetry with the read buffer 16 command. NOTE: Read buffer 10 will NOT work, only 16.
+//this function is only necessary for versions older than 1809...if readbuffer16 is even supported in those old versions.
+//static int get_NVMe_Telemetry_Data_With_RB16(nvmeCmdCtx* nvmeIoCtx)
+//{
+//    int ret = BAD_PARAMETER;
+//    uint8_t logID = M_Byte0(nvmeIoCtx->cmd.adminCmd.cdw10);
+//    if (nvmeIoCtx->commandType == NVM_ADMIN_CMD && nvmeIoCtx->cmd.adminCmd.opcode == NVME_ADMIN_CMD_GET_LOG_PAGE && (logID == NVME_LOG_TELEMETRY_CTRL_ID || logID == NVME_LOG_TELEMETRY_HOST_ID))
+//    {
+//        ret = SUCCESS;
+//        uint8_t bufferID = 0x10;//Assume host as it is most common to pull
+//        uint64_t numberOfDWords = M_WordsTo4ByteValue(M_Word0(nvmeIoCtx->cmd.adminCmd.cdw11), M_Word1(nvmeIoCtx->cmd.adminCmd.cdw10));
+//        uint64_t logPageOffset = M_DWordsTo8ByteValue(nvmeIoCtx->cmd.adminCmd.cdw13, nvmeIoCtx->cmd.adminCmd.cdw12);
+//        //bool createNewSnapshot = M_ToBool(nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8);
+//        if (logID == NVME_LOG_TELEMETRY_CTRL_ID)
+//        {
+//            bufferID = 0x11;
+//        }
+//        if ((numberOfDWords << 4) > UINT32_MAX)
+//        {
+//            ret = BAD_PARAMETER;
+//            //TODO: Figure out how to return a meaningful status that the request was too large
+//            //Invalid Field in Command???
+//            //Data Transfer Error???
+//        }
+//        else
+//        {
+//            //now call the SCSI read-buffer 16 command with the correct parameters to pull the data
+//            //TODO: figure out how the "trigger" to create a new snapshot will work. use the commented out createNewSnapshot above -TJE
+//            ret = scsi_Read_Buffer_16(nvmeIoCtx->device, 0x1C, 0 /*TODO take new snapshot???*/, bufferID, logPageOffset, C_CAST(uint32_t, numberOfDWords << 4), nvmeIoCtx->ptrData);
+//            //TODO: Handle any errors
+//        }
+//    }
+//    return ret;
+//}
+
 static int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
 {
     int32_t returnValue = SUCCESS;
