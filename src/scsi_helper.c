@@ -79,11 +79,16 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x00, 0x1F, C_CAST(int, SUCCESS),       "Logical Unit Transitioning To Another Power Condition"},
     {0x00, 0x20, C_CAST(int, SUCCESS),       "Extended Copy Information Available"},
     {0x00, 0x21, C_CAST(int, FAILURE),       "Atomic Command Aborted Due To ACA"},
+    {0x00, 0x22, C_CAST(int, FAILURE),       "Deferred Microcode is Pending"},
+    //
     {0x01, 0x00, C_CAST(int, FAILURE),       "No Index/Sector Signal"},
+    //
     {0x02, 0x00, C_CAST(int, FAILURE),       "No Seek Complete"},
+    //
     {0x03, 0x00, C_CAST(int, FAILURE),       "Peripheral Device Write Fault"},
     {0x03, 0x01, C_CAST(int, FAILURE),       "No Write Current"},
     {0x03, 0x02, C_CAST(int, FAILURE),       "Excessive Write Errors"},
+    //
     {0x04, 0x00, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Cause Not Reported"},
     {0x04, 0x01, C_CAST(int, FAILURE),       "Logical Unit Is In The Process Of Becoming Ready"},
     {0x04, 0x02, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Initializing Command Required"},
@@ -117,14 +122,21 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x04, 0x21, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Hard Reset Required"},
     {0x04, 0x22, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Power Cycle Required"},
     {0x04, 0x23, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Affiliation Required"},
+    {0x04, 0x24, C_CAST(int, FAILURE),       "Depopulation In Progress"},
+    {0x04, 0x25, C_CAST(int, FAILURE),       "Depopulation Restoration In Progress"},
+    //
     {0x05, 0x00, C_CAST(int, FAILURE),       "Logical Unit Does Not Respond To Selection"},
+    //
     {0x06, 0x00, C_CAST(int, FAILURE),       "No Reference Position Found"},
+    //
     {0x07, 0x00, C_CAST(int, FAILURE),       "Multiple Peripheral Devices Selected"},
+    //
     {0x08, 0x00, C_CAST(int, FAILURE),       "Logical Unit Communication Failure"},
     {0x08, 0x01, C_CAST(int, FAILURE),       "Logical Unit Communication Time-Out"},
     {0x08, 0x02, C_CAST(int, FAILURE),       "Logical Unit Communication Parity Error"},
     {0x08, 0x03, C_CAST(int, FAILURE),       "Logical Unit Communication CRC Error (Ultra-DMA/32)"},
     {0x08, 0x04, C_CAST(int, FAILURE),       "Unreachable Copy Target"},
+    //
     {0x09, 0x00, C_CAST(int, FAILURE),       "Track Following Error"},
     {0x09, 0x01, C_CAST(int, FAILURE),       "Tracking Servo Failure"},
     {0x09, 0x02, C_CAST(int, FAILURE),       "Focus Servo Failure"},
@@ -132,6 +144,7 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x09, 0x04, C_CAST(int, FAILURE),       "Head Select Fault"},
     {0x09, 0x05, C_CAST(int, FAILURE),       "Vibration Induced Tracking Error"},
     {0x0A, 0x00, C_CAST(int, FAILURE),       "Error Log Overflow"},
+    //
     {0x0B, 0x00, -1,                         "Warning"},
     {0x0B, 0x01, -1,                         "Warning - Specified Temperature Exceeded"},
     {0x0B, 0x02, -1,                         "Warning - Enclosure Degraded"},
@@ -152,6 +165,8 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x0B, 0x11, -1,                         "Warning - Low Operating Humidity Limit Exceeded"},
     {0x0B, 0x12, -1,                         "Warning - Microcode Security At Risk"},
     {0x0B, 0x13, -1,                         "Warning - Microcode Digital Signature Validation Failure"},
+    {0x0B, 0x14, -1,                         "Warning - Physical Element Status Change"},
+    //
     {0x0C, 0x00, C_CAST(int, FAILURE),       "Write Error"},
     {0x0C, 0x01, -1,                         "Write Error - Recovered With Auto Reallocation"},
     {0x0C, 0x02, C_CAST(int, FAILURE),       "Write Error - Auto Reallocation Failed"},
@@ -171,22 +186,26 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x0C, 0x10, C_CAST(int, FAILURE),       "Incomplete Multiple Atomic Write Operations"},
     {0x0C, 0x11, C_CAST(int, FAILURE),       "Write Error - Recovery Scan Needed"},
     {0x0C, 0x12, C_CAST(int, FAILURE),       "Write Error - Insufficient Zone Resources"},
+    //
     {0x0D, 0x00, C_CAST(int, FAILURE),       "Error Detected By Third Party Temporary Initiator"},
     {0x0D, 0x01, C_CAST(int, FAILURE),       "Third Party Device Failure"},
     {0x0D, 0x02, C_CAST(int, FAILURE),       "Copy Target Device Not Reachable"},
     {0x0D, 0x03, C_CAST(int, FAILURE),       "Incorrect Copy Target Device Type"},
     {0x0D, 0x04, C_CAST(int, FAILURE),       "Copy Target Device Data Underrun"},
     {0x0D, 0x05, C_CAST(int, FAILURE),       "Copy Target Device Data Overrun"},
+    //
     {0x0E, 0x00, C_CAST(int, FAILURE),       "Invalid Information Unit"},
     {0x0E, 0x01, C_CAST(int, FAILURE),       "Information Unit Too Short"},
     {0x0E, 0x02, C_CAST(int, FAILURE),       "Information Unit Too Long"},
     {0x0E, 0x03, C_CAST(int, FAILURE),       "Invalid Field In Command Information Unit"},
+    //
     {0x10, 0x00, C_CAST(int, FAILURE),       "ID CRC Or ECC Error"},
     {0x10, 0x01, C_CAST(int, FAILURE),       "Logical Block Guard Check Failed"},
     {0x10, 0x02, C_CAST(int, FAILURE),       "Logical Block Application Tag Check Failed"},
     {0x10, 0x03, C_CAST(int, FAILURE),       "Logical Block Reference Tag Check Failed"},
     {0x10, 0x04, C_CAST(int, FAILURE),       "Logical Block Protection Error On Recover Buffered Data"},
     {0x10, 0x05, C_CAST(int, FAILURE),       "Logical Block Protection Method Error"},
+    //
     {0x11, 0x00, C_CAST(int, FAILURE),       "Unrecovered Read Error"},
     {0x11, 0x01, C_CAST(int, FAILURE),       "Read Retries Exhausted"},
     {0x11, 0x02, C_CAST(int, FAILURE),       "Error Too Long To Correct"},
@@ -209,8 +228,11 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x11, 0x13, C_CAST(int, FAILURE),       "Read Error - Failed Retransmission Request"},
     {0x11, 0x14, C_CAST(int, FAILURE),       "Read Error - LBA Marked Bad By Application Client"},
     {0x11, 0x15, C_CAST(int, FAILURE),       "Write After Sanitize Required"},
+    //
     {0x12, 0x00, C_CAST(int, FAILURE),       "Address Mark Not Found for ID Field"},
+    //
     {0x13, 0x00, C_CAST(int, FAILURE),       "Address Mark Not Found for Data Field"},
+    //
     {0x14, 0x00, C_CAST(int, FAILURE),       "Recorded Entity Not Found"},
     {0x14, 0x01, C_CAST(int, FAILURE),       "Record Not Found"},
     {0x14, 0x02, C_CAST(int, FAILURE),       "Filemark Or Setmark Not Found"},
@@ -219,14 +241,17 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x14, 0x05, C_CAST(int, FAILURE),       "Record Not Found - Recommend Reassignment"},
     {0x14, 0x06, C_CAST(int, FAILURE),       "Record Not Found - Data Auto-Reallocated"},
     {0x14, 0x07, C_CAST(int, FAILURE),       "Locate Operation Failure"},
+    //
     {0x15, 0x00, C_CAST(int, FAILURE),       "Random Positioning Error"},
     {0x15, 0x01, C_CAST(int, FAILURE),       "Mechanical Positioning Error"},
     {0x15, 0x02, C_CAST(int, FAILURE),       "Positioning Error Detected By Read Of Medium"},
+    //
     {0x16, 0x00, C_CAST(int, FAILURE),       "Data Synchronization Mark Error"},
     {0x16, 0x01, C_CAST(int, SUCCESS),       "Data Sync Error - Data Rewritten"},
     {0x16, 0x02, C_CAST(int, FAILURE),       "Data Sync Error - Recommend Rewrite"},
     {0x16, 0x03, C_CAST(int, SUCCESS),       "Data Sync Error - Data Auto-Reallocation"},
     {0x16, 0x04, C_CAST(int, FAILURE),       "Data Sync Error - Recommend Reassignment"},
+    //
     {0x17, 0x00, -1,                         "Recovered Data With No Error Correction Applied"},
     {0x17, 0x01, -1,                         "Recovered Data With Retries"},
     {0x17, 0x02, -1,                         "Recovered Data With Positive Head Offset"},
@@ -237,6 +262,7 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x17, 0x07, -1,                         "Recovered Data Without ECC - Recommend Reassignment"},
     {0x17, 0x08, -1,                         "Recovered Data Without ECC - Recommend Rewrite"},
     {0x17, 0x09, -1,                         "Recovered Data Without ECC - Data Rewritten"},
+    //
     {0x18, 0x00, -1,                         "Recovered Data With Error Correction Applied"},
     {0x18, 0x01, -1,                         "Recovered Data With Error Correction & Retries Applied"},
     {0x18, 0x02, -1,                         "Recovered Data - Data Auto-Reallocated"},
@@ -246,19 +272,27 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x18, 0x06, -1,                         "Recovered Data - Recommend Rewrite"},
     {0x18, 0x07, -1,                         "Recovered Data With ECC - Data Rewritten"},
     {0x18, 0x08, C_CAST(int, FAILURE),       "Recovered Data With Linking"},
+    //
     {0x19, 0x00, C_CAST(int, FAILURE),       "Defect List Error"},
     {0x19, 0x01, C_CAST(int, FAILURE),       "Defect List Not Available"},
     {0x19, 0x02, C_CAST(int, FAILURE),       "Defect List Error In Primary List"},
     {0x19, 0x03, C_CAST(int, FAILURE),       "Defect List Error In Grown List"},
+    //
     {0x1A, 0x00, C_CAST(int, FAILURE),       "Parameter List Length Error"},
+    //
     {0x1B, 0x00, C_CAST(int, FAILURE),       "Synchronous Data Transfer Error"},
+    //
     {0x1C, 0x00, C_CAST(int, FAILURE),       "Defect List Not Found"},
     {0x1C, 0x01, C_CAST(int, FAILURE),       "Primary Defect List Not Found"},
     {0x1C, 0x02, C_CAST(int, FAILURE),       "Grown Defect List Not Found"},
+    //
     {0x1D, 0x00, C_CAST(int, FAILURE),       "Miscompare During Verify Operation"},
     {0x1D, 0x01, C_CAST(int, FAILURE),       "Miscompare During Verify Of Unmapped LBA"},
+    //
     {0x1E, 0x00, -1,                         "Recovered ID With ECC Correction"},
+    //
     {0x1F, 0x00, C_CAST(int, FAILURE),       "Partial Defect List Transfer"},
+    //
     {0x20, 0x00, C_CAST(int, NOT_SUPPORTED), "Invalid Command Operation Code"},
     {0x20, 0x01, C_CAST(int, FAILURE),       "Access Denied - Initiator Pending - Enrolled"},
     {0x20, 0x02, C_CAST(int, FAILURE),       "Access Denied - No Access Rights"},
@@ -275,6 +309,7 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x20, 0x0D, C_CAST(int, FAILURE),       "Not An Administrative Logical Unit"},
     {0x20, 0x0E, C_CAST(int, FAILURE),       "Not A Subsidiary Logical Unit"},
     {0x20, 0x0F, C_CAST(int, FAILURE),       "Not A Conglomerate Logical Unit"},
+    //
     {0x21, 0x00, C_CAST(int, FAILURE),       "Logical Block Address Out Of Range"},
     {0x21, 0x01, C_CAST(int, FAILURE),       "Invalid Element Address"},
     {0x21, 0x02, C_CAST(int, FAILURE),       "Invalid Address For Write"},
@@ -284,7 +319,10 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x21, 0x06, C_CAST(int, FAILURE),       "Attempt To Read Invalid Data"},
     {0x21, 0x07, C_CAST(int, FAILURE),       "Read Boundary Violation"},
     {0x21, 0x08, C_CAST(int, FAILURE),       "Misaligned Write Command"},
+    {0x21, 0x09, C_CAST(int, FAILURE),       "Attempt To Access Gap Zone"},
+    //
     {0x22, 0x00, C_CAST(int, NOT_SUPPORTED), "Illegal Function. Use 22 00, 24 00, or 26 00"},
+    //
     {0x23, 0x00, C_CAST(int, FAILURE),       "Invalid Token Operation - Cause Not Reportable"},
     {0x23, 0x01, C_CAST(int, FAILURE),       "Invalid Token Operation - Unsupported Token Type"},
     {0x23, 0x02, C_CAST(int, NOT_SUPPORTED), "Invalid Token Operation - Remote Token Usage Not Supported"},
@@ -296,6 +334,7 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x23, 0x08, C_CAST(int, FAILURE),       "Invalid Token Operation - Token Cancelled"},
     {0x23, 0x09, C_CAST(int, FAILURE),       "Invalid Token Operation - Token Deleted"},
     {0x23, 0x0A, C_CAST(int, FAILURE),       "Invalid Token Operation - Invalid Token Length"},
+    //
     {0x24, 0x00, C_CAST(int, NOT_SUPPORTED), "Invalid Field In CDB"},
     {0x24, 0x01, C_CAST(int, FAILURE),       "CDB Decryption Error"},
     {0x24, 0x02, C_CAST(int, FAILURE),       "Invalid CDB Field While In Explicit Block Address Model"},
@@ -306,7 +345,9 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x24, 0x07, C_CAST(int, FAILURE),       "Nonce Timestamp Out Of Range"},
     {0x24, 0x08, C_CAST(int, FAILURE),       "Invalid XCDB"},
     {0x24, 0x09, C_CAST(int, FAILURE),       "Invalid Fast Format"},
+    //
     {0x25, 0x00, C_CAST(int, NOT_SUPPORTED), "Logical Unit Not Supported"},
+    //
     {0x26, 0x00, C_CAST(int, FAILURE),       "Invalid Field In Parameter List"},
     {0x26, 0x01, C_CAST(int, NOT_SUPPORTED), "Parameter Not Supported"},
     {0x26, 0x02, C_CAST(int, FAILURE),       "Parameter Value Invalid"},
@@ -329,6 +370,8 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x26, 0x13, C_CAST(int, FAILURE),       "Application Tag Mode Page Is Invalid"},
     {0x26, 0x14, C_CAST(int, FAILURE),       "Tape Stream Mirroring Prevented"},
     {0x26, 0x15, C_CAST(int, FAILURE),       "Copy Source Or Copy Destination Not Authorized"},
+    {0x26, 0x16, C_CAST(int, FAILURE),       "Fast Copy Not Possible"},
+    //
     {0x27, 0x00, C_CAST(int, FAILURE),       "Write Protected"},
     {0x27, 0x01, C_CAST(int, FAILURE),       "Hardware Write Protected"},
     {0x27, 0x02, C_CAST(int, FAILURE),       "Logical Unit Software Write Protected"},
@@ -338,10 +381,12 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x27, 0x06, C_CAST(int, FAILURE),       "Conditional Write Protect"},
     {0x27, 0x07, C_CAST(int, FAILURE),       "Space Allocation Failed Write Protect"},
     {0x27, 0x08, C_CAST(int, FAILURE),       "Zone Is Read Only"},
+    //
     {0x28, 0x00, C_CAST(int, FAILURE),       "Not Ready To Ready Change, Medium May Have Changed"},
     {0x28, 0x01, C_CAST(int, SUCCESS),       "Import or Export Element Accessed"},
     {0x28, 0x02, C_CAST(int, FAILURE),       "Format-Layer May Have Changed"},
     {0x28, 0x03, C_CAST(int, FAILURE),       "Import/Export Element Accessed, Medium Changed"},
+    //
     {0x29, 0x00, -1,                         "Power On, Reset, Or Bus Device Reset Occurred"},
     {0x29, 0x01, -1,                         "Power On Occurred"},
     {0x29, 0x02, -1,                         "SCSI Bus Reset Occurred"},
@@ -350,6 +395,7 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x29, 0x05, -1,                         "Transceiver Mode Changed To Single-Ended"},
     {0x29, 0x06, -1,                         "Transceiver Mode Changed To LVD"},
     {0x29, 0x07, C_CAST(int, FAILURE),       "I_T Nexus Loss Occurred"},
+    //
     {0x2A, 0x00, C_CAST(int, SUCCESS),       "Parameters Changed"},
     {0x2A, 0x01, C_CAST(int, SUCCESS),       "Mode Parameters Changed"},
     {0x2A, 0x02, C_CAST(int, SUCCESS),       "Log Parameters Changed"},
@@ -371,7 +417,9 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x2A, 0x14, C_CAST(int, SUCCESS),       "SA Creation Capabilities Has Changed"},
     {0x2A, 0x15, C_CAST(int, FAILURE),       "Medium Removal Precention Preempted"},
     {0x2A, 0x16, -1,                         "Zone Reset Write Pointer Recommended"},
+    //
     {0x2B, 0x00, C_CAST(int, FAILURE),       "Copy Cannot Execute Since Host Cannot Disconnect"},
+    //
     {0x2C, 0x00, C_CAST(int, FAILURE),       "Command Sequence Error"},
     {0x2C, 0x01, C_CAST(int, FAILURE),       "Too Many Windows Specified"},
     {0x2C, 0x02, C_CAST(int, FAILURE),       "Invalid Combination Of Windows Specified"},
@@ -390,16 +438,22 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x2C, 0x0F, C_CAST(int, FAILURE),       "Stream Not Open"},
     {0x2C, 0x10, -1,                         "Unwritten Data In Zone"},
     {0x2C, 0x11, C_CAST(int, FAILURE),       "Descriptor Format Sense Data Required"},
+    {0x2C, 0x12, C_CAST(int, FAILURE),       "Zone Is Inactive"},
+    {0x2C, 0x13, C_CAST(int, FAILURE),       "Well Known Logical Unit Access Required"},
+    //
     {0x2D, 0x00, -1,                         "Overwrite Error On Update In Place"},
+    //
     {0x2E, 0x00, C_CAST(int, FAILURE),       "Insufficient Time For Operation"},
     {0x2E, 0x01, C_CAST(int, FAILURE),       "Command Timeout Before Processing"},
     {0x2E, 0x02, C_CAST(int, FAILURE),       "Command Timeout During Processing"},
     {0x2E, 0x03, C_CAST(int, FAILURE),       "Command Timeout During Processing Due To Error Recovery"},
+    //
     {0x2F, 0x00, C_CAST(int, FAILURE),       "Commands Cleared By Another Initiator"},
     {0x2F, 0x01, C_CAST(int, FAILURE),       "Commands Cleared By Power Loss Notification"},
     {0x2F, 0x02, C_CAST(int, FAILURE),       "Commands Cleared By Device Server"},
     {0x2F, 0x03, C_CAST(int, FAILURE),       "Some Commands Cleared By Queuing Layer Event"},
     // {0x2F, 0x07, C_CAST(int, FAILURE),       "Space Allocation Failed Write Protect"},
+    //
     {0x30, 0x00, C_CAST(int, FAILURE),       "Incompatible Medium Installed"},
     {0x30, 0x01, C_CAST(int, FAILURE),       "Cannot Read Medium - Unknown Format"},
     {0x30, 0x02, C_CAST(int, FAILURE),       "Cannot Read Medium - Incompatible Format"},
@@ -417,33 +471,47 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x30, 0x11, C_CAST(int, FAILURE),       "Incompatible Volume Type"},
     {0x30, 0x12, C_CAST(int, FAILURE),       "Incompatible Volume Qualifier"},
     {0x30, 0x13, C_CAST(int, FAILURE),       "Cleaning Volume Expired"},
+    //
     {0x31, 0x00, C_CAST(int, FAILURE),       "Medium Format Corrupted"},
     {0x31, 0x01, C_CAST(int, FAILURE),       "Format Command Failed"},
     {0x31, 0x02, C_CAST(int, FAILURE),       "Zoned Formatting Failed Due To Spare Linking"},
     {0x31, 0x03, C_CAST(int, FAILURE),       "Sanitize Command Failed"},
+    {0x31, 0x04, C_CAST(int, FAILURE),       "Depopulation Failed"},
+    {0x31, 0x05, C_CAST(int, FAILURE),       "Depopulation Restoration Failed"},
+    //
     {0x32, 0x00, C_CAST(int, FAILURE),       "No Defect Space Location Available"},
     {0x32, 0x01, C_CAST(int, FAILURE),       "Defect List Update Failure"},
+    //
     {0x33, 0x00, C_CAST(int, FAILURE),       "Tape Length Error"},
+    //
     {0x34, 0x00, C_CAST(int, FAILURE),       "Enclosure Failure"},
+    //
     {0x35, 0x00, C_CAST(int, FAILURE),       "Enclosure Services Failure"},
     {0x35, 0x01, C_CAST(int, NOT_SUPPORTED), "Unsupported Enclosure Function"},
     {0x35, 0x02, C_CAST(int, NOT_SUPPORTED), "Enclosure Services Unavailable"},
     {0x35, 0x03, C_CAST(int, FAILURE),       "Enclosure Services Transfer Failure"},
     {0x35, 0x04, C_CAST(int, FAILURE),       "Enclosure Services Transfer Refused"},
     {0x35, 0x05, C_CAST(int, FAILURE),       "Enclosure Services Checksum Failure"},
+    //
     {0x36, 0x00, C_CAST(int, FAILURE),       "Ribbon, Ink, Or Toner Failure"},
+    //
     {0x37, 0x00, -1,                         "Rounded Parameter"},
+    //
     {0x38, 0x00, -1,                         "Event Status Notification"},
     {0x38, 0x02, -1,                         "ESN - Power Management Class Event"},
     {0x38, 0x04, -1,                         "ESN - Media Class Event"},
     {0x38, 0x06, -1,                         "ESN - Device Busy Class Event"},
     {0x38, 0x07, C_CAST(int, FAILURE),       "Thin Provisioning Soft Threshold Reached"},
+    {0x38, 0x08, C_CAST(int, FAILURE),       "Depopulation Interrupted"},
+    //
     {0x39, 0x00, C_CAST(int, NOT_SUPPORTED), "Saving Parameters Not Supported"},
+    //
     {0x3A, 0x00, C_CAST(int, FAILURE),       "Medium Not Present"},
     {0x3A, 0x01, C_CAST(int, FAILURE),       "Medium Not Present - Tray Closed"},
     {0x3A, 0x02, C_CAST(int, FAILURE),       "Medium Not Present - Tray Open"},
     {0x3A, 0x03, C_CAST(int, FAILURE),       "Medium Not Present - Loadable"},
     {0x3A, 0x04, C_CAST(int, FAILURE),       "Medium Not Present - Medium Auxilary Memory Accessible"},
+    //
     {0x3B, 0x00, C_CAST(int, FAILURE),       "Sequential Positioning Error"},
     {0x3B, 0x01, C_CAST(int, FAILURE),       "Tape Position Error At Beginning-Of-Medium"},
     {0x3B, 0x02, C_CAST(int, FAILURE),       "Tape Position Error At End-Of-Medium"},
@@ -472,12 +540,16 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x3B, 0x1A, -1,                         "Data Transfer Device Removed"},
     {0x3B, 0x1B, -1,                         "Data Transfer Device Inserted"},
     {0x3B, 0x1C, C_CAST(int, FAILURE),       "Too Many Logical Objects On Partition To Supported Operation"},
+    {0x3B, 0x20, C_CAST(int, FAILURE),       "Element Static Information Changed"},
+    //
     {0x3D, 0x00, C_CAST(int, FAILURE),       "Invalid Bits In Identify Message"},
+    //
     {0x3E, 0x00, C_CAST(int, FAILURE),       "Logical Unit Has Not Self-Configured Yet"},
     {0x3E, 0x01, C_CAST(int, FAILURE),       "Logical Unit Failure"},
     {0x3E, 0x02, C_CAST(int, FAILURE),       "Timeout On Logical Unit"},
     {0x3E, 0x03, C_CAST(int, FAILURE),       "Logical Unit Failed Self-Test"},
     {0x3E, 0x04, C_CAST(int, FAILURE),       "Logical Unit Unable to Update Self-Test Log"},
+    //
     {0x3F, 0x00, C_CAST(int, SUCCESS),       "Target Operating Conditions Have Changed"},
     {0x3F, 0x01, C_CAST(int, SUCCESS),       "Microcode Has Been Changed"},
     {0x3F, 0x02, C_CAST(int, SUCCESS),       "Changed Operation Definition"},
@@ -505,14 +577,21 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x3F, 0x18, -1,                         "Bind Completed"},
     {0x3F, 0x19, -1,                         "Bind Redirected"},
     {0x3F, 0x1A, -1,                         "Subsidiary Binding Changed"},
+    //
     {0x41, 0x00, C_CAST(int, FAILURE),       "Data Path Failure (Should Use 40NN)"},
+    //
     {0x42, 0x00, C_CAST(int, FAILURE),       "Power-on Or Self-Test Failure (Should use 40 NN)"},
+    //
     {0x43, 0x00, C_CAST(int, FAILURE),       "Message Error"},
+    //
     {0x44, 0x00, C_CAST(int, FAILURE),       "Internal Target Failure"},
     {0x44, 0x01, C_CAST(int, FAILURE),       "Persistent Reservation Information Lost"},
     {0x44, 0x71, C_CAST(int, FAILURE),       "ATA Device Failed Set Features"},
+    //
     {0x45, 0x00, C_CAST(int, FAILURE),       "Select Or Reselect Failure"},
+    //
     {0x46, 0x00, C_CAST(int, FAILURE),       "Unsuccessful Soft Reset"},
+    //
     {0x47, 0x00, C_CAST(int, FAILURE),       "SCSI Parity Error"},
     {0x47, 0x01, C_CAST(int, FAILURE),       "Data Phase CRC Error Detected"},
     {0x47, 0x02, C_CAST(int, FAILURE),       "SCSI Parity Error Detected During ST Data Phase"},
@@ -521,9 +600,13 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x47, 0x05, C_CAST(int, FAILURE),       "Protocol Service CRC Error"},
     {0x47, 0x06, C_CAST(int, IN_PROGRESS),   "PHY Test Function In Progress"},
     {0x47, 0x7F, C_CAST(int, FAILURE),       "Some Commands Cleared By ISCSI Protocol Event"},
+    //
     {0x48, 0x00, C_CAST(int, SUCCESS),       "Initiator Detected Error Message Received"},
+    //
     {0x49, 0x00, C_CAST(int, FAILURE),       "Invalid Message Error"},
+    //
     {0x4A, 0x00, C_CAST(int, FAILURE),       "Command Phase Error"},
+    //
     {0x4B, 0x00, C_CAST(int, FAILURE),       "Data Phase Error"},
     {0x4B, 0x01, C_CAST(int, FAILURE),       "Invalid Target Port Transfer Tag Received"},
     {0x4B, 0x02, C_CAST(int, FAILURE),       "Too Much Write Data"},
@@ -546,14 +629,20 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x4B, 0x13, C_CAST(int, NOT_SUPPORTED), "PCIE Unsupported Request"},
     {0x4B, 0x14, C_CAST(int, FAILURE),       "PCIE ACS Violation"},
     {0x4B, 0x15, C_CAST(int, FAILURE),       "PCIE TLP Prefix Blocked"},
+    //
     {0x4C, 0x00, C_CAST(int, FAILURE),       "Logical Unit Failed Self-Configuration"},
+    //
     {0x4E, 0x00, C_CAST(int, FAILURE),       "Overlapped Commands Attempted"},
+    //
     {0x50, 0x00, C_CAST(int, FAILURE),       "Write Append Error"},
     {0x50, 0x01, C_CAST(int, FAILURE),       "Write Append Position Error"},
     {0x50, 0x02, C_CAST(int, FAILURE),       "Position Error Related To Timing"},
+    //
     {0x51, 0x00, C_CAST(int, FAILURE),       "Erase Failure"},
     {0x51, 0x01, C_CAST(int, FAILURE),       "Erase Failure - Incomplete Erase Operation Detected"},
+    //
     {0x52, 0x00, C_CAST(int, FAILURE),       "Cartridge Fault"},
+    //
     {0x53, 0x00, C_CAST(int, FAILURE),       "Media Load Or Eject Failed"},
     {0x53, 0x01, C_CAST(int, FAILURE),       "Unload Tape Failure"},
     {0x53, 0x02, C_CAST(int, FAILURE),       "Medium Removal Prevented"},
@@ -568,7 +657,9 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x53, 0x0B, C_CAST(int, FAILURE),       "Data Transfer Device Error - Unload Missing"},
     {0x53, 0x0C, C_CAST(int, FAILURE),       "Data Transfer Device Error - Eject Failed"},
     {0x53, 0x0D, C_CAST(int, FAILURE),       "Data Transfer Device Error - Library Communication Failed"},
+    //
     {0x54, 0x00, C_CAST(int, FAILURE),       "SCSI To host System Interface Failure"},
+    //
     {0x55, 0x00, C_CAST(int, FAILURE),       "System Resource Failure"},
     {0x55, 0x01, C_CAST(int, FAILURE),       "System Buffer Full"},
     {0x55, 0x02, C_CAST(int, FAILURE),       "Insufficient Reservation Resources"},
@@ -587,20 +678,27 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x55, 0x0F, -1,                         "Insufficient Zone Resources To Complete Write"},
     {0x55, 0x10, -1,                         "Maximum Number Of Streams Open"},
     {0x55, 0x11, -1,                         "Insufficient Resources To Bind"},
+    //
     {0x57, 0x00, C_CAST(int, FAILURE),       "Unable To Recover Table-Of-Contents"},
+    //
     {0x58, 0x00, C_CAST(int, FAILURE),       "Generation Does Not Exist"},
+    //
     {0x59, 0x00, -1,                         "Updated Block Read"},
+    //
     {0x5A, 0x00, C_CAST(int, FAILURE),       "Operator Request Or State Change Input"},
     {0x5A, 0x01, C_CAST(int, FAILURE),       "Operator Medium Removal Request"},
     {0x5A, 0x02, C_CAST(int, FAILURE),       "Operator Selected Write Protect"},
     {0x5A, 0x03, C_CAST(int, FAILURE),       "Operator Selected Write Permit"},
+    //
     {0x5B, 0x00, C_CAST(int, FAILURE),       "Log Exception"},
     {0x5B, 0x01, C_CAST(int, FAILURE),       "Threshold Condition Met"},
     {0x5B, 0x02, C_CAST(int, FAILURE),       "Log Counter At Maximum"},
     {0x5B, 0x03, C_CAST(int, FAILURE),       "Log List Codes Exhausted"},
+    //
     {0x5C, 0x00, -1,                         "RPL Status Change"},
     {0x5C, 0x01, C_CAST(int, SUCCESS),       "Spindles Synchronized"},
     {0x5C, 0x02, C_CAST(int, FAILURE),       "Spindles Not Synchronized"},
+    //
     {0x5D, 0x00, C_CAST(int, FAILURE),       "Failure Prediction Threshold Exceeded"},
     {0x5D, 0x01, C_CAST(int, FAILURE),       "Media Failure Prediction Threshold Exceeded"},
     {0x5D, 0x02, C_CAST(int, FAILURE),       "Logical Unit Failure Prediction Threshold Exceeded"},
@@ -686,6 +784,7 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x5D, 0x6C, C_CAST(int, FAILURE),       "Firmware Impending Failure - Drive Calibration Retry Count"},
     {0x5D, 0x73, C_CAST(int, FAILURE),       "Media Impending Failure Endurance Limit Met"},
     {0x5D, 0xFF, C_CAST(int, FAILURE),       "Failure Prediction Threshold Exceeded (False)"},
+    //
     {0x5E, 0x00, C_CAST(int, SUCCESS),       "Low Power Condition On"},
     {0x5E, 0x01, C_CAST(int, SUCCESS),       "Idle Condition Activated By Timer"},
     {0x5E, 0x02, C_CAST(int, SUCCESS),       "Standby Condition Activated By Timer"},
@@ -702,20 +801,28 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x5E, 0x43, C_CAST(int, SUCCESS),       "Power State Change To Standby"},
     {0x5E, 0x45, C_CAST(int, SUCCESS),       "Power State Change To Sleep"},
     {0x5E, 0x47, C_CAST(int, SUCCESS),       "Power State Change To Device Control"},
+    //
     {0x60, 0x00, C_CAST(int, FAILURE),       "Lamp Failure"},
+    //
     {0x61, 0x00, C_CAST(int, FAILURE),       "Video ascuisition Error"},
     {0x61, 0x01, C_CAST(int, FAILURE),       "Unable To ascuire Video"},
     {0x61, 0x02, C_CAST(int, FAILURE),       "Out Of Focus"},
+    //
     {0x62, 0x00, C_CAST(int, FAILURE),       "Scan Head Positioning Error"},
+    //
     {0x63, 0x00, C_CAST(int, FAILURE),       "End Of User Area Encountered On This Track"},
     {0x63, 0x01, C_CAST(int, FAILURE),       "Packet Does Not Fit In Available Space"},
+    //
     {0x64, 0x00, C_CAST(int, FAILURE),       "Illegal Mode For This Track"},
     {0x64, 0x01, C_CAST(int, FAILURE),       "Invalid Packet Size"},
+    //
     {0x65, 0x00, C_CAST(int, FAILURE),       "Voltage Fault"},
+    //
     {0x66, 0x00, C_CAST(int, FAILURE),       "Automatic Document Feeder Cover Up"},
     {0x66, 0x01, C_CAST(int, FAILURE),       "Automatic Document Feeder Lift Up"},
     {0x66, 0x02, C_CAST(int, FAILURE),       "Document Jam In Automatic Document Feeder"},
     {0x66, 0x03, C_CAST(int, FAILURE),       "Document Miss Feed Automatic In Document Feeder"},
+    //
     {0x67, 0x00, C_CAST(int, FAILURE),       "Configuration Failure"},
     {0x67, 0x01, C_CAST(int, FAILURE),       "Configuration Of Incapable Logical Units Failed"},
     {0x67, 0x02, C_CAST(int, FAILURE),       "Add Logical Unit Failed"},
@@ -730,18 +837,26 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x67, 0x0B, C_CAST(int, NOT_SUPPORTED), "ATA Device Feature Not Enabled"},
     {0x67, 0x0C, -1,                         "Command Rejected"},
     {0x67, 0x0D, -1,                         "Explicit Bind Not Allowed"},
+    //
     {0x68, 0x00, C_CAST(int, FAILURE),       "Logical Unit Not Configured"},
     {0x68, 0x01, C_CAST(int, FAILURE),       "Subsidiary Logical Unit Not Configured"},
+    //
     {0x69, 0x00, C_CAST(int, FAILURE),       "Data Loss On Logical Unit"},
     {0x69, 0x01, C_CAST(int, FAILURE),       "Multiple Logical Unit Failures"},
     {0x69, 0x02, C_CAST(int, FAILURE),       "Parity/Data Mismatch"},
+    //
     {0x6A, 0x00, -1,                         "Informational, Refer To Log"},
+    //
     {0x6B, 0x00, -1,                         "State Change Has Occurred"},
     {0x6B, 0x01, -1,                         "Redundancy Level Got Better"},
     {0x6B, 0x02, -1,                         "Redundancy Level Got Worse"},
+    //
     {0x6C, 0x00, -1,                         "Rebuild Failure Occurred"},
+    //
     {0x6D, 0x00, -1,                         "Recalculate Failure Occurred"},
+    //
     {0x6E, 0x00, C_CAST(int, FAILURE),       "Command To Logical Unit Failed"},
+    //
     {0x6F, 0x00, C_CAST(int, FAILURE),       "Copy Protection Key Exchange Failure - Authentication Failure"},
     {0x6F, 0x01, C_CAST(int, FAILURE),       "Copy Protection Key Exchange Failure - Key Not Present"},
     {0x6F, 0x02, C_CAST(int, FAILURE),       "Copy Protection Key Exchange Failure - Key Not Established"},
@@ -753,7 +868,9 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x6F, 0x08, -1,                         "Insufficient Permission"},
     {0x6F, 0x09, -1,                         "Invalid Drive-Host Pairing Server"},
     {0x6F, 0x0A, -1,                         "Drive-Host Pairing Suspended"},
+    //
     {0x71, 0x00, -1,                         "Decompression Exception Long Algorithm ID"},
+    //
     {0x72, 0x00, C_CAST(int, FAILURE),       "Session Fixation Error"},
     {0x72, 0x01, C_CAST(int, FAILURE),       "Session Fixation Error Writing Lead-In"},
     {0x72, 0x02, C_CAST(int, FAILURE),       "Session Fixation Error Writing Lead-Out"},
@@ -762,6 +879,7 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x72, 0x05, C_CAST(int, FAILURE),       "No More Track Reservations Allowed"},
     {0x72, 0x06, C_CAST(int, FAILURE),       "RMZ Extension Is Not Allowed"},
     {0x72, 0x07, C_CAST(int, FAILURE),       "No More Test Zone Extensions Are Allowed"},
+    //
     {0x73, 0x00, C_CAST(int, FAILURE),       "CD Control Error"},
     {0x73, 0x01, -1,                         "Power Calibration Area Almost Full"},
     {0x73, 0x02, -1,                         "Power Calibration Area Is Full"},
@@ -772,6 +890,7 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x73, 0x10, -1,                         "Current Power Calibration Area Almost Full"},
     {0x73, 0x11, -1,                         "Current Power Calibration Area Is Full"},
     {0x73, 0x17, -1,                         "RDZ Is Full"},
+    //
     {0x74, 0x00, C_CAST(int, FAILURE),       "Security Error"},
     {0x74, 0x01, C_CAST(int, FAILURE),       "Unable To Decrypt Data"},
     {0x74, 0x02, C_CAST(int, FAILURE),       "Unencrypted Data Encountered While Decrypting"},
