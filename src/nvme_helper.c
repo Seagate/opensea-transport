@@ -327,7 +327,7 @@ int check_NVMe_Status(uint32_t nvmeStatusDWord)
             ret = FAILURE;
             break;
         case NVME_GEN_SC_OPERATION_DENIED:
-            ret = FAILURE;
+            ret = DEVICE_ACCESS_DENIED;
             break;
         case NVME_GEN_SC_SGL_OFFSET_INVALID:
             ret = NOT_SUPPORTED;
@@ -458,9 +458,11 @@ int check_NVMe_Status(uint32_t nvmeStatusDWord)
         case NVME_MED_ERR_SC_ETE_APPTAG_CHECK_:
         case NVME_MED_ERR_SC_ETE_REFTAG_CHECK_:
         case NVME_MED_ERR_SC_COMPARE_FAILED_:
-        case NVME_MED_ERR_SC_ACCESS_DENIED_:
         case NVME_MED_ERR_SC_DEALLOCATED_OR_UNWRITTEN_LOGICAL_BLOCK:
             ret = FAILURE;
+            break;
+        case NVME_MED_ERR_SC_ACCESS_DENIED_:
+            ret = DEVICE_ACCESS_DENIED;
             break;
         default:
             ret = UNKNOWN;
