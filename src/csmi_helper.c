@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h> // offsetof
 #include <sys/types.h>
 #include <fcntl.h>
 #include <assert.h>
