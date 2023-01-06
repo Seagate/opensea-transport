@@ -1706,11 +1706,25 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
             }
             if (io_hdr.sb_len_wr == 0)//Doing this because some drivers may set an error even if the command otherwise went through and sense data was available.
             {
-                if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                //Special case for MegaRAID and controllers based on MegaRAID.
+                //These controllers block the command and set "Internal Adapter Error" with no other information available.
+                //TODO: Need to test and see if SAT passthrough trusted send/receive are also blocked to add them to this case. -TJE
+                if (io_hdr.host_status == OPENSEA_SG_ERR_DID_ERROR && (scsiIoCtx->cdb[OPERATION_CODE] == SECURITY_PROTOCOL_IN || scsiIoCtx->cdb[OPERATION_CODE] == SECURITY_PROTOCOL_OUT))
                 {
-                    printf("\t(Host Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                    {
+                        printf("\tSpecial Case: Security Protocol Command Blocked\n");
+                    }
+                    ret = OS_COMMAND_BLOCKED;
                 }
-                ret = OS_PASSTHROUGH_FAILURE;
+                else
+                {
+                    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                    {
+                        printf("\t(Host Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                    }
+                    ret = OS_PASSTHROUGH_FAILURE;
+                }
             }
         }
         if (io_hdr.driver_status != 0)
