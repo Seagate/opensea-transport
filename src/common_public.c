@@ -1976,7 +1976,7 @@ bool is_LaCie(tDevice *device)
     size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
     if (stringLen > 0)
     {
-        char *vendorID = C_CAST(char *, calloc(9, sizeof(char)));
+        char *vendorID = C_CAST(char *, calloc(stringLen, sizeof(char)));
         if (vendorID == NULL)
         {
             perror("calloc failure");
