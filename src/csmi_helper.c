@@ -41,7 +41,13 @@
 
 extern bool validate_Device_Struct(versionBlock);
 
-void print_IOCTL_Return_Code(uint32_t returnCode)
+#if defined (_WIN32)
+void print_Last_Error(DWORD lastError);
+#else
+void print_Last_Error(int lastError);
+#endif
+
+static void print_IOCTL_Return_Code(uint32_t returnCode)
 {
     printf("IOCTL Status: ");
     switch (returnCode)
@@ -2184,7 +2190,7 @@ typedef struct _csmiSSPOut
     uint8_t connectionStatus;
 }csmiSSPOut, *ptrCsmiSSPOut;
 
-int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, ptrCsmiSSPIn sspInputs, ptrCsmiSSPOut sspOutputs, eVerbosityLevels verbosity)
+static int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, ptrCsmiSSPIn sspInputs, ptrCsmiSSPOut sspOutputs, eVerbosityLevels verbosity)
 {
     int ret = SUCCESS;
     csmiIOin ioIn;
@@ -2348,7 +2354,7 @@ typedef struct _csmiSTPOut
     bool retryAsSSPPassthrough;//This may be set, but will only be set, if the driver does not support STP passthrough, but DOES support taking a SCSI translatable CDB. This cannot tell whether to use SAT or legacy CSMI passthrough though...that's a trial and error thing unless we figure out which drivers and versions require that. -TJE
 }csmiSTPOut, *ptrCsmiSTPOut;
 
-int csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, ptrCsmiSTPIn stpInputs, ptrCsmiSTPOut stpOutputs, eVerbosityLevels verbosity)
+static int csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, ptrCsmiSTPIn stpInputs, ptrCsmiSTPOut stpOutputs, eVerbosityLevels verbosity)
 {
     int ret = SUCCESS;
     csmiIOin ioIn;
@@ -3534,7 +3540,7 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
 #if defined (CSMI_DEBUG)
                     printf("GRD: Checking for portID and phyID match\n");
 #endif //CSMI_DEBUG
-                    if (phyInfo.Information.Phy[portNum].bPortIdentifier == portID && phyInfo.Information.Phy[portNum].Attached.bPhyIdentifier == phyID
+                    if ((phyInfo.Information.Phy[portNum].bPortIdentifier == portID && phyInfo.Information.Phy[portNum].Attached.bPhyIdentifier == phyID)
                         || (portID == CSMI_SAS_IGNORE_PORT && phyInfo.Information.Phy[portNum].Attached.bPhyIdentifier == phyID)
                         || (phyInfo.Information.Phy[portNum].bPortIdentifier == portID && phyID == CSMI_SAS_USE_PORT_IDENTIFIER)
                         )
@@ -4497,8 +4503,8 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                                 //      If there is a non-zero SASAddress, use it. Otherwise, we need to roll back to matching MN, SN, with an Identify command -TJE
                                                                 //Special case for Intel drivers as an all zero SASAddress is valid on Intel Drivers
                                                                 if ((knownCSMIDriver == CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY || knownCSMIDriver == CSMI_DRIVER_INTEL_VROC) ||
-                                                                    !is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8) && !is_Empty(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, 8)
-                                                                    && memcmp(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8) == 0)
+                                                                    (!is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8) && !is_Empty(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, 8)
+                                                                    && memcmp(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8) == 0))
                                                                 {
 #if defined (CSMI_DEBUG)
                                                                     printf("GDL: Matching SAS address in Phy info found\n");
