@@ -1976,7 +1976,7 @@ bool is_LaCie(tDevice *device)
     size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
     if (stringLen > 0)
     {
-        char *vendorID = C_CAST(char *, calloc(stringLen, sizeof(char)));
+        char *vendorID = C_CAST(char *, calloc(stringLen + 1, sizeof(char)));
         if (vendorID == NULL)
         {
             perror("calloc failure");
@@ -2535,7 +2535,6 @@ bool is_Seagate_Model_Number_Vendor_SSD_PJ(tDevice *device, bool USBchildDrive)
 bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
-
     //we need to check the model number for the ones used on the Vendor products
     if (USBchildDrive)
     {
