@@ -2146,7 +2146,7 @@ eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(tDevice * device, bool USBchildDrive)
     {
         if (wildcard_Match("ST*VN*", modelNumber))   //check if Ironwolf HDD
             isIronWolfNASDrive = IRONWOLF_NAS_DRIVE;
-        else if (wildcard_Match("ST*NE*", modelNumber) || wildcard_Match("ST*NT*", modelNumber))  //check if Ironwolf Pro HDD
+        else if (wildcard_Match("ST*NE*", modelNumber) || wildcard_Match("ST*NT*", modelNumber) || wildcard_Match("ST*ND*", modelNumber))  //check if Ironwolf Pro HDD
             isIronWolfNASDrive = IRONWOLF_PRO_NAS_DRIVE;
         else if (wildcard_Match("*ZA*NM*", modelNumber))  //check if SATA Ironwolf SSD
             isIronWolfNASDrive = IRONWOLF_NAS_DRIVE;
