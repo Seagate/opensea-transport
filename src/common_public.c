@@ -1983,7 +1983,7 @@ bool is_LaCie(tDevice *device)
             return MEMORY_FAILURE;
         }
         snprintf(vendorID, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
-        vendorID[8] = '\0';
+        vendorID[stringLen] = '\0';
         convert_String_To_Upper_Case(vendorID);
         if (strlen(vendorID) >= lacieLen && strncmp(vendorID, "LACIE", lacieLen) == 0)
         {
