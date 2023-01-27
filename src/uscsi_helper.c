@@ -247,7 +247,7 @@ int get_Device(const char *filename, tDevice *device)
     return ret;
 }
 
-int uscsi_Reset(int fd, int resetFlag)
+static int uscsi_Reset(int fd, int resetFlag)
 {
     struct uscsi_cmd uscsi_io;
     int ret = SUCCESS;
