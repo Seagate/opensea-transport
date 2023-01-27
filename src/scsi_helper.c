@@ -2471,14 +2471,19 @@ void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSeria
                 //This is not correct, reverse the string as this is a product defect.
                 char currentSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
                 char newSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
+                uint8_t serialMaxSize = C_CAST(uint8_t, M_Min(SERIAL_NUM_LEN, unitSNSize));
                 //backup current just in case
                 memcpy(currentSerialNumber, (*unitSerialNumber), M_Min(SERIAL_NUM_LEN, unitSNSize));
-                for (int8_t curSN = C_CAST(int8_t, M_Min(SERIAL_NUM_LEN, unitSNSize)), newSN = 0; curSN >= 0 && newSN < C_CAST(int8_t, M_Min(SERIAL_NUM_LEN, unitSNSize)); --curSN)
+                for (uint8_t curSN = serialMaxSize, newSN = 0; newSN < serialMaxSize; --curSN)
                 {
                     if ((*unitSerialNumber)[curSN] != '\0')
                     {
                         newSerialNumber[newSN] = (*unitSerialNumber)[curSN];
                         ++newSN;
+                    }
+                    if (curSN == 0)
+                    {
+                        break;
                     }
                 }
                 memcpy((*unitSerialNumber), newSerialNumber, M_Min(SERIAL_NUM_LEN, unitSNSize));
