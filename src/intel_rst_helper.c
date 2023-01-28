@@ -19,6 +19,10 @@
 #include "csmi_helper.h"
 #endif
 
+#if defined (_DEBUG) && !defined (INTRST_DEBUG)
+#define INTRST_DEBUG
+#endif //_DEBUG && !INTRST_DEBUG
+
 static void print_Intel_SRB_Status(uint32_t srbStatus)
 {
     printf("SRB Status: ");
@@ -368,6 +372,9 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
 bool supports_Intel_Firmware_Download(tDevice *device)
 {
     bool supported = false;
+#if defined (INTRST_DEBUG)
+    printf("Intel: Checking FWDL IOCTL support\n");
+#endif //INTRST_DEBUG
     uint32_t allocationSize = sizeof(INTEL_STORAGE_FIRMWARE_INFO_V2) + (sizeof(INTEL_STORAGE_FIRMWARE_SLOT_INFO_V2) * 7);//max of 7 slots
     PINTEL_STORAGE_FIRMWARE_INFO_V2 firmwareInfo = C_CAST(PINTEL_STORAGE_FIRMWARE_INFO_V2, calloc(allocationSize, sizeof(uint8_t)));//alignment not needed since this is passed to another function where it will be copied as needed
     if (firmwareInfo)
@@ -382,9 +389,9 @@ bool supports_Intel_Firmware_Download(tDevice *device)
         firmwareInfo->Version = INTEL_STORAGE_FIRMWARE_INFO_STRUCTURE_VERSION_V2;
         firmwareInfo->Size = sizeof(INTEL_STORAGE_FIRMWARE_INFO_V2);
         //nothing else needs setup, just issue the command
-#if defined (_DEBUG)
+#if defined (INTRST_DEBUG)
         printf("Attempting to get Intel FWDL support\n");
-#endif
+#endif //INTRST_DEBUG
         if (SUCCESS == intel_RAID_FW_Request(device, firmwareInfo, allocationSize, 15, INTEL_FIRMWARE_FUNCTION_GET_INFO, flags, true, &returnCode))
         {
             supported = firmwareInfo->UpgradeSupport;
@@ -396,7 +403,7 @@ bool supports_Intel_Firmware_Download(tDevice *device)
                 device->os_info.csmiDeviceData->intelRSTSupport.maxXferSize = firmwareInfo->ImagePayloadMaxSize;
                 device->os_info.csmiDeviceData->intelRSTSupport.payloadAlignment = firmwareInfo->ImagePayloadAlignment;
             }
-#if defined (_DEBUG)
+#if defined (INTRST_DEBUG)
             printf("Got Intel FWDL Info\n");
             printf("\tSupported: %d\n", firmwareInfo->UpgradeSupport);
             printf("\tPayload Alignment: %ld\n", firmwareInfo->ImagePayloadAlignment);
@@ -412,10 +419,13 @@ bool supports_Intel_Firmware_Download(tDevice *device)
                 printf("\t\tRead Only: %d\n", firmwareInfo->Slot[iter].ReadOnly);
                 printf("\t\tRevision: %s\n", firmwareInfo->Slot[iter].Revision);
             }
-#endif
+#endif //INTRST_DEBUG
         }
         safe_Free(firmwareInfo)
     }
+#if defined (INTRST_DEBUG)
+    printf("Intel: FWDL IOCTL = %u\n", supported);
+#endif //INTRST_DEBUG
     return supported;
 }
 
@@ -935,6 +945,9 @@ int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx)
 int send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
+#if defined (INTRST_DEBUG)
+    printf("Intel: NVM passthrough request\n");
+#endif //INTRST_DEBUG
     if (nvmeIoCtx)
     {
         if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
@@ -943,9 +956,15 @@ int send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx)
             {
             case NVME_ADMIN_CMD_DOWNLOAD_FW:
             case NVME_ADMIN_CMD_ACTIVATE_FW:
+#if defined (INTRST_DEBUG)
+                printf("Intel: NVM firmware command\n");
+#endif //INTRST_DEBUG
                 ret = send_Intel_NVM_Firmware_Download(nvmeIoCtx);
                 break;
             default:
+#if defined (INTRST_DEBUG)
+                printf("Intel: NVM generic passthrough command\n");
+#endif //INTRST_DEBUG
                 ret = send_Intel_NVM_Passthrough_Command(nvmeIoCtx);
                 break;
             }
@@ -959,12 +978,18 @@ int send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx)
     {
         ret = BAD_PARAMETER;
     }
+#if defined (INTRST_DEBUG)
+    printf("Intel: NVM result: %d\n", ret);
+#endif //INTRST_DEBUG
     return ret;
 }
 
 int send_Intel_NVM_SCSI_Command(ScsiIoCtx *scsiIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
+#if defined (INTRST_DEBUG)
+    printf("Intel: Received SCSI command for translation\n");
+#endif //INTRST_DEBUG
     if (scsiIoCtx)
     {
         ret = sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
@@ -973,6 +998,9 @@ int send_Intel_NVM_SCSI_Command(ScsiIoCtx *scsiIoCtx)
     {
         ret = BAD_PARAMETER;
     }
+#if defined (INTRST_DEBUG)
+    printf("Intel: Translated command result: %d\n", ret);
+#endif //INTRST_DEBUG
     return ret;
 }
 

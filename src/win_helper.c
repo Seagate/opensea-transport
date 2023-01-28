@@ -53,6 +53,10 @@
 
 #include "raid_scan_helper.h"
 
+#if defined (_DEBUG) && !defined (WIN_DEBUG)
+#define WIN_DEBUG
+#endif //_DEBUG && !WIN_DEBUG
+
 //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
 bool os_Is_Infinite_Timeout_Supported(void)
 {
@@ -121,7 +125,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx);
 int send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx);
 int send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx);
 #endif
-#if defined (_DEBUG)
+#if defined (WIN_DEBUG)
 // \fn print_bus_type (BYTE type)
 // \nbrief Funtion to print in human readable format the BusType of a device
 // \param BYTE which is STORAGE_BUS_TYPE windows enum
@@ -209,7 +213,7 @@ void print_bus_type( BYTE type )
         break;
     }
 }
-#endif
+#endif //WIN_DEBUG
 
 //This function is only used in get_Adapter_IDs which is why it's here. If this is useful for something else in the future, move it to opensea-common.
 //static void convert_String_Spaces_To_Underscores(char *stringToChange)
@@ -3942,6 +3946,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
     }
     else
     {
+#if defined (WIN_DEBUG)
+        printf("WIN: opened dev\n");
+#endif //WIN_DEBUG
         device->os_info.scsiSRBHandle = INVALID_HANDLE_VALUE;//set this to invalid ahead of anywhere that it might get opened below for discovering additional capabilities.
         //set the handle name
         strcpy_s(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, filename);
@@ -3974,7 +3981,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
             snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CHGR%" PRIu32, drive);
             device->os_info.os_drive_number = drive;
         }
-
+#if defined (WIN_DEBUG)
+        printf("WIN: Checking for volumes\n");
+#endif //WIN_DEBUG
         //map the drive to a volume letter
         DWORD driveLetters = 0;
         TCHAR currentLetter = 'A';
@@ -4036,12 +4045,12 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                                 device->os_info.fileSystemInfo.isSystemDisk = true;
                                             }
                                         }
-                                        #if defined (_DEBUG)
+                                        #if defined (WIN_DEBUG)
                                         else
                                         {
                                             printf("\nWARNING! Asked for system directory, but got a zero length string! Unable to detect if this is a drive with a system folder!\n");
                                         }
-                                        #endif
+                                        #endif //WIN_DEBUG
                                     }
                                 }
                             }
@@ -4056,21 +4065,27 @@ static int get_Win_Device(const char *filename, tDevice *device )
 
         //set the OS Type
         device->os_info.osType = OS_WINDOWS;
+#if defined (WIN_DEBUG)
+        printf("WIN: getting SCSI address\n");
+#endif //WIN_DEBUG
 
         // Lets get the SCSI address
         win_Get_SCSI_Address(device->os_info.fd, &device->os_info.scsi_addr);
         
+#if defined (WIN_DEBUG)
+        printf("WIN: det adapter descriptor\n");
+#endif //WIN_DEBUG
         // Lets get some properties.
         win_ret = win_Get_Adapter_Descriptor(device->os_info.fd, &adapter_desc);
 
         if (win_ret == SUCCESS)
         {
             // TODO: Copy any of the adapter stuff.
-#if defined (_DEBUG)
+#if defined (WIN_DEBUG)
             printf("Adapter BusType: ");
             print_bus_type(adapter_desc->BusType);
             printf(" \n");
-#endif
+#endif //WIN_DEBUG
             //saving max transfer size (in bytes)
             device->os_info.adapterMaxTransferSize = adapter_desc->MaximumTransferLength;
 
@@ -4088,6 +4103,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
             }
             device->os_info.minimumAlignment = C_CAST(uint8_t, adapter_desc->AlignmentMask + 1);
             device->os_info.alignmentMask = C_CAST(int, adapter_desc->AlignmentMask);//may be needed later....currently unused
+#if defined (WIN_DEBUG)
+            printf("WIN: get device descriptor\n");
+#endif //WIN_DEBUG
             win_ret = win_Get_Device_Descriptor(device->os_info.fd, &device_desc);
             if(win_ret == SUCCESS)
             {
@@ -4099,26 +4117,33 @@ static int get_Win_Device(const char *filename, tDevice *device )
                 device->os_info.adapterDescBusType = adapter_desc->BusType;
                 device->os_info.deviceDescBusType = device_desc->BusType;
 
+                printf("WIN: get adapter IDs (VID/PID for USB or PCIe)\n");
                 get_Adapter_IDs(device, device_desc, device_desc->Size);
 
 #if WINVER >= SEA_WIN32_WINNT_WINBLUE && defined (IOCTL_SCSI_MINIPORT_FIRMWARE)
+#if defined (WIN_DEBUG)
+                printf("WIN: Get MiniPort FWDL capabilities\n");
+#endif //WIN_DEBUG
                 fwdlResult = get_Win_FWDL_Miniport_Capabilities(device, device_desc->BusType == BusTypeNvme ? true : false);
 #endif
 
 #if WINVER >= SEA_WIN32_WINNT_WIN10
                 if (fwdlResult != SUCCESS)
                 {
+#if defined (WIN_DEBUG)
+                    printf("WIN: get Win10 FWDL support\n");
+#endif //WIN_DEBUG
                     get_Windows_FWDL_IO_Support(device, device_desc->BusType);
                 }
 #else
                 M_USE_UNUSED(fwdlResult);
                 device->os_info.fwdlIOsupport.fwdlIOSupported = false;//this API is not available before Windows 10
 #endif
-                #if defined (_DEBUG)
+                #if defined (WIN_DEBUG)
                 printf("Drive BusType: ");
                 print_bus_type(device_desc->BusType);
                 printf(" \n");
-                #endif
+                #endif //WIN_DEBUG
 
                 if (device_desc->BusType == BusTypeUnknown)//Add other device types that can't be handled with other methods of SCSI or ATA passthrough among other options below.
                 {
@@ -4142,6 +4167,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     device->drive_info.drive_type = ATA_DRIVE;
                     device->drive_info.interface_type = IDE_INTERFACE;
                     device->os_info.ioType = WIN_IOCTL_ATA_PASSTHROUGH;
+#if defined (WIN_DEBUG)
+                    printf("WIN: get SMART IO support ATA\n");
+#endif //WIN_DEBUG
                     get_Windows_SMART_IO_Support(device);//might be used later
                     checkForCSMI = true;
                 }
@@ -4156,6 +4184,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     //TODO: These devices use the SCSI MMC command set in packet commands over ATA...other than for a few other commands.
                     //If we care to properly support this, we should investigate either how to send a packet command, or we should try issuing only SCSI commands
                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
+#if defined (WIN_DEBUG)
+                    printf("WIN: get SMART IO support ATAPI\n");
+#endif //WIN_DEBUG
                     get_Windows_SMART_IO_Support(device);//might be used later
                 }
                 else if (device_desc->BusType == BusTypeSata)
@@ -4174,6 +4205,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                     device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
                     device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
+#if defined (WIN_DEBUG)
+                    printf("WIN: get SMART IO support SATA\n");
+#endif //WIN_DEBUG
                     get_Windows_SMART_IO_Support(device);//might be used later
                 }
                 else if (device_desc->BusType == BusTypeUsb)
@@ -4196,6 +4230,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     device->drive_info.namespaceID = device->os_info.scsi_addr.Lun + 1;
                     if (device_desc->VendorIdOffset)//Open fabrics will set a vendorIDoffset, MSFT driver will not.
                     {
+#if defined (WIN_DEBUG)
+                        printf("WIN: checking for additional NVMe driver interfaces\n");
+#endif //WIN_DEBUG
                         if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE || SUCCESS == open_SCSI_SRB_Handle(device))
                         {
                             //now see if the IOCTL is supported or not
@@ -4203,6 +4240,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             //if defined hell since we can flag these interfaces on and off
                             bool foundNVMePassthrough = false;
     #if defined (ENABLE_OFNVME)
+#if defined (WIN_DEBUG)
+                            printf("WIN: checking for open fabrics NVMe IOCTL\n");
+#endif //WIN_DEBUG
                             if (!foundNVMePassthrough && supports_OFNVME_IO(device->os_info.scsiSRBHandle))
                             {
                                 //congratulations! nvme commands can be passed through!!!
@@ -4212,22 +4252,34 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                 device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
                                 //TODO: Setup limited passthrough capabilities structure???
                                 foundNVMePassthrough = true;
+#if defined (WIN_DEBUG)
+                                printf("WIN: open fabrics NVMe supported\n");
+#endif //WIN_DEBUG
                             }
     #endif //ENABLE_OFNVME
     #if defined (ENABLE_INTEL_RST)
                             //TODO: else if(/*check for Intel RST CSMI support*/)
-                            if (!foundNVMePassthrough && device_Supports_CSMI_With_RST(device->os_info.scsiSRBHandle))
+#if defined (WIN_DEBUG)
+                            printf("WIN: Checking for Intel CSMI + RST NVMe support\n");
+#endif //WIN_DEBUG
+                            if (!foundNVMePassthrough && device_Supports_CSMI_With_RST(device))
                             {
                                 //TODO: setup CSMI structure
                                 device->drive_info.drive_type = NVME_DRIVE;
                                 device->drive_info.interface_type = NVME_INTERFACE;
                                 device->os_info.intelNVMePassthroughSupported = true;
                                 foundNVMePassthrough = true;
+#if defined (WIN_DEBUG)
+                                printf("WIN: Intel CSMI + NVMe supported\n");
+#endif //WIN_DEBUG
                             }
     #endif//ENABLE_INTEL_RST
                             if(!foundNVMePassthrough)
 #endif //ENABLE_OFNVME || ENABLE_INTEL_RST
                             {
+#if defined (WIN_DEBUG)
+                                printf("WIN: no NVMe passthrough found\n");
+#endif //WIN_DEBUG
                                 //unable to do passthrough, and isn't in normal Win10 mode, this means it's some other driver that we don't know how to use. Treat as SCSI
                                 device->os_info.intelNVMePassthroughSupported = false;
                                 device->os_info.openFabricsNVMePassthroughSupported = false;
@@ -4238,6 +4290,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                         }
                         else
                         {
+#if defined (WIN_DEBUG)
+                            printf("WIN: treat as SCSI. Closing SCSI SRB handle\n");
+#endif //WIN_DEBUG
                             //close the handle that was opened. TODO: May need to remove this in the future.
                             close_SCSI_SRB_Handle(device);
                             device->os_info.intelNVMePassthroughSupported = false;
@@ -4251,8 +4306,14 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     else
                     {
 #if WINVER >= SEA_WIN32_WINNT_WIN10 
+#if defined (WIN_DEBUG)
+                        printf("WIN: Checking Win version for NVMe IOCTL support level\n");
+#endif //WIN_DEBUG
                         if (is_Windows_10_Or_Higher())
                         {
+#if defined (WIN_DEBUG)
+                            printf("WIN: Win10+\n");
+#endif //WIN_DEBUG
                             device->drive_info.drive_type = NVME_DRIVE;
                             device->drive_info.interface_type = NVME_INTERFACE;
                             device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this, althrough SCSI Read/write 16 will work too!
@@ -4266,14 +4327,23 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique = true;
                             if (is_Windows_10_Version_1903_Or_Higher())
                             {
+#if defined (WIN_DEBUG)
+                                printf("WIN: 1903+\n");
+#endif //WIN_DEBUG
                                 //this is definitely blocked in 1809, so this seems to have started being available in 1903
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest = true;//NOTE: probably specific to a certain Win10 update. Not clearly documented when this became available, so need to do some testing before this is perfect
                             }
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securitySend = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures = true;//Only 1 feature today. <--this is old. There is now a set features API, but I don't see what it does or does not allow. Still needs implementing. - TJE
+#if defined (WIN_DEBUG)
+                            printf("WIN: Checking for Win PE\n");
+#endif //WIN_DEBUG
                             if (is_Windows_PE())
                             {
+#if defined (WIN_DEBUG)
+                                printf("WIN: PE environment found\n");
+#endif //WIN_DEBUG
                                 //If in Windows PE, then these other commands become available
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceAttachment = true;
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceManagement = true;
@@ -4284,6 +4354,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             }
                             if (is_Windows_11_Version_21H2_Or_Higher())
                             {
+#if defined (WIN_DEBUG)
+                                printf("WIN: 21H2+\n");
+#endif //WIN_DEBUG
                                 //New documentation indicates that sanitize is supported wihtout PE mode in Windows 11.
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize = true;
                             }
@@ -4291,6 +4364,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                         else
 #endif //WINVER >= SEA_WIN32_WINNT_WIN10 
                         {
+#if defined (WIN_DEBUG)
+                            printf("WIN: earlier Windows. Treating as SCSI\n");
+#endif //WIN_DEBUG
                             device->drive_info.drive_type = SCSI_DRIVE;
                             device->drive_info.interface_type = SCSI_INTERFACE;
                             device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
@@ -4313,6 +4389,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     }
                     else if (device_desc->BusType == BusTypeRAID)
                     {
+#if defined (WIN_DEBUG)
+                        printf("WIN: RAID bus type. Need to check for additional NVMe/CSMI support\n");
+#endif //WIN_DEBUG
                         //TODO: Need to figure out a better way to decide this.
                         //      Unfortunately, the Intel RST driver will show NVMe drives as RAID, but no vendor ID, so we need to check them all for this until we can find something else to use.
                         //      This means issuing an admin identify which should fail gracefully on drivers that don't actually support this since it's vendor unique IOCTL code and signature.
@@ -4342,6 +4421,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                 if (checkForNVMe)
                 {
                     uint8_t nvmeIdent[4096] = { 0 };
+#if defined (WIN_DEBUG)
+                    printf("WIN: Additional check for Intel NVMe\n");
+#endif //WIN_DEBUG
                     if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE || SUCCESS == open_SCSI_SRB_Handle(device))
                     {
                         //Check for Intel NVMe passthrough
@@ -4353,10 +4435,16 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             //use OS read/write calls since this driver may not allow these to work since it is limited in capabilities for passthrough.
                             device->os_info.osReadWriteRecommended = true;
                             checkForCSMI = false;
+#if defined (WIN_DEBUG)
+                            printf("WIN: Intel NVMe support found\n");
+#endif //WIN_DEBUG
                             //TODO: This passthrough may be limited in commands allowed to be sent. If this is limited, need to fill in the nvme hacks to show what is or is not supported.
                         }
                         else
                         {
+#if defined (WIN_DEBUG)
+                            printf("WIN: Does not support Intel NVMe passthrough\n");
+#endif //WIN_DEBUG
                             device->drive_info.drive_type = SCSI_DRIVE;
                             device->drive_info.interface_type = SCSI_INTERFACE;
                             device->os_info.intelNVMePassthroughSupported = false;
@@ -4367,6 +4455,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                 // Lets fill out rest of info
                 //TODO: This doesn't work for ATAPI on Windows right now. Will need to debug it more to figure out what other parts are wrong to get it fully functional.
                 //This won't be easy since ATAPI is a weird SCSI over ATA hybrid-TJE
+#if defined (WIN_DEBUG)
+                printf("WIN: filling device information\n");
+#endif //WIN_DEBUG
                 ret = fill_Drive_Info_Data(device);
 
                 /*
@@ -4375,6 +4466,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                 */
                 if ((ret != SUCCESS) && (device->drive_info.interface_type == IDE_INTERFACE))
                 {
+#if defined (WIN_DEBUG)
+                    printf("WIN: Working around legacy passthrough issues\n");
+#endif //WIN_DEBUG
                     //we weren't successful getting device information...so now try switching to the other IOCTLs
                     if (device->os_info.ioType == WIN_IOCTL_SCSI_PASSTHROUGH || device->os_info.ioType == WIN_IOCTL_SCSI_PASSTHROUGH_EX)
                     {
@@ -4412,10 +4506,19 @@ static int get_Win_Device(const char *filename, tDevice *device )
 
                 if (checkForCSMI)
                 {
+#if defined (WIN_DEBUG)
+                    printf("WIN: Additional CSMI check\n");
+#endif //WIN_DEBUG
                     if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE  || SUCCESS == open_SCSI_SRB_Handle(device))
                     {
+#if defined (WIN_DEBUG)
+                        printf("WIN: Looking for CSMI IO support\n");
+#endif //WIN_DEBUG
                         if (handle_Supports_CSMI_IO(device->os_info.scsiSRBHandle, device->deviceVerbosity))
                         {
+#if defined (WIN_DEBUG)
+                            printf("WIN: Setting up CSMI capabilities\n");
+#endif //WIN_DEBUG
                             //open up the CSMI handle and populate the pointer to the csmidata structure. This may allow us to work around other commands.
                             if (SUCCESS == jbod_Setup_CSMI_Info(device->os_info.scsiSRBHandle, device, 0, device->os_info.scsi_addr.PortNumber, device->os_info.scsi_addr.PathId, device->os_info.scsi_addr.TargetId, device->os_info.scsi_addr.Lun))
                             {
