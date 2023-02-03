@@ -43,6 +43,8 @@ extern "C"
     #define POWER_TELEMETRY_REQUEST_MEASUREMENT_VERSION    UINT8_C(1)
     #define POWER_TELEMETRY_MAXIMUM_MEASUREMENTS    UINT16_C(1024)
 
+    #define SEAGATE_FARM_LOG_SIGNATURE UINT64_C(0x00004641524D4552)
+
     //TODO: Add any other definitions to this file that are the same drive interface types
 
 #if defined(__cplusplus)
