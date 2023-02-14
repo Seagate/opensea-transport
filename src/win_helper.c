@@ -4116,8 +4116,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                 //save the bus types to the tDevice struct since they may be helpful in certain debug scenarios
                 device->os_info.adapterDescBusType = adapter_desc->BusType;
                 device->os_info.deviceDescBusType = device_desc->BusType;
-
+#if defined (WIN_DEBUG)
                 printf("WIN: get adapter IDs (VID/PID for USB or PCIe)\n");
+#endif //WIN_DEBUG
                 get_Adapter_IDs(device, device_desc, device_desc->Size);
 
 #if WINVER >= SEA_WIN32_WINNT_WINBLUE && defined (IOCTL_SCSI_MINIPORT_FIRMWARE)
@@ -12585,6 +12586,11 @@ int os_Flush(tDevice *device)
             printf("Windows Error: ");
             print_Windows_Error_To_Screen(device->os_info.last_error);
         }
+        ret = FAILURE;
+    }
+    else
+    {
+        ret = SUCCESS;
     }
 
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
