@@ -681,10 +681,6 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (SUCCESS != ret)
-    {
-        ret = FAILURE;
-    }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         switch (feature)
