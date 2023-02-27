@@ -4746,6 +4746,26 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
+            case 0xAC30:// BUP Slim
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 34;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
+                break;
             default: //unknown
                 //setup some defaults that will most likely work for most current products
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
