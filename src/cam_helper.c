@@ -45,7 +45,7 @@ bool os_Is_Infinite_Timeout_Supported()
     return true;
 }
 
-bool is_NVMe_Handle(char *handle)
+static bool is_NVMe_Handle(char *handle)
 {
 	bool isNVMeDevice = false;
 	if (handle && strlen(handle))
@@ -102,7 +102,6 @@ static int get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo par
         //but slightly different. I only had a VM to test with so my results showed the same between the APIs,
         //but the description of getmntinfo was more along the lines of what has been implemented for
         //other OS's we support. - TJE
-        int ret = SUCCESS;
         struct statfs* mountedFS = NULL;
         int totalMounts = getmntinfo(&mountedFS, MNT_WAIT);//Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
         if (totalMounts > 0 && mountedFS)
