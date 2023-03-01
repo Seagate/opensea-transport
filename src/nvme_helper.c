@@ -72,6 +72,11 @@ printf("fill NVMe info ret = %d\n", ret);
         //set the t10 vendor id to NVMe
         snprintf(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "NVMe");
         device->drive_info.media_type = MEDIA_NVM;//This will bite us someday when someone decided to put non-ssds on NVMe interface.
+        //set scsi version to 6 if it is not already set
+        if (device->drive_info.scsiVersion == 0)
+        {
+            device->drive_info.scsiVersion = 6;//most likely this is what will be set by a translator and keep other parts of code working correctly
+        }
 
         //Set the other device fields we need.
         memcpy(fillSerialNumber,ctrlData->sn,SERIAL_NUM_LEN);

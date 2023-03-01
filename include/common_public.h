@@ -929,9 +929,11 @@ extern "C"
                     bool miReceive;
                     bool securitySend;
                     bool securityReceive;
+                    bool formatUserSecureErase;//format with ses set to user erase
+                    bool formatCryptoSecureErase;//format with ses set to crypto erase
                     //TODO: As other passthroughs are learned with different capabilities, add other commands that ARE supported by them here so that other layers of code can know what capabilities a given device has.
                 }limitedCommandsSupported;
-                uint8_t reserved[5];//padd out above bools to 8 byte boundaries
+                uint8_t reserved[3];//padd out above bools to 8 byte boundaries
                 uint32_t maxTransferLength;
                 uint32_t nvmepadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
             }nvmePTHacks;

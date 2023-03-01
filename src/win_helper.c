@@ -4116,8 +4116,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                 //save the bus types to the tDevice struct since they may be helpful in certain debug scenarios
                 device->os_info.adapterDescBusType = adapter_desc->BusType;
                 device->os_info.deviceDescBusType = device_desc->BusType;
-
+#if defined (WIN_DEBUG)
                 printf("WIN: get adapter IDs (VID/PID for USB or PCIe)\n");
+#endif //WIN_DEBUG
                 get_Adapter_IDs(device, device_desc, device_desc->Size);
 
 #if WINVER >= SEA_WIN32_WINNT_WINBLUE && defined (IOCTL_SCSI_MINIPORT_FIRMWARE)
@@ -4325,13 +4326,28 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique = true;
+                            //This block is commented out for now as we need to implement the reinitialize media IOCTL to be able to support this
+                            /*if (is_Windows_10_Version_1607_Or_Higher())
+                            {
+                                if ((device->os_info.fileSystemInfo.fileSystemInfoValid && !device->os_info.fileSystemInfo.isSystemDisk) || is_Windows_PE())
+                                {
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatCryptoSecureErase = true;
+                                }
+                            }*/
                             if (is_Windows_10_Version_1903_Or_Higher())
                             {
 #if defined (WIN_DEBUG)
                                 printf("WIN: 1903+\n");
 #endif //WIN_DEBUG
                                 //this is definitely blocked in 1809, so this seems to have started being available in 1903
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest = true;//NOTE: probably specific to a certain Win10 update. Not clearly documented when this became available, so need to do some testing before this is perfect
+                                //NOTE: probably specific to a certain Win10 update. Not clearly documented when this became available, so need to do some testing before this is perfect
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest = true;
+                                //NOTE: These next two are set based on documentation that they will work. They definitely work on Win 10 22H2, but I have not been able to test older versions at this time.-TJE
+                                if ((device->os_info.fileSystemInfo.fileSystemInfoValid && !device->os_info.fileSystemInfo.isSystemDisk) || is_Windows_PE())
+                                {
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatCryptoSecureErase = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatUserSecureErase = true;
+                                }
                             }
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securitySend = true;
@@ -4357,8 +4373,11 @@ static int get_Win_Device(const char *filename, tDevice *device )
 #if defined (WIN_DEBUG)
                                 printf("WIN: 21H2+\n");
 #endif //WIN_DEBUG
-                                //New documentation indicates that sanitize is supported wihtout PE mode in Windows 11.
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize = true;
+                                if ((device->os_info.fileSystemInfo.fileSystemInfoValid && !device->os_info.fileSystemInfo.isSystemDisk) || is_Windows_PE())
+                                {
+                                    //New documentation indicates that sanitize is supported wihtout PE mode in Windows 11.
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize = true;
+                                }
                             }
                         }
                         else
@@ -10834,98 +10853,110 @@ static int send_NVMe_Set_Features_Win10(nvmeCmdCtx *nvmeIoCtx, bool *useNVMPasst
     return ret;
 }
 
-//static int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
-//{
-//    int ret = OS_COMMAND_NOT_AVAILABLE;
-//    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
-//    uint32_t reservedBitsDWord10 = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 12);
-//    uint8_t secureEraseSettings = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 11, 9);
-//    bool pil = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8;
-//    uint8_t pi = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 5);
-//    bool mset = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT4;
-//    uint8_t lbaFormat = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 3, 0);
-//    nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-//    if (reservedBitsDWord10 == 0 && secureEraseSettings == 0 && !pil && mset)//we dont want to miss parameters that are currently reserved and we cannot do a secure erase with this translation
-//    {
-//        //mode select with mode descriptor (if needed for block size changes)
-//        //First we need to map the incoming LBA format to a size in bytes to send in a mode select
-//        int16_t powerOfTwo = C_CAST(int16_t, nvmeIoCtx->device->drive_info.IdentifyData.nvme.ns.lbaf[lbaFormat].lbaDS);
-//        uint32_t lbaSize = 1;
-//        while (powerOfTwo >= 0)
-//        {
-//            lbaSize = lbaSize << UINT32_C(1);//multiply by 2
-//            --powerOfTwo;
-//        }
-//        if (lbaSize >= LEGACY_DRIVE_SEC_SIZE && lbaSize != nvmeIoCtx->device->drive_info.deviceBlockSize)//make sure the value is greater than 512 as required by spec and that it is different than what it is already set as! - TJE
-//        {
-//            //send a mode select command with a data block descriptor set to the new size
-//            //but first read the control mode page with a block descriptor
-//            uint8_t controlPageAndBD[36] = { 0 };
-//            if (SUCCESS == scsi_Mode_Sense_10(nvmeIoCtx->device, MP_CONTROL, 36, 0, false, true, MPC_CURRENT_VALUES, controlPageAndBD))
-//            {
-//                //got the block descriptor...so lets modify it as we need to...then send it back to the drive(r)
-//                //set number of logical blocks to all F's to make this as big as possible...
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 0] = 0xFF;
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 1] = 0xFF;
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 2] = 0xFF;
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 3] = 0xFF;
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 4] = 0xFF;
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 5] = 0xFF;
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 6] = 0xFF;
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 7] = 0xFF;
-//                //set the block size
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 12] = M_Byte3(lbaSize);
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 13] = M_Byte2(lbaSize);
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 14] = M_Byte1(lbaSize);
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 15] = M_Byte0(lbaSize);
-//                //Leave everything else alone! Just send it to the drive now :)
-//                if (SUCCESS != scsi_Mode_Select_10(nvmeIoCtx->device, 36, true, true, false, controlPageAndBD, 36))
-//                {
-//                    return OS_COMMAND_NOT_AVAILABLE;
-//                }
-//            }
-//            else
-//            {
-//                return OS_COMMAND_NOT_AVAILABLE;
-//            }
-//        }
-//        //format unit command
-//        //set up parameter data if necessary and send the scsi format unit command to be translated and sent to the drive. The mode sense/select should have been cached to be used by the format command.
-//        //if (pi == 0)
-//        //{
-//        //    //send without parameter data
-//        //    ret = scsi_Format_Unit(nvmeIoCtx->device, 0, false, false, false, 0, 0, NULL, 0, 0, 60);
-//        //}
-//        //else
-//        //{
-//        //send with parameter data
-//        uint8_t formatParameterData[4] = { 0 };//short header
-//        uint8_t fmtpInfo = 0;
-//        uint8_t piUsage = 0;
-//        switch (pi)
-//        {
-//        case 0:
-//            break;
-//        case 1:
-//            fmtpInfo = 0x2;
-//            break;
-//        case 2:
-//            fmtpInfo = 0x3;
-//            break;
-//        case 3:
-//            fmtpInfo = 0x3;
-//            piUsage = 1;
-//            break;
-//        default:
-//            return OS_COMMAND_NOT_AVAILABLE;
-//        }
-//        formatParameterData[0] = M_GETBITRANGE(piUsage, 2, 0);
-//        ret = scsi_Format_Unit(nvmeIoCtx->device, fmtpInfo, false, true, false, 0, 0, formatParameterData, 4, 0, 60);
-//        //}
-//    }
-//    nvmeIoCtx->device->deviceVerbosity = inVerbosity;
-//    return ret;
-//}
+static int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
+{
+    int ret = OS_COMMAND_NOT_AVAILABLE;
+    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+    uint32_t reservedBitsDWord10 = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 12);
+    uint8_t secureEraseSettings = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 11, 9);
+    bool pil = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8;
+    uint8_t pi = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 5);
+    bool mset = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT4;
+    uint8_t lbaFormat = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 3, 0);
+    nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
+    if (reservedBitsDWord10 == 0 && !pil && !mset && pi == 0)
+    {
+        //bool issueFormatCMD = false; //While this says this command is translated, I have yet to figure out which combo makes it work.
+        // I get invalid opcode every time I try issuing format unit. https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/stornvme-scsi-translation-support
+        int16_t powerOfTwo = C_CAST(int16_t, nvmeIoCtx->device->drive_info.IdentifyData.nvme.ns.lbaf[lbaFormat].lbaDS);
+        uint32_t lbaSize = 1;
+        while (powerOfTwo > 0)
+        {
+            lbaSize = lbaSize << UINT32_C(1);//multiply by 2
+            --powerOfTwo;
+        }
+        if (lbaSize != nvmeIoCtx->device->drive_info.deviceBlockSize)
+        {
+            //This is NOT supported from what I can tell.
+            //The only mode page supported by Windows is the caching mode page. with size set to 0x0A for a total of 12B of data
+            // block descriptors are never returned.
+            // only mode sense 10 works. LongLBA does NOT work.
+            // No matter which combo of bits/fields used for mode select, it is always rejected with invalid field in CDB.
+            return OS_COMMAND_NOT_AVAILABLE;
+        }
+        else
+        {
+            //NO LBA size change.
+            //In this case we MIGHT be able to run a secure erase using the non-standard sanitize block erase or crypto erase translation
+            //MSFT mentions this briefly in their documentation here:  https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/stornvme-command-set-support
+            if (secureEraseSettings != 0)
+            {
+                //issueFormatCMD = false;
+                //translated with sanitize
+                if (secureEraseSettings == 1)
+                {
+                    //block
+                    ret = scsi_Sanitize_Block_Erase(nvmeIoCtx->device, false, false, false);
+                }
+                else if (secureEraseSettings == 2)
+                {
+                    //crypto
+                    //NOTE: the IOCTL_STORAGE_REINITIALIZE_MEDIA can be used for this too IF no buffer length is passed.
+                    //      Later, Win10 21H1 or Win11 can take parameters to perform a sanitize erase instead.
+                    //TODO: will need to bus trace and figure out when new windows chooses format versus sanitize if this IOCTL is used.
+                    ret = scsi_Sanitize_Cryptographic_Erase(nvmeIoCtx->device, false, false, false);
+                }
+                else
+                {
+                    ret = OS_COMMAND_NOT_AVAILABLE;
+                }
+            }
+            else
+            {
+                //I've tried the format unit command without parameters and no luck. I have tried with fmtdata and no luck.
+                ret = OS_COMMAND_NOT_AVAILABLE;
+            }
+        }
+        //if (issueFormatCMD)
+        //{
+        //    //format unit command
+        //    //set up parameter data if necessary and send the scsi format unit command to be translated and sent to the drive. The mode sense/select should have been cached to be used by the format command.
+        //    //if (pi == 0)
+        //    //{
+        //    //    //send without parameter data
+        //    //    ret = scsi_Format_Unit(nvmeIoCtx->device, 0, false, false, false, 0, 0, NULL, 0, 0, 60);
+        //    //}
+        //    //else
+        //    //{
+        //    //send with parameter data
+        //    //uint8_t formatParameterData[4] = { 0 };//short header
+        //    //uint8_t fmtpInfo = 0;
+        //    //uint8_t piUsage = 0;
+        //    //switch (pi)
+        //    //{
+        //    //case 0:
+        //    //    break;
+        //    //case 1:
+        //    //    fmtpInfo = 0x2;
+        //    //    break;
+        //    //case 2:
+        //    //    fmtpInfo = 0x3;
+        //    //    break;
+        //    //case 3:
+        //    //    fmtpInfo = 0x3;
+        //    //    piUsage = 1;
+        //    //    break;
+        //    //default:
+        //    //    return OS_COMMAND_NOT_AVAILABLE;
+        //    //}
+        //    //formatParameterData[0] = M_GETBITRANGE(piUsage, 2, 0);
+        //    ret = scsi_Format_Unit(nvmeIoCtx->device, 0, false, false, false, 0, 0, NULL, 0, 0, 60);
+        //    //}
+        //}
+    }
+    nvmeIoCtx->device->deviceVerbosity = inVerbosity;
+    return ret;
+}
 
 static int win10_Translate_Write_Uncorrectable(nvmeCmdCtx *nvmeIoCtx)
 {
@@ -11799,15 +11830,22 @@ static int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         case NVME_ADMIN_CMD_SET_FEATURES:
             ret = send_NVMe_Set_Features_Win10(nvmeIoCtx, &useNVMPassthrough);
             break;
-        case NVME_ADMIN_CMD_FORMAT_NVM: //This can be done with a couple IOCTLs, but we should use STORAGE_PROTOCOL_COMMAND since it allows us to specify everything. In WinPE, a SCSI translation from SCSI sanitize is possible (which is non-standard);IOCTL_STORAGE_REINITIALIZE_MEDIA can only do the format with crypto erase
-            //ret = win10_Translate_Format(nvmeIoCtx);
-            //break;
+        case NVME_ADMIN_CMD_FORMAT_NVM:
+            if (is_Windows_PE())
+            {
+                useNVMPassthrough = true;
+            }
+            else
+            {
+                ret = win10_Translate_Format(nvmeIoCtx);
+            }
+            break;
         case NVME_ADMIN_CMD_NAMESPACE_MANAGEMENT:
         case NVME_ADMIN_CMD_NAMESPACE_ATTACHMENT:
         case NVME_ADMIN_CMD_NVME_MI_SEND:
         case NVME_ADMIN_CMD_NVME_MI_RECEIVE:
         case NVME_ADMIN_CMD_SANITIZE:
-            if (is_Windows_PE())
+            if (is_Windows_PE() || is_Windows_11_Version_21H2_Or_Higher())
             {
                 useNVMPassthrough = true;
             }
@@ -12585,6 +12623,11 @@ int os_Flush(tDevice *device)
             printf("Windows Error: ");
             print_Windows_Error_To_Screen(device->os_info.last_error);
         }
+        ret = FAILURE;
+    }
+    else
+    {
+        ret = SUCCESS;
     }
 
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
