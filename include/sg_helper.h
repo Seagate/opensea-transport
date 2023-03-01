@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -38,6 +38,7 @@ extern "C"
 #define SG_PHYSICAL_DRIVE   "/dev/sg" //followed by a number
 #define SD_PHYSICAL_DRIVE   "/dev/sd" //followed by a letter
 #define BSG_PHYSICAL_DRIVE  "/dev/bsg/" //remaining part of the handle is h:c:t:l
+#define OPENSEA_PATH_MAX	PATH_MAX
 
     //This is the maximum timeout a command can use in SG passthrough with linux...1193 hours
     //NOTE: SG also supports an infinite timeout, but that is checked in a separate function

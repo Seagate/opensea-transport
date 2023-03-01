@@ -1,68 +1,42 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 // ******************************************************************************************
+// 
 
 #pragma once
 
 #include "scsi_helper.h"
 #include "sat_helper.h"
-#include "common.h"
 #include "nvme_helper.h"
+#include "common_public.h"
 
 #if defined (__cplusplus)
 extern "C"
 {
 #endif
 
-    #include <inttypes.h>
-    #include <stdlib.h>
-    #include <stdio.h>
-    #include <string.h>
-    #include <unistd.h>
+    #include <stdlib.h> // for size_t types
+    #include <stdio.h>  // for printf
+    #include <string.h> // For memset
+    #include <unistd.h> // For getpagesize
 
-    //This is the maximum timeout a command can use in uscsi passthrough with Solaris...18.2 hours
-#define USCSI_MAX_CMD_TIMEOUT_SECONDS UINT16_MAX
+    #define AIX_PHYSICAL_DRIVE  "/dev/hdisk" 
 
-//If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+    #define AIX_MAX_CMD_TIMEOUT_SECONDS UINT32_MAX
+
+    //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
     bool os_Is_Infinite_Timeout_Supported(void);
 
-    //-----------------------------------------------------------------------------
-    //
-    //  send_uscsi_io()
-    //
-    //! \brief   Description:  Function to send an IO using the Solaris uscsi passthrough
-    //
-    //  Entry:
-    //!   \param[in] scsiIoCtx =  pointer to a scsiIoCtx struct which contains the information necessary to send a command.
-    //! 
-    //!
-    //  Exit:
-    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
-    //
-    //-----------------------------------------------------------------------------
-    int send_uscsi_io( ScsiIoCtx *scsiIoCtx );
-
-    //-----------------------------------------------------------------------------
-    //
-    //  send_IO()
-    //
-    //! \brief   Description:  Function to send an IO
-    //
-    //  Entry:
-    //!   \param[in] scsiIoCtx =  pointer to a scsiIoCtx struct which contains the information necessary to send a command.
-    //! 
-    //!
-    //  Exit:
-    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
-    //
-    //-----------------------------------------------------------------------------
+    // \fn send_IO(scsiIoCtx * scsiIoCtx)
+    // \brief Function to send IO to the device.
+    // \param scsiIoCtx
     int send_IO( ScsiIoCtx *scsiIoCtx );
 
     //-----------------------------------------------------------------------------
@@ -113,6 +87,7 @@ extern "C"
     //-----------------------------------------------------------------------------
     int os_Controller_Reset(tDevice *device);
 
+
     //-----------------------------------------------------------------------------
     //
     //  pci_Read_Bar_Reg()
@@ -131,26 +106,16 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize);
+    int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize );
 
-    //-----------------------------------------------------------------------------
-    //
-    //  send_NVMe_IO()
-    //
-    //! \brief   Description:  Function to send a NVMe command to a device
-    //
-    //  Entry:
-    //!   \param[in] scsiIoCtx = pointer to IO Context!   
-    //!
-    //  Exit:
-    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
-    //
-    //-----------------------------------------------------------------------------
     int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
 
-	int os_nvme_Reset(tDevice *device);
+    //to be used with a deep scan???
+    //int nvme_Namespace_Rescan(int fd);//rescans a controller for namespaces. This must be a file descriptor without a namespace. EX: /dev/nvme0 and NOT /dev/nvme0n1
 
-	int os_nvme_Subsystem_Reset(tDevice *device);
+    int os_nvme_Reset(tDevice *device);
+
+    int os_nvme_Subsystem_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -185,6 +150,7 @@ extern "C"
     int os_Update_File_System_Cache(tDevice* device);
 
     int os_Unmount_File_Systems_On_Device(tDevice *device);
+
 
 #if defined (__cplusplus)
 }

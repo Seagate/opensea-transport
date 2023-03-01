@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -564,6 +564,7 @@ extern "C"
         NVME_LOG_ERROR_ID = 0x01,
         NVME_LOG_SMART_ID = 0x02,
         NVME_LOG_FW_SLOT_ID = 0x03,
+        NVME_LOG_CHANGED_NAMESPACE_LIST = 0x04,
         NVME_LOG_CMD_SPT_EFET_ID = 0x05,
         NVME_LOG_DEV_SELF_TEST_ID = 0x06,
         NVME_LOG_TELEMETRY_HOST_ID = 0x07,
@@ -1011,6 +1012,7 @@ extern "C"
         completionQueueEntry    commandCompletionData;
         bool                    fwdlFirstSegment; //fwdl unique flag to help low-level OS code
         bool                    fwdlLastSegment; //fwdl unique flag to help low-level OS code
+        uint32_t                delay_io;
     } nvmeCmdCtx;
 
     //Smart attribute IDs

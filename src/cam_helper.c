@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -45,7 +45,7 @@ bool os_Is_Infinite_Timeout_Supported()
     return true;
 }
 
-bool is_NVMe_Handle(char *handle)
+static bool is_NVMe_Handle(char *handle)
 {
 	bool isNVMeDevice = false;
 	if (handle && strlen(handle))
@@ -102,7 +102,6 @@ static int get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo par
         //but slightly different. I only had a VM to test with so my results showed the same between the APIs,
         //but the description of getmntinfo was more along the lines of what has been implemented for
         //other OS's we support. - TJE
-        int ret = SUCCESS;
         struct statfs* mountedFS = NULL;
         int totalMounts = getmntinfo(&mountedFS, MNT_WAIT);//Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
         if (totalMounts > 0 && mountedFS)
@@ -491,6 +490,15 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
         }
     }
     //printf("<-- %s\n",__FUNCTION__);
+    if (scsiIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(scsiIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
+        }
+    }
+
     return ret;
 }
 
@@ -1458,6 +1466,14 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 		nvmeIoCtx->commandCompletionData.dw3Valid = true;
 	}
 
+    if (nvmeIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(nvmeIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", nvmeIoCtx->device->delay_io);
+        }
+    }
 	return ret;
 #endif //DISABLE_NVME_PASSTHROUGH
 }

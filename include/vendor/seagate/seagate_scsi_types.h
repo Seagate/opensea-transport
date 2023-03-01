@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -67,6 +67,12 @@ extern "C"
     {
         SEAGATE_FARM_SP_CURRENT = 0x03,
         SEAGATE_FARM_SP_FACTORY = 0x04,
+		SEAGATE_FARM_SP_TIME_SERIES_START = 0x10,
+		SEAGATE_FARM_SP_TIME_SERIES_END = 0x1F,
+		SEAGATE_FARM_SP_TIME_SERIES_ADD1 = 0xC0,
+		SEAGATE_FARM_SP_TIME_SERIES_ADD2 = 0xC1,
+		SEAGATE_FARM_SP_STICKY_START = 0xC2,
+		SEAGATE_FARM_SP_STICKY_END = 0xC7,
     }eSeagateFARMSP;
 
     typedef enum _eSeagateDiagnosticPages

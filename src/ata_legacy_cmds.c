@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -51,7 +51,7 @@ int ata_Legacy_Format_Track(tDevice *device, uint8_t feature, uint8_t sectorCoun
     ataCommandOptions.tfr.SectorCount = sectorCount;
     ataCommandOptions.tfr.ErrorFeature = feature;
     ataCommandOptions.commadProtocol = protocol;
-    ataCommandOptions.tfr.CommandStatus = ATA_FORMAT_TRACK;
+    ataCommandOptions.tfr.CommandStatus = ATA_FORMAT_TRACK_CMD;
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -113,7 +113,7 @@ int ata_Legacy_Recalibrate(tDevice *device, uint8_t lowCmdNibble, bool chsMode)
     ataCommandOptions.tfr.SectorCount = 0;
     ataCommandOptions.tfr.ErrorFeature = 0;
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
-    ataCommandOptions.tfr.CommandStatus = ATA_RECALIBRATE;
+    ataCommandOptions.tfr.CommandStatus = ATA_RECALIBRATE_CMD;
     ataCommandOptions.tfr.CommandStatus |= M_Nibble0(lowCmdNibble);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -190,7 +190,7 @@ int ata_Legacy_Read_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, ui
     else
     {
         ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
-        ataCommandOptions.tfr.CommandStatus = ATA_READ_DMA_RETRY;//0xC8
+        ataCommandOptions.tfr.CommandStatus = ATA_READ_DMA_RETRY_CMD;//0xC8
     }
     
 
@@ -261,7 +261,7 @@ int ata_Legacy_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t hea
     else
     {
         ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
-        ataCommandOptions.tfr.CommandStatus = ATA_READ_MULTIPLE;//0xC4
+        ataCommandOptions.tfr.CommandStatus = ATA_READ_MULTIPLE_CMD;//0xC4
     }
                                              //now set the multiple count setting for the SAT builder so that this command can actually work...and we need to set this as a power of 2, whereas the device info is a number of logical sectors
     uint16_t multipleLogicalSectors = device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock;
@@ -655,7 +655,7 @@ int ata_Legacy_Write_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, u
     else
     {
         ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
-        ataCommandOptions.tfr.CommandStatus = ATA_WRITE_DMA_RETRY;
+        ataCommandOptions.tfr.CommandStatus = ATA_WRITE_DMA_RETRY_CMD;
     }
 
 
@@ -733,7 +733,7 @@ int ata_Legacy_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t he
     else
     {
         ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
-        ataCommandOptions.tfr.CommandStatus = ATA_WRITE_MULTIPLE;
+        ataCommandOptions.tfr.CommandStatus = ATA_WRITE_MULTIPLE_CMD;
     }
 
                                              //now set the multiple count setting for the SAT builder so that this command can actually work...and we need to set this as a power of 2, whereas the device info is a number of logical sectors
@@ -951,7 +951,7 @@ int ata_Legacy_Read_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, u
 
     if (retires)
     {
-        ataCommandOptions.tfr.CommandStatus = ATA_READ_LONG_RETRY;//0x22
+        ataCommandOptions.tfr.CommandStatus = ATA_READ_LONG_RETRY_CMD;//0x22
     }
     else
     {
@@ -1003,7 +1003,7 @@ int ata_Legacy_Read_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *p
     }
     if (retires)
     {
-        ataCommandOptions.tfr.CommandStatus = ATA_READ_LONG_RETRY;//0x22
+        ataCommandOptions.tfr.CommandStatus = ATA_READ_LONG_RETRY_CMD;//0x22
     }
     else
     {
@@ -1054,7 +1054,7 @@ int ata_Legacy_Write_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, 
     }
     if (retires)
     {
-        ataCommandOptions.tfr.CommandStatus = ATA_WRITE_LONG_RETRY;//0x32
+        ataCommandOptions.tfr.CommandStatus = ATA_WRITE_LONG_RETRY_CMD;//0x32
     }
     else
     {
@@ -1106,7 +1106,7 @@ int ata_Legacy_Write_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *
     }
     if (retires)
     {
-        ataCommandOptions.tfr.CommandStatus = ATA_WRITE_LONG_RETRY;//0x32
+        ataCommandOptions.tfr.CommandStatus = ATA_WRITE_LONG_RETRY_CMD;//0x32
     }
     else
     {

@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2019-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2019-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -538,7 +538,7 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     }
 
     bool senseDataIsAllWeGot = true;
-    if (sendRet != COMMAND_TIMEOUT)
+    if (sendRet != OS_COMMAND_TIMEOUT)
     {
         //3. get the command completion
         uint8_t completionData[ASM_NVMP_RESPONSE_DATA_SIZE] = { 0 };

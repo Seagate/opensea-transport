@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -52,6 +52,10 @@
 #endif
 
 #include "raid_scan_helper.h"
+
+#if defined (_DEBUG) && !defined (WIN_DEBUG)
+#define WIN_DEBUG
+#endif //_DEBUG && !WIN_DEBUG
 
 //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
 bool os_Is_Infinite_Timeout_Supported(void)
@@ -121,7 +125,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx);
 int send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx);
 int send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx);
 #endif
-#if defined (_DEBUG)
+#if defined (WIN_DEBUG)
 // \fn print_bus_type (BYTE type)
 // \nbrief Funtion to print in human readable format the BusType of a device
 // \param BYTE which is STORAGE_BUS_TYPE windows enum
@@ -209,7 +213,7 @@ void print_bus_type( BYTE type )
         break;
     }
 }
-#endif
+#endif //WIN_DEBUG
 
 //This function is only used in get_Adapter_IDs which is why it's here. If this is useful for something else in the future, move it to opensea-common.
 //static void convert_String_Spaces_To_Underscores(char *stringToChange)
@@ -233,6 +237,165 @@ void print_bus_type( BYTE type )
 //        iter++;
 //    }
 //}
+
+static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bufferLength, tDevice* device)
+{
+    bool success = true;
+    CONFIGRET cmRet = CR_SUCCESS;
+    //here is where we need to parse the USB VID/PID or TODO: PCI Vendor, Product, and Revision numbers
+    if (_tcsncmp(TEXT("USB"), buffer, _tcsclen(TEXT("USB"))) == 0)
+    {
+        ULONG propertyBufLen = 0;
+        DEVPROPTYPE propertyType = 0;
+#if defined (_MSC_VER) && _MSC_VER < SEA_MSC_VER_VS2015
+        //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
+        int scannedVals = _sntscanf_s(buffer, bufferLength, TEXT("USB\\VID_%x&PID_%x\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
+#else
+        int scannedVals = _sntscanf_s(buffer, bufferLength, TEXT("USB\\VID_%") TEXT(SCNx32) TEXT("&PID_%") TEXT(SCNx32) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
+#endif
+        device->drive_info.adapter_info.vendorIDValid = true;
+        device->drive_info.adapter_info.productIDValid = true;
+        if (scannedVals < 2)
+        {
+#if defined (_DEBUG)
+            printf("Could not scan all values. Scanned %d values\n", scannedVals);
+#endif
+        }
+        device->drive_info.adapter_info.infoType = ADAPTER_INFO_USB;
+        //unfortunately, this device ID doesn't have a revision in it for USB.
+        //We can do this other property request to read it, but it's wide characters only. No TCHARs allowed.
+        cmRet = CM_Get_DevNode_PropertyW(instance, &DEVPKEY_Device_HardwareIds, &propertyType, NULL, &propertyBufLen, 0);
+        if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
+        {
+            PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
+            if (propertyBuf)
+            {
+                propertyBufLen += 1;
+                //NOTE: This key contains all 3 parts, VID, PID, and REV from the "parentInst": Example: USB\VID_174C&PID_2362&REV_0100
+                if (CR_SUCCESS == CM_Get_DevNode_PropertyW(instance, &DEVPKEY_Device_HardwareIds, &propertyType, propertyBuf, &propertyBufLen, 0))
+                {
+                    //multiple strings can be returned.
+                    for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + 1)
+                    {
+                        if (property && (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && wcslen(property))
+                        {
+                            LPWSTR revisionStr = wcsstr(property, L"REV_");
+                            if (revisionStr)
+                            {
+                                if (1 == swscanf(revisionStr, L"REV_%x", &device->drive_info.adapter_info.revision))
+                                {
+                                    device->drive_info.adapter_info.revisionValid = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                safe_Free(propertyBuf)
+            }
+        }
+    }
+    else if (_tcsncmp(TEXT("PCI"), buffer, _tcsclen(TEXT("PCI"))) == 0)
+    {
+        uint32_t subsystem = 0;
+        uint32_t revision = 0;
+#if defined (_MSC_VER) && _MSC_VER  < SEA_MSC_VER_VS2015
+        //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
+        int scannedVals = _sntscanf_s(buffer, bufferLength, TEXT("PCI\\VEN_%lx&DEV_%lx&SUBSYS_%lx&REV_%lx\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
+#else
+        int scannedVals = _sntscanf_s(buffer, bufferLength, TEXT("PCI\\VEN_%") TEXT(SCNx32) TEXT("&DEV_%") TEXT(SCNx32) TEXT("&SUBSYS_%") TEXT(SCNx32) TEXT("&REV_%") TEXT(SCNx32) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
+#endif
+        device->drive_info.adapter_info.vendorIDValid = true;
+        device->drive_info.adapter_info.productIDValid = true;
+        device->drive_info.adapter_info.revision = revision;
+        device->drive_info.adapter_info.revisionValid = true;
+        device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
+        if (scannedVals < 4)
+        {
+#if defined (_DEBUG)
+            printf("Could not scan all values. Scanned %d values\n", scannedVals);
+#endif
+        }
+        //can also read DEVPKEY_Device_HardwareIds for parentInst to get all this data
+    }
+    else if (_tcsncmp(TEXT("1394"), buffer, _tcsclen(TEXT("1394"))) == 0)
+    {
+        //Parent buffer already contains the vendor ID as part of the buffer where a full WWN is reported...we just need first 6 bytes. example, brackets added for clarity: 1394\Maxtor&5000DV__v1.00.00\[0010B9]20003D9D6E
+        //DEVPKEY_Device_CompatibleIds gets use 1394 specifier ID for the device instance
+        //DEVPKEY_Device_CompatibleIds gets revision and specifier ID for the parent instance: 1394\<specifier>&<revision>
+        //DEVPKEY_Device_ConfigurationId gets revision and specifier ID for parent instance: sbp2.inf:1394\609E&10483,sbp2_install
+        //NOTE: There is no currently known way to get the product ID for this interface
+        ULONG propertyBufLen = 0;
+        DEVPROPTYPE propertyType = 0;
+        const DEVPROPKEY* propertyKey = &DEVPKEY_Device_CompatibleIds;
+        //scan buffer to get vendor
+        TCHAR* nextToken = NULL;
+        TCHAR* token = _tcstok_s(buffer, TEXT("\\"), &nextToken);
+        while (token && nextToken && _tcsclen(nextToken) > 0)
+        {
+            token = _tcstok_s(NULL, TEXT("\\"), &nextToken);
+        }
+        if (token)
+        {
+            //at this point, the token contains only the part we care about reading
+            //We need the first 6 characters to convert into hex for the vendor ID
+            TCHAR vendorIDString[7] = { 0 };
+            _tcsncpy_s(vendorIDString, 7, token, 6);
+            _tprintf(TEXT("%s\n"), vendorIDString);
+#if defined (_MSC_VER) && _MSC_VER  < SEA_MSC_VER_VS2015
+            //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
+            int result = _stscanf(token, TEXT("%06lx"), &device->drive_info.adapter_info.vendorID);
+#else
+            int result = _stscanf(token, TEXT("%06") TEXT(SCNx32), &device->drive_info.adapter_info.vendorID);
+#endif
+
+            if (result == 1)
+            {
+                device->drive_info.adapter_info.vendorIDValid = true;
+            }
+        }
+
+        device->drive_info.adapter_info.infoType = ADAPTER_INFO_IEEE1394;
+        cmRet = CM_Get_DevNode_PropertyW(instance, propertyKey, &propertyType, NULL, &propertyBufLen, 0);
+        if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
+        {
+            PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
+            if (propertyBuf)
+            {
+                propertyBufLen += 1;
+                if (CR_SUCCESS == CM_Get_DevNode_PropertyW(instance, propertyKey, &propertyType, propertyBuf, &propertyBufLen, 0))
+                {
+                    //multiple strings can be returned for some properties. This one will most likely only return one.
+                    for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + 1)
+                    {
+                        if (property && (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && wcslen(property))
+                        {
+                            int scannedVals = _snwscanf_s(C_CAST(const wchar_t*, propertyBuf), propertyBufLen, L"1394\\%x&%x", &device->drive_info.adapter_info.specifierID, &device->drive_info.adapter_info.revision);
+                            if (scannedVals < 2)
+                            {
+#if defined (_DEBUG)
+                                printf("Could not scan all values. Scanned %d values\n", scannedVals);
+#endif
+                            }
+                            else
+                            {
+                                device->drive_info.adapter_info.specifierIDValid = true;
+                                device->drive_info.adapter_info.revisionValid = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                safe_Free(propertyBuf)
+            }
+        }
+    }
+    else
+    {
+        success = false;
+    }
+    return success;
+}
 
 //This function uses cfgmgr32 for figuring out the adapter information. 
 //It is possible to do this with setupapi as well. cfgmgr32 is supposedly available in some form for universal apps, whereas setupapi is not.
@@ -1797,152 +1960,97 @@ static int get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR deviceDes
                                                                 /*/
                                                                 //*/
 
-                                                                //here is where we need to parse the USB VID/PID or TODO: PCI Vendor, Product, and Revision numbers
-                                                                if (_tcsncmp(TEXT("USB"), parentBuffer, _tcsclen(TEXT("USB"))) == 0)
+                                                                if (!get_IDs_From_TCHAR_String(parentInst, parentBuffer, parentLen, device))
                                                                 {
-                                                                    ULONG propertyBufLen = 0;
-                                                                    DEVPROPTYPE propertyType = 0;
-        #if defined (_MSC_VER) && _MSC_VER < SEA_MSC_VER_VS2015
-                                                                    //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
-                                                                    int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%x&PID_%x\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
-        #else
-                                                                    int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("USB\\VID_%") TEXT(SCNx32) TEXT("&PID_%") TEXT(SCNx32) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
-        #endif
-                                                                    device->drive_info.adapter_info.vendorIDValid = true;
-                                                                    device->drive_info.adapter_info.productIDValid = true;
-                                                                    if (scannedVals < 2)
+                                                                    //try the parent's parent. There are some cases where this seems to be necessary to get this data.
+                                                                    //one known case is AMD's RAID driver. There may be others
+                                                                    DEVINST pparentInst = 0;
+                                                                    cmRet = CM_Get_Parent(&pparentInst, parentInst, 0);
+                                                                    if (CR_SUCCESS == cmRet)
                                                                     {
-        #if defined (_DEBUG)
-                                                                        printf("Could not scan all values. Scanned %d values\n", scannedVals);
-        #endif
-                                                                    }
-                                                                    device->drive_info.adapter_info.infoType = ADAPTER_INFO_USB;
-                                                                    //unfortunately, this device ID doesn't have a revision in it for USB.
-                                                                    //We can do this other property request to read it, but it's wide characters only. No TCHARs allowed.
-                                                                    cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_HardwareIds, &propertyType, NULL, &propertyBufLen, 0);
-                                                                    if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
-                                                                    {
-                                                                        PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
-                                                                        if (propertyBuf)
+                                                                        ULONG pparentLen = 0;
+                                                                        cmRet = CM_Get_Device_ID_Size(&pparentLen, pparentInst, 0);
+                                                                        pparentLen += 1;
+                                                                        if (CR_SUCCESS == cmRet)
                                                                         {
-                                                                            propertyBufLen += 1;
-                                                                            //NOTE: This key contains all 3 parts, VID, PID, and REV from the "parentInst": Example: USB\VID_174C&PID_2362&REV_0100
-                                                                            if (CR_SUCCESS == CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_HardwareIds, &propertyType, propertyBuf, &propertyBufLen, 0))
+                                                                            TCHAR* pparentBuffer = C_CAST(TCHAR*, calloc(pparentLen, sizeof(TCHAR)));
+                                                                            if (pparentBuffer)
                                                                             {
-                                                                                //multiple strings can be returned.
-                                                                                for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + 1)
+                                                                                cmRet = CM_Get_Device_ID(pparentInst, pparentBuffer, pparentLen, 0);
+                                                                                if (CR_SUCCESS == cmRet)
                                                                                 {
-                                                                                    if (property && (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && wcslen(property))
+                                                                                    if (!get_IDs_From_TCHAR_String(pparentInst, pparentBuffer, pparentLen, device))
                                                                                     {
-                                                                                        LPWSTR revisionStr = wcsstr(property, L"REV_");
-                                                                                        if (revisionStr)
-                                                                                        {
-                                                                                            if (1 == swscanf(revisionStr, L"REV_%x", &device->drive_info.adapter_info.revision))
-                                                                                            {
-                                                                                                device->drive_info.adapter_info.revisionValid = true;
-                                                                                                break;
-                                                                                            }
-                                                                                        }
+                                                                                        printf("Fatal error getting device IDs\n");
                                                                                     }
                                                                                 }
+                                                                                safe_Free(pparentBuffer);
                                                                             }
-                                                                            safe_Free(propertyBuf)
                                                                         }
                                                                     }
                                                                 }
-                                                                else if (_tcsncmp(TEXT("PCI"), parentBuffer, _tcsclen(TEXT("PCI"))) == 0)
-                                                                {
-                                                                    uint32_t subsystem = 0;
-                                                                    uint32_t revision = 0;
-        #if defined (_MSC_VER) && _MSC_VER  < SEA_MSC_VER_VS2015
-                                                                    //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
-                                                                    int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("PCI\\VEN_%lx&DEV_%lx&SUBSYS_%lx&REV_%lx\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
-        #else
-                                                                    int scannedVals = _sntscanf_s(parentBuffer, parentLen, TEXT("PCI\\VEN_%") TEXT(SCNx32) TEXT("&DEV_%") TEXT(SCNx32) TEXT("&SUBSYS_%") TEXT(SCNx32) TEXT("&REV_%") TEXT(SCNx32) TEXT("\\%*s"), &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID, &subsystem, &revision);
-        #endif
-                                                                    device->drive_info.adapter_info.vendorIDValid = true;
-                                                                    device->drive_info.adapter_info.productIDValid = true;
-                                                                    device->drive_info.adapter_info.revision = revision;
-                                                                    device->drive_info.adapter_info.revisionValid = true;
-                                                                    device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
-                                                                    if (scannedVals < 4)
-                                                                    {
-        #if defined (_DEBUG)
-                                                                        printf("Could not scan all values. Scanned %d values\n", scannedVals);
-        #endif
-                                                                    }
-                                                                    //can also read DEVPKEY_Device_HardwareIds for parentInst to get all this data
-                                                                }
-                                                                else if (_tcsncmp(TEXT("1394"), parentBuffer, _tcsclen(TEXT("1394"))) == 0)
-                                                                {
-                                                                    //Parent buffer already contains the vendor ID as part of the buffer where a full WWN is reported...we just need first 6 bytes. example, brackets added for clarity: 1394\Maxtor&5000DV__v1.00.00\[0010B9]20003D9D6E
-                                                                    //DEVPKEY_Device_CompatibleIds gets use 1394 specifier ID for the device instance
-                                                                    //DEVPKEY_Device_CompatibleIds gets revision and specifier ID for the parent instance: 1394\<specifier>&<revision>
-                                                                    //DEVPKEY_Device_ConfigurationId gets revision and specifier ID for parent instance: sbp2.inf:1394\609E&10483,sbp2_install
-                                                                    //NOTE: There is no currently known way to get the product ID for this interface
-                                                                    ULONG propertyBufLen = 0;
-                                                                    DEVPROPTYPE propertyType = 0;
-                                                                    const DEVPROPKEY *propertyKey = &DEVPKEY_Device_CompatibleIds;
-                                                                    //scan parentBuffer to get vendor
-                                                                    TCHAR *nextToken = NULL;
-                                                                    TCHAR *token = _tcstok_s(parentBuffer, TEXT("\\"), &nextToken);
-                                                                    while (token && nextToken &&  _tcsclen(nextToken) > 0)
-                                                                    {
-                                                                        token = _tcstok_s(NULL, TEXT("\\"), &nextToken);
-                                                                    }
-                                                                    if (token)
-                                                                    {
-                                                                        //at this point, the token contains only the part we care about reading
-                                                                        //We need the first 6 characters to convert into hex for the vendor ID
-                                                                        TCHAR vendorIDString[7] = { 0 };
-                                                                        _tcsncpy_s(vendorIDString, 7 * sizeof(TCHAR), token, 6);
-                                                                        _tprintf(TEXT("%s\n"), vendorIDString);
-        #if defined (_MSC_VER) && _MSC_VER  < SEA_MSC_VER_VS2015
-                                                                        //This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined for it versus newer versions.
-                                                                        int result = _stscanf(token, TEXT("%06lx"), &device->drive_info.adapter_info.vendorID);
-        #else
-                                                                        int result = _stscanf(token, TEXT("%06") TEXT(SCNx32), &device->drive_info.adapter_info.vendorID);
-        #endif
-                                                                
-                                                                        if (result == 1)
-                                                                        {
-                                                                            device->drive_info.adapter_info.vendorIDValid = true;
-                                                                        }
-                                                                    }
 
-                                                                    device->drive_info.adapter_info.infoType = ADAPTER_INFO_IEEE1394;
-                                                                    cmRet = CM_Get_DevNode_PropertyW(parentInst, propertyKey, &propertyType, NULL, &propertyBufLen, 0);
-                                                                    if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
+                                                                //For driver name and version data, request the following with the parent's instance. (don't need parent's parent)
+                                                                // 1. DEVPKEY_Device_Service <- gives the driver's name
+                                                                // 2. DEVPKEY_Device_DriverVersion
+                                                                //Both return strings that we can parse as needed. DEVPKEY_Device_DriverDesc gives the driver's "displayable" name, which is not always helpful since it's usually marketting crap
+                                                                ULONG propertyBufLen = 0;
+                                                                DEVPROPTYPE propertyType = 0;
+                                                                cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_Service, &propertyType, NULL, &propertyBufLen, 0);
+                                                                if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
+                                                                {
+                                                                    PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
+                                                                    if (propertyBuf)
                                                                     {
-                                                                        PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
-                                                                        if (propertyBuf)
+                                                                        propertyBufLen += 1;
+                                                                        cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_Service, &propertyType, propertyBuf, &propertyBufLen, 0);
+                                                                        if (CR_SUCCESS == cmRet)
                                                                         {
-                                                                            propertyBufLen += 1;
-                                                                            if (CR_SUCCESS == CM_Get_DevNode_PropertyW(parentInst, propertyKey, &propertyType, propertyBuf, &propertyBufLen, 0))
+                                                                            DEVPROPTYPE propertyModifier = propertyType & DEVPROP_MASK_TYPEMOD;
+                                                                            uint8_t propListAdditionalLen = propertyModifier == DEVPROP_TYPEMOD_LIST ? 1 : 0;//this adjusts the loop because if this ISN'T set, then we don't need any more length than the string length
+                                                                            for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + propListAdditionalLen)
                                                                             {
-                                                                                //multiple strings can be returned for some properties. This one will most likely only return one.
-                                                                                for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + 1)
+                                                                                if (property && (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && wcslen(property))
                                                                                 {
-                                                                                    if (property && (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && wcslen(property))
-                                                                                    {
-                                                                                        int scannedVals = _snwscanf_s(C_CAST(const wchar_t*, propertyBuf), propertyBufLen, L"1394\\%x&%x", &device->drive_info.adapter_info.specifierID, &device->drive_info.adapter_info.revision);
-                                                                                        if (scannedVals < 2)
-                                                                                        {
-        #if defined (_DEBUG)
-                                                                                            printf("Could not scan all values. Scanned %d values\n", scannedVals);
-        #endif
-                                                                                        }
-                                                                                        else
-                                                                                        {
-                                                                                            device->drive_info.adapter_info.specifierIDValid = true;
-                                                                                            device->drive_info.adapter_info.revisionValid = true;
-                                                                                            break;
-                                                                                        }
-                                                                                    }
+                                                                                    snprintf(device->drive_info.driver_info.driverName, MAX_DRIVER_NAME, "%ls", property);//this should convert the driver name to ascii string.-TJE
                                                                                 }
                                                                             }
-                                                                            safe_Free(propertyBuf)
                                                                         }
+                                                                        safe_Free(propertyBuf)
+                                                                    }
+                                                                }
+                                                                propertyBufLen = 0;//reset to zero before going into this function to read the string again.-TJE
+                                                                cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_DriverVersion, &propertyType, NULL, &propertyBufLen, 0);
+                                                                if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
+                                                                {
+                                                                    PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
+                                                                    if (propertyBuf)
+                                                                    {
+                                                                        propertyBufLen += 1;
+                                                                        cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_DriverVersion, &propertyType, propertyBuf, &propertyBufLen, 0);
+                                                                        if (CR_SUCCESS == cmRet)
+                                                                        {
+                                                                            DEVPROPTYPE propertyModifier = propertyType & DEVPROP_MASK_TYPEMOD;
+                                                                            uint8_t propListAdditionalLen = propertyModifier == DEVPROP_TYPEMOD_LIST ? 1 : 0;//this adjusts the loop because if this ISN'T set, then we don't need any more length than the string length
+                                                                            for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + propListAdditionalLen)
+                                                                            {
+                                                                                if (property && (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && wcslen(property))
+                                                                                {
+                                                                                    snprintf(device->drive_info.driver_info.driverVersionString, MAX_DRIVER_VER_STR, "%ls", property);
+                                                                                    int scanfRet = swscanf(property, L"%u.%u.%u.%u", &device->drive_info.driver_info.driverMajorVersion, &device->drive_info.driver_info.driverMinorVersion, &device->drive_info.driver_info.driverRevision, &device->drive_info.driver_info.driverBuildNumber);
+                                                                                    if (scanfRet < 4 || scanfRet == EOF)
+                                                                                    {
+                                                                                        printf("Fatal error getting driver version!\n");
+                                                                                    }
+                                                                                    //TODO: Handle parsing not getting all version info. This is unlikely to be an issue in Windows since all version numbers are a consistent format enforced by MSFT-TJE
+                                                                                    device->drive_info.driver_info.majorVerValid = true;
+                                                                                    device->drive_info.driver_info.minorVerValid = true;
+                                                                                    device->drive_info.driver_info.revisionVerValid = true;
+                                                                                    device->drive_info.driver_info.buildVerValid = true;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                        safe_Free(propertyBuf)
                                                                     }
                                                                 }
                                                             }
@@ -2182,7 +2290,7 @@ static int send_Win_Firmware_Miniport_Command(HANDLE deviceHandle, eVerbosityLev
         if (VERBOSITY_COMMAND_VERBOSE <= verboseLevel)
         {
             printf("Firmware Miniport Status: ");
-            print_Firmware_Miniport_SRB_Status(getLastError);
+            print_Firmware_Miniport_SRB_Status(srbControl->ReturnCode);
         }
     }
     else
@@ -2193,7 +2301,7 @@ static int send_Win_Firmware_Miniport_Command(HANDLE deviceHandle, eVerbosityLev
             printf("Windows Error: ");
             print_Windows_Error_To_Screen(getLastError);
             printf("Firmware Miniport Status: ");
-            print_Firmware_Miniport_SRB_Status(getLastError);
+            print_Firmware_Miniport_SRB_Status(srbControl->ReturnCode);
         }
     }
     if (lastError)
@@ -2374,7 +2482,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)/
                 isActivate = true;
             }
         }
-        else if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
+        else if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_CMD || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
         {
 
             if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0E)
@@ -2418,7 +2526,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)/
         printf("Checking ATA command info for FWDL support\n");
 #endif
         //We're sending an ATA passthrough command, and the OS says the io is supported, so it SHOULD work. - TJE
-        if (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA)
+        if (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_CMD || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA)
         {
 #if defined (_DEBUG_FWDL_API_COMPATABILITY)
             printf("Is Download Microcode command (%" PRIX8 "h)\n", scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus);
@@ -2493,7 +2601,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)/
 static bool is_Activate_Command(ScsiIoCtx* scsiIoCtx)
 {
     bool isActivate = false;
-    if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
+    if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_CMD || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
     {
         //check the subcommand (feature)
         if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0F)
@@ -3838,6 +3946,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
     }
     else
     {
+#if defined (WIN_DEBUG)
+        printf("WIN: opened dev\n");
+#endif //WIN_DEBUG
         device->os_info.scsiSRBHandle = INVALID_HANDLE_VALUE;//set this to invalid ahead of anywhere that it might get opened below for discovering additional capabilities.
         //set the handle name
         strcpy_s(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, filename);
@@ -3870,7 +3981,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
             snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CHGR%" PRIu32, drive);
             device->os_info.os_drive_number = drive;
         }
-
+#if defined (WIN_DEBUG)
+        printf("WIN: Checking for volumes\n");
+#endif //WIN_DEBUG
         //map the drive to a volume letter
         DWORD driveLetters = 0;
         TCHAR currentLetter = 'A';
@@ -3932,12 +4045,12 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                                 device->os_info.fileSystemInfo.isSystemDisk = true;
                                             }
                                         }
-                                        #if defined (_DEBUG)
+                                        #if defined (WIN_DEBUG)
                                         else
                                         {
                                             printf("\nWARNING! Asked for system directory, but got a zero length string! Unable to detect if this is a drive with a system folder!\n");
                                         }
-                                        #endif
+                                        #endif //WIN_DEBUG
                                     }
                                 }
                             }
@@ -3952,23 +4065,30 @@ static int get_Win_Device(const char *filename, tDevice *device )
 
         //set the OS Type
         device->os_info.osType = OS_WINDOWS;
+#if defined (WIN_DEBUG)
+        printf("WIN: getting SCSI address\n");
+#endif //WIN_DEBUG
 
         // Lets get the SCSI address
         win_Get_SCSI_Address(device->os_info.fd, &device->os_info.scsi_addr);
         
+#if defined (WIN_DEBUG)
+        printf("WIN: det adapter descriptor\n");
+#endif //WIN_DEBUG
         // Lets get some properties.
         win_ret = win_Get_Adapter_Descriptor(device->os_info.fd, &adapter_desc);
 
         if (win_ret == SUCCESS)
         {
             // TODO: Copy any of the adapter stuff.
-#if defined (_DEBUG)
+#if defined (WIN_DEBUG)
             printf("Adapter BusType: ");
             print_bus_type(adapter_desc->BusType);
             printf(" \n");
-#endif
+#endif //WIN_DEBUG
             //saving max transfer size (in bytes)
             device->os_info.adapterMaxTransferSize = adapter_desc->MaximumTransferLength;
+
 
             //saving the SRB type so that we know when an adapter supports the new SCSI Passthrough EX IOCTLS - TJE
 #if WINVER >= SEA_WIN32_WINNT_WIN8 //If this check is wrong, make sure minGW is properly defining WINVER in the makefile.
@@ -3983,32 +4103,48 @@ static int get_Win_Device(const char *filename, tDevice *device )
             }
             device->os_info.minimumAlignment = C_CAST(uint8_t, adapter_desc->AlignmentMask + 1);
             device->os_info.alignmentMask = C_CAST(int, adapter_desc->AlignmentMask);//may be needed later....currently unused
+#if defined (WIN_DEBUG)
+            printf("WIN: get device descriptor\n");
+#endif //WIN_DEBUG
             win_ret = win_Get_Device_Descriptor(device->os_info.fd, &device_desc);
             if(win_ret == SUCCESS)
             {
                 bool checkForCSMI = false;
                 bool checkForNVMe = false;
                 int fwdlResult = NOT_SUPPORTED;
+
+                //save the bus types to the tDevice struct since they may be helpful in certain debug scenarios
+                device->os_info.adapterDescBusType = adapter_desc->BusType;
+                device->os_info.deviceDescBusType = device_desc->BusType;
+#if defined (WIN_DEBUG)
+                printf("WIN: get adapter IDs (VID/PID for USB or PCIe)\n");
+#endif //WIN_DEBUG
                 get_Adapter_IDs(device, device_desc, device_desc->Size);
 
 #if WINVER >= SEA_WIN32_WINNT_WINBLUE && defined (IOCTL_SCSI_MINIPORT_FIRMWARE)
+#if defined (WIN_DEBUG)
+                printf("WIN: Get MiniPort FWDL capabilities\n");
+#endif //WIN_DEBUG
                 fwdlResult = get_Win_FWDL_Miniport_Capabilities(device, device_desc->BusType == BusTypeNvme ? true : false);
 #endif
 
 #if WINVER >= SEA_WIN32_WINNT_WIN10
                 if (fwdlResult != SUCCESS)
                 {
+#if defined (WIN_DEBUG)
+                    printf("WIN: get Win10 FWDL support\n");
+#endif //WIN_DEBUG
                     get_Windows_FWDL_IO_Support(device, device_desc->BusType);
                 }
 #else
                 M_USE_UNUSED(fwdlResult);
                 device->os_info.fwdlIOsupport.fwdlIOSupported = false;//this API is not available before Windows 10
 #endif
-                #if defined (_DEBUG)
+                #if defined (WIN_DEBUG)
                 printf("Drive BusType: ");
                 print_bus_type(device_desc->BusType);
                 printf(" \n");
-                #endif
+                #endif //WIN_DEBUG
 
                 if (device_desc->BusType == BusTypeUnknown)//Add other device types that can't be handled with other methods of SCSI or ATA passthrough among other options below.
                 {
@@ -4032,6 +4168,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     device->drive_info.drive_type = ATA_DRIVE;
                     device->drive_info.interface_type = IDE_INTERFACE;
                     device->os_info.ioType = WIN_IOCTL_ATA_PASSTHROUGH;
+#if defined (WIN_DEBUG)
+                    printf("WIN: get SMART IO support ATA\n");
+#endif //WIN_DEBUG
                     get_Windows_SMART_IO_Support(device);//might be used later
                     checkForCSMI = true;
                 }
@@ -4046,6 +4185,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     //TODO: These devices use the SCSI MMC command set in packet commands over ATA...other than for a few other commands.
                     //If we care to properly support this, we should investigate either how to send a packet command, or we should try issuing only SCSI commands
                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
+#if defined (WIN_DEBUG)
+                    printf("WIN: get SMART IO support ATAPI\n");
+#endif //WIN_DEBUG
                     get_Windows_SMART_IO_Support(device);//might be used later
                 }
                 else if (device_desc->BusType == BusTypeSata)
@@ -4064,6 +4206,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                     device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
                     device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
+#if defined (WIN_DEBUG)
+                    printf("WIN: get SMART IO support SATA\n");
+#endif //WIN_DEBUG
                     get_Windows_SMART_IO_Support(device);//might be used later
                 }
                 else if (device_desc->BusType == BusTypeUsb)
@@ -4086,6 +4231,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     device->drive_info.namespaceID = device->os_info.scsi_addr.Lun + 1;
                     if (device_desc->VendorIdOffset)//Open fabrics will set a vendorIDoffset, MSFT driver will not.
                     {
+#if defined (WIN_DEBUG)
+                        printf("WIN: checking for additional NVMe driver interfaces\n");
+#endif //WIN_DEBUG
                         if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE || SUCCESS == open_SCSI_SRB_Handle(device))
                         {
                             //now see if the IOCTL is supported or not
@@ -4093,6 +4241,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             //if defined hell since we can flag these interfaces on and off
                             bool foundNVMePassthrough = false;
     #if defined (ENABLE_OFNVME)
+#if defined (WIN_DEBUG)
+                            printf("WIN: checking for open fabrics NVMe IOCTL\n");
+#endif //WIN_DEBUG
                             if (!foundNVMePassthrough && supports_OFNVME_IO(device->os_info.scsiSRBHandle))
                             {
                                 //congratulations! nvme commands can be passed through!!!
@@ -4102,22 +4253,34 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                 device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
                                 //TODO: Setup limited passthrough capabilities structure???
                                 foundNVMePassthrough = true;
+#if defined (WIN_DEBUG)
+                                printf("WIN: open fabrics NVMe supported\n");
+#endif //WIN_DEBUG
                             }
     #endif //ENABLE_OFNVME
     #if defined (ENABLE_INTEL_RST)
                             //TODO: else if(/*check for Intel RST CSMI support*/)
-                            if (!foundNVMePassthrough && device_Supports_CSMI_With_RST(device->os_info.scsiSRBHandle))
+#if defined (WIN_DEBUG)
+                            printf("WIN: Checking for Intel CSMI + RST NVMe support\n");
+#endif //WIN_DEBUG
+                            if (!foundNVMePassthrough && device_Supports_CSMI_With_RST(device))
                             {
                                 //TODO: setup CSMI structure
                                 device->drive_info.drive_type = NVME_DRIVE;
                                 device->drive_info.interface_type = NVME_INTERFACE;
                                 device->os_info.intelNVMePassthroughSupported = true;
                                 foundNVMePassthrough = true;
+#if defined (WIN_DEBUG)
+                                printf("WIN: Intel CSMI + NVMe supported\n");
+#endif //WIN_DEBUG
                             }
     #endif//ENABLE_INTEL_RST
                             if(!foundNVMePassthrough)
 #endif //ENABLE_OFNVME || ENABLE_INTEL_RST
                             {
+#if defined (WIN_DEBUG)
+                                printf("WIN: no NVMe passthrough found\n");
+#endif //WIN_DEBUG
                                 //unable to do passthrough, and isn't in normal Win10 mode, this means it's some other driver that we don't know how to use. Treat as SCSI
                                 device->os_info.intelNVMePassthroughSupported = false;
                                 device->os_info.openFabricsNVMePassthroughSupported = false;
@@ -4128,6 +4291,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                         }
                         else
                         {
+#if defined (WIN_DEBUG)
+                            printf("WIN: treat as SCSI. Closing SCSI SRB handle\n");
+#endif //WIN_DEBUG
                             //close the handle that was opened. TODO: May need to remove this in the future.
                             close_SCSI_SRB_Handle(device);
                             device->os_info.intelNVMePassthroughSupported = false;
@@ -4141,8 +4307,14 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     else
                     {
 #if WINVER >= SEA_WIN32_WINNT_WIN10 
+#if defined (WIN_DEBUG)
+                        printf("WIN: Checking Win version for NVMe IOCTL support level\n");
+#endif //WIN_DEBUG
                         if (is_Windows_10_Or_Higher())
                         {
+#if defined (WIN_DEBUG)
+                            printf("WIN: Win10+\n");
+#endif //WIN_DEBUG
                             device->drive_info.drive_type = NVME_DRIVE;
                             device->drive_info.interface_type = NVME_INTERFACE;
                             device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this, althrough SCSI Read/write 16 will work too!
@@ -4154,16 +4326,40 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique = true;
+                            //This block is commented out for now as we need to implement the reinitialize media IOCTL to be able to support this
+                            /*if (is_Windows_10_Version_1607_Or_Higher())
+                            {
+                                if ((device->os_info.fileSystemInfo.fileSystemInfoValid && !device->os_info.fileSystemInfo.isSystemDisk) || is_Windows_PE())
+                                {
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatCryptoSecureErase = true;
+                                }
+                            }*/
                             if (is_Windows_10_Version_1903_Or_Higher())
                             {
+#if defined (WIN_DEBUG)
+                                printf("WIN: 1903+\n");
+#endif //WIN_DEBUG
                                 //this is definitely blocked in 1809, so this seems to have started being available in 1903
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest = true;//NOTE: probably specific to a certain Win10 update. Not clearly documented when this became available, so need to do some testing before this is perfect
+                                //NOTE: probably specific to a certain Win10 update. Not clearly documented when this became available, so need to do some testing before this is perfect
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest = true;
+                                //NOTE: These next two are set based on documentation that they will work. They definitely work on Win 10 22H2, but I have not been able to test older versions at this time.-TJE
+                                if ((device->os_info.fileSystemInfo.fileSystemInfoValid && !device->os_info.fileSystemInfo.isSystemDisk) || is_Windows_PE())
+                                {
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatCryptoSecureErase = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatUserSecureErase = true;
+                                }
                             }
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securitySend = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures = true;//Only 1 feature today. <--this is old. There is now a set features API, but I don't see what it does or does not allow. Still needs implementing. - TJE
+#if defined (WIN_DEBUG)
+                            printf("WIN: Checking for Win PE\n");
+#endif //WIN_DEBUG
                             if (is_Windows_PE())
                             {
+#if defined (WIN_DEBUG)
+                                printf("WIN: PE environment found\n");
+#endif //WIN_DEBUG
                                 //If in Windows PE, then these other commands become available
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceAttachment = true;
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceManagement = true;
@@ -4174,13 +4370,22 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             }
                             if (is_Windows_11_Version_21H2_Or_Higher())
                             {
-                                //New documentation indicates that sanitize is supported wihtout PE mode in Windows 11.
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize = true;
+#if defined (WIN_DEBUG)
+                                printf("WIN: 21H2+\n");
+#endif //WIN_DEBUG
+                                if ((device->os_info.fileSystemInfo.fileSystemInfoValid && !device->os_info.fileSystemInfo.isSystemDisk) || is_Windows_PE())
+                                {
+                                    //New documentation indicates that sanitize is supported wihtout PE mode in Windows 11.
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize = true;
+                                }
                             }
                         }
                         else
 #endif //WINVER >= SEA_WIN32_WINNT_WIN10 
                         {
+#if defined (WIN_DEBUG)
+                            printf("WIN: earlier Windows. Treating as SCSI\n");
+#endif //WIN_DEBUG
                             device->drive_info.drive_type = SCSI_DRIVE;
                             device->drive_info.interface_type = SCSI_INTERFACE;
                             device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
@@ -4203,6 +4408,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     }
                     else if (device_desc->BusType == BusTypeRAID)
                     {
+#if defined (WIN_DEBUG)
+                        printf("WIN: RAID bus type. Need to check for additional NVMe/CSMI support\n");
+#endif //WIN_DEBUG
                         //TODO: Need to figure out a better way to decide this.
                         //      Unfortunately, the Intel RST driver will show NVMe drives as RAID, but no vendor ID, so we need to check them all for this until we can find something else to use.
                         //      This means issuing an admin identify which should fail gracefully on drivers that don't actually support this since it's vendor unique IOCTL code and signature.
@@ -4232,6 +4440,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                 if (checkForNVMe)
                 {
                     uint8_t nvmeIdent[4096] = { 0 };
+#if defined (WIN_DEBUG)
+                    printf("WIN: Additional check for Intel NVMe\n");
+#endif //WIN_DEBUG
                     if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE || SUCCESS == open_SCSI_SRB_Handle(device))
                     {
                         //Check for Intel NVMe passthrough
@@ -4243,10 +4454,16 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             //use OS read/write calls since this driver may not allow these to work since it is limited in capabilities for passthrough.
                             device->os_info.osReadWriteRecommended = true;
                             checkForCSMI = false;
+#if defined (WIN_DEBUG)
+                            printf("WIN: Intel NVMe support found\n");
+#endif //WIN_DEBUG
                             //TODO: This passthrough may be limited in commands allowed to be sent. If this is limited, need to fill in the nvme hacks to show what is or is not supported.
                         }
                         else
                         {
+#if defined (WIN_DEBUG)
+                            printf("WIN: Does not support Intel NVMe passthrough\n");
+#endif //WIN_DEBUG
                             device->drive_info.drive_type = SCSI_DRIVE;
                             device->drive_info.interface_type = SCSI_INTERFACE;
                             device->os_info.intelNVMePassthroughSupported = false;
@@ -4257,6 +4474,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                 // Lets fill out rest of info
                 //TODO: This doesn't work for ATAPI on Windows right now. Will need to debug it more to figure out what other parts are wrong to get it fully functional.
                 //This won't be easy since ATAPI is a weird SCSI over ATA hybrid-TJE
+#if defined (WIN_DEBUG)
+                printf("WIN: filling device information\n");
+#endif //WIN_DEBUG
                 ret = fill_Drive_Info_Data(device);
 
                 /*
@@ -4265,6 +4485,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                 */
                 if ((ret != SUCCESS) && (device->drive_info.interface_type == IDE_INTERFACE))
                 {
+#if defined (WIN_DEBUG)
+                    printf("WIN: Working around legacy passthrough issues\n");
+#endif //WIN_DEBUG
                     //we weren't successful getting device information...so now try switching to the other IOCTLs
                     if (device->os_info.ioType == WIN_IOCTL_SCSI_PASSTHROUGH || device->os_info.ioType == WIN_IOCTL_SCSI_PASSTHROUGH_EX)
                     {
@@ -4302,10 +4525,19 @@ static int get_Win_Device(const char *filename, tDevice *device )
 
                 if (checkForCSMI)
                 {
+#if defined (WIN_DEBUG)
+                    printf("WIN: Additional CSMI check\n");
+#endif //WIN_DEBUG
                     if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE  || SUCCESS == open_SCSI_SRB_Handle(device))
                     {
+#if defined (WIN_DEBUG)
+                        printf("WIN: Looking for CSMI IO support\n");
+#endif //WIN_DEBUG
                         if (handle_Supports_CSMI_IO(device->os_info.scsiSRBHandle, device->deviceVerbosity))
                         {
+#if defined (WIN_DEBUG)
+                            printf("WIN: Setting up CSMI capabilities\n");
+#endif //WIN_DEBUG
                             //open up the CSMI handle and populate the pointer to the csmidata structure. This may allow us to work around other commands.
                             if (SUCCESS == jbod_Setup_CSMI_Info(device->os_info.scsiSRBHandle, device, 0, device->os_info.scsi_addr.PortNumber, device->os_info.scsi_addr.PathId, device->os_info.scsi_addr.TargetId, device->os_info.scsi_addr.Lun))
                             {
@@ -4403,11 +4635,29 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //ARM requires 10.0.16299.0 API to get cfgmgr32 library!
     //TODO: add better check for API version and ARM to turn this on and off.
     //try forcing a system rescan before opening the list. This should help with crappy drivers or bad hotplug support - TJE
+    eVerbosityLevels winCountVerbosity = VERBOSITY_DEFAULT;
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
+    {
+        winCountVerbosity = VERBOSITY_COMMAND_NAMES;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE)
+    {
+        winCountVerbosity = VERBOSITY_COMMAND_VERBOSE;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_BUFFERS)
+    {
+        winCountVerbosity = VERBOSITY_BUFFERS;
+    }
+
     if (flags & BUS_RESCAN_ALLOWED)
     {
         DEVINST deviceInstance;
         DEVINSTID tree = NULL;//set to null for root of device tree
         ULONG locateNodeFlags = 0;//add flags here if we end up needing them
+        if (VERBOSITY_COMMAND_NAMES <= winCountVerbosity)
+        {
+            printf("Running CM_Locate_Devnode on root to force system wide rescan\n");
+        }
         if (CR_SUCCESS == CM_Locate_DevNode(&deviceInstance, tree, locateNodeFlags))
         {
             ULONG reenumerateFlags = 0;
@@ -4440,16 +4690,24 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
             {
                 if (adapterData->BusType == BusTypeRAID)
                 {
+                    if (VERBOSITY_COMMAND_NAMES <= winCountVerbosity)
+                    {
+                        _tprintf_s(TEXT("Detected RAID adapter: %s\n"), deviceName);
+                    }
                     //get the SCSI address for this device and save it to the RAID handle list so it can be scanned for additional types of RAID interfaces.
                     SCSI_ADDRESS scsiAddress;
                     memset(&scsiAddress, 0, sizeof(SCSI_ADDRESS));
                     if (SUCCESS == win_Get_SCSI_Address(fd, &scsiAddress))
                     {
-                        char raidHandle[15] = { 0 };
+                        char raidHandle[RAID_HANDLE_STRING_MAX_LEN] = { 0 };
                         raidTypeHint raidHint;
                         memset(&raidHint, 0, sizeof(raidTypeHint));
                         raidHint.unknownRAID = true;//TODO: Find a better way to hint at what type of raid we thing this might be. Can look at T10 vendor ID, low-level PCI/PCIe identifiers, etc.
-                        snprintf(raidHandle, 15, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
+                        snprintf(raidHandle, RAID_HANDLE_STRING_MAX_LEN, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
+                        if (VERBOSITY_COMMAND_NAMES <= winCountVerbosity)
+                        {
+                            printf("Adding SCSI port handle to RAID list to check for compatible devices: %s\n", raidHandle);
+                        }
                         raidHandleList = add_RAID_Handle_If_Not_In_List(beginRaidHandleList, raidHandleList, raidHandle, raidHint);
                         if (!beginRaidHandleList)
                         {
@@ -4474,6 +4732,10 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
         {
             *numberOfDevices += csmiDeviceCount;
         }
+    }
+    else if (VERBOSITY_COMMAND_NAMES <= winCountVerbosity)
+    {
+        printf("CSMI Raid scan was skipped due to flag\n");
     }
 #endif
 
@@ -4519,6 +4781,19 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     tDevice * d = NULL;
     ptrRaidHandleToScan raidHandleList = NULL;
     ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
+    eVerbosityLevels winListVerbosity = VERBOSITY_DEFAULT;
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
+    {
+        winListVerbosity = VERBOSITY_COMMAND_NAMES;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE)
+    {
+        winListVerbosity = VERBOSITY_COMMAND_VERBOSE;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_BUFFERS)
+    {
+        winListVerbosity = VERBOSITY_BUFFERS;
+    }
 
     //TODO: Check if sizeInBytes is a multiple of
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -4573,13 +4848,21 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                             //get the SCSI address for this device and save it to the RAID handle list so it can be scanned for additional types of RAID interfaces.
                             SCSI_ADDRESS scsiAddress;
                             memset(&scsiAddress, 0, sizeof(SCSI_ADDRESS));
+                            if (VERBOSITY_COMMAND_NAMES <= winListVerbosity)
+                            {
+                                printf("Detected RAID adapter for %s\n", name);
+                            }
                             if (SUCCESS == win_Get_SCSI_Address(d->os_info.fd, &scsiAddress))
                             {
-                                char raidHandle[15] = { 0 };
+                                char raidHandle[RAID_HANDLE_STRING_MAX_LEN] = { 0 };
                                 raidTypeHint raidHint;
                                 memset(&raidHint, 0, sizeof(raidTypeHint));
                                 raidHint.unknownRAID = true;//TODO: Find a better way to hint at what type of raid we thing this might be. Can look at T10 vendor ID, low-level PCI/PCIe identifiers, etc.
-                                snprintf(raidHandle, 15, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
+                                snprintf(raidHandle, RAID_HANDLE_STRING_MAX_LEN, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
+                                if (VERBOSITY_COMMAND_NAMES <= winListVerbosity)
+                                {
+                                    printf("Adding %s to RAID handle list to scan for compatible devices\n", raidHandle);
+                                }
                                 raidHandleList = add_RAID_Handle_If_Not_In_List(beginRaidHandleList, raidHandleList, raidHandle, raidHint);
                                 if (!beginRaidHandleList)
                                 {
@@ -4628,6 +4911,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 }
             }
         }
+        else if(VERBOSITY_COMMAND_NAMES <= winListVerbosity)
+        {
+            printf("CSMI Scan skipped due to flag\n");
+        }
 #endif
         if (found == failedGetDeviceCount)
         {
@@ -4643,6 +4930,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         }
         //Clean up RAID handle list
         delete_RAID_List(beginRaidHandleList);
+    }
+    if (VERBOSITY_COMMAND_NAMES <= winListVerbosity)
+    {
+        printf("Win get device list returning %d\n", returnValue);
     }
 
     return returnValue;
@@ -7056,7 +7347,7 @@ static DWORD io_For_SMART_Cmd(ScsiIoCtx *scsiIoCtx)
         {
             return INVALID_IOCTL;
         }
-    case ATA_SMART:
+    case ATA_SMART_CMD:
         if (scsiIoCtx->device->os_info.winSMARTCmdSupport.smartSupported)
         {
             //check that the feature field matches something Microsoft documents support for...using MS defines - TJE
@@ -9135,6 +9426,14 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
 #if WINVER >= SEA_WIN32_WINNT_WIN10
     }
 #endif
+    if (scsiIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(scsiIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
+        }
+    }
     return ret;
 }
 
@@ -9359,7 +9658,7 @@ static int send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     //check how long it took to set timeout error if necessary
     if (get_Seconds(commandTimer) > protocolCommand->TimeOutValue)
     {
-        ret = COMMAND_TIMEOUT;
+        ret = OS_COMMAND_TIMEOUT;
     }
     _aligned_free(commandBuffer);
     commandBuffer = NULL;
@@ -9588,6 +9887,43 @@ typedef union _MSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4 {
     };
     ULONG  AsUlong;
 }MSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4, *PMSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4;
+
+//WIN_API_TARGET_WIN10_17763 gave offset fields to the get log page through a subvalue input.
+//The documentation online states 1903(WIN_API_TARGET_WIN10_18362) and up support read buffer 16...it is unclear what version first supported the read buffer 16 method to read the telemetry log
+//This function has been defined to read telemetry with the read buffer 16 command. NOTE: Read buffer 10 will NOT work, only 16.
+//this function is only necessary for versions older than 1809...if readbuffer16 is even supported in those old versions.
+//static int get_NVMe_Telemetry_Data_With_RB16(nvmeCmdCtx* nvmeIoCtx)
+//{
+//    int ret = BAD_PARAMETER;
+//    uint8_t logID = M_Byte0(nvmeIoCtx->cmd.adminCmd.cdw10);
+//    if (nvmeIoCtx->commandType == NVM_ADMIN_CMD && nvmeIoCtx->cmd.adminCmd.opcode == NVME_ADMIN_CMD_GET_LOG_PAGE && (logID == NVME_LOG_TELEMETRY_CTRL_ID || logID == NVME_LOG_TELEMETRY_HOST_ID))
+//    {
+//        ret = SUCCESS;
+//        uint8_t bufferID = 0x10;//Assume host as it is most common to pull
+//        uint64_t numberOfDWords = M_WordsTo4ByteValue(M_Word0(nvmeIoCtx->cmd.adminCmd.cdw11), M_Word1(nvmeIoCtx->cmd.adminCmd.cdw10));
+//        uint64_t logPageOffset = M_DWordsTo8ByteValue(nvmeIoCtx->cmd.adminCmd.cdw13, nvmeIoCtx->cmd.adminCmd.cdw12);
+//        //bool createNewSnapshot = M_ToBool(nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8);
+//        if (logID == NVME_LOG_TELEMETRY_CTRL_ID)
+//        {
+//            bufferID = 0x11;
+//        }
+//        if ((numberOfDWords << 4) > UINT32_MAX)
+//        {
+//            ret = BAD_PARAMETER;
+//            //TODO: Figure out how to return a meaningful status that the request was too large
+//            //Invalid Field in Command???
+//            //Data Transfer Error???
+//        }
+//        else
+//        {
+//            //now call the SCSI read-buffer 16 command with the correct parameters to pull the data
+//            //TODO: figure out how the "trigger" to create a new snapshot will work. use the commented out createNewSnapshot above -TJE
+//            ret = scsi_Read_Buffer_16(nvmeIoCtx->device, 0x1C, 0 /*TODO take new snapshot???*/, bufferID, logPageOffset, C_CAST(uint32_t, numberOfDWords << 4), nvmeIoCtx->ptrData);
+//            //TODO: Handle any errors
+//        }
+//    }
+//    return ret;
+//}
 
 static int send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
 {
@@ -10517,98 +10853,110 @@ static int send_NVMe_Set_Features_Win10(nvmeCmdCtx *nvmeIoCtx, bool *useNVMPasst
     return ret;
 }
 
-//static int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
-//{
-//    int ret = OS_COMMAND_NOT_AVAILABLE;
-//    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
-//    uint32_t reservedBitsDWord10 = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 12);
-//    uint8_t secureEraseSettings = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 11, 9);
-//    bool pil = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8;
-//    uint8_t pi = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 5);
-//    bool mset = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT4;
-//    uint8_t lbaFormat = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 3, 0);
-//    nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-//    if (reservedBitsDWord10 == 0 && secureEraseSettings == 0 && !pil && mset)//we dont want to miss parameters that are currently reserved and we cannot do a secure erase with this translation
-//    {
-//        //mode select with mode descriptor (if needed for block size changes)
-//        //First we need to map the incoming LBA format to a size in bytes to send in a mode select
-//        int16_t powerOfTwo = C_CAST(int16_t, nvmeIoCtx->device->drive_info.IdentifyData.nvme.ns.lbaf[lbaFormat].lbaDS);
-//        uint32_t lbaSize = 1;
-//        while (powerOfTwo >= 0)
-//        {
-//            lbaSize = lbaSize << UINT32_C(1);//multiply by 2
-//            --powerOfTwo;
-//        }
-//        if (lbaSize >= LEGACY_DRIVE_SEC_SIZE && lbaSize != nvmeIoCtx->device->drive_info.deviceBlockSize)//make sure the value is greater than 512 as required by spec and that it is different than what it is already set as! - TJE
-//        {
-//            //send a mode select command with a data block descriptor set to the new size
-//            //but first read the control mode page with a block descriptor
-//            uint8_t controlPageAndBD[36] = { 0 };
-//            if (SUCCESS == scsi_Mode_Sense_10(nvmeIoCtx->device, MP_CONTROL, 36, 0, false, true, MPC_CURRENT_VALUES, controlPageAndBD))
-//            {
-//                //got the block descriptor...so lets modify it as we need to...then send it back to the drive(r)
-//                //set number of logical blocks to all F's to make this as big as possible...
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 0] = 0xFF;
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 1] = 0xFF;
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 2] = 0xFF;
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 3] = 0xFF;
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 4] = 0xFF;
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 5] = 0xFF;
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 6] = 0xFF;
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 7] = 0xFF;
-//                //set the block size
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 12] = M_Byte3(lbaSize);
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 13] = M_Byte2(lbaSize);
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 14] = M_Byte1(lbaSize);
-//                controlPageAndBD[MODE_HEADER_LENGTH10 + 15] = M_Byte0(lbaSize);
-//                //Leave everything else alone! Just send it to the drive now :)
-//                if (SUCCESS != scsi_Mode_Select_10(nvmeIoCtx->device, 36, true, true, false, controlPageAndBD, 36))
-//                {
-//                    return OS_COMMAND_NOT_AVAILABLE;
-//                }
-//            }
-//            else
-//            {
-//                return OS_COMMAND_NOT_AVAILABLE;
-//            }
-//        }
-//        //format unit command
-//        //set up parameter data if necessary and send the scsi format unit command to be translated and sent to the drive. The mode sense/select should have been cached to be used by the format command.
-//        //if (pi == 0)
-//        //{
-//        //    //send without parameter data
-//        //    ret = scsi_Format_Unit(nvmeIoCtx->device, 0, false, false, false, 0, 0, NULL, 0, 0, 60);
-//        //}
-//        //else
-//        //{
-//        //send with parameter data
-//        uint8_t formatParameterData[4] = { 0 };//short header
-//        uint8_t fmtpInfo = 0;
-//        uint8_t piUsage = 0;
-//        switch (pi)
-//        {
-//        case 0:
-//            break;
-//        case 1:
-//            fmtpInfo = 0x2;
-//            break;
-//        case 2:
-//            fmtpInfo = 0x3;
-//            break;
-//        case 3:
-//            fmtpInfo = 0x3;
-//            piUsage = 1;
-//            break;
-//        default:
-//            return OS_COMMAND_NOT_AVAILABLE;
-//        }
-//        formatParameterData[0] = M_GETBITRANGE(piUsage, 2, 0);
-//        ret = scsi_Format_Unit(nvmeIoCtx->device, fmtpInfo, false, true, false, 0, 0, formatParameterData, 4, 0, 60);
-//        //}
-//    }
-//    nvmeIoCtx->device->deviceVerbosity = inVerbosity;
-//    return ret;
-//}
+static int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
+{
+    int ret = OS_COMMAND_NOT_AVAILABLE;
+    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+    uint32_t reservedBitsDWord10 = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 12);
+    uint8_t secureEraseSettings = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 11, 9);
+    bool pil = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8;
+    uint8_t pi = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 5);
+    bool mset = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT4;
+    uint8_t lbaFormat = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 3, 0);
+    nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
+    if (reservedBitsDWord10 == 0 && !pil && !mset && pi == 0)
+    {
+        //bool issueFormatCMD = false; //While this says this command is translated, I have yet to figure out which combo makes it work.
+        // I get invalid opcode every time I try issuing format unit. https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/stornvme-scsi-translation-support
+        int16_t powerOfTwo = C_CAST(int16_t, nvmeIoCtx->device->drive_info.IdentifyData.nvme.ns.lbaf[lbaFormat].lbaDS);
+        uint32_t lbaSize = 1;
+        while (powerOfTwo > 0)
+        {
+            lbaSize = lbaSize << UINT32_C(1);//multiply by 2
+            --powerOfTwo;
+        }
+        if (lbaSize != nvmeIoCtx->device->drive_info.deviceBlockSize)
+        {
+            //This is NOT supported from what I can tell.
+            //The only mode page supported by Windows is the caching mode page. with size set to 0x0A for a total of 12B of data
+            // block descriptors are never returned.
+            // only mode sense 10 works. LongLBA does NOT work.
+            // No matter which combo of bits/fields used for mode select, it is always rejected with invalid field in CDB.
+            return OS_COMMAND_NOT_AVAILABLE;
+        }
+        else
+        {
+            //NO LBA size change.
+            //In this case we MIGHT be able to run a secure erase using the non-standard sanitize block erase or crypto erase translation
+            //MSFT mentions this briefly in their documentation here:  https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/stornvme-command-set-support
+            if (secureEraseSettings != 0)
+            {
+                //issueFormatCMD = false;
+                //translated with sanitize
+                if (secureEraseSettings == 1)
+                {
+                    //block
+                    ret = scsi_Sanitize_Block_Erase(nvmeIoCtx->device, false, false, false);
+                }
+                else if (secureEraseSettings == 2)
+                {
+                    //crypto
+                    //NOTE: the IOCTL_STORAGE_REINITIALIZE_MEDIA can be used for this too IF no buffer length is passed.
+                    //      Later, Win10 21H1 or Win11 can take parameters to perform a sanitize erase instead.
+                    //TODO: will need to bus trace and figure out when new windows chooses format versus sanitize if this IOCTL is used.
+                    ret = scsi_Sanitize_Cryptographic_Erase(nvmeIoCtx->device, false, false, false);
+                }
+                else
+                {
+                    ret = OS_COMMAND_NOT_AVAILABLE;
+                }
+            }
+            else
+            {
+                //I've tried the format unit command without parameters and no luck. I have tried with fmtdata and no luck.
+                ret = OS_COMMAND_NOT_AVAILABLE;
+            }
+        }
+        //if (issueFormatCMD)
+        //{
+        //    //format unit command
+        //    //set up parameter data if necessary and send the scsi format unit command to be translated and sent to the drive. The mode sense/select should have been cached to be used by the format command.
+        //    //if (pi == 0)
+        //    //{
+        //    //    //send without parameter data
+        //    //    ret = scsi_Format_Unit(nvmeIoCtx->device, 0, false, false, false, 0, 0, NULL, 0, 0, 60);
+        //    //}
+        //    //else
+        //    //{
+        //    //send with parameter data
+        //    //uint8_t formatParameterData[4] = { 0 };//short header
+        //    //uint8_t fmtpInfo = 0;
+        //    //uint8_t piUsage = 0;
+        //    //switch (pi)
+        //    //{
+        //    //case 0:
+        //    //    break;
+        //    //case 1:
+        //    //    fmtpInfo = 0x2;
+        //    //    break;
+        //    //case 2:
+        //    //    fmtpInfo = 0x3;
+        //    //    break;
+        //    //case 3:
+        //    //    fmtpInfo = 0x3;
+        //    //    piUsage = 1;
+        //    //    break;
+        //    //default:
+        //    //    return OS_COMMAND_NOT_AVAILABLE;
+        //    //}
+        //    //formatParameterData[0] = M_GETBITRANGE(piUsage, 2, 0);
+        //    ret = scsi_Format_Unit(nvmeIoCtx->device, 0, false, false, false, 0, 0, NULL, 0, 0, 60);
+        //    //}
+        //}
+    }
+    nvmeIoCtx->device->deviceVerbosity = inVerbosity;
+    return ret;
+}
 
 static int win10_Translate_Write_Uncorrectable(nvmeCmdCtx *nvmeIoCtx)
 {
@@ -11482,15 +11830,22 @@ static int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         case NVME_ADMIN_CMD_SET_FEATURES:
             ret = send_NVMe_Set_Features_Win10(nvmeIoCtx, &useNVMPassthrough);
             break;
-        case NVME_ADMIN_CMD_FORMAT_NVM: //This can be done with a couple IOCTLs, but we should use STORAGE_PROTOCOL_COMMAND since it allows us to specify everything. In WinPE, a SCSI translation from SCSI sanitize is possible (which is non-standard);IOCTL_STORAGE_REINITIALIZE_MEDIA can only do the format with crypto erase
-            //ret = win10_Translate_Format(nvmeIoCtx);
-            //break;
+        case NVME_ADMIN_CMD_FORMAT_NVM:
+            if (is_Windows_PE())
+            {
+                useNVMPassthrough = true;
+            }
+            else
+            {
+                ret = win10_Translate_Format(nvmeIoCtx);
+            }
+            break;
         case NVME_ADMIN_CMD_NAMESPACE_MANAGEMENT:
         case NVME_ADMIN_CMD_NAMESPACE_ATTACHMENT:
         case NVME_ADMIN_CMD_NVME_MI_SEND:
         case NVME_ADMIN_CMD_NVME_MI_RECEIVE:
         case NVME_ADMIN_CMD_SANITIZE:
-            if (is_Windows_PE())
+            if (is_Windows_PE() || is_Windows_11_Version_21H2_Or_Higher())
             {
                 useNVMPassthrough = true;
             }
@@ -11614,6 +11969,16 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         ret = BAD_PARAMETER;
         break;
     }
+
+    if (nvmeIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(nvmeIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", nvmeIoCtx->device->delay_io);
+        }
+    }
+
     return ret;
 }
 
@@ -11977,7 +12342,7 @@ int os_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrDat
     //check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= timeoutInSeconds)
     {
-        ret = COMMAND_TIMEOUT;
+        ret = OS_COMMAND_TIMEOUT;
     }
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
@@ -12098,7 +12463,7 @@ int os_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrDa
     //check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= timeoutInSeconds)
     {
-        ret = COMMAND_TIMEOUT;
+        ret = OS_COMMAND_TIMEOUT;
     }
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
@@ -12180,7 +12545,7 @@ int os_Verify(tDevice *device, uint64_t lba, uint32_t range)
     //check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= timeoutInSeconds)
     {
-        ret = COMMAND_TIMEOUT;
+        ret = OS_COMMAND_TIMEOUT;
     }
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
@@ -12258,6 +12623,11 @@ int os_Flush(tDevice *device)
             printf("Windows Error: ");
             print_Windows_Error_To_Screen(device->os_info.last_error);
         }
+        ret = FAILURE;
+    }
+    else
+    {
+        ret = SUCCESS;
     }
 
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
@@ -12270,7 +12640,7 @@ int os_Flush(tDevice *device)
     //check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) >= timeoutInSeconds)
     {
-        ret = COMMAND_TIMEOUT;
+        ret = OS_COMMAND_TIMEOUT;
     }
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {

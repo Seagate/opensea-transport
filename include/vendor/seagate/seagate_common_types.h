@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -42,6 +42,8 @@ extern "C"
     #define MAXIMUM_POWER_MEASUREMENT_TIME_SECONDS  UINT16_C(65535) //18.2 hours
     #define POWER_TELEMETRY_REQUEST_MEASUREMENT_VERSION    UINT8_C(1)
     #define POWER_TELEMETRY_MAXIMUM_MEASUREMENTS    UINT16_C(1024)
+
+    #define SEAGATE_FARM_LOG_SIGNATURE UINT64_C(0x00004641524D4552)
 
     //TODO: Add any other definitions to this file that are the same drive interface types
 

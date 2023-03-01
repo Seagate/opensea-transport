@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -247,7 +247,7 @@ int get_Device(const char *filename, tDevice *device)
     return ret;
 }
 
-int uscsi_Reset(int fd, int resetFlag)
+static int uscsi_Reset(int fd, int resetFlag)
 {
     struct uscsi_cmd uscsi_io;
     int ret = SUCCESS;
@@ -319,6 +319,16 @@ int send_IO (ScsiIoCtx *scsiIoCtx)
             printf("Target Device does not have a valid interface %d\n", scsiIoCtx->device->drive_info.interface_type);
         }
     }
+
+    if (scsiIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(scsiIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
+        }
+    }
+
     return ret;
 }
 

@@ -97,8 +97,15 @@ else
 			-Wold-style-definition -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes
 	endif
 endif
+UNAME := $(shell uname -s)
 
-LFLAGS ?= -Wall ../../../opensea-common/Make/gcc/lib/$(FILE_OUTPUT_DIR)/libopensea-common.a
+LDFLAGS ?= -Wall -L../../../opensea-common/Make/gcc/$(FILE_OUTPUT_DIR)/ -lopensea-common -lm 
+
+#AIX wants all linker libraries for the .so. Need libodm and libcfg in addition to the above to resolve all symbols
+ifeq ($(UNAME),AIX)
+	LDFLAGS += -lodm -lcfg
+endif
+
 LIB_SRC_FILES = \
 	$(SRC_DIR)ata_cmds.c\
 	$(SRC_DIR)ata_legacy_cmds.c\
@@ -161,6 +168,14 @@ ifeq ($(UNAME),FreeBSD)
 	endif
 endif
 
+ifeq ($(UNAME),AIX)
+	LIB_SRC_FILES += $(SRC_DIR)aix_helper.c
+	AIX_NVME_H = /usr/include/sys/nvme.h
+	ifneq ($(shell test -f $(AIX_NVME_H) && printf "yes"),yes)
+		PROJECT_DEFINES += -DDISABLE_NVME_PASSTHROUGH
+	endif
+endif
+
 #setting std=c99 instead of std-gnu99 because we want __has_include to work. This means we must add -D_GNU_SOURCE to the project defines to keep the same functionality in Linux
 #PROJECT_DEFINES += -D_GNU_SOURCE -DDISABLE_NVME_PASSTHROUGH #-D_DEBUG
 PROJECT_DEFINES += -D_GNU_SOURCE 
@@ -185,8 +200,8 @@ opensea-libs:
 $(LIBS): $(LIB_OBJ_FILES) opensea-libs
 	rm -f $(FILE_OUTPUT_DIR)/$@
 	$(AR) cq $(FILE_OUTPUT_DIR)/$@ $(LIB_OBJ_FILES)
-	$(CC) -shared $(LIB_OBJ_FILES) -o $(FILE_OUTPUT_DIR)/lib$(NAME).so.$(VERSION)
-	cd $(FILE_OUTPUT_DIR) && ln -s lib$(NAME).so* lib$(NAME).so
+	$(CC) -shared $(LIB_OBJ_FILES) -o $(FILE_OUTPUT_DIR)/lib$(NAME).so.$(VERSION) $(LDFLAGS)
+	cd $(FILE_OUTPUT_DIR) && ln -sf lib$(NAME).so.$(VERSION) lib$(NAME).so
 	
 clean:
 	rm -f $(FILE_OUTPUT_DIR)/lib$(NAME).a $(FILE_OUTPUT_DIR)/lib$(NAME).so* *.o ../../src/*.o

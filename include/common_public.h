@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -72,6 +72,8 @@ extern "C"
     #define OPENSEA_MAX_CONTROLLERS (8U)
     #define MAX_DEVICES_PER_CONTROLLER (256U)
     #define MAX_DEVICES_TO_SCAN (OPENSEA_MAX_CONTROLLERS * MAX_DEVICES_PER_CONTROLLER)
+	#define MAX_DRIVER_NAME			40
+    #define MAX_DRIVER_VER_STR      24
 
     #define SERIAL_NUM_LEN          (20) //Going with ATA lengths
     #define MODEL_NUM_LEN           (40)
@@ -666,6 +668,21 @@ extern "C"
         uint32_t specifierID;//Used on IEEE1394 only
     }adapterInfo;
 
+	typedef struct _driverInfo
+	{
+		char driverName[MAX_DRIVER_NAME];
+        char driverVersionString[MAX_DRIVER_VER_STR];//raw, unparsed string in case parsing into below values goes wrong due to variability in how this is reported between linux drivers.-TJE
+        bool majorVerValid;
+        bool minorVerValid;
+        bool revisionVerValid;
+        bool buildVerValid;
+        uint8_t reserved[4];
+        uint32_t driverMajorVersion;
+        uint32_t driverMinorVersion;
+        uint32_t driverRevision;
+        uint32_t driverBuildNumber;//Likely Windows only
+	} driverInfo;
+
     typedef enum _eATASynchronousDMAMode
     {
         ATA_DMA_MODE_NO_DMA,
@@ -853,6 +870,8 @@ extern "C"
                 NOMMPIO - noMultipleModeCommands
                 MPTXFER - maxTransferLength (bytes)
                 TPID - tpsiu on identify (limited use tpsiu)
+                NCHK - do not use check condition bit at all
+                CHKE - accepts the check condition bit, but returns empty data
                 //TODO: Add more hacks below as needed to workaround other weird behavior for ATA passthrough.
                 */
                 bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
@@ -910,9 +929,11 @@ extern "C"
                     bool miReceive;
                     bool securitySend;
                     bool securityReceive;
+                    bool formatUserSecureErase;//format with ses set to user erase
+                    bool formatCryptoSecureErase;//format with ses set to crypto erase
                     //TODO: As other passthroughs are learned with different capabilities, add other commands that ARE supported by them here so that other layers of code can know what capabilities a given device has.
                 }limitedCommandsSupported;
-                uint8_t reserved[5];//padd out above bools to 8 byte boundaries
+                uint8_t reserved[3];//padd out above bools to 8 byte boundaries
                 uint32_t maxTransferLength;
                 uint32_t nvmepadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
             }nvmePTHacks;
@@ -927,7 +948,7 @@ extern "C"
         eZonedDeviceType zonedType;//most drives will report ZONED_TYPE_NOT_ZONED
         uint32_t       deviceBlockSize; //This is the logical block size reported by the drive
         uint32_t       devicePhyBlockSize; // This is the physical block size reported by the drive.
-        uint32_t       dataTransferSize;//this the block size that will be transfered
+        uint32_t       dataTransferSize;//this is obsolete! Do not use this
         uint16_t       sectorAlignment;//This will usually be set to 0 on newer drives. Older drives may set this alignment differently
         uint8_t padd0[2];
         uint64_t       deviceMaxLba;
@@ -966,6 +987,7 @@ extern "C"
         //TODO: a union or something so that we don't need to keep adding more bytes for drive types that won't use the ATA stuff or NVMe stuff in this struct.
         bridgeInfo      bridge_info;
         adapterInfo     adapter_info;
+		driverInfo		driver_info;
         ataOptions      ata_Options;
         uint64_t        lastCommandTimeNanoSeconds;//The time the last command took in nanoseconds
         softwareSATFlags softSATFlags;//This is used by the software SAT translation layer. DO NOT Update this directly. This should only be updated by the lower layers of opensea-transport.
@@ -1019,7 +1041,35 @@ extern "C"
         WIN_IOCTL_FORCE_ALWAYS_DOUBLE_BUFFERED,
         WIN_IOCTL_MAX_METHOD
     }eWindowsIOCTLMethod;
-#endif
+#endif //defined (_WIN32) && !defined(UEFI_C_SOURCE)
+
+#if defined (_AIX)
+    //AIX specific structures/enums/etc
+    typedef enum _eAIXPassthroughType
+    {
+        AIX_PASSTHROUGH_NOT_SET = 0,
+        AIX_PASSTHROUGH_SCSI,
+        AIX_PASSTHROUGH_IDE_ATA,
+        AIX_PASSTHROUGH_IDE_ATAPI,
+        AIX_PASSTHROUGH_SATA,
+        AIX_PASSTHROUGH_NVME,
+    }eAIXPassthroughType;
+
+    typedef enum _eAIXAdapterType
+    {
+        AIX_ADAPTER_UNKNOWN = 0,
+        AIX_ADAPTER_SCSI,//as in parallel SCSI
+        AIX_ADAPTER_IDE,
+        AIX_ADAPTER_SAS,
+        AIX_ADAPTER_SATA,
+        AIX_ADAPTER_FC, //fibre channel
+        AIX_ADAPTER_USB,
+        AIX_ADAPTER_VSCSI,
+        AIX_ADAPTER_ISCSI,
+        AIX_ADAPTER_DASD,
+        AIX_ADAPTER_NVME,
+    }eAIXAdapterType;
+#endif //_AIX
 
     //forward declare csmi info to avoid including csmi_helper.h
     typedef struct _csmiDeviceInfo csmiDeviceInfo,*ptrCsmiDeviceInfo;
@@ -1135,13 +1185,15 @@ extern "C"
         bool fwdlMiniportSupported;//Miniport IOCTL for FWDL is supported. This should be in the structure above, but it is here for compatibility at this time - TJE
         HANDLE forceUnitAccessRWfd;//used for os_read and os_Write when using the force unit access option
         uint32_t volumeBitField;//This is a bitfield that is stored to prevent rereading, mounting, waking all systems on the system. Since we read this up front, this will be stored so taht each partition on a device can be unmouted later if necessary. - TJE
+        uint8_t adapterDescBusType;//bus type reported in adapter descriptor
+        uint8_t deviceDescBusType;//bus type reported in the device descriptor
         //TODO: Store the device path! This may occasionally be useful to have. Longest one will probably be no more that MAX_DEVICE_ID_LEN characters. (This is defined as 200)
         //padding to keep same size as other OSs. This is to keep things similar across OSs.
         //Variable sizes based on 32 vs 64bit since handle is a void*
         #if defined (_WIN64)
-            uint8_t paddWin[34];
+            uint8_t paddWin[32];
         #else
-            uint8_t paddWin[46];
+            uint8_t paddWin[44];
         #endif //Win64 for padding
         #elif defined (__FreeBSD__)
         int fd;//used when cam is not being used (legacy ATA or NVMe IO without CAM....which may not be supported, but kept here just in case)
@@ -1151,10 +1203,21 @@ extern "C"
         #else
             uint8_t freeBSDPadding[106];//padding on 32bit OS
         #endif
-        #else
+        #elif defined (_AIX)
+        int fd;//rhdisk handle
+        int ctrlfd;//handle to the controller (required for NVMe, may not be used for SCSI/SATA)
+        bool ctrlfdValid;
+        bool diagnosticModeFlagInUse;//handle was opened with the diagnostic mode flag set, which allows some other IOCTLs which require this flag-TJE
+        uint64_t scsiID;
+        uint64_t lunID;//nvme namespace for NVME devices-TJE
+        eAIXPassthroughType ptType;//used to route the command to the correct passthrough for the device/controller combination
+        eAIXAdapterType adapterType;//can be helpful as there are some minor differences in required fields between adapter types
+        uint32_t maxXferLength;//maximum transfer length that was reported by the controller
+        uint8_t aixPadding[76];//padding the structure out to keep same size as other OSs
+        #else //OS preprocessor checks
         int                 fd;//some other nix system that only needs a integer file handle
         uint8_t otherPadd[110];
-        #endif
+        #endif //OS preprocessor checks
         bool                osReadWriteRecommended;//This will be set to true when it is recommended that OS read/write calls are used instead of IO read/write (typically when using SMART or IDE IOCTLs in Windows since they may not work right for read/write)
         unsigned int        last_error; // errno in Linux or GetLastError in Windows.
         struct {
@@ -1182,6 +1245,9 @@ extern "C"
         FORCE_ATA_DMA_SAT_MODE = BIT17, //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
         FORCE_ATA_UDMA_SAT_MODE = BIT18, //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
         GET_DEVICE_FUNCS_IGNORE_CSMI = BIT19, //use this bit in get_Device_Count and get_Device_List to ignore CSMI devices.
+        GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES = BIT20, //matches v2
+        GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE = BIT21, //matches v3
+        GET_DEVICE_FUNCS_VERBOSE_BUFFERS = BIT22, //matches v4
     } eDiscoveryOptions;
 
     typedef int (*issue_io_func)( void * );
@@ -1206,6 +1272,7 @@ extern "C"
         issue_io_func       issue_nvme_io;//nvme IO function pointer for raid or other driver/custom interface to send commands
         eDiscoveryOptions   dFlags;
         eVerbosityLevels    deviceVerbosity;
+        uint32_t            delay_io;
     }tDevice;
 
      //Common enum for getting/setting power states.
@@ -1311,6 +1378,35 @@ extern "C"
         IEEE1394_Vendor_MaxValue    = 0xFFFFFF //this should be the the highest possible value for an IEEE OUI as they are 24bits in size.
     }e1394OUIs; //a.k.a. vendor IDs
 
+    //There are multiple resources that can be used to find these:
+    //https://pcisig.com/membership/member-companies?combine=&order=field_vendor_id&sort=asc
+    //https://www.pcilookup.com/
+    //https://pci-ids.ucw.cz/
+    //Not used at this time, but have added IDs that have been found in use for HBAs
+    typedef enum _ePCIVendorIDs
+    {
+        PCI_VENDOR_UNKNOWN          = 0,
+        PCI_VENDOR_LSI              = 0x1000,//now broadcom
+        PCI_VENDOR_IBM              = 0x1014,
+        PCI_VENDOR_AMD              = 0x1022,
+        PCI_VENDOR_HP               = 0x103C,
+        PCI_VENDOR_SILICON_IMAGE    = 0x1095,
+        PCI_VENDOR_HIGHPOINT        = 0x1103,
+        PCI_VENDOR_MICROCHIP        = 0x11F8,//or PMC?
+        PCI_VENDOR_SEAGATE          = 0x1BB1,
+        PCI_VENDOR_3WARE            = 0x13C1,
+        PCI_VENDOR_BROADCOM         = 0x14E4,
+        PCI_VENDOR_HPE              = 0x1590,
+        PCI_VENDOR_ARECA            = 0x17D3,
+        PCI_VENDOR_JMICRON          = 0x197B,
+        PCI_VENDOR_AVAGO            = 0x1A1F,
+        PCI_VENDOR_ASMEDIA          = 0x1B21,
+        PCI_VENDOR_MARVEL           = 0x1DCA,
+        PCI_VENDOR_INTEL            = 0x8086,
+        PCI_VENDOR_ADAPTEC          = 0x9004,
+        PCI_VENDOR_ADAPTEC_2        = 0x9005,
+    } ePCIVendorIDs;
+
     typedef enum _eSeagateFamily
     {
         NON_SEAGATE = 0,
@@ -1411,6 +1507,8 @@ extern "C"
         #define MAX_CMD_TIMEOUT_SECONDS 4294967
     #elif defined (__sun)
         #define MAX_CMD_TIMEOUT_SECONDS 65535
+    #elif defined (_AIX)
+        #define MAX_CMD_TIMEOUT_SECONDS (UINT32_MAX - 1) //TODO: This may not be correct but the field that sets this is a uint32. Setting to 1 less than infinite's current value -TJE
     #else
         #error "Need to set MAX_CMD_TIMEOUT_SECONDS for this OS"
     #endif
@@ -1844,7 +1942,55 @@ extern "C"
     //!   \return 0 = Not a Skyhawk Drive, 1 - a Skyhawk Drive, 2 - a Skyhawk AI Drive
     //
     //-----------------------------------------------------------------------------
-        OPENSEA_TRANSPORT_API eSkyhawk_Drive is_Skyhawk_Drive(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API eSkyhawk_Drive is_Skyhawk_Drive(tDevice *device, bool USBchildDrive);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Nytro_Drive(tDevice *device, bool USBchildDrive)
+    //
+    //! \brief   Checks if the device is a Firecuda drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Nytro Drive, 0 - Not a Nytro Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Nytro_Drive(tDevice *device, bool USBchildDrive);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Exos_Drive(tDevice *device, bool USBchildDrive)
+    //
+    //! \brief   Checks if the device is a Firecuda drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Exos Drive, 0 - Not a Exos Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Exos_Drive(tDevice *device, bool USBchildDrive);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  is_Barracuda_Drive(tDevice *device, bool USBchildDrive)
+    //
+    //! \brief   Checks if the device is a Firecuda drive
+    //
+    //  Entry:
+    //!   \param[in]  device - file descriptor
+    //!   \param[in]  USBchildDrive - set to true to check USB child drive information. if set to false, this will automatically also check the child drive info (this is really just used for recursion in the function)
+    //!
+    //  Exit:
+    //!   \return 1 = It is a Barracuda Drive, 0 - Not a Barracuda Drive
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API bool is_Barracuda_Drive(tDevice *device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
@@ -1990,8 +2136,23 @@ extern "C"
 
     #if defined (_DEBUG)
     //This function is more for debugging than anything else!
-    void print_tDevice_Size();
+    void print_tDevice_Size(void);
     #endif//_DEBUG
+
+    //-----------------------------------------------------------------------------
+    //
+    //  print_Low_Level_Info(tDevice* device)
+    //
+    //! \brief   Description:  Printfs out useful low-level information from the device structure to the screen
+    //
+    //  Entry:
+    //!   \param[in] device = file descriptor from an opened device
+    //!
+    //  Exit:
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API void print_Low_Level_Info(tDevice* device);
+
 
 #if defined (__cplusplus)
 } //extern "C"

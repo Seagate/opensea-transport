@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -153,12 +153,15 @@ extern "C"
     //!   \param firstSegment - first segment of a firmware download. Helps low-level OS ioctls (Mostly Windows based)
     //!   \param lastSegment - last segment of a firmware download. Helps low-level OS ioctls (Mostly Windows based)
     //!   \param timeoutSeconds - timeout for the command. Selectable since some updates may be slower than others.
+    //!   \param nvmeForceCA - force a specific commit action for NVMe firmware commit commands
+    //!   \param commitAction - the forced action. nvmeForceCA must be set to true, otherwise this is ignored.
+    //!   \param forceDisableReset - if this is set to true, it overrides any automatic reset after an NVMe firmware commit. When false, it lets this function decide when to issue a reset.
     //!   
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber, bool existingImage, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds);
+    OPENSEA_TRANSPORT_API int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber, bool existingImage, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds, bool nvmeForceCA, uint8_t commitAction, bool forceDisableReset);
 
     //-----------------------------------------------------------------------------
     //
@@ -170,12 +173,15 @@ extern "C"
     //!   \param slotNumber - set to the slot number (NVMe) or buffer ID (SCSI) that you want to set. If unsure, set this to zero. Ignored on ATA drives.
     //!   \param existingImage - set to true if using this command to activate an existing image in the specified slot, false if it is a new image to activate.
     //!   \param timeoutSeconds - timeout for the command. Selectable since some updates may be slower than others.
+    //!   \param nvmeForceCA - force a specific commit action for NVMe firmware commit commands
+    //!   \param commitAction - the forced action. nvmeForceCA must be set to true, otherwise this is ignored.
+    //!   \param forceDisableReset - if this is set to true, it overrides any automatic reset after an NVMe firmware commit. When false, it lets this function decide when to issue a reset.
     //!   
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int firmware_Download_Activate(tDevice *device, uint8_t slotNumber, bool existingImage, uint32_t timeoutSeconds);
+    OPENSEA_TRANSPORT_API int firmware_Download_Activate(tDevice *device, uint8_t slotNumber, bool existingImage, uint32_t timeoutSeconds, bool nvmeForceCA, uint8_t commitAction, bool forceDisableReset);
 
     typedef enum _eSecurityProtocols
     {

@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
+#include "common.h"
 
 #include "vm_nvme_lib.h"
 
@@ -447,7 +448,7 @@ int Nvme_FWFindSlot(struct nvme_handle *handle, int *slot)
       struct smart_log smartLog;
       struct firmware_slot_log fwSlotLog;
    } log;
-   unsigned char fw_rev_slot[MAX_FW_SLOT][FW_REV_LEN];
+   unsigned char fw_rev_slot[MAX_FW_SLOT][VM_FW_REV_LEN];
    int rc = -1;
    int i;
 

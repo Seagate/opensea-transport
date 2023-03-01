@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -72,6 +72,11 @@ printf("fill NVMe info ret = %d\n", ret);
         //set the t10 vendor id to NVMe
         snprintf(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "NVMe");
         device->drive_info.media_type = MEDIA_NVM;//This will bite us someday when someone decided to put non-ssds on NVMe interface.
+        //set scsi version to 6 if it is not already set
+        if (device->drive_info.scsiVersion == 0)
+        {
+            device->drive_info.scsiVersion = 6;//most likely this is what will be set by a translator and keep other parts of code working correctly
+        }
 
         //Set the other device fields we need.
         memcpy(fillSerialNumber,ctrlData->sn,SERIAL_NUM_LEN);
@@ -327,7 +332,7 @@ int check_NVMe_Status(uint32_t nvmeStatusDWord)
             ret = FAILURE;
             break;
         case NVME_GEN_SC_OPERATION_DENIED:
-            ret = FAILURE;
+            ret = DEVICE_ACCESS_DENIED;
             break;
         case NVME_GEN_SC_SGL_OFFSET_INVALID:
             ret = NOT_SUPPORTED;
@@ -458,9 +463,11 @@ int check_NVMe_Status(uint32_t nvmeStatusDWord)
         case NVME_MED_ERR_SC_ETE_APPTAG_CHECK_:
         case NVME_MED_ERR_SC_ETE_REFTAG_CHECK_:
         case NVME_MED_ERR_SC_COMPARE_FAILED_:
-        case NVME_MED_ERR_SC_ACCESS_DENIED_:
         case NVME_MED_ERR_SC_DEALLOCATED_OR_UNWRITTEN_LOGICAL_BLOCK:
             ret = FAILURE;
+            break;
+        case NVME_MED_ERR_SC_ACCESS_DENIED_:
+            ret = DEVICE_ACCESS_DENIED;
             break;
         default:
             ret = UNKNOWN;

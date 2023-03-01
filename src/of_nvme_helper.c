@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -22,6 +22,90 @@
 #include "sntl_helper.h"
 #include "scsi_helper_func.h"
 #include "nvme_helper_func.h"
+
+#if defined (_DEBUG) && !defined (OFNVME_DEBUG)
+#define OFNVME_DEBUG
+#endif //_DEBUG && !OFNVME_DEBUG
+
+static void print_Ofnvme_SRB_Status(uint32_t srbStatus)
+{
+    switch (srbStatus)
+    {
+    case NVME_IOCTL_SUCCESS:
+        printf("Success\n");
+        break;
+    case NVME_IOCTL_INTERNAL_ERROR:
+        printf("Internal Error\n");
+        break;
+    case NVME_IOCTL_INVALID_IOCTL_CODE:
+        printf("Invalid IOCTL Code\n");
+        break;
+    case NVME_IOCTL_INVALID_SIGNATURE:
+        printf("Invalid Signature\n");
+        break;
+    case NVME_IOCTL_INSUFFICIENT_IN_BUFFER:
+        printf("Insufficient In Buffer\n");
+        break;
+    case NVME_IOCTL_INSUFFICIENT_OUT_BUFFER:
+        printf("Insufficient Out Buffer\n");
+        break;
+    case NVME_IOCTL_UNSUPPORTED_ADMIN_CMD:
+        printf("Unsupported Admin Command\n");
+        break;
+    case NVME_IOCTL_UNSUPPORTED_NVM_CMD:
+        printf("Unsupported NVM Command\n");
+        break;
+    case NVME_IOCTL_UNSUPPORTED_OPERATION:
+        printf("Unsupported Operation\n");
+        break;
+    case NVME_IOCTL_INVALID_ADMIN_VENDOR_SPECIFIC_OPCODE:
+        printf("Invalid Admin Vendor Specific Opcode\n");
+        break;
+    case NVME_IOCTL_INVALID_NVM_VENDOR_SPECIFIC_OPCODE:
+        printf("Invalid NVM Vendor Specific Opcode\n");
+        break;
+    case NVME_IOCTL_ADMIN_VENDOR_SPECIFIC_NOT_SUPPORTED:  // i.e., AVSCC = 0
+        printf("Admin Vendor Specific Not Supported\n");
+        break;
+    case NVME_IOCTL_NVM_VENDOR_SPECIFIC_NOT_SUPPORTED:    // i.e., NVSCC = 0
+        printf("NVM Vendor Specific Not Supported\n");
+        break;
+    case NVME_IOCTL_INVALID_DIRECTION_SPECIFIED:          // Direction > 3
+        printf("Invalid Direction Specified\n");
+        break;
+    case NVME_IOCTL_INVALID_META_BUFFER_LENGTH:
+        printf("Invalid Meta Buffer Length\n");
+        break;
+    case NVME_IOCTL_PRP_TRANSLATION_ERROR:
+        printf("PRP Translation Error\n");
+        break;
+    case NVME_IOCTL_INVALID_PATH_TARGET_ID:
+        printf("Invalid Path Target ID\n");
+        break;
+    case NVME_IOCTL_FORMAT_NVM_PENDING:      // Only one Format NVM at a time
+        printf("Format NVM Pending\n");
+        break;
+    case NVME_IOCTL_FORMAT_NVM_FAILED:
+        printf("Format NVM Failed\n");
+        break;
+    case NVME_IOCTL_INVALID_NAMESPACE_ID:
+        printf("Invalid Namespace ID\n");
+        break;
+    case NVME_IOCTL_MAX_SSD_NAMESPACES_REACHED:
+        printf("Max SSD Namespaces Reached\n");
+        break;
+    case NVME_IOCTL_ZERO_DATA_TX_LENGTH_ERROR:
+        printf("Zero Data TX Length Error\n");
+        break;
+    case NVME_IOCTL_MAX_AER_REACHED:
+        printf("Max AER reached\n");
+        break;
+    case NVME_IOCTL_ATTACH_NAMESPACE_FAILED:
+        printf("Attach Namespace Failed\n");
+        break;
+    }
+    return;
+}
 
 //Need to setup an admin identify and try sending it. If this device doesn't support this IOCTL, it should fail, otherwise it will work.
 //This is the same way the sample app works. Would be better if there was some other buffer to just return and validate that reported the driver name, version, etc
@@ -141,6 +225,11 @@ int send_OFNVME_Reset(tDevice * device)
     }
     if (success)
     {
+        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            printf("OFNVME Error: ");
+            print_Ofnvme_SRB_Status(ofnvmeReset.ReturnCode);
+        }
         //TODO: Check the SRB_IO_CONTROL return code and check if it was successful or not. For now, if it reports success, we'll call it done. - TJE
         switch (ofnvmeReset.ReturnCode)
         {
@@ -200,6 +289,11 @@ int send_OFNVME_Add_Namespace(tDevice * device)
     }
     if (success)
     {
+        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            printf("OFNVME Error: ");
+            print_Ofnvme_SRB_Status(ofnvmeReset.ReturnCode);
+        }
         //TODO: Check the SRB_IO_CONTROL return code and check if it was successful or not. For now, if it reports success, we'll call it done. - TJE
         switch (ofnvmeReset.ReturnCode)
         {
@@ -259,6 +353,11 @@ int send_OFNVME_Remove_Namespace(tDevice * device)
     }
     if (success)
     {
+        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+        {
+            printf("OFNVME Error: ");
+            print_Ofnvme_SRB_Status(ofnvmeReset.ReturnCode);
+        }
         //TODO: Check the SRB_IO_CONTROL return code and check if it was successful or not. For now, if it reports success, we'll call it done. - TJE
         switch (ofnvmeReset.ReturnCode)
         {
@@ -279,7 +378,9 @@ int send_OFNVME_Remove_Namespace(tDevice * device)
 int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
 {
     int ret = OS_PASSTHROUGH_FAILURE;
-
+#if defined (OFNVME_DEBUG)
+    printf("ofnvme: NVM passthrough request\n");
+#endif //OFNVME_DEBUG
     uint32_t bufferSize = sizeof(NVME_PASS_THROUGH_IOCTL) + nvmeIoCtx->dataSize;//TODO: add metadata. This will be returned first in the data buffer if there is any
     uint8_t *passthroughBuffer = C_CAST(uint8_t*, calloc_aligned(bufferSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
     if (passthroughBuffer)
@@ -407,6 +508,11 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
         }
         if (success)
         {
+            if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+            {
+                printf("OFNVME Error: ");
+                print_Ofnvme_SRB_Status(ioctl->SrbIoCtrl.ReturnCode);
+            }
             if (ioctl->SrbIoCtrl.ReturnCode == NVME_IOCTL_SUCCESS)
             {
                 if (nvmeIoCtx->commandDirection == XFER_DATA_IN)
@@ -451,6 +557,11 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
                 printf("Windows Error: ");
                 print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
             }
+            if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+            {
+                printf("OFNVME Error: ");
+                print_Ofnvme_SRB_Status(ioctl->SrbIoCtrl.ReturnCode);
+            }
         }
 
         nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
@@ -461,6 +572,9 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
     {
         ret = MEMORY_FAILURE;
     }
+#if defined (OFNVME_DEBUG)
+    printf("ofnvme: NVM passthrough request result = %u\n", ret);
+#endif
     return ret;
 }
 #else

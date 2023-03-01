@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -304,7 +304,7 @@ int fill_Drive_Info_Data(tDevice *device)
     return status;
 }
 
-int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber, bool existingImage, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds)
+int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber, bool existingImage, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds, bool nvmeForceCA, uint8_t commitAction, bool forceDisableReset)
 {
     int ret = UNKNOWN;
 #ifdef _DEBUG
@@ -351,25 +351,32 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
                 uint8_t statusCodeType = 0, statusCode = 0;
                 bool doNotRetry = false, more = false;
                 bool issueReset = false, subsystem = false;
-                if (device->drive_info.IdentifyData.nvme.ctrl.frmw & BIT4)
+                uint8_t nvmeCommitAction = commitAction;//assume something is passed in for now
+                if (!nvmeForceCA)
                 {
-                    //this activate action can be used for replacing or activating existing images if the controller supports it.
-                    ret = nvme_Firmware_Commit(device, NVME_CA_ACTIVITE_IMMEDIATE, slotNumber, timeoutSeconds);
-                }
-                else
-                {
-                    if (existingImage)
+                    //user is not forcing a commit action so figure out what to use instead.
+                    if (device->drive_info.IdentifyData.nvme.ctrl.frmw & BIT4)
                     {
-                        ret = nvme_Firmware_Commit(device, NVME_CA_ACTIVITE_ON_RST, slotNumber, timeoutSeconds);
+                        //this activate action can be used for replacing or activating existing images if the controller supports it.
+                        nvmeCommitAction = NVME_CA_ACTIVITE_IMMEDIATE;
                     }
                     else
                     {
-                        ret = nvme_Firmware_Commit(device, NVME_CA_REPLACE_ACTIVITE_ON_RST, slotNumber, timeoutSeconds);
+                        if (existingImage)
+                        {
+                            nvmeCommitAction = NVME_CA_ACTIVITE_ON_RST;
+                        }
+                        else
+                        {
+                            nvmeCommitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
+                            
+                        }
                     }
-                    if (ret == SUCCESS)
-                    {
-                        issueReset = true;
-                    }
+                }
+                ret = nvme_Firmware_Commit(device, nvmeCommitAction, slotNumber, timeoutSeconds);
+                if (ret == SUCCESS && (nvmeCommitAction == NVME_CA_REPLACE_ACTIVITE_ON_RST || nvmeCommitAction == NVME_CA_ACTIVITE_ON_RST) && !forceDisableReset)
+                {
+                    issueReset = true;
                 }
                 //Issue a reset if we need to!
                 get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &doNotRetry, &more, &statusCodeType, &statusCode);
@@ -385,11 +392,50 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
                     case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
                         issueReset = true;
                         break;
+                    case NVME_CMD_SP_SC_FW_ACT_REQ_MAX_TIME_VIOALTION:
+                        if (!nvmeForceCA) //only retry when not forcing a specific mode
+                        {
+                            //needs to be reissued for an activate on reset instead due to maximum time violation.
+                            if (existingImage)
+                            {
+                                nvmeCommitAction = NVME_CA_ACTIVITE_ON_RST;
+                            }
+                            else
+                            {
+                                nvmeCommitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
+
+                            }
+                            ret = nvme_Firmware_Commit(device, nvmeCommitAction, slotNumber, timeoutSeconds);
+                            get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &doNotRetry, &more, &statusCodeType, &statusCode);
+                            if (statusCodeType == NVME_SCT_COMMAND_SPECIFIC_STATUS)
+                            {
+                                switch (statusCode)
+                                {
+                                case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
+                                    if (!forceDisableReset)
+                                    {
+                                        issueReset = true;
+                                        subsystem = true;
+                                    }
+                                    break;
+                                case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
+                                case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
+                                    if (!forceDisableReset)
+                                    {
+                                        issueReset = true;
+                                    }
+                                    break;
+                                default:
+                                    break;
+                                }
+                            }
+                        }
+                        break;
                     default:
                         break;
                     }
                 }
-                if (issueReset)
+                if (issueReset && !forceDisableReset)//if the reset is being forced to not run, there is a good reason for it! Listen to this flag ALWAYS
                 {
                     //send an appropriate reset to the device to activate the firmware.
                     //NOTE: On Windows, this is a stub since their API call will do this for us.
@@ -403,6 +449,11 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
                         //reset
                         nvme_Reset(device);
                     }
+                }
+                else if (nvmeCommitAction != NVME_CA_ACTIVITE_IMMEDIATE)
+                {
+                    //Set this return code since the reset was bypassed.
+                    ret = POWER_CYCLE_REQUIRED;
                 }
             }
             break;
@@ -459,9 +510,9 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
     return ret;
 }
 
-int firmware_Download_Activate(tDevice *device, uint8_t slotNumber, bool existingImage, uint32_t timeoutSeconds)
+int firmware_Download_Activate(tDevice *device, uint8_t slotNumber, bool existingImage, uint32_t timeoutSeconds, bool nvmeForceCA, uint8_t commitAction, bool forceDisableReset)
 {
-    return firmware_Download_Command(device, DL_FW_ACTIVATE, 0, 0, NULL, slotNumber, existingImage, false, false, timeoutSeconds);
+    return firmware_Download_Command(device, DL_FW_ACTIVATE, 0, 0, NULL, slotNumber, existingImage, false, false, timeoutSeconds, nvmeForceCA, commitAction, forceDisableReset);
 }
 
 int security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)

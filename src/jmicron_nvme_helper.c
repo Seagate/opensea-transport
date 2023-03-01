@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2019-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2019-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -297,7 +297,7 @@ int send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
     //Need to request the response information from the command.
     //TODO: There may be some sense data outputs where the return response info won't work or isn't necessary, but they don't seem documented today. Most likely only for illegal requests.
     bool senseDataIsAllWeGot = true;
-    if (sendRet != COMMAND_TIMEOUT)
+    if (sendRet != OS_COMMAND_TIMEOUT)
     {
         //3. build CDB for response info
         //send CDB for response info

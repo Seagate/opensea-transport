@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -21,6 +21,7 @@
 #include <sys/ioctl.h>
 #include <errno.h>
 #include <libgen.h>//for basename and dirname
+#include <string.h>
 #include "vm_helper.h"
 #include "cmds.h"
 #include "scsi_helper_func.h"
@@ -1215,6 +1216,14 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
 #ifdef _DEBUG
     printf("<--%s (%d)\n",__FUNCTION__, ret);
 #endif
+    if (scsiIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(scsiIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
+        }
+    }
     return ret;
 }
 
@@ -1712,7 +1721,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     {
         size_t deviceHandleLen = (strlen("/dev/disks/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, malloc(deviceHandleLen));
-        snprintf(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name)
+        snprintf(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name);
         safe_Free(namelist[i])
     }
     safe_Free(namelist)
@@ -1744,7 +1753,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 #if defined (DEGUG_SCAN_TIME)
         start_Timer(&getDeviceListTimer);
 #endif
-        for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_sg_devs + num_sd_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
+        for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_sg_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
             if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
             {
@@ -1801,7 +1810,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         {
             returnValue = FAILURE;
         }
-        else if(permissionDeniedCount == (num_sg_devs + num_sd_devs + num_nvme_devs))
+        else if(permissionDeniedCount == (num_sg_devs + num_nvme_devs))
         {
             returnValue = PERMISSION_DENIED;
         }
@@ -2036,6 +2045,16 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 #ifdef _DEBUG
     printf("<--%s (%d)\n",__FUNCTION__, ret);
 #endif
+
+    if (nvmeIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(nvmeIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", nvmeIoCtx->device->delay_io);
+        }
+    }
+
     return ret;
 #else //DISABLE_NVME_PASSTHROUGH
     return OS_COMMAND_NOT_AVAILABLE;

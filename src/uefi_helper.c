@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2017-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2017-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -1397,6 +1397,14 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
         ret = OS_COMMAND_NOT_AVAILABLE;
         break;
     }
+    if (scsiIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(scsiIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
+        }
+    }
     return ret;
 }
 
@@ -1740,6 +1748,16 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
     printf("NVMe Passthru function returning %d\n", ret);
     set_Console_Colors(true, DEFAULT);
     #endif
+
+    if (nvmeIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(nvmeIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", nvmeIoCtx->device->delay_io);
+        }
+    }
+
     return ret;
 #else //DISABLE_NVME_PASSTHROUGH
     return OS_COMMAND_NOT_AVAILABLE;
