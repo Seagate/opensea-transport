@@ -46,7 +46,7 @@ extern "C"
 #define SG_MAX_CMD_TIMEOUT_SECONDS 4294967
 
     //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
-    bool os_Is_Infinite_Timeout_Supported(void);
+    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void);
 
 
     int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char **blockHandle);
@@ -195,7 +195,7 @@ extern "C"
 //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
 //
 //-----------------------------------------------------------------------------
-int os_Device_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Device_Reset(tDevice *device);
 
 //-----------------------------------------------------------------------------
 //
@@ -211,7 +211,7 @@ int os_Device_Reset(tDevice *device);
 //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
 //
 //-----------------------------------------------------------------------------
-int os_Bus_Reset(tDevice *device);
+OPENSEA_TRANSPORT_API int os_Bus_Reset(tDevice *device);
 
 //-----------------------------------------------------------------------------
 //
@@ -227,7 +227,7 @@ int os_Bus_Reset(tDevice *device);
 //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
 //
 //-----------------------------------------------------------------------------
-int os_Controller_Reset(tDevice *device);
+OPENSEA_TRANSPORT_API int os_Controller_Reset(tDevice *device);
 
 
 //-----------------------------------------------------------------------------
@@ -250,11 +250,11 @@ int os_Controller_Reset(tDevice *device);
 //-----------------------------------------------------------------------------
 int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize );
 
-int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
+OPENSEA_TRANSPORT_API int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
 
-int os_nvme_Reset(tDevice *device);
+OPENSEA_TRANSPORT_API int os_nvme_Reset(tDevice *device);
 
-int os_nvme_Subsystem_Reset(tDevice *device);
+OPENSEA_TRANSPORT_API int os_nvme_Subsystem_Reset(tDevice *device);
 
 //int map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **blockHandle);
 
@@ -277,7 +277,7 @@ int host_Reset(int fd);
 //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
 //
 //-----------------------------------------------------------------------------
-int os_Lock_Device(tDevice *device);
+OPENSEA_TRANSPORT_API int os_Lock_Device(tDevice *device);
 
 //-----------------------------------------------------------------------------
 //
@@ -292,11 +292,13 @@ int os_Lock_Device(tDevice *device);
 //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
 //
 //-----------------------------------------------------------------------------
-int os_Unlock_Device(tDevice *device);
+OPENSEA_TRANSPORT_API int os_Unlock_Device(tDevice *device);
 
-int os_Update_File_System_Cache(tDevice* device);
+OPENSEA_TRANSPORT_API int os_Update_File_System_Cache(tDevice* device);
 
-int os_Unmount_File_Systems_On_Device(tDevice *device);
+OPENSEA_TRANSPORT_API int os_Unmount_File_Systems_On_Device(tDevice *device);
+
+OPENSEA_TRANSPORT_API int os_Erase_Boot_Sectors(tDevice* device);
 
 #if defined (__cplusplus)
 }

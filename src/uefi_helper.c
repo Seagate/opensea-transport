@@ -2441,6 +2441,12 @@ int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
     return NOT_SUPPORTED;
 }
 
+int os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+{
+    //edk2 might have some kind of partition function we can call for the device to erase it
+    return NOT_SUPPORTED;
+}
+
 int os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
