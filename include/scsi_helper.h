@@ -72,7 +72,8 @@ extern "C"
         SENSE_KEY_VENDOR_SPECIFIC = 0x09,
         SENSE_KEY_COPY_ABORTED    = 0x0A,
         SENSE_KEY_ABORTED_COMMAND = 0x0B,
-        SENSE_KEY_RESERVED        = 0x0C,
+        SENSE_KEY_EQUAL           = 0x0C,//scsi and scsi 2 defined this as "EQUAL" to say a "search data" command found an equal comparison.
+        SENSE_KEY_RESERVED        = 0x0C,//marked obsolete in SPC3 and reserved in later standards
         SENSE_KEY_VOLUME_OVERFLOW = 0x0D,
         SENSE_KEY_MISCOMPARE      = 0x0E,
         SENSE_KEY_COMPLETED       = 0x0F
@@ -108,7 +109,7 @@ extern "C"
     #define SCSI_SENSE_INFO_FIELD_MSB_INDEX  (3)
     #define SCSI_FIXED_FORMAT_CMD_INFO_INDEX (8)
 
-    #define SCSI_MAX_21_LBA 0x001FFFFF //read/write 6byte commands
+    #define SCSI_MAX_21_LBA UINT32_C(0x001FFFFF) //read/write 6byte commands
     #define SCSI_MAX_32_LBA UINT32_MAX
     #define SCSI_MAX_64_LBA UINT64_MAX
 
@@ -935,6 +936,8 @@ extern "C"
         SCSI_PROTOCOL_ID_RESERVED3      = 0xE,
         SCSI_PROTOCOL_ID_NO_SPECIFIC_PROTOCOL   = 0xF
     }eSCSIProtocolID;
+
+    #define REPORT_LUNS_MIN_LENGTH UINT16_C(16)  //this is the minimum length from SPC, but this requirement was removed later -TJE
 
     OPENSEA_TRANSPORT_API bool is_LaCie_USB_Vendor_ID(const char* t10VendorIdent);
     OPENSEA_TRANSPORT_API bool is_Seagate_USB_Vendor_ID(const char* t10VendorIdent);
