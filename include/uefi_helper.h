@@ -35,7 +35,7 @@ extern "C"
 #define UEFI_MAX_CMD_TIMEOUT_SECONDS UINT32_MAX //Technically, max seconds is 18446744074, but I don't want to switch to a 64bit for the timeout. Anything with this value will round up to infinite in UEFI...where a timeout this long may as well be infinite
 
     //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
-    bool os_Is_Infinite_Timeout_Supported(void);
+    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void);
 
     //-----------------------------------------------------------------------------
     //
@@ -87,16 +87,18 @@ extern "C"
     //-----------------------------------------------------------------------------
 	long getpagesize(void);
 
-    int os_nvme_Reset(tDevice *device);
-    int os_nvme_Subsystem_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_nvme_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_nvme_Subsystem_Reset(tDevice *device);
 
-    int os_Lock_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Lock_Device(tDevice *device);
 
-    int os_Unlock_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Unlock_Device(tDevice *device);
 
-    int os_Update_File_System_Cache(tDevice* device);
+    OPENSEA_TRANSPORT_API int os_Update_File_System_Cache(tDevice* device);
 
-    int os_Unmount_File_Systems_On_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Unmount_File_Systems_On_Device(tDevice *device);
+
+    OPENSEA_TRANSPORT_API int os_Erase_Boot_Sectors(tDevice* device);
 
 #if defined (__cplusplus)
 }

@@ -32,7 +32,7 @@ extern "C"
     #define AIX_MAX_CMD_TIMEOUT_SECONDS UINT32_MAX
 
     //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
-    bool os_Is_Infinite_Timeout_Supported(void);
+    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void);
 
     // \fn send_IO(scsiIoCtx * scsiIoCtx)
     // \brief Function to send IO to the device.
@@ -53,7 +53,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    int os_Device_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Device_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -69,7 +69,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    int os_Bus_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Bus_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -85,7 +85,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    int os_Controller_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Controller_Reset(tDevice *device);
 
 
     //-----------------------------------------------------------------------------
@@ -113,9 +113,9 @@ extern "C"
     //to be used with a deep scan???
     //int nvme_Namespace_Rescan(int fd);//rescans a controller for namespaces. This must be a file descriptor without a namespace. EX: /dev/nvme0 and NOT /dev/nvme0n1
 
-    int os_nvme_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_nvme_Reset(tDevice *device);
 
-    int os_nvme_Subsystem_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_nvme_Subsystem_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -130,7 +130,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    int os_Lock_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Lock_Device(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -145,12 +145,13 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    int os_Unlock_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Unlock_Device(tDevice *device);
 
-    int os_Update_File_System_Cache(tDevice* device);
+    OPENSEA_TRANSPORT_API int os_Update_File_System_Cache(tDevice* device);
 
-    int os_Unmount_File_Systems_On_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Unmount_File_Systems_On_Device(tDevice *device);
 
+    OPENSEA_TRANSPORT_API int os_Erase_Boot_Sectors(tDevice* device);
 
 #if defined (__cplusplus)
 }

@@ -1562,6 +1562,11 @@ int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
     return NOT_SUPPORTED;
 }
 
+int os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+{
+    return NOT_SUPPORTED;
+}
+
 int os_Unmount_File_Systems_On_Device(tDevice *device)
 {
     int ret = SUCCESS;

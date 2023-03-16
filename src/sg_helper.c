@@ -2511,6 +2511,7 @@ int os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_
 
 int os_Flush(M_ATTR_UNUSED tDevice *device)
 {
+    //BLKFLSBUF
     return NOT_SUPPORTED;
 }
 
@@ -2572,6 +2573,12 @@ int os_Update_File_System_Cache(tDevice* device)
         ret = FAILURE;
     }
     return ret;
+}
+
+int os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+{
+    //TODO: if BLKZEROOUT available, use this to write zeroes to begining and end of the drive???
+    return NOT_SUPPORTED;
 }
 
 int os_Unmount_File_Systems_On_Device(tDevice *device)
