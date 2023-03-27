@@ -1769,8 +1769,16 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
                 }
             }
             break;
+        case SCSI_SENSE_VENDOR_SPECIFIC:
+            //vendor specific format and meaning. Nothing we can do here
+            break;
         default:
-            //unknown sense data format! Can't do anything
+            //this is either unknown format or possible SASI format.
+            //for this, there is no real translation. For these formats everything in scsi says "Vendor unique" however one really old copy of SASI does
+            // define some error codes....so maybe set "sense key" to error class, asq to "error code" and a bool to say "possibly SASI" somewhere.
+            // if the valid bit is set, then an LBA is reported that we can put into the information field like fixed format sense data typically does.
+            //for SASI and SCSI, the definition is simple. in byte 0, bit 7 is "valid" for LBA address, bits 6-4 is error class, bits 3-0 are error code.
+            //In byte 1, bits 7:4 are vendor unique, then all remaiing bits (20) are the LBA
             break;
         }
     }
@@ -3171,11 +3179,11 @@ int fill_In_Device_Info(tDevice *device)
             return ret;
         }
 
-        if (device->drive_info.interface_type != USB_INTERFACE && device->drive_info.interface_type != IEEE_1394_INTERFACE)
+        if (device->drive_info.scsiVersion > SCSI_VERSION_SCSI2 && device->drive_info.interface_type != USB_INTERFACE && device->drive_info.interface_type != IEEE_1394_INTERFACE)
         {
             //Issue report LUNs to figure out how many logical units are present.
-            uint8_t reportLuns[8] = { 0 };//only really need first 4 bytes, but this will make sure we get the length, hopefully without error
-            if (SUCCESS == scsi_Report_Luns(device, 0, 8, reportLuns))
+            uint8_t reportLuns[REPORT_LUNS_MIN_LENGTH] = { 0 };//only really need first 4 bytes, but this will make sure we get the length, hopefully without error
+            if (SUCCESS == scsi_Report_Luns(device, 0, REPORT_LUNS_MIN_LENGTH, reportLuns))
             {
                 uint32_t lunListLength = M_BytesTo4ByteValue(reportLuns[0], reportLuns[1], reportLuns[2], reportLuns[3]);
                 device->drive_info.numberOfLUs = lunListLength / 8;//each LUN is 8 bytes long

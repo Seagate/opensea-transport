@@ -2173,7 +2173,13 @@ int os_Unlock_Device(tDevice *device)
 
 int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
 {
+    //note: linux code for blkrrprt might work
     //TODO: Complete this stub when this is figured out - TJE
+    return NOT_SUPPORTED;
+}
+
+int os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+{
     return NOT_SUPPORTED;
 }
 

@@ -219,6 +219,8 @@ extern "C"
 
     OPENSEA_TRANSPORT_API int os_Unmount_File_Systems_On_Device(tDevice *device);
 
+    OPENSEA_TRANSPORT_API int os_Erase_Boot_Sectors(tDevice* device);
+
 #if defined (__cplusplus)
 }
 #endif

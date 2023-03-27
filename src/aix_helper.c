@@ -3406,6 +3406,11 @@ int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
     return NOT_SUPPORTED;
 }
 
+int os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+{
+    return NOT_SUPPORTED;
+}
+
 //etc/filesystems https://www.ibm.com/docs/en/aix/7.3?topic=files-filesystems-file
 //https://www.ibm.com/docs/en/aix/7.3?topic=files-filsysh-file
 //https://www.ibm.com/docs/en/aix/7.3?topic=files-fullstath-file

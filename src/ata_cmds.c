@@ -138,6 +138,10 @@ int ata_Identify(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
             if (!is_Checksum_Valid(ptrData, LEGACY_DRIVE_SEC_SIZE, &invalidSec))
             {
                 ret = WARN_INVALID_CHECKSUM;
+                if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+                {
+                    printf("Warning: Identify Checksum is invalid\n");
+                }
             }
         }
         else
@@ -326,12 +330,13 @@ int ata_Read_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, u
     {
         if (useDMA)
         {
-            printf("Sending ATA Read Log Ext DMA command - Log %02Xh\n", logAddress);
+            printf("Sending ATA Read Log Ext DMA command");
         }
         else
         {
-            printf("Sending ATA Read Log Ext command - Log %02Xh\n", logAddress);
+            printf("Sending ATA Read Log Ext command");
         }
+        printf(" - Log %02" PRIX8 "h, Page % " PRIu16 ", Count % " PRIu32 "\n", logAddress, pageNumber, (dataSize / LEGACY_DRIVE_SEC_SIZE));
     }
 
     //zap it
@@ -449,12 +454,13 @@ int ata_Write_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, 
     {
         if (useDMA)
         {
-            printf("Sending ATA Write Log Ext DMA command - Log %02Xh\n", logAddress);
+            printf("Sending ATA Write Log Ext DMA command");
         }
         else
         {
-            printf("Sending ATA Write Log Ext command - Log %02Xh\n", logAddress);
+            printf("Sending ATA Write Log Ext command");
         }
+        printf(" - Log %02" PRIX8 "h, Page % " PRIu16 ", Count % " PRIu32 "\n", logAddress, pageNumber, (dataSize / LEGACY_DRIVE_SEC_SIZE));
     }
 
     //zap it
@@ -468,7 +474,7 @@ int ata_Write_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, 
     {
         return BAD_PARAMETER;
     }
-    // Must be at 512 boundry
+    // Must be at 512 boundary
     else if (dataSize % LEGACY_DRIVE_SEC_SIZE)
     {
         return BAD_PARAMETER;
@@ -514,7 +520,7 @@ int ata_Write_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, 
     ataCommandOptions.tfr.SectorCount = M_Byte0(dataSize / LEGACY_DRIVE_SEC_SIZE);
     ataCommandOptions.tfr.SectorCount48 = M_Byte1(dataSize / LEGACY_DRIVE_SEC_SIZE);
 
-    ataCommandOptions.tfr.ErrorFeature = 0; // ?? ATA Spec says Log spcecific
+    ataCommandOptions.tfr.ErrorFeature = 0; // ?? ATA Spec says Log specific
     ataCommandOptions.tfr.Feature48 = 0;
     if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
     {
@@ -558,7 +564,7 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
     case ATA_SMART_READ_LOG:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_READ_LOG)
         {
-            printf("Read Log - Log %02"PRIX8"h\n", lbaLo);
+            printf("Read Log - Log %02" PRIX8 "h, Count %" PRIu32 "\n", lbaLo, (dataSize / LEGACY_DRIVE_SEC_SIZE));
         }
         M_FALLTHROUGH
     case ATA_SMART_RDATTR_THRESH:
@@ -580,7 +586,7 @@ int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *
     case ATA_SMART_WRITE_LOG:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_WRITE_LOG)
         {
-            printf("Write Log - Log %02"PRIX8"h\n", lbaLo);
+            printf("Write Log - Log %02" PRIX8 "h, Count %" PRIu32 "\n", lbaLo, (dataSize / LEGACY_DRIVE_SEC_SIZE));
         }
         ataCommandOptions.commandDirection = XFER_DATA_OUT;
         ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
@@ -742,7 +748,7 @@ int ata_SMART_Read_Log(tDevice *device, uint8_t logAddress, uint8_t *ptrData, ui
                 ret = WARN_INVALID_CHECKSUM;
                 if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
                 {
-                    printf("Warning: Checksum is invalid\n");
+                    printf("Warning: Log Checksum is invalid\n");
                 }
             }
             break;
@@ -1094,7 +1100,7 @@ int ata_Accessible_Max_Address_Feature(tDevice *device, uint16_t feature, uint64
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Accessible Max Address Command - Feature = 0x%04" PRIX16 "\n", feature);
+        printf("Sending ATA Accessible Max Address Command - Feature = 0x%04" PRIX16 ", LBA = %" PRIu64 "\n", feature, lba);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -1260,7 +1266,7 @@ int ata_Set_Max(tDevice *device, eHPAFeature setMaxFeature, uint32_t newMaxLBA, 
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Set Max\n");
+        printf("Sending ATA Set Max, LBA = %" PRIu32 ", %s\n", newMaxLBA, (volitileValue ? "Volatile" : "Non-Volatile"));
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -1331,7 +1337,7 @@ int ata_Set_Max_Address_Ext(tDevice *device, uint64_t newMaxLBA, bool volatileVa
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Set Native Max Address Ext\n");
+        printf("Sending ATA Set Native Max Address Ext, LBA = %" PRIu64 ", %s\n", newMaxLBA, (volatileValue ? "Volatile" : "Non-Volatile"));
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -1676,7 +1682,9 @@ int ata_Flush_Cache(tDevice *device, bool extendedCommand)
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.dataSize = 0;
     ataCommandOptions.ptrData = NULL;
-    ataCommandOptions.timeout = 45;//setting 45 seconds to make sure the command completes. The spec says that the command may take longer than 30 seconds to complete, so make sure it's given enough time
+    ataCommandOptions.timeout = MAX_CMD_TIMEOUT_SECONDS;
+    //Changed from 45 seconds to max command timeout to make sure this has enough time to complete without the system sending a reset.
+    //The spec mentions this can take up to 30 minutes, but that is likely a rare condition. It should usually complete faster than that on today's drives - TJE
 
     if (extendedCommand)
     {
@@ -1746,7 +1754,7 @@ int ata_Idle(tDevice *device, uint8_t standbyTimerPeriod)
     ataCommandOptions.tfr.SectorCount = standbyTimerPeriod;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Idle\n");
+        printf("Sending ATA Idle, standby timer = %" PRIX8 "h\n", standbyTimerPeriod);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -1787,7 +1795,7 @@ int ata_Idle_Immediate(tDevice *device, bool unloadFeature)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Idle Immediate\n");
+        printf("Sending ATA Idle Immediate %s\n", (unloadFeature ? " - Unload" : ""));
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -2410,7 +2418,7 @@ int ata_Set_Date_And_Time(tDevice *device, uint64_t timeStamp)
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Set Data & Time Ext\n");
+        printf("Sending ATA Set Data & Time Ext - time stamp: %016" PRIX64 "h\n", timeStamp);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -2447,7 +2455,7 @@ int ata_Set_Multiple_Mode(tDevice *device, uint8_t drqDataBlockCount)
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Set Multiple Mode\n");
+        printf("Sending ATA Set Multiple Mode - DRQ block count: %" PRIu8 "\n", drqDataBlockCount);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -2519,7 +2527,7 @@ int ata_Standby(tDevice *device, uint8_t standbyTimerPeriod)
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Standby\n");
+        printf("Sending ATA Standby, standby timer - %" PRIX8 "h\n", standbyTimerPeriod);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -2599,7 +2607,8 @@ int ata_Trusted_Non_Data(tDevice *device, uint8_t securityProtocol, bool trusted
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Trusted Non-Data\n");
+        printf("Sending ATA Trusted Non-Data");
+        printf(" - Security Protocol %02" PRIX16 ", Specific: %04" PRIX16 "\n", securityProtocol, securityProtocolSpecific);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -2669,12 +2678,13 @@ int ata_Trusted_Receive(tDevice *device, bool useDMA, uint8_t securityProtocol, 
     {
         if (useDMA)
         {
-            printf("Sending ATA Trusted Receive DMA\n");
+            printf("Sending ATA Trusted Receive DMA");
         }
         else
         {
-            printf("Sending ATA Trusted Receive\n");
+            printf("Sending ATA Trusted Receive");
         }
+        printf(" - Security Protocol %02" PRIX16 ", Specific: %04" PRIX16 "\n", securityProtocol, securityProtocolSpecific);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -2750,12 +2760,13 @@ int ata_Trusted_Send(tDevice *device, bool useDMA, uint8_t securityProtocol, uin
     {
         if (useDMA)
         {
-            printf("Sending ATA Trusted Send DMA\n");
+            printf("Sending ATA Trusted Send DMA");
         }
         else
         {
-            printf("Sending ATA Trusted Send\n");
+            printf("Sending ATA Trusted Send");
         }
+        printf(" - Security Protocol %02" PRIX16 ", Specific: %04" PRIX16 "\n", securityProtocol, securityProtocolSpecific);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -3304,7 +3315,7 @@ int ata_Write_Uncorrectable(tDevice *device, uint8_t unrecoverableOptions, uint1
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Write Uncorrectable Ext\n");
+        printf("Sending ATA Write Uncorrectable Ext - %02" PRIX8 "h, LBA = %" PRIu64 ", Count: %" PRIu16 "\n", unrecoverableOptions, LBA, numberOfSectors);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -3606,7 +3617,7 @@ int ata_Set_Features(tDevice *device, uint8_t subcommand, uint8_t subcommandCoun
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Set Features\n");
+        printf("Sending ATA Set Features - subcommand %02" PRIX8 "h\n", subcommand);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -4358,7 +4369,7 @@ int ata_Zeros_Ext(tDevice *device, uint16_t numberOfLogicalSectors, uint64_t lba
     
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Zeros Ext\n");
+        printf("Sending ATA Zeros Ext - LBA %" PRIu64 ", count %"PRIu16 " %s\n", lba, numberOfLogicalSectors, (trim ? "(TRIM)" : ""));
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
