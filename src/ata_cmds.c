@@ -336,7 +336,7 @@ int ata_Read_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, u
         {
             printf("Sending ATA Read Log Ext command");
         }
-        printf(" - Log %02" PRIX8 "h, Page % " PRIu16 ", Count % " PRIu32 "\n", logAddress, pageNumber, (dataSize / LEGACY_DRIVE_SEC_SIZE));
+        printf(" - Log %02" PRIX8 "h, Page %" PRIu16 ", Count %" PRIu32 "\n", logAddress, pageNumber, (dataSize / LEGACY_DRIVE_SEC_SIZE));
     }
 
     //zap it
@@ -460,7 +460,7 @@ int ata_Write_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, 
         {
             printf("Sending ATA Write Log Ext command");
         }
-        printf(" - Log %02" PRIX8 "h, Page % " PRIu16 ", Count % " PRIu32 "\n", logAddress, pageNumber, (dataSize / LEGACY_DRIVE_SEC_SIZE));
+        printf(" - Log %02" PRIX8 "h, Page %" PRIu16 ", Count %" PRIu32 "\n", logAddress, pageNumber, (dataSize / LEGACY_DRIVE_SEC_SIZE));
     }
 
     //zap it
