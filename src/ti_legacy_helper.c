@@ -118,7 +118,7 @@ int send_TI_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *a
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         {
             //print out RTFRs
-            print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+            print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
         }
     }
     memcpy(&device->drive_info.lastCommandSenseData[0], &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));

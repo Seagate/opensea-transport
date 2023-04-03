@@ -158,12 +158,16 @@ int get_RTFRs_From_Descriptor_Format_Sense_Data(uint8_t *ptrSenseData, uint32_t 
     return ret;
 }
 
-int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseData, uint32_t senseDataSize, ataReturnTFRs *rtfr)
+int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseData, uint32_t senseDataSize, ataPassthroughCommand *ataCmd)
 {
     int ret = FAILURE;
     uint8_t senseDataFormat = ptrSenseData[0] & 0x7F;
     M_USE_UNUSED(senseDataSize);
-    if ((senseDataFormat == SCSI_SENSE_CUR_INFO_FIXED || senseDataFormat == SCSI_SENSE_DEFER_ERR_FIXED) && ptrSenseData[12] == 0x00 && ptrSenseData[13] == 0x1D)
+    if ((senseDataFormat == SCSI_SENSE_CUR_INFO_FIXED || senseDataFormat == SCSI_SENSE_DEFER_ERR_FIXED)
+#if !defined (UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
+        && (ptrSenseData[12] == 0x00 && ptrSenseData[13] == 0x1D)//ATA passthrough information available
+#endif //(UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
+        )
     {
         ret = SUCCESS;//assume everything works right now...
         //first check if the returned RTFRs have nonzero ext registers and if a log page is available to read to get them
@@ -174,47 +178,104 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
         uint8_t resultsLogPageParameterPointer = ptrSenseData[8] & 0x0F;
         //first save whatever we did get back from the sense data based on these flags
         //from fixed format information field
-        rtfr->error = ptrSenseData[3];
-        rtfr->status = ptrSenseData[4];
-        rtfr->device = ptrSenseData[5];
-        rtfr->secCnt = ptrSenseData[6];
+        ataCmd->rtfr.error = ptrSenseData[3];
+        ataCmd->rtfr.status = ptrSenseData[4];
+        ataCmd->rtfr.device = ptrSenseData[5];
+        ataCmd->rtfr.secCnt = ptrSenseData[6];
         //from fixed format command specific information field
-        rtfr->lbaHi = ptrSenseData[9];
-        rtfr->lbaMid = ptrSenseData[10];
-        rtfr->lbaLow = ptrSenseData[11];
+        ataCmd->rtfr.lbaHi = ptrSenseData[9];
+        ataCmd->rtfr.lbaMid = ptrSenseData[10];
+        ataCmd->rtfr.lbaLow = ptrSenseData[11];
         //now set the ext registers based on the boolean flags above
         if (extendBitSet)
         {
             if (secCntExtNonZero)
             {
-                rtfr->secCntExt = 0xFF;
+                ataCmd->rtfr.secCntExt = 0xFF;
                 unknownExtRegisters = true;
             }
             else
             {
-                rtfr->secCntExt = 0;
+                ataCmd->rtfr.secCntExt = 0;
             }
             if (LBAExtNonZero)
             {
-                rtfr->lbaLowExt = 0xFF;
-                rtfr->lbaMidExt = 0xFF;
-                rtfr->lbaHiExt = 0xFF;
+                ataCmd->rtfr.lbaLowExt = 0xFF;
+                ataCmd->rtfr.lbaMidExt = 0xFF;
+                ataCmd->rtfr.lbaHiExt = 0xFF;
                 unknownExtRegisters = true;
             }
             else
             {
-                rtfr->lbaLowExt = 0;
-                rtfr->lbaMidExt = 0;
-                rtfr->lbaHiExt = 0;
+                ataCmd->rtfr.lbaLowExt = 0;
+                ataCmd->rtfr.lbaMidExt = 0;
+                ataCmd->rtfr.lbaHiExt = 0;
             }
         }
         else
         {
-            rtfr->secCntExt = 0;
-            rtfr->lbaLowExt = 0;
-            rtfr->lbaMidExt = 0;
-            rtfr->lbaHiExt = 0;
+            ataCmd->rtfr.secCntExt = 0;
+            ataCmd->rtfr.lbaLowExt = 0;
+            ataCmd->rtfr.lbaMidExt = 0;
+            ataCmd->rtfr.lbaHiExt = 0;
         }
+
+#if defined (UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
+        //TODO: Extra validation of the RTFRs
+        uint8_t senseKey = M_Nibble0(ptrSenseData[2]);
+        uint8_t asc = ptrSenseData[12];
+        uint8_t ascq = ptrSenseData[13];
+
+        if (asc != 0x00 && ascq != 0x1D)//00,1D means that this was DEFINITELY related to ATA passthrough results
+        {
+            //need to do a little validation that the returned registers make some amount of sense
+            if (asc == 0x21 && ascq == 0x04)//unaligned write command
+            {
+                //for unaligned write command, this seems to happen from SATLs when the alignment status bit is set.
+                if (senseKey == SENSE_KEY_ILLEGAL_REQUEST)
+                {
+                    //most likely has good rtfrs, but not in the locations from SAT
+                    ataCmd->rtfr.lbaHi = 0;
+                    ataCmd->rtfr.lbaMid = 0;
+                    ataCmd->rtfr.lbaLow = 0;
+                    ataCmd->rtfr.lbaLowExt = 0;
+                    ataCmd->rtfr.lbaMidExt = 0;
+                    ataCmd->rtfr.lbaHiExt = 0;
+                    //In Linux's LibATA, I have observed these to be returned in these positions.
+                    ataCmd->rtfr.status = ptrSenseData[9];
+                    ataCmd->rtfr.error = ptrSenseData[8];
+                    ataCmd->rtfr.secCnt = ptrSenseData[11];
+                    ataCmd->rtfr.secCntExt = ptrSenseData[10];//This is a guess!
+                    ataCmd->rtfr.device = ptrSenseData[16];//This is a best guess from observation
+                    ataCmd->rtfr.lbaLow = ptrSenseData[17];//this is a best guess from observation
+                    //Other offsets that MIGHT contain data, but I cannot confirm:
+                    //3, 4, 5, 6, 15
+                }
+                else if (senseKey == SENSE_KEY_ABORTED_COMMAND)
+                {
+                    //TODO: check if a valid LBA was returned in information rather than RTFRs
+                }
+            }
+            //THis need to be at the end. 
+            //if the status is empty, this is going to be treated as though no rtfrs were received from the device
+            if (ataCmd->rtfr.status == 0 || !(ataCmd->rtfr.status & ATA_STATUS_BIT_READY))
+            {
+                ataCmd->rtfr.error = 0;
+                ataCmd->rtfr.status = 0;
+                ataCmd->rtfr.device = 0;
+                ataCmd->rtfr.secCnt = 0;
+                ataCmd->rtfr.lbaHi = 0;
+                ataCmd->rtfr.lbaMid = 0;
+                ataCmd->rtfr.lbaLow = 0;
+                ataCmd->rtfr.secCntExt = 0;
+                ataCmd->rtfr.lbaLowExt = 0;
+                ataCmd->rtfr.lbaMidExt = 0;
+                ataCmd->rtfr.lbaHiExt = 0;
+                unknownExtRegisters = false;
+                ret = FAILURE;
+            }
+        }
+#endif //UNALIGNED_WRITE_SENSE_DATA_WORKAROUND
 
         //now, on the mini D4 firmware (and possibly other satls), the descriptor with the complete rtfrs may also be present in byte 18 onwards, so check if it is there or not to grab the data
         if (ptrSenseData[7] == 24 && unknownExtRegisters)//this length is very specific since it is the normal 10 bytes returned in fixed format data + the 14 bytes for the ata return descriptor in SAT
@@ -223,30 +284,30 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
             uint8_t descriptorOffset = 18;//using this offset variable to make it easier to read and compare to the sat spec offsets for the descriptor
             if (ptrSenseData[descriptorOffset] == SAT_DESCRIPTOR_CODE && ptrSenseData[descriptorOffset + 1] == SAT_ADDT_DESC_LEN)
             {
-                rtfr->error = ptrSenseData[descriptorOffset + 3];
-                rtfr->secCnt = ptrSenseData[descriptorOffset + 5];
-                rtfr->lbaLow = ptrSenseData[descriptorOffset + 7];
-                rtfr->lbaMid = ptrSenseData[descriptorOffset + 9];
-                rtfr->lbaHi = ptrSenseData[descriptorOffset + 11];
-                rtfr->device = ptrSenseData[descriptorOffset + 12];
-                rtfr->status = ptrSenseData[descriptorOffset + 13];
+                ataCmd->rtfr.error = ptrSenseData[descriptorOffset + 3];
+                ataCmd->rtfr.secCnt = ptrSenseData[descriptorOffset + 5];
+                ataCmd->rtfr.lbaLow = ptrSenseData[descriptorOffset + 7];
+                ataCmd->rtfr.lbaMid = ptrSenseData[descriptorOffset + 9];
+                ataCmd->rtfr.lbaHi = ptrSenseData[descriptorOffset + 11];
+                ataCmd->rtfr.device = ptrSenseData[descriptorOffset + 12];
+                ataCmd->rtfr.status = ptrSenseData[descriptorOffset + 13];
                 //check for the extend bit
                 if (ptrSenseData[descriptorOffset + 2] & BIT0)
                 {
                     unknownExtRegisters = false;
                     //copy back the extended registers
-                    rtfr->secCntExt = ptrSenseData[descriptorOffset + 4];
-                    rtfr->lbaLowExt = ptrSenseData[descriptorOffset + 6];
-                    rtfr->lbaMidExt = ptrSenseData[descriptorOffset + 8];
-                    rtfr->lbaHiExt = ptrSenseData[descriptorOffset + 10];
+                    ataCmd->rtfr.secCntExt = ptrSenseData[descriptorOffset + 4];
+                    ataCmd->rtfr.lbaLowExt = ptrSenseData[descriptorOffset + 6];
+                    ataCmd->rtfr.lbaMidExt = ptrSenseData[descriptorOffset + 8];
+                    ataCmd->rtfr.lbaHiExt = ptrSenseData[descriptorOffset + 10];
                 }
                 else
                 {
                     //set the registers to zero
-                    rtfr->secCntExt = 0;
-                    rtfr->lbaLowExt = 0;
-                    rtfr->lbaMidExt = 0;
-                    rtfr->lbaHiExt = 0;
+                    ataCmd->rtfr.secCntExt = 0;
+                    ataCmd->rtfr.lbaLowExt = 0;
+                    ataCmd->rtfr.lbaMidExt = 0;
+                    ataCmd->rtfr.lbaHiExt = 0;
                 }
             }
         }
@@ -258,14 +319,9 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
             if (resultsLogPageParameterPointer > 0)
             {
                 //rtfrs from passthrough results log
-                ret = get_Return_TFRs_From_Passthrough_Results_Log(device, rtfr, (ptrSenseData[8] & 0x0F) - 1);
+                ret = get_Return_TFRs_From_Passthrough_Results_Log(device, &ataCmd->rtfr, (ptrSenseData[8] & 0x0F) - 1);
             }
-            if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported && ret != SUCCESS)
-            {
-                //follow up command for rtfrs
-                ret = request_Return_TFRs_From_Device(device, rtfr);
-            }
-            if (ret != SUCCESS)
+            if (ret != SUCCESS && !device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported)//rerequest only if the return response info is not supported
             {
                 //request descriptor format data
                 uint8_t *descriptorFormatSenseData = C_CAST(uint8_t*, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
@@ -276,13 +332,13 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
                 //try a request sense to get descriptor sense data
                 if (SUCCESS == scsi_Request_Sense_Cmd(device, true, descriptorFormatSenseData, SPC3_SENSE_LEN))
                 {
-                    ret = get_RTFRs_From_Descriptor_Format_Sense_Data(descriptorFormatSenseData, SPC3_SENSE_LEN, rtfr);
+                    ret = get_RTFRs_From_Descriptor_Format_Sense_Data(descriptorFormatSenseData, SPC3_SENSE_LEN, &ataCmd->rtfr);
                 }
                 safe_Free_aligned(descriptorFormatSenseData)
             }
         }
         //Some devices say passthrough info available, but populate nothing...so need to set this error!
-        if (rtfr->error == 0 && rtfr->status == 0 && rtfr->device == 0 && rtfr->secCnt == 0 && rtfr->lbaHi == 0 && rtfr->lbaMid == 0 && rtfr->lbaLow == 0)
+        if (ataCmd->rtfr.error == 0 && ataCmd->rtfr.status == 0 && ataCmd->rtfr.device == 0 && ataCmd->rtfr.secCnt == 0 && ataCmd->rtfr.lbaHi == 0 && ataCmd->rtfr.lbaMid == 0 && ataCmd->rtfr.lbaLow == 0)
         {
             ret = FAILURE;
         }
@@ -304,7 +360,7 @@ bool get_Return_TFRs_From_Sense_Data(tDevice *device, ataPassthroughCommand *ata
         uint8_t senseDataFormat = ataCommandOptions->ptrSenseData[0] & 0x7F;
         //attempt to copy back RTFRs from the sense data buffer if we got sense data at all
         //parse the descriptor format sense data
-        if ((senseDataFormat == SCSI_SENSE_CUR_INFO_DESC || senseDataFormat == SCSI_SENSE_DEFER_ERR_DESC))// && ataCommandOptions->ptrSenseData[2] == 0x00 && ataCommandOptions->ptrSenseData[3] == 0x1D)
+        if (senseDataFormat == SCSI_SENSE_CUR_INFO_DESC || senseDataFormat == SCSI_SENSE_DEFER_ERR_DESC)
         {
             ret = get_RTFRs_From_Descriptor_Format_Sense_Data(ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, &ataCommandOptions->rtfr);
             if (ret == SUCCESS)
@@ -313,9 +369,13 @@ bool get_Return_TFRs_From_Sense_Data(tDevice *device, ataPassthroughCommand *ata
             }
         }
         //Parse the fixed format sense data if it says there is ATA Pass through Information available.
-        else if ((senseDataFormat == SCSI_SENSE_CUR_INFO_FIXED || senseDataFormat == SCSI_SENSE_DEFER_ERR_FIXED) && ataCommandOptions->ptrSenseData[12] == 0x00 && ataCommandOptions->ptrSenseData[13] == 0x1D)
+        else if ((senseDataFormat == SCSI_SENSE_CUR_INFO_FIXED || senseDataFormat == SCSI_SENSE_DEFER_ERR_FIXED)
+#if !defined (UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
+            && (ataCommandOptions->ptrSenseData[12] == 0x00 && ataCommandOptions->ptrSenseData[13] == 0x1D)//ATA passthrough information available
+#endif //(UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
+            )
         {
-            ret = get_RTFRs_From_Fixed_Format_Sense_Data(device, ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, &ataCommandOptions->rtfr);
+            ret = get_RTFRs_From_Fixed_Format_Sense_Data(device, ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, ataCommandOptions);
             //if the RTFRs are incomplete, but the device supports the request command, send the request command to get the RTFRs
             if ((ret == WARN_INCOMPLETE_RFTRS || ret == FAILURE) && device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported)
             {
@@ -745,12 +805,11 @@ int request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rtfr)
     }
     //set the protocol to Fh (15) to request the return TFRs be returned in that data in buffer.
     set_Protocol_Field(requestRTFRs, ATA_PROTOCOL_RET_INFO, XFER_DATA_IN, protocolOffset);
-    //Set the TDIR bit to in. The SAT spec says the SATL should ignore this with this protocol, but I have found that this may not be the case in some firmware implementations, so set this to help out the SATL incase it is just skipping to checking this. - TJE
-    if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR)
-    {
-        requestRTFRs[protocolOffset] |= SAT_T_DIR_DATA_IN;
-        requestRTFRs[transferBitsOffset] |= ATA_PT_LEN_TPSIU;
-    }
+    //SAT says these bits should be ignored.
+    //I'm setting them anyways because I have found a few SATLs that NEED the T_DIR bit at minimum to determine that this is a read since they do not
+    //validate the protocol as a read in and of itself.
+    requestRTFRs[protocolOffset] |= SAT_T_DIR_DATA_IN;
+    requestRTFRs[transferBitsOffset] |= ATA_PT_LEN_TPSIU;//While this may not be necessary, it at least makes the most sense for this protocol and should be ignored by a good SATL
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1116,7 +1175,7 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         {
             //Print out the RTFRs that we got
-            print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+            print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
         }
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {

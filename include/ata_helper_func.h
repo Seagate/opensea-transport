@@ -1688,11 +1688,11 @@ extern "C"
     //
     //  Entry:
     //!   \param[in] ataCommandOptions = structure with the TFR information filled in to be printed out. (and protocol and direction)
-    //!
+    //!   \param[in] device = pointer to device struct so that some things can be verified about capabilities and features before printing the meaning of status and error bits.
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataCommandOptions);
+    OPENSEA_TRANSPORT_API void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataCommandOptions, tDevice *device);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
     ///         Zoned Device Commands - subject to change as these aren't finialized yet        ///
