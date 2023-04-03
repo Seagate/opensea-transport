@@ -163,7 +163,11 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
     int ret = FAILURE;
     uint8_t senseDataFormat = ptrSenseData[0] & 0x7F;
     M_USE_UNUSED(senseDataSize);
-    if (senseDataFormat == SCSI_SENSE_CUR_INFO_FIXED || senseDataFormat == SCSI_SENSE_DEFER_ERR_FIXED)
+    if (senseDataFormat == SCSI_SENSE_CUR_INFO_FIXED || senseDataFormat == SCSI_SENSE_DEFER_ERR_FIXED
+#if !defined (UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
+        && (ptrSenseData[12] == 0x00 && ptrSenseData[13] == 0x1D)//ATA passthrough information available
+#endif (UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
+        )
     {
         ret = SUCCESS;//assume everything works right now...
         //first check if the returned RTFRs have nonzero ext registers and if a log page is available to read to get them
@@ -216,6 +220,7 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
             ataCmd->rtfr.lbaHiExt = 0;
         }
 
+#if defined (UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
         //TODO: Extra validation of the RTFRs
         uint8_t senseKey = M_Nibble0(ptrSenseData[2]);
         uint8_t asc = ptrSenseData[12];
@@ -230,6 +235,12 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
                 if (senseKey == SENSE_KEY_ILLEGAL_REQUEST)
                 {
                     //most likely has good rtfrs, but not in the locations from SAT
+                    ataCmd->rtfr.lbaHi = 0;
+                    ataCmd->rtfr.lbaMid = 0;
+                    ataCmd->rtfr.lbaLow = 0;
+                    ataCmd->rtfr.lbaLowExt = 0;
+                    ataCmd->rtfr.lbaMidExt = 0;
+                    ataCmd->rtfr.lbaHiExt = 0;
                     //In Linux's LibATA, I have observed these to be returned in these positions.
                     ataCmd->rtfr.status = ptrSenseData[9];
                     ataCmd->rtfr.error = ptrSenseData[8];
@@ -264,6 +275,7 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
                 ret = FAILURE;
             }
         }
+#endif //UNALIGNED_WRITE_SENSE_DATA_WORKAROUND
 
         //now, on the mini D4 firmware (and possibly other satls), the descriptor with the complete rtfrs may also be present in byte 18 onwards, so check if it is there or not to grab the data
         if (ptrSenseData[7] == 24 && unknownExtRegisters)//this length is very specific since it is the normal 10 bytes returned in fixed format data + the 14 bytes for the ata return descriptor in SAT
@@ -357,7 +369,11 @@ bool get_Return_TFRs_From_Sense_Data(tDevice *device, ataPassthroughCommand *ata
             }
         }
         //Parse the fixed format sense data if it says there is ATA Pass through Information available.
-        else if (senseDataFormat == SCSI_SENSE_CUR_INFO_FIXED || senseDataFormat == SCSI_SENSE_DEFER_ERR_FIXED)
+        else if (senseDataFormat == SCSI_SENSE_CUR_INFO_FIXED || senseDataFormat == SCSI_SENSE_DEFER_ERR_FIXED
+#if !defined (UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
+            && (ataCommandOptions->ptrSenseData[12] == 0x00 && ataCommandOptions->ptrSenseData[13] == 0x1D)//ATA passthrough information available
+#endif (UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
+            )
         {
             ret = get_RTFRs_From_Fixed_Format_Sense_Data(device, ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, ataCommandOptions);
             //if the RTFRs are incomplete, but the device supports the request command, send the request command to get the RTFRs
