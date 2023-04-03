@@ -166,7 +166,7 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
     if (senseDataFormat == SCSI_SENSE_CUR_INFO_FIXED || senseDataFormat == SCSI_SENSE_DEFER_ERR_FIXED
 #if !defined (UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
         && (ptrSenseData[12] == 0x00 && ptrSenseData[13] == 0x1D)//ATA passthrough information available
-#endif (UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
+#endif //(UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
         )
     {
         ret = SUCCESS;//assume everything works right now...
@@ -372,7 +372,7 @@ bool get_Return_TFRs_From_Sense_Data(tDevice *device, ataPassthroughCommand *ata
         else if (senseDataFormat == SCSI_SENSE_CUR_INFO_FIXED || senseDataFormat == SCSI_SENSE_DEFER_ERR_FIXED
 #if !defined (UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
             && (ataCommandOptions->ptrSenseData[12] == 0x00 && ataCommandOptions->ptrSenseData[13] == 0x1D)//ATA passthrough information available
-#endif (UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
+#endif //(UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
             )
         {
             ret = get_RTFRs_From_Fixed_Format_Sense_Data(device, ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, ataCommandOptions);
