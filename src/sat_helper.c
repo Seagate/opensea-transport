@@ -163,7 +163,7 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
     int ret = FAILURE;
     uint8_t senseDataFormat = ptrSenseData[0] & 0x7F;
     M_USE_UNUSED(senseDataSize);
-    if (senseDataFormat == SCSI_SENSE_CUR_INFO_FIXED || senseDataFormat == SCSI_SENSE_DEFER_ERR_FIXED
+    if ((senseDataFormat == SCSI_SENSE_CUR_INFO_FIXED || senseDataFormat == SCSI_SENSE_DEFER_ERR_FIXED)
 #if !defined (UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
         && (ptrSenseData[12] == 0x00 && ptrSenseData[13] == 0x1D)//ATA passthrough information available
 #endif //(UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
@@ -369,7 +369,7 @@ bool get_Return_TFRs_From_Sense_Data(tDevice *device, ataPassthroughCommand *ata
             }
         }
         //Parse the fixed format sense data if it says there is ATA Pass through Information available.
-        else if (senseDataFormat == SCSI_SENSE_CUR_INFO_FIXED || senseDataFormat == SCSI_SENSE_DEFER_ERR_FIXED
+        else if ((senseDataFormat == SCSI_SENSE_CUR_INFO_FIXED || senseDataFormat == SCSI_SENSE_DEFER_ERR_FIXED)
 #if !defined (UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
             && (ataCommandOptions->ptrSenseData[12] == 0x00 && ataCommandOptions->ptrSenseData[13] == 0x1D)//ATA passthrough information available
 #endif //(UNALIGNED_WRITE_SENSE_DATA_WORKAROUND)
