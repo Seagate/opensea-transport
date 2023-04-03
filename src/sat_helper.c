@@ -217,26 +217,53 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
         }
 
         //TODO: Extra validation of the RTFRs
-        //uint8_t senseKey = M_Nibble0(ptrSenseData[2]);
-        //uint8_t asc = ptrSenseData[12];
-        //uint8_t ascq = ptrSenseData[13];
+        uint8_t senseKey = M_Nibble0(ptrSenseData[2]);
+        uint8_t asc = ptrSenseData[12];
+        uint8_t ascq = ptrSenseData[13];
 
-        //if (asc != 0x00 && ascq != 0x1D)//00,1D means that this was DEFINITELY related to ATA passthrough results
-        //{
-        //    //need to do a little validation that the returned registers make some amount of sense
-        //    if (asc == 0x21 && ascq == 0x04)//unaligned write command
-        //    {
-        //        //for unaligned write command, this seems to happen from SATLs when the alignment status bit is set.
-        //        if (senseKey == SENSE_KEY_ILLEGAL_REQUEST)
-        //        {
-        //            //most likely has good rtfrs
-        //        }
-        //        else if (senseKey == SENSE_KEY_ABORTED_COMMAND)
-        //        {
-        //            //check if a valid LBA was returned in information rather than RTFRs
-        //        }
-        //    }
-        //}
+        if (asc != 0x00 && ascq != 0x1D)//00,1D means that this was DEFINITELY related to ATA passthrough results
+        {
+            //need to do a little validation that the returned registers make some amount of sense
+            if (asc == 0x21 && ascq == 0x04)//unaligned write command
+            {
+                //for unaligned write command, this seems to happen from SATLs when the alignment status bit is set.
+                if (senseKey == SENSE_KEY_ILLEGAL_REQUEST)
+                {
+                    //most likely has good rtfrs, but not in the locations from SAT
+                    //In Linux's LibATA, I have observed these to be returned in these positions.
+                    ataCmd->rtfr.status = ptrSenseData[9];
+                    ataCmd->rtfr.error = ptrSenseData[8];
+                    ataCmd->rtfr.secCnt = ptrSenseData[11];
+                    ataCmd->rtfr.secCntExt = ptrSenseData[10];//This is a guess!
+                    ataCmd->rtfr.device = ptrSenseData[16];//This is a best guess from observation
+                    ataCmd->rtfr.lbaLow = ptrSenseData[17];//this is a best guess from observation
+                    //Other offsets that MIGHT contain data, but I cannot confirm:
+                    //3, 4, 5, 6, 15
+                }
+                else if (senseKey == SENSE_KEY_ABORTED_COMMAND)
+                {
+                    //TODO: check if a valid LBA was returned in information rather than RTFRs
+                }
+            }
+            //THis need to be at the end. 
+            //if the status is empty, this is going to be treated as though no rtfrs were received from the device
+            if (ataCmd->rtfr.status == 0 || !(ataCmd->rtfr.status & ATA_STATUS_BIT_READY))
+            {
+                ataCmd->rtfr.error = 0;
+                ataCmd->rtfr.status = 0;
+                ataCmd->rtfr.device = 0;
+                ataCmd->rtfr.secCnt = 0;
+                ataCmd->rtfr.lbaHi = 0;
+                ataCmd->rtfr.lbaMid = 0;
+                ataCmd->rtfr.lbaLow = 0;
+                ataCmd->rtfr.secCntExt = 0;
+                ataCmd->rtfr.lbaLowExt = 0;
+                ataCmd->rtfr.lbaMidExt = 0;
+                ataCmd->rtfr.lbaHiExt = 0;
+                unknownExtRegisters = false;
+                ret = FAILURE;
+            }
+        }
 
         //now, on the mini D4 firmware (and possibly other satls), the descriptor with the complete rtfrs may also be present in byte 18 onwards, so check if it is there or not to grab the data
         if (ptrSenseData[7] == 24 && unknownExtRegisters)//this length is very specific since it is the normal 10 bytes returned in fixed format data + the 14 bytes for the ata return descriptor in SAT
