@@ -189,7 +189,7 @@ int send_CSMI_Legacy_ATA_Passthrough(tDevice *device, ataPassthroughCommand  *at
         //if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         //{
         //    //print RTFRs
-        //    print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+        //    print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
         //}
         ////set return code
         ////Based on the RTFRs or sense data, generate a return value
