@@ -1582,10 +1582,302 @@ void print_Verbose_ATA_Command_Information(ataPassthroughCommand *ataCommandOpti
     printf("\n");
 }
 
-void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataCommandOptions)
+//is this a read/write command that the rtfr output needs to know might report a bit specific to these commands
+//ex: corrected data (old) or alignment error or address mark not found (old)
+//NOTE: Streaming cmds not included in here!
+//This is only meant for use printing out error bits at this time!
+static bool is_User_Data_Access_Command(ataPassthroughCommand* ataCommandOptions)
+{
+    bool userDataAccess = false;
+    if (ataCommandOptions)
+    {
+        switch (ataCommandOptions->tfr.CommandStatus)
+        {
+        case ATA_READ_SECT:
+        case ATA_READ_SECT_NORETRY:
+        case ATA_READ_SECT_EXT:
+        case ATA_READ_DMA_EXT:
+        case ATA_READ_DMA_QUE_EXT:
+        case ATA_READ_READ_MULTIPLE_EXT:
+        case ATA_WRITE_SECT:
+        case ATA_WRITE_SECT_NORETRY:
+        case ATA_WRITE_SECT_EXT:
+        case ATA_WRITE_DMA_EXT:
+        case ATA_WRITE_DMA_QUE_EXT:
+        case ATA_WRITE_MULTIPLE_EXT:
+        case ATA_WRITE_SECTV_RETRY://write & verify...old. ATA, ATA2, ATA3, then obsolete ever since then
+        case ATA_WRITE_DMA_FUA_EXT:
+        case ATA_WRITE_DMA_QUE_FUA_EXT:
+        case ATA_READ_VERIFY_RETRY:
+        case ATA_READ_VERIFY_NORETRY:
+        case ATA_READ_VERIFY_EXT:
+        case ATA_READ_FPDMA_QUEUED_CMD:
+        case ATA_WRITE_FPDMA_QUEUED_CMD:
+        case ATA_SEEK_CMD:
+        case ATA_READ_MULTIPLE_CMD:
+        case ATA_WRITE_MULTIPLE_CMD:
+        case ATA_READ_DMA_QUEUED_CMD:
+        case ATA_READ_DMA_RETRY_CMD:
+        case ATA_READ_DMA_NORETRY:
+        case ATA_WRITE_DMA_RETRY_CMD:
+        case ATA_WRITE_DMA_NORETRY:
+        case ATA_WRITE_DMA_QUEUED_CMD:
+        case ATA_WRITE_MULTIPLE_FUA_EXT:
+            userDataAccess = true;
+            break;
+        case ATA_READ_BUF_DMA:
+            //case ATA_LEGACY_WRITE_SAME:
+                //special case: opcode was reused from old write same to read buf DMA
+                //check command fields to figure out which command this is.
+            //write same was in ATA and ATA2 and obsolete in ATA 3 and retired until reuse for read buf DMA
+            if (ataCommandOptions->commandDirection == XFER_DATA_OUT && ataCommandOptions->commadProtocol == ATA_PROTOCOL_PIO)//this seems like the easiest way to figure out which command it is -TJE
+            {
+                userDataAccess = true;
+            }
+            break;
+        case ATA_NOP_CMD:
+        case ATA_CFA_REQUEST_SENSE:
+        case ATASET:
+        case ATA_DATA_SET_MANAGEMENT_CMD:
+        case ATA_DATA_SET_MANAGEMENT_XL_CMD:
+        case ATA_DEV_RESET:
+        case ATA_REQUEST_SENSE_DATA:
+        case ATA_RECALIBRATE_CMD:
+        case ATA_GET_PHYSICAL_ELEMENT_STATUS:
+        case ATA_READ_LONG_RETRY_CMD:
+        case ATA_READ_LONG_NORETRY:
+        case ATA_READ_MAX_ADDRESS_EXT:
+        case ATA_READ_STREAM_DMA_EXT:
+        case ATA_READ_STREAM_EXT:
+        case ATA_READ_LOG_EXT:
+        case ATA_WRITE_LONG_RETRY_CMD:
+        case ATA_WRITE_LONG_NORETRY:
+        case ATA_SET_MAX_EXT:
+        case ATA_CFA_WRITE_SECTORS_WITHOUT_ERASE:
+        case ATA_WRITE_STREAM_DMA_EXT:
+        case ATA_WRITE_STREAM_EXT:
+        case ATA_WRITE_LOG_EXT_CMD:
+        case ATA_ZEROS_EXT:
+        case ATA_WRITE_UNCORRECTABLE_EXT:
+        case ATA_READ_LOG_EXT_DMA:
+        case ATA_ZONE_MANAGEMENT_IN:
+        case ATA_FORMAT_TRACK_CMD:
+        case ATA_CONFIGURE_STREAM:
+        case ATA_WRITE_LOG_EXT_DMA:
+        case ATA_TRUSTED_NON_DATA:
+        case ATA_TRUSTED_RECEIVE:
+        case ATA_TRUSTED_RECEIVE_DMA:
+        case ATA_TRUSTED_SEND:
+        case ATA_TRUSTED_SEND_DMA:
+        case ATA_FPDMA_NON_DATA:
+        case ATA_SEND_FPDMA:
+        case ATA_RECEIVE_FPDMA:
+        case ATA_SET_DATE_AND_TIME_EXT:
+        case ATA_ACCESSABLE_MAX_ADDR:
+        case ATA_REMOVE_AND_TRUNCATE:
+        case ATA_RESTORE_AND_REBUILD:
+        case ATA_CFA_TRANSLATE_SECTOR:
+        case ATA_EXEC_DRV_DIAG:
+        case ATA_INIT_DRV_PARAM:
+        case ATA_DOWNLOAD_MICROCODE_CMD:
+        case ATA_DOWNLOAD_MICROCODE_DMA:
+        case ATA_LEGACY_ALT_STANDBY_IMMEDIATE:
+        case ATA_LEGACY_ALT_IDLE_IMMEDIATE:
+        case ATA_LEGACY_ALT_STANDBY:
+        case ATA_LEGACY_ALT_IDLE:
+        case ATA_LEGACY_ALT_CHECK_POWER_MODE:
+        case ATA_LEGACY_ALT_SLEEP:
+        case ATA_ZONE_MANAGEMENT_OUT:
+        case ATAPI_COMMAND:
+        case ATAPI_IDENTIFY:
+        case ATA_SMART_CMD:
+        case ATA_DCO:
+        case ATA_SET_SECTOR_CONFIG_EXT:
+        case ATA_SANITIZE:
+        case ATA_NV_CACHE:
+        case ATA_CFA_EXTENDED_IDENTIFY:
+        case ATA_CFA_KEY_MANAGEMENT:
+        case ATA_CFA_STREAMING_PERFORMANCE:
+        case ATA_CFA_ERASE_SECTORS:
+        case ATA_SET_MULTIPLE:
+        case ATA_CFA_WRITE_MULTIPLE_WITHOUT_ERASE:
+        case ATA_GET_MEDIA_STATUS:
+        case ATA_ACK_MEDIA_CHANGE:
+        case ATA_POST_BOOT:
+        case ATA_PRE_BOOT:
+        case ATA_DOOR_LOCK_CMD:
+        case ATA_DOOR_UNLOCK_CMD:
+        case ATA_STANDBY_IMMD:
+        case ATA_IDLE_IMMEDIATE_CMD:
+        case ATA_STANDBY_CMD:
+        case ATA_IDLE_CMD:
+        case ATA_READ_BUF:
+        case ATA_CHECK_POWER_MODE_CMD:
+        case ATA_SLEEP_CMD:
+        case ATA_FLUSH_CACHE_CMD:
+        case ATA_WRITE_BUF:
+        case ATA_FLUSH_CACHE_EXT:
+        case ATA_WRITE_BUF_DMA:
+        case ATA_IDENTIFY:
+        case ATA_MEDIA_EJECT:
+        case ATA_IDENTIFY_DMA:
+        case ATA_SET_FEATURE:
+        case ATA_SECURITY_SET_PASS:
+        case ATA_SECURITY_UNLOCK_CMD:
+        case ATA_SECURITY_ERASE_PREP:
+        case ATA_SECURITY_ERASE_UNIT_CMD:
+        case ATA_SECURITY_FREEZE_LOCK_CMD://also CFA wear level, but both of these will be false
+        case ATA_SECURITY_DISABLE_PASS:
+        case ATA_LEGACY_TRUSTED_RECEIVE:
+        case ATA_READ_MAX_ADDRESS:
+        case ATA_SET_MAX:
+        case ATA_LEGACY_TRUSTED_SEND:
+        case ATA_SEEK_EXT://this is VU so not including with above commands
+            break;
+        }
+    }
+    return userDataAccess;
+}
+
+static bool is_Streaming_Command(ataPassthroughCommand* ataCommandOptions)
+{
+    bool isStreaming = false;
+    if (ataCommandOptions)
+    {
+        switch (ataCommandOptions->tfr.CommandStatus)
+        {
+        case ATA_READ_STREAM_DMA_EXT:
+        case ATA_READ_STREAM_EXT:
+        case ATA_WRITE_STREAM_DMA_EXT:
+        case ATA_WRITE_STREAM_EXT:
+        case ATA_CONFIGURE_STREAM:
+            isStreaming = true;
+            break;
+        default:
+            break;
+        }
+    }
+    return isStreaming;
+}
+
+//added interpretation of status and error fields to print out more info and make it easier to interpret results
+//This is not perfect, but a good enhancement to the output.
+//Note that not all combinations of bits are handled. Specifically some ATAPI specific meanings are not handled right now.
+//Support for old commands and old bits may not be fully functional, but it should cover most cases.
+//TODO: Better ATAPI support
+//TODO: Use supported ATA versions from identify (not just most recent, but anything with a bit set) to help better identify some status and error outputs
+//      ex: bad block for ATA1, corr for up to ata 3 (or so), etc
+void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataCommandOptions, tDevice *device)
 {
     printf("\tReturn Task File Registers:\n");
     printf("\t[Error] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.error);
+    if (ataCommandOptions->rtfr.status & ATA_STATUS_BIT_ERROR)//assuming NOT a packet command
+    {
+        //print out error bit meanings
+        //bit7 means either bad block (really old - ATA-1) or interface CRC error
+        if (ataCommandOptions->rtfr.error & BIT7)
+        {
+            // CRC error will only be possible to detect with SATA or UDMA transfers
+            //NOTE: Since some translators only allow SAT set to DMA, need to make sure drive's mode is UDMA and protocol can be DMA. Not perfect and can be further improved
+            if (is_SATA(device) || (device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_UDMA && (ataCommandOptions->commadProtocol == ATA_PROTOCOL_UDMA || ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA)))
+            {
+                printf("\t\tInterface CRC error\n");
+            }
+            else if (is_User_Data_Access_Command(ataCommandOptions))
+            {
+                printf("\t\tBad Block (?)\n");
+            }
+            else
+            {
+                printf("\t\tUnknown Error bit 7\n");
+            }
+        }
+        //bit6 means either uncorrectable data or write protected (removable medium)
+        if (ataCommandOptions->rtfr.error & BIT5)
+        {
+            if (is_Removable_Media(device))//todo: does this need checking if this was a write command???
+            {
+                printf("\t\tWrite Protected\n");
+            }
+            else
+            {
+                printf("\t\tUncorrectable Data\n");
+            }
+        }
+        //bit5 means media change
+        if (ataCommandOptions->rtfr.error & ATA_ERROR_BIT_MEDIA_CHANGE)//atapi only
+        {
+            printf("\t\tMedia Change\n");
+        }
+        //bit 4 means id not found
+        if (ataCommandOptions->rtfr.error & ATA_ERROR_BIT_ID_NOT_FOUND)
+        {
+            printf("\t\tID Not Found\n");
+        }
+        //bit3 means media change request
+        if (ataCommandOptions->rtfr.error & ATA_ERROR_BIT_MEDIA_CHANGE_REQUEST)//atapi only
+        {
+            printf("\t\tMedia Change\n");
+        }
+        //bit2 means abort
+        if (ataCommandOptions->rtfr.error & ATA_ERROR_BIT_ABORT)
+        {
+            printf("\t\tAbort\n");
+        }
+        //Bit 1 can mean Track zero not found, end of media, no media
+        if (ataCommandOptions->rtfr.error & BIT1)
+        {
+            if (ataCommandOptions->tfr.CommandStatus == ATA_RECALIBRATE_CMD)
+            {
+                printf("\t\tTrack 0 not found\n");
+            }
+            else if (ataCommandOptions->tfr.CommandStatus == ATA_NV_CACHE && ataCommandOptions->tfr.ErrorFeature == NV_ADD_LBAS_TO_NV_CACHE_PINNED_SET)
+            {
+                printf("\t\tInsufficient LBA Range Entries Remaining\n");
+            }
+            else if (is_Removable_Media(device))
+            {
+                printf("\t\tNo Media\n");
+            }
+            //atapi = end of media
+            else
+            {
+                printf("\t\tUnknown Error Bit 1\n");
+            }
+        }
+        //bit 0 can mean various things depending on the command that was issued
+        if (ataCommandOptions->rtfr.error & BIT0)
+        {
+            //address mark not found or command completion time out (streaming)
+            //address mark not found basically matched ID not found being set...or when it should be set (LBA/CHS user data access commands, but not seek)
+            if (is_Streaming_Command(ataCommandOptions))
+            {
+                printf("\t\tCommand Completion Time out (Streaming)\n");
+            }
+            //more checks for specific commands here
+            //nv cache commands
+            else if (ataCommandOptions->tfr.CommandStatus == ATA_NV_CACHE && ataCommandOptions->tfr.ErrorFeature == NV_ADD_LBAS_TO_NV_CACHE_PINNED_SET)
+            {
+                printf("\t\tInsufficient NV Cache Space\n");
+            }
+            else if (ataCommandOptions->tfr.CommandStatus == ATA_NV_CACHE && ataCommandOptions->tfr.ErrorFeature == NV_REMOVE_LBAS_FROM_NV_CACHE_PINNED_SET)
+            {
+                printf("\t\tAttempted Partial Range Removal\n");
+            }
+            else if (is_User_Data_Access_Command(ataCommandOptions) && ataCommandOptions->rtfr.error & ATA_ERROR_BIT_ID_NOT_FOUND && ataCommandOptions->tfr.CommandStatus != ATA_SEEK_CMD)
+            {
+                //if this is also set, for a user data access, possibly the old address mark not found bit
+                //not: does not apply to old seek commands
+                printf("\t\tAddress Mark Not Found\n");
+            }
+            //TODO: atapi illegal length indicator and media error
+            else
+            {
+                printf("\t\tUnknown Error Bit 0\n");
+            }
+        }
+
+    }
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE || ataCommandOptions->commandType == ATA_CMD_TYPE_COMPLETE_TASKFILE)
     {
         printf("\t[Count Ext] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.secCntExt);
@@ -1608,6 +1900,96 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataComm
     printf("\t[LBA Hi] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.lbaHi);
     printf("\t[Device] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.device);
     printf("\t[Status] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.status);
+    //Bit 7 is busy (unlikely to actually see this returned)
+    if (ataCommandOptions->commadProtocol != ATA_PROTOCOL_DMA_FPDMA && ataCommandOptions->commadProtocol != ATA_PROTOCOL_DMA_QUE && ataCommandOptions->rtfr.status & ATA_STATUS_BIT_BUSY)
+    {
+        printf("\t\tBusy\n");
+    }
+    //Bit 6 is ready
+    if (ataCommandOptions->rtfr.status & ATA_STATUS_BIT_READY)
+    {
+        printf("\t\tReady\n");
+    }
+    //bit5 is device fault, or stream error
+    //Stream error only for streaming feature commands and read/write continuos set to 1 in the command
+    if ((ataCommandOptions->tfr.CommandStatus == ATA_WRITE_STREAM_DMA_EXT ||
+        ataCommandOptions->tfr.CommandStatus == ATA_WRITE_STREAM_EXT ||
+        ataCommandOptions->tfr.CommandStatus == ATA_READ_STREAM_DMA_EXT ||
+        ataCommandOptions->tfr.CommandStatus == ATA_READ_STREAM_EXT)
+        && ataCommandOptions->tfr.ErrorFeature & BIT6)//read or write continuous must be set!
+    {
+        printf("\t\tStream Error\n");
+    }
+    else if (ataCommandOptions->rtfr.status & ATA_STATUS_BIT_DEVICE_FAULT)
+    {
+        printf("\t\tDevice Fault\n");
+    }
+    //Bit 4 can be seek complete, service (dma queued), or deferred write error
+    if (ataCommandOptions->rtfr.status & BIT4)
+    {
+        if (ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA_QUE)
+        {
+            printf("\t\tService\n");
+        }
+        else if (ataCommandOptions->tfr.CommandStatus == ATA_WRITE_STREAM_DMA_EXT ||
+            ataCommandOptions->tfr.CommandStatus == ATA_WRITE_STREAM_EXT)
+        {
+            printf("\t\tDeferred Write Error\n");
+        }
+        else
+        {
+            printf("\t\tSeek Complete\n");
+        }
+    }
+    if (ataCommandOptions->rtfr.status & ATA_STATUS_BIT_DATA_REQUEST)
+    {
+        printf("\t\tData Request\n");
+    }
+    //Bit 2 is either corrected data or alignment error. 
+    //      corrected data only for read user data access
+    //      alignment only for writes
+    if (ataCommandOptions->rtfr.status & BIT2)
+    {
+        if (is_User_Data_Access_Command(ataCommandOptions))
+        {
+            //corr only for reads and alignment only for writes???
+            if (ataCommandOptions->commandDirection == XFER_DATA_IN)
+            {
+                printf("\t\tCorrected Data\n");
+            }
+            else if (ataCommandOptions->commandDirection == XFER_DATA_OUT)
+            {
+                //todo: alignment error needs lps misalignment reporting to be supported and error reporting set to 01b or 10b and only on write commands
+                printf("\t\tAlignment Error\n");
+            }
+            else
+            {
+                printf("\t\tUnknown Status bit 2 (CORR or ALIGNMENT?)\n");
+            }
+        }
+        else
+        {
+            printf("\t\tUnknown Status bit 2 (CORR or ALIGNMENT?)\n");
+        }
+    }
+    //TODO: Bit 1 is either index (flips with rev) or sense data available. Sense data reporting must at least be supported for this one to be useful
+    if (ataCommandOptions->rtfr.status & BIT1)
+    {
+        if (device->drive_info.ata_Options.senseDataReportingEnabled)
+        {
+            printf("\t\tSense Data Available\n");
+        }
+        else
+        {
+            printf("\t\tUnknown Status bit 1\n");
+        }
+    }
+    //Bit 0 is error...or for ATAPI it will be check condition Packet commands only
+    if (ataCommandOptions->rtfr.status & ATA_STATUS_BIT_ERROR)//assuming not ATAPI
+    {
+        printf("\t\tError\n");
+    }
+    
     printf("\n");
 }
 

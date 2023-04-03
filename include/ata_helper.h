@@ -24,6 +24,7 @@ extern "C"
     #define ATA_STATUS_BIT_BUSY BIT7 //if this is set, all other bits are invalid and not to be used
     #define ATA_STATUS_BIT_READY BIT6
     #define ATA_STATUS_BIT_DEVICE_FAULT BIT5 //also called the write fault bit
+    #define ATA_STATUS_BIT_STREAM_ERROR BIT5
     #define ATA_STATUS_BIT_SEEK_COMPLETE BIT4 //old/obsolete and unused. Old drives still set it for backwards compatability
     #define ATA_STATUS_BIT_SERVICE BIT4 //DMA Queued commands. Tagged command queuing AFAIK
     #define ATA_STATUS_BIT_DEFERRED_WRITE_ERROR BIT4 //write stream commands
@@ -32,9 +33,10 @@ extern "C"
     #define ATA_STATUS_BIT_ALIGNMENT_ERROR BIT2
     #define ATA_STATUS_BIT_INDEX BIT1 //old/obsolete. flips state with each drive revolution
     #define ATA_STATUS_BIT_SENSE_DATA_AVAILABLE BIT1 //set when sense data is available for the command
+    #define ATA_STATUS_BIT_CHECK_CONDITION BIT0 //ATAPI
     #define ATA_STATUS_BIT_ERROR BIT0 //an error occured
 
-    #define ATA_ERROR_BIT_BAD_BLOCK BIT7 //old/obsolete
+    #define ATA_ERROR_BIT_BAD_BLOCK BIT7 //old/obsolete - ATA-1
     #define ATA_ERROR_BIT_INTERFACE_CRC BIT7
     #define ATA_ERROR_BIT_UNCORRECTABLE_DATA BIT6
     #define ATA_ERROR_BIT_WRITE_PROTECTED BIT6 //old/obsolete - removable medium
@@ -43,10 +45,15 @@ extern "C"
     #define ATA_ERROR_BIT_MEDIA_CHANGE_REQUEST BIT3
     #define ATA_ERROR_BIT_ABORT BIT2
     #define ATA_ERROR_BIT_TRACK_ZERO_NOT_FOUND BIT1 //old/obsolete
-    #define ATA_ERROR_BIT_END_OF_MEDIA BIT1
+    #define ATA_ERROR_BIT_END_OF_MEDIA BIT1 //ATAPI
     #define ATA_ERROR_BIT_NO_MEDIA BIT1 //old/obsolete - removable medium
+    #define ATA_ERROR_BIT_INSUFFICIENT_LBA_RANGE_ENTRIES_REMAINING BIT1 //add LBAs to NV cache pinned set command only - ranges
     #define ATA_ERROR_BIT_ADDRESS_MARK_NOT_FOUND BIT0 //old/obsolete
     #define ATA_ERROR_BIT_COMMAND_COMPLETION_TIME_OUT BIT0 //streaming feature
+    #define ATAPI_ERROR_BIT_ILLEGAL_LENGTH_INDICATOR BIT0
+    #define ATAPI_ERROR_BIT_MEDIA_ERROR BIT0
+    #define ATA_ERROR_BIT_ATTEMPTED_PARTIAL_RANGE_REMOVAL BIT0 //remove LBAs from NV cache pinned set command only
+    #define ATA_ERROR_BIT_INSUFFICIENT_NV_CACHE_SPACE BIT0 //add LBAs to NV cache pinned set command only
 
     #define ATA_DL_MICROCODE_OFFSET_SAVE (0x03)
     #define ATA_DL_MICROCODE_SAVE (0x07)
