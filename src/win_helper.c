@@ -10110,7 +10110,8 @@ static int send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
     //
     // Allocate buffer for use.
     //
-    bufferLength = FIELD_OFFSET(STORAGE_PROPERTY_QUERY, AdditionalParameters) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA) + nvmeIoCtx->dataSize;
+    uint32_t nvmeGetFtMinSize = M_Max(4, nvmeIoCtx->dataSize);//This works around get features commands that are not actually transferring any data. If you size the buffer based on a zero data transfer, windows gives an error -TJE
+    bufferLength = FIELD_OFFSET(STORAGE_PROPERTY_QUERY, AdditionalParameters) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA) + nvmeGetFtMinSize;
     buffer = malloc(bufferLength);
 
     if (buffer == NULL) {
@@ -10137,7 +10138,7 @@ static int send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
     protocolData->ProtocolDataRequestValue = M_Byte0(nvmeIoCtx->cmd.adminCmd.cdw10);
     protocolData->ProtocolDataRequestSubValue = nvmeIoCtx->cmd.adminCmd.cdw11;//latest Win API shows using CDW11 in a comment, which is a feature specific value
     protocolData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA);
-    protocolData->ProtocolDataLength = nvmeIoCtx->dataSize;
+    protocolData->ProtocolDataLength = nvmeGetFtMinSize;
 
     //
     // Send request down.
@@ -10635,7 +10636,7 @@ static int send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx *nvmeIoCtx)
 
 
     tempThresh.Index = tmpsel;
-    tempThresh.Threshold = C_CAST(SHORT, temperatureThreshold - INT32_C(273));//NVMe does every temp in kelvin, but the API expects Celcius - TJE
+    tempThresh.Threshold = C_CAST(SHORT, temperatureThreshold - INT32_C(273));//NVMe does every temp in kelvin, but the API expects Celsius - TJE
     if (thsel == 0)
     {
         tempThresh.OverThreshold = TRUE;
@@ -10818,7 +10819,7 @@ static int send_NVMe_Set_Features_Win10(nvmeCmdCtx *nvmeIoCtx, bool *useNVMPasst
         ret = send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeIoCtx);
     }
 #endif
-    if(ret == OS_COMMAND_NOT_AVAILABLE)
+    if (ret == OS_COMMAND_NOT_AVAILABLE || ret == OS_PASSTHROUGH_FAILURE)
     {
         //TODO: Depending on the feature, we may need a SCSI translation, a Windows API call, or we won't be able to perform any translation at all.
         //IOCTL_STORAGE_DEVICE_POWER_CAP
