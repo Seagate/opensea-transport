@@ -9790,7 +9790,7 @@ static int send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
 
         PSTORAGE_PROPERTY_QUERY query = NULL;
         PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = NULL;
-        PSTORAGE_PROTOCOL_DATA_DESCRIPTOR protocolDataDescr = NULL;
+        //PSTORAGE_PROTOCOL_DATA_DESCRIPTOR protocolDataDescr = NULL;
 
         //
         // Allocate buffer for use.
@@ -9812,7 +9812,7 @@ static int send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
         ZeroMemory(buffer, bufferLength);
 
         query = C_CAST(PSTORAGE_PROPERTY_QUERY, buffer);
-        protocolDataDescr = C_CAST(PSTORAGE_PROTOCOL_DATA_DESCRIPTOR, buffer);
+        //protocolDataDescr = C_CAST(PSTORAGE_PROTOCOL_DATA_DESCRIPTOR, buffer);
         protocolData = C_CAST(PSTORAGE_PROTOCOL_SPECIFIC_DATA, query->AdditionalParameters);
 
         //check that the rest of dword 10 is zero!
@@ -11230,6 +11230,9 @@ static int win10_Translate_Write(nvmeCmdCtx *nvmeIoCtx)
 //    return ret;
 //}
 
+//uncomment this to enable returning a not supported value when a context attribute is set
+//#define WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
+
 static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = OS_COMMAND_NOT_AVAILABLE;
@@ -11247,7 +11250,9 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
         //Each range specified will be translated to a SCSI unmap descriptor.
         //NOTE: All context attributes will be ignored since it cannot be translated. It is also optional and the controller may not do anything with it.
         //We can optionally check for this, but I do not think it's really worth it right now. I will have code in place for this, just commented out - TJE
+#if defined (WIN_NVME_DEALLOCATE_CONTEXT_FAILURE)
         bool atLeastOneContextAttributeSet = false;
+#endif //WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
         //first, allocate enough memory for the Unmap command
         uint32_t unmapDataLength = 8 + (16 * numberOfRanges);
         uint8_t *unmapParameterData = C_CAST(uint8_t*, calloc_aligned(unmapDataLength, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));//each range is 16 bytes plus an 8 byte header
@@ -11258,13 +11263,17 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
             for (uint16_t rangeIter = 0; rangeIter < numberOfRanges && scsiOffset < unmapDataLength && nvmOffset < nvmeIoCtx->dataSize; ++rangeIter, scsiOffset += 16, nvmOffset += 16)
             {
                 //get the info we need from the incomming buffer
+#if defined (WIN_NVME_DEALLOCATE_CONTEXT_FAILURE)
                 uint32_t nvmContextAttributes = M_BytesTo4ByteValue(nvmeIoCtx->ptrData[nvmOffset + 3], nvmeIoCtx->ptrData[nvmOffset + 2], nvmeIoCtx->ptrData[nvmOffset + 1], nvmeIoCtx->ptrData[nvmOffset + 0]);
+#endif //WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
                 uint32_t nvmLengthInLBAs = M_BytesTo4ByteValue(nvmeIoCtx->ptrData[nvmOffset + 7], nvmeIoCtx->ptrData[nvmOffset + 6], nvmeIoCtx->ptrData[nvmOffset + 5], nvmeIoCtx->ptrData[nvmOffset + 4]);
                 uint32_t nvmStartingLBA = M_BytesTo4ByteValue(nvmeIoCtx->ptrData[nvmOffset + 15], nvmeIoCtx->ptrData[nvmOffset + 14], nvmeIoCtx->ptrData[nvmOffset + 13], nvmeIoCtx->ptrData[nvmOffset + 12]);
+#if defined (WIN_NVME_DEALLOCATE_CONTEXT_FAILURE)
                 if (nvmContextAttributes)
                 {
                     atLeastOneContextAttributeSet = true;
                 }
+#endif //WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
                 //now translate it to a scsi unmap block descriptor
                 //LBA
                 unmapParameterData[scsiOffset + 0] = M_Byte7(nvmStartingLBA);
@@ -11299,11 +11308,19 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
             unmapParameterData[5] = RESERVED;
             unmapParameterData[6] = RESERVED;
             unmapParameterData[7] = RESERVED;
-            //if (!atLeastOneContextAttributeSet) //This is commented out for now, but we can use it to return OS_COMMAND_NOT_SUPPORTED if we want to - TJE
+#if defined (WIN_NVME_DEALLOCATE_CONTEXT_FAILURE)
+            if (!atLeastOneContextAttributeSet)
+#endif //WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
             {
                 //send the command
                 ret = scsi_Unmap(nvmeIoCtx->device, false, 0, C_CAST(uint16_t, unmapDataLength), unmapParameterData);
             }
+#if defined (WIN_NVME_DEALLOCATE_CONTEXT_FAILURE)
+            else
+            {
+                ret = OS_COMMAND_NOT_AVAILABLE;
+            }
+#endif //WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
         }
         else
         {
