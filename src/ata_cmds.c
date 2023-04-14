@@ -2608,7 +2608,7 @@ int ata_Trusted_Non_Data(tDevice *device, uint8_t securityProtocol, bool trusted
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Trusted Non-Data");
-        printf(" - Security Protocol %02" PRIX16 ", Specific: %04" PRIX16 "\n", securityProtocol, securityProtocolSpecific);
+        printf(" - Security Protocol %02" PRIX8 ", Specific: %04" PRIX16 "\n", securityProtocol, securityProtocolSpecific);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -2684,7 +2684,7 @@ int ata_Trusted_Receive(tDevice *device, bool useDMA, uint8_t securityProtocol, 
         {
             printf("Sending ATA Trusted Receive");
         }
-        printf(" - Security Protocol %02" PRIX16 ", Specific: %04" PRIX16 "\n", securityProtocol, securityProtocolSpecific);
+        printf(" - Security Protocol %02" PRIX8 ", Specific: %04" PRIX16 "\n", securityProtocol, securityProtocolSpecific);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -2766,7 +2766,7 @@ int ata_Trusted_Send(tDevice *device, bool useDMA, uint8_t securityProtocol, uin
         {
             printf("Sending ATA Trusted Send");
         }
-        printf(" - Security Protocol %02" PRIX16 ", Specific: %04" PRIX16 "\n", securityProtocol, securityProtocolSpecific);
+        printf(" - Security Protocol %02" PRIX8 ", Specific: %04" PRIX16 "\n", securityProtocol, securityProtocolSpecific);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);

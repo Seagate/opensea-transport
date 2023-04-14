@@ -3916,7 +3916,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags, ptrRaidHandleToScan *beginningOfList)
+int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, ptrRaidHandleToScan *beginningOfList)
 {
     CSMI_HANDLE fd = CSMI_INVALID_HANDLE;
 #if defined (_WIN32)

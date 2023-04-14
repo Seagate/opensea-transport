@@ -55,7 +55,7 @@ typedef struct _ascAscqRetDesc
 
 // DO NOT break the order of ASC and ASCQ below
 // for 3rd column (ret), -1 means to keep existing ret value, don't change it
-ascAscqRetDesc ascAscqLookUp[] = {
+static ascAscqRetDesc ascAscqLookUp[] = {
     {0x00, 0x00, KEEP_SENSE_KEY_ERROR,       "No Additional Sense Information"},
     {0x00, 0x01, KEEP_SENSE_KEY_ERROR,       "Filemark Detected"},
     {0x00, 0x02, KEEP_SENSE_KEY_ERROR,       "End-Of_Partition/Medium Detected"},
