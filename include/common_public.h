@@ -847,97 +847,96 @@ extern "C"
             bool noSATVPDPage;//when this is set, the SAT VPD is not available and should not be read, skipping ahead to instead directly trying a passthrough command
             uint8_t scsipadding[3];//padd 4 more bytes after transfer length to keep 8 byte boundaries
         }scsiHacks;
-        union {
-            //ATA Hacks refer to SAT translation issues or workarounds.
-            struct {
-                /*This comment breaks down each ATA passthrough hack based on the output short-names from openSeaChest_PassthroughTest
-                SCTSM - smartCommandTransportWithSMARTLogCommandsOnly
-                A1 - useA1SATPassthroughWheneverPossible (This hack is obsolete now as A1 is the default with an automatic software retry now)
-                NA1 - a1NeverSupported
-                A1EXT - a1ExtCommandWhenPossible
-                RS - returnResponseInfoSupported
-                RSTD - returnResponseInfoNeedsTDIR
-                RSIE - returnResponseIgnoreExtendBit
-                TSPIU - alwaysUseTPSIUForSATPassthrough
-                CHK - alwaysCheckConditionAvailable
-                FDMA - alwaysUseDMAInsteadOfUDMA
-                NDMA - dmaNotSupported
-                PARTRTFR - partialRTFRs
-                NORTFR - noRTFRsPossible
-                MMPIO - multiSectorPIOWithMultipleMode
-                SPIO - singleSectorPIOOnly
-                ATA28 - ata28BitOnly
-                NOMMPIO - noMultipleModeCommands
-                MPTXFER - maxTransferLength (bytes)
-                TPID - tpsiu on identify (limited use tpsiu)
-                NCHK - do not use check condition bit at all
-                CHKE - accepts the check condition bit, but returns empty data
-                //TODO: Add more hacks below as needed to workaround other weird behavior for ATA passthrough.
-                */
-                bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
-                //bool useA1SATPassthroughWheneverPossible;//For USB adapters that will only process 28bit commands with A1 and will NOT issue them with 85h
-                bool a1NeverSupported;//prevent retrying with 12B command since it isn't supported anyways.
-                bool a1ExtCommandWhenPossible;//If this is set, when issuing an EXT (48bit) command, use the A1 opcode as long as there are not ext registers that MUST be set to issue the command properly. This is a major hack for devices that don't support the 85h opcode.
-                bool returnResponseInfoSupported;//can send the SAT command to get response information for RTFRs
-                bool returnResponseInfoNeedsTDIR;//supports return response info, but must have T_DIR bit set for it to work properly
-                bool returnResponseIgnoreExtendBit;//Some devices support returning response info, but don't properly set the extend bit, so this basically means copy extended RTFRs anyways.
-                bool alwaysUseTPSIUForSATPassthrough;//some USBs do this better than others.
-                bool alwaysCheckConditionAvailable;//Not supported by all SAT translators. Don't set unless you know for sure!!!
-                bool alwaysUseDMAInsteadOfUDMA;//send commands with DMA mode instead of UDMA since the device doesn't support UDMA passthrough modes.
-                bool dmaNotSupported;//DMA passthrough is not available of any kind.
-                bool partialRTFRs;//This means only 28bit RTFRs will be able to be retrived by the device. This hack is more helpful for code trying different commands to filter capabilities than for trying to talk to the device.
-                bool noRTFRsPossible;//This means on command responses, we cannot get any return task file registers back from the device, so avoid commands that rely on this behavior
-                bool multiSectorPIOWithMultipleMode;//This means that multisector PIO works, BUT only when a set multiple mode command has been sent first and it is limited to the multiple mode.
-                bool singleSectorPIOOnly;//This means that the adapter only supports single sector PIO transfers
-                bool ata28BitOnly;//This is for some devices where the passthrough only allows a 28bit command through, even if the target drive is 48bit
-                bool noMultipleModeCommands;//This is to disable use read/write multiple commands if a bridge chip doesn't handle them correctly.
-                //uint8_t reserved[1];//padd byte for 8 byte boundary with above bools.
-                uint32_t maxTransferLength;//ATA Passthrough max transfer length in bytes. This may be different than the scsi translation max.
-                bool limitedUseTPSIU;//This might work for certain other commands, but only identify device has been found to show this. Using TPSIU on identify works as expected, but other data transfers abort this.
-                bool disableCheckCondition;//Set when check condition bit cannot be used because it causes problems
-                bool checkConditionEmpty;//Accepts the check condition bit, but returns empty data.
-                uint8_t atapadding[1];//padd 4 more bytes after transfer length to keep 8 byte boundaries
-            }ataPTHacks;
-            //NVMe Hacks
-            struct {
-                //This is here mostly for vendor unique NVMe passthrough capabilities.
-                //This structure may also be useful for OSs that have limited capabilities
-                /* This comment describes the translation of fields from openSeaChest_PassthroughTest to the hacks in the structure below
-                LIMPT - limitedPassthroughCapabilities
-                IDGLP - this means setting the bools for identify and getLotpage to true, but none of the other commands.
-                TODO: This part of the passthrough test is far from complete. Many of the listed commands are based on looking at limited IOCTLs in some OSs or other documentation that indicates not all commands
-                      are possible in a given OS. These were added to ensure it is easier to add support in the future, but are not fully implemented at this time. Some of the limited commands are setup properly in Windows 10 vs Windows PE/RE since
-                      there are different capabilities between these OS configurations as documented by MSFT.
-                */
-                bool limitedPassthroughCapabilities;//If this is set to true, this means only certain commands can be passed through to the device. (See below struct, only populated when this is true, otherwise assume all commands work)
-                struct { //This structure will hold which commands are available to passthrough if the above "limitedPassthroughCapabilities" boolean is true, otherwise this structure should be ignored.
-                    bool identifyGeneric;//can "generically" send any identify command with any cns value. This typically means any identify can be sent, not just controller and namespace. Basically CNS field is available.
-                    bool identifyController;
-                    bool identifyNamespace;
-                    bool getLogPage;
-                    bool format;
-                    bool getFeatures;
-                    bool firmwareDownload;
-                    bool firmwareCommit;
-                    bool vendorUnique;
-                    bool deviceSelfTest;
-                    bool sanitize;
-                    bool namespaceManagement;
-                    bool namespaceAttachment;
-                    bool setFeatures;//this does not have granularity for which features at this time!!!
-                    bool miSend;
-                    bool miReceive;
-                    bool securitySend;
-                    bool securityReceive;
-                    bool formatUserSecureErase;//format with ses set to user erase
-                    bool formatCryptoSecureErase;//format with ses set to crypto erase
-                    //TODO: As other passthroughs are learned with different capabilities, add other commands that ARE supported by them here so that other layers of code can know what capabilities a given device has.
-                }limitedCommandsSupported;
-                uint8_t reserved[3];//padd out above bools to 8 byte boundaries
-                uint32_t maxTransferLength;
-                uint32_t nvmepadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
-            }nvmePTHacks;
-        };//This is an annonymous union for nvme/ata passthrough hacks since a device will only ever have one or the other. This should be accessed based on passthrough type
+        //ATA Hacks refer to SAT translation issues or workarounds.
+        struct {
+            /*This comment breaks down each ATA passthrough hack based on the output short-names from openSeaChest_PassthroughTest
+            SCTSM - smartCommandTransportWithSMARTLogCommandsOnly
+            A1 - useA1SATPassthroughWheneverPossible (This hack is obsolete now as A1 is the default with an automatic software retry now)
+            NA1 - a1NeverSupported
+            A1EXT - a1ExtCommandWhenPossible
+            RS - returnResponseInfoSupported
+            RSTD - returnResponseInfoNeedsTDIR
+            RSIE - returnResponseIgnoreExtendBit
+            TSPIU - alwaysUseTPSIUForSATPassthrough
+            CHK - alwaysCheckConditionAvailable
+            FDMA - alwaysUseDMAInsteadOfUDMA
+            NDMA - dmaNotSupported
+            PARTRTFR - partialRTFRs
+            NORTFR - noRTFRsPossible
+            MMPIO - multiSectorPIOWithMultipleMode
+            SPIO - singleSectorPIOOnly
+            ATA28 - ata28BitOnly
+            NOMMPIO - noMultipleModeCommands
+            MPTXFER - maxTransferLength (bytes)
+            TPID - tpsiu on identify (limited use tpsiu)
+            NCHK - do not use check condition bit at all
+            CHKE - accepts the check condition bit, but returns empty data
+            ATANVEMU - ata/nvme emulation (likely only realtek's chip right now). If this is set, the NVMe emulation will set basically only MN, SN, FWrev. DMA not supported, etc. Basically need to treat this as SCSI except for reading this data at this time.-TJE
+            //TODO: Add more hacks below as needed to workaround other weird behavior for ATA passthrough.
+            */
+            bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
+            //bool useA1SATPassthroughWheneverPossible;//For USB adapters that will only process 28bit commands with A1 and will NOT issue them with 85h
+            bool a1NeverSupported;//prevent retrying with 12B command since it isn't supported anyways.
+            bool a1ExtCommandWhenPossible;//If this is set, when issuing an EXT (48bit) command, use the A1 opcode as long as there are not ext registers that MUST be set to issue the command properly. This is a major hack for devices that don't support the 85h opcode.
+            bool returnResponseInfoSupported;//can send the SAT command to get response information for RTFRs
+            bool returnResponseInfoNeedsTDIR;//supports return response info, but must have T_DIR bit set for it to work properly
+            bool returnResponseIgnoreExtendBit;//Some devices support returning response info, but don't properly set the extend bit, so this basically means copy extended RTFRs anyways.
+            bool alwaysUseTPSIUForSATPassthrough;//some USBs do this better than others.
+            bool alwaysCheckConditionAvailable;//Not supported by all SAT translators. Don't set unless you know for sure!!!
+            bool alwaysUseDMAInsteadOfUDMA;//send commands with DMA mode instead of UDMA since the device doesn't support UDMA passthrough modes.
+            bool dmaNotSupported;//DMA passthrough is not available of any kind.
+            bool partialRTFRs;//This means only 28bit RTFRs will be able to be retrived by the device. This hack is more helpful for code trying different commands to filter capabilities than for trying to talk to the device.
+            bool noRTFRsPossible;//This means on command responses, we cannot get any return task file registers back from the device, so avoid commands that rely on this behavior
+            bool multiSectorPIOWithMultipleMode;//This means that multisector PIO works, BUT only when a set multiple mode command has been sent first and it is limited to the multiple mode.
+            bool singleSectorPIOOnly;//This means that the adapter only supports single sector PIO transfers
+            bool ata28BitOnly;//This is for some devices where the passthrough only allows a 28bit command through, even if the target drive is 48bit
+            bool noMultipleModeCommands;//This is to disable use read/write multiple commands if a bridge chip doesn't handle them correctly.
+            //uint8_t reserved[1];//padd byte for 8 byte boundary with above bools.
+            uint32_t maxTransferLength;//ATA Passthrough max transfer length in bytes. This may be different than the scsi translation max.
+            bool limitedUseTPSIU;//This might work for certain other commands, but only identify device has been found to show this. Using TPSIU on identify works as expected, but other data transfers abort this.
+            bool disableCheckCondition;//Set when check condition bit cannot be used because it causes problems
+            bool checkConditionEmpty;//Accepts the check condition bit, but returns empty data.
+            bool possilbyEmulatedNVMe;//realtek's USB to M.2 adapter can do AHCI or NVMe. Since nothing changes in IDs and it emulates ATA identify data, need this to work around how it reports. -TJE
+        }ataPTHacks;
+        //NVMe Hacks
+        struct {
+            //This is here mostly for vendor unique NVMe passthrough capabilities.
+            //This structure may also be useful for OSs that have limited capabilities
+            /* This comment describes the translation of fields from openSeaChest_PassthroughTest to the hacks in the structure below
+            LIMPT - limitedPassthroughCapabilities
+            IDGLP - this means setting the bools for identify and getLotpage to true, but none of the other commands.
+            TODO: This part of the passthrough test is far from complete. Many of the listed commands are based on looking at limited IOCTLs in some OSs or other documentation that indicates not all commands
+                    are possible in a given OS. These were added to ensure it is easier to add support in the future, but are not fully implemented at this time. Some of the limited commands are setup properly in Windows 10 vs Windows PE/RE since
+                    there are different capabilities between these OS configurations as documented by MSFT.
+            */
+            bool limitedPassthroughCapabilities;//If this is set to true, this means only certain commands can be passed through to the device. (See below struct, only populated when this is true, otherwise assume all commands work)
+            struct { //This structure will hold which commands are available to passthrough if the above "limitedPassthroughCapabilities" boolean is true, otherwise this structure should be ignored.
+                bool identifyGeneric;//can "generically" send any identify command with any cns value. This typically means any identify can be sent, not just controller and namespace. Basically CNS field is available.
+                bool identifyController;
+                bool identifyNamespace;
+                bool getLogPage;
+                bool format;
+                bool getFeatures;
+                bool firmwareDownload;
+                bool firmwareCommit;
+                bool vendorUnique;
+                bool deviceSelfTest;
+                bool sanitize;
+                bool namespaceManagement;
+                bool namespaceAttachment;
+                bool setFeatures;//this does not have granularity for which features at this time!!!
+                bool miSend;
+                bool miReceive;
+                bool securitySend;
+                bool securityReceive;
+                bool formatUserSecureErase;//format with ses set to user erase
+                bool formatCryptoSecureErase;//format with ses set to crypto erase
+                //TODO: As other passthroughs are learned with different capabilities, add other commands that ARE supported by them here so that other layers of code can know what capabilities a given device has.
+            }limitedCommandsSupported;
+            uint8_t reserved[3];//padd out above bools to 8 byte boundaries
+            uint32_t maxTransferLength;
+            uint32_t nvmepadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
+        }nvmePTHacks;
         //TODO: Add more hacks and padd this structure
     }passthroughHacks;
 
@@ -1252,7 +1251,7 @@ extern "C"
 
     typedef int (*issue_io_func)( void * );
 
-    #define DEVICE_BLOCK_VERSION    (7)
+    #define DEVICE_BLOCK_VERSION    (8)
 
     // verification for compatibility checking
     typedef struct _versionBlock
@@ -1350,6 +1349,7 @@ extern "C"
         USB_Vendor_Silicon_Motion                       = 0x090C,
         USB_Vendor_Oxford                               = 0x0928,
         USB_Vendor_Seagate_RSS                          = 0x0BC2,
+        USB_Vendor_Realtek                              = 0x0BDA,
         USB_Vendor_Maxtor                               = 0x0D49,
         USB_Vendor_Phison                               = 0x0D7D,
         USB_Vendor_Initio                               = 0x13FD,

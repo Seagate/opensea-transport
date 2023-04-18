@@ -1200,6 +1200,19 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             device->drive_info.ata_Options.generalPurposeLoggingSupported = true;
         }
 
+        if (device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe)
+        {
+            if (!device->drive_info.ata_Options.dmaSupported && device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA)
+            {
+                //This means it's an emulated NVMe device where only the MN/SN/FW were reported.
+                //Copy the data back to "primary" device info and set SCSI drive type so that things otherwise work how we would expect them to since this is a very odd device behavior.-TJE
+                memcpy(device->drive_info.product_identification, device->drive_info.bridge_info.childDriveMN, MODEL_NUM_LEN);
+                memcpy(device->drive_info.serialNumber, device->drive_info.bridge_info.childDriveSN, SERIAL_NUM_LEN);
+                memcpy(device->drive_info.product_revision, device->drive_info.bridge_info.childDriveFW, FW_REV_LEN);
+                device->drive_info.drive_type = SCSI_DRIVE;
+            }
+        }
+
         if (device->drive_info.interface_type == SCSI_INTERFACE)
         {
             //for the SCSI interface, copy this information back to the main drive info since SCSI translated info may truncate these fields and we don't want that
