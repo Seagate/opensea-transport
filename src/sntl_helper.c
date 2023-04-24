@@ -2151,7 +2151,7 @@ static int sntl_Translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiI
         memset(&getTempThresh, 0, sizeof(nvmeFeaturesCmdOpt));
         memset(logPage, 0, 512);
         getTempThresh.fid = 0x04;//temperature threshold
-        getTempThresh.dataPtr = C_CAST(uintptr_t, logPage);
+        getTempThresh.dataPtr = logPage;
         getTempThresh.dataLength = 512;
         getTempThresh.featSetGetValue = 0;
         if(SUCCESS == nvme_Get_Features(device, &getTempThresh))
