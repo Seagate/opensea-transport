@@ -692,8 +692,9 @@ int nvme_Get_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
     getFeatures.cmd.adminCmd.opcode = NVME_ADMIN_CMD_GET_FEATURES;
     getFeatures.commandType = NVM_ADMIN_CMD;
     getFeatures.commandDirection = XFER_DATA_IN;
-    getFeatures.cmd.adminCmd.addr = featCmdOpts->prp1; // TODO: dataLen? 
-    getFeatures.cmd.adminCmd.metadata = featCmdOpts->prp2; 
+    getFeatures.cmd.adminCmd.addr = featCmdOpts->dataPtr; // TODO: dataLen? 
+    getFeatures.dataSize = featCmdOpts->dataLength;
+    //getFeatures.cmd.adminCmd.metadata = featCmdOpts->prp2; 
     //getFeatures.dataSize = featCmdOpts.dataSize; //TODO: allow this since a get features could return other data
     getFeatures.cmd.adminCmd.nsid = featCmdOpts->nsid;
 
@@ -737,9 +738,8 @@ int nvme_Set_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
     setFeatures.cmd.adminCmd.opcode = NVME_ADMIN_CMD_SET_FEATURES;
     setFeatures.commandType = NVM_ADMIN_CMD;
     setFeatures.commandDirection = XFER_DATA_OUT;
-    setFeatures.cmd.adminCmd.addr = featCmdOpts->prp1; 
-    //setFeatures.dataSize = featCmdOpts.dataSize;// TODO: dataLen? 
-    setFeatures.cmd.adminCmd.metadata = featCmdOpts->prp2; 
+    setFeatures.cmd.adminCmd.addr = featCmdOpts->dataPtr; 
+    setFeatures.dataSize = featCmdOpts->dataLength;
 
     dWord10 = featCmdOpts->sv << 31; 
     dWord10 |= featCmdOpts->fid;
