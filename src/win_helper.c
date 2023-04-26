@@ -7897,6 +7897,10 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
     bool setSenseData = false;
     bool fua = false;//for read/write only
     uint8_t senseKey = 0, asc = 0, ascq = 0;
+    if (!(scsiIoCtx->cdb && scsiIoCtx->cdbLength >= 6))//6byte CDB is shortest allowed
+    {
+        return BAD_PARAMETER;
+    }
     switch (scsiIoCtx->cdb[OPERATION_CODE])
     {
     case INQUIRY_CMD:
