@@ -95,6 +95,11 @@ extern "C"
     //IF this structure is used in another, make sure it begins at a MINIMUM of a 2 byte offset for correct addressing, however 8 byte is recommended!
     //Previously, this was packed and aligned with attributes/pragmas to the compiler, but those were removed after properly fixing this structure so that those extra instructions aren't needed.
     //This prevents potential misaligned addresses on some CPU architectures that require special pointer alignment for data access. This does not affect x86, but does for some like SPARC and possibly ARM.
+
+#define ATA_IDENTIFY_SN_LENGTH (20)
+#define ATA_IDENTIFY_MN_LENGTH (40)
+#define ATA_IDENTIFY_FW_LENGTH (8)
+
     typedef struct _tAtaIdentifyData
     {
         uint16_t Word000;
@@ -107,14 +112,58 @@ extern "C"
         uint16_t Word007;
         uint16_t Word008;
         uint16_t Word009;
-
-        uint8_t  SerNum[20];
-
+        union {
+            uint8_t  SerNum[ATA_IDENTIFY_SN_LENGTH];
+            struct {
+                uint16_t Word010;
+                uint16_t Word011;
+                uint16_t Word012;
+                uint16_t Word013;
+                uint16_t Word014;
+                uint16_t Word015;
+                uint16_t Word016;
+                uint16_t Word017;
+                uint16_t Word018;
+                uint16_t Word019;
+            };//annonymous to make sure all words are easily accessed. If this creates too many warnings, we can give it the name idSNwords or something-TJE
+        };//annonymous to make access to SN or SN words easier
         uint16_t Word020;
         uint16_t Word021;
         uint16_t Word022;
-        uint8_t  FirmVer[8];        // 23 24 25 26
-        uint8_t  ModelNum[40];      // 27 ... 46
+        union {
+            uint8_t  FirmVer[ATA_IDENTIFY_FW_LENGTH];        // 23 24 25 26
+            struct {
+                uint16_t Word023;
+                uint16_t Word024;
+                uint16_t Word025;
+                uint16_t Word026;
+            };//annonymous to make sure all words are easily accessed. If this creates too many warnings, we can give it the name idFWwords or something-TJE
+        };//annonymous to make access to FW or FW words easier
+        union {
+            uint8_t  ModelNum[ATA_IDENTIFY_MN_LENGTH];      // 27 ... 46
+            struct {
+                uint16_t Word027;
+                uint16_t Word028;
+                uint16_t Word029;
+                uint16_t Word030;
+                uint16_t Word031;
+                uint16_t Word032;
+                uint16_t Word033;
+                uint16_t Word034;
+                uint16_t Word035;
+                uint16_t Word036;
+                uint16_t Word037;
+                uint16_t Word038;
+                uint16_t Word039;
+                uint16_t Word040;
+                uint16_t Word041;
+                uint16_t Word042;
+                uint16_t Word043;
+                uint16_t Word044;
+                uint16_t Word045;
+                uint16_t Word046;
+            };//annonymous to make sure all words are easily accessed. If this creates too many warnings, we can give it the name idMNwords or something-TJE
+        };//annonymous to make access to MN or MN words easier
         uint16_t Word047;
         uint16_t Word048;
         uint16_t Word049;
@@ -347,9 +396,6 @@ extern "C"
         uint16_t Word255;
     }tAtaIdentifyData, *ptAtaIdentifyData;
 
-    /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif*/
     //All of the NVME structs in here were moved here to fix a circular include issue
     typedef struct _nvmeIDPowerState {
         uint16_t            maxPower;   /* centiwatts */
@@ -367,23 +413,19 @@ extern "C"
         uint16_t            activePower;
         uint8_t             activeWorkScale;
         uint8_t             rsvd23[9];
-    //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDPowerState;
-    /*#pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeIDPowerState;
-    #endif*/
 
-    /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif*/
+#define NVME_CTRL_IDENTIFY_SN_LEN (20)
+#define NVME_CTRL_IDENTIFY_MN_LEN (40)
+#define NVME_CTRL_IDENTIFY_FW_LEN (8)
+
     typedef struct _nvmeIDCtrl {
         //controller capabilities and features
         uint16_t            vid;
         uint16_t            ssvid;
-        char                sn[20];
-        char                mn[40];
-        char                fr[8];
+        char                sn[NVME_CTRL_IDENTIFY_SN_LEN];
+        char                mn[NVME_CTRL_IDENTIFY_MN_LEN];
+        char                fr[NVME_CTRL_IDENTIFY_FW_LEN];
         uint8_t             rab;
         uint8_t             ieee[3];
         uint8_t             cmic;
@@ -470,30 +512,14 @@ extern "C"
         uint8_t             nvmeOverFabrics[256];
         nvmeIDPowerState    psd[32];
         uint8_t             vs[1024];
-    //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDCtrl;
-    /*#pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeIDCtrl;
-    #endif*/
-
-    /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif*/
+    
     typedef struct _nvmeLBAF {
         uint16_t            ms;
         uint8_t             lbaDS;
         uint8_t             rp;
-    //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeLBAF;
-    /*#pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeLBAF;
-    #endif*/
 
-    /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif*/
     typedef struct _nvmeIDNameSpaces {
         uint64_t            nsze;
         uint64_t            ncap;
@@ -534,25 +560,12 @@ extern "C"
         uint8_t             eui64[8];
         nvmeLBAF            lbaf[64];
         uint8_t             vs[3712];
-    //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDNameSpaces;
-    /*#pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeIDNameSpaces;
-    #endif*/
 
-    /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif*/
     typedef struct _nvmeIdentifyData {
         nvmeIDCtrl          ctrl;
         nvmeIDNameSpaces    ns; // Currently we only support 1 NS - Revisit.  
-    //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIdentifyData;
-    /*#pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeIdentifyData;
-    #endif*/
 
     typedef struct _ataReturnTFRs
     {
@@ -573,18 +586,10 @@ extern "C"
     // Defined by SPC3 as the maximum sense length
     #define SPC3_SENSE_LEN  UINT8_C(252)
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif
     typedef struct _tVpdData {
         uint8_t  inquiryData[96]; //INQ_RETURN_DATA_LENGTH
         uint8_t  vpdPage83[64];
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }tVpdData;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) tVpdData;
-    #endif
 
     typedef enum _eMediaType {
         MEDIA_HDD       = 0,    // rotating media, HDD (ata or scsi)

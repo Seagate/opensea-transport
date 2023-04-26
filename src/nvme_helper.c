@@ -16,6 +16,27 @@
 #include "nvme_helper_func.h"
 #include "common_public.h"
 
+//pointer to NVMe controller identify data should always be 4096B since all NVMe identify data is this long.
+//All parameters should be the length of what is required in NVMe spec + 1 for a NULL terminating character.
+static void fill_NVMe_Strings_From_Ctrl_Data(uint8_t* ptrCtrlData, char nvmMN[NVME_CTRL_IDENTIFY_MN_LEN + 1], char nvmSN[NVME_CTRL_IDENTIFY_SN_LEN + 1], char nvmFW[NVME_CTRL_IDENTIFY_FW_LEN + 1])
+{
+    if (ptrCtrlData)
+    {
+        nvmeIDCtrl* ctrlData = ptrCtrlData;
+        //make sure buffers all all zeroed out before filling them
+        memset(nvmMN, 0, M_Min(MODEL_NUM_LEN, NVME_CTRL_IDENTIFY_MN_LEN));
+        memset(nvmSN, 0, M_Min(SERIAL_NUM_LEN, NVME_CTRL_IDENTIFY_SN_LEN));
+        memset(nvmFW, 0, M_Min(FW_REV_LEN, NVME_CTRL_IDENTIFY_FW_LEN));
+        //fill each buffer with data from NVMe ctrl data
+        memcpy(nvmSN, ctrlData->sn, M_Min(SERIAL_NUM_LEN, NVME_CTRL_IDENTIFY_SN_LEN));
+        remove_Leading_And_Trailing_Whitespace(nvmSN);
+        memcpy(nvmFW, ctrlData->fr, M_Min(FW_REV_LEN, NVME_CTRL_IDENTIFY_FW_LEN));
+        remove_Leading_And_Trailing_Whitespace(nvmFW);
+        memcpy(nvmMN, ctrlData->mn, M_Min(MODEL_NUM_LEN, NVME_CTRL_IDENTIFY_MN_LEN));
+        remove_Leading_And_Trailing_Whitespace(nvmMN);
+    }
+    return;
+}
 
 // \file nvme_cmds.c   Implementation for NVM Express helper functions
 //                     The intention of the file is to be generic & not OS specific
@@ -27,11 +48,8 @@
 int fill_In_NVMe_Device_Info(tDevice *device)
 {
     int ret = UNKNOWN;
-
+    
     //set some pointers to where we want to fill in information...we're doing this so that on USB, we can store some info about the child drive, without disrupting the standard drive_info that has already been filled in by the fill_SCSI_Info function
-    char *fillModelNumber = device->drive_info.product_identification;
-    char *fillSerialNumber = device->drive_info.serialNumber;
-    char *fillFWRev = device->drive_info.product_revision;
     uint64_t *fillWWN = &device->drive_info.worldWideName;
     uint32_t *fillLogicalSectorSize = &device->drive_info.deviceBlockSize;
     uint32_t *fillPhysicalSectorSize = &device->drive_info.devicePhyBlockSize;
@@ -43,9 +61,6 @@ int fill_In_NVMe_Device_Info(tDevice *device)
     if (device->drive_info.interface_type != NVME_INTERFACE && device->drive_info.interface_type != RAID_INTERFACE)
     {
         device->drive_info.bridge_info.isValid = true;
-        fillModelNumber = device->drive_info.bridge_info.childDriveMN;
-        fillSerialNumber = device->drive_info.bridge_info.childDriveSN;
-        fillFWRev = device->drive_info.bridge_info.childDriveFW;
         fillWWN = &device->drive_info.bridge_info.childWWN;
         fillLogicalSectorSize = &device->drive_info.bridge_info.childDeviceBlockSize;
         fillPhysicalSectorSize = &device->drive_info.bridge_info.childDevicePhyBlockSize;
@@ -69,6 +84,14 @@ printf("fill NVMe info ret = %d\n", ret);
     if (ret == SUCCESS)
     {
         uint16_t enduranceGroup = 0;
+        if (device->drive_info.interface_type != NVME_INTERFACE && device->drive_info.interface_type != RAID_INTERFACE)
+        {
+            fill_NVMe_Strings_From_Ctrl_Data(C_CAST(uint8_t*, ctrlData), device->drive_info.bridge_info.childDriveMN, device->drive_info.bridge_info.childDriveSN, device->drive_info.bridge_info.childDriveFW);
+        }
+        else
+        {
+            fill_NVMe_Strings_From_Ctrl_Data(C_CAST(uint8_t*, ctrlData), device->drive_info.product_identification, device->drive_info.serialNumber, device->drive_info.product_revision);
+        }
         //set the t10 vendor id to NVMe
         snprintf(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "NVMe");
         device->drive_info.media_type = MEDIA_NVM;//This will bite us someday when someone decided to put non-ssds on NVMe interface.
@@ -78,16 +101,6 @@ printf("fill NVMe info ret = %d\n", ret);
             device->drive_info.scsiVersion = 6;//most likely this is what will be set by a translator and keep other parts of code working correctly
         }
 
-        //Set the other device fields we need.
-        memcpy(fillSerialNumber,ctrlData->sn,SERIAL_NUM_LEN);
-        fillSerialNumber[20] = '\0';
-        remove_Leading_And_Trailing_Whitespace(fillSerialNumber);
-        memcpy(fillFWRev, ctrlData->fr,8); //8 is the NVMe spec length of this
-        fillFWRev[8] = '\0';
-        remove_Leading_And_Trailing_Whitespace(fillFWRev);
-        memcpy(fillModelNumber, ctrlData->mn,MODEL_NUM_LEN); 
-        fillModelNumber[40] = '\0';
-        remove_Leading_And_Trailing_Whitespace(fillModelNumber);
         //Do not overwrite this with non-NVMe interfaces. This is used by USB to figure out and track bridge chip specific things that are stored in this location
         if (device->drive_info.interface_type == NVME_INTERFACE && !device->drive_info.adapter_info.vendorIDValid)
         {
