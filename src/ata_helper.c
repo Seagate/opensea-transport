@@ -1305,7 +1305,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                     {
                         //data is valid, so figure out supported pages
                         uint8_t listLen = logBuffer[8];
-                        for (uint16_t iter = 9; iter < C_CAST(uint16_t, listLen + 8) && iter < UINT16_C(512); ++iter)
+                        for (uint16_t iter = 9; iter < C_CAST(uint16_t, listLen + 9) && iter < UINT16_C(512); ++iter)
                         {
                             switch (logBuffer[iter])
                             {
