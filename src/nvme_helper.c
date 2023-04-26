@@ -22,11 +22,11 @@ static void fill_NVMe_Strings_From_Ctrl_Data(uint8_t* ptrCtrlData, char nvmMN[NV
 {
     if (ptrCtrlData)
     {
-        nvmeIDCtrl* ctrlData = ptrCtrlData;
+        nvmeIDCtrl* ctrlData = C_CAST(nvmeIDCtrl*, ptrCtrlData);
         //make sure buffers all all zeroed out before filling them
-        memset(nvmMN, 0, M_Min(MODEL_NUM_LEN, NVME_CTRL_IDENTIFY_MN_LEN));
-        memset(nvmSN, 0, M_Min(SERIAL_NUM_LEN, NVME_CTRL_IDENTIFY_SN_LEN));
-        memset(nvmFW, 0, M_Min(FW_REV_LEN, NVME_CTRL_IDENTIFY_FW_LEN));
+        memset(nvmMN, 0, M_Min(MODEL_NUM_LEN + 1, NVME_CTRL_IDENTIFY_MN_LEN + 1));
+        memset(nvmSN, 0, M_Min(SERIAL_NUM_LEN + 1, NVME_CTRL_IDENTIFY_SN_LEN + 1));
+        memset(nvmFW, 0, M_Min(FW_REV_LEN + 1, NVME_CTRL_IDENTIFY_FW_LEN + 1));
         //fill each buffer with data from NVMe ctrl data
         memcpy(nvmSN, ctrlData->sn, M_Min(SERIAL_NUM_LEN, NVME_CTRL_IDENTIFY_SN_LEN));
         remove_Leading_And_Trailing_Whitespace(nvmSN);
