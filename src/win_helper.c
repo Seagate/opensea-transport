@@ -11244,7 +11244,7 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
     //TODO: We need to validate other fields to make sure we make the right call...may need a SCSI unmap command or
     //FSCTL_FILE_LEVEL_TRIM (and maybe also FSCTL_ALLOW_EXTENDED_DASD_IO)
     //NOTE: Using SCSI Unmap command - TJE
-    uint8_t numberOfRanges = M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10) + 1;//this is zero based in NVMe!
+    uint16_t numberOfRanges = M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10) + UINT16_C(1);//this is zero based in NVMe!
     bool deallocate = nvmeIoCtx->cmd.nvmCmd.cdw11 & BIT2;//This MUST be set to 1
     bool integralDatasetForWrite = nvmeIoCtx->cmd.nvmCmd.cdw11 & BIT1;//cannot be supported
     bool integralDatasetForRead = nvmeIoCtx->cmd.nvmCmd.cdw11 & BIT0;//cannot be supported
@@ -11258,7 +11258,7 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
         bool atLeastOneContextAttributeSet = false;
 #endif //WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
         //first, allocate enough memory for the Unmap command
-        uint32_t unmapDataLength = 8 + (16 * numberOfRanges);
+        uint16_t unmapDataLength = UINT16_C(8) + (UINT16_C(16) * numberOfRanges);
         uint8_t *unmapParameterData = C_CAST(uint8_t*, calloc_aligned(unmapDataLength, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));//each range is 16 bytes plus an 8 byte header
         if (unmapParameterData)
         {
@@ -11271,7 +11271,7 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
                 uint32_t nvmContextAttributes = M_BytesTo4ByteValue(nvmeIoCtx->ptrData[nvmOffset + 3], nvmeIoCtx->ptrData[nvmOffset + 2], nvmeIoCtx->ptrData[nvmOffset + 1], nvmeIoCtx->ptrData[nvmOffset + 0]);
 #endif //WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
                 uint32_t nvmLengthInLBAs = M_BytesTo4ByteValue(nvmeIoCtx->ptrData[nvmOffset + 7], nvmeIoCtx->ptrData[nvmOffset + 6], nvmeIoCtx->ptrData[nvmOffset + 5], nvmeIoCtx->ptrData[nvmOffset + 4]);
-                uint32_t nvmStartingLBA = M_BytesTo4ByteValue(nvmeIoCtx->ptrData[nvmOffset + 15], nvmeIoCtx->ptrData[nvmOffset + 14], nvmeIoCtx->ptrData[nvmOffset + 13], nvmeIoCtx->ptrData[nvmOffset + 12]);
+                uint64_t nvmStartingLBA = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[nvmOffset + 15], nvmeIoCtx->ptrData[nvmOffset + 14], nvmeIoCtx->ptrData[nvmOffset + 13], nvmeIoCtx->ptrData[nvmOffset + 12], nvmeIoCtx->ptrData[nvmOffset + 11], nvmeIoCtx->ptrData[nvmOffset + 10], nvmeIoCtx->ptrData[nvmOffset + 9], nvmeIoCtx->ptrData[nvmOffset + 8]);
 #if defined (WIN_NVME_DEALLOCATE_CONTEXT_FAILURE)
                 if (nvmContextAttributes)
                 {
@@ -11317,7 +11317,7 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
 #endif //WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
             {
                 //send the command
-                ret = scsi_Unmap(nvmeIoCtx->device, false, 0, C_CAST(uint16_t, unmapDataLength), unmapParameterData);
+                ret = scsi_Unmap(nvmeIoCtx->device, false, 0, unmapDataLength, unmapParameterData);
             }
 #if defined (WIN_NVME_DEALLOCATE_CONTEXT_FAILURE)
             else
@@ -11325,12 +11325,12 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
                 ret = OS_COMMAND_NOT_AVAILABLE;
             }
 #endif //WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
+            safe_Free_aligned(unmapParameterData)
         }
         else
         {
             ret = MEMORY_FAILURE;
         }
-        safe_Free_aligned(unmapParameterData)
     }
     nvmeIoCtx->device->deviceVerbosity = inVerbosity;
     return ret;
