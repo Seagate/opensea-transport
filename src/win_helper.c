@@ -9064,7 +9064,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
             bool longList = scsiIoCtx->cdb[1] & BIT5;
             bool formatData = scsiIoCtx->cdb[1] & BIT4;
             uint8_t defectListFormat = M_GETBITRANGE(scsiIoCtx->cdb[1], 2, 0);
-            if (formatData)
+            if (formatData && scsiIoCtx->pdata && scsiIoCtx->dataLength > 4)
             {
                 //Parameter header information
                 //uint8_t protectionFieldUsage = M_GETBITRANGE(scsiIoCtx->pdata[0], 2, 0);
@@ -9080,7 +9080,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 uint8_t p_i_information = 0;
                 uint8_t protectionIntervalExponent = 0;
                 uint32_t defectListLength = 0;
-                if (longList)
+                if (longList && scsiIoCtx->dataLength > 8)
                 {
                     p_i_information = M_Nibble1(scsiIoCtx->pdata[3]);
                     protectionIntervalExponent = M_Nibble0(scsiIoCtx->pdata[3]);
