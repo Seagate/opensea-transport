@@ -10158,7 +10158,7 @@ static int send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
         &returnedLength,
         NULL
     );
-    start_Timer(&commandTimer);
+    stop_Timer(&commandTimer);
     nvmeIoCtx->device->os_info.last_error = GetLastError();
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     if (!result || (returnedLength == 0))
