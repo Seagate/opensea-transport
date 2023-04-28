@@ -3144,15 +3144,9 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                                     //compare MN and SN...if match, then we have found the drive!
                                     char ataMN[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
                                     char ataSN[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
-                                    //copy strings
-                                    memcpy(ataSN, &identifyData[20], ATA_IDENTIFY_SN_LENGTH);
-                                    memcpy(ataMN, &identifyData[54], ATA_IDENTIFY_MN_LENGTH);
-                                    //byte-swap due to ATA string silliness.
-                                    byte_Swap_String(ataSN);
-                                    byte_Swap_String(ataMN);
-                                    //remove whitespace
-                                    remove_Leading_And_Trailing_Whitespace(ataSN);
-                                    remove_Leading_And_Trailing_Whitespace(ataMN);
+                                    char ataFW[ATA_IDENTIFY_FW_LENGTH + 1] = { 0 };
+                                    fill_ATA_Strings_From_Identify_Data(identifyData, ataMN, ataSN, ataFW);
+
                                     //check for a match
 #if defined (CSMI_DEBUG)
                                     printf("JSCI: Identify Successful\n");
@@ -4747,15 +4741,8 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                                                 //compare MN and SN...if match, then we have found the drive!
                                                                                 char ataMN[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
                                                                                 char ataSN[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
-                                                                                //copy strings
-                                                                                memcpy(ataSN, &identifyData[20], ATA_IDENTIFY_SN_LENGTH);
-                                                                                memcpy(ataMN, &identifyData[54], ATA_IDENTIFY_MN_LENGTH);
-                                                                                //byte-swap due to ATA string silliness.
-                                                                                byte_Swap_String(ataSN);
-                                                                                byte_Swap_String(ataMN);
-                                                                                //remove whitespace
-                                                                                remove_Leading_And_Trailing_Whitespace(ataSN);
-                                                                                remove_Leading_And_Trailing_Whitespace(ataMN);
+                                                                                char ataFW[ATA_IDENTIFY_FW_LENGTH + 1] = { 0 };
+                                                                                fill_ATA_Strings_From_Identify_Data(identifyData, ataMN, ataSN, ataFW);
                                                                                 //check for a match
     #if defined (CSMI_DEBUG)
                                                                                 printf("GDL: Identify Successful\n");
@@ -4783,15 +4770,8 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                                                     //compare MN and SN...if match, then we have found the drive!
                                                                                     char ataMN[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
                                                                                     char ataSN[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
-                                                                                    //copy strings
-                                                                                    memcpy(ataSN, &identifyData[20], ATA_IDENTIFY_SN_LENGTH);
-                                                                                    memcpy(ataMN, &identifyData[54], ATA_IDENTIFY_MN_LENGTH);
-                                                                                    //byte-swap due to ATA string silliness.
-                                                                                    byte_Swap_String(ataSN);
-                                                                                    byte_Swap_String(ataMN);
-                                                                                    //remove whitespace
-                                                                                    remove_Leading_And_Trailing_Whitespace(ataSN);
-                                                                                    remove_Leading_And_Trailing_Whitespace(ataMN);
+                                                                                    char ataFW[ATA_IDENTIFY_FW_LENGTH + 1] = { 0 };
+                                                                                    fill_ATA_Strings_From_Identify_Data(identifyData, ataMN, ataSN, ataFW);
                                                                                     //check for a match
     #if defined (CSMI_DEBUG)
                                                                                     printf("GDL: ATAPI Identify Successful\n");

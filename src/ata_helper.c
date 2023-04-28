@@ -804,6 +804,80 @@ static bool is_SAT_Invalid_Operation_Code(tDevice *device)
     return invalidOP;
 }
 
+void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData, char ataMN[ATA_IDENTIFY_MN_LENGTH + 1], char ataSN[ATA_IDENTIFY_SN_LENGTH + 1], char ataFW[ATA_IDENTIFY_FW_LENGTH + 1])
+{
+    if (ptrIdentifyData)
+    {
+        ptAtaIdentifyData idData = C_CAST(ptAtaIdentifyData, ptrIdentifyData);
+        bool validSN = true;
+        bool validMN = true;
+        bool validFW = true;
+        //check for valid strings (ATA-2 mentioned if these are set to zero, then they are not defined in the standards
+        if (idData->Word010 == 0)
+        {
+            validSN = false;
+        }
+        if (idData->Word023 == 0)
+        {
+            validFW = false;
+        }
+        if (idData->Word027 == 0)
+        {
+            validFW = false;
+        }
+        //fill each buffer with data from ATA ID data
+        if (validSN && ataSN)
+        {
+            memset(ataSN, 0, M_Min(SERIAL_NUM_LEN + 1, ATA_IDENTIFY_SN_LENGTH + 1));
+            memcpy(ataSN, idData->SerNum, M_Min(SERIAL_NUM_LEN, ATA_IDENTIFY_SN_LENGTH));
+            for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
+            {
+                if (!is_ASCII(ataSN[iter]) || !isprint(ataSN[iter]))
+                {
+                    ataSN[iter] = ' ';//replace with a space
+                }
+            }
+#if !defined(__BIG_ENDIAN__)
+            byte_Swap_String(ataSN);
+#endif
+            remove_Leading_And_Trailing_Whitespace(ataSN);
+        }
+        if (validFW && ataFW)
+        {
+            memset(ataFW, 0, M_Min(FW_REV_LEN + 1, ATA_IDENTIFY_FW_LENGTH + 1));
+            memcpy(ataFW, idData->FirmVer, M_Min(FW_REV_LEN, ATA_IDENTIFY_FW_LENGTH));
+            for (uint8_t iter = 0; iter < FW_REV_LEN; ++iter)
+            {
+                if (!is_ASCII(ataFW[iter]) || !isprint(ataFW[iter]))
+                {
+                    ataFW[iter] = ' ';//replace with a space
+                }
+            }
+#if !defined(__BIG_ENDIAN__)
+            byte_Swap_String(ataFW);
+#endif
+            remove_Leading_And_Trailing_Whitespace(ataFW);
+        }
+        if (validMN && ataMN)
+        {
+            memset(ataMN, 0, M_Min(MODEL_NUM_LEN + 1, ATA_IDENTIFY_MN_LENGTH + 1));
+            memcpy(ataMN, idData->ModelNum, M_Min(MODEL_NUM_LEN, ATA_IDENTIFY_MN_LENGTH));
+            for (uint8_t iter = 0; iter < MODEL_NUM_LEN; ++iter)
+            {
+                if (!is_ASCII(ataMN[iter]) || !isprint(ataMN[iter]))
+                {
+                    ataMN[iter] = ' ';//replace with a space
+                }
+            }
+#if !defined(__BIG_ENDIAN__)
+            byte_Swap_String(ataMN);
+#endif
+            remove_Leading_And_Trailing_Whitespace(ataMN);
+        }
+    }
+    return;
+}
+
 int fill_In_ATA_Drive_Info(tDevice *device)
 {
     int ret = UNKNOWN;
@@ -874,9 +948,6 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         }
 
         //set some pointers to where we want to fill in information...we're doing this so that on USB, we can store some info about the child drive, without disrupting the standard drive_info that has already been filled in by the fill_SCSI_Info function
-        char *fillModelNumber = device->drive_info.product_identification;
-        char *fillSerialNumber = device->drive_info.serialNumber;
-        char *fillFWRev = device->drive_info.product_revision;
         uint64_t *fillWWN = &device->drive_info.worldWideName;
         uint32_t *fillLogicalSectorSize = &device->drive_info.deviceBlockSize;
         uint32_t *fillPhysicalSectorSize = &device->drive_info.devicePhyBlockSize;
@@ -888,9 +959,6 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         if ((device->drive_info.interface_type != IDE_INTERFACE) && (device->drive_info.interface_type != RAID_INTERFACE))
         {
             device->drive_info.bridge_info.isValid = true;
-            fillModelNumber = device->drive_info.bridge_info.childDriveMN;
-            fillSerialNumber = device->drive_info.bridge_info.childDriveSN;
-            fillFWRev = device->drive_info.bridge_info.childDriveFW;
             fillWWN = &device->drive_info.bridge_info.childWWN;
             fillLogicalSectorSize = &device->drive_info.bridge_info.childDeviceBlockSize;
             fillPhysicalSectorSize = &device->drive_info.bridge_info.childDevicePhyBlockSize;
@@ -911,45 +979,16 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             device->drive_info.T10_vendor_ident[7] = 0;
         }
         device->drive_info.numberOfLUs = 1;
-        memcpy(fillModelNumber, &ident_word[27], MODEL_NUM_LEN);
-        fillModelNumber[MODEL_NUM_LEN] = '\0';
-        memcpy(fillSerialNumber, &ident_word[10], SERIAL_NUM_LEN);
-        fillSerialNumber[SERIAL_NUM_LEN] = '\0';
-        memcpy(fillFWRev, &ident_word[23], 8);
-        fillFWRev[FW_REV_LEN] = '\0';
-        //Byte swap due to endianess (little endian hosts only since the buffer we are using will be byte swapped for us)
-#if !defined(__BIG_ENDIAN__)
-        byte_Swap_String(fillModelNumber);
-        byte_Swap_String(fillSerialNumber);
-        byte_Swap_String(fillFWRev);
-#endif
-        //before removing whitespace, go through MN, SN, and FW and remove any invalid characters.
-        // This shouldn't be a problem, but in rare cases a device may return garbage here and we don't want to cause a crash-TJE
-        for (uint8_t iter = 0; iter < MODEL_NUM_LEN; ++iter)
+        
+        if ((device->drive_info.interface_type != IDE_INTERFACE) && (device->drive_info.interface_type != RAID_INTERFACE))
         {
-            if (!is_ASCII(fillModelNumber[iter]) || !isprint(fillModelNumber[iter]))
-            {
-                fillModelNumber[iter] = ' ';//replace with a space
-            }
+            fill_ATA_Strings_From_Identify_Data(identifyData, device->drive_info.bridge_info.childDriveMN, device->drive_info.bridge_info.childDriveSN, device->drive_info.bridge_info.childDriveFW);
         }
-        for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
+        else
         {
-            if (!is_ASCII(fillSerialNumber[iter]) || !isprint(fillSerialNumber[iter]))
-            {
-                fillSerialNumber[iter] = ' ';//replace with a space
-            }
+            fill_ATA_Strings_From_Identify_Data(identifyData, device->drive_info.product_identification, device->drive_info.serialNumber, device->drive_info.product_revision);
         }
-        for (uint8_t iter = 0; iter < FW_REV_LEN; ++iter)
-        {
-            if (!is_ASCII(fillFWRev[iter]) || !isprint(fillFWRev[iter]))
-            {
-                fillFWRev[iter] = ' ';//replace with a space
-            }
-        }
-        //remove leading and trailing whitespace
-        remove_Leading_And_Trailing_Whitespace(fillModelNumber);
-        remove_Leading_And_Trailing_Whitespace(fillSerialNumber);
-        remove_Leading_And_Trailing_Whitespace(fillFWRev);
+
         //get the WWN
         *fillWWN = M_WordsTo8ByteValue(device->drive_info.IdentifyData.ata.Word108,\
                                        device->drive_info.IdentifyData.ata.Word109,\
