@@ -1760,18 +1760,18 @@ static int sntl_Translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiI
 #if defined SNTL_EXT
             //SPC5
             inquiryData[2] = 0x07;
-#else
+#else //!SNTL_EXT
             //SPC4
             inquiryData[2] = 0x06;
-#endif
+#endif //SNTL_EXT
             //response format
             inquiryData[3] = 2 | BIT4;//set response format to 2 and hisup bit
             //additional length
 #if defined SNTL_EXT
             inquiryData[4] = 92;
-#else
+#else //!SNTL_EXT
             inquiryData[4] = 0x1F; 
-#endif
+#endif //SNTL_EXT
             //check if protect bit needs to be set from namespace data
             if (device->drive_info.IdentifyData.nvme.ns.dps != 0)
             {
@@ -1793,29 +1793,29 @@ static int sntl_Translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiI
             inquiryData[14] = ' ';
             inquiryData[15] = ' ';
             //Product ID (first 16bytes of the ata model number
-            char nvmMN[MODEL_NUM_LEN + 1] = { 0 };
-            memcpy(nvmMN, device->drive_info.IdentifyData.nvme.ctrl.mn, MODEL_NUM_LEN);
-            memcpy(&inquiryData[16], nvmMN, 16);
+            char nvmMN[NVME_CTRL_IDENTIFY_MN_LEN + 1] = { 0 };
+            memcpy(nvmMN, device->drive_info.IdentifyData.nvme.ctrl.mn, NVME_CTRL_IDENTIFY_MN_LEN);
+            memcpy(&inquiryData[16], nvmMN, INQ_DATA_PRODUCT_ID_LEN);
             //product revision (truncates to 4 bytes)
-            char nvmFW[FW_REV_LEN] = { 0 };
-            memcpy(nvmFW, device->drive_info.IdentifyData.nvme.ctrl.fr, 8);
+            char nvmFW[NVME_CTRL_IDENTIFY_FW_LEN + 1] = { 0 };
+            memcpy(nvmFW, device->drive_info.IdentifyData.nvme.ctrl.fr, NVME_CTRL_IDENTIFY_FW_LEN);
             remove_Leading_And_Trailing_Whitespace(nvmFW);
-            if (strlen(nvmFW) > 4)
+            if (strlen(nvmFW) > INQ_DATA_PRODUCT_REV_LEN)
             {
-                memcpy(&inquiryData[32], &nvmFW[4], 4);
+                memcpy(&inquiryData[32], &nvmFW[4], INQ_DATA_PRODUCT_REV_LEN);
             }
             else
             {
-                memcpy(&inquiryData[32], &nvmFW[0], 4);
+                memcpy(&inquiryData[32], &nvmFW[0], INQ_DATA_PRODUCT_REV_LEN);
             }
 
             //currently this is where the translation spec ends. Anything below here is above and beyond the spec
 #if defined SNTL_EXT
             //Vendor specific...we'll set the controller SN here
-            char nvmSN[SERIAL_NUM_LEN + 1] = { 0 };
-            memcpy(nvmSN, device->drive_info.IdentifyData.nvme.ctrl.sn, SERIAL_NUM_LEN);
+            char nvmSN[NVME_CTRL_IDENTIFY_SN_LEN + 1] = { 0 };
+            memcpy(nvmSN, device->drive_info.IdentifyData.nvme.ctrl.sn, NVME_CTRL_IDENTIFY_SN_LEN);
             remove_Leading_And_Trailing_Whitespace(nvmSN);
-            memcpy(&inquiryData[36], nvmSN, M_Min(strlen(nvmSN), 20));
+            memcpy(&inquiryData[36], nvmSN, M_Min(strlen(nvmSN), NVME_CTRL_IDENTIFY_SN_LEN));
 
             //version descriptors (bytes 58 to 73) (8 max)
             uint16_t versionOffset = 58;
@@ -1846,7 +1846,7 @@ static int sntl_Translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiI
             //versionOffset += 2;
             //If zoned, ZBC/ZAC spec 0620h
             //Transport needs to go here...pcie?
-#endif
+#endif //SNTL_EXT
             //now copy the data back
             if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
             {
