@@ -4280,6 +4280,22 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                 device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
                                 //TODO: Setup limited passthrough capabilities structure???
                                 foundNVMePassthrough = true;
+                                //This is set because asking for list of pages + subpages returns a list wihtout them, so it is interpretted wrong.
+                                //It returns the data for list of pages WITHOUT subpages, so CDB is not validated correctly.
+                                //It is possible that other drivers based on ofnvme work different, but I don't have any others to test. Tested using the latest version before it stopped receiving support-TJE
+                                //Code in ofnvme 1.5 does not properly validate if log subpages or mode subpages are requested and returns the incorrect data.
+                                //setup some flags for everything else though based on what is in the translation code.
+                                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                                device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
+                                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;//depending on if this is uncommented or not in the compiled driver, it may or may not work, but code seems to have some knowledge of this translation in some cases.-TJE
+                                device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+
 #if defined (WIN_DEBUG)
                                 printf("WIN: open fabrics NVMe supported\n");
 #endif //WIN_DEBUG

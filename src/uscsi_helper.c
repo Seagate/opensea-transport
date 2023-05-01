@@ -72,6 +72,10 @@ static int get_Partition_Count(const char* blockDeviceName)
         }
         fclose(mount);
     }
+    else
+    {
+        result = -1;//indicate an error
+    }
     return result;
 }
 
@@ -113,6 +117,10 @@ static int get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo par
                 }
             }
             fclose(mount);
+        }
+        else
+        {
+            result = FAILURE;
         }
     }
     return result;

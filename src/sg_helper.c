@@ -237,22 +237,29 @@ static int get_Partition_Count(const char * blockDeviceName)
 {
     int result = 0;
     FILE *mount = setmntent("/etc/mtab", "r");//we only need to know about mounted partitions. Mounted partitions need to be known so that they can be unmounted when necessary. - TJE
-    struct mntent *entry = NULL;
-#if defined (_BSD_SOURCE) || defined(_SVID_SOURCE) //getmntent_r lists these feature test macros to look for - TJE
-    struct mntent entBuf;
-    char lineBuf[GETMNTENT_R_LINE_BUF_SIZE] = { 0 };
-    while(NULL != (entry = getmntent_r(mount, &entBuf, lineBuf, GETMNTENT_R_LINE_BUF_SIZE)))
-#else //use the not thread safe version since that is all that is available
-    while(NULL != (entry = getmntent(mount)))
-#endif
+    if (mount)
     {
-        if(strstr(entry->mnt_fsname, blockDeviceName))
+        struct mntent* entry = NULL;
+#if defined (_BSD_SOURCE) || defined(_SVID_SOURCE) //getmntent_r lists these feature test macros to look for - TJE
+        struct mntent entBuf;
+        char lineBuf[GETMNTENT_R_LINE_BUF_SIZE] = { 0 };
+        while (NULL != (entry = getmntent_r(mount, &entBuf, lineBuf, GETMNTENT_R_LINE_BUF_SIZE)))
+#else //use the not thread safe version since that is all that is available
+        while (NULL != (entry = getmntent(mount)))
+#endif
         {
-            //Found a match, increment result counter.
-            ++result;
+            if (strstr(entry->mnt_fsname, blockDeviceName))
+            {
+                //Found a match, increment result counter.
+                ++result;
+            }
         }
+        endmntent(mount);
     }
-    endmntent(mount);
+    else
+    {
+        result = -1;//indicate an error opening the mtab file
+    }
     return result;
 }
 
@@ -269,35 +276,42 @@ static int get_Partition_List(const char * blockDeviceName, ptrsPartitionInfo pa
 {
     int result = SUCCESS;
     int matchesFound = 0;
-    if(listCount > 0)
+    if (listCount > 0)
     {
         FILE *mount = setmntent("/etc/mtab", "r");//we only need to know about mounted partitions. Mounted partitions need to be known so that they can be unmounted when necessary. - TJE
-        struct mntent *entry = NULL;
+        if (mount)
+        {
+            struct mntent* entry = NULL;
 #if defined(_BSD_SOURCE) || defined (_SVID_SOURCE) || !defined (NO_GETMNTENT_R) //feature test macros we're defining _BSD_SOURCE or _SVID_SOURCE in my testing, but we want the reentrant version whenever possible. This can be defined if this function is not identified. - TJE
-        struct mntent entBuf;
-        char lineBuf[GETMNTENT_R_LINE_BUF_SIZE] = { 0 };
-        while(NULL != (entry = getmntent_r(mount, &entBuf, lineBuf, GETMNTENT_R_LINE_BUF_SIZE)))
+            struct mntent entBuf;
+            char lineBuf[GETMNTENT_R_LINE_BUF_SIZE] = { 0 };
+            while (NULL != (entry = getmntent_r(mount, &entBuf, lineBuf, GETMNTENT_R_LINE_BUF_SIZE)))
 #else //use the not thread safe version since that is all that is available
 #pragma message "Not using getmntent_r. Partition detection is not thread safe"
-        while(NULL != (entry = getmntent(mount)))
+            while (NULL != (entry = getmntent(mount)))
 #endif
-        {
-            if(strstr(entry->mnt_fsname, blockDeviceName))
             {
-                //found a match, copy it to the list
-                if(matchesFound < listCount)
+                if (strstr(entry->mnt_fsname, blockDeviceName))
                 {
-                    snprintf((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s", entry->mnt_fsname);
-                    snprintf((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH, "%s", entry->mnt_dir);
-                    ++matchesFound;
-                }
-                else
-                {
-                    result = MEMORY_FAILURE;//out of memory to copy all results to the list.
+                    //found a match, copy it to the list
+                    if (matchesFound < listCount)
+                    {
+                        snprintf((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s", entry->mnt_fsname);
+                        snprintf((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH, "%s", entry->mnt_dir);
+                        ++matchesFound;
+                    }
+                    else
+                    {
+                        result = MEMORY_FAILURE;//out of memory to copy all results to the list.
+                    }
                 }
             }
+            endmntent(mount);
         }
-        endmntent(mount);
+        else
+        {
+            result = FAILURE;
+        }
     }
     return result;
 }
