@@ -8957,7 +8957,7 @@ static int wbst_Verify_10(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint8_t byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
+            uint8_t byteCheck = M_GETBITRANGE(scsiIoCtx->cdb[1], 2, 1);
             uint64_t lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
             uint32_t verificationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
             if (verificationLength != 0)//this is allowed and it means to validate inputs and return success
@@ -9005,7 +9005,7 @@ static int wbst_Verify_12(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint8_t byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
+            uint8_t byteCheck = M_GETBITRANGE(scsiIoCtx->cdb[1], 2, 1);
             uint64_t lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
             uint32_t verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
             if (verificationLength != 0)//this is allowed and it means to validate inputs and return success
@@ -9053,7 +9053,7 @@ static int wbst_Verify_16(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint8_t byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
+            uint8_t byteCheck = M_GETBITRANGE(scsiIoCtx->cdb[1], 2, 1);
             uint64_t lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5], scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
             uint32_t verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
             if (verificationLength != 0)//this is allowed and it means to validate inputs and return success
@@ -11608,13 +11608,13 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
         bool atLeastOneContextAttributeSet = false;
 #endif //WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
         //first, allocate enough memory for the Unmap command
-        uint16_t unmapDataLength = UINT16_C(8) + (UINT16_C(16) * numberOfRanges);
-        uint8_t *unmapParameterData = C_CAST(uint8_t*, calloc_aligned(unmapDataLength, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));//each range is 16 bytes plus an 8 byte header
+        uint16_t unmapParameterDataLength = UINT16_C(8) + (UINT16_C(16) * numberOfRanges);
+        uint8_t *unmapParameterData = C_CAST(uint8_t*, calloc_aligned(unmapParameterDataLength, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));//each range is 16 bytes plus an 8 byte header
         if (unmapParameterData)
         {
             //in a loop, set the unmap descriptors
             uint32_t scsiOffset = 8, nvmOffset = 0;
-            for (uint16_t rangeIter = 0; rangeIter < numberOfRanges && scsiOffset < unmapDataLength && nvmOffset < nvmeIoCtx->dataSize; ++rangeIter, scsiOffset += 16, nvmOffset += 16)
+            for (uint16_t rangeIter = 0; rangeIter < numberOfRanges && scsiOffset < unmapParameterDataLength && nvmOffset < nvmeIoCtx->dataSize; ++rangeIter, scsiOffset += 16, nvmOffset += 16)
             {
                 //get the info we need from the incomming buffer
 #if defined (WIN_NVME_DEALLOCATE_CONTEXT_FAILURE)
@@ -11652,8 +11652,8 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
             }
             //now set up the unmap parameter list header
             //unmap data length
-            unmapParameterData[0] = M_Byte1(unmapDataLength - 2);
-            unmapParameterData[1] = M_Byte0(unmapDataLength - 2);
+            unmapParameterData[0] = M_Byte1(unmapParameterDataLength - 2);
+            unmapParameterData[1] = M_Byte0(unmapParameterDataLength - 2);
             //block descriptor data length
             unmapParameterData[2] = M_Byte1(scsiOffset - 8);
             unmapParameterData[3] = M_Byte0(scsiOffset - 8);
@@ -11667,7 +11667,7 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
 #endif //WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
             {
                 //send the command
-                ret = scsi_Unmap(nvmeIoCtx->device, false, 0, unmapDataLength, unmapParameterData);
+                ret = scsi_Unmap(nvmeIoCtx->device, false, 0, unmapParameterDataLength, unmapParameterData);
             }
 #if defined (WIN_NVME_DEALLOCATE_CONTEXT_FAILURE)
             else
