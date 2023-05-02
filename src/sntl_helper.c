@@ -3725,6 +3725,47 @@ static int sntl_Translate_Mode_Sense_Informational_Exceptions_Control_1Ch(ScsiIo
 
 #endif
 
+static void fill_Mode_Data_Block_Descriptor(uint8_t dataBlockDescriptor[16], bool longLBABit, uint64_t maxLBA, uint32_t blockSize)
+{
+    if (dataBlockDescriptor)
+    {
+        if (longLBABit)
+        {
+            //16 byte long format
+            dataBlockDescriptor[0] = M_Byte7(maxLBA);
+            dataBlockDescriptor[1] = M_Byte6(maxLBA);
+            dataBlockDescriptor[2] = M_Byte5(maxLBA);
+            dataBlockDescriptor[3] = M_Byte4(maxLBA);
+            dataBlockDescriptor[4] = M_Byte3(maxLBA);
+            dataBlockDescriptor[5] = M_Byte2(maxLBA);
+            dataBlockDescriptor[6] = M_Byte1(maxLBA);
+            dataBlockDescriptor[7] = M_Byte0(maxLBA);
+            dataBlockDescriptor[8] = RESERVED;
+            dataBlockDescriptor[9] = RESERVED;
+            dataBlockDescriptor[10] = RESERVED;
+            dataBlockDescriptor[11] = RESERVED;
+            dataBlockDescriptor[12] = M_Byte3(blockSize);
+            dataBlockDescriptor[13] = M_Byte2(blockSize);
+            dataBlockDescriptor[14] = M_Byte1(blockSize);
+            dataBlockDescriptor[15] = M_Byte0(blockSize);
+        }
+        else
+        {
+            //8 byte short format
+            uint32_t shotMaxLBA = C_CAST(uint32_t, M_Min(UINT32_MAX, maxLBA));
+            dataBlockDescriptor[0] = M_Byte3(shotMaxLBA);
+            dataBlockDescriptor[1] = M_Byte2(shotMaxLBA);
+            dataBlockDescriptor[2] = M_Byte1(shotMaxLBA);
+            dataBlockDescriptor[3] = M_Byte0(shotMaxLBA);
+            dataBlockDescriptor[4] = RESERVED;
+            dataBlockDescriptor[5] = M_Byte2(blockSize);
+            dataBlockDescriptor[6] = M_Byte1(blockSize);
+            dataBlockDescriptor[7] = M_Byte0(blockSize);
+        }
+    }
+    return;
+}
+
 static int sntl_Translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
@@ -3829,39 +3870,7 @@ static int sntl_Translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *sc
     }
     if (returnDataBlockDescriptor)
     {
-        if (longLBABit)
-        {
-            //16 byte long format
-            dataBlockDescriptor[0] = M_Byte7(device->drive_info.deviceMaxLba);
-            dataBlockDescriptor[1] = M_Byte6(device->drive_info.deviceMaxLba);
-            dataBlockDescriptor[2] = M_Byte5(device->drive_info.deviceMaxLba);
-            dataBlockDescriptor[3] = M_Byte4(device->drive_info.deviceMaxLba);
-            dataBlockDescriptor[4] = M_Byte3(device->drive_info.deviceMaxLba);
-            dataBlockDescriptor[5] = M_Byte2(device->drive_info.deviceMaxLba);
-            dataBlockDescriptor[6] = M_Byte1(device->drive_info.deviceMaxLba);
-            dataBlockDescriptor[7] = M_Byte0(device->drive_info.deviceMaxLba);
-            dataBlockDescriptor[8] = RESERVED;
-            dataBlockDescriptor[9] = RESERVED;
-            dataBlockDescriptor[10] = RESERVED;
-            dataBlockDescriptor[11] = RESERVED;
-            dataBlockDescriptor[12] = M_Byte3(device->drive_info.deviceBlockSize);
-            dataBlockDescriptor[13] = M_Byte2(device->drive_info.deviceBlockSize);
-            dataBlockDescriptor[14] = M_Byte1(device->drive_info.deviceBlockSize);
-            dataBlockDescriptor[15] = M_Byte0(device->drive_info.deviceBlockSize);
-        }
-        else
-        {
-            //8 byte short format
-            uint32_t maxLBA = C_CAST(uint32_t, M_Min(UINT32_MAX, device->drive_info.deviceMaxLba));
-            dataBlockDescriptor[0] = M_Byte3(maxLBA);
-            dataBlockDescriptor[1] = M_Byte2(maxLBA);
-            dataBlockDescriptor[2] = M_Byte1(maxLBA);
-            dataBlockDescriptor[3] = M_Byte0(maxLBA);
-            dataBlockDescriptor[4] = RESERVED;
-            dataBlockDescriptor[5] = M_Byte2(device->drive_info.deviceBlockSize);
-            dataBlockDescriptor[6] = M_Byte1(device->drive_info.deviceBlockSize);
-            dataBlockDescriptor[7] = M_Byte0(device->drive_info.deviceBlockSize);
-        }
+        fill_Mode_Data_Block_Descriptor(dataBlockDescriptor, longLBABit, device->drive_info.deviceMaxLba, device->drive_info.deviceBlockSize);
     }
     switch (pageCode)
     {
@@ -4547,71 +4556,115 @@ static int sntl_Translate_SCSI_Read_Command(tDevice *device, ScsiIoCtx *scsiIoCt
     switch (scsiIoCtx->cdb[OPERATION_CODE])
     {
     case 0x08://read 6
-        lba = M_BytesTo4ByteValue(0, (scsiIoCtx->cdb[1] & 0x1F), scsiIoCtx->cdb[2], scsiIoCtx->cdb[3]);
-        transferLength = scsiIoCtx->cdb[4];
-        if (M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0)
+        if (scsiIoCtx->cdbLength == 6)
         {
-            fieldPointer = 1;
-            bitPointer = 0;
-            invalidField = true;
+            lba = M_BytesTo4ByteValue(0, (scsiIoCtx->cdb[1] & 0x1F), scsiIoCtx->cdb[2], scsiIoCtx->cdb[3]);
+            transferLength = scsiIoCtx->cdb[4];
+            if (M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0)
+            {
+                fieldPointer = 1;
+                bitPointer = 0;
+                invalidField = true;
+            }
+            if (transferLength == 0)
+            {
+                transferLength = 256;//read 6 transfer length 0 means 256 blocks
+            }
         }
-        if (transferLength == 0)
+        else
         {
-            transferLength = 256;//read 6 transfer length 0 means 256 blocks
+            fieldPointer = 0;
+            bitPointer = 7;
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            return BAD_PARAMETER;
         }
         break;
     case 0x28://read 10
-        lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-        transferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
-        rdprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
-        if (scsiIoCtx->cdb[1] & BIT3)
+        if (scsiIoCtx->cdbLength == 10)
         {
-            fua = true;
+            lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+            transferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            rdprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
+            if (scsiIoCtx->cdb[1] & BIT3)
+            {
+                fua = true;
+            }
+            if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete.
+                || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Unspecified...will treat as error
+                || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[1] & BIT2)//cannot support RACR bit
+                || ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[6], 7, 6) != 0)
+                )
+            {
+                invalidField = true;
+            }
         }
-        if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete.
-            || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Unspecified...will treat as error
-            || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[1] & BIT2)//cannot support RACR bit
-            || ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[6], 7, 6) != 0)
-            )
+        else
         {
-            invalidField = true;
+            fieldPointer = 0;
+            bitPointer = 7;
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            return BAD_PARAMETER;
         }
         break;
     case 0xA8://read 12
-        lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-        transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        rdprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
-        if (scsiIoCtx->cdb[1] & BIT3)
+        if (scsiIoCtx->cdbLength == 12)
         {
-            fua = true;
+            lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+            transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+            rdprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
+            if (scsiIoCtx->cdb[1] & BIT3)
+            {
+                fua = true;
+            }
+            if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete.
+                || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Unspecified...will treat as error
+                || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[1] & BIT2)//cannot support RACR bit
+                || ((fieldPointer = 10) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[10], 7, 6) != 0)
+                )
+            {
+                invalidField = true;
+            }
         }
-        if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete.
-            || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Unspecified...will treat as error
-            || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[1] & BIT2)//cannot support RACR bit
-            || ((fieldPointer = 10) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[10], 7, 6) != 0)
-            )
+        else
         {
-            invalidField = true;
+            fieldPointer = 0;
+            bitPointer = 7;
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            return BAD_PARAMETER;
         }
         break;
     case 0x88://read 16
-        lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5], scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
-        rdprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
-        if (scsiIoCtx->cdb[1] & BIT3)
+        if (scsiIoCtx->cdbLength == 16)
         {
-            fua = true;
+            lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5], scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+            transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
+            rdprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
+            if (scsiIoCtx->cdb[1] & BIT3)
+            {
+                fua = true;
+            }
+            //sbc2 fua_nv bit is unspecified
+            //We don't support RARC 
+            //We don't support DLD bits either
+            if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete.
+                || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. 
+                || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[1] & BIT2)//cannot support RACR bit
+                || ((fieldPointer = 14) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[14], 7, 6) != 0)
+                )
+            {
+                invalidField = true;
+            }
         }
-        //sbc2 fua_nv bit is unspecified
-        //We don't support RARC 
-        //We don't support DLD bits either
-        if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete.
-            || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. 
-            || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[1] & BIT2)//cannot support RACR bit
-            || ((fieldPointer = 14) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[14], 7, 6) != 0)
-            )
+        else
         {
-            invalidField = true;
+            fieldPointer = 0;
+            bitPointer = 7;
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            return BAD_PARAMETER;
         }
         break;
     default:
@@ -4708,70 +4761,114 @@ static int sntl_Translate_SCSI_Write_Command(tDevice *device, ScsiIoCtx *scsiIoC
     switch (scsiIoCtx->cdb[OPERATION_CODE])
     {
     case 0x0A://write 6
-        lba = M_BytesTo4ByteValue(0, (scsiIoCtx->cdb[1] & 0x1F), scsiIoCtx->cdb[2], scsiIoCtx->cdb[3]);
-        transferLength = scsiIoCtx->cdb[4];
-        if (M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0)
+        if (scsiIoCtx->cdbLength == 6)
         {
-            bitPointer = 0;
-            fieldPointer = 1;
-            invalidField = true;
+            lba = M_BytesTo4ByteValue(0, (scsiIoCtx->cdb[1] & 0x1F), scsiIoCtx->cdb[2], scsiIoCtx->cdb[3]);
+            transferLength = scsiIoCtx->cdb[4];
+            if (M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0)
+            {
+                bitPointer = 0;
+                fieldPointer = 1;
+                invalidField = true;
+            }
+            if (transferLength == 0)
+            {
+                transferLength = 256;//write 6 transfer length 0 means 256 blocks
+            }
         }
-        if (transferLength == 0)
+        else
         {
-            transferLength = 256;//write 6 transfer length 0 means 256 blocks
+            fieldPointer = 0;
+            bitPointer = 7;
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            return BAD_PARAMETER;
         }
         break;
     case 0x2A://write 10
-        lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-        transferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
-        wrprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
-        if (scsiIoCtx->cdb[1] & BIT3)
+        if (scsiIoCtx->cdbLength == 10)
         {
-            fua = true;
+            lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+            transferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            wrprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
+            if (scsiIoCtx->cdb[1] & BIT3)
+            {
+                fua = true;
+            }
+            if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete.
+                || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. 
+                || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[1] & BIT2)//reserved bit
+                || ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[6], 7, 6) != 0)
+                )
+            {
+                invalidField = true;
+            }
         }
-        if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete.
-            || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. 
-            || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[1] & BIT2)//reserved bit
-            || ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[6], 7, 6) != 0)
-            )
+        else
         {
-            invalidField = true;
+            fieldPointer = 0;
+            bitPointer = 7;
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            return BAD_PARAMETER;
         }
         break;
     case 0xAA://write 12
-        lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-        transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        wrprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
-        if (scsiIoCtx->cdb[1] & BIT3)
+        if (scsiIoCtx->cdbLength == 12)
         {
-            fua = true;
+            lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+            transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+            wrprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
+            if (scsiIoCtx->cdb[1] & BIT3)
+            {
+                fua = true;
+            }
+            if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete.
+                || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. 
+                || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[1] & BIT2)//reserved bit
+                || ((fieldPointer = 10) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[10], 7, 6) != 0)
+                )
+            {
+                invalidField = true;
+            }
         }
-        if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete.
-            || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. 
-            || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[1] & BIT2)//reserved bit
-            || ((fieldPointer = 10) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[10], 7, 6) != 0)
-            )
+        else
         {
-            invalidField = true;
+            fieldPointer = 0;
+            bitPointer = 7;
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            return BAD_PARAMETER;
         }
         break;
     case 0x8A://write 16
-        lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5], scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
-        wrprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
-        if (scsiIoCtx->cdb[1] & BIT3)
+        if (scsiIoCtx->cdbLength == 16)
         {
-            fua = true;
+            lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5], scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+            transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
+            wrprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
+            if (scsiIoCtx->cdb[1] & BIT3)
+            {
+                fua = true;
+            }
+            //sbc2 fua_nv bit can be ignored according to SAT. 
+            //We don't support DLD bits either
+            if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete. also now the DLD2 bit
+                || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. 
+                || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[1] & BIT2)//reserved bit
+                || ((fieldPointer = 14) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[14], 7, 6) != 0)
+                )
+            {
+                invalidField = true;
+            }
         }
-        //sbc2 fua_nv bit can be ignored according to SAT. 
-        //We don't support DLD bits either
-        if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)//reladr bit. Obsolete. also now the DLD2 bit
-            || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. 
-            || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[1] & BIT2)//reserved bit
-            || ((fieldPointer = 14) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[14], 7, 6) != 0)
-            )
+        else
         {
-            invalidField = true;
+            fieldPointer = 0;
+            bitPointer = 7;
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            return BAD_PARAMETER;
         }
         break;
     default:
@@ -4869,42 +4966,75 @@ static int sntl_Translate_SCSI_Verify_Command(tDevice *device, ScsiIoCtx *scsiIo
     switch (scsiIoCtx->cdb[OPERATION_CODE])
     {
     case 0x2F://verify 10
-        byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
-        lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-        verificationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
-        vrprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
-        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[1] & BIT3)
-            || ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)
-            || ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[6], 7, 6) != 0)
-            )
+        if (scsiIoCtx->cdbLength == 10)
         {
-            invalidField = true;
+            byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
+            lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+            verificationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            vrprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
+            if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[1] & BIT3)
+                || ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)
+                || ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[6], 7, 6) != 0)
+                )
+            {
+                invalidField = true;
+            }
+        }
+        else
+        {
+            fieldPointer = 0;
+            bitPointer = 7;
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            return BAD_PARAMETER;
         }
         break;
     case 0xAF://verify 12
-        byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
-        lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-        verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        vrprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
-        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[1] & BIT3)
-            || ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)
-            || ((fieldPointer = 10) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[10], 7, 6) != 0)
-            )
+        if (scsiIoCtx->cdbLength == 12)
         {
-            invalidField = true;
+            byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
+            lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+            verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+            vrprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
+            if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[1] & BIT3)
+                || ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)
+                || ((fieldPointer = 10) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[10], 7, 6) != 0)
+                )
+            {
+                invalidField = true;
+            }
+        }
+        else
+        {
+            fieldPointer = 0;
+            bitPointer = 7;
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            return BAD_PARAMETER;
         }
         break;
     case 0x8F://verify 16
-        byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
-        lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5], scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
-        vrprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
-        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[1] & BIT3)
-            || ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)
-            || ((fieldPointer = 14) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[14], 7, 6) != 0)
-            )
+        if (scsiIoCtx->cdbLength == 16)
         {
-            invalidField = true;
+            byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
+            lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5], scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+            verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
+            vrprotect = M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5);
+            if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[1] & BIT3)
+                || ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0)
+                || ((fieldPointer = 14) != 0 && (bitPointer = 0) == 0 && M_GETBITRANGE(scsiIoCtx->cdb[14], 7, 6) != 0)
+                )
+            {
+                invalidField = true;
+            }
+        }
+        else
+        {
+            fieldPointer = 0;
+            bitPointer = 7;
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+            return BAD_PARAMETER;
         }
         break;
     default:
