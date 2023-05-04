@@ -403,6 +403,9 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_SMART_Auto_Offline(tDevice *device, bool enable);
 
+    //This assumes standard ATA identify like reported from ata_Identify or page 1 of the ID data log. 512B long and as reported by the standards.
+    OPENSEA_TRANSPORT_API void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData, char ataMN[ATA_IDENTIFY_MN_LENGTH + 1], char ataSN[ATA_IDENTIFY_SN_LENGTH + 1], char ataFW[ATA_IDENTIFY_FW_LENGTH + 1]);
+
     //-----------------------------------------------------------------------------
     //
     //  ata_Identify()

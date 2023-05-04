@@ -7902,20 +7902,39 @@ int os_Unmount_File_Systems_On_Device(tDevice *device)
     return ret;
 }
 
-//This basic translation is for odd or old devices that aren't supporting passthrough.
-//It is set to be more basic, while still fulfilling some required SCSI commands to make
-//sure that upper layer code is happy with what this is reporting.
-//This may be able to be expanded, but don't count on it too much.
-//Expansion could come in VPD pages, maybe mode pages (read only most likely). But that is more than needed for now.
-static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
+static void wbst_Set_Sense_Data(ScsiIoCtx* scsiIoCtx, bool valid, uint8_t senseKey, uint8_t asc, uint8_t ascq)
+{
+    if (scsiIoCtx->psense && scsiIoCtx->senseDataSize > 0)
+    {
+        uint8_t senseData[18] = { 0 };
+        if (valid)
+        {
+            senseData[0] = 0x70;
+            //sense key
+            senseData[2] |= M_Nibble0(senseKey);
+            //additional sense length
+            senseData[7] = 10;
+            //asc
+            senseData[12] = asc;
+            //ascq
+            senseData[13] = ascq;
+            if (scsiIoCtx->senseDataSize < 14)
+            {
+                //sense data overflows the available buffer
+                senseData[2] |= BIT4;
+            }
+        }
+        memcpy(scsiIoCtx->psense, senseData, M_Min(18, scsiIoCtx->senseDataSize));
+    }
+}
+
+static int wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    bool setSenseData = false;
-    bool fua = false;//for read/write only
-    uint8_t senseKey = 0, asc = 0, ascq = 0;
-    switch (scsiIoCtx->cdb[OPERATION_CODE])
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 6)
     {
-    case INQUIRY_CMD:
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
         //Check to make sure cmdDT and reserved bits aren't set
         if (scsiIoCtx->cdb[1] & 0xFE)
         {
@@ -7956,7 +7975,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                         vpdPage[1] = UNIT_SERIAL_NUMBER;
                         if (deviceDesc->RawPropertiesLength > 0)
                         {
-                            char *devSerial = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->SerialNumberOffset);
+                            char* devSerial = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->SerialNumberOffset);
                             if (deviceDesc->SerialNumberOffset && deviceDesc->SerialNumberOffset != UINT32_MAX)
                             {
                                 memcpy(&vpdPage[4], devSerial, M_Min(strlen(devSerial), 92));//92 for maximum size of current remaining memory for this page
@@ -8059,10 +8078,10 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                         }
                         if (deviceDesc->RawPropertiesLength > 0)
                         {
-                            char *devVendor = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->VendorIdOffset);
-                            char *devModel = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->ProductIdOffset);
-                            char *devRev = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->ProductRevisionOffset);
-                            char *devSerial = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->SerialNumberOffset);
+                            char* devVendor = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->VendorIdOffset);
+                            char* devModel = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->ProductIdOffset);
+                            char* devRev = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->ProductRevisionOffset);
+                            char* devSerial = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->SerialNumberOffset);
                             if (deviceDesc->VendorIdOffset && deviceDesc->VendorIdOffset != UINT32_MAX)
                             {
                                 memset(&inquiryData[8], ' ', 8);//space pad first as spec says ASCII data should be space padded
@@ -8186,8 +8205,22 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 }
             }
         }
-        break;
-    case READ_CAPACITY_10:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+int wbst_Read_Capacity_10(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 10)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
         if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0 || scsiIoCtx->cdb[4] != 0 || scsiIoCtx->cdb[5] != 0 || scsiIoCtx->cdb[6] != 0 || scsiIoCtx->cdb[7] != 0 || scsiIoCtx->cdb[8] != 0)
         {
             //invalid field in CDB
@@ -8199,7 +8232,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
         else
         {
             //device geometry IOCTLs for remaining data
-            uint8_t readCapacityData[8] = { 0 };
+            uint8_t readCapacityData[READ_CAPACITY_10_LEN] = { 0 };
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN2K
             PDISK_GEOMETRY_EX geometryEx = NULL;
             PDISK_PARTITION_INFO partition = NULL;
@@ -8216,10 +8249,10 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 }
                 else
                 {
-                    readCapacityData[0] = M_Byte3(C_CAST(uint64_t, geometryEx->DiskSize.QuadPart) / C_CAST(uint64_t,geometryEx->Geometry.BytesPerSector));
-                    readCapacityData[1] = M_Byte2(C_CAST(uint64_t, geometryEx->DiskSize.QuadPart) / C_CAST(uint64_t,geometryEx->Geometry.BytesPerSector));
-                    readCapacityData[2] = M_Byte1(C_CAST(uint64_t, geometryEx->DiskSize.QuadPart) / C_CAST(uint64_t,geometryEx->Geometry.BytesPerSector));
-                    readCapacityData[3] = M_Byte0(C_CAST(uint64_t, geometryEx->DiskSize.QuadPart) / C_CAST(uint64_t,geometryEx->Geometry.BytesPerSector));
+                    readCapacityData[0] = M_Byte3(C_CAST(uint64_t, geometryEx->DiskSize.QuadPart) / C_CAST(uint64_t, geometryEx->Geometry.BytesPerSector));
+                    readCapacityData[1] = M_Byte2(C_CAST(uint64_t, geometryEx->DiskSize.QuadPart) / C_CAST(uint64_t, geometryEx->Geometry.BytesPerSector));
+                    readCapacityData[2] = M_Byte1(C_CAST(uint64_t, geometryEx->DiskSize.QuadPart) / C_CAST(uint64_t, geometryEx->Geometry.BytesPerSector));
+                    readCapacityData[3] = M_Byte0(C_CAST(uint64_t, geometryEx->DiskSize.QuadPart) / C_CAST(uint64_t, geometryEx->Geometry.BytesPerSector));
                 }
                 readCapacityData[4] = M_Byte3(geometryEx->Geometry.BytesPerSector);
                 readCapacityData[5] = M_Byte2(geometryEx->Geometry.BytesPerSector);
@@ -8266,11 +8299,25 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
             }
             if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
             {
-                memcpy(scsiIoCtx->pdata, readCapacityData, M_Min(8, scsiIoCtx->dataLength));
+                memcpy(scsiIoCtx->pdata, readCapacityData, M_Min(READ_CAPACITY_10_LEN, scsiIoCtx->dataLength));
             }
         }
-        break;
-    case READ_CAPACITY_16:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+int wbst_Read_Capacity_16(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength >= 16)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
         //first check the service action
         if (M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0) == 0x10)
         {
@@ -8291,7 +8338,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_VISTA
                 PSTORAGE_ACCESS_ALIGNMENT_DESCRIPTOR accessAlignment = NULL;
 #endif //WINVER >= SEA_WIN32_WINNT_VISTA
-                uint8_t readCapacityData[32] = { 0 };
+                uint8_t readCapacityData[READ_CAPACITY_16_LEN] = { 0 };
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN2K
                 PDISK_GEOMETRY_EX geometryEx = NULL;
                 PDISK_PARTITION_INFO partition = NULL;
@@ -8381,7 +8428,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
 #endif //WINVER >= SEA_WIN32_WINNT_VISTA
                 if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
                 {
-                    memcpy(scsiIoCtx->pdata, readCapacityData, M_Min(32, allocationLength));
+                    memcpy(scsiIoCtx->pdata, readCapacityData, M_Min(READ_CAPACITY_16_LEN, allocationLength));
                 }
             }
         }
@@ -8393,8 +8440,54 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
             ascq = 0x00;
             setSenseData = true;
         }
-        break;
-    case READ6:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Read(ScsiIoCtx* scsiIoCtx, uint64_t lba, bool fua, uint32_t transferLength)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->device && scsiIoCtx->pdata && transferLength > 0 && scsiIoCtx->dataLength > 0 && (transferLength * scsiIoCtx->device->drive_info.deviceBlockSize) == scsiIoCtx->dataLength)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
+        if (fua)
+        {
+            ret = os_Verify(scsiIoCtx->device, lba, transferLength);
+        }
+        if (ret == SUCCESS)
+        {
+            ret = os_Read(scsiIoCtx->device, lba, 0, scsiIoCtx->pdata, (transferLength * scsiIoCtx->device->drive_info.deviceBlockSize));
+        }
+        if (ret != SUCCESS)
+        {
+            //aborted command. TODO: Use windows errors to set more accurate sense data
+            senseKey = SENSE_KEY_ABORTED_COMMAND;
+            asc = 0x00;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Read_6(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 6)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
         if (M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0)
         {
             //invalid field in CDB
@@ -8411,18 +8504,25 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
             {
                 transferLength = 256;
             }
-            ret = os_Read(scsiIoCtx->device, lba, 0, scsiIoCtx->pdata, transferLength * scsiIoCtx->device->drive_info.deviceBlockSize);
-            if (ret != SUCCESS)
-            {
-                //aborted command. TODO: Use windows errors to set more accurate sense data
-                senseKey = SENSE_KEY_ABORTED_COMMAND;
-                asc = 0x00;
-                ascq = 0x00;
-                setSenseData = true;
-            }
+            ret = wbst_Read(scsiIoCtx, lba, false, transferLength);
         }
-        break;
-    case READ10:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Read_10(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 10)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
+        bool fua = false;
         if (scsiIoCtx->cdb[1] & BIT3)
         {
             fua = true;
@@ -8455,28 +8555,27 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 }
                 else
                 {
-                    ret = SUCCESS;
-                    if (fua)
-                    {
-                        ret = os_Verify(scsiIoCtx->device, lba, transferLength);
-                    }
-                    if (ret == SUCCESS)
-                    {
-                        ret = os_Read(scsiIoCtx->device, lba, 0, scsiIoCtx->pdata, transferLength * scsiIoCtx->device->drive_info.deviceBlockSize);
-                    }
-                    if (ret != SUCCESS)
-                    {
-                        //aborted command. TODO: Use windows errors to set more accurate sense data
-                        senseKey = SENSE_KEY_ABORTED_COMMAND;
-                        asc = 0x00;
-                        ascq = 0x00;
-                        setSenseData = true;
-                    }
+                    ret = wbst_Read(scsiIoCtx, lba, fua, transferLength);
                 }
             }
         }
-        break;
-    case READ12:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Read_12(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 12)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
+        bool fua = false;
         if (scsiIoCtx->cdb[1] & BIT3)
         {
             fua = true;
@@ -8509,28 +8608,27 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 }
                 else
                 {
-                    ret = SUCCESS;
-                    if (fua)
-                    {
-                        ret = os_Verify(scsiIoCtx->device, lba, transferLength);
-                    }
-                    if (ret == SUCCESS)
-                    {
-                        ret = os_Read(scsiIoCtx->device, lba, false, scsiIoCtx->pdata, transferLength * scsiIoCtx->device->drive_info.deviceBlockSize);
-                    }
-                    if (ret != SUCCESS)
-                    {
-                        //aborted command. TODO: Use windows errors to set more accurate sense data
-                        senseKey = SENSE_KEY_ABORTED_COMMAND;
-                        asc = 0x00;
-                        ascq = 0x00;
-                        setSenseData = true;
-                    }
+                    ret = wbst_Read(scsiIoCtx, lba, fua, transferLength);
                 }
             }
         }
-        break;
-    case READ16:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Read_16(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 16)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
+        bool fua = false;
         if (scsiIoCtx->cdb[1] & BIT3)
         {
             fua = true;
@@ -8566,28 +8664,55 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 }
                 else
                 {
-                    ret = SUCCESS;
-                    if (fua)
-                    {
-                        ret = os_Verify(scsiIoCtx->device, lba, transferLength);
-                    }
-                    if (ret == SUCCESS)
-                    {
-                        ret = os_Read(scsiIoCtx->device, lba, false, scsiIoCtx->pdata, transferLength * scsiIoCtx->device->drive_info.deviceBlockSize);
-                    }
-                    if (ret != SUCCESS)
-                    {
-                        //aborted command. TODO: Use windows errors to set more accurate sense data
-                        senseKey = SENSE_KEY_ABORTED_COMMAND;
-                        asc = 0x00;
-                        ascq = 0x00;
-                        setSenseData = true;
-                    }
+                    ret = wbst_Read(scsiIoCtx, lba, fua, transferLength);
                 }
             }
         }
-        break;
-    case WRITE6:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Write(ScsiIoCtx* scsiIoCtx, uint64_t lba, bool fua, uint32_t transferLength)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->device && scsiIoCtx->pdata && transferLength > 0 && scsiIoCtx->dataLength > 0 && (transferLength * scsiIoCtx->device->drive_info.deviceBlockSize) == scsiIoCtx->dataLength)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
+        ret = os_Write(scsiIoCtx->device, lba, false, scsiIoCtx->pdata, (transferLength * scsiIoCtx->device->drive_info.deviceBlockSize));
+        if (fua && ret == SUCCESS)
+        {
+            ret = os_Verify(scsiIoCtx->device, lba, transferLength);
+        }
+        if (ret != SUCCESS)
+        {
+            //aborted command. TODO: Use windows errors to set more accurate sense data
+            senseKey = SENSE_KEY_ABORTED_COMMAND;
+            asc = 0x00;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Write_6(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 6)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
         if (M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0)
         {
             //invalid field in CDB
@@ -8614,19 +8739,26 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
             }
             else
             {
-                ret = os_Write(scsiIoCtx->device, lba, false, scsiIoCtx->pdata, transferLength * scsiIoCtx->device->drive_info.deviceBlockSize);
-                if (ret != SUCCESS)
-                {
-                    //aborted command. TODO: Use windows errors to set more accurate sense data
-                    senseKey = SENSE_KEY_ABORTED_COMMAND;
-                    asc = 0x00;
-                    ascq = 0x00;
-                    setSenseData = true;
-                }
+                ret = wbst_Write(scsiIoCtx, lba, false, transferLength);
             }
         }
-        break;
-    case WRITE10:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Write_10(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 10)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
+        bool fua = false;
         if (scsiIoCtx->cdb[1] & BIT3)
         {
             fua = true;
@@ -8659,24 +8791,27 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 }
                 else
                 {
-                    ret = os_Write(scsiIoCtx->device, lba, false, scsiIoCtx->pdata, transferLength * scsiIoCtx->device->drive_info.deviceBlockSize);
-                    if (fua && ret == SUCCESS)
-                    {
-                        ret = os_Verify(scsiIoCtx->device, lba, transferLength);
-                    }
-                    if (ret != SUCCESS)
-                    {
-                        //aborted command. TODO: Use windows errors to set more accurate sense data
-                        senseKey = SENSE_KEY_ABORTED_COMMAND;
-                        asc = 0x00;
-                        ascq = 0x00;
-                        setSenseData = true;
-                    }
+                    ret = wbst_Write(scsiIoCtx, lba, fua, transferLength);
                 }
             }
         }
-        break;
-    case WRITE12:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Write_12(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 12)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
+        bool fua = false;
         if (scsiIoCtx->cdb[1] & BIT3)
         {
             fua = true;
@@ -8709,24 +8844,27 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 }
                 else
                 {
-                    ret = os_Write(scsiIoCtx->device, lba, false, scsiIoCtx->pdata, transferLength * scsiIoCtx->device->drive_info.deviceBlockSize);
-                    if (fua && ret == SUCCESS)
-                    {
-                        ret = os_Verify(scsiIoCtx->device, lba, transferLength);
-                    }
-                    if (ret != SUCCESS)
-                    {
-                        //aborted command. TODO: Use windows errors to set more accurate sense data
-                        senseKey = SENSE_KEY_ABORTED_COMMAND;
-                        asc = 0x00;
-                        ascq = 0x00;
-                        setSenseData = true;
-                    }
+                    ret = wbst_Write(scsiIoCtx, lba, fua, transferLength);
                 }
             }
         }
-        break;
-    case WRITE16:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Write_16(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 16)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
+        bool fua = false;
         if (scsiIoCtx->cdb[1] & BIT3)
         {
             fua = true;
@@ -8761,24 +8899,51 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 }
                 else
                 {
-                    ret = os_Write(scsiIoCtx->device, lba, false, scsiIoCtx->pdata, transferLength * scsiIoCtx->device->drive_info.deviceBlockSize);
-                    if (fua && ret == SUCCESS)
-                    {
-                        ret = os_Verify(scsiIoCtx->device, lba, transferLength);
-                    }
-                    if (ret != SUCCESS)
-                    {
-                        //aborted command. TODO: Use windows errors to set more accurate sense data
-                        senseKey = SENSE_KEY_ABORTED_COMMAND;
-                        asc = 0x00;
-                        ascq = 0x00;
-                        setSenseData = true;
-                    }
+                    ret = wbst_Write(scsiIoCtx, lba, fua, transferLength);
                 }
             }
         }
-        break;
-    case VERIFY10:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Verify(ScsiIoCtx* scsiIoCtx, uint64_t lba, uint32_t verificationLength)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->device && verificationLength > 0)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
+        ret = os_Verify(scsiIoCtx->device, lba, verificationLength);
+        if (ret != SUCCESS)
+        {
+            //aborted command. TODO: Use windows errors to set more accurate sense data
+            senseKey = SENSE_KEY_ABORTED_COMMAND;
+            asc = 0x00;
+            ascq = 0x00;
+            setSenseData = true;
+        }
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Verify_10(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 10)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
         if ((scsiIoCtx->cdb[1] & BIT3)
             || (scsiIoCtx->cdb[1] & BIT0)
             || (M_GETBITRANGE(scsiIoCtx->cdb[6], 7, 6) != 0)
@@ -8792,7 +8957,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
         }
         else
         {
-            uint8_t byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
+            uint8_t byteCheck = M_GETBITRANGE(scsiIoCtx->cdb[1], 2, 1);
             uint64_t lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
             uint32_t verificationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
             if (verificationLength != 0)//this is allowed and it means to validate inputs and return success
@@ -8807,20 +8972,26 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 }
                 else
                 {
-                    ret = os_Verify(scsiIoCtx->device, lba, verificationLength);
-                    if (ret != SUCCESS)
-                    {
-                        //aborted command. TODO: Use windows errors to set more accurate sense data
-                        senseKey = SENSE_KEY_ABORTED_COMMAND;
-                        asc = 0x00;
-                        ascq = 0x00;
-                        setSenseData = true;
-                    }
+                    ret = wbst_Verify(scsiIoCtx, lba, verificationLength);
                 }
             }
         }
-        break;
-    case VERIFY12:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Verify_12(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 12)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
         if ((scsiIoCtx->cdb[1] & BIT3)
             || (scsiIoCtx->cdb[1] & BIT0)
             || (M_GETBITRANGE(scsiIoCtx->cdb[10], 7, 6) != 0)
@@ -8834,7 +9005,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
         }
         else
         {
-            uint8_t byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
+            uint8_t byteCheck = M_GETBITRANGE(scsiIoCtx->cdb[1], 2, 1);
             uint64_t lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
             uint32_t verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
             if (verificationLength != 0)//this is allowed and it means to validate inputs and return success
@@ -8849,20 +9020,26 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 }
                 else
                 {
-                    ret = os_Verify(scsiIoCtx->device, lba, verificationLength);
-                    if (ret != SUCCESS)
-                    {
-                        //aborted command. TODO: Use windows errors to set more accurate sense data
-                        senseKey = SENSE_KEY_ABORTED_COMMAND;
-                        asc = 0x00;
-                        ascq = 0x00;
-                        setSenseData = true;
-                    }
+                    ret = wbst_Verify(scsiIoCtx, lba, verificationLength);
                 }
             }
         }
-        break;
-    case VERIFY16:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Verify_16(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 16)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
         if ((scsiIoCtx->cdb[1] & BIT3)
             || (scsiIoCtx->cdb[1] & BIT0)
             || (M_GETBITRANGE(scsiIoCtx->cdb[14], 7, 6) != 0)
@@ -8876,7 +9053,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
         }
         else
         {
-            uint8_t byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
+            uint8_t byteCheck = M_GETBITRANGE(scsiIoCtx->cdb[1], 2, 1);
             uint64_t lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5], scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
             uint32_t verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
             if (verificationLength != 0)//this is allowed and it means to validate inputs and return success
@@ -8891,20 +9068,26 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 }
                 else
                 {
-                    ret = os_Verify(scsiIoCtx->device, lba, verificationLength);
-                    if (ret != SUCCESS)
-                    {
-                        //aborted command. TODO: Use windows errors to set more accurate sense data
-                        senseKey = SENSE_KEY_ABORTED_COMMAND;
-                        asc = 0x00;
-                        ascq = 0x00;
-                        setSenseData = true;
-                    }
+                    ret = wbst_Verify(scsiIoCtx, lba, verificationLength);
                 }
             }
         }
-        break;
-    case SYNCHRONIZE_CACHE_10:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Synchronize_Cache_10(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 10)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
         if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[6] != 0)
         {
             //invalid field in CDB
@@ -8925,8 +9108,22 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 setSenseData = true;
             }
         }
-        break;
-    case SYNCHRONIZE_CACHE_16_CMD:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Synchronize_Cache_16(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 16)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
         if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[14] != 0)
         {
             //invalid field in CDB
@@ -8947,8 +9144,22 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 setSenseData = true;
             }
         }
-        break;
-    case TEST_UNIT_READY_CMD:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Test_Unit_Ready(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 6)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
         if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0 || scsiIoCtx->cdb[4] != 0)
         {
             //invalid field in CDB
@@ -8961,8 +9172,22 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
         {
             //Do nothing. Just return ready unless we find some IO we can send that does a TUR type of check - TJE
         }
-        break;
-    case REQUEST_SENSE_CMD:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Request_Sense(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 6)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
         if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0)
         {
             //invalid field in CDB
@@ -8976,11 +9201,25 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
             //Do nothing. Return good sense (all zeros) to the call since there is nothing that can really be checked here.
             if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
             {
-                memset(scsiIoCtx->pdata, 0, M_Min(scsiIoCtx->cdb[4], scsiIoCtx->dataLength));
+                explicit_zeroes(scsiIoCtx->pdata, M_Min(scsiIoCtx->cdb[4], scsiIoCtx->dataLength));
             }
         }
-        break;
-    case SEND_DIAGNOSTIC_CMD:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Send_Diagnostic(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 6)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
         //only allow self-test bit set to one, and return good status.
         if (scsiIoCtx->cdb[1] & 0xFB //only allow self-test bit to be set to 1. All others are not supported.
             || scsiIoCtx->cdb[2] != 0 //reserved
@@ -8998,8 +9237,22 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
         {
             //regardless of the self test bit being 1 or 0, return good status since there is nothing that can be done right here
         }
-        break;
-    case REPORT_LUNS_CMD:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+static int wbst_Report_Luns(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 12)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
         //filter out unsupported fields first
         if (scsiIoCtx->cdb[1] != 0
             || scsiIoCtx->cdb[3] != 0
@@ -9016,21 +9269,21 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
         }
         else
         {
-            uint8_t reportLunsData[16] = { 0 };
+            uint8_t reportLunsData[REPORT_LUNS_MIN_LENGTH] = { 0 };
             uint32_t allocationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
             switch (scsiIoCtx->cdb[2])
             {
             case 0x00:
                 //set list length to 16 bytes
-                reportLunsData[0] = M_Byte3(16);
-                reportLunsData[1] = M_Byte2(16);
-                reportLunsData[2] = M_Byte1(16);
-                reportLunsData[3] = M_Byte0(16);
+                reportLunsData[0] = M_Byte3(REPORT_LUNS_MIN_LENGTH);
+                reportLunsData[1] = M_Byte2(REPORT_LUNS_MIN_LENGTH);
+                reportLunsData[2] = M_Byte1(REPORT_LUNS_MIN_LENGTH);
+                reportLunsData[3] = M_Byte0(REPORT_LUNS_MIN_LENGTH);
                 //set lun to zero since it's zero indexed
                 reportLunsData[15] = 0;
                 if (scsiIoCtx->pdata)
                 {
-                    memcpy(scsiIoCtx->pdata, reportLunsData, M_Min(16, allocationLength));
+                    memcpy(scsiIoCtx->pdata, reportLunsData, M_Min(REPORT_LUNS_MIN_LENGTH, allocationLength));
                 }
                 break;
             case 0x01:
@@ -9041,7 +9294,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 //nothing to report, so just copy back the data buffer as it is
                 if (scsiIoCtx->pdata)
                 {
-                    memcpy(scsiIoCtx->pdata, reportLunsData, M_Min(16, allocationLength));
+                    memcpy(scsiIoCtx->pdata, reportLunsData, M_Min(REPORT_LUNS_MIN_LENGTH, allocationLength));
                 }
                 break;
             default:
@@ -9053,8 +9306,24 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 break;
             }
         }
-        break;
-    case SCSI_FORMAT_UNIT_CMD:
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
+
+//TODO: This can be broken down into other functions to make this shorter and easier to follow.
+//      Since this is extremely unlikely to be used as "basic" devices are not very common, it is left like this for now-TJE
+static int wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 6)
+    {
+        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        bool setSenseData = false;
         //NOTE: There is a format IOCTL not implemented, but it is likely only for floppy drives.
         //      It may be worth implementing if they ever return from beyond the grave...or if we can test and prove it works on HDDs
         //Ideally this is a nop and it returns that it's ready without actually doing anything
@@ -9076,7 +9345,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
             bool longList = scsiIoCtx->cdb[1] & BIT5;
             bool formatData = scsiIoCtx->cdb[1] & BIT4;
             uint8_t defectListFormat = M_GETBITRANGE(scsiIoCtx->cdb[1], 2, 0);
-            if (formatData)
+            if (formatData && scsiIoCtx->pdata && scsiIoCtx->dataLength > 4)
             {
                 //Parameter header information
                 //uint8_t protectionFieldUsage = M_GETBITRANGE(scsiIoCtx->pdata[0], 2, 0);
@@ -9092,7 +9361,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 uint8_t p_i_information = 0;
                 uint8_t protectionIntervalExponent = 0;
                 uint32_t defectListLength = 0;
-                if (longList)
+                if (longList && scsiIoCtx->dataLength > 8)
                 {
                     p_i_information = M_Nibble1(scsiIoCtx->pdata[3]);
                     protectionIntervalExponent = M_Nibble0(scsiIoCtx->pdata[3]);
@@ -9144,7 +9413,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                         uint8_t initializationPatternByte0ReservedBits = 0;//so we can make sure no invalid field was set.
                         uint8_t initializationPatternType = 0;
                         uint16_t initializationPatternLength = 0;
-                        uint8_t *initializationPatternPtr = NULL;
+                        uint8_t* initializationPatternPtr = NULL;
                         if (initializationPattern)
                         {
                             //Set up the initialization pattern information since we were given one
@@ -9215,7 +9484,7 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                                     uint32_t writeSectors64K = 65535 / scsiIoCtx->device->drive_info.deviceBlockSize;
                                     //Write commands
                                     uint32_t writeDataLength = writeSectors64K * scsiIoCtx->device->drive_info.deviceBlockSize;
-                                    uint8_t *writePattern = C_CAST(uint8_t*, calloc_aligned(writeSectors64K, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
+                                    uint8_t* writePattern = C_CAST(uint8_t*, calloc_aligned(writeSectors64K, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
                                     if (writePattern)
                                     {
                                         uint32_t numberOfLBAs = writeDataLength / scsiIoCtx->device->drive_info.deviceBlockSize;
@@ -9283,30 +9552,99 @@ static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
                 //just return success. This is similar to SAT translation, which influenced this decision
             }
         }
-        break;
-    default:
-        //invalid operation code
-        senseKey = SENSE_KEY_ILLEGAL_REQUEST;
-        asc = 0x20;
-        ascq = 0x00;
-        setSenseData = true;
-        break;
+        wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
     }
-    if (setSenseData && scsiIoCtx->psense)
+    else
     {
-        scsiIoCtx->psense[0] = 0x70;
-        //sense key
-        scsiIoCtx->psense[2] |= M_Nibble0(senseKey);
-        //asc
-        scsiIoCtx->psense[12] = asc;
-        //ascq
-        scsiIoCtx->psense[13] = ascq;
-        //additional sense length
-        scsiIoCtx->psense[7] = 10;
+        ret = BAD_PARAMETER;
     }
-    else if(scsiIoCtx->psense)
+    return ret;
+}
+
+//This basic translation is for odd or old devices that aren't supporting passthrough.
+//It is set to be more basic, while still fulfilling some required SCSI commands to make
+//sure that upper layer code is happy with what this is reporting.
+//This may be able to be expanded, but don't count on it too much.
+//Expansion could come in VPD pages, maybe mode pages (read only most likely). But that is more than needed for now.
+static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
+{
+    int ret = SUCCESS;
+    if (scsiIoCtx->cdb && scsiIoCtx->cdbLength >= 6)//6byte CDB is shortest allowed
     {
-        memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
+        switch (scsiIoCtx->cdb[OPERATION_CODE])
+        {
+        case INQUIRY_CMD:
+            ret = wbst_Inquiry(scsiIoCtx);
+            break;
+        case READ_CAPACITY_10:
+            ret = wbst_Read_Capacity_10(scsiIoCtx);
+            break;
+        case READ_CAPACITY_16:
+            ret = wbst_Read_Capacity_16(scsiIoCtx);
+            break;
+        case READ6:
+            ret = wbst_Read_6(scsiIoCtx);
+            break;
+        case READ10:
+            ret = wbst_Read_10(scsiIoCtx);
+            break;
+        case READ12:
+            ret = wbst_Read_12(scsiIoCtx);
+            break;
+        case READ16:
+            ret = wbst_Read_16(scsiIoCtx);
+            break;
+        case WRITE6:
+            ret = wbst_Write_6(scsiIoCtx);
+            break;
+        case WRITE10:
+            ret = wbst_Write_10(scsiIoCtx);
+            break;
+        case WRITE12:
+            ret = wbst_Write_12(scsiIoCtx);
+            break;
+        case WRITE16:
+            ret = wbst_Write_16(scsiIoCtx);
+            break;
+        case VERIFY10:
+            ret = wbst_Verify_10(scsiIoCtx);
+            break;
+        case VERIFY12:
+            ret = wbst_Verify_12(scsiIoCtx);
+            break;
+        case VERIFY16:
+            ret = wbst_Verify_16(scsiIoCtx);
+            break;
+        case SYNCHRONIZE_CACHE_10:
+            ret = wbst_Synchronize_Cache_10(scsiIoCtx);
+            break;
+        case SYNCHRONIZE_CACHE_16_CMD:
+            ret = wbst_Synchronize_Cache_16(scsiIoCtx);
+            break;
+        case TEST_UNIT_READY_CMD:
+            ret = wbst_Test_Unit_Ready(scsiIoCtx);
+            break;
+        case REQUEST_SENSE_CMD:
+            ret = wbst_Request_Sense(scsiIoCtx);
+            break;
+        case SEND_DIAGNOSTIC_CMD:
+            ret = wbst_Send_Diagnostic(scsiIoCtx);
+            break;
+        case REPORT_LUNS_CMD:
+            ret = wbst_Report_Luns(scsiIoCtx);
+            break;
+        case SCSI_FORMAT_UNIT_CMD:
+            ret = wbst_Format_Unit(scsiIoCtx);
+            break;
+        default:
+            //invalid operation code
+            wbst_Set_Sense_Data(scsiIoCtx, true, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00);
+            break;
+        }
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
     }
     return ret;
 }
@@ -11256,7 +11594,7 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
     //TODO: We need to validate other fields to make sure we make the right call...may need a SCSI unmap command or
     //FSCTL_FILE_LEVEL_TRIM (and maybe also FSCTL_ALLOW_EXTENDED_DASD_IO)
     //NOTE: Using SCSI Unmap command - TJE
-    uint8_t numberOfRanges = M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10) + 1;//this is zero based in NVMe!
+    uint16_t numberOfRanges = M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10) + UINT16_C(1);//this is zero based in NVMe!
     bool deallocate = nvmeIoCtx->cmd.nvmCmd.cdw11 & BIT2;//This MUST be set to 1
     bool integralDatasetForWrite = nvmeIoCtx->cmd.nvmCmd.cdw11 & BIT1;//cannot be supported
     bool integralDatasetForRead = nvmeIoCtx->cmd.nvmCmd.cdw11 & BIT0;//cannot be supported
@@ -11270,20 +11608,20 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
         bool atLeastOneContextAttributeSet = false;
 #endif //WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
         //first, allocate enough memory for the Unmap command
-        uint32_t unmapDataLength = 8 + (16 * numberOfRanges);
-        uint8_t *unmapParameterData = C_CAST(uint8_t*, calloc_aligned(unmapDataLength, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));//each range is 16 bytes plus an 8 byte header
+        uint16_t unmapParameterDataLength = UINT16_C(8) + (UINT16_C(16) * numberOfRanges);
+        uint8_t *unmapParameterData = C_CAST(uint8_t*, calloc_aligned(unmapParameterDataLength, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));//each range is 16 bytes plus an 8 byte header
         if (unmapParameterData)
         {
             //in a loop, set the unmap descriptors
             uint32_t scsiOffset = 8, nvmOffset = 0;
-            for (uint16_t rangeIter = 0; rangeIter < numberOfRanges && scsiOffset < unmapDataLength && nvmOffset < nvmeIoCtx->dataSize; ++rangeIter, scsiOffset += 16, nvmOffset += 16)
+            for (uint16_t rangeIter = 0; rangeIter < numberOfRanges && scsiOffset < unmapParameterDataLength && nvmOffset < nvmeIoCtx->dataSize; ++rangeIter, scsiOffset += 16, nvmOffset += 16)
             {
                 //get the info we need from the incomming buffer
 #if defined (WIN_NVME_DEALLOCATE_CONTEXT_FAILURE)
                 uint32_t nvmContextAttributes = M_BytesTo4ByteValue(nvmeIoCtx->ptrData[nvmOffset + 3], nvmeIoCtx->ptrData[nvmOffset + 2], nvmeIoCtx->ptrData[nvmOffset + 1], nvmeIoCtx->ptrData[nvmOffset + 0]);
 #endif //WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
                 uint32_t nvmLengthInLBAs = M_BytesTo4ByteValue(nvmeIoCtx->ptrData[nvmOffset + 7], nvmeIoCtx->ptrData[nvmOffset + 6], nvmeIoCtx->ptrData[nvmOffset + 5], nvmeIoCtx->ptrData[nvmOffset + 4]);
-                uint32_t nvmStartingLBA = M_BytesTo4ByteValue(nvmeIoCtx->ptrData[nvmOffset + 15], nvmeIoCtx->ptrData[nvmOffset + 14], nvmeIoCtx->ptrData[nvmOffset + 13], nvmeIoCtx->ptrData[nvmOffset + 12]);
+                uint64_t nvmStartingLBA = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[nvmOffset + 15], nvmeIoCtx->ptrData[nvmOffset + 14], nvmeIoCtx->ptrData[nvmOffset + 13], nvmeIoCtx->ptrData[nvmOffset + 12], nvmeIoCtx->ptrData[nvmOffset + 11], nvmeIoCtx->ptrData[nvmOffset + 10], nvmeIoCtx->ptrData[nvmOffset + 9], nvmeIoCtx->ptrData[nvmOffset + 8]);
 #if defined (WIN_NVME_DEALLOCATE_CONTEXT_FAILURE)
                 if (nvmContextAttributes)
                 {
@@ -11314,8 +11652,8 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
             }
             //now set up the unmap parameter list header
             //unmap data length
-            unmapParameterData[0] = M_Byte1(unmapDataLength - 2);
-            unmapParameterData[1] = M_Byte0(unmapDataLength - 2);
+            unmapParameterData[0] = M_Byte1(unmapParameterDataLength - 2);
+            unmapParameterData[1] = M_Byte0(unmapParameterDataLength - 2);
             //block descriptor data length
             unmapParameterData[2] = M_Byte1(scsiOffset - 8);
             unmapParameterData[3] = M_Byte0(scsiOffset - 8);
@@ -11329,7 +11667,7 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
 #endif //WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
             {
                 //send the command
-                ret = scsi_Unmap(nvmeIoCtx->device, false, 0, C_CAST(uint16_t, unmapDataLength), unmapParameterData);
+                ret = scsi_Unmap(nvmeIoCtx->device, false, 0, unmapParameterDataLength, unmapParameterData);
             }
 #if defined (WIN_NVME_DEALLOCATE_CONTEXT_FAILURE)
             else
@@ -11337,12 +11675,12 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
                 ret = OS_COMMAND_NOT_AVAILABLE;
             }
 #endif //WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
+            safe_Free_aligned(unmapParameterData)
         }
         else
         {
             ret = MEMORY_FAILURE;
         }
-        safe_Free_aligned(unmapParameterData)
     }
     nvmeIoCtx->device->deviceVerbosity = inVerbosity;
     return ret;
