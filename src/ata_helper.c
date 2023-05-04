@@ -830,7 +830,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData, char ataMN[AT
         {
             memset(ataSN, 0, M_Min(SERIAL_NUM_LEN + 1, ATA_IDENTIFY_SN_LENGTH + 1));
             memcpy(ataSN, idData->SerNum, M_Min(SERIAL_NUM_LEN, ATA_IDENTIFY_SN_LENGTH));
-            for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
+            for (uint8_t iter = 0; iter < SERIAL_NUM_LEN && iter < ATA_IDENTIFY_SN_LENGTH; ++iter)
             {
                 if (!is_ASCII(ataSN[iter]) || !isprint(ataSN[iter]))
                 {
@@ -846,7 +846,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData, char ataMN[AT
         {
             memset(ataFW, 0, M_Min(FW_REV_LEN + 1, ATA_IDENTIFY_FW_LENGTH + 1));
             memcpy(ataFW, idData->FirmVer, M_Min(FW_REV_LEN, ATA_IDENTIFY_FW_LENGTH));
-            for (uint8_t iter = 0; iter < FW_REV_LEN; ++iter)
+            for (uint8_t iter = 0; iter < FW_REV_LEN && iter < ATA_IDENTIFY_FW_LENGTH; ++iter)
             {
                 if (!is_ASCII(ataFW[iter]) || !isprint(ataFW[iter]))
                 {
@@ -862,7 +862,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData, char ataMN[AT
         {
             memset(ataMN, 0, M_Min(MODEL_NUM_LEN + 1, ATA_IDENTIFY_MN_LENGTH + 1));
             memcpy(ataMN, idData->ModelNum, M_Min(MODEL_NUM_LEN, ATA_IDENTIFY_MN_LENGTH));
-            for (uint8_t iter = 0; iter < MODEL_NUM_LEN; ++iter)
+            for (uint8_t iter = 0; iter < MODEL_NUM_LEN && iter < ATA_IDENTIFY_MN_LENGTH; ++iter)
             {
                 if (!is_ASCII(ataMN[iter]) || !isprint(ataMN[iter]))
                 {
