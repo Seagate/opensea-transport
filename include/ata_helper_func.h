@@ -1600,7 +1600,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Identify(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int ata_DCO_Identify(tDevice *device, bool dma, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1617,41 +1617,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Set(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  ata_DCO_Identify_DMA()
-    //
-    //! \brief   Description:  This function sends a DCO identify DMA command
-    //
-    //  Entry:
-    //!   \param device - device handle
-    //!   \param ptrData - pointer to the data buffer to use.
-    //!   \param dataSize - the size of the data buffer being used.
-    //
-    //  Exit:
-    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Identify_DMA(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  ata_DCO_Set_DMA()
-    //
-    //! \brief   Description:  This function sends a DCO set DMA command
-    //
-    //  Entry:
-    //!   \param device - device handle
-    //!   \param ptrData - pointer to the data buffer to use.
-    //!   \param dataSize - the size of the data buffer being used.
-    //
-    //  Exit:
-    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Set_DMA(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int ata_DCO_Set(tDevice *device, bool dma, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
