@@ -7931,7 +7931,7 @@ static void wbst_Set_Sense_Data(ScsiIoCtx* scsiIoCtx, bool valid, uint8_t senseK
 static int wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 6)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 6)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -8214,10 +8214,10 @@ static int wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-int wbst_Read_Capacity_10(ScsiIoCtx* scsiIoCtx)
+static int wbst_Read_Capacity_10(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 10)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 10)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -8311,10 +8311,10 @@ int wbst_Read_Capacity_10(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-int wbst_Read_Capacity_16(ScsiIoCtx* scsiIoCtx)
+static int wbst_Read_Capacity_16(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength >= 16)
+    if (scsiIoCtx && scsiIoCtx->cdbLength >= 16)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -8484,7 +8484,7 @@ static int wbst_Read(ScsiIoCtx* scsiIoCtx, uint64_t lba, bool fua, uint32_t tran
 static int wbst_Read_6(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 6)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 6)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -8518,7 +8518,7 @@ static int wbst_Read_6(ScsiIoCtx* scsiIoCtx)
 static int wbst_Read_10(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 10)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 10)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -8571,7 +8571,7 @@ static int wbst_Read_10(ScsiIoCtx* scsiIoCtx)
 static int wbst_Read_12(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 12)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 12)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -8624,7 +8624,7 @@ static int wbst_Read_12(ScsiIoCtx* scsiIoCtx)
 static int wbst_Read_16(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 16)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 16)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -8709,7 +8709,7 @@ static int wbst_Write(ScsiIoCtx* scsiIoCtx, uint64_t lba, bool fua, uint32_t tra
 static int wbst_Write_6(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 6)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 6)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -8754,7 +8754,7 @@ static int wbst_Write_6(ScsiIoCtx* scsiIoCtx)
 static int wbst_Write_10(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 10)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 10)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -8807,7 +8807,7 @@ static int wbst_Write_10(ScsiIoCtx* scsiIoCtx)
 static int wbst_Write_12(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 12)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 12)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -8860,7 +8860,7 @@ static int wbst_Write_12(ScsiIoCtx* scsiIoCtx)
 static int wbst_Write_16(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 16)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 16)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -8940,7 +8940,7 @@ static int wbst_Verify(ScsiIoCtx* scsiIoCtx, uint64_t lba, uint32_t verification
 static int wbst_Verify_10(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 10)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 10)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -8988,7 +8988,7 @@ static int wbst_Verify_10(ScsiIoCtx* scsiIoCtx)
 static int wbst_Verify_12(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 12)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 12)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -9036,7 +9036,7 @@ static int wbst_Verify_12(ScsiIoCtx* scsiIoCtx)
 static int wbst_Verify_16(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 16)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 16)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -9084,7 +9084,7 @@ static int wbst_Verify_16(ScsiIoCtx* scsiIoCtx)
 static int wbst_Synchronize_Cache_10(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 10)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 10)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -9120,7 +9120,7 @@ static int wbst_Synchronize_Cache_10(ScsiIoCtx* scsiIoCtx)
 static int wbst_Synchronize_Cache_16(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 16)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 16)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -9156,7 +9156,7 @@ static int wbst_Synchronize_Cache_16(ScsiIoCtx* scsiIoCtx)
 static int wbst_Test_Unit_Ready(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 6)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 6)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -9184,7 +9184,7 @@ static int wbst_Test_Unit_Ready(ScsiIoCtx* scsiIoCtx)
 static int wbst_Request_Sense(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 6)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 6)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -9216,7 +9216,7 @@ static int wbst_Request_Sense(ScsiIoCtx* scsiIoCtx)
 static int wbst_Send_Diagnostic(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 6)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 6)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -9249,7 +9249,7 @@ static int wbst_Send_Diagnostic(ScsiIoCtx* scsiIoCtx)
 static int wbst_Report_Luns(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 12)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 12)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -9320,7 +9320,7 @@ static int wbst_Report_Luns(ScsiIoCtx* scsiIoCtx)
 static int wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx && scsiIoCtx->cdb && scsiIoCtx->cdbLength == 6)
+    if (scsiIoCtx && scsiIoCtx->cdbLength == 6)
     {
         uint8_t senseKey = 0, asc = 0, ascq = 0;
         bool setSenseData = false;
@@ -9569,7 +9569,7 @@ static int wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
 static int win_Basic_SCSI_Translation(ScsiIoCtx *scsiIoCtx)
 {
     int ret = SUCCESS;
-    if (scsiIoCtx->cdb && scsiIoCtx->cdbLength >= 6)//6byte CDB is shortest allowed
+    if (scsiIoCtx && scsiIoCtx->cdbLength >= 6)//6byte CDB is shortest allowed
     {
         switch (scsiIoCtx->cdb[OPERATION_CODE])
         {
