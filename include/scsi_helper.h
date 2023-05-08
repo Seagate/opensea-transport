@@ -879,6 +879,7 @@ extern "C"
         STANDARD_CODE_SPL2 = 262,
         STANDARD_CODE_SPL3 = 263,
         STANDARD_CODE_SPL4 = 264,
+        STANDARD_CODE_SPL5 = 265,
         //271 - 290 SCSI over PCI Extress Transport Protocols
         STANDARD_CODE_SOP = 271,
         STANDARD_CODE_PQI = 272,
