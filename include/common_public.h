@@ -1471,6 +1471,7 @@ extern "C"
     #define IGNORE_CSMI BIT25 //only works in Windows since Linux never adopted CSMI support. Set this to ignore CSMI devices, or compile opensea-transport without the ENABLE_CSMI preprocessor definition.
 #endif
     #define SCAN_IRONWOLF_NAS_ONLY BIT26
+    #define SCAN_SKYHAWK_EXOS_ONLY BIT27
 
     typedef enum _eZoneReportingOptions
     {

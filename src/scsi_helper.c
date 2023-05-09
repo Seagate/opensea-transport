@@ -2220,6 +2220,10 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
                 passthroughTypeSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_NEC;
                 device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+                if (device->drive_info.interface_type != USB_INTERFACE)
+                {
+                    device->drive_info.interface_type = USB_INTERFACE;
+                }
             }
         }
         else if (strcmp(vendorID, "Seagate") == 0)
@@ -2228,7 +2232,10 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             //If we are in this function, then the low-level was unable to get PID/VID, so we need to set some generic hacks to make sure things work, then do device specific things.
             device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
             device->drive_info.passThroughHacks.turfValue = TURF_LIMIT + 1;//Doing this generically here for now to force this!
-
+            if (device->drive_info.interface_type != USB_INTERFACE)
+            {
+                device->drive_info.interface_type = USB_INTERFACE;
+            }
             //known device specific hacks
             if (strcmp(productID, "BlackArmorDAS25") == 0)
             {
@@ -2267,6 +2274,10 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             {
                 device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
                 //TODO: this device previously had a hack that SMART check isn't supported, so need to migrate that too.
+            }
+            if (device->drive_info.interface_type != USB_INTERFACE)
+            {
+                device->drive_info.interface_type = USB_INTERFACE;
             }
         }
         else
@@ -2348,6 +2359,10 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             {
                 passthroughTypeSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
+                if (device->drive_info.interface_type != USB_INTERFACE)
+                {
+                    device->drive_info.interface_type = USB_INTERFACE;
+                }
             }
         }
         else if (strcmp(vendorID, "Samsung") == 0)
@@ -2396,6 +2411,10 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
                 memset(vendorID, 0, INQ_DATA_T10_VENDOR_ID_LEN);
                 passthroughTypeSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
+                if (device->drive_info.interface_type != USB_INTERFACE)
+                {
+                    device->drive_info.interface_type = USB_INTERFACE;
+                }
             }
         }
     }
