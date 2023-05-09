@@ -1593,6 +1593,7 @@ extern "C"
     //
     //  Entry:
     //!   \param device - device handle
+    //!   \param useDMA - set to true to use the DMA version of the command (drive must support this, check identify data)
     //!   \param ptrData - pointer to the data buffer to use.
     //!   \param dataSize - the size of the data buffer being used.
     //
@@ -1600,7 +1601,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Identify(tDevice *device, bool dma, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int ata_DCO_Identify(tDevice *device, bool useDMA, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1610,6 +1611,7 @@ extern "C"
     //
     //  Entry:
     //!   \param device - device handle
+    //! //!   \param useDMA - set to true to use the DMA version of the command (drive must support this, check identify data)
     //!   \param ptrData - pointer to the data buffer to use.
     //!   \param dataSize - the size of the data buffer being used.
     //
@@ -1617,7 +1619,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Set(tDevice *device, bool dma, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int ata_DCO_Set(tDevice *device, bool useDMA, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
