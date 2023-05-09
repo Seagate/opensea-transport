@@ -3610,6 +3610,14 @@ int fill_In_Device_Info(tDevice *device)
 
         //printf("passthrough type set to %d\n", device->drive_info.passThroughHacks.passthroughType);
         int satCheck = FAILURE;
+        if (!satVPDPageRead && device->drive_info.interface_type == SCSI_INTERFACE && is_Seagate_SAS_Vendor_ID(device->drive_info.T10_vendor_ident))
+        {
+            //do NOT do a SAT check. For some reason sometimes a combo of HBA and some SAS drives will respond with no sense errors on A1h CDB
+            //This seems to happen on LSI 9300-8i and some combinations of SAS drives....but not all of them. It is oddly specific.
+            //Same HBA and drive on Windows? Works fine. 
+            //I want a better check than this using other fields, but this should be reasonably safe for now since vendor id of "SEAGATE " is only used on SAS drives
+            checkForSAT = false;
+        }
         //if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just issue a SAT identify in here to set things up...might reduce multiple commands later
         if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE) 
             && device->drive_info.media_type != MEDIA_UNKNOWN && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
