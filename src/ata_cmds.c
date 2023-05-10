@@ -3941,7 +3941,7 @@ int ata_DCO_Identify(tDevice *device, bool useDMA, uint8_t *ptrData, uint32_t da
     return ret;
 }
 
-int ata_DCO_Set(tDevice *device, bool useDMA uint8_t *ptrData, uint32_t dataSize)
+int ata_DCO_Set(tDevice *device, bool useDMA, uint8_t *ptrData, uint32_t dataSize)
 {
     return ata_Device_Configuration_Overlay_Feature(device, useDMA ? DCO_SET_DMA : DCO_SET, ptrData, dataSize);
 }
