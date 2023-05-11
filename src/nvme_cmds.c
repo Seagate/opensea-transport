@@ -408,6 +408,7 @@ int nvme_Dataset_Management(tDevice *device, uint8_t numberOfRanges, bool deallo
     nvmCommand.commandType = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_DATA_SET_MANAGEMENT;
     nvmCommand.commandDirection = XFER_DATA_OUT;
+    nvmCommand.cmd.nvmCmd.prp1 = C_CAST(uintptr_t, ptrData);
     nvmCommand.ptrData = ptrData;
     nvmCommand.dataSize = dataLength;
     nvmCommand.device = device;
@@ -473,6 +474,7 @@ int nvme_Write(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBl
     nvmCommand.commandType = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_WRITE;
     nvmCommand.commandDirection = XFER_DATA_OUT;
+    nvmCommand.cmd.nvmCmd.prp1 = C_CAST(uintptr_t, ptrData);
     nvmCommand.ptrData = ptrData;
     nvmCommand.dataSize = dataLength;
     nvmCommand.device = device;
@@ -514,6 +516,7 @@ int nvme_Read(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlo
     nvmCommand.commandType = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_READ;
     nvmCommand.commandDirection = XFER_DATA_IN;
+    nvmCommand.cmd.nvmCmd.prp1 = C_CAST(uintptr_t, ptrData);
     nvmCommand.ptrData = ptrData;
     nvmCommand.dataSize = dataLength;
     nvmCommand.device = device;
@@ -554,6 +557,7 @@ int nvme_Compare(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogical
     nvmCommand.commandType = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_COMPARE;
     nvmCommand.commandDirection = XFER_DATA_OUT;
+    nvmCommand.cmd.nvmCmd.prp1 = C_CAST(uintptr_t, ptrData);
     nvmCommand.ptrData = ptrData;
     nvmCommand.dataSize = dataLength;
     nvmCommand.device = device;
