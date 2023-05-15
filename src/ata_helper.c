@@ -1242,16 +1242,22 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             device->drive_info.ata_Options.generalPurposeLoggingSupported = true;
         }
 
-        if (device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe)
+        //This is to detect realtek USB to NVMe device since it will respond to SAT ATA identify commands with valid strings and NOTHING else.
+        //If it has a SATA drive, these will all report DMA mode of some kind and a maxLBA and will never be ATAPI
+        //So this should be a reasonably good check to catch this thing for now.
+        if (device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe && 
+            (!device->drive_info.ata_Options.dmaSupported && device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA && *fillMaxLba == 0 && device->drive_info.drive_type != ATAPI_DRIVE))
         {
-            if (!device->drive_info.ata_Options.dmaSupported && device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA)
+            //This means it's an emulated NVMe device where only the MN/SN/FW were reported.
+            device->drive_info.drive_type = SCSI_DRIVE;
+        }
+        else if ((!device->drive_info.ata_Options.dmaSupported && device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA && *fillMaxLba == 0 && device->drive_info.drive_type != ATAPI_DRIVE))
+        {
+            //This very likely is emulated since a valid ATA device will have fillMaxLba set to SOMETHING even in really old CHS drives since the LBA is simulated in software.
+            if (device->deviceVerbosity <= VERBOSITY_DEFAULT)
             {
-                //This means it's an emulated NVMe device where only the MN/SN/FW were reported.
-                //Copy the data back to "primary" device info and set SCSI drive type so that things otherwise work how we would expect them to since this is a very odd device behavior.-TJE
-                memcpy(device->drive_info.product_identification, device->drive_info.bridge_info.childDriveMN, MODEL_NUM_LEN);
-                memcpy(device->drive_info.serialNumber, device->drive_info.bridge_info.childDriveSN, SERIAL_NUM_LEN);
-                memcpy(device->drive_info.product_revision, device->drive_info.bridge_info.childDriveFW, FW_REV_LEN);
-                device->drive_info.drive_type = SCSI_DRIVE;
+                printf("WARNING: possible RTL 9210 detected and missed with all other checks.\n");
+                printf("         this may cause adverse behavior and require --forceSCSI\n");
             }
         }
 
