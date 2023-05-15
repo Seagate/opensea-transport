@@ -2333,8 +2333,8 @@ static int translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoC
     uint8_t *SCSINameStringDesignator = NULL;
     //vars for t10 vendor id designator
     uint8_t t10VendorIdDesignator[72] = { 0 };
-    char ataModelNumber[MODEL_NUM_LEN + 1] = { 0 };
-    char ataSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
+    char ataModelNumber[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
+    char ataSerialNumber[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
     char *ataVendorId = "ATA     ";
     //will hold the complete data to return
     uint8_t *deviceIdentificationPage = NULL;
@@ -2390,13 +2390,13 @@ static int translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoC
     //set vendor ID to ATA padded with spaces
     memcpy(&t10VendorIdDesignator[4], ataVendorId, 8);
     //now set MN
-    memcpy(ataModelNumber, device->drive_info.IdentifyData.ata.ModelNum, MODEL_NUM_LEN);
+    memcpy(ataModelNumber, device->drive_info.IdentifyData.ata.ModelNum, ATA_IDENTIFY_MN_LENGTH);
     byte_Swap_String(ataModelNumber);
-    memcpy(&t10VendorIdDesignator[12], ataModelNumber, MODEL_NUM_LEN);
+    memcpy(&t10VendorIdDesignator[12], ataModelNumber, ATA_IDENTIFY_MN_LENGTH);
     //now set SN
-    memcpy(ataSerialNumber, device->drive_info.IdentifyData.ata.SerNum, SERIAL_NUM_LEN);
+    memcpy(ataSerialNumber, device->drive_info.IdentifyData.ata.SerNum, ATA_IDENTIFY_SN_LENGTH);
     byte_Swap_String(ataSerialNumber);
-    memcpy(&t10VendorIdDesignator[52], ataSerialNumber, SERIAL_NUM_LEN);
+    memcpy(&t10VendorIdDesignator[52], ataSerialNumber, ATA_IDENTIFY_SN_LENGTH);
 
     //now setup the device identification page
     deviceIdentificationPage = C_CAST(uint8_t*, calloc((4U + 72U + naaDesignatorLength + SCSINameStringDesignatorLength) * sizeof(uint8_t), sizeof(uint8_t)));
@@ -3222,29 +3222,24 @@ static int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             inquiryData[14] = ' ';
             inquiryData[15] = ' ';
             //Product ID (first 16bytes of the ata model number
-            char ataMN[MODEL_NUM_LEN + 1] = { 0 };
-            memcpy(ataMN, device->drive_info.IdentifyData.ata.ModelNum, MODEL_NUM_LEN);
-            byte_Swap_String(ataMN);
-            memcpy(&inquiryData[16], ataMN, 16);
+            char ataSN[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
+            char ataMN[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
+            char ataFW[ATA_IDENTIFY_FW_LENGTH + 1] = { 0 };
+
+            fill_ATA_Strings_From_Identify_Data(C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000), ataMN, ataSN, ataFW);
+            
+            memcpy(&inquiryData[16], ataMN, INQ_DATA_PRODUCT_ID_LEN);
             //product revision (truncates to 4 bytes)
-            char ataFW[FW_REV_LEN] = { 0 };
-            memcpy(ataFW, device->drive_info.IdentifyData.ata.FirmVer, 8);
-            byte_Swap_String(ataFW);
-            remove_Leading_And_Trailing_Whitespace(ataFW);
             if (strlen(ataFW) > 4)
             {
-                memcpy(&inquiryData[32], &ataFW[4], 4);
+                memcpy(&inquiryData[32], &ataFW[4], INQ_DATA_PRODUCT_REV_LEN);
             }
             else
             {
-                memcpy(&inquiryData[32], &ataFW[0], 4);
+                memcpy(&inquiryData[32], &ataFW[0], INQ_DATA_PRODUCT_REV_LEN);
             }
             //Vendor specific...we'll set the SN here
-            char ataSN[SERIAL_NUM_LEN + 1] = { 0 };
-            memcpy(ataSN, device->drive_info.IdentifyData.ata.SerNum, SERIAL_NUM_LEN);
-            byte_Swap_String(ataSN);
-            remove_Leading_And_Trailing_Whitespace(ataSN);
-            memcpy(&inquiryData[36], ataSN, M_Min(strlen(ataSN), 20));
+            memcpy(&inquiryData[36], ataSN, M_Min(strlen(ataSN), ATA_IDENTIFY_SN_LENGTH));
             //version descriptors (bytes 58 to 73) (8 max)
             uint16_t versionOffset = 58;
 #if SAT_SPEC_SUPPORTED < 2
@@ -13344,7 +13339,8 @@ static int translate_SCSI_Read_Media_Serial_Number_Command(tDevice *device, Scsi
         ret = NOT_SUPPORTED;
         return ret;
     }
-    if (device->drive_info.IdentifyData.ata.Word087 & BIT2)
+    //word 84 for supported, word 87 for validity
+    if (device->drive_info.IdentifyData.ata.Word084 & BIT2 && device->drive_info.IdentifyData.ata.Word087 & BIT2)
     {
         char ataMediaSN[61] = { 0 };
         memcpy(ataMediaSN, &device->drive_info.IdentifyData.ata.Word176, 60);

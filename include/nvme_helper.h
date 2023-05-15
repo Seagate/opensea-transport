@@ -614,8 +614,8 @@ extern "C"
        are used in the Admin Get/Set features commands
     */
     typedef struct _nvmeFeaturesCmdOpt {
-        uint64_t    prp1;
-        uint64_t    prp2;
+        uint8_t* dataPtr;
+        uint32_t dataLength;
         //Following are part of Dword 10 in nvmeSpec 
         uint8_t     sv; // Save Value Used for Set Features command as Bit 31 
         uint8_t     rsvd; // //this part is reserved for both Get/Set Features

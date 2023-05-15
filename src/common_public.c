@@ -1335,6 +1335,13 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             continue;
                         }
                     }
+                    if (flags & SCAN_SKYHAWK_EXOS_ONLY)
+                    {
+                        if (is_Skyhawk_Drive(&deviceList[devIter], false) == NON_SKYHAWK_DRIVE && !is_Exos_Drive(&deviceList[devIter], false))
+                        {
+                            continue;
+                        }
+                    }
 #if defined (ENABLE_CSMI)
                     if (csmiDeviceCountValid && devIter >= (deviceCount - csmiDeviceCount))//if the csmi device count is valid then we found some for the scan and need to see if we need to check for duplicates.
                     {

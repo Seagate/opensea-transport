@@ -472,13 +472,15 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     eDataTransferDirection asmCDBDir = 0;
     //if the NVMe command is not doing a multiple of 512B data transfer, we need to allocate local memory, rounded up to 512B boundaries before the command.
     //Then we can copy that back to the smaller buffer after command is complete.
-    uint8_t *dataPhasePtr = nvmCmd->ptrData;
-    uint32_t dataPhaseSize = nvmCmd->dataSize;
+    uint8_t *dataPhasePtr = NULL;
+    uint32_t dataPhaseSize = 0;
     bool localMemory = false;
     if (!nvmCmd)
     {
         return BAD_PARAMETER;
     }
+    dataPhasePtr = nvmCmd->ptrData;
+    dataPhaseSize = nvmCmd->dataSize;
     if (nvmCmd->ptrData && nvmCmd->dataSize > 0 && nvmCmd->dataSize % 512)
     {
         dataPhaseSize = ((nvmCmd->dataSize + 511) / 512) * 512;//round up to nearest 512B boundary
