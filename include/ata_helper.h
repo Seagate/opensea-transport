@@ -570,9 +570,10 @@ extern "C"
         bool                 isWarrantied;
     } ataSMARTValue;
 
+#define ATA_SMART_LOG_MAX_ATTRIBUTES (256)
     typedef struct _ataSMARTLog 
     {
-        ataSMARTValue    attributes[256];//attribute numbers 1 - 255 are valid (check valid bit to make sure it's a used attribute)
+        ataSMARTValue    attributes[ATA_SMART_LOG_MAX_ATTRIBUTES];//attribute numbers 1 - 255 are valid (check valid bit to make sure it's a used attribute)
     } ataSMARTLog;
 
     typedef enum _eNVCacheFeatures {
