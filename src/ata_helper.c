@@ -1242,6 +1242,25 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             device->drive_info.ata_Options.generalPurposeLoggingSupported = true;
         }
 
+        //This is to detect realtek USB to NVMe device since it will respond to SAT ATA identify commands with valid strings and NOTHING else.
+        //If it has a SATA drive, these will all report DMA mode of some kind and a maxLBA and will never be ATAPI
+        //So this should be a reasonably good check to catch this thing for now.
+        if (device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe && 
+            (!device->drive_info.ata_Options.dmaSupported && device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA && *fillMaxLba == 0 && device->drive_info.drive_type != ATAPI_DRIVE))
+        {
+            //This means it's an emulated NVMe device where only the MN/SN/FW were reported.
+            device->drive_info.drive_type = SCSI_DRIVE;
+        }
+        else if ((!device->drive_info.ata_Options.dmaSupported && device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA && *fillMaxLba == 0 && device->drive_info.drive_type != ATAPI_DRIVE))
+        {
+            //This very likely is emulated since a valid ATA device will have fillMaxLba set to SOMETHING even in really old CHS drives since the LBA is simulated in software.
+            if (device->deviceVerbosity <= VERBOSITY_DEFAULT)
+            {
+                printf("WARNING: possible RTL 9210 detected and missed with all other checks.\n");
+                printf("         this may cause adverse behavior and require --forceSCSI\n");
+            }
+        }
+
         if (device->drive_info.interface_type == SCSI_INTERFACE)
         {
             //for the SCSI interface, copy this information back to the main drive info since SCSI translated info may truncate these fields and we don't want that

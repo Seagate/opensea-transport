@@ -2194,6 +2194,36 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             passthroughTypeSet = true;
             device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
         }
+        else if (strcmp(vendorID, "Realtek") == 0 && strstr(productID, "9210"))
+        {
+            //realtek's USB to nvme/sata adapter
+            //setup the following hacks to make this thing work as best we can for now
+            device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+            device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+            device->drive_info.passThroughHacks.turfValue = 34;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+            device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+            device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+            device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;//this supports some mode pages, but unable to test for subpages, so considering them not supported at this time -TJE
+            device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+            //NOTE: Security protocol is supported according to online web page. I do not have a device supporting security to test against at this time to see if INC512 is needed/required -TJE
+            device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+            //device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = true;
+            device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+            //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+            //Check condition will always return RTFRs, HOWEVER on data transfers it returns empty data. Seems like a device bug. Only use check condition for non-data commands-TJE
+            //NOTE: It may be interesting to try an SCT command (write log) to see how check condition works, but at least with reads, this is a no-go
+            device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+            device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//seems to make no difference whether this is used or not. Can switch this to "limited use" if we need to
+            device->drive_info.passThroughHacks.ataPTHacks.singleSectorPIOOnly = true;
+            device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 4096;
+            device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe = true;//no way to tell at this point. Will need to make full determination in the fill_ATA_Info function
+            device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands = true;//probably not needed, but after what I saw testing this, it can't hurt to set this
+        }
         else if (strcmp(vendorID, "SMI") == 0)
         {
             if (strcmp(productID, "USB DISK") == 0)

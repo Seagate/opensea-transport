@@ -1878,14 +1878,22 @@ int scsi_Synchronize_Cache_Command(tDevice *device)
 {
     //synch/flush cache introduced in SCSI2. Not going to check for it though since some USB drives do support this command and report SCSI or no version. - TJE
     //there's no real way to tell when SCSI drive supports synchronize cache 10 vs synchronize cache 16 (which are all we will care about in here), so just based on the maxLBA
+    int ret = SUCCESS;
     if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA)
     {
-        return scsi_Synchronize_Cache_10(device, false, 0, 0, 0);
+        ret = scsi_Synchronize_Cache_10(device, false, 0, 0, 0);
     }
     else
     {
-        return scsi_Synchronize_Cache_16(device, false, 0, 0, 0);
+        ret = scsi_Synchronize_Cache_16(device, false, 0, 0, 0);
+        if (ret == NOT_SUPPORTED)
+        {
+            //Some devices/adapters only support the 10B command
+            //Need to retry with 10B if this happens
+            ret = scsi_Synchronize_Cache_10(device, false, 0, 0, 0);
+        }
     }
+    return ret;
 }
 
 int flush_Cache(tDevice *device)
