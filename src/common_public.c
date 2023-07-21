@@ -355,6 +355,10 @@ void print_Low_Level_Info(tDevice* device)
         {
             printf("\t\t\t\t\tPRESCSI2 (inquiry data is pre-SCSI 2)\n");
         }
+        if (device->drive_info.passThroughHacks.scsiHacks.writeBufferNoDeferredDownload)
+        {
+            printf("\t\t\t\t\tWBND (HBA blocks SCSI write buffer - deferred download modes)\n");
+        }
         //MXFER > 0 means we know a maximum transfer size available
         if (device->drive_info.passThroughHacks.scsiHacks.maxTransferLength > 0)
         {
@@ -5827,6 +5831,80 @@ static bool set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
     return passthroughHacksSet;
 }
 
+//possible places to lookup vendor IDs:
+//https://pcisig.com/membership/member-companies?combine=&order=field_vendor_id&sort=asc
+//https://www.pcilookup.com/
+//https://pci-ids.ucw.cz/
+static bool set_PCI_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
+{
+    bool passthroughHacksSet = false;
+    //TODO: Currently this is setting SCSI/ATA hacks as needed for the devices below.
+    //      This may be ok in general, but may get confusing since this isn't necessarily the target drive having an issue, but the
+    //      hardware controller that a drive is attached to having some other functionality.
+    //      The hacks list started as specific to USB, but needs to handle some things for PCIe controllers too.
+    if (device->drive_info.adapter_info.vendorIDValid)
+    {
+        switch (device->drive_info.adapter_info.vendorID)
+        {
+        case PCI_VENDOR_RED_HAT:
+            //note: these all appear to be virtual devices from what I can find online.
+            //Only handling those that this software is likely to encounter for now.
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x0008://reported in openSeaChest#47
+                //TODO: This seemed to only allow identify and smart through. May need a more thorough test for this in the future, but for now listing the ata28bit only hack
+                //      it is possible that even withing the A1h CDB other ATA commands will also be filtered and additional hacks will be required.
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly = true;
+                break;
+            default:
+                break;
+            }
+            break;
+        case PCI_VENDOR_MICROCHIP://PMC?
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x8070:
+                //reported from a Linux box running the following driver:
+                // driver info--
+                //    driver name : pm80xx
+                //    driver version string : 0.1.37 / 1.3.01 - 1 - bn_1.
+                //    major ver : 0
+                //    minor ver : 1
+                //    revision : 37
+                //Unknown if these hacks are specific to the controller or the driver, but for now applying everywhere when it is detected
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;//This command seems to abort or cause an internal error for some reason, so turning it off.
+                //none of the report supported operation codes modes work on this controller.
+                //I do not have one of these to do a full test so this workaround list is definitely incomplete.
+                device->drive_info.passThroughHacks.scsiHacks.writeBufferNoDeferredDownload = true;
+                //This controller/driver absolutely monitors the mode field in write buffer and blocks the deferred download modes, but regular old segmented works fine.-TJE
+                break;
+            default:
+                break;
+            }
+            break;
+        //case PCI_VENDOR_ADAPTEC_2:
+        //    switch (device->drive_info.adapter_info.productID)
+        //    {
+        //    case 0x028B://6-series SAS
+        //    case 0x028C://7-series SAS
+        //    case 0x028D://8-series SAS
+        //        //Adaptec controllers in 8 series definitely require ATA passthrough commands to use DMA mode instead of UDMA mode. Have seen this on the ASR8405
+        //        //Right now this is handled with retries in other parts of the code
+        //        //We should run a more thorough test before turning on hacks here to make sure it covers all capabilities.-TJE
+        //        //Another known SAT thing is that soft-reset works, but hard reset does not.
+        //        break;
+        //    }
+        //    break;
+        default:
+            //unknown vendor ID or nothing necessary
+            break;
+        }
+    }
+    return passthroughHacksSet;
+}
+
 bool setup_Passthrough_Hacks_By_ID(tDevice *device)
 {
     bool success = false;
@@ -5837,6 +5915,7 @@ bool setup_Passthrough_Hacks_By_ID(tDevice *device)
         success = set_USB_Passthrough_Hacks_By_PID_and_VID(device);
         break;
     case ADAPTER_INFO_PCI://TODO: PCI device hacks based on known controllers with workarounds or other changes we can make.
+        success = set_PCI_Passthrough_Hacks_By_PID_and_VID(device);
         break;
     case ADAPTER_INFO_IEEE1394:
         success = set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(device);

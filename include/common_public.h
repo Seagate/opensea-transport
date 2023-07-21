@@ -815,6 +815,7 @@ extern "C"
             PRESCSI2 - preSCSI2InqData (uncommon and the fields to specify offsets and lengths must be handled manually as the software cannot report this by itself)
             //NORWZ/NZTL - not currently handled. No zero length on read or write commands since adapter doesn't handle these properly.
             MXFER - maxTransferLength (bytes)
+            WBND - write buffer no deferred download. PMC specific workaround at this time.-TJE
             TODO: More hacks for strange adapters as needed can be added in here.
             */
             bool unitSNAvailable;//This means we can request this page even if other VPD pages don't work.
@@ -847,7 +848,8 @@ extern "C"
                 uint8_t serialNumberOffset;
                 uint8_t serialNumberLength;
             }scsiInq;
-            uint8_t reserved[6];//padd out above to 8 byte boundaries
+            bool writeBufferNoDeferredDownload;//Write buffer is filtered and does not allow updating firmware using deferred download. Specific to PMC 8070 for now
+            uint8_t reserved[5];//padd out above to 8 byte boundaries
             uint32_t maxTransferLength;//Maximum SCSI command transfer length in bytes. Mostly here for USB where translations aren't accurate or don't show this properly.
             bool noSATVPDPage;//when this is set, the SAT VPD is not available and should not be read, skipping ahead to instead directly trying a passthrough command
             uint8_t scsipadding[3];//padd 4 more bytes after transfer length to keep 8 byte boundaries
@@ -1405,6 +1407,7 @@ extern "C"
         PCI_VENDOR_ARECA            = 0x17D3,
         PCI_VENDOR_JMICRON          = 0x197B,
         PCI_VENDOR_AVAGO            = 0x1A1F,
+        PCI_VENDOR_RED_HAT          = 0x1AF4,
         PCI_VENDOR_ASMEDIA          = 0x1B21,
         PCI_VENDOR_MARVEL           = 0x1DCA,
         PCI_VENDOR_INTEL            = 0x8086,
