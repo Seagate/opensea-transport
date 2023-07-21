@@ -5794,17 +5794,17 @@ static int translate_SCSI_Security_Protocol_Out_Command(tDevice *device, ScsiIoC
         else
         {
             uint8_t ataSecurityCommandBuffer[LEGACY_DRIVE_SEC_SIZE] = { 0 };//for use in ATA security commands that transfer data
-            uint16_t *ataSecurityWordPtr = (uint16_t*)&ataSecurityCommandBuffer[0];
+            uint16_t *ataSecurityWordPtr = C_CAST(uint16_t*, &ataSecurityCommandBuffer[0]);
             switch (securityProtocolSpecific)
             {
             case 0x0001://set password
                 //master password capability
-                if (scsiIoCtx->cdb[0] & BIT0)
+                if (scsiIoCtx->pdata[0] & BIT0)
                 {
                     ataSecurityWordPtr[0] |= BIT8;
                 }
                 //set the master password identifier when necessary
-                if (scsiIoCtx->cdb[1] & BIT0)
+                if (scsiIoCtx->pdata[1] & BIT0)
                 {
                     ataSecurityWordPtr[17] = M_BytesTo2ByteValue(scsiIoCtx->pdata[34], scsiIoCtx->pdata[35]);
                 }
@@ -5833,7 +5833,7 @@ static int translate_SCSI_Security_Protocol_Out_Command(tDevice *device, ScsiIoC
                 break;
             case 0x0002://unlock
                 //user or master password identifier bit
-                if (scsiIoCtx->cdb[1] & BIT0)
+                if (scsiIoCtx->pdata[1] & BIT0)
                 {
                     ataSecurityWordPtr[0] |= BIT0;
                 }
@@ -5869,12 +5869,12 @@ static int translate_SCSI_Security_Protocol_Out_Command(tDevice *device, ScsiIoC
                 break;
             case 0x0004://erase unit
                 //enhanced erase bit
-                if (scsiIoCtx->cdb[0] & BIT0)
+                if (scsiIoCtx->pdata[0] & BIT0)
                 {
                     ataSecurityWordPtr[0] |= BIT1;
                 }
                 //user or master password identifier bit
-                if (scsiIoCtx->cdb[1] & BIT0)
+                if (scsiIoCtx->pdata[1] & BIT0)
                 {
                     ataSecurityWordPtr[0] |= BIT0;
                 }
@@ -5910,7 +5910,7 @@ static int translate_SCSI_Security_Protocol_Out_Command(tDevice *device, ScsiIoC
                 break;
             case 0x0006://disable password
                 //user or master password identifier bit
-                if (scsiIoCtx->cdb[1] & BIT0)
+                if (scsiIoCtx->pdata[1] & BIT0)
                 {
                     ataSecurityWordPtr[0] |= BIT0;
                 }
