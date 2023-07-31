@@ -1113,19 +1113,32 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_UDMA;
             }
 
-            //set read/write buffer DMA
-            if (ident_word[69] & BIT11)
+            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word069))
             {
-                device->drive_info.ata_Options.readBufferDMASupported = true;
-            }
-            if (ident_word[69] & BIT10)
-            {
-                device->drive_info.ata_Options.writeBufferDMASupported = true;
-            }
-            //set download microcode DMA support
-            if (ident_word[69] & BIT8)
-            {
-                device->drive_info.ata_Options.downloadMicrocodeDMASupported = true;
+                //DCO DMA
+                if (ident_word[69] & BIT12)
+                {
+                    device->drive_info.ata_Options.dcoDMASupported = true;
+                }
+                //set read/write buffer DMA
+                if (ident_word[69] & BIT11)
+                {
+                    device->drive_info.ata_Options.readBufferDMASupported = true;
+                }
+                if (ident_word[69] & BIT10)
+                {
+                    device->drive_info.ata_Options.writeBufferDMASupported = true;
+                }
+                //HPA security ext DMA
+                if (ident_word[69] & BIT9)
+                {
+                    device->drive_info.ata_Options.hpaSecurityExtDMASupported = true;
+                }
+                //set download microcode DMA support
+                if (ident_word[69] & BIT8)
+                {
+                    device->drive_info.ata_Options.downloadMicrocodeDMASupported = true;
+                }
             }
         }
         //set zoned device type
@@ -1221,6 +1234,8 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 device->drive_info.ata_Options.readBufferDMASupported = false;
                 device->drive_info.ata_Options.readLogWriteLogDMASupported = false;
                 device->drive_info.ata_Options.writeBufferDMASupported = false;
+                device->drive_info.ata_Options.dcoDMASupported = false;
+                device->drive_info.ata_Options.hpaSecurityExtDMASupported = false;
             }
         }
         if (ident_word[119] & BIT2 || ident_word[120] & BIT2)

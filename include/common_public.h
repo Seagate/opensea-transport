@@ -744,7 +744,9 @@ extern "C"
         uint8_t forceSATCDBLength;//set this to 12, 16, or 32 to force a specific CDB length to use. If you set 12, but send an extended command 16B will be used if any extended registers are set. Same with 32B will be used if ICC or AUX are set.
         bool sataReadLogDMASameAsPIO; //not all SATA drives allow reading SATA specific pages with the DMA command. This specifies that it is allowed. (NCQ error log, phy event counters log, etc)
         bool noNeedLegacyDeviceHeadCompatBits; //original ATA spec required bits 7 and 5 to be set to 1. This was removed a long time ago, but can affect just about any pata device. This helps change when to set them as they are not needed on SATA (or shouldn't be)
-        uint8_t reserved[7];//reserved padding to keep 8 byte aligned structure for any necessary flags in the future.
+        bool dcoDMASupported;//DCO identify and DCO set DMA commands are supported.
+        bool hpaSecurityExtDMASupported;//HPA security extension DMA commands are supported.
+        uint8_t reserved[5];//reserved padding to keep 8 byte aligned structure for any necessary flags in the future.
     }ataOptions;
 
     typedef enum _eZonedDeviceType {
