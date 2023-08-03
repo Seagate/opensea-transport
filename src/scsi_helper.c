@@ -2572,6 +2572,11 @@ int fill_In_Device_Info(tDevice *device)
     memset(device->drive_info.T10_vendor_ident, 0, sizeof(device->drive_info.T10_vendor_ident));
     memset(device->drive_info.product_identification, 0, sizeof(device->drive_info.product_identification));
     memset(device->drive_info.product_revision, 0, sizeof(device->drive_info.product_revision));
+    //zero out capacity related items as they will be reviewed later.
+    //While not important for initial device discovery, this can be very important for rescan types of discovery when there is discrepency between SCSI and ATA reported information.
+    device->drive_info.deviceMaxLba = 0;
+    device->drive_info.deviceBlockSize = 0;
+    device->drive_info.devicePhyBlockSize = 0;
     //By default, we need to set up some information about drive type based on what is known so far from the OS level code telling us the interface the device is attached on. We can change it later if need be
     //Remember, these are assumptions ONLY based off what interface the OS level code is reporting. It should default to something, then get changed later when we know more about it.
 //  switch (device->drive_info.interface_type)
@@ -3501,7 +3506,11 @@ int fill_In_Device_Info(tDevice *device)
             }
         }
 
-        if (readCapacity && !mediumNotPresent)
+        //only read capacity for certain drive types to avoid command failures.
+        //Also, only do a read capacity if the max LBA and block size are not already set.
+        //Most of the time this is not an issue, but if rescanning after changing the max LBA (among other things), the SCSI translated info can be out of date/old due to caching in a SATL.
+        //So this helps work around the SATL caching issue since the SATL doesn't enforce reads/writes beyond maxLBA...it just forwards the command to the drive to reject.
+        if (readCapacity && !mediumNotPresent && (device->drive_info.deviceMaxLba == 0 || device->drive_info.deviceBlockSize == 0))
         {
             //if inquiry says SPC or lower (3), then only do read capacity 10
             //Anything else can have read capacity 16 command available
