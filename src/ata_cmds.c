@@ -4375,14 +4375,7 @@ int ata_Set_Sector_Configuration_Ext(tDevice *device, uint16_t commandCheck, uin
     {
         ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     }
-    if (os_Is_Infinite_Timeout_Supported())
-    {
-        ataCommandOptions.timeout = INFINITE_TIMEOUT_VALUE;
-    }
-    else
-    {
-        ataCommandOptions.timeout = MAX_CMD_TIMEOUT_SECONDS;
-    }
+    ataCommandOptions.timeout = 900;//15 minute command timeout. This should be WAY more than enough on Seagate drives.
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
