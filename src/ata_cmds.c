@@ -4375,7 +4375,9 @@ int ata_Set_Sector_Configuration_Ext(tDevice *device, uint16_t commandCheck, uin
     {
         ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     }
-    ataCommandOptions.timeout = 900;//15 minute command timeout. This should be WAY more than enough on Seagate drives.
+    ataCommandOptions.timeout = 3600;
+    //Setting a 1 hour timeout. This should be way more than enough to complete while allowing a way to handle a failing command due to a timeout instead of using infinite which would never return.
+    //Using 1 hour since there are a few rare cases where a drive may be in a state of processing something in the background which could make this take longer than expected, but should still complete long before 1 hour has elapsed.
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
