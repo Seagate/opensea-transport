@@ -375,6 +375,7 @@ extern "C"
         INQUIRY_CMD                                 = 0x12,
         LOG_SELECT_CMD                              = 0x4C,
         LOG_SENSE_CMD                               = 0x4D,
+		SCSI_LOG_CAPACITY_MODELNUMBER_MAPPING       = 0xBA,
         MAINTENANCE_IN_CMD                          = 0xA3,
         MAINTENANCE_OUT_CMD                         = 0xA4,
         MODE_SELECT_6_CMD                           = 0x15,
