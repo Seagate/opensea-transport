@@ -375,7 +375,6 @@ extern "C"
         INQUIRY_CMD                                 = 0x12,
         LOG_SELECT_CMD                              = 0x4C,
         LOG_SENSE_CMD                               = 0x4D,
-		SCSI_LOG_CAPACITY_MODELNUMBER_MAPPING       = 0xBA,
         MAINTENANCE_IN_CMD                          = 0xA3,
         MAINTENANCE_OUT_CMD                         = 0xA4,
         MODE_SELECT_6_CMD                           = 0x15,
@@ -501,6 +500,7 @@ extern "C"
         BLOCK_LIMITS_EXTENSION                          = 0xB7,
         FORMAT_PRESETS                                  = 0xB8,
         CONCURRENT_POSITIONING_RANGES                   = 0xB9,
+        CAPACITY_PRODUCT_IDENTIFICATION_MAPPING         = 0xBA,
         //C0h - FFh are Vendor specific
     }eScsiVpdPages;
 

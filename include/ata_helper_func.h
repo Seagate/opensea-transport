@@ -583,12 +583,13 @@ extern "C"
     //!   \param feature the feature registers for the command
     //!   \param lba the lba registers for the command
     //!   \param rtfrs set to non-null to get rtfrs out of this function
+    //!   \param[in] sectorCount = the value to set in the sector count registers
     //
     //  Exit:
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Accessible_Max_Address_Feature(tDevice *device, uint16_t feature, uint64_t lba, ataReturnTFRs *rtfrs);
+    OPENSEA_TRANSPORT_API int ata_Accessible_Max_Address_Feature(tDevice *device, uint16_t feature, uint64_t lba, ataReturnTFRs *rtfrs, uint16_t sectorCount);
 
     //-----------------------------------------------------------------------------
     //
@@ -615,12 +616,13 @@ extern "C"
     //  Entry:
     //!   \param device device handle
     //!   \param newMaxLBA the new maxLBA you wish to have set
+    //!   \param changeId whether to set ENABLE CHANGE IDENTIFY STRINGS bit for changing model number
     //
     //  Exit:
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Set_Accessible_Max_Address_Ext(tDevice *device, uint64_t newMaxLBA);
+    OPENSEA_TRANSPORT_API int ata_Set_Accessible_Max_Address_Ext(tDevice *device, uint64_t newMaxLBA, bool changeId);
 
     //-----------------------------------------------------------------------------
     //

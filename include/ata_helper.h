@@ -831,7 +831,7 @@ extern "C"
        ATA_LOG_MUTATE_CONFIGURATIONS                    = 0x42,
        ATA_LOG_CONCURRENT_POSITIONING_RANGES            = 0x47,
        ATA_LOG_SENSE_DATA                               = 0x53,
-	   ATA_LOG_CAPACITY_MODELNUMBER_MAPPING             = 0x61,
+       ATA_LOG_CAPACITY_MODELNUMBER_MAPPING             = 0x61,
        //80h - 9F are host specific logs
        ATA_LOG_HOST_SPECIFIC_80H                        = 0x80,
        ATA_LOG_HOST_SPECIFIC_81H                        = 0x81,
