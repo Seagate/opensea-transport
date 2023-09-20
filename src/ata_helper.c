@@ -394,7 +394,7 @@ int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, 
         return MEMORY_FAILURE;
     }
     //if we are retrieving the current values, then we better have a good pointer...no point in sending the command if we don't
-    if (functionCode == 0x0002 && !currentValue)
+    if ((functionCode == 0x0002 || functionCode == 0x0004) && !currentValue)
     {
         safe_Free_aligned(errorRecoveryBuffer)
         return BAD_PARAMETER;
@@ -415,7 +415,7 @@ int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, 
 
     ret = send_ATA_SCT_Command(device, errorRecoveryBuffer, LEGACY_DRIVE_SEC_SIZE, true);
 
-    if (functionCode == 0x0002 && currentValue != NULL)
+    if ((functionCode == 0x0002 || functionCode == 0x0004) && currentValue != NULL)
     {
         *currentValue = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
     }
