@@ -5234,7 +5234,29 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
-                //NOTE: Add max passthrough transfer length hack set to 65536
+                device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = 65536;
+                break;
+            case 0x0567://Github user reported USB to SATA adapter
+                //rev 0x05h
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 11;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = false;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.reportAllOpCodes = true;//this may need better validation
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 1048576;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit = true;
+                device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             case 0x0583://USB to NVMe adapter
                 //Rev 205h
