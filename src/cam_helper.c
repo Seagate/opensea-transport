@@ -723,7 +723,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                 }
                 else
                 {
-                    cam_error_print(scsiIoCtx->device->os_info.cam_dev, ccb, CAM_ESF_ALL /*error string flags*/, CAM_EPF_ALL, stdout);
+                    //cam_error_print(scsiIoCtx->device->os_info.cam_dev, ccb, CAM_ESF_ALL /*error string flags*/, CAM_EPF_ALL, stdout);
                     if ((ccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP)
                     {
                         if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_ATA_STATUS_ERROR)
