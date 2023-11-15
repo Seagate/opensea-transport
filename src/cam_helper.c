@@ -581,8 +581,6 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
 
         /* Disable freezing the device queue */
         ccb->ccb_h.flags |= CAM_DEV_QFRZDIS;
-        /* We set this flag here because cam_fill_atatio clears the flags*/
-        ccb->ataio.cmd.flags |= CAM_ATAIO_NEEDRESULT;
 
         if (scsiIoCtx->pAtaCmdOpts != NULL)
         {
@@ -712,6 +710,8 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
 
                 printf("\tData Ptr %p, xfer len %d\n", ataio->data_ptr, ataio->dxfer_len);
                 #endif
+                /* Always asking for the results at this time. */
+                ccb->ataio.cmd.flags |= CAM_ATAIO_NEEDRESULT;
                 start_Timer(&commandTimer);
                 ret = cam_send_ccb(scsiIoCtx->device->os_info.cam_dev, ccb);
                 stop_Timer(&commandTimer);
