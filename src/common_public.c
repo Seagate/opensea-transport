@@ -5255,7 +5255,9 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit = true;
+                device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition = true;//this does not crash the bridge, just useless as it's empty...just setting this as well for consistency since return reponse info works.
                 device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             case 0x0583://USB to NVMe adapter
