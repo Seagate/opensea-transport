@@ -140,6 +140,9 @@ extern "C"
     #define ATA_SMART_STATUS_FLAG_EVENT_COUNT BIT4
     #define ATA_SMART_STATUS_FLAG_SELF_PRESERVING BIT5
 
+    #define ATA_SMART_ATTRIBUTE_NOMINAL_COMMON_START 0x64 //most attributes start at 100, but there are occasionally some that don't
+    #define ATA_SMART_ATTRIBUTE_WORST_COMMON_START 0xFD //It's fairly common for a worst-ever to start at this highest possible value then move down as data is collected.
+
     #define ATA_SMART_THRESHOLD_ALWAYS_PASSING 0x00
     #define ATA_SMART_THRESHOLD_MINIMUM 0x01
     #define ATA_SMART_THRESHOLD_MAXIMUM 0xFD
