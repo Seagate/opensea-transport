@@ -62,7 +62,17 @@ extern "C"
 
     #define LBA_MODE_BIT BIT6 //Set this in the device/head register to set LBA mode.
     #define DEVICE_SELECT_BIT BIT4 //On PATA, this is to select drive 1. Device/Head register
-    #define DEVICE_REG_BACKWARDS_COMPATIBLE_BITS 0xA0 //device/head in ATA & ATA3 say these bits should be set on every command. New specs mark these obsolete in commands that are from old specs. New commands may use these for other purposes.
+    #define DEVICE_REG_BACKWARDS_COMPATIBLE_BITS 0xA0 
+            //device/head in ATA & ATA3 say bits 7&5 should be set on every command. 
+            //New specs mark these obsolete in commands that are from old specs. 
+            //New commands may use these for other purposes.
+            //Device/Head pre-ATA standardization called this the Sector Size, Device, Head register
+            //bit7 was defined as the ECC bit. With this set to zero it used CRC
+            //bits 6:5 were the sector size. 11b=128B, 00b=256B, 01b=512B, 10b=1024B.
+            //With standardization forcing these bits to A0 sets ECC and 512B sector size, which is all that was likely used in the real-world
+            //For backwards compatibility with these really old devices, it is recommended to set this register to these values.
+            //This is not necessary for SATA drives unless they are aborting commands for no other reason.
+            //Setting these bits may not be necessary for most PATA devices that conform to ATA standards
 
     //This is a basic validity indicator for a given ATA identify word. Checks that it is non-zero and not FFFFh
     OPENSEA_TRANSPORT_API bool is_ATA_Identify_Word_Valid(uint16_t word);
