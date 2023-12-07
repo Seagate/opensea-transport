@@ -336,7 +336,7 @@ int ata_Read_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, u
         {
             printf("Sending ATA Read Log Ext command");
         }
-        printf(" - Log %02" PRIX8 "h, Page % " PRIu16 ", Count % " PRIu32 "\n", logAddress, pageNumber, (dataSize / LEGACY_DRIVE_SEC_SIZE));
+        printf(" - Log %02" PRIX8 "h, Page %" PRIu16 ", Count %" PRIu32 "\n", logAddress, pageNumber, (dataSize / LEGACY_DRIVE_SEC_SIZE));
     }
 
     //zap it
@@ -460,7 +460,7 @@ int ata_Write_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, 
         {
             printf("Sending ATA Write Log Ext command");
         }
-        printf(" - Log %02" PRIX8 "h, Page % " PRIu16 ", Count % " PRIu32 "\n", logAddress, pageNumber, (dataSize / LEGACY_DRIVE_SEC_SIZE));
+        printf(" - Log %02" PRIX8 "h, Page %" PRIu16 ", Count %" PRIu32 "\n", logAddress, pageNumber, (dataSize / LEGACY_DRIVE_SEC_SIZE));
     }
 
     //zap it
@@ -2608,7 +2608,7 @@ int ata_Trusted_Non_Data(tDevice *device, uint8_t securityProtocol, bool trusted
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Trusted Non-Data");
-        printf(" - Security Protocol %02" PRIX16 ", Specific: %04" PRIX16 "\n", securityProtocol, securityProtocolSpecific);
+        printf(" - Security Protocol %02" PRIX8 ", Specific: %04" PRIX16 "\n", securityProtocol, securityProtocolSpecific);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -2684,7 +2684,7 @@ int ata_Trusted_Receive(tDevice *device, bool useDMA, uint8_t securityProtocol, 
         {
             printf("Sending ATA Trusted Receive");
         }
-        printf(" - Security Protocol %02" PRIX16 ", Specific: %04" PRIX16 "\n", securityProtocol, securityProtocolSpecific);
+        printf(" - Security Protocol %02" PRIX8 ", Specific: %04" PRIX16 "\n", securityProtocol, securityProtocolSpecific);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -2766,7 +2766,7 @@ int ata_Trusted_Send(tDevice *device, bool useDMA, uint8_t securityProtocol, uin
         {
             printf("Sending ATA Trusted Send");
         }
-        printf(" - Security Protocol %02" PRIX16 ", Specific: %04" PRIX16 "\n", securityProtocol, securityProtocolSpecific);
+        printf(" - Security Protocol %02" PRIX8 ", Specific: %04" PRIX16 "\n", securityProtocol, securityProtocolSpecific);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -3919,9 +3919,9 @@ int ata_DCO_Freeze_Lock(tDevice *device)
     return ata_Device_Configuration_Overlay_Feature(device, DCO_FREEZE_LOCK, NULL, 0);
 }
 
-int ata_DCO_Identify(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
+int ata_DCO_Identify(tDevice *device, bool useDMA, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = ata_Device_Configuration_Overlay_Feature(device, DCO_IDENTIFY, ptrData, dataSize);
+    int ret = ata_Device_Configuration_Overlay_Feature(device, useDMA ? DCO_IDENTIFY_DMA : DCO_IDENTIFY, ptrData, dataSize);
     if (ret == SUCCESS)
     {
         if (ptrData[510] == ATA_CHECKSUM_VALIDITY_INDICATOR)
@@ -3941,36 +3941,9 @@ int ata_DCO_Identify(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
     return ret;
 }
 
-int ata_DCO_Set(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
+int ata_DCO_Set(tDevice *device, bool useDMA, uint8_t *ptrData, uint32_t dataSize)
 {
-    return ata_Device_Configuration_Overlay_Feature(device, DCO_SET, ptrData, dataSize);
-}
-
-int ata_DCO_Identify_DMA(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
-{
-    int ret = ata_Device_Configuration_Overlay_Feature(device, DCO_IDENTIFY_DMA, ptrData, dataSize);
-    if (ret == SUCCESS)
-    {
-        if (ptrData[510] == ATA_CHECKSUM_VALIDITY_INDICATOR)
-        {
-            //we got data, so validate the checksum
-            uint32_t invalidSec = 0;
-            if (!is_Checksum_Valid(ptrData, LEGACY_DRIVE_SEC_SIZE, &invalidSec))
-            {
-                ret = WARN_INVALID_CHECKSUM;
-            }
-        }
-        else
-        {
-            //don't do anything. Device doesn't use a checksum
-        }
-    }
-    return ret;
-}
-
-int ata_DCO_Set_DMA(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
-{
-    return ata_Device_Configuration_Overlay_Feature(device, DCO_SET_DMA, ptrData, dataSize);
+    return ata_Device_Configuration_Overlay_Feature(device, useDMA ? DCO_SET_DMA : DCO_SET, ptrData, dataSize);
 }
 
 //int ata_Packet(tDevice *device, uint8_t *scsiCDB, bool dmaBit, bool dmaDirBit, uint16_t byteCountLimit, uint8_t *ptrData, uint32_t *dataSize)
@@ -4402,14 +4375,9 @@ int ata_Set_Sector_Configuration_Ext(tDevice *device, uint16_t commandCheck, uin
     {
         ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     }
-    if (os_Is_Infinite_Timeout_Supported())
-    {
-        ataCommandOptions.timeout = INFINITE_TIMEOUT_VALUE;
-    }
-    else
-    {
-        ataCommandOptions.timeout = MAX_CMD_TIMEOUT_SECONDS;
-    }
+    ataCommandOptions.timeout = 3600;
+    //Setting a 1 hour timeout. This should be way more than enough to complete while allowing a way to handle a failing command due to a timeout instead of using infinite which would never return.
+    //Using 1 hour since there are a few rare cases where a drive may be in a state of processing something in the background which could make this take longer than expected, but should still complete long before 1 hour has elapsed.
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;

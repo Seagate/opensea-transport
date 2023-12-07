@@ -343,205 +343,206 @@ void print_Low_Level_Info(tDevice* device)
                 printf("\t\t\t\t\tREPALLOP (report all operation codes supported)\n");
             }
         }
-        if (device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations)
+        if (device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported)
         {
-            printf("\t\t\t\t\tSECPROT (no report supported operation codes command)\n");
+            printf("\t\t\t\t\tSECPROT (security protocol command is supported)\n");
         }
-        if (device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations)
+        if (device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512)
         {
-            printf("\t\t\t\t\tSECPROTI512 (no report supported operation codes command)\n");
+            printf("\t\t\t\t\tSECPROTI512 (security protocol command with inc512 bit supported)\n");
         }
-        if (device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations)
+        if (device->drive_info.passThroughHacks.scsiHacks.preSCSI2InqData)
         {
-            printf("\t\t\t\t\tPRESCSI2 (no report supported operation codes command)\n");
+            printf("\t\t\t\t\tPRESCSI2 (inquiry data is pre-SCSI 2)\n");
+        }
+        if (device->drive_info.passThroughHacks.scsiHacks.writeBufferNoDeferredDownload)
+        {
+            printf("\t\t\t\t\tWBND (HBA blocks SCSI write buffer - deferred download modes)\n");
         }
         //MXFER > 0 means we know a maximum transfer size available
         if (device->drive_info.passThroughHacks.scsiHacks.maxTransferLength > 0)
         {
             printf("\t\t\t\t\tMXFER = %" PRIu32 "B\n", device->drive_info.passThroughHacks.scsiHacks.maxTransferLength);
         }
-        //check for whether there are NVMe or ATA hacks
-        if (device->drive_info.drive_type == NVME_DRIVE)
+        //list any NVMe hacks
+        printf("\t\t\t\t---NVMe Hacks---\n");
+        if (device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities)
         {
-            //list any NVMe hacks
-            printf("\t\t\t\t---NVMe Hacks---\n");
-            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities)
+            printf("\t\t\t\t\tLIMPT (Limited passthrough capabilities. Only specific commands are allowed)\n");
+            printf("\t\t\t\t\tAllowed commands:\n");
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric)
             {
-                printf("\t\t\t\t\tLIMPT (Limited passthrough capabilities. Only specific commands are allowed)\n");
-                printf("\t\t\t\t\tAllowed commands:\n");
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric)
+                printf("\t\t\t\t\t\tAny identify command\n");
+            }
+            else
+            {
+                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController)
                 {
-                    printf("\t\t\t\t\t\tAny identify command\n");
+                    printf("\t\t\t\t\t\tIdentify controller\n");
                 }
-                else
+                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace)
                 {
-                    if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController)
-                    {
-                        printf("\t\t\t\t\t\tIdentify controller\n");
-                    }
-                    if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace)
-                    {
-                        printf("\t\t\t\t\t\tIdentify namespace\n");
-                    }
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage)
-                {
-                    printf("\t\t\t\t\t\tGet Log Page\n");
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.format)
-                {
-                    printf("\t\t\t\t\t\tFormat NVM\n");
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures)
-                {
-                    printf("\t\t\t\t\t\tGet Features\n");
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload)
-                {
-                    printf("\t\t\t\t\t\tFirmware Download\n");
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit)
-                {
-                    printf("\t\t\t\t\t\tFirmware Commit\n");
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique)
-                {
-                    printf("\t\t\t\t\t\tVendor Unique (Commands effects log)\n");
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest)
-                {
-                    printf("\t\t\t\t\t\tDevice Self Test\n");
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize)
-                {
-                    printf("\t\t\t\t\t\tSanitize\n");
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceManagement)
-                {
-                    printf("\t\t\t\t\t\tNamespace Management\n");
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceAttachment)
-                {
-                    printf("\t\t\t\t\t\tNamespace Attachment\n");
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures)
-                {
-                    printf("\t\t\t\t\t\tSet Features\n");
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miSend)
-                {
-                    printf("\t\t\t\t\t\tMI Send\n");
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miReceive)
-                {
-                    printf("\t\t\t\t\t\tMI Receive\n");
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securitySend)
-                {
-                    printf("\t\t\t\t\t\tSecurity Send\n");
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive)
-                {
-                    printf("\t\t\t\t\t\tSecurity Receive\n");
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatCryptoSecureErase)
-                {
-                    printf("\t\t\t\t\t\tFormat - SES = user erase\n");
-                }
-                if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatUserSecureErase)
-                {
-                    printf("\t\t\t\t\t\tFormat - SES = crypto erase\n");
+                    printf("\t\t\t\t\t\tIdentify namespace\n");
                 }
             }
-            if (device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength > 0)
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage)
             {
-                printf("\t\t\t\t\tMPTLENGTH = %" PRIu32 "B\n", device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength);
+                printf("\t\t\t\t\t\tGet Log Page\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.format)
+            {
+                printf("\t\t\t\t\t\tFormat NVM\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures)
+            {
+                printf("\t\t\t\t\t\tGet Features\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload)
+            {
+                printf("\t\t\t\t\t\tFirmware Download\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit)
+            {
+                printf("\t\t\t\t\t\tFirmware Commit\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique)
+            {
+                printf("\t\t\t\t\t\tVendor Unique (Commands effects log)\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest)
+            {
+                printf("\t\t\t\t\t\tDevice Self Test\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize)
+            {
+                printf("\t\t\t\t\t\tSanitize\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceManagement)
+            {
+                printf("\t\t\t\t\t\tNamespace Management\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceAttachment)
+            {
+                printf("\t\t\t\t\t\tNamespace Attachment\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures)
+            {
+                printf("\t\t\t\t\t\tSet Features\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miSend)
+            {
+                printf("\t\t\t\t\t\tMI Send\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miReceive)
+            {
+                printf("\t\t\t\t\t\tMI Receive\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securitySend)
+            {
+                printf("\t\t\t\t\t\tSecurity Send\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive)
+            {
+                printf("\t\t\t\t\t\tSecurity Receive\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatCryptoSecureErase)
+            {
+                printf("\t\t\t\t\t\tFormat - SES = user erase\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatUserSecureErase)
+            {
+                printf("\t\t\t\t\t\tFormat - SES = crypto erase\n");
             }
         }
-        else if (device->drive_info.drive_type == ATA_DRIVE)
+        if (device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength > 0)
         {
-            //list any ATA hacks
-            printf("\t\t\t\t---ATA Hacks---\n");
-            if (device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly)
-            {
-                printf("\t\t\t\t\tSCTSM (SCT commands only compatible with smart commands)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported)
-            {
-                printf("\t\t\t\t\tNA1 (A1h opcode, 12B SAT, is NOT supported by this device at all)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.a1ExtCommandWhenPossible)
-            {
-                printf("\t\t\t\t\tA1EXT (Some 48 bit commands must be issued with A1h opcode. Many limitations to this device)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported)
-            {
-                printf("\t\t\t\t\tRS (SAT return response info protocol is supported for determining command completion)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR)
-            {
-                printf("\t\t\t\t\tRSTD (SAT return response info TDIR bit can be set to ensure proper interpretation of data direction)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit)
-            {
-                printf("\t\t\t\t\tRSIE (SAT return response info data requires ignoring the extend bit as it isn't handled properly)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough)
-            {
-                printf("\t\t\t\t\tTSPIU (SAT commands must use the TSPIU transfer type for all commands to work properly)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable)
-            {
-                printf("\t\t\t\t\tCHK (SAT check condition bit is always supported)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA)
-            {
-                printf("\t\t\t\t\tFDMA (SAT dma commands MUST use protocol set to DMA instead of UDMA-in/out)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
-            {
-                printf("\t\t\t\t\tNDMA (No DMA commands are supported on this adapter. Must use PIO only)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.partialRTFRs)
-            {
-                printf("\t\t\t\t\tPARTRTFR (Only 28bit responses are available. All extended registers are missing)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.noRTFRsPossible)
-            {
-                printf("\t\t\t\t\tNORTFR (It is impossible to get the drive's response. Can only rely on SAT translation of errors if that is even available)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.multiSectorPIOWithMultipleMode)
-            {
-                printf("\t\t\t\t\tMMPIO (Multi-sector PIO commands are only possible if multiple mode configuration is done first)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.singleSectorPIOOnly)
-            {
-                printf("\t\t\t\t\tSPIO (Only single sector PIO commands are possible. Any attempts at multiple-sectors will cause massive problems)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly)
-            {
-                printf("\t\t\t\t\tATA28 (Only 28bit ATA commands are possible on this adapter)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands)
-            {
-                printf("\t\t\t\t\tNOMMPIO (Do not use multiple mode read/write commands on this device. They are not handled correctly)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength > 0)
-            {
-                printf("\t\t\t\t\tMPTXFER = %" PRIu32 "B\n", device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength);
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU)
-            {
-                printf("\t\t\t\t\tTPID (TSPIU can be used on identify commands and possibly a few others, but it cannot be used on every command)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition)
-            {
-                printf("\t\t\t\t\tNCHK (Do not use the check condition bit. It causes problems on this system)\n");
-            }
-            if (device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty)
-            {
-                printf("\t\t\t\t\tCHKE (Check condition bit is accepted but sense data is empty, so this bit is unusable)\n");
-            }
+            printf("\t\t\t\t\tMPTLENGTH = %" PRIu32 "B\n", device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength);
+        }
+        //list any ATA hacks
+        printf("\t\t\t\t---ATA Hacks---\n");
+        if (device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly)
+        {
+            printf("\t\t\t\t\tSCTSM (SCT commands only compatible with smart commands)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported)
+        {
+            printf("\t\t\t\t\tNA1 (A1h opcode, 12B SAT, is NOT supported by this device at all)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.a1ExtCommandWhenPossible)
+        {
+            printf("\t\t\t\t\tA1EXT (Some 48 bit commands must be issued with A1h opcode. Many limitations to this device)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported)
+        {
+            printf("\t\t\t\t\tRS (SAT return response info protocol is supported for determining command completion)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR)
+        {
+            printf("\t\t\t\t\tRSTD (SAT return response info TDIR bit can be set to ensure proper interpretation of data direction)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit)
+        {
+            printf("\t\t\t\t\tRSIE (SAT return response info data requires ignoring the extend bit as it isn't handled properly)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough)
+        {
+            printf("\t\t\t\t\tTSPIU (SAT commands must use the TSPIU transfer type for all commands to work properly)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable)
+        {
+            printf("\t\t\t\t\tCHK (SAT check condition bit is always supported)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA)
+        {
+            printf("\t\t\t\t\tFDMA (SAT dma commands MUST use protocol set to DMA instead of UDMA-in/out)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
+        {
+            printf("\t\t\t\t\tNDMA (No DMA commands are supported on this adapter. Must use PIO only)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.partialRTFRs)
+        {
+            printf("\t\t\t\t\tPARTRTFR (Only 28bit responses are available. All extended registers are missing)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.noRTFRsPossible)
+        {
+            printf("\t\t\t\t\tNORTFR (It is impossible to get the drive's response. Can only rely on SAT translation of errors if that is even available)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.multiSectorPIOWithMultipleMode)
+        {
+            printf("\t\t\t\t\tMMPIO (Multi-sector PIO commands are only possible if multiple mode configuration is done first)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.singleSectorPIOOnly)
+        {
+            printf("\t\t\t\t\tSPIO (Only single sector PIO commands are possible. Any attempts at multiple-sectors will cause massive problems)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly)
+        {
+            printf("\t\t\t\t\tATA28 (Only 28bit ATA commands are possible on this adapter)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands)
+        {
+            printf("\t\t\t\t\tNOMMPIO (Do not use multiple mode read/write commands on this device. They are not handled correctly)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength > 0)
+        {
+            printf("\t\t\t\t\tMPTXFER = %" PRIu32 "B\n", device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength);
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU)
+        {
+            printf("\t\t\t\t\tTPID (TSPIU can be used on identify commands and possibly a few others, but it cannot be used on every command)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition)
+        {
+            printf("\t\t\t\t\tNCHK (Do not use the check condition bit. It causes problems on this system)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty)
+        {
+            printf("\t\t\t\t\tCHKE (Check condition bit is accepted but sense data is empty, so this bit is unusable)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe)
+        {
+            printf("\t\t\t\t\tPEMUNV (Adapter is possibly a USB to NVMe adapter that responds to SAT ATA identify CDBs with only MN, SN, FW)\n");
         }
         //print out the os_info unique things. This has a lot of ifdefs for the different OSs/configurations so need to watch out for the differences in here
         printf("\t---OS Info---\n");
@@ -1331,6 +1332,13 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                     if (flags & SCAN_IRONWOLF_NAS_ONLY)
                     {
                         if (is_Ironwolf_NAS_Drive(&deviceList[devIter], false) == NON_IRONWOLF_NAS_DRIVE)
+                        {
+                            continue;
+                        }
+                    }
+                    if (flags & SCAN_SKYHAWK_EXOS_ONLY)
+                    {
+                        if (is_Skyhawk_Drive(&deviceList[devIter], false) == NON_SKYHAWK_DRIVE && !is_Exos_Drive(&deviceList[devIter], false))
                         {
                             continue;
                         }
@@ -2724,6 +2732,50 @@ bool is_Seagate_Model_Number_Vendor_H(tDevice *device, bool USBchildDrive)
     return isSeagateVendor;
 }
 
+bool is_Seagate_Vendor_K(tDevice* device)
+{
+    bool isVendorK = false;
+    //LaCie Vendor ID
+    if (is_LaCie(device))
+    {
+        //PID can be set to 1120, 1131, or 1132
+        if (device->drive_info.adapter_info.vendorIDValid && device->drive_info.adapter_info.vendorID == USB_Vendor_LaCie)
+        {
+            if (device->drive_info.adapter_info.productIDValid)
+            {
+                if (device->drive_info.adapter_info.productID == 0x1120 ||
+                    device->drive_info.adapter_info.productID == 0x1131 ||
+                    device->drive_info.adapter_info.productID == 0x1132
+                    )
+                {
+                    isVendorK = true;
+                }
+            }
+        }
+        else if (!device->drive_info.adapter_info.vendorIDValid)
+        {
+            //Already checked vendor ID, so check SCSI MN, then check ATA reported info
+            if (strcmp(device->drive_info.product_identification, "Rugged Mini SSD") == 0)
+            {
+                if (device->drive_info.bridge_info.isValid && strcmp(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") == 0)
+                {
+                    //Known FWRevs
+                    //W0519CR0
+                    //W0918AR0
+                    //W1005AM0
+                    if (strcmp(device->drive_info.bridge_info.childDriveFW, "W0519CR0") == 0 ||
+                        strcmp(device->drive_info.bridge_info.childDriveFW, "W0918AR0") == 0 ||
+                        strcmp(device->drive_info.bridge_info.childDriveFW, "W1005AM0") == 0)
+                    {
+                        isVendorK = true;
+                    }
+                }
+            }
+        }
+    }
+    return isVendorK;
+}
+
 eSeagateFamily is_Seagate_Family(tDevice *device)
 {
     eSeagateFamily isSeagateFamily = NON_SEAGATE;
@@ -2820,6 +2872,10 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
                 if (is_Seagate_Model_Number_Vendor_F(device, true))
                 {
                     isSeagateFamily = SEAGATE_VENDOR_F;
+                }
+                else if (is_Seagate_Vendor_K(device))
+                {
+                    isSeagateFamily = SEAGATE_VENDOR_K;
                 }
             }
             break;
@@ -4928,6 +4984,30 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
+            case 0x1120:
+            case 0x1131:
+            case 0x1132://LaCie Rugged Mini SSD
+                //NOTE: Only ATA passthrough for Identify and SMART are available.
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 15;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                //mode pages are supported, but sometimes it returns an incorrect page
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;//This probably has more to do with only supporting Identify and SMART commands
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 512;//setting single sectors since this only does ID and SMART
+                break;
             default:
                 //setup some defaults that will most likely work for most current products
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
@@ -5226,7 +5306,31 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
-                //NOTE: Add max passthrough transfer length hack set to 65536
+                device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = 65536;
+                break;
+            case 0x0567://Github user reported USB to SATA adapter
+                //rev 0x05h
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 11;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = false;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.reportAllOpCodes = true;//this may need better validation
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 1048576;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit = true;
+                device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition = true;//this does not crash the bridge, just useless as it's empty...just setting this as well for consistency since return reponse info works.
+                device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             case 0x0583://USB to NVMe adapter
                 //Rev 205h
@@ -5304,6 +5408,46 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             default: //unknown
+                break;
+            }
+            break;
+        case USB_Vendor_Realtek://0BDAh
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x9210://USB to SATA OR USB to NVMe
+                //This chip is interesting.
+                //SATA rules are straight forward.
+                //When using with an NVMe device, the same SCSI rules apply, however it will also respond to SAT ATA identify with NVMe MN, SN, FW being returned, but nothing else is valid.
+                //So somehow this needs to set a "possibly NVMe" flag somewhere.
+                //this is being setup as through it is an ATA drive for now since there is not other good way to figure out what it is at this point.
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 34;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;//this supports some mode pages, but unable to test for subpages, so considering them not supported at this time -TJE
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                //NOTE: Security protocol is supported according to online web page. I do not have a device supporting security to test against at this time to see if INC512 is needed/required -TJE
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                //device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                //Check condition will always return RTFRs, HOWEVER on data transfers it returns empty data. Seems like a device bug. Only use check condition for non-data commands-TJE
+                //NOTE: It may be interesting to try an SCT command (write log) to see how check condition works, but at least with reads, this is a no-go
+                device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//seems to make no difference whether this is used or not. Can switch this to "limited use" if we need to
+                device->drive_info.passThroughHacks.ataPTHacks.singleSectorPIOOnly = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 4096;
+                device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe = true;//no way to tell at this point. Will need to make full determination in the fill_ATA_Info function
+                device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands = true;//probably not needed, but after what I saw testing this, it can't hurt to set this
+                break;
+            default://unknown;
                 break;
             }
             break;
@@ -5783,6 +5927,80 @@ static bool set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
     return passthroughHacksSet;
 }
 
+//possible places to lookup vendor IDs:
+//https://pcisig.com/membership/member-companies?combine=&order=field_vendor_id&sort=asc
+//https://www.pcilookup.com/
+//https://pci-ids.ucw.cz/
+static bool set_PCI_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
+{
+    bool passthroughHacksSet = false;
+    //TODO: Currently this is setting SCSI/ATA hacks as needed for the devices below.
+    //      This may be ok in general, but may get confusing since this isn't necessarily the target drive having an issue, but the
+    //      hardware controller that a drive is attached to having some other functionality.
+    //      The hacks list started as specific to USB, but needs to handle some things for PCIe controllers too.
+    if (device->drive_info.adapter_info.vendorIDValid)
+    {
+        switch (device->drive_info.adapter_info.vendorID)
+        {
+        case PCI_VENDOR_RED_HAT:
+            //note: these all appear to be virtual devices from what I can find online.
+            //Only handling those that this software is likely to encounter for now.
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x0008://reported in openSeaChest#47
+                //TODO: This seemed to only allow identify and smart through. May need a more thorough test for this in the future, but for now listing the ata28bit only hack
+                //      it is possible that even withing the A1h CDB other ATA commands will also be filtered and additional hacks will be required.
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly = true;
+                break;
+            default:
+                break;
+            }
+            break;
+        case PCI_VENDOR_MICROCHIP://PMC?
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x8070:
+                //reported from a Linux box running the following driver:
+                // driver info--
+                //    driver name : pm80xx
+                //    driver version string : 0.1.37 / 1.3.01 - 1 - bn_1.
+                //    major ver : 0
+                //    minor ver : 1
+                //    revision : 37
+                //Unknown if these hacks are specific to the controller or the driver, but for now applying everywhere when it is detected
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;//This command seems to abort or cause an internal error for some reason, so turning it off.
+                //none of the report supported operation codes modes work on this controller.
+                //I do not have one of these to do a full test so this workaround list is definitely incomplete.
+                device->drive_info.passThroughHacks.scsiHacks.writeBufferNoDeferredDownload = true;
+                //This controller/driver absolutely monitors the mode field in write buffer and blocks the deferred download modes, but regular old segmented works fine.-TJE
+                break;
+            default:
+                break;
+            }
+            break;
+        //case PCI_VENDOR_ADAPTEC_2:
+        //    switch (device->drive_info.adapter_info.productID)
+        //    {
+        //    case 0x028B://6-series SAS
+        //    case 0x028C://7-series SAS
+        //    case 0x028D://8-series SAS
+        //        //Adaptec controllers in 8 series definitely require ATA passthrough commands to use DMA mode instead of UDMA mode. Have seen this on the ASR8405
+        //        //Right now this is handled with retries in other parts of the code
+        //        //We should run a more thorough test before turning on hacks here to make sure it covers all capabilities.-TJE
+        //        //Another known SAT thing is that soft-reset works, but hard reset does not.
+        //        break;
+        //    }
+        //    break;
+        default:
+            //unknown vendor ID or nothing necessary
+            break;
+        }
+    }
+    return passthroughHacksSet;
+}
+
 bool setup_Passthrough_Hacks_By_ID(tDevice *device)
 {
     bool success = false;
@@ -5793,6 +6011,7 @@ bool setup_Passthrough_Hacks_By_ID(tDevice *device)
         success = set_USB_Passthrough_Hacks_By_PID_and_VID(device);
         break;
     case ADAPTER_INFO_PCI://TODO: PCI device hacks based on known controllers with workarounds or other changes we can make.
+        success = set_PCI_Passthrough_Hacks_By_PID_and_VID(device);
         break;
     case ADAPTER_INFO_IEEE1394:
         success = set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(device);

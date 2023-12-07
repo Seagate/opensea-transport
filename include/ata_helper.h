@@ -24,6 +24,7 @@ extern "C"
     #define ATA_STATUS_BIT_BUSY BIT7 //if this is set, all other bits are invalid and not to be used
     #define ATA_STATUS_BIT_READY BIT6
     #define ATA_STATUS_BIT_DEVICE_FAULT BIT5 //also called the write fault bit
+    #define ATA_STATUS_BIT_STREAM_ERROR BIT5
     #define ATA_STATUS_BIT_SEEK_COMPLETE BIT4 //old/obsolete and unused. Old drives still set it for backwards compatability
     #define ATA_STATUS_BIT_SERVICE BIT4 //DMA Queued commands. Tagged command queuing AFAIK
     #define ATA_STATUS_BIT_DEFERRED_WRITE_ERROR BIT4 //write stream commands
@@ -32,9 +33,10 @@ extern "C"
     #define ATA_STATUS_BIT_ALIGNMENT_ERROR BIT2
     #define ATA_STATUS_BIT_INDEX BIT1 //old/obsolete. flips state with each drive revolution
     #define ATA_STATUS_BIT_SENSE_DATA_AVAILABLE BIT1 //set when sense data is available for the command
+    #define ATA_STATUS_BIT_CHECK_CONDITION BIT0 //ATAPI
     #define ATA_STATUS_BIT_ERROR BIT0 //an error occured
 
-    #define ATA_ERROR_BIT_BAD_BLOCK BIT7 //old/obsolete
+    #define ATA_ERROR_BIT_BAD_BLOCK BIT7 //old/obsolete - ATA-1
     #define ATA_ERROR_BIT_INTERFACE_CRC BIT7
     #define ATA_ERROR_BIT_UNCORRECTABLE_DATA BIT6
     #define ATA_ERROR_BIT_WRITE_PROTECTED BIT6 //old/obsolete - removable medium
@@ -43,10 +45,15 @@ extern "C"
     #define ATA_ERROR_BIT_MEDIA_CHANGE_REQUEST BIT3
     #define ATA_ERROR_BIT_ABORT BIT2
     #define ATA_ERROR_BIT_TRACK_ZERO_NOT_FOUND BIT1 //old/obsolete
-    #define ATA_ERROR_BIT_END_OF_MEDIA BIT1
+    #define ATA_ERROR_BIT_END_OF_MEDIA BIT1 //ATAPI
     #define ATA_ERROR_BIT_NO_MEDIA BIT1 //old/obsolete - removable medium
+    #define ATA_ERROR_BIT_INSUFFICIENT_LBA_RANGE_ENTRIES_REMAINING BIT1 //add LBAs to NV cache pinned set command only - ranges
     #define ATA_ERROR_BIT_ADDRESS_MARK_NOT_FOUND BIT0 //old/obsolete
     #define ATA_ERROR_BIT_COMMAND_COMPLETION_TIME_OUT BIT0 //streaming feature
+    #define ATAPI_ERROR_BIT_ILLEGAL_LENGTH_INDICATOR BIT0
+    #define ATAPI_ERROR_BIT_MEDIA_ERROR BIT0
+    #define ATA_ERROR_BIT_ATTEMPTED_PARTIAL_RANGE_REMOVAL BIT0 //remove LBAs from NV cache pinned set command only
+    #define ATA_ERROR_BIT_INSUFFICIENT_NV_CACHE_SPACE BIT0 //add LBAs to NV cache pinned set command only
 
     #define ATA_DL_MICROCODE_OFFSET_SAVE (0x03)
     #define ATA_DL_MICROCODE_SAVE (0x07)
@@ -55,7 +62,17 @@ extern "C"
 
     #define LBA_MODE_BIT BIT6 //Set this in the device/head register to set LBA mode.
     #define DEVICE_SELECT_BIT BIT4 //On PATA, this is to select drive 1. Device/Head register
-    #define DEVICE_REG_BACKWARDS_COMPATIBLE_BITS 0xA0 //device/head in ATA & ATA3 say these bits should be set on every command. New specs mark these obsolete in commands that are from old specs. New commands may use these for other purposes.
+    #define DEVICE_REG_BACKWARDS_COMPATIBLE_BITS 0xA0 
+            //device/head in ATA & ATA3 say bits 7&5 should be set on every command. 
+            //New specs mark these obsolete in commands that are from old specs. 
+            //New commands may use these for other purposes.
+            //Device/Head pre-ATA standardization called this the Sector Size, Device, Head register
+            //bit7 was defined as the ECC bit. With this set to zero it used CRC
+            //bits 6:5 were the sector size. 11b=128B, 00b=256B, 01b=512B, 10b=1024B.
+            //With standardization forcing these bits to A0 sets ECC and 512B sector size, which is all that was likely used in the real-world
+            //For backwards compatibility with these really old devices, it is recommended to set this register to these values.
+            //This is not necessary for SATA drives unless they are aborting commands for no other reason.
+            //Setting these bits may not be necessary for most PATA devices that conform to ATA standards
 
     //This is a basic validity indicator for a given ATA identify word. Checks that it is non-zero and not FFFFh
     OPENSEA_TRANSPORT_API bool is_ATA_Identify_Word_Valid(uint16_t word);
@@ -132,6 +149,9 @@ extern "C"
     #define ATA_SMART_STATUS_FLAG_ERROR_RATE BIT3
     #define ATA_SMART_STATUS_FLAG_EVENT_COUNT BIT4
     #define ATA_SMART_STATUS_FLAG_SELF_PRESERVING BIT5
+
+    #define ATA_SMART_ATTRIBUTE_NOMINAL_COMMON_START 0x64 //most attributes start at 100, but there are occasionally some that don't
+    #define ATA_SMART_ATTRIBUTE_WORST_COMMON_START 0xFD //It's fairly common for a worst-ever to start at this highest possible value then move down as data is collected.
 
     #define ATA_SMART_THRESHOLD_ALWAYS_PASSING 0x00
     #define ATA_SMART_THRESHOLD_MINIMUM 0x01
@@ -563,9 +583,10 @@ extern "C"
         bool                 isWarrantied;
     } ataSMARTValue;
 
+#define ATA_SMART_LOG_MAX_ATTRIBUTES (256)
     typedef struct _ataSMARTLog 
     {
-        ataSMARTValue    attributes[256];//attribute numbers 1 - 255 are valid (check valid bit to make sure it's a used attribute)
+        ataSMARTValue    attributes[ATA_SMART_LOG_MAX_ATTRIBUTES];//attribute numbers 1 - 255 are valid (check valid bit to make sure it's a used attribute)
     } ataSMARTLog;
 
     typedef enum _eNVCacheFeatures {

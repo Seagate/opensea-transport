@@ -40,7 +40,7 @@ extern bool validate_Device_Struct(versionBlock);
 
 
 //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
-bool os_Is_Infinite_Timeout_Supported()
+bool os_Is_Infinite_Timeout_Supported(void)
 {
     return true;
 }
@@ -516,8 +516,7 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
         ataio = &ccb->ataio;
 
         /* cam_getccb cleans up the header, caller has to zero the payload */
-        bzero(&(&ccb->ccb_h)[1],
-              sizeof(struct ccb_ataio) - sizeof(struct ccb_hdr));
+        CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
 
         switch (scsiIoCtx->direction)
         {
@@ -534,12 +533,6 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
         case XFER_DATA_IN_OUT:
             direction = CAM_DIR_BOTH;
             break;
-        default:
-            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-            {
-                printf("%s Didn't understand I/O direction\n", __FUNCTION__);
-            }
-            return -1;
         }
 
         uint32_t camTimeout = scsiIoCtx->timeout;
@@ -588,26 +581,23 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
 
         /* Disable freezing the device queue */
         ccb->ccb_h.flags |= CAM_DEV_QFRZDIS;
-        /* We set this flag here because cam_fill_atatio clears the flags*/
-        if (scsiIoCtx->direction == XFER_NO_DATA)
-        {
-            ccb->ataio.cmd.flags |= CAM_ATAIO_NEEDRESULT;
-        }
 
         if (scsiIoCtx->pAtaCmdOpts != NULL)
         {
             bzero(&ataio->cmd, sizeof(ataio->cmd));
             if (scsiIoCtx->pAtaCmdOpts->commandType == ATA_CMD_TYPE_TASKFILE)
             {
-                //ataio->cmd.flags = 0;
                 if (scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_DMA ||
                     scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_DMA_QUE ||
                     scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_PACKET_DMA ||
-                    scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_DMA_FPDMA ||
                     scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_UDMA
                     )
                 {
                     ataio->cmd.flags |= CAM_ATAIO_DMA;
+                }
+                else if (scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_DMA_FPDMA)
+                {
+                    ataio->cmd.flags |= CAM_ATAIO_FPDMA;
                 }
                 ataio->cmd.command = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus;
                 ataio->cmd.features = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature;
@@ -623,11 +613,14 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                 if (scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_DMA ||
                     scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_DMA_QUE ||
                     scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_PACKET_DMA ||
-                    scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_DMA_FPDMA ||
                     scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_UDMA
                     )
                 {
                     ataio->cmd.flags |= CAM_ATAIO_DMA;
+                }
+                else if (scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_DMA_FPDMA)
+                {
+                    ataio->cmd.flags |= CAM_ATAIO_FPDMA;
                 }
                 ataio->cmd.command = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus;
                 ataio->cmd.lba_low = scsiIoCtx->pAtaCmdOpts->tfr.LbaLow;
@@ -641,6 +634,61 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                 ataio->cmd.features_exp = scsiIoCtx->pAtaCmdOpts->tfr.Feature48;
                 ataio->cmd.sector_count = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount;
                 ataio->cmd.sector_count_exp = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount48;
+            }
+            else if (scsiIoCtx->pAtaCmdOpts->commandType == ATA_CMD_TYPE_COMPLETE_TASKFILE)
+            {
+                #if defined (ATA_FLAG_AUX) || defined (ATA_FLAG_ICC)
+                    ataio->cmd.flags |= CAM_ATAIO_48BIT;
+                    if (scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_DMA ||
+                        scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_DMA_QUE ||
+                        scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_PACKET_DMA ||
+                        scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_UDMA
+                        )
+                    {
+                        ataio->cmd.flags |= CAM_ATAIO_DMA;
+                    }
+                    else if (scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_DMA_FPDMA)
+                    {
+                        ataio->cmd.flags |= CAM_ATAIO_FPDMA;
+                    }
+                    ataio->cmd.command = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus;
+                    ataio->cmd.lba_low = scsiIoCtx->pAtaCmdOpts->tfr.LbaLow;
+                    ataio->cmd.lba_mid = scsiIoCtx->pAtaCmdOpts->tfr.LbaMid;
+                    ataio->cmd.lba_high = scsiIoCtx->pAtaCmdOpts->tfr.LbaHi;
+                    ataio->cmd.device = scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead;
+                    ataio->cmd.lba_low_exp = scsiIoCtx->pAtaCmdOpts->tfr.LbaLow48;
+                    ataio->cmd.lba_mid_exp = scsiIoCtx->pAtaCmdOpts->tfr.LbaMid48;
+                    ataio->cmd.lba_high_exp = scsiIoCtx->pAtaCmdOpts->tfr.LbaHi48;
+                    ataio->cmd.features = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature;
+                    ataio->cmd.features_exp = scsiIoCtx->pAtaCmdOpts->tfr.Feature48;
+                    ataio->cmd.sector_count = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount;
+                    ataio->cmd.sector_count_exp = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount48;
+                    if (scsiIoCtx->pAtaCmdOpts->tfr.icc)
+                    {
+                        #if defined (ATA_FLAG_ICC)
+                            //can set ICC
+                            ataio->ata_flags |= ATA_FLAG_ICC;
+                            ataio->icc = scsiIoCtx->pAtaCmdOpts->tfr.icc;
+                        #else
+                            //cannot set ICC field
+                            ret = OS_COMMAND_NOT_AVAILABLE;
+                        #endif //ATA_FLAG_ICC 
+                    }
+                    if (scsiIoCtx->pAtaCmdOpts->tfr.aux1 || scsiIoCtx->pAtaCmdOpts->tfr.aux2 || scsiIoCtx->pAtaCmdOpts->tfr.aux3 || scsiIoCtx->pAtaCmdOpts->tfr.aux4)
+                    {
+                        #if defined (ATA_FLAG_AUX)
+                            //can set AUX
+                            ataio->ata_flags |= ATA_FLAG_AUX;
+                            ataio->aux = M_BytesTo4ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.aux4, scsiIoCtx->pAtaCmdOpts->tfr.aux3, scsiIoCtx->pAtaCmdOpts->tfr.aux2, scsiIoCtx->pAtaCmdOpts->tfr.aux1);
+                        #else
+                            //cannot set AUX field
+                            ret = OS_COMMAND_NOT_AVAILABLE;
+                        #endif //ATA_FLAG_ICC 
+                    }
+                #else /* !AUX || !ICC*/
+                    //AUX and ICC are not available to be set in this version of freebsd
+                    ret = OS_COMMAND_NOT_AVAILABLE;
+                #endif /* ATA_FLAG_AUX || ATA_FLAG_ICC */
             }
             else
             {
@@ -662,16 +710,20 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
 
                 printf("\tData Ptr %p, xfer len %d\n", ataio->data_ptr, ataio->dxfer_len);
                 #endif
+                /* Always asking for the results at this time. */
+                ccb->ataio.cmd.flags |= CAM_ATAIO_NEEDRESULT;
                 start_Timer(&commandTimer);
                 ret = cam_send_ccb(scsiIoCtx->device->os_info.cam_dev, ccb);
                 stop_Timer(&commandTimer);
                 if (ret < 0)
                 {
                     perror("error sending ATA I/O");
+                    cam_error_print(scsiIoCtx->device->os_info.cam_dev, ccb, CAM_ESF_ALL /*error string flags*/, CAM_EPF_ALL, stdout);
                     ret = FAILURE;
                 }
                 else
                 {
+                    //cam_error_print(scsiIoCtx->device->os_info.cam_dev, ccb, CAM_ESF_ALL /*error string flags*/, CAM_EPF_ALL, stdout);
                     if ((ccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP)
                     {
                         if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_ATA_STATUS_ERROR)
@@ -734,10 +786,13 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                             {
                                 scsiIoCtx->psense[10] |= 0x01;//set the extend bit
                                 //fill in the ext registers while we're in this if...no need for another one
-                                scsiIoCtx->psense[12] = ataio->res.sector_count_exp;// Sector Count Ext
-                                scsiIoCtx->psense[14] = ataio->res.lba_low_exp;// LBA Lo Ext
-                                scsiIoCtx->psense[16] = ataio->res.lba_mid_exp;// LBA Mid Ext
-                                scsiIoCtx->psense[18] = ataio->res.lba_high_exp;// LBA Hi
+                                if (ataio->res.flags & CAM_ATAIO_48BIT)/* check this flag to make sure we read valid data */
+                                {
+                                    scsiIoCtx->psense[12] = ataio->res.sector_count_exp;// Sector Count Ext
+                                    scsiIoCtx->psense[14] = ataio->res.lba_low_exp;// LBA Lo Ext
+                                    scsiIoCtx->psense[16] = ataio->res.lba_mid_exp;// LBA Mid Ext
+                                    scsiIoCtx->psense[18] = ataio->res.lba_high_exp;// LBA Hi
+                                }
                             }
                             //fill in the returned 28bit registers
                             scsiIoCtx->psense[11] = ataio->res.error;// Error

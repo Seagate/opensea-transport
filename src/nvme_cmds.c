@@ -69,6 +69,12 @@ int nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
     else if (cmdCtx->commandType == NVM_CMD)
     {
         opcode = cmdCtx->cmd.nvmCmd.opcode;
+        #if defined (_DEBUG)
+        if (cmdCtx->cmd.nvmCmd.nsid != device->drive_info.namespaceID)
+        {
+            printf("WARNING: NVM Cmd NSID does not match expected value in tDevice\n");
+        }
+        #endif //_DEBUG
     }
     switch (M_GETBITRANGE(opcode, 1, 0))
     {
@@ -345,6 +351,7 @@ int nvme_Verify(tDevice* device, uint64_t startingLBA, bool limitedRetry, bool f
     memset(&nvmCommand, 0, sizeof(nvmeCmdCtx));
     nvmCommand.commandType = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_VERIFY;
+    nvmCommand.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
     nvmCommand.commandDirection = XFER_NO_DATA;
     nvmCommand.ptrData = NULL;
     nvmCommand.dataSize = 0;
@@ -379,6 +386,7 @@ int nvme_Write_Uncorrectable(tDevice *device, uint64_t startingLBA, uint16_t num
     memset(&nvmCommand, 0, sizeof(nvmeCmdCtx));
     nvmCommand.commandType = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_WRITE_UNCOR;
+    nvmCommand.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
     nvmCommand.commandDirection = XFER_NO_DATA;
     nvmCommand.ptrData = NULL;
     nvmCommand.dataSize = 0;
@@ -408,6 +416,8 @@ int nvme_Dataset_Management(tDevice *device, uint8_t numberOfRanges, bool deallo
     nvmCommand.commandType = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_DATA_SET_MANAGEMENT;
     nvmCommand.commandDirection = XFER_DATA_OUT;
+    nvmCommand.cmd.nvmCmd.prp1 = C_CAST(uintptr_t, ptrData);
+    nvmCommand.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
     nvmCommand.ptrData = ptrData;
     nvmCommand.dataSize = dataLength;
     nvmCommand.device = device;
@@ -446,6 +456,7 @@ int nvme_Flush(tDevice *device)
     memset(&nvmCommand, 0, sizeof(nvmeCmdCtx));
     nvmCommand.commandType = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_FLUSH;
+    nvmCommand.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
     nvmCommand.commandDirection = XFER_NO_DATA;
     nvmCommand.ptrData = NULL;
     nvmCommand.dataSize = 0;
@@ -472,7 +483,9 @@ int nvme_Write(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBl
     memset(&nvmCommand, 0, sizeof(nvmeCmdCtx));
     nvmCommand.commandType = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_WRITE;
+    nvmCommand.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
     nvmCommand.commandDirection = XFER_DATA_OUT;
+    nvmCommand.cmd.nvmCmd.prp1 = C_CAST(uintptr_t, ptrData);
     nvmCommand.ptrData = ptrData;
     nvmCommand.dataSize = dataLength;
     nvmCommand.device = device;
@@ -512,8 +525,10 @@ int nvme_Read(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlo
     nvmeCmdCtx nvmCommand;
     memset(&nvmCommand, 0, sizeof(nvmeCmdCtx));
     nvmCommand.commandType = NVM_CMD;
+    nvmCommand.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_READ;
     nvmCommand.commandDirection = XFER_DATA_IN;
+    nvmCommand.cmd.nvmCmd.prp1 = C_CAST(uintptr_t, ptrData);
     nvmCommand.ptrData = ptrData;
     nvmCommand.dataSize = dataLength;
     nvmCommand.device = device;
@@ -553,7 +568,9 @@ int nvme_Compare(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogical
     memset(&nvmCommand, 0, sizeof(nvmeCmdCtx));
     nvmCommand.commandType = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_COMPARE;
+    nvmCommand.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
     nvmCommand.commandDirection = XFER_DATA_OUT;
+    nvmCommand.cmd.nvmCmd.prp1 = C_CAST(uintptr_t, ptrData);
     nvmCommand.ptrData = ptrData;
     nvmCommand.dataSize = dataLength;
     nvmCommand.device = device;
@@ -692,8 +709,10 @@ int nvme_Get_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
     getFeatures.cmd.adminCmd.opcode = NVME_ADMIN_CMD_GET_FEATURES;
     getFeatures.commandType = NVM_ADMIN_CMD;
     getFeatures.commandDirection = XFER_DATA_IN;
-    getFeatures.cmd.adminCmd.addr = featCmdOpts->prp1; // TODO: dataLen? 
-    getFeatures.cmd.adminCmd.metadata = featCmdOpts->prp2; 
+    getFeatures.cmd.adminCmd.addr = C_CAST(uintptr_t, featCmdOpts->dataPtr);
+    getFeatures.ptrData = featCmdOpts->dataPtr;
+    getFeatures.dataSize = featCmdOpts->dataLength;
+    //getFeatures.cmd.adminCmd.metadata = featCmdOpts->prp2; 
     //getFeatures.dataSize = featCmdOpts.dataSize; //TODO: allow this since a get features could return other data
     getFeatures.cmd.adminCmd.nsid = featCmdOpts->nsid;
 
@@ -737,9 +756,9 @@ int nvme_Set_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
     setFeatures.cmd.adminCmd.opcode = NVME_ADMIN_CMD_SET_FEATURES;
     setFeatures.commandType = NVM_ADMIN_CMD;
     setFeatures.commandDirection = XFER_DATA_OUT;
-    setFeatures.cmd.adminCmd.addr = featCmdOpts->prp1; 
-    //setFeatures.dataSize = featCmdOpts.dataSize;// TODO: dataLen? 
-    setFeatures.cmd.adminCmd.metadata = featCmdOpts->prp2; 
+    setFeatures.cmd.adminCmd.addr = C_CAST(uintptr_t, featCmdOpts->dataPtr); 
+    setFeatures.ptrData = featCmdOpts->dataPtr;
+    setFeatures.dataSize = featCmdOpts->dataLength;
 
     dWord10 = featCmdOpts->sv << 31; 
     dWord10 |= featCmdOpts->fid;

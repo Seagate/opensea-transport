@@ -95,6 +95,11 @@ extern "C"
     //IF this structure is used in another, make sure it begins at a MINIMUM of a 2 byte offset for correct addressing, however 8 byte is recommended!
     //Previously, this was packed and aligned with attributes/pragmas to the compiler, but those were removed after properly fixing this structure so that those extra instructions aren't needed.
     //This prevents potential misaligned addresses on some CPU architectures that require special pointer alignment for data access. This does not affect x86, but does for some like SPARC and possibly ARM.
+
+#define ATA_IDENTIFY_SN_LENGTH (20)
+#define ATA_IDENTIFY_MN_LENGTH (40)
+#define ATA_IDENTIFY_FW_LENGTH (8)
+
     typedef struct _tAtaIdentifyData
     {
         uint16_t Word000;
@@ -107,14 +112,58 @@ extern "C"
         uint16_t Word007;
         uint16_t Word008;
         uint16_t Word009;
-
-        uint8_t  SerNum[20];
-
+        union {
+            uint8_t  SerNum[ATA_IDENTIFY_SN_LENGTH];
+            struct {
+                uint16_t Word010;
+                uint16_t Word011;
+                uint16_t Word012;
+                uint16_t Word013;
+                uint16_t Word014;
+                uint16_t Word015;
+                uint16_t Word016;
+                uint16_t Word017;
+                uint16_t Word018;
+                uint16_t Word019;
+            };//annonymous to make sure all words are easily accessed. If this creates too many warnings, we can give it the name idSNwords or something-TJE
+        };//annonymous to make access to SN or SN words easier
         uint16_t Word020;
         uint16_t Word021;
         uint16_t Word022;
-        uint8_t  FirmVer[8];        // 23 24 25 26
-        uint8_t  ModelNum[40];      // 27 ... 46
+        union {
+            uint8_t  FirmVer[ATA_IDENTIFY_FW_LENGTH];        // 23 24 25 26
+            struct {
+                uint16_t Word023;
+                uint16_t Word024;
+                uint16_t Word025;
+                uint16_t Word026;
+            };//annonymous to make sure all words are easily accessed. If this creates too many warnings, we can give it the name idFWwords or something-TJE
+        };//annonymous to make access to FW or FW words easier
+        union {
+            uint8_t  ModelNum[ATA_IDENTIFY_MN_LENGTH];      // 27 ... 46
+            struct {
+                uint16_t Word027;
+                uint16_t Word028;
+                uint16_t Word029;
+                uint16_t Word030;
+                uint16_t Word031;
+                uint16_t Word032;
+                uint16_t Word033;
+                uint16_t Word034;
+                uint16_t Word035;
+                uint16_t Word036;
+                uint16_t Word037;
+                uint16_t Word038;
+                uint16_t Word039;
+                uint16_t Word040;
+                uint16_t Word041;
+                uint16_t Word042;
+                uint16_t Word043;
+                uint16_t Word044;
+                uint16_t Word045;
+                uint16_t Word046;
+            };//annonymous to make sure all words are easily accessed. If this creates too many warnings, we can give it the name idMNwords or something-TJE
+        };//annonymous to make access to MN or MN words easier
         uint16_t Word047;
         uint16_t Word048;
         uint16_t Word049;
@@ -347,9 +396,6 @@ extern "C"
         uint16_t Word255;
     }tAtaIdentifyData, *ptAtaIdentifyData;
 
-    /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif*/
     //All of the NVME structs in here were moved here to fix a circular include issue
     typedef struct _nvmeIDPowerState {
         uint16_t            maxPower;   /* centiwatts */
@@ -367,23 +413,19 @@ extern "C"
         uint16_t            activePower;
         uint8_t             activeWorkScale;
         uint8_t             rsvd23[9];
-    //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDPowerState;
-    /*#pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeIDPowerState;
-    #endif*/
 
-    /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif*/
+#define NVME_CTRL_IDENTIFY_SN_LEN (20)
+#define NVME_CTRL_IDENTIFY_MN_LEN (40)
+#define NVME_CTRL_IDENTIFY_FW_LEN (8)
+
     typedef struct _nvmeIDCtrl {
         //controller capabilities and features
         uint16_t            vid;
         uint16_t            ssvid;
-        char                sn[20];
-        char                mn[40];
-        char                fr[8];
+        char                sn[NVME_CTRL_IDENTIFY_SN_LEN];
+        char                mn[NVME_CTRL_IDENTIFY_MN_LEN];
+        char                fr[NVME_CTRL_IDENTIFY_FW_LEN];
         uint8_t             rab;
         uint8_t             ieee[3];
         uint8_t             cmic;
@@ -470,30 +512,14 @@ extern "C"
         uint8_t             nvmeOverFabrics[256];
         nvmeIDPowerState    psd[32];
         uint8_t             vs[1024];
-    //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDCtrl;
-    /*#pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeIDCtrl;
-    #endif*/
-
-    /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif*/
+    
     typedef struct _nvmeLBAF {
         uint16_t            ms;
         uint8_t             lbaDS;
         uint8_t             rp;
-    //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeLBAF;
-    /*#pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeLBAF;
-    #endif*/
 
-    /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif*/
     typedef struct _nvmeIDNameSpaces {
         uint64_t            nsze;
         uint64_t            ncap;
@@ -534,25 +560,12 @@ extern "C"
         uint8_t             eui64[8];
         nvmeLBAF            lbaf[64];
         uint8_t             vs[3712];
-    //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIDNameSpaces;
-    /*#pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeIDNameSpaces;
-    #endif*/
 
-    /*#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif*/
     typedef struct _nvmeIdentifyData {
         nvmeIDCtrl          ctrl;
         nvmeIDNameSpaces    ns; // Currently we only support 1 NS - Revisit.  
-    //#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }nvmeIdentifyData;
-    /*#pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeIdentifyData;
-    #endif*/
 
     typedef struct _ataReturnTFRs
     {
@@ -573,18 +586,10 @@ extern "C"
     // Defined by SPC3 as the maximum sense length
     #define SPC3_SENSE_LEN  UINT8_C(252)
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push,1)
-    #endif
     typedef struct _tVpdData {
         uint8_t  inquiryData[96]; //INQ_RETURN_DATA_LENGTH
         uint8_t  vpdPage83[64];
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }tVpdData;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) tVpdData;
-    #endif
 
     typedef enum _eMediaType {
         MEDIA_HDD       = 0,    // rotating media, HDD (ata or scsi)
@@ -739,7 +744,9 @@ extern "C"
         uint8_t forceSATCDBLength;//set this to 12, 16, or 32 to force a specific CDB length to use. If you set 12, but send an extended command 16B will be used if any extended registers are set. Same with 32B will be used if ICC or AUX are set.
         bool sataReadLogDMASameAsPIO; //not all SATA drives allow reading SATA specific pages with the DMA command. This specifies that it is allowed. (NCQ error log, phy event counters log, etc)
         bool noNeedLegacyDeviceHeadCompatBits; //original ATA spec required bits 7 and 5 to be set to 1. This was removed a long time ago, but can affect just about any pata device. This helps change when to set them as they are not needed on SATA (or shouldn't be)
-        uint8_t reserved[7];//reserved padding to keep 8 byte aligned structure for any necessary flags in the future.
+        bool dcoDMASupported;//DCO identify and DCO set DMA commands are supported.
+        bool hpaSecurityExtDMASupported;//HPA security extension DMA commands are supported.
+        uint8_t reserved[5];//reserved padding to keep 8 byte aligned structure for any necessary flags in the future.
     }ataOptions;
 
     typedef enum _eZonedDeviceType {
@@ -810,6 +817,7 @@ extern "C"
             PRESCSI2 - preSCSI2InqData (uncommon and the fields to specify offsets and lengths must be handled manually as the software cannot report this by itself)
             //NORWZ/NZTL - not currently handled. No zero length on read or write commands since adapter doesn't handle these properly.
             MXFER - maxTransferLength (bytes)
+            WBND - write buffer no deferred download. PMC specific workaround at this time.-TJE
             TODO: More hacks for strange adapters as needed can be added in here.
             */
             bool unitSNAvailable;//This means we can request this page even if other VPD pages don't work.
@@ -842,102 +850,102 @@ extern "C"
                 uint8_t serialNumberOffset;
                 uint8_t serialNumberLength;
             }scsiInq;
-            uint8_t reserved[6];//padd out above to 8 byte boundaries
+            bool writeBufferNoDeferredDownload;//Write buffer is filtered and does not allow updating firmware using deferred download. Specific to PMC 8070 for now
+            uint8_t reserved[5];//padd out above to 8 byte boundaries
             uint32_t maxTransferLength;//Maximum SCSI command transfer length in bytes. Mostly here for USB where translations aren't accurate or don't show this properly.
             bool noSATVPDPage;//when this is set, the SAT VPD is not available and should not be read, skipping ahead to instead directly trying a passthrough command
             uint8_t scsipadding[3];//padd 4 more bytes after transfer length to keep 8 byte boundaries
         }scsiHacks;
-        union {
-            //ATA Hacks refer to SAT translation issues or workarounds.
-            struct {
-                /*This comment breaks down each ATA passthrough hack based on the output short-names from openSeaChest_PassthroughTest
-                SCTSM - smartCommandTransportWithSMARTLogCommandsOnly
-                A1 - useA1SATPassthroughWheneverPossible (This hack is obsolete now as A1 is the default with an automatic software retry now)
-                NA1 - a1NeverSupported
-                A1EXT - a1ExtCommandWhenPossible
-                RS - returnResponseInfoSupported
-                RSTD - returnResponseInfoNeedsTDIR
-                RSIE - returnResponseIgnoreExtendBit
-                TSPIU - alwaysUseTPSIUForSATPassthrough
-                CHK - alwaysCheckConditionAvailable
-                FDMA - alwaysUseDMAInsteadOfUDMA
-                NDMA - dmaNotSupported
-                PARTRTFR - partialRTFRs
-                NORTFR - noRTFRsPossible
-                MMPIO - multiSectorPIOWithMultipleMode
-                SPIO - singleSectorPIOOnly
-                ATA28 - ata28BitOnly
-                NOMMPIO - noMultipleModeCommands
-                MPTXFER - maxTransferLength (bytes)
-                TPID - tpsiu on identify (limited use tpsiu)
-                NCHK - do not use check condition bit at all
-                CHKE - accepts the check condition bit, but returns empty data
-                //TODO: Add more hacks below as needed to workaround other weird behavior for ATA passthrough.
-                */
-                bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
-                //bool useA1SATPassthroughWheneverPossible;//For USB adapters that will only process 28bit commands with A1 and will NOT issue them with 85h
-                bool a1NeverSupported;//prevent retrying with 12B command since it isn't supported anyways.
-                bool a1ExtCommandWhenPossible;//If this is set, when issuing an EXT (48bit) command, use the A1 opcode as long as there are not ext registers that MUST be set to issue the command properly. This is a major hack for devices that don't support the 85h opcode.
-                bool returnResponseInfoSupported;//can send the SAT command to get response information for RTFRs
-                bool returnResponseInfoNeedsTDIR;//supports return response info, but must have T_DIR bit set for it to work properly
-                bool returnResponseIgnoreExtendBit;//Some devices support returning response info, but don't properly set the extend bit, so this basically means copy extended RTFRs anyways.
-                bool alwaysUseTPSIUForSATPassthrough;//some USBs do this better than others.
-                bool alwaysCheckConditionAvailable;//Not supported by all SAT translators. Don't set unless you know for sure!!!
-                bool alwaysUseDMAInsteadOfUDMA;//send commands with DMA mode instead of UDMA since the device doesn't support UDMA passthrough modes.
-                bool dmaNotSupported;//DMA passthrough is not available of any kind.
-                bool partialRTFRs;//This means only 28bit RTFRs will be able to be retrived by the device. This hack is more helpful for code trying different commands to filter capabilities than for trying to talk to the device.
-                bool noRTFRsPossible;//This means on command responses, we cannot get any return task file registers back from the device, so avoid commands that rely on this behavior
-                bool multiSectorPIOWithMultipleMode;//This means that multisector PIO works, BUT only when a set multiple mode command has been sent first and it is limited to the multiple mode.
-                bool singleSectorPIOOnly;//This means that the adapter only supports single sector PIO transfers
-                bool ata28BitOnly;//This is for some devices where the passthrough only allows a 28bit command through, even if the target drive is 48bit
-                bool noMultipleModeCommands;//This is to disable use read/write multiple commands if a bridge chip doesn't handle them correctly.
-                //uint8_t reserved[1];//padd byte for 8 byte boundary with above bools.
-                uint32_t maxTransferLength;//ATA Passthrough max transfer length in bytes. This may be different than the scsi translation max.
-                bool limitedUseTPSIU;//This might work for certain other commands, but only identify device has been found to show this. Using TPSIU on identify works as expected, but other data transfers abort this.
-                bool disableCheckCondition;//Set when check condition bit cannot be used because it causes problems
-                bool checkConditionEmpty;//Accepts the check condition bit, but returns empty data.
-                uint8_t atapadding[1];//padd 4 more bytes after transfer length to keep 8 byte boundaries
-            }ataPTHacks;
-            //NVMe Hacks
-            struct {
-                //This is here mostly for vendor unique NVMe passthrough capabilities.
-                //This structure may also be useful for OSs that have limited capabilities
-                /* This comment describes the translation of fields from openSeaChest_PassthroughTest to the hacks in the structure below
-                LIMPT - limitedPassthroughCapabilities
-                IDGLP - this means setting the bools for identify and getLotpage to true, but none of the other commands.
-                TODO: This part of the passthrough test is far from complete. Many of the listed commands are based on looking at limited IOCTLs in some OSs or other documentation that indicates not all commands
-                      are possible in a given OS. These were added to ensure it is easier to add support in the future, but are not fully implemented at this time. Some of the limited commands are setup properly in Windows 10 vs Windows PE/RE since
-                      there are different capabilities between these OS configurations as documented by MSFT.
-                */
-                bool limitedPassthroughCapabilities;//If this is set to true, this means only certain commands can be passed through to the device. (See below struct, only populated when this is true, otherwise assume all commands work)
-                struct { //This structure will hold which commands are available to passthrough if the above "limitedPassthroughCapabilities" boolean is true, otherwise this structure should be ignored.
-                    bool identifyGeneric;//can "generically" send any identify command with any cns value. This typically means any identify can be sent, not just controller and namespace. Basically CNS field is available.
-                    bool identifyController;
-                    bool identifyNamespace;
-                    bool getLogPage;
-                    bool format;
-                    bool getFeatures;
-                    bool firmwareDownload;
-                    bool firmwareCommit;
-                    bool vendorUnique;
-                    bool deviceSelfTest;
-                    bool sanitize;
-                    bool namespaceManagement;
-                    bool namespaceAttachment;
-                    bool setFeatures;//this does not have granularity for which features at this time!!!
-                    bool miSend;
-                    bool miReceive;
-                    bool securitySend;
-                    bool securityReceive;
-                    bool formatUserSecureErase;//format with ses set to user erase
-                    bool formatCryptoSecureErase;//format with ses set to crypto erase
-                    //TODO: As other passthroughs are learned with different capabilities, add other commands that ARE supported by them here so that other layers of code can know what capabilities a given device has.
-                }limitedCommandsSupported;
-                uint8_t reserved[3];//padd out above bools to 8 byte boundaries
-                uint32_t maxTransferLength;
-                uint32_t nvmepadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
-            }nvmePTHacks;
-        };//This is an annonymous union for nvme/ata passthrough hacks since a device will only ever have one or the other. This should be accessed based on passthrough type
+        //ATA Hacks refer to SAT translation issues or workarounds.
+        struct {
+            /*This comment breaks down each ATA passthrough hack based on the output short-names from openSeaChest_PassthroughTest
+            SCTSM - smartCommandTransportWithSMARTLogCommandsOnly
+            A1 - useA1SATPassthroughWheneverPossible (This hack is obsolete now as A1 is the default with an automatic software retry now)
+            NA1 - a1NeverSupported
+            A1EXT - a1ExtCommandWhenPossible
+            RS - returnResponseInfoSupported
+            RSTD - returnResponseInfoNeedsTDIR
+            RSIE - returnResponseIgnoreExtendBit
+            TSPIU - alwaysUseTPSIUForSATPassthrough
+            CHK - alwaysCheckConditionAvailable
+            FDMA - alwaysUseDMAInsteadOfUDMA
+            NDMA - dmaNotSupported
+            PARTRTFR - partialRTFRs
+            NORTFR - noRTFRsPossible
+            MMPIO - multiSectorPIOWithMultipleMode
+            SPIO - singleSectorPIOOnly
+            ATA28 - ata28BitOnly
+            NOMMPIO - noMultipleModeCommands
+            MPTXFER - maxTransferLength (bytes)
+            TPID - tpsiu on identify (limited use tpsiu)
+            NCHK - do not use check condition bit at all
+            CHKE - accepts the check condition bit, but returns empty data
+            ATANVEMU - ata/nvme emulation (likely only realtek's chip right now). If this is set, the NVMe emulation will set basically only MN, SN, FWrev. DMA not supported, etc. Basically need to treat this as SCSI except for reading this data at this time.-TJE
+            //TODO: Add more hacks below as needed to workaround other weird behavior for ATA passthrough.
+            */
+            bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
+            //bool useA1SATPassthroughWheneverPossible;//For USB adapters that will only process 28bit commands with A1 and will NOT issue them with 85h
+            bool a1NeverSupported;//prevent retrying with 12B command since it isn't supported anyways.
+            bool a1ExtCommandWhenPossible;//If this is set, when issuing an EXT (48bit) command, use the A1 opcode as long as there are not ext registers that MUST be set to issue the command properly. This is a major hack for devices that don't support the 85h opcode.
+            bool returnResponseInfoSupported;//can send the SAT command to get response information for RTFRs
+            bool returnResponseInfoNeedsTDIR;//supports return response info, but must have T_DIR bit set for it to work properly
+            bool returnResponseIgnoreExtendBit;//Some devices support returning response info, but don't properly set the extend bit, so this basically means copy extended RTFRs anyways.
+            bool alwaysUseTPSIUForSATPassthrough;//some USBs do this better than others.
+            bool alwaysCheckConditionAvailable;//Not supported by all SAT translators. Don't set unless you know for sure!!!
+            bool alwaysUseDMAInsteadOfUDMA;//send commands with DMA mode instead of UDMA since the device doesn't support UDMA passthrough modes.
+            bool dmaNotSupported;//DMA passthrough is not available of any kind.
+            bool partialRTFRs;//This means only 28bit RTFRs will be able to be retrived by the device. This hack is more helpful for code trying different commands to filter capabilities than for trying to talk to the device.
+            bool noRTFRsPossible;//This means on command responses, we cannot get any return task file registers back from the device, so avoid commands that rely on this behavior
+            bool multiSectorPIOWithMultipleMode;//This means that multisector PIO works, BUT only when a set multiple mode command has been sent first and it is limited to the multiple mode.
+            bool singleSectorPIOOnly;//This means that the adapter only supports single sector PIO transfers
+            bool ata28BitOnly;//This is for some devices where the passthrough only allows a 28bit command through, even if the target drive is 48bit
+            bool noMultipleModeCommands;//This is to disable use read/write multiple commands if a bridge chip doesn't handle them correctly.
+            //uint8_t reserved[1];//padd byte for 8 byte boundary with above bools.
+            uint32_t maxTransferLength;//ATA Passthrough max transfer length in bytes. This may be different than the scsi translation max.
+            bool limitedUseTPSIU;//This might work for certain other commands, but only identify device has been found to show this. Using TPSIU on identify works as expected, but other data transfers abort this.
+            bool disableCheckCondition;//Set when check condition bit cannot be used because it causes problems
+            bool checkConditionEmpty;//Accepts the check condition bit, but returns empty data.
+            bool possilbyEmulatedNVMe;//realtek's USB to M.2 adapter can do AHCI or NVMe. Since nothing changes in IDs and it emulates ATA identify data, need this to work around how it reports. -TJE
+        }ataPTHacks;
+        //NVMe Hacks
+        struct {
+            //This is here mostly for vendor unique NVMe passthrough capabilities.
+            //This structure may also be useful for OSs that have limited capabilities
+            /* This comment describes the translation of fields from openSeaChest_PassthroughTest to the hacks in the structure below
+            LIMPT - limitedPassthroughCapabilities
+            IDGLP - this means setting the bools for identify and getLotpage to true, but none of the other commands.
+            TODO: This part of the passthrough test is far from complete. Many of the listed commands are based on looking at limited IOCTLs in some OSs or other documentation that indicates not all commands
+                    are possible in a given OS. These were added to ensure it is easier to add support in the future, but are not fully implemented at this time. Some of the limited commands are setup properly in Windows 10 vs Windows PE/RE since
+                    there are different capabilities between these OS configurations as documented by MSFT.
+            */
+            bool limitedPassthroughCapabilities;//If this is set to true, this means only certain commands can be passed through to the device. (See below struct, only populated when this is true, otherwise assume all commands work)
+            struct { //This structure will hold which commands are available to passthrough if the above "limitedPassthroughCapabilities" boolean is true, otherwise this structure should be ignored.
+                bool identifyGeneric;//can "generically" send any identify command with any cns value. This typically means any identify can be sent, not just controller and namespace. Basically CNS field is available.
+                bool identifyController;
+                bool identifyNamespace;
+                bool getLogPage;
+                bool format;
+                bool getFeatures;
+                bool firmwareDownload;
+                bool firmwareCommit;
+                bool vendorUnique;
+                bool deviceSelfTest;
+                bool sanitize;
+                bool namespaceManagement;
+                bool namespaceAttachment;
+                bool setFeatures;//this does not have granularity for which features at this time!!!
+                bool miSend;
+                bool miReceive;
+                bool securitySend;
+                bool securityReceive;
+                bool formatUserSecureErase;//format with ses set to user erase
+                bool formatCryptoSecureErase;//format with ses set to crypto erase
+                //TODO: As other passthroughs are learned with different capabilities, add other commands that ARE supported by them here so that other layers of code can know what capabilities a given device has.
+            }limitedCommandsSupported;
+            uint8_t reserved[3];//padd out above bools to 8 byte boundaries
+            uint32_t maxTransferLength;
+            uint32_t nvmepadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
+        }nvmePTHacks;
         //TODO: Add more hacks and padd this structure
     }passthroughHacks;
 
@@ -1252,7 +1260,7 @@ extern "C"
 
     typedef int (*issue_io_func)( void * );
 
-    #define DEVICE_BLOCK_VERSION    (7)
+    #define DEVICE_BLOCK_VERSION    (8)
 
     // verification for compatibility checking
     typedef struct _versionBlock
@@ -1350,6 +1358,7 @@ extern "C"
         USB_Vendor_Silicon_Motion                       = 0x090C,
         USB_Vendor_Oxford                               = 0x0928,
         USB_Vendor_Seagate_RSS                          = 0x0BC2,
+        USB_Vendor_Realtek                              = 0x0BDA,
         USB_Vendor_Maxtor                               = 0x0D49,
         USB_Vendor_Phison                               = 0x0D7D,
         USB_Vendor_Initio                               = 0x13FD,
@@ -1400,6 +1409,7 @@ extern "C"
         PCI_VENDOR_ARECA            = 0x17D3,
         PCI_VENDOR_JMICRON          = 0x197B,
         PCI_VENDOR_AVAGO            = 0x1A1F,
+        PCI_VENDOR_RED_HAT          = 0x1AF4,
         PCI_VENDOR_ASMEDIA          = 0x1B21,
         PCI_VENDOR_MARVEL           = 0x1DCA,
         PCI_VENDOR_INTEL            = 0x8086,
@@ -1433,6 +1443,7 @@ extern "C"
         SEAGATE_VENDOR_G = BIT19,
         SEAGATE_VENDOR_H = BIT20,
         SEAGATE_VENDOR_SSD_PJ = BIT21, //Older enterprise NVMe drives that had some unique capabilities
+        SEAGATE_VENDOR_K = BIT22,
     }eSeagateFamily;
 
     //The scan flags should each be a bit in a 32bit unsigned integer.
@@ -1466,6 +1477,7 @@ extern "C"
     #define IGNORE_CSMI BIT25 //only works in Windows since Linux never adopted CSMI support. Set this to ignore CSMI devices, or compile opensea-transport without the ENABLE_CSMI preprocessor definition.
 #endif
     #define SCAN_IRONWOLF_NAS_ONLY BIT26
+    #define SCAN_SKYHAWK_EXOS_ONLY BIT27
 
     typedef enum _eZoneReportingOptions
     {
@@ -1880,6 +1892,7 @@ extern "C"
     OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive);
     OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_G(tDevice *device, bool USBchildDrive);
     OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_H(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Vendor_K(tDevice* device);
 
 
     typedef enum _eIronwolf_NAS_Drive

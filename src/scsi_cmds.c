@@ -2603,7 +2603,7 @@ int scsi_Start_Stop_Unit(tDevice *device, bool immediate, uint8_t powerCondition
     }
     if (start)
     {
-        cdb[5] |= BIT0;
+        cdb[4] |= BIT0;
     }
     cdb[5] = 0;//control
     
@@ -3279,10 +3279,10 @@ int scsi_Write_And_Verify_16(tDevice *device, uint8_t wrprotect, bool dpo, uint8
         cdb[1] |= BIT4;
     }
     cdb[1] |= (byteCheck & 0x03) << 1;
-    cdb[6] = M_Byte7(logicalBlockAddress);
-    cdb[6] = M_Byte6(logicalBlockAddress);
-    cdb[6] = M_Byte5(logicalBlockAddress);
-    cdb[6] = M_Byte4(logicalBlockAddress);
+    cdb[2] = M_Byte7(logicalBlockAddress);
+    cdb[3] = M_Byte6(logicalBlockAddress);
+    cdb[4] = M_Byte5(logicalBlockAddress);
+    cdb[5] = M_Byte4(logicalBlockAddress);
     cdb[6] = M_Byte3(logicalBlockAddress);
     cdb[7] = M_Byte2(logicalBlockAddress);
     cdb[8] = M_Byte1(logicalBlockAddress);

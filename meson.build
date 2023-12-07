@@ -27,7 +27,8 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-Wstrict-prototypes',
   '-Wmissing-declarations',
   '-Wmissing-prototypes',
-  '-Wchar-subscripts'
+  '-Wchar-subscripts',
+  '-Wundef'
   ]
 elif c.get_id().contains('msvc')
   #See here for enabling/disabling msvc warnings:
@@ -38,7 +39,7 @@ elif c.get_id().contains('msvc')
     #This is likely not an issue with meson, but matching VS project files for now
     '/wd4214', # nonstandard extension used : bit field types other than int
     '/wd4201', # nonstandard extension used : nameless struct/union
-    '/wd4668', # 'symbol' is not defined as a preprocessor macro, replacing with '0' for 'directives'
+    '/wd4668', # 'symbol' is not defined as a preprocessor macro, replacing with '0' for 'directives'. While like -Wundef, this creates too many warnings in system headers to use
     '/wd4820', # 'bytes' bytes padding added after construct 'member_name'
     '/wd4710', # 'function' : function not inlined
     #'/wd4255', # 'function' : no function prototype given: converting '()' to '(void)' #NOTE: Only needed for /Wall, otherwise enabling can be good-TJE
@@ -88,9 +89,13 @@ global_cpp_args = []
 #TODO: May be able to move to c11/gnu11 instead, but will need to do a lot of testing first
 #skipping sunos since this was a compatibility issue that was reported earlier. May be able to find a better way to handle this in the future.
 if not (target_machine.system() == 'sunos') and c.get_id().contains('gcc')
-  verStr = c.version().split('.')
-  if verStr.get(0).to_int() < 5
-      global_cpp_args += ['-std=gnu99']
+  if c.version().version_compare('<5.0')
+    if c.has_argument('-std=gnu99')
+      #Add this argument to the list since C99 is a minimum required C compiler standard
+      add_global_arguments('-std=gnu99', language: 'c',)
+    else
+      error('C99/GNU99 standard is required but was not able to be set!')
+    endif
   endif
 endif
 

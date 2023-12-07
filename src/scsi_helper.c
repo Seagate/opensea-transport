@@ -51,22 +51,24 @@ typedef struct _ascAscqRetDesc
     const char * desc;
 }ascAscqRetDesc;
 
+#define KEEP_SENSE_KEY_ERROR (-1)
+
 // DO NOT break the order of ASC and ASCQ below
 // for 3rd column (ret), -1 means to keep existing ret value, don't change it
-ascAscqRetDesc ascAscqLookUp[] = {
-    {0x00, 0x00, -1,                         "No Additional Sense Information"},
-    {0x00, 0x01, -1,                         "Filemark Detected"},
-    {0x00, 0x02, -1,                         "End-Of_Partition/Medium Detected"},
-    {0x00, 0x03, -1,                         "Setmark Detected"},
-    {0x00, 0x04, -1,                         "Beginning-Of-Partition/Medium Detected"},
-    {0x00, 0x05, -1,                         "End-Of-Data Detected"},
+static ascAscqRetDesc ascAscqLookUp[] = {
+    {0x00, 0x00, KEEP_SENSE_KEY_ERROR,       "No Additional Sense Information"},
+    {0x00, 0x01, KEEP_SENSE_KEY_ERROR,       "Filemark Detected"},
+    {0x00, 0x02, KEEP_SENSE_KEY_ERROR,       "End-Of_Partition/Medium Detected"},
+    {0x00, 0x03, KEEP_SENSE_KEY_ERROR,       "Setmark Detected"},
+    {0x00, 0x04, KEEP_SENSE_KEY_ERROR,       "Beginning-Of-Partition/Medium Detected"},
+    {0x00, 0x05, KEEP_SENSE_KEY_ERROR,       "End-Of-Data Detected"},
     {0x00, 0x06, C_CAST(int, FAILURE),       "I/O Process Terminated"},
-    {0x00, 0x07, -1,                         "Programmable Early Warning Detected"},
+    {0x00, 0x07, KEEP_SENSE_KEY_ERROR,       "Programmable Early Warning Detected"},
     {0x00, 0x11, C_CAST(int, IN_PROGRESS),   "Audio Play Operation In Progress"},
-    {0x00, 0x12, -1,                         "Audio Play Operation Paused"},
+    {0x00, 0x12, KEEP_SENSE_KEY_ERROR,       "Audio Play Operation Paused"},
     {0x00, 0x13, C_CAST(int, SUCCESS),       "Audio Play Operation Successfully Completed"},
     {0x00, 0x14, C_CAST(int, FAILURE),       "Audio Play Operation Stopped Due To Error"},
-    {0x00, 0x15, -1,                         "No Current Audio Status To Return"},
+    {0x00, 0x15, KEEP_SENSE_KEY_ERROR,       "No Current Audio Status To Return"},
     {0x00, 0x16, C_CAST(int, IN_PROGRESS),   "Operation In Progress"},
     {0x00, 0x17, C_CAST(int, UNKNOWN),       "Cleaning Requested"},
     {0x00, 0x18, C_CAST(int, IN_PROGRESS),   "Erase Operation In Progress"},
@@ -145,30 +147,30 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x09, 0x05, C_CAST(int, FAILURE),       "Vibration Induced Tracking Error"},
     {0x0A, 0x00, C_CAST(int, FAILURE),       "Error Log Overflow"},
     //
-    {0x0B, 0x00, -1,                         "Warning"},
-    {0x0B, 0x01, -1,                         "Warning - Specified Temperature Exceeded"},
-    {0x0B, 0x02, -1,                         "Warning - Enclosure Degraded"},
-    {0x0B, 0x03, -1,                         "Warning - Background Self-Test Failed"},
-    {0x0B, 0x04, -1,                         "Warning - Background Pre-Scan Detected Medium Error"},
-    {0x0B, 0x05, -1,                         "Warning - Background Media Scan Detected Medium Error"},
-    {0x0B, 0x06, -1,                         "Warning - Non-Volitile Cache Now Volitile"},
-    {0x0B, 0x07, -1,                         "Warning - Degraded Power To Non-Volitile Cache"},
-    {0x0B, 0x08, -1,                         "Warning - Power Loss Expected"},
-    {0x0B, 0x09, -1,                         "Warning - Device Statistics Notification Active"},
-    {0x0B, 0x0A, -1,                         "Warning - High Critical Temperature Limit Exceeded"},
-    {0x0B, 0x0B, -1,                         "Warning - Low Critical Temperature Limit Exceeded"},
-    {0x0B, 0x0C, -1,                         "Warning - High Operating Temperature Limit Exceeded"},
-    {0x0B, 0x0D, -1,                         "Warning - Low Operating Temperature Limit Exceeded"},
-    {0x0B, 0x0E, -1,                         "Warning - High Critical Humidity Limit Exceeded"},
-    {0x0B, 0x0F, -1,                         "Warning - Low Critical Humidity Limit Exceeded"},
-    {0x0B, 0x10, -1,                         "Warning - High Operating Humidity Limit Exceeded"},
-    {0x0B, 0x11, -1,                         "Warning - Low Operating Humidity Limit Exceeded"},
-    {0x0B, 0x12, -1,                         "Warning - Microcode Security At Risk"},
-    {0x0B, 0x13, -1,                         "Warning - Microcode Digital Signature Validation Failure"},
-    {0x0B, 0x14, -1,                         "Warning - Physical Element Status Change"},
+    {0x0B, 0x00, KEEP_SENSE_KEY_ERROR,       "Warning"},
+    {0x0B, 0x01, KEEP_SENSE_KEY_ERROR,       "Warning - Specified Temperature Exceeded"},
+    {0x0B, 0x02, KEEP_SENSE_KEY_ERROR,       "Warning - Enclosure Degraded"},
+    {0x0B, 0x03, KEEP_SENSE_KEY_ERROR,       "Warning - Background Self-Test Failed"},
+    {0x0B, 0x04, KEEP_SENSE_KEY_ERROR,       "Warning - Background Pre-Scan Detected Medium Error"},
+    {0x0B, 0x05, KEEP_SENSE_KEY_ERROR,       "Warning - Background Media Scan Detected Medium Error"},
+    {0x0B, 0x06, KEEP_SENSE_KEY_ERROR,       "Warning - Non-Volitile Cache Now Volitile"},
+    {0x0B, 0x07, KEEP_SENSE_KEY_ERROR,       "Warning - Degraded Power To Non-Volitile Cache"},
+    {0x0B, 0x08, KEEP_SENSE_KEY_ERROR,       "Warning - Power Loss Expected"},
+    {0x0B, 0x09, KEEP_SENSE_KEY_ERROR,       "Warning - Device Statistics Notification Active"},
+    {0x0B, 0x0A, KEEP_SENSE_KEY_ERROR,       "Warning - High Critical Temperature Limit Exceeded"},
+    {0x0B, 0x0B, KEEP_SENSE_KEY_ERROR,       "Warning - Low Critical Temperature Limit Exceeded"},
+    {0x0B, 0x0C, KEEP_SENSE_KEY_ERROR,       "Warning - High Operating Temperature Limit Exceeded"},
+    {0x0B, 0x0D, KEEP_SENSE_KEY_ERROR,       "Warning - Low Operating Temperature Limit Exceeded"},
+    {0x0B, 0x0E, KEEP_SENSE_KEY_ERROR,       "Warning - High Critical Humidity Limit Exceeded"},
+    {0x0B, 0x0F, KEEP_SENSE_KEY_ERROR,       "Warning - Low Critical Humidity Limit Exceeded"},
+    {0x0B, 0x10, KEEP_SENSE_KEY_ERROR,       "Warning - High Operating Humidity Limit Exceeded"},
+    {0x0B, 0x11, KEEP_SENSE_KEY_ERROR,       "Warning - Low Operating Humidity Limit Exceeded"},
+    {0x0B, 0x12, KEEP_SENSE_KEY_ERROR,       "Warning - Microcode Security At Risk"},
+    {0x0B, 0x13, KEEP_SENSE_KEY_ERROR,       "Warning - Microcode Digital Signature Validation Failure"},
+    {0x0B, 0x14, KEEP_SENSE_KEY_ERROR,       "Warning - Physical Element Status Change"},
     //
     {0x0C, 0x00, C_CAST(int, FAILURE),       "Write Error"},
-    {0x0C, 0x01, -1,                         "Write Error - Recovered With Auto Reallocation"},
+    {0x0C, 0x01, KEEP_SENSE_KEY_ERROR,       "Write Error - Recovered With Auto Reallocation"},
     {0x0C, 0x02, C_CAST(int, FAILURE),       "Write Error - Auto Reallocation Failed"},
     {0x0C, 0x03, C_CAST(int, FAILURE),       "Write Error - Recommend Reassignment"},
     {0x0C, 0x04, C_CAST(int, FAILURE),       "Compression Check Miscompare Error"},
@@ -252,25 +254,25 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x16, 0x03, C_CAST(int, SUCCESS),       "Data Sync Error - Data Auto-Reallocation"},
     {0x16, 0x04, C_CAST(int, FAILURE),       "Data Sync Error - Recommend Reassignment"},
     //
-    {0x17, 0x00, -1,                         "Recovered Data With No Error Correction Applied"},
-    {0x17, 0x01, -1,                         "Recovered Data With Retries"},
-    {0x17, 0x02, -1,                         "Recovered Data With Positive Head Offset"},
-    {0x17, 0x03, -1,                         "Recovered Data With Negative Head Offset"},
-    {0x17, 0x04, -1,                         "Recovered Data With Retries And/Or CIRC Applied"},
-    {0x17, 0x05, -1,                         "Recovered Data Using Previous Sector ID"},
-    {0x17, 0x06, -1,                         "Recovered Data Without ECC - Data Auto-Reallocated"},
-    {0x17, 0x07, -1,                         "Recovered Data Without ECC - Recommend Reassignment"},
-    {0x17, 0x08, -1,                         "Recovered Data Without ECC - Recommend Rewrite"},
-    {0x17, 0x09, -1,                         "Recovered Data Without ECC - Data Rewritten"},
+    {0x17, 0x00, KEEP_SENSE_KEY_ERROR,       "Recovered Data With No Error Correction Applied"},
+    {0x17, 0x01, KEEP_SENSE_KEY_ERROR,       "Recovered Data With Retries"},
+    {0x17, 0x02, KEEP_SENSE_KEY_ERROR,       "Recovered Data With Positive Head Offset"},
+    {0x17, 0x03, KEEP_SENSE_KEY_ERROR,       "Recovered Data With Negative Head Offset"},
+    {0x17, 0x04, KEEP_SENSE_KEY_ERROR,       "Recovered Data With Retries And/Or CIRC Applied"},
+    {0x17, 0x05, KEEP_SENSE_KEY_ERROR,       "Recovered Data Using Previous Sector ID"},
+    {0x17, 0x06, KEEP_SENSE_KEY_ERROR,       "Recovered Data Without ECC - Data Auto-Reallocated"},
+    {0x17, 0x07, KEEP_SENSE_KEY_ERROR,       "Recovered Data Without ECC - Recommend Reassignment"},
+    {0x17, 0x08, KEEP_SENSE_KEY_ERROR,       "Recovered Data Without ECC - Recommend Rewrite"},
+    {0x17, 0x09, KEEP_SENSE_KEY_ERROR,       "Recovered Data Without ECC - Data Rewritten"},
     //
-    {0x18, 0x00, -1,                         "Recovered Data With Error Correction Applied"},
-    {0x18, 0x01, -1,                         "Recovered Data With Error Correction & Retries Applied"},
-    {0x18, 0x02, -1,                         "Recovered Data - Data Auto-Reallocated"},
-    {0x18, 0x03, -1,                         "Recovered Data With CIRC"},
-    {0x18, 0x04, -1,                         "Recovered Data With L-EC"},
-    {0x18, 0x05, -1,                         "Recovered Data - Recommend Reassignment"},
-    {0x18, 0x06, -1,                         "Recovered Data - Recommend Rewrite"},
-    {0x18, 0x07, -1,                         "Recovered Data With ECC - Data Rewritten"},
+    {0x18, 0x00, KEEP_SENSE_KEY_ERROR,       "Recovered Data With Error Correction Applied"},
+    {0x18, 0x01, KEEP_SENSE_KEY_ERROR,       "Recovered Data With Error Correction & Retries Applied"},
+    {0x18, 0x02, KEEP_SENSE_KEY_ERROR,       "Recovered Data - Data Auto-Reallocated"},
+    {0x18, 0x03, KEEP_SENSE_KEY_ERROR,       "Recovered Data With CIRC"},
+    {0x18, 0x04, KEEP_SENSE_KEY_ERROR,       "Recovered Data With L-EC"},
+    {0x18, 0x05, KEEP_SENSE_KEY_ERROR,       "Recovered Data - Recommend Reassignment"},
+    {0x18, 0x06, KEEP_SENSE_KEY_ERROR,       "Recovered Data - Recommend Rewrite"},
+    {0x18, 0x07, KEEP_SENSE_KEY_ERROR,       "Recovered Data With ECC - Data Rewritten"},
     {0x18, 0x08, C_CAST(int, FAILURE),       "Recovered Data With Linking"},
     //
     {0x19, 0x00, C_CAST(int, FAILURE),       "Defect List Error"},
@@ -289,7 +291,7 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x1D, 0x00, C_CAST(int, FAILURE),       "Miscompare During Verify Operation"},
     {0x1D, 0x01, C_CAST(int, FAILURE),       "Miscompare During Verify Of Unmapped LBA"},
     //
-    {0x1E, 0x00, -1,                         "Recovered ID With ECC Correction"},
+    {0x1E, 0x00, KEEP_SENSE_KEY_ERROR,       "Recovered ID With ECC Correction"},
     //
     {0x1F, 0x00, C_CAST(int, FAILURE),       "Partial Defect List Transfer"},
     //
@@ -387,13 +389,13 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x28, 0x02, C_CAST(int, FAILURE),       "Format-Layer May Have Changed"},
     {0x28, 0x03, C_CAST(int, FAILURE),       "Import/Export Element Accessed, Medium Changed"},
     //
-    {0x29, 0x00, -1,                         "Power On, Reset, Or Bus Device Reset Occurred"},
-    {0x29, 0x01, -1,                         "Power On Occurred"},
-    {0x29, 0x02, -1,                         "SCSI Bus Reset Occurred"},
-    {0x29, 0x03, -1,                         "Bus Device Reset Function Occurred"},
-    {0x29, 0x04, -1,                         "Device Internal Reset"},
-    {0x29, 0x05, -1,                         "Transceiver Mode Changed To Single-Ended"},
-    {0x29, 0x06, -1,                         "Transceiver Mode Changed To LVD"},
+    {0x29, 0x00, KEEP_SENSE_KEY_ERROR,       "Power On, Reset, Or Bus Device Reset Occurred"},
+    {0x29, 0x01, KEEP_SENSE_KEY_ERROR,       "Power On Occurred"},
+    {0x29, 0x02, KEEP_SENSE_KEY_ERROR,       "SCSI Bus Reset Occurred"},
+    {0x29, 0x03, KEEP_SENSE_KEY_ERROR,       "Bus Device Reset Function Occurred"},
+    {0x29, 0x04, KEEP_SENSE_KEY_ERROR,       "Device Internal Reset"},
+    {0x29, 0x05, KEEP_SENSE_KEY_ERROR,       "Transceiver Mode Changed To Single-Ended"},
+    {0x29, 0x06, KEEP_SENSE_KEY_ERROR,       "Transceiver Mode Changed To LVD"},
     {0x29, 0x07, C_CAST(int, FAILURE),       "I_T Nexus Loss Occurred"},
     //
     {0x2A, 0x00, C_CAST(int, SUCCESS),       "Parameters Changed"},
@@ -411,12 +413,12 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x2A, 0x0C, C_CAST(int, SUCCESS),       "Error Recovery Attributes Have Changed"},
     {0x2A, 0x0D, C_CAST(int, SUCCESS),       "Data Encryption Capabilities Changed"},
     {0x2A, 0x10, C_CAST(int, SUCCESS),       "Timestamp Changed"},
-    {0x2A, 0x11, -1,                         "Data Encryption Parameters Changed By Another I_T Nexus"},
-    {0x2A, 0x12, -1,                         "Data Encryption Parameters Changed By Vendor Specific Event"},
-    {0x2A, 0x13, -1,                         "Data Encryption Key Instance Counter Has Changed"},
+    {0x2A, 0x11, KEEP_SENSE_KEY_ERROR,       "Data Encryption Parameters Changed By Another I_T Nexus"},
+    {0x2A, 0x12, KEEP_SENSE_KEY_ERROR,       "Data Encryption Parameters Changed By Vendor Specific Event"},
+    {0x2A, 0x13, KEEP_SENSE_KEY_ERROR,       "Data Encryption Key Instance Counter Has Changed"},
     {0x2A, 0x14, C_CAST(int, SUCCESS),       "SA Creation Capabilities Has Changed"},
     {0x2A, 0x15, C_CAST(int, FAILURE),       "Medium Removal Precention Preempted"},
-    {0x2A, 0x16, -1,                         "Zone Reset Write Pointer Recommended"},
+    {0x2A, 0x16, KEEP_SENSE_KEY_ERROR,       "Zone Reset Write Pointer Recommended"},
     //
     {0x2B, 0x00, C_CAST(int, FAILURE),       "Copy Cannot Execute Since Host Cannot Disconnect"},
     //
@@ -424,24 +426,24 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x2C, 0x01, C_CAST(int, FAILURE),       "Too Many Windows Specified"},
     {0x2C, 0x02, C_CAST(int, FAILURE),       "Invalid Combination Of Windows Specified"},
     {0x2C, 0x03, C_CAST(int, FAILURE),       "Current Program Area Is Not Empty"},
-    {0x2C, 0x04, -1,                         "Current Program Area Is Empty"},
+    {0x2C, 0x04, KEEP_SENSE_KEY_ERROR,       "Current Program Area Is Empty"},
     {0x2C, 0x05, C_CAST(int, FAILURE),       "Illegal Power Condition Request"},
     {0x2C, 0x06, C_CAST(int, FAILURE),       "Persistent Prevent Conflict"},
     {0x2C, 0x07, C_CAST(int, FAILURE),       "Previous Busy Status"},
     {0x2C, 0x08, C_CAST(int, FAILURE),       "Previous Task Set Full Status"},
     {0x2C, 0x09, C_CAST(int, FAILURE),       "Previous Reservation Conflict Status"},
-    {0x2C, 0x0A, -1,                         "Partition Or Collection Contains User Objects"},
-    {0x2C, 0x0B, -1,                         "Not Reserved"},
+    {0x2C, 0x0A, KEEP_SENSE_KEY_ERROR,       "Partition Or Collection Contains User Objects"},
+    {0x2C, 0x0B, KEEP_SENSE_KEY_ERROR,       "Not Reserved"},
     {0x2C, 0x0C, C_CAST(int, FAILURE),       "ORWrite Generation Does Not Match"},
     {0x2C, 0x0D, C_CAST(int, FAILURE),       "Reset Write Pointer Not Allowed"},
     {0x2C, 0x0E, C_CAST(int, FAILURE),       "Zone Is Offline"},
     {0x2C, 0x0F, C_CAST(int, FAILURE),       "Stream Not Open"},
-    {0x2C, 0x10, -1,                         "Unwritten Data In Zone"},
+    {0x2C, 0x10, KEEP_SENSE_KEY_ERROR,       "Unwritten Data In Zone"},
     {0x2C, 0x11, C_CAST(int, FAILURE),       "Descriptor Format Sense Data Required"},
     {0x2C, 0x12, C_CAST(int, FAILURE),       "Zone Is Inactive"},
     {0x2C, 0x13, C_CAST(int, FAILURE),       "Well Known Logical Unit Access Required"},
     //
-    {0x2D, 0x00, -1,                         "Overwrite Error On Update In Place"},
+    {0x2D, 0x00, KEEP_SENSE_KEY_ERROR,       "Overwrite Error On Update In Place"},
     //
     {0x2E, 0x00, C_CAST(int, FAILURE),       "Insufficient Time For Operation"},
     {0x2E, 0x01, C_CAST(int, FAILURE),       "Command Timeout Before Processing"},
@@ -495,12 +497,12 @@ ascAscqRetDesc ascAscqLookUp[] = {
     //
     {0x36, 0x00, C_CAST(int, FAILURE),       "Ribbon, Ink, Or Toner Failure"},
     //
-    {0x37, 0x00, -1,                         "Rounded Parameter"},
+    {0x37, 0x00, KEEP_SENSE_KEY_ERROR,       "Rounded Parameter"},
     //
-    {0x38, 0x00, -1,                         "Event Status Notification"},
-    {0x38, 0x02, -1,                         "ESN - Power Management Class Event"},
-    {0x38, 0x04, -1,                         "ESN - Media Class Event"},
-    {0x38, 0x06, -1,                         "ESN - Device Busy Class Event"},
+    {0x38, 0x00, KEEP_SENSE_KEY_ERROR,       "Event Status Notification"},
+    {0x38, 0x02, KEEP_SENSE_KEY_ERROR,       "ESN - Power Management Class Event"},
+    {0x38, 0x04, KEEP_SENSE_KEY_ERROR,       "ESN - Media Class Event"},
+    {0x38, 0x06, KEEP_SENSE_KEY_ERROR,       "ESN - Device Busy Class Event"},
     {0x38, 0x07, C_CAST(int, FAILURE),       "Thin Provisioning Soft Threshold Reached"},
     {0x38, 0x08, C_CAST(int, FAILURE),       "Depopulation Interrupted"},
     //
@@ -527,18 +529,18 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x3B, 0x0C, C_CAST(int, FAILURE),       "Position Past Beginning Of Medium"},
     {0x3B, 0x0D, C_CAST(int, FAILURE),       "Medium Destination Element Full"},
     {0x3B, 0x0E, C_CAST(int, FAILURE),       "Medium Source Element Empty"},
-    {0x3B, 0x0F, -1,                         "End Of Medium Reached"},
-    {0x3B, 0x11, -1,                         "Medium Magazine Not Accessible"},
-    {0x3B, 0x12, -1,                         "Medium Magazine Removed"},
-    {0x3B, 0x13, -1,                         "Medium Magazine Inserted"},
-    {0x3B, 0x14, -1,                         "Medium Magazine Locked"},
-    {0x3B, 0x15, -1,                         "Medium Magazine Unlocked"},
+    {0x3B, 0x0F, KEEP_SENSE_KEY_ERROR,       "End Of Medium Reached"},
+    {0x3B, 0x11, KEEP_SENSE_KEY_ERROR,       "Medium Magazine Not Accessible"},
+    {0x3B, 0x12, KEEP_SENSE_KEY_ERROR,       "Medium Magazine Removed"},
+    {0x3B, 0x13, KEEP_SENSE_KEY_ERROR,       "Medium Magazine Inserted"},
+    {0x3B, 0x14, KEEP_SENSE_KEY_ERROR,       "Medium Magazine Locked"},
+    {0x3B, 0x15, KEEP_SENSE_KEY_ERROR,       "Medium Magazine Unlocked"},
     {0x3B, 0x16, C_CAST(int, FAILURE),       "Mechanical Positioning Or Changer Error"},
     {0x3B, 0x17, C_CAST(int, FAILURE),       "Read Past End Of User Object"},
-    {0x3B, 0x18, -1,                         "Element Disabled"},
-    {0x3B, 0x19, -1,                         "Element Enabled"},
-    {0x3B, 0x1A, -1,                         "Data Transfer Device Removed"},
-    {0x3B, 0x1B, -1,                         "Data Transfer Device Inserted"},
+    {0x3B, 0x18, KEEP_SENSE_KEY_ERROR,       "Element Disabled"},
+    {0x3B, 0x19, KEEP_SENSE_KEY_ERROR,       "Element Enabled"},
+    {0x3B, 0x1A, KEEP_SENSE_KEY_ERROR,       "Data Transfer Device Removed"},
+    {0x3B, 0x1B, KEEP_SENSE_KEY_ERROR,       "Data Transfer Device Inserted"},
     {0x3B, 0x1C, C_CAST(int, FAILURE),       "Too Many Logical Objects On Partition To Supported Operation"},
     {0x3B, 0x20, C_CAST(int, FAILURE),       "Element Static Information Changed"},
     //
@@ -574,9 +576,9 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x3F, 0x15, C_CAST(int, SUCCESS),       "Inspect Referrals Sense Descriptors"},
     {0x3F, 0x16, C_CAST(int, SUCCESS),       "Microcode Has Been Changed Without Reset"},
     {0x3F, 0x17, C_CAST(int, SUCCESS),       "Zone Transition To Full"},
-    {0x3F, 0x18, -1,                         "Bind Completed"},
-    {0x3F, 0x19, -1,                         "Bind Redirected"},
-    {0x3F, 0x1A, -1,                         "Subsidiary Binding Changed"},
+    {0x3F, 0x18, KEEP_SENSE_KEY_ERROR,       "Bind Completed"},
+    {0x3F, 0x19, KEEP_SENSE_KEY_ERROR,       "Bind Redirected"},
+    {0x3F, 0x1A, KEEP_SENSE_KEY_ERROR,       "Subsidiary Binding Changed"},
     //
     {0x41, 0x00, C_CAST(int, FAILURE),       "Data Path Failure (Should Use 40NN)"},
     //
@@ -675,15 +677,15 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x55, 0x0C, C_CAST(int, FAILURE),       "Insufficient Resources To Create ROD"},
     {0x55, 0x0D, C_CAST(int, FAILURE),       "Insufficient Resources To Create ROD Token"},
     {0x55, 0x0E, C_CAST(int, FAILURE),       "Insufficient Zone Resources"},
-    {0x55, 0x0F, -1,                         "Insufficient Zone Resources To Complete Write"},
-    {0x55, 0x10, -1,                         "Maximum Number Of Streams Open"},
-    {0x55, 0x11, -1,                         "Insufficient Resources To Bind"},
+    {0x55, 0x0F, KEEP_SENSE_KEY_ERROR,       "Insufficient Zone Resources To Complete Write"},
+    {0x55, 0x10, KEEP_SENSE_KEY_ERROR,       "Maximum Number Of Streams Open"},
+    {0x55, 0x11, KEEP_SENSE_KEY_ERROR,       "Insufficient Resources To Bind"},
     //
     {0x57, 0x00, C_CAST(int, FAILURE),       "Unable To Recover Table-Of-Contents"},
     //
     {0x58, 0x00, C_CAST(int, FAILURE),       "Generation Does Not Exist"},
     //
-    {0x59, 0x00, -1,                         "Updated Block Read"},
+    {0x59, 0x00, KEEP_SENSE_KEY_ERROR,       "Updated Block Read"},
     //
     {0x5A, 0x00, C_CAST(int, FAILURE),       "Operator Request Or State Change Input"},
     {0x5A, 0x01, C_CAST(int, FAILURE),       "Operator Medium Removal Request"},
@@ -695,7 +697,7 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x5B, 0x02, C_CAST(int, FAILURE),       "Log Counter At Maximum"},
     {0x5B, 0x03, C_CAST(int, FAILURE),       "Log List Codes Exhausted"},
     //
-    {0x5C, 0x00, -1,                         "RPL Status Change"},
+    {0x5C, 0x00, KEEP_SENSE_KEY_ERROR,       "RPL Status Change"},
     {0x5C, 0x01, C_CAST(int, SUCCESS),       "Spindles Synchronized"},
     {0x5C, 0x02, C_CAST(int, FAILURE),       "Spindles Not Synchronized"},
     //
@@ -835,8 +837,8 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x67, 0x09, C_CAST(int, FAILURE),       "Multiply Assigned Logical Unit"},
     {0x67, 0x0A, C_CAST(int, FAILURE),       "Set Target Port Groups Command Failed"},
     {0x67, 0x0B, C_CAST(int, NOT_SUPPORTED), "ATA Device Feature Not Enabled"},
-    {0x67, 0x0C, -1,                         "Command Rejected"},
-    {0x67, 0x0D, -1,                         "Explicit Bind Not Allowed"},
+    {0x67, 0x0C, KEEP_SENSE_KEY_ERROR,       "Command Rejected"},
+    {0x67, 0x0D, KEEP_SENSE_KEY_ERROR,       "Explicit Bind Not Allowed"},
     //
     {0x68, 0x00, C_CAST(int, FAILURE),       "Logical Unit Not Configured"},
     {0x68, 0x01, C_CAST(int, FAILURE),       "Subsidiary Logical Unit Not Configured"},
@@ -845,15 +847,15 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x69, 0x01, C_CAST(int, FAILURE),       "Multiple Logical Unit Failures"},
     {0x69, 0x02, C_CAST(int, FAILURE),       "Parity/Data Mismatch"},
     //
-    {0x6A, 0x00, -1,                         "Informational, Refer To Log"},
+    {0x6A, 0x00, KEEP_SENSE_KEY_ERROR,       "Informational, Refer To Log"},
     //
-    {0x6B, 0x00, -1,                         "State Change Has Occurred"},
-    {0x6B, 0x01, -1,                         "Redundancy Level Got Better"},
-    {0x6B, 0x02, -1,                         "Redundancy Level Got Worse"},
+    {0x6B, 0x00, KEEP_SENSE_KEY_ERROR,       "State Change Has Occurred"},
+    {0x6B, 0x01, KEEP_SENSE_KEY_ERROR,       "Redundancy Level Got Better"},
+    {0x6B, 0x02, KEEP_SENSE_KEY_ERROR,       "Redundancy Level Got Worse"},
     //
-    {0x6C, 0x00, -1,                         "Rebuild Failure Occurred"},
+    {0x6C, 0x00, KEEP_SENSE_KEY_ERROR,       "Rebuild Failure Occurred"},
     //
-    {0x6D, 0x00, -1,                         "Recalculate Failure Occurred"},
+    {0x6D, 0x00, KEEP_SENSE_KEY_ERROR,       "Recalculate Failure Occurred"},
     //
     {0x6E, 0x00, C_CAST(int, FAILURE),       "Command To Logical Unit Failed"},
     //
@@ -865,11 +867,11 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x6F, 0x05, C_CAST(int, FAILURE),       "Drive Region Must Be Permanent/Region Reset Count Error"},
     {0x6F, 0x06, C_CAST(int, FAILURE),       "Insufficient Block Count For Binding Nonce Recording"},
     {0x6F, 0x07, C_CAST(int, FAILURE),       "Conflict In Binding Nonce Recording"},
-    {0x6F, 0x08, -1,                         "Insufficient Permission"},
-    {0x6F, 0x09, -1,                         "Invalid Drive-Host Pairing Server"},
-    {0x6F, 0x0A, -1,                         "Drive-Host Pairing Suspended"},
+    {0x6F, 0x08, KEEP_SENSE_KEY_ERROR,       "Insufficient Permission"},
+    {0x6F, 0x09, KEEP_SENSE_KEY_ERROR,       "Invalid Drive-Host Pairing Server"},
+    {0x6F, 0x0A, KEEP_SENSE_KEY_ERROR,       "Drive-Host Pairing Suspended"},
     //
-    {0x71, 0x00, -1,                         "Decompression Exception Long Algorithm ID"},
+    {0x71, 0x00, KEEP_SENSE_KEY_ERROR,       "Decompression Exception Long Algorithm ID"},
     //
     {0x72, 0x00, C_CAST(int, FAILURE),       "Session Fixation Error"},
     {0x72, 0x01, C_CAST(int, FAILURE),       "Session Fixation Error Writing Lead-In"},
@@ -881,15 +883,15 @@ ascAscqRetDesc ascAscqLookUp[] = {
     {0x72, 0x07, C_CAST(int, FAILURE),       "No More Test Zone Extensions Are Allowed"},
     //
     {0x73, 0x00, C_CAST(int, FAILURE),       "CD Control Error"},
-    {0x73, 0x01, -1,                         "Power Calibration Area Almost Full"},
-    {0x73, 0x02, -1,                         "Power Calibration Area Is Full"},
-    {0x73, 0x03, -1,                         "Power Calibration Area Error"},
-    {0x73, 0x04, -1,                         "Program Memory Area Update Failuer"},
-    {0x73, 0x05, -1,                         "Program Memory Area Is Full"},
-    {0x73, 0x06, -1,                         "RMA/PMA Is Almost Full"},
-    {0x73, 0x10, -1,                         "Current Power Calibration Area Almost Full"},
-    {0x73, 0x11, -1,                         "Current Power Calibration Area Is Full"},
-    {0x73, 0x17, -1,                         "RDZ Is Full"},
+    {0x73, 0x01, KEEP_SENSE_KEY_ERROR,       "Power Calibration Area Almost Full"},
+    {0x73, 0x02, KEEP_SENSE_KEY_ERROR,       "Power Calibration Area Is Full"},
+    {0x73, 0x03, KEEP_SENSE_KEY_ERROR,       "Power Calibration Area Error"},
+    {0x73, 0x04, KEEP_SENSE_KEY_ERROR,       "Program Memory Area Update Failuer"},
+    {0x73, 0x05, KEEP_SENSE_KEY_ERROR,       "Program Memory Area Is Full"},
+    {0x73, 0x06, KEEP_SENSE_KEY_ERROR,       "RMA/PMA Is Almost Full"},
+    {0x73, 0x10, KEEP_SENSE_KEY_ERROR,       "Current Power Calibration Area Almost Full"},
+    {0x73, 0x11, KEEP_SENSE_KEY_ERROR,       "Current Power Calibration Area Is Full"},
+    {0x73, 0x17, KEEP_SENSE_KEY_ERROR,       "RDZ Is Full"},
     //
     {0x74, 0x00, C_CAST(int, FAILURE),       "Security Error"},
     {0x74, 0x01, C_CAST(int, FAILURE),       "Unable To Decrypt Data"},
@@ -1080,7 +1082,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
                 print_acs_ascq(asc_ascq_result->desc, asc, ascq);
             }
             // Return code of -1 means follow return code determined by sense key, do not change
-            if (asc_ascq_result->ret > -1)
+            if (asc_ascq_result->ret > KEEP_SENSE_KEY_ERROR)
             {
                 ret = C_CAST(eReturnValues, asc_ascq_result->ret);
             }
@@ -2192,6 +2194,36 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             passthroughTypeSet = true;
             device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
         }
+        else if (strcmp(vendorID, "Realtek") == 0 && strstr(productID, "9210"))
+        {
+            //realtek's USB to nvme/sata adapter
+            //setup the following hacks to make this thing work as best we can for now
+            device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+            device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+            device->drive_info.passThroughHacks.turfValue = 34;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+            device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+            device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+            device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;//this supports some mode pages, but unable to test for subpages, so considering them not supported at this time -TJE
+            device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+            //NOTE: Security protocol is supported according to online web page. I do not have a device supporting security to test against at this time to see if INC512 is needed/required -TJE
+            device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+            //device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = true;
+            device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+            //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+            //Check condition will always return RTFRs, HOWEVER on data transfers it returns empty data. Seems like a device bug. Only use check condition for non-data commands-TJE
+            //NOTE: It may be interesting to try an SCT command (write log) to see how check condition works, but at least with reads, this is a no-go
+            device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+            device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//seems to make no difference whether this is used or not. Can switch this to "limited use" if we need to
+            device->drive_info.passThroughHacks.ataPTHacks.singleSectorPIOOnly = true;
+            device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 4096;
+            device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe = true;//no way to tell at this point. Will need to make full determination in the fill_ATA_Info function
+            device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands = true;//probably not needed, but after what I saw testing this, it can't hurt to set this
+        }
         else if (strcmp(vendorID, "SMI") == 0)
         {
             if (strcmp(productID, "USB DISK") == 0)
@@ -2218,6 +2250,10 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
                 passthroughTypeSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_NEC;
                 device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+                if (device->drive_info.interface_type != USB_INTERFACE)
+                {
+                    device->drive_info.interface_type = USB_INTERFACE;
+                }
             }
         }
         else if (strcmp(vendorID, "Seagate") == 0)
@@ -2226,7 +2262,10 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             //If we are in this function, then the low-level was unable to get PID/VID, so we need to set some generic hacks to make sure things work, then do device specific things.
             device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
             device->drive_info.passThroughHacks.turfValue = TURF_LIMIT + 1;//Doing this generically here for now to force this!
-
+            if (device->drive_info.interface_type != USB_INTERFACE)
+            {
+                device->drive_info.interface_type = USB_INTERFACE;
+            }
             //known device specific hacks
             if (strcmp(productID, "BlackArmorDAS25") == 0)
             {
@@ -2265,6 +2304,10 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             {
                 device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
                 //TODO: this device previously had a hack that SMART check isn't supported, so need to migrate that too.
+            }
+            if (device->drive_info.interface_type != USB_INTERFACE)
+            {
+                device->drive_info.interface_type = USB_INTERFACE;
             }
         }
         else
@@ -2346,6 +2389,10 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             {
                 passthroughTypeSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
+                if (device->drive_info.interface_type != USB_INTERFACE)
+                {
+                    device->drive_info.interface_type = USB_INTERFACE;
+                }
             }
         }
         else if (strcmp(vendorID, "Samsung") == 0)
@@ -2394,6 +2441,10 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
                 memset(vendorID, 0, INQ_DATA_T10_VENDOR_ID_LEN);
                 passthroughTypeSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
+                if (device->drive_info.interface_type != USB_INTERFACE)
+                {
+                    device->drive_info.interface_type = USB_INTERFACE;
+                }
             }
         }
     }
@@ -3017,6 +3068,15 @@ int fill_In_Device_Info(tDevice *device)
             //TODO: Further improvement: Detect A1h command supported, but 85h is NOT. A1 is the opcode supported by this device's passthrough and anything supporting 85h will have to be SAT, not this unique NVMe passthrough - TJE
             //      note: there is not currently a good way to track the results from these commands in fill_ATA_Drive_Info...that is something we can work on going forward.
             //      A1 SAT identify should return "Invalid field in CDB" and 85h should return "Invalid operation code". While SOME SAT device may do this too, this will reduce commanmds sent to genuine SAT devices.
+        }
+
+        if (device->drive_info.interface_type == SCSI_INTERFACE && is_Seagate_SAS_Vendor_ID(device->drive_info.T10_vendor_ident))
+        {
+            //do NOT do a SAT check. For some reason sometimes a combo of HBA and some SAS drives will respond with no sense errors on A1h CDB
+            //This seems to happen on LSI 9300-8i and some combinations of SAS drives....but not all of them. It is oddly specific.
+            //Same HBA and drive on Windows? Works fine. 
+            //I want a better check than this using other fields, but this should be reasonably safe for now since vendor id of "SEAGATE " is only used on SAS drives
+            checkForSAT = false;
         }
 
         if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE)

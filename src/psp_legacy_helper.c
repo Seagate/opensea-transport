@@ -189,7 +189,7 @@ int send_PSP_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         {
             //print RTFRs
-            print_Verbose_ATA_Command_Result_Information(ataCommandOptions);
+            print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
         }
         //set return code
         //Based on the RTFRs or sense data, generate a return value

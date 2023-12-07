@@ -403,6 +403,9 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_SMART_Auto_Offline(tDevice *device, bool enable);
 
+    //This assumes standard ATA identify like reported from ata_Identify or page 1 of the ID data log. 512B long and as reported by the standards.
+    OPENSEA_TRANSPORT_API void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData, char ataMN[ATA_IDENTIFY_MN_LENGTH + 1], char ataSN[ATA_IDENTIFY_SN_LENGTH + 1], char ataFW[ATA_IDENTIFY_FW_LENGTH + 1]);
+
     //-----------------------------------------------------------------------------
     //
     //  ata_Identify()
@@ -1590,6 +1593,7 @@ extern "C"
     //
     //  Entry:
     //!   \param device - device handle
+    //!   \param useDMA - set to true to use the DMA version of the command (drive must support this, check identify data)
     //!   \param ptrData - pointer to the data buffer to use.
     //!   \param dataSize - the size of the data buffer being used.
     //
@@ -1597,7 +1601,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Identify(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int ata_DCO_Identify(tDevice *device, bool useDMA, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1607,6 +1611,7 @@ extern "C"
     //
     //  Entry:
     //!   \param device - device handle
+    //! //!   \param useDMA - set to true to use the DMA version of the command (drive must support this, check identify data)
     //!   \param ptrData - pointer to the data buffer to use.
     //!   \param dataSize - the size of the data buffer being used.
     //
@@ -1614,41 +1619,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Set(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  ata_DCO_Identify_DMA()
-    //
-    //! \brief   Description:  This function sends a DCO identify DMA command
-    //
-    //  Entry:
-    //!   \param device - device handle
-    //!   \param ptrData - pointer to the data buffer to use.
-    //!   \param dataSize - the size of the data buffer being used.
-    //
-    //  Exit:
-    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Identify_DMA(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  ata_DCO_Set_DMA()
-    //
-    //! \brief   Description:  This function sends a DCO set DMA command
-    //
-    //  Entry:
-    //!   \param device - device handle
-    //!   \param ptrData - pointer to the data buffer to use.
-    //!   \param dataSize - the size of the data buffer being used.
-    //
-    //  Exit:
-    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Set_DMA(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int ata_DCO_Set(tDevice *device, bool useDMA, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1688,11 +1659,11 @@ extern "C"
     //
     //  Entry:
     //!   \param[in] ataCommandOptions = structure with the TFR information filled in to be printed out. (and protocol and direction)
-    //!
+    //!   \param[in] device = pointer to device struct so that some things can be verified about capabilities and features before printing the meaning of status and error bits.
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataCommandOptions);
+    OPENSEA_TRANSPORT_API void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataCommandOptions, tDevice *device);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
     ///         Zoned Device Commands - subject to change as these aren't finialized yet        ///
