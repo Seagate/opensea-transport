@@ -1443,6 +1443,7 @@ extern "C"
         SEAGATE_VENDOR_G = BIT19,
         SEAGATE_VENDOR_H = BIT20,
         SEAGATE_VENDOR_SSD_PJ = BIT21, //Older enterprise NVMe drives that had some unique capabilities
+        SEAGATE_VENDOR_K = BIT22,
     }eSeagateFamily;
 
     //The scan flags should each be a bit in a 32bit unsigned integer.
@@ -1891,6 +1892,7 @@ extern "C"
     OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive);
     OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_G(tDevice *device, bool USBchildDrive);
     OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_H(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Vendor_K(tDevice* device);
 
 
     typedef enum _eIronwolf_NAS_Drive
