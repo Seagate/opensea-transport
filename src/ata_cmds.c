@@ -835,7 +835,7 @@ int ata_SMART_Attribute_Autosave(tDevice *device, bool enable)
     }
     else
     {
-        return ata_SMART_Command(device, ATA_SMART_SW_AUTOSAVE, 0, NULL, 0, 15, false, 0);
+        return ata_SMART_Command(device, ATA_SMART_SW_AUTOSAVE, 0, NULL, 0, 15, false, ATA_SMART_ATTRIBUTE_AUTOSAVE_DISABLE_SIG);
     }
 }
 
@@ -847,7 +847,7 @@ int ata_SMART_Auto_Offline(tDevice *device, bool enable)
     }
     else
     {
-        return ata_SMART_Command(device, ATA_SMART_AUTO_OFFLINE, 0, NULL, 0, 15, false, 0);
+        return ata_SMART_Command(device, ATA_SMART_AUTO_OFFLINE, 0, NULL, 0, 15, false, ATA_SMART_AUTO_OFFLINE_DISABLE_SIG);
     }
 }
 

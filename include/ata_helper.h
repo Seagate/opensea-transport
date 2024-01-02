@@ -162,6 +162,9 @@ extern "C"
     #define ATA_SMART_ATTRIBUTE_AUTOSAVE_ENABLE_SIG 0xF1
     #define ATA_SMART_AUTO_OFFLINE_ENABLE_SIG 0xF8
 
+    #define ATA_SMART_ATTRIBUTE_AUTOSAVE_DISABLE_SIG 0x00
+    #define ATA_SMART_AUTO_OFFLINE_DISABLE_SIG 0x00
+
     typedef enum _eATA_CMDS {
         ATA_NOP_CMD                             = 0x00,
         ATA_CFA_REQUEST_SENSE                   = 0x03,
