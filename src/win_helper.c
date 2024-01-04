@@ -11516,18 +11516,32 @@ static int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
             {
                 //issueFormatCMD = false;
                 //translated with sanitize
-                if (secureEraseSettings == 1)
-                {
-                    //block
-                    ret = scsi_Sanitize_Block_Erase(nvmeIoCtx->device, false, false, false);
-                }
-                else if (secureEraseSettings == 2)
+                // NOTE: If you use sanitize block erase CDB, this translates to sanitize block erase NVM
+                //       If you use sanitize crypto erase CDB, it translates to format + crypto erase from what I can tell.
+                //       This is not documented, but found through trial and error testing and debugging.
+                //       I've commented out the sanitize block erase since this does not issue the expected command.
+                //if (secureEraseSettings == 1)
+                //{
+                //    //block
+                //    ret = scsi_Sanitize_Block_Erase(nvmeIoCtx->device, false, false, false);
+                //}
+                //else 
+                if (secureEraseSettings == 2)
                 {
                     //crypto
-                    //NOTE: the IOCTL_STORAGE_REINITIALIZE_MEDIA can be used for this too IF no buffer length is passed.
-                    //      Later, Win10 21H1 or Win11 can take parameters to perform a sanitize erase instead.
-                    //TODO: will need to bus trace and figure out when new windows chooses format versus sanitize if this IOCTL is used.
-                    ret = scsi_Sanitize_Cryptographic_Erase(nvmeIoCtx->device, false, false, false);
+                    //NOTE: the IOCTL_STORAGE_REINITIALIZE_MEDIA can be used for this too IF no buffer length is passed in win 10 1607.
+                    //      By 1903, this IOCTL instead issues sanitize crypto erase instead from what I can tell from trial and error testing
+                    //      and the limited documentation available.
+                    //      It is unknown when this CDB translation became available, but will choose which command to issue depending on the fields and OS
+                    //      version as best we can.
+                    if (NVM_REINIT_COMPATIBLE_FORMAT_CRYPTO == is_NVMe_Cmd_Compatible_With_Reinitialize_Media_IOCTL(nvmeIoCtx))
+                    {
+                        ret = nvme_Ioctl_Storage_Reinitialize_Media(nvmeIoCtx);
+                    }
+                    else
+                    {
+                        ret = scsi_Sanitize_Cryptographic_Erase(nvmeIoCtx->device, false, false, false);
+                    }
                 }
                 else
                 {
