@@ -4388,8 +4388,12 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                 //NOTE: These next two are set based on documentation that they will work. They definitely work on Win 10 22H2, but I have not been able to test older versions at this time.-TJE
                                 if ((device->os_info.fileSystemInfo.fileSystemInfoValid && !device->os_info.fileSystemInfo.isSystemDisk) || is_Windows_PE())
                                 {
+                                    //Which is possible depends on the drive's capabilities. The IOCTL_STORAGE_REINITIALIZE_MEDIA changes behanvrio based on OS version and drive capabilities.
                                     device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatCryptoSecureErase = true;
-                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatUserSecureErase = true;
+                                    //NOTE: Cannot do format with user erase because that is not what MSFT translates for the Sanitize block erase...it just does sanitize block erase.
+                                    //      No idea when this was implemented because the documentation on this translation is non-existent right now.
+                                    //NOTE: It is not clear if sanitize crypto was switched to starting in 1903 or if it was an earlier version. The documentation only goes back to 1903 online.-TJE
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeCrypto = true;
                                 }
                             }
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive = true;
@@ -11245,8 +11249,15 @@ static int send_NVMe_Set_Features_Win10(nvmeCmdCtx *nvmeIoCtx, bool *useNVMPasst
 //This IOCTL started in Windows 10, 1607. AKA 14393 API. It only supported NVM format with crypto erase though.
 //When Windows 11 was released, this API added a structure to specify a sanitize command to run, but is limited to block and crypto erase only.
 // This Windows 11/10 API change was 20348 and supposedly also supports Windows 10 21H1
-//It is unclear if calling this API without parameters like Win10 1607 supports results in a format with crypto erase or a sanitize crypto erase at this time.
-//Microsoft usually preserves backwards compatibility, but it is unclear what is supported in this case.-TJE
+//Win11:
+//  Issuing this IOCTL with no parameters on a drive that supports crypto erase will issue sanitize crypto erase with the ause bit set to 1
+//  Issuing this IOCTL with no parameters on a drive that supports block erase will return an error (1) for "incorrect function"
+//  Assumed that old drive without sanitize crypto will run the format with crypto erase as this IOCTL originally would do.
+//Win10:
+//  This will change depending on the version of Windows 10 that is running. 1607 - 1809(?) will do format NVM. Microsoft docs state 1903 and later support sanitize, but it is not clear exactly where the ending cutoff is.
+//  Starting with 21H1, it is assumed that the behavior matches Windows 11 behavior. NOTE: Need to figure out if we have a way to test specific versions to figure out the exact cut off. -TJE
+//  Assumed that old drive without sanitize crypto will run the format with crypto erase as this IOCTL originally would do.
+//Because of all the various changes in behavior, the function below has to assess the incoming command and the drive's santize capabilities to decide what it will do.
 typedef enum _eNVM_ReInit_Compatible
 {
     NVM_REINIT_INCOMPATIBLE_CMD,
@@ -11271,31 +11282,42 @@ static eNVM_ReInit_Compatible is_NVMe_Cmd_Compatible_With_Reinitialize_Media_IOC
             if (nvmeIoCtx->cmd.adminCmd.opcode == NVME_ADMIN_CMD_FORMAT_NVM)
             {
                 compat = NVM_REINIT_INCOMPATIBLE_FORMAT;
-                //next we need to screen other fields to make sure there aren't other things being asked while running the format.
-                if (M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 11, 9) == 2)
+                if (is_Windows_10_Version_1903_Or_Higher() && nvmeIoCtx->device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT0)
                 {
-                    //crypto erase.
-                    //Finish validating other parameters.
-                    //cannot change PI, metadata, or LBA format.
-                    uint32_t reservedBitsDWord10 = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 12);
-                    bool pil = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8;
-                    uint8_t pi = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 5);
-                    bool mset = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT4;
-                    uint8_t lbaFormat = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 3, 0);
-                    nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-                    if (reservedBitsDWord10 == 0 && !pil && !mset && pi == 0)
+                    //TODO: Figure out exactly when this IOCTL switches to sanitize from format with crypto erase. MSDN documentatino does not specify earlier than 1903.-TJE
+                    //Starting with at least 1903, possibly earlier, this IOCTL will issue sanitize crypto erase instead.
+                    //because this is not necessarily a malformed command, but a completeley different than expected behavior,
+                    //returning this instead.
+                    return NVM_REINIT_INCOMPATIBLE_CMD;
+                }
+                else
+                {
+                    //next we need to screen other fields to make sure there aren't other things being asked while running the format.
+                    if (M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 11, 9) == 2)
                     {
-                        //now make sure LBA size matches current settings
-                        int16_t powerOfTwo = C_CAST(int16_t, nvmeIoCtx->device->drive_info.IdentifyData.nvme.ns.lbaf[lbaFormat].lbaDS);
-                        uint32_t lbaSize = 1;
-                        while (powerOfTwo > 0)
+                        //crypto erase.
+                        //Finish validating other parameters.
+                        //cannot change PI, metadata, or LBA format.
+                        uint32_t reservedBitsDWord10 = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 12);
+                        bool pil = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8;
+                        uint8_t pi = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 5);
+                        bool mset = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT4;
+                        uint8_t lbaFormat = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 3, 0);
+                        nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
+                        if (reservedBitsDWord10 == 0 && !pil && !mset && pi == 0)
                         {
-                            lbaSize = lbaSize << UINT32_C(1);//multiply by 2
-                            --powerOfTwo;
-                        }
-                        if (lbaSize == nvmeIoCtx->device->drive_info.deviceBlockSize)
-                        {
-                            compat = NVM_REINIT_COMPATIBLE_FORMAT_CRYPTO;
+                            //now make sure LBA size matches current settings
+                            int16_t powerOfTwo = C_CAST(int16_t, nvmeIoCtx->device->drive_info.IdentifyData.nvme.ns.lbaf[lbaFormat].lbaDS);
+                            uint32_t lbaSize = 1;
+                            while (powerOfTwo > 0)
+                            {
+                                lbaSize = lbaSize << UINT32_C(1);//multiply by 2
+                                --powerOfTwo;
+                            }
+                            if (lbaSize == nvmeIoCtx->device->drive_info.deviceBlockSize)
+                            {
+                                compat = NVM_REINIT_COMPATIBLE_FORMAT_CRYPTO;
+                            }
                         }
                     }
                 }
@@ -11311,6 +11333,11 @@ static eNVM_ReInit_Compatible is_NVMe_Cmd_Compatible_With_Reinitialize_Media_IOC
                     {
                         return compat;
                     }
+                    if (is_Windows_10_Version_1903_Or_Higher() && nvmeIoCtx->cmd.adminCmd.cdw10 & BIT3)
+                    {
+                        //microsoft is PROBABLY setting the AUSE bit since that is default behavior in newer versions, so screen for that since this version is too old to take parameters
+                        return compat;
+                    }
                     //ignore the following since they only apply to overwrite which isn't supported anyways
                     //ignore "overwrite invert pattern between passes"
                     //ignore "overwrite pass count"
@@ -11324,9 +11351,15 @@ static eNVM_ReInit_Compatible is_NVMe_Cmd_Compatible_With_Reinitialize_Media_IOC
                         compat = NVM_REINIT_INCOMPATIBLE_SANITIZE_OVERWRITE;
                         break;
                     case SANITIZE_NVM_BLOCK_ERASE:
-                        compat = NVM_REINIT_COMPATIBLE_SANITIZE_BLOCK;
+                        if (is_Windows_10_Version_21H1_Or_Higher())
+                        {
+                            //can only specify sanitize block erase starting Windows 10 21H1 or higher with this IOCTL
+                            compat = NVM_REINIT_COMPATIBLE_SANITIZE_BLOCK;
+                        }
                         break;
                     case SANITIZE_NVM_CRYPTO:
+                        //1909 and higher will likely allow sanitize crypto if all the bits are set as expected, whether the ioctl is given parameters or not.
+                        //21h1 definitely will, but between 1909 and 21h1 no parameters are accepted, so it is not clear what the behavior is.
                         compat = NVM_REINIT_COMPATIBLE_SANITIZE_CRYPTO;
                         break;
                     }
