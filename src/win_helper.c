@@ -4370,13 +4370,13 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique = true;
                             //This block is commented out for now as we need to implement the reinitialize media IOCTL to be able to support this
-                            /*if (is_Windows_10_Version_1607_Or_Higher())
+                            if (is_Windows_10_Version_1607_Or_Higher())
                             {
                                 if ((device->os_info.fileSystemInfo.fileSystemInfoValid && !device->os_info.fileSystemInfo.isSystemDisk) || is_Windows_PE())
                                 {
                                     device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatCryptoSecureErase = true;
                                 }
-                            }*/
+                            }
                             if (is_Windows_10_Version_1903_Or_Higher())
                             {
 #if defined (WIN_DEBUG)
@@ -4410,16 +4410,22 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miReceive = true;
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miSend = true;
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize = true;
+                                //adding more detail since the previous bool was a little too generic and this will improve overall accuracy of supported commands-TJE
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeCrypto = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeBlock = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeOverwrite = true;
                             }
-                            if (is_Windows_11_Version_21H2_Or_Higher())
+                            if (is_Windows_10_Version_21H1_Or_Higher())
                             {
 #if defined (WIN_DEBUG)
-                                printf("WIN: 21H2+\n");
+                                printf("WIN: 21H1+\n");
 #endif //WIN_DEBUG
                                 if ((device->os_info.fileSystemInfo.fileSystemInfoValid && !device->os_info.fileSystemInfo.isSystemDisk) || is_Windows_PE())
                                 {
-                                    //New documentation indicates that sanitize is supported wihtout PE mode in Windows 11.
-                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize = true;
+                                    //Microsoft's documentation was wrong or just worded weirdly that it seemeed like it should work in Win11 just like PE, but that is not the case!
+                                    //The only way that seems to actually work is PE as always or the reinitialize media IOCTL which is slightly more limited in capabilities.
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeCrypto = true;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeBlock = true;
                                 }
                             }
                         }
@@ -11235,6 +11241,208 @@ static int send_NVMe_Set_Features_Win10(nvmeCmdCtx *nvmeIoCtx, bool *useNVMPasst
     return ret;
 }
 
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
+//This IOCTL started in Windows 10, 1607. AKA 14393 API. It only supported NVM format with crypto erase though.
+//When Windows 11 was released, this API added a structure to specify a sanitize command to run, but is limited to block and crypto erase only.
+// This Windows 11/10 API change was 20348 and supposedly also supports Windows 10 21H1
+//It is unclear if calling this API without parameters like Win10 1607 supports results in a format with crypto erase or a sanitize crypto erase at this time.
+//Microsoft usually preserves backwards compatibility, but it is unclear what is supported in this case.-TJE
+typedef enum _eNVM_ReInit_Compatible
+{
+    NVM_REINIT_INCOMPATIBLE_CMD,
+    NVM_REINIT_INCOMPATIBLE_FORMAT,
+    NVM_REINIT_INCOMPATIBLE_SANITIZE_OLD_API_OR_OS,//compiled with API before 20348 or old version of Windows 10 that doesn't support sanitize.
+    NVM_REINIT_INCOMPATIBLE_SANITIZE_OPTIONS,//a bit or option specified in sanitize is not compatible/able to be specified in this IOCTL
+    NVM_REINIT_INCOMPATIBLE_SANITIZE_OVERWRITE,//overwrite is not allowed in this API
+    NVM_REINIT_COMPATIBLE_FORMAT_CRYPTO,
+    NVM_REINIT_COMPATIBLE_SANITIZE_CRYPTO,
+    NVM_REINIT_COMPATIBLE_SANITIZE_BLOCK
+}eNVM_ReInit_Compatible;
+
+static eNVM_ReInit_Compatible is_NVMe_Cmd_Compatible_With_Reinitialize_Media_IOCTL(nvmeCmdCtx* nvmeIoCtx)
+{
+    eNVM_ReInit_Compatible compat = NVM_REINIT_INCOMPATIBLE_CMD;
+    if (is_Windows_10_Version_1607_Or_Higher())
+    {
+        //check a couple basic requirements....valid pointer and an admin command
+        if (nvmeIoCtx && nvmeIoCtx->commandType == NVM_ADMIN_CMD)
+        {
+            //first check for format crypto erase.
+            if (nvmeIoCtx->cmd.adminCmd.opcode == NVME_ADMIN_CMD_FORMAT_NVM)
+            {
+                compat = NVM_REINIT_INCOMPATIBLE_FORMAT;
+                //next we need to screen other fields to make sure there aren't other things being asked while running the format.
+                if (M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 11, 9) == 2)
+                {
+                    //crypto erase.
+                    //Finish validating other parameters.
+                    //cannot change PI, metadata, or LBA format.
+                    uint32_t reservedBitsDWord10 = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 12);
+                    bool pil = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8;
+                    uint8_t pi = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 5);
+                    bool mset = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT4;
+                    uint8_t lbaFormat = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 3, 0);
+                    nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
+                    if (reservedBitsDWord10 == 0 && !pil && !mset && pi == 0)
+                    {
+                        //now make sure LBA size matches current settings
+                        int16_t powerOfTwo = C_CAST(int16_t, nvmeIoCtx->device->drive_info.IdentifyData.nvme.ns.lbaf[lbaFormat].lbaDS);
+                        uint32_t lbaSize = 1;
+                        while (powerOfTwo > 0)
+                        {
+                            lbaSize = lbaSize << UINT32_C(1);//multiply by 2
+                            --powerOfTwo;
+                        }
+                        if (lbaSize == nvmeIoCtx->device->drive_info.deviceBlockSize)
+                        {
+                            compat = NVM_REINIT_COMPATIBLE_FORMAT_CRYPTO;
+                        }
+                    }
+                }
+            }
+            else if (nvmeIoCtx->cmd.adminCmd.opcode == NVME_ADMIN_CMD_SANITIZE)
+            {
+                compat = NVM_REINIT_INCOMPATIBLE_SANITIZE_OLD_API_OR_OS;
+                if (is_Windows_10_Version_21H1_Or_Higher())
+                {
+                    compat = NVM_REINIT_INCOMPATIBLE_SANITIZE_OPTIONS;
+                    //cannot currently specify "no deallocate after sanitize", so if this is set, return incompatible options
+                    if (nvmeIoCtx->cmd.adminCmd.cdw10 & BIT9)
+                    {
+                        return compat;
+                    }
+                    //ignore the following since they only apply to overwrite which isn't supported anyways
+                    //ignore "overwrite invert pattern between passes"
+                    //ignore "overwrite pass count"
+                    //ignore "overwrite pattern"
+
+                    //If we are here and this is a supported OS and API, check for a valid Sanitize operation.
+                    switch (M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0))
+                    {
+                    case SANITIZE_NVM_EXIT_FAILURE_MODE:
+                    case SANITIZE_NVM_OVERWRITE:
+                        compat = NVM_REINIT_INCOMPATIBLE_SANITIZE_OVERWRITE;
+                        break;
+                    case SANITIZE_NVM_BLOCK_ERASE:
+                        compat = NVM_REINIT_COMPATIBLE_SANITIZE_BLOCK;
+                        break;
+                    case SANITIZE_NVM_CRYPTO:
+                        compat = NVM_REINIT_COMPATIBLE_SANITIZE_CRYPTO;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    return compat;
+}
+
+static int nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx)
+{
+    int ret = OS_COMMAND_NOT_AVAILABLE;
+    if (is_Windows_10_Version_1607_Or_Higher())
+    {
+        //Now make sure we have either format with crypto erase or sanitize block erase or sanitize crypto erase.
+        eNVM_ReInit_Compatible compatIO = is_NVMe_Cmd_Compatible_With_Reinitialize_Media_IOCTL(nvmeIoCtx);
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_20348
+        if (is_Windows_10_Version_21H1_Or_Higher() && (compatIO == NVM_REINIT_COMPATIBLE_SANITIZE_CRYPTO || compatIO == NVM_REINIT_COMPATIBLE_SANITIZE_BLOCK))
+        {
+            //Setup parameters to issue Sanitize block or crypto erase!
+            STORAGE_REINITIALIZE_MEDIA reinitMedia;
+            memset(&reinitMedia, 0, sizeof(STORAGE_REINITIALIZE_MEDIA));
+            reinitMedia.Version = sizeof(STORAGE_REINITIALIZE_MEDIA);
+            reinitMedia.Size = sizeof(STORAGE_REINITIALIZE_MEDIA);
+            reinitMedia.TimeoutInSeconds = nvmeIoCtx->timeout;
+            switch (M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0))
+            {
+            case SANITIZE_NVM_EXIT_FAILURE_MODE:
+            case SANITIZE_NVM_OVERWRITE:
+                return BAD_PARAMETER;
+            case SANITIZE_NVM_BLOCK_ERASE:
+                reinitMedia.SanitizeOption.SanitizeMethod = StorageSanitizeMethodBlockErase;
+                break;
+            case SANITIZE_NVM_CRYPTO:
+                reinitMedia.SanitizeOption.SanitizeMethod = StorageSanitizeMethodCryptoErase;
+                break;
+            }
+            if (nvmeIoCtx->cmd.adminCmd.cdw10 & BIT3)
+            {
+                reinitMedia.SanitizeOption.DisallowUnrestrictedSanitizeExit = false;
+            }
+            else
+            {
+                reinitMedia.SanitizeOption.DisallowUnrestrictedSanitizeExit = true;
+            }
+            seatimer_t commandTimer;
+            memset(&commandTimer, 0, sizeof(seatimer_t));
+            start_Timer(&commandTimer);
+            DWORD returnedLength = 0;
+            BOOL result = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
+                IOCTL_STORAGE_REINITIALIZE_MEDIA,
+                &reinitMedia,
+                sizeof(STORAGE_REINITIALIZE_MEDIA),
+                NULL,
+                0,
+                &returnedLength,
+                NULL
+            );
+            stop_Timer(&commandTimer);
+            nvmeIoCtx->device->os_info.last_error = GetLastError();
+            nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+            if (!result)
+            {
+                if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                {
+                    printf("Windows Error: ");
+                    print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
+                }
+                ret = OS_PASSTHROUGH_FAILURE;
+            }
+            else
+            {
+                ret = SUCCESS;
+            }
+        }
+        else
+#endif //(WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_20348
+            if (compatIO == NVM_REINIT_COMPATIBLE_FORMAT_CRYPTO)
+            {
+                //Issue without the parameters for Format with crypto erase only!
+                seatimer_t commandTimer;
+                memset(&commandTimer, 0, sizeof(seatimer_t));
+                start_Timer(&commandTimer);
+                DWORD returnedLength = 0;
+                BOOL result = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
+                    IOCTL_STORAGE_REINITIALIZE_MEDIA,
+                    NULL,
+                    0,
+                    NULL,
+                    0,
+                    &returnedLength,
+                    NULL
+                );
+                stop_Timer(&commandTimer);
+                nvmeIoCtx->device->os_info.last_error = GetLastError();
+                nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+                if (!result)
+                {
+                    if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                    {
+                        printf("Windows Error: ");
+                        print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
+                    }
+                    ret = OS_PASSTHROUGH_FAILURE;
+                }
+                else
+                {
+                    ret = SUCCESS;
+                }
+            }
+    }
+    return ret;
+}
+#endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
+
 static int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = OS_COMMAND_NOT_AVAILABLE;
@@ -12243,10 +12451,20 @@ static int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         case NVME_ADMIN_CMD_NAMESPACE_ATTACHMENT:
         case NVME_ADMIN_CMD_NVME_MI_SEND:
         case NVME_ADMIN_CMD_NVME_MI_RECEIVE:
-        case NVME_ADMIN_CMD_SANITIZE:
-            if (is_Windows_PE() || is_Windows_11_Version_21H2_Or_Higher())
+            if (is_Windows_PE())
             {
                 useNVMPassthrough = true;
+            }
+        case NVME_ADMIN_CMD_SANITIZE:
+            if (is_Windows_PE())
+            {
+                useNVMPassthrough = true;
+            }
+            else
+            {
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
+                ret = nvme_Ioctl_Storage_Reinitialize_Media(nvmeIoCtx);
+#endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
             }
             break;
         case NVME_ADMIN_CMD_DEVICE_SELF_TEST:
