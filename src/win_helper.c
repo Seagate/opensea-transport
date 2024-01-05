@@ -12502,6 +12502,7 @@ static int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             {
                 useNVMPassthrough = true;
             }
+            break;
         case NVME_ADMIN_CMD_SANITIZE:
             if (is_Windows_PE())
             {
