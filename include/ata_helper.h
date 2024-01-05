@@ -1039,6 +1039,8 @@ extern "C"
 
        ATA_MINOR_VERSION_ACS3_REV_5             = 0x006D, //ACS-3 Revision 5
 
+       ATA_MINOR_VERSION_ACS6_REV_2             = 0x0073, //ACS-6 Revision 2
+
        ATA_MINOR_VERSION_ACS_2_PUBLISHED        = 0x0082, //ACS-2 published, ANSI INCITS 482-2012
 
        ATA_MINOR_VERSION_ACS4_PUBLISHED         = 0x009C, //ACS-4 published, ANSI, INCITS 529-2018
