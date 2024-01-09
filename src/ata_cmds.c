@@ -1068,7 +1068,7 @@ int ata_Security_Freeze_Lock(tDevice *device)
     return ret;
 }
 
-int ata_Accessible_Max_Address_Feature(tDevice *device, uint16_t feature, uint64_t lba, ataReturnTFRs *rtfrs, uint16_t sectorCount)
+int ata_Accessible_Max_Address_Feature(tDevice *device, uint16_t feature, uint64_t lba, ataReturnTFRs *rtfrs)
 {
     int             ret          = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -1093,8 +1093,6 @@ int ata_Accessible_Max_Address_Feature(tDevice *device, uint16_t feature, uint64
     ataCommandOptions.tfr.LbaLow48 = M_Byte3(lba);
     ataCommandOptions.tfr.LbaMid48 = M_Byte4(lba);
     ataCommandOptions.tfr.LbaHi48 = M_Byte5(lba);
-    ataCommandOptions.tfr.SectorCount = M_Byte0(sectorCount);
-    ataCommandOptions.tfr.SectorCount48 = M_Byte1(sectorCount);
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -1102,7 +1100,7 @@ int ata_Accessible_Max_Address_Feature(tDevice *device, uint16_t feature, uint64
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Accessible Max Address Command - Feature = 0x%04" PRIX16 ", LBA = %" PRIu64 ", Count = %" PRIu16 "\n", feature, lba, sectorCount);
+        printf("Sending ATA Accessible Max Address Command - Feature = 0x%04" PRIX16 ", LBA = %" PRIu64 "\n", feature, lba);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -1125,7 +1123,7 @@ int ata_Get_Native_Max_Address_Ext(tDevice *device, uint64_t *nativeMaxLBA)
     int             ret   = UNKNOWN;
     ataReturnTFRs rtfrs;
     memset(&rtfrs, 0, sizeof(rtfrs));
-    ret = ata_Accessible_Max_Address_Feature(device, AMAC_GET_NATIVE_MAX_ADDRESS, 0, &rtfrs, 0);
+    ret = ata_Accessible_Max_Address_Feature(device, AMAC_GET_NATIVE_MAX_ADDRESS, 0, &rtfrs);
     if (ret == SUCCESS && nativeMaxLBA)
     {
         *nativeMaxLBA = M_BytesTo8ByteValue(0, 0, rtfrs.lbaHiExt, rtfrs.lbaMidExt, rtfrs.lbaLowExt, rtfrs.lbaHi, rtfrs.lbaMid, rtfrs.lbaLow);
@@ -1133,17 +1131,17 @@ int ata_Get_Native_Max_Address_Ext(tDevice *device, uint64_t *nativeMaxLBA)
     return ret;
 }
 
-int ata_Set_Accessible_Max_Address_Ext(tDevice *device, uint64_t newMaxLBA, bool changeId)
+int ata_Set_Accessible_Max_Address_Ext(tDevice *device, uint64_t newMaxLBA)
 {
     int ret = UNKNOWN;
-    ret = ata_Accessible_Max_Address_Feature(device, AMAC_SET_ACCESSIBLE_MAX_ADDRESS, newMaxLBA, NULL, changeId ? 1 : 0);
+    ret = ata_Accessible_Max_Address_Feature(device, AMAC_SET_ACCESSIBLE_MAX_ADDRESS, newMaxLBA, NULL);
     return ret;
 }
 
 int ata_Freeze_Accessible_Max_Address_Ext(tDevice *device)
 {
     int ret = UNKNOWN;
-    ret = ata_Accessible_Max_Address_Feature(device, AMAC_FREEZE_ACCESSIBLE_MAX_ADDRESS, 0, NULL, 0);
+    ret = ata_Accessible_Max_Address_Feature(device, AMAC_FREEZE_ACCESSIBLE_MAX_ADDRESS, 0, NULL);
     return ret;
 }
 
