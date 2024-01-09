@@ -3718,6 +3718,7 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
             {
                 memcpy(scsiIoCtx->pdata, response, M_Min(scsiIoCtx->dataLength, sizeof(response) / sizeof(*response)));
             }
+            scsiIoCtx->pAtaCmdOpts = NULL;
             return SUCCESS;
         }
         break;
@@ -3739,6 +3740,7 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
         bitPointer = 4;
         set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        scsiIoCtx->pAtaCmdOpts = NULL;
         return NOT_SUPPORTED;
     }
     //check tlength
@@ -3787,6 +3789,7 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
             bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
             set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            scsiIoCtx->pAtaCmdOpts = NULL;
             return NOT_SUPPORTED;
         }
     }
@@ -3861,6 +3864,7 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
             }
             set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            scsiIoCtx->pAtaCmdOpts = NULL;
             return NOT_SUPPORTED;
         }
     }
@@ -3904,6 +3908,7 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0x1D, device->drive_info.softSATFlags.senseDataDescriptorFormat, ataReturnDescriptor, 1);
 #endif
     }
+    scsiIoCtx->pAtaCmdOpts = NULL;
     return ret;
 }
 
@@ -5794,17 +5799,17 @@ static int translate_SCSI_Security_Protocol_Out_Command(tDevice *device, ScsiIoC
         else
         {
             uint8_t ataSecurityCommandBuffer[LEGACY_DRIVE_SEC_SIZE] = { 0 };//for use in ATA security commands that transfer data
-            uint16_t *ataSecurityWordPtr = (uint16_t*)&ataSecurityCommandBuffer[0];
+            uint16_t *ataSecurityWordPtr = C_CAST(uint16_t*, &ataSecurityCommandBuffer[0]);
             switch (securityProtocolSpecific)
             {
             case 0x0001://set password
                 //master password capability
-                if (scsiIoCtx->cdb[0] & BIT0)
+                if (scsiIoCtx->pdata[0] & BIT0)
                 {
                     ataSecurityWordPtr[0] |= BIT8;
                 }
                 //set the master password identifier when necessary
-                if (scsiIoCtx->cdb[1] & BIT0)
+                if (scsiIoCtx->pdata[1] & BIT0)
                 {
                     ataSecurityWordPtr[17] = M_BytesTo2ByteValue(scsiIoCtx->pdata[34], scsiIoCtx->pdata[35]);
                 }
@@ -5833,7 +5838,7 @@ static int translate_SCSI_Security_Protocol_Out_Command(tDevice *device, ScsiIoC
                 break;
             case 0x0002://unlock
                 //user or master password identifier bit
-                if (scsiIoCtx->cdb[1] & BIT0)
+                if (scsiIoCtx->pdata[1] & BIT0)
                 {
                     ataSecurityWordPtr[0] |= BIT0;
                 }
@@ -5869,12 +5874,12 @@ static int translate_SCSI_Security_Protocol_Out_Command(tDevice *device, ScsiIoC
                 break;
             case 0x0004://erase unit
                 //enhanced erase bit
-                if (scsiIoCtx->cdb[0] & BIT0)
+                if (scsiIoCtx->pdata[0] & BIT0)
                 {
                     ataSecurityWordPtr[0] |= BIT1;
                 }
                 //user or master password identifier bit
-                if (scsiIoCtx->cdb[1] & BIT0)
+                if (scsiIoCtx->pdata[1] & BIT0)
                 {
                     ataSecurityWordPtr[0] |= BIT0;
                 }
@@ -5910,7 +5915,7 @@ static int translate_SCSI_Security_Protocol_Out_Command(tDevice *device, ScsiIoC
                 break;
             case 0x0006://disable password
                 //user or master password identifier bit
-                if (scsiIoCtx->cdb[1] & BIT0)
+                if (scsiIoCtx->pdata[1] & BIT0)
                 {
                     ataSecurityWordPtr[0] |= BIT0;
                 }

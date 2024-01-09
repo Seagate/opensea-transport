@@ -355,6 +355,10 @@ void print_Low_Level_Info(tDevice* device)
         {
             printf("\t\t\t\t\tPRESCSI2 (inquiry data is pre-SCSI 2)\n");
         }
+        if (device->drive_info.passThroughHacks.scsiHacks.writeBufferNoDeferredDownload)
+        {
+            printf("\t\t\t\t\tWBND (HBA blocks SCSI write buffer - deferred download modes)\n");
+        }
         //MXFER > 0 means we know a maximum transfer size available
         if (device->drive_info.passThroughHacks.scsiHacks.maxTransferLength > 0)
         {
@@ -2728,6 +2732,50 @@ bool is_Seagate_Model_Number_Vendor_H(tDevice *device, bool USBchildDrive)
     return isSeagateVendor;
 }
 
+bool is_Seagate_Vendor_K(tDevice* device)
+{
+    bool isVendorK = false;
+    //LaCie Vendor ID
+    if (is_LaCie(device))
+    {
+        //PID can be set to 1120, 1131, or 1132
+        if (device->drive_info.adapter_info.vendorIDValid && device->drive_info.adapter_info.vendorID == USB_Vendor_LaCie)
+        {
+            if (device->drive_info.adapter_info.productIDValid)
+            {
+                if (device->drive_info.adapter_info.productID == 0x1120 ||
+                    device->drive_info.adapter_info.productID == 0x1131 ||
+                    device->drive_info.adapter_info.productID == 0x1132
+                    )
+                {
+                    isVendorK = true;
+                }
+            }
+        }
+        else if (!device->drive_info.adapter_info.vendorIDValid)
+        {
+            //Already checked vendor ID, so check SCSI MN, then check ATA reported info
+            if (strcmp(device->drive_info.product_identification, "Rugged Mini SSD") == 0)
+            {
+                if (device->drive_info.bridge_info.isValid && strcmp(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") == 0)
+                {
+                    //Known FWRevs
+                    //W0519CR0
+                    //W0918AR0
+                    //W1005AM0
+                    if (strcmp(device->drive_info.bridge_info.childDriveFW, "W0519CR0") == 0 ||
+                        strcmp(device->drive_info.bridge_info.childDriveFW, "W0918AR0") == 0 ||
+                        strcmp(device->drive_info.bridge_info.childDriveFW, "W1005AM0") == 0)
+                    {
+                        isVendorK = true;
+                    }
+                }
+            }
+        }
+    }
+    return isVendorK;
+}
+
 eSeagateFamily is_Seagate_Family(tDevice *device)
 {
     eSeagateFamily isSeagateFamily = NON_SEAGATE;
@@ -2824,6 +2872,10 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
                 if (is_Seagate_Model_Number_Vendor_F(device, true))
                 {
                     isSeagateFamily = SEAGATE_VENDOR_F;
+                }
+                else if (is_Seagate_Vendor_K(device))
+                {
+                    isSeagateFamily = SEAGATE_VENDOR_K;
                 }
             }
             break;
@@ -4932,6 +4984,30 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
+            case 0x1120:
+            case 0x1131:
+            case 0x1132://LaCie Rugged Mini SSD
+                //NOTE: Only ATA passthrough for Identify and SMART are available.
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 15;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                //mode pages are supported, but sometimes it returns an incorrect page
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;//This probably has more to do with only supporting Identify and SMART commands
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 512;//setting single sectors since this only does ID and SMART
+                break;
             default:
                 //setup some defaults that will most likely work for most current products
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
@@ -5230,7 +5306,31 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
-                //NOTE: Add max passthrough transfer length hack set to 65536
+                device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = 65536;
+                break;
+            case 0x0567://Github user reported USB to SATA adapter
+                //rev 0x05h
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 11;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = false;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.reportAllOpCodes = true;//this may need better validation
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 1048576;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit = true;
+                device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition = true;//this does not crash the bridge, just useless as it's empty...just setting this as well for consistency since return reponse info works.
+                device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             case 0x0583://USB to NVMe adapter
                 //Rev 205h
@@ -5827,6 +5927,80 @@ static bool set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
     return passthroughHacksSet;
 }
 
+//possible places to lookup vendor IDs:
+//https://pcisig.com/membership/member-companies?combine=&order=field_vendor_id&sort=asc
+//https://www.pcilookup.com/
+//https://pci-ids.ucw.cz/
+static bool set_PCI_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
+{
+    bool passthroughHacksSet = false;
+    //TODO: Currently this is setting SCSI/ATA hacks as needed for the devices below.
+    //      This may be ok in general, but may get confusing since this isn't necessarily the target drive having an issue, but the
+    //      hardware controller that a drive is attached to having some other functionality.
+    //      The hacks list started as specific to USB, but needs to handle some things for PCIe controllers too.
+    if (device->drive_info.adapter_info.vendorIDValid)
+    {
+        switch (device->drive_info.adapter_info.vendorID)
+        {
+        case PCI_VENDOR_RED_HAT:
+            //note: these all appear to be virtual devices from what I can find online.
+            //Only handling those that this software is likely to encounter for now.
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x0008://reported in openSeaChest#47
+                //TODO: This seemed to only allow identify and smart through. May need a more thorough test for this in the future, but for now listing the ata28bit only hack
+                //      it is possible that even withing the A1h CDB other ATA commands will also be filtered and additional hacks will be required.
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly = true;
+                break;
+            default:
+                break;
+            }
+            break;
+        case PCI_VENDOR_MICROCHIP://PMC?
+            switch (device->drive_info.adapter_info.productID)
+            {
+            case 0x8070:
+                //reported from a Linux box running the following driver:
+                // driver info--
+                //    driver name : pm80xx
+                //    driver version string : 0.1.37 / 1.3.01 - 1 - bn_1.
+                //    major ver : 0
+                //    minor ver : 1
+                //    revision : 37
+                //Unknown if these hacks are specific to the controller or the driver, but for now applying everywhere when it is detected
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;//This command seems to abort or cause an internal error for some reason, so turning it off.
+                //none of the report supported operation codes modes work on this controller.
+                //I do not have one of these to do a full test so this workaround list is definitely incomplete.
+                device->drive_info.passThroughHacks.scsiHacks.writeBufferNoDeferredDownload = true;
+                //This controller/driver absolutely monitors the mode field in write buffer and blocks the deferred download modes, but regular old segmented works fine.-TJE
+                break;
+            default:
+                break;
+            }
+            break;
+        //case PCI_VENDOR_ADAPTEC_2:
+        //    switch (device->drive_info.adapter_info.productID)
+        //    {
+        //    case 0x028B://6-series SAS
+        //    case 0x028C://7-series SAS
+        //    case 0x028D://8-series SAS
+        //        //Adaptec controllers in 8 series definitely require ATA passthrough commands to use DMA mode instead of UDMA mode. Have seen this on the ASR8405
+        //        //Right now this is handled with retries in other parts of the code
+        //        //We should run a more thorough test before turning on hacks here to make sure it covers all capabilities.-TJE
+        //        //Another known SAT thing is that soft-reset works, but hard reset does not.
+        //        break;
+        //    }
+        //    break;
+        default:
+            //unknown vendor ID or nothing necessary
+            break;
+        }
+    }
+    return passthroughHacksSet;
+}
+
 bool setup_Passthrough_Hacks_By_ID(tDevice *device)
 {
     bool success = false;
@@ -5837,6 +6011,7 @@ bool setup_Passthrough_Hacks_By_ID(tDevice *device)
         success = set_USB_Passthrough_Hacks_By_PID_and_VID(device);
         break;
     case ADAPTER_INFO_PCI://TODO: PCI device hacks based on known controllers with workarounds or other changes we can make.
+        success = set_PCI_Passthrough_Hacks_By_PID_and_VID(device);
         break;
     case ADAPTER_INFO_IEEE1394:
         success = set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(device);

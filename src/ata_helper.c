@@ -394,7 +394,7 @@ int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, 
         return MEMORY_FAILURE;
     }
     //if we are retrieving the current values, then we better have a good pointer...no point in sending the command if we don't
-    if (functionCode == 0x0002 && !currentValue)
+    if ((functionCode == 0x0002 || functionCode == 0x0004) && !currentValue)
     {
         safe_Free_aligned(errorRecoveryBuffer)
         return BAD_PARAMETER;
@@ -415,7 +415,7 @@ int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, 
 
     ret = send_ATA_SCT_Command(device, errorRecoveryBuffer, LEGACY_DRIVE_SEC_SIZE, true);
 
-    if (functionCode == 0x0002 && currentValue != NULL)
+    if ((functionCode == 0x0002 || functionCode == 0x0004) && currentValue != NULL)
     {
         *currentValue = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
     }
@@ -1113,19 +1113,32 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_UDMA;
             }
 
-            //set read/write buffer DMA
-            if (ident_word[69] & BIT11)
+            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word069))
             {
-                device->drive_info.ata_Options.readBufferDMASupported = true;
-            }
-            if (ident_word[69] & BIT10)
-            {
-                device->drive_info.ata_Options.writeBufferDMASupported = true;
-            }
-            //set download microcode DMA support
-            if (ident_word[69] & BIT8)
-            {
-                device->drive_info.ata_Options.downloadMicrocodeDMASupported = true;
+                //DCO DMA
+                if (ident_word[69] & BIT12)
+                {
+                    device->drive_info.ata_Options.dcoDMASupported = true;
+                }
+                //set read/write buffer DMA
+                if (ident_word[69] & BIT11)
+                {
+                    device->drive_info.ata_Options.readBufferDMASupported = true;
+                }
+                if (ident_word[69] & BIT10)
+                {
+                    device->drive_info.ata_Options.writeBufferDMASupported = true;
+                }
+                //HPA security ext DMA
+                if (ident_word[69] & BIT9)
+                {
+                    device->drive_info.ata_Options.hpaSecurityExtDMASupported = true;
+                }
+                //set download microcode DMA support
+                if (ident_word[69] & BIT8)
+                {
+                    device->drive_info.ata_Options.downloadMicrocodeDMASupported = true;
+                }
             }
         }
         //set zoned device type
@@ -1221,6 +1234,8 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                 device->drive_info.ata_Options.readBufferDMASupported = false;
                 device->drive_info.ata_Options.readLogWriteLogDMASupported = false;
                 device->drive_info.ata_Options.writeBufferDMASupported = false;
+                device->drive_info.ata_Options.dcoDMASupported = false;
+                device->drive_info.ata_Options.hpaSecurityExtDMASupported = false;
             }
         }
         if (ident_word[119] & BIT2 || ident_word[120] & BIT2)
@@ -2056,7 +2071,7 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataComm
 
 uint8_t calculate_ATA_Checksum(uint8_t *ptrData)
 {
-    uint8_t checksum = 0;
+    uint32_t checksum = 0;
     uint32_t counter = 0;
     if (!ptrData)
     {
@@ -2066,7 +2081,7 @@ uint8_t calculate_ATA_Checksum(uint8_t *ptrData)
     {
         checksum = checksum + ptrData[counter];
     }
-    return checksum; // (~checksum + 1);//return this? or just the checksum?
+    return M_Byte0(checksum); // (~checksum + 1);//return this? or just the checksum?
 }
 
 bool is_Checksum_Valid(uint8_t *ptrData, uint32_t dataSize, uint32_t *firstInvalidSector)
@@ -2076,14 +2091,14 @@ bool is_Checksum_Valid(uint8_t *ptrData, uint32_t dataSize, uint32_t *firstInval
     {
         return false;
     }
-    uint8_t checksumCalc = 0;
+    uint32_t checksumCalc = 0;
     for (uint32_t blockIter = 0; blockIter < (dataSize / LEGACY_DRIVE_SEC_SIZE); ++blockIter)
     {
         for (uint32_t counter = 0; counter <= 511; ++counter)
         {
             checksumCalc = checksumCalc + ptrData[counter + (blockIter * 512)];
         }
-        if (checksumCalc == 0)
+        if (M_Byte0(checksumCalc) == 0)
         {
             isValid = true;
         }
@@ -2104,11 +2119,11 @@ int set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize)
     {
         return BAD_PARAMETER;
     }
-    uint8_t checksum = 0;
+    uint32_t checksum = 0;
     for (uint32_t blockIter = 0; blockIter < (dataSize / LEGACY_DRIVE_SEC_SIZE); ++blockIter)
     {
         checksum = calculate_ATA_Checksum(&ptrData[blockIter]);
-        ptrData[blockIter + 511] = (~checksum + 1);
+        ptrData[blockIter + 511] = (~M_Byte0(checksum) + UINT8_C(1));
     }
     return ret;
 }
