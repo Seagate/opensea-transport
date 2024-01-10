@@ -11373,6 +11373,7 @@ static eNVM_ReInit_Compatible is_NVMe_Cmd_Compatible_With_Reinitialize_Media_IOC
 static int nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx)
 {
     int ret = OS_COMMAND_NOT_AVAILABLE;
+    memset(&nvmeIoCtx->commandCompletionData, 0, sizeof(completionQueueEntry));
     if (is_Windows_10_Version_1607_Or_Higher())
     {
         //Now make sure we have either format with crypto erase or sanitize block erase or sanitize crypto erase.
