@@ -11439,9 +11439,13 @@ static int nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx)
         }
         else
 #endif //(WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_20348
-            if (compatIO == NVM_REINIT_COMPATIBLE_FORMAT_CRYPTO)
+            if (compatIO == NVM_REINIT_COMPATIBLE_FORMAT_CRYPTO || compatIO == NVM_REINIT_COMPATIBLE_SANITIZE_CRYPTO)
             {
-                //Issue without the parameters for Format with crypto erase only!
+                //Issue without the parameters for Format with crypto erase only! (in 1607)
+                //At some point this switched to sanitize crypto when the drive supports it, but it is not clear when.
+                //The compatibility checking code assumes this happened in 1903, but it is not clear exactly when that happened.
+                //So if we get to this case and one of the two crypto copatible erases is specified, this will issue the command.
+                //If we ever get more info to further refine the compatibility checks, we should do that!
                 seatimer_t commandTimer;
                 memset(&commandTimer, 0, sizeof(seatimer_t));
                 start_Timer(&commandTimer);
