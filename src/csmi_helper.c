@@ -1328,7 +1328,7 @@ static void print_CSMI_Port_Protocol(uint8_t portProtocol)
         printf("SATA");
         needComma = true;
     }
-    if (portProtocol & CSMI_SAS_PROTOCOL_SATA)
+    if (portProtocol & CSMI_SAS_PROTOCOL_SMP)
     {
         if (needComma)
         {
@@ -1337,7 +1337,7 @@ static void print_CSMI_Port_Protocol(uint8_t portProtocol)
         printf("SMP");
         needComma = true;
     }
-    if (portProtocol & CSMI_SAS_PROTOCOL_SATA)
+    if (portProtocol & CSMI_SAS_PROTOCOL_STP)
     {
         if (needComma)
         {
@@ -1346,7 +1346,7 @@ static void print_CSMI_Port_Protocol(uint8_t portProtocol)
         printf("STP");
         needComma = true;
     }
-    if (portProtocol & CSMI_SAS_PROTOCOL_SATA)
+    if (portProtocol & CSMI_SAS_PROTOCOL_SSP)
     {
         if (needComma)
         {
@@ -4008,9 +4008,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, ptrRa
                         //Check if it's a RAID capable controller. We only want to enumerate devices on those in this function
                         if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                             || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
-                            || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY
-                            || (knownDriver == CSMI_DRIVER_HPSAMD)
-                            )
+                            || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
                             && knownDriver != CSMI_DRIVER_ARCSAS
                             )
                         {
@@ -4478,8 +4476,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                             //Check if it's a RAID capable controller. We only want to enumerate devices on those in this function
                             if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                                 || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
-                                || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY
-                                || (knownCSMIDriver == CSMI_DRIVER_HPSAMD && controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_HBA))
+                                || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
                                 && knownCSMIDriver != CSMI_DRIVER_ARCSAS
                                 )
                             {
