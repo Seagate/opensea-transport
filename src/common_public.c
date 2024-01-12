@@ -417,6 +417,18 @@ void print_Low_Level_Info(tDevice* device)
             {
                 printf("\t\t\t\t\t\tSanitize\n");
             }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeCrypto)
+            {
+                printf("\t\t\t\t\t\tSanitize Crypto Erase\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeBlock)
+            {
+                printf("\t\t\t\t\t\tSanitize Block Erase\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeOverwrite)
+            {
+                printf("\t\t\t\t\t\tSanitize Overwrite Erase\n");
+            }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceManagement)
             {
                 printf("\t\t\t\t\t\tNamespace Management\n");
