@@ -61,6 +61,7 @@ extern "C"
         CSMI_DRIVER_ARCSAS,
         CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY_VD, //iastorvd....not sure how this differs from other drivers
         CSMI_DRIVER_INTEL_GENERIC, //use this if we cannot figure out a better classification. It's a "catch-all" for intel based on iaStor....there are a few variants above that we already catch.
+        CSMI_DRIVER_HPSAMD,//HpSAMD.sys. While this responds to some CSMI IOCTLs, I cannot get any passthrough to work. Even changing the registry to CSMI=Full; does not seem to work or be supported. Setting it to none or limited appear to work, but it is unclear why full does not work.-TJE
     }eKnownCSMIDriver;
 
     //This is all the data, minus the IOCTL header, of the CSMI_SAS_GET_SCSI_ADDRESS_BUFFER
