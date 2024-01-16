@@ -1163,6 +1163,9 @@ int ata_Legacy_Write_Same_CHS(tDevice *device, uint8_t subcommand, uint8_t numbe
     else if (subcommand == LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS)
     {
         ataCommandOptions.tfr.ErrorFeature = LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS;
+        ataCommandOptions.tfr.SectorCount = 1;//spec says N/A, but this helps with SAT translators and should be ignored by the drive.
+        ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;//this must be used since the transfer is always 1 sector to the drive. The sector count says how many sectors to write the data sent to
+        ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
     }
     else
     {
@@ -1220,6 +1223,9 @@ int ata_Legacy_Write_Same(tDevice *device, uint8_t subcommand, uint8_t numberOfS
     else if(subcommand == LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS)
     {
         ataCommandOptions.tfr.ErrorFeature = LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS;
+        ataCommandOptions.tfr.SectorCount = 1;//spec says N/A, but this helps with SAT translators and should be ignored by the drive.
+        ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;//this must be used since the transfer is always 1 sector to the drive. The sector count says how many sectors to write the data sent to
+        ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
     }
     else
     {

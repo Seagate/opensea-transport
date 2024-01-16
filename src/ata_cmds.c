@@ -1817,7 +1817,7 @@ int ata_Read_Buffer(tDevice *device, uint8_t *ptrData, bool useDMA)
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.dataSize = LEGACY_DRIVE_SEC_SIZE;//defined in the spec that this will only read a 512byte block of data
-
+    ataCommandOptions.tfr.SectorCount = 1;//spec says N/A, but this helps with SAT translators and should be ignored by the drive.
     if (useDMA)
     {
         ataCommandOptions.tfr.CommandStatus = ATA_READ_BUF_DMA;
@@ -2797,6 +2797,7 @@ int ata_Write_Buffer(tDevice *device, uint8_t *ptrData, bool useDMA)
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.dataSize = LEGACY_DRIVE_SEC_SIZE;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
+    ataCommandOptions.tfr.SectorCount = 1;//spec says N/A, but this helps with SAT translators and should be ignored by the drive.
     if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
     {
         ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
@@ -3821,6 +3822,7 @@ int ata_Device_Configuration_Overlay_Feature(tDevice *device, eDCOFeatures dcoFe
         ataCommandOptions.commandDirection = XFER_DATA_IN;
         ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
         ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
+        ataCommandOptions.tfr.SectorCount = 1;//spec says N/A, but this helps with SAT translators and should be ignored by the drive.
         break;
     case DCO_SET:
         dcoFeatureString = "Set";
@@ -3828,6 +3830,7 @@ int ata_Device_Configuration_Overlay_Feature(tDevice *device, eDCOFeatures dcoFe
         ataCommandOptions.commandDirection = XFER_DATA_OUT;
         ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
         ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
+        ataCommandOptions.tfr.SectorCount = 1;//spec says N/A, but this helps with SAT translators and should be ignored by the drive.
         break;
     case DCO_IDENTIFY_DMA:
         dcoFeatureString = "Identify DMA";
@@ -3847,6 +3850,7 @@ int ata_Device_Configuration_Overlay_Feature(tDevice *device, eDCOFeatures dcoFe
         ataCommandOptions.commandDirection = XFER_DATA_IN;
         ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
         ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
+        ataCommandOptions.tfr.SectorCount = 1;//spec says N/A, but this helps with SAT translators and should be ignored by the drive.
         break;
     case DCO_SET_DMA:
         dcoFeatureString = "Set DMA";
@@ -3866,6 +3870,7 @@ int ata_Device_Configuration_Overlay_Feature(tDevice *device, eDCOFeatures dcoFe
         ataCommandOptions.commandDirection = XFER_DATA_OUT;
         ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
         ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
+        ataCommandOptions.tfr.SectorCount = 1;//spec says N/A, but this helps with SAT translators and should be ignored by the drive.
         break;
     default:
         dcoFeatureString = "Unknown DCO feature";
