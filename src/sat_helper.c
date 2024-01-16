@@ -650,7 +650,7 @@ int set_Registers(uint8_t *satCDB, ataPassthroughCommand *ataCommandOptions)
 {
     int ret = SUCCESS;
     if (ataCommandOptions->commandDirection != XFER_NO_DATA && ataCommandOptions->tfr.SectorCount == 0 
-        && ataCommandOptions->ataTransferBlocks != ATA_PT_LEN_TPSIU && ataCommandOptions->commandType == ATA_CMD_TYPE_TASKFILE
+        && ataCommandOptions->ataCommandLengthLocation != ATA_PT_LEN_TPSIU && ataCommandOptions->commandType == ATA_CMD_TYPE_TASKFILE
         && ataCommandOptions->dataSize == 512)
     {
         //special case for some commands (all 28bit corrected in here. Extended commands do not seem to have this issue)
