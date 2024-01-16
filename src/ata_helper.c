@@ -2071,7 +2071,7 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataComm
 
 uint8_t calculate_ATA_Checksum(uint8_t *ptrData)
 {
-    uint8_t checksum = 0;
+    uint32_t checksum = 0;
     uint32_t counter = 0;
     if (!ptrData)
     {
@@ -2081,7 +2081,7 @@ uint8_t calculate_ATA_Checksum(uint8_t *ptrData)
     {
         checksum = checksum + ptrData[counter];
     }
-    return checksum; // (~checksum + 1);//return this? or just the checksum?
+    return M_Byte0(checksum); // (~checksum + 1);//return this? or just the checksum?
 }
 
 bool is_Checksum_Valid(uint8_t *ptrData, uint32_t dataSize, uint32_t *firstInvalidSector)
@@ -2091,14 +2091,14 @@ bool is_Checksum_Valid(uint8_t *ptrData, uint32_t dataSize, uint32_t *firstInval
     {
         return false;
     }
-    uint8_t checksumCalc = 0;
+    uint32_t checksumCalc = 0;
     for (uint32_t blockIter = 0; blockIter < (dataSize / LEGACY_DRIVE_SEC_SIZE); ++blockIter)
     {
         for (uint32_t counter = 0; counter <= 511; ++counter)
         {
             checksumCalc = checksumCalc + ptrData[counter + (blockIter * 512)];
         }
-        if (checksumCalc == 0)
+        if (M_Byte0(checksumCalc) == 0)
         {
             isValid = true;
         }
@@ -2119,11 +2119,11 @@ int set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize)
     {
         return BAD_PARAMETER;
     }
-    uint8_t checksum = 0;
+    uint32_t checksum = 0;
     for (uint32_t blockIter = 0; blockIter < (dataSize / LEGACY_DRIVE_SEC_SIZE); ++blockIter)
     {
         checksum = calculate_ATA_Checksum(&ptrData[blockIter]);
-        ptrData[blockIter + 511] = (~checksum + 1);
+        ptrData[blockIter + 511] = (~M_Byte0(checksum) + UINT8_C(1));
     }
     return ret;
 }

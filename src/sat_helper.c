@@ -3733,6 +3733,7 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
             {
                 memcpy(scsiIoCtx->pdata, response, M_Min(scsiIoCtx->dataLength, sizeof(response) / sizeof(*response)));
             }
+            scsiIoCtx->pAtaCmdOpts = NULL;
             return SUCCESS;
         }
         break;
@@ -3754,6 +3755,7 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
         bitPointer = 4;
         set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        scsiIoCtx->pAtaCmdOpts = NULL;
         return NOT_SUPPORTED;
     }
     //check tlength
@@ -3802,6 +3804,7 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
             bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
             set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            scsiIoCtx->pAtaCmdOpts = NULL;
             return NOT_SUPPORTED;
         }
     }
@@ -3876,6 +3879,7 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
             }
             set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            scsiIoCtx->pAtaCmdOpts = NULL;
             return NOT_SUPPORTED;
         }
     }
@@ -3919,6 +3923,7 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0x1D, device->drive_info.softSATFlags.senseDataDescriptorFormat, ataReturnDescriptor, 1);
 #endif
     }
+    scsiIoCtx->pAtaCmdOpts = NULL;
     return ret;
 }
 

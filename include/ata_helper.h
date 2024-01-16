@@ -62,7 +62,17 @@ extern "C"
 
     #define LBA_MODE_BIT BIT6 //Set this in the device/head register to set LBA mode.
     #define DEVICE_SELECT_BIT BIT4 //On PATA, this is to select drive 1. Device/Head register
-    #define DEVICE_REG_BACKWARDS_COMPATIBLE_BITS 0xA0 //device/head in ATA & ATA3 say these bits should be set on every command. New specs mark these obsolete in commands that are from old specs. New commands may use these for other purposes.
+    #define DEVICE_REG_BACKWARDS_COMPATIBLE_BITS 0xA0 
+            //device/head in ATA & ATA3 say bits 7&5 should be set on every command. 
+            //New specs mark these obsolete in commands that are from old specs. 
+            //New commands may use these for other purposes.
+            //Device/Head pre-ATA standardization called this the Sector Size, Device, Head register
+            //bit7 was defined as the ECC bit. With this set to zero it used CRC
+            //bits 6:5 were the sector size. 11b=128B, 00b=256B, 01b=512B, 10b=1024B.
+            //With standardization forcing these bits to A0 sets ECC and 512B sector size, which is all that was likely used in the real-world
+            //For backwards compatibility with these really old devices, it is recommended to set this register to these values.
+            //This is not necessary for SATA drives unless they are aborting commands for no other reason.
+            //Setting these bits may not be necessary for most PATA devices that conform to ATA standards
 
     //This is a basic validity indicator for a given ATA identify word. Checks that it is non-zero and not FFFFh
     OPENSEA_TRANSPORT_API bool is_ATA_Identify_Word_Valid(uint16_t word);
@@ -140,6 +150,9 @@ extern "C"
     #define ATA_SMART_STATUS_FLAG_EVENT_COUNT BIT4
     #define ATA_SMART_STATUS_FLAG_SELF_PRESERVING BIT5
 
+    #define ATA_SMART_ATTRIBUTE_NOMINAL_COMMON_START 0x64 //most attributes start at 100, but there are occasionally some that don't
+    #define ATA_SMART_ATTRIBUTE_WORST_COMMON_START 0xFD //It's fairly common for a worst-ever to start at this highest possible value then move down as data is collected.
+
     #define ATA_SMART_THRESHOLD_ALWAYS_PASSING 0x00
     #define ATA_SMART_THRESHOLD_MINIMUM 0x01
     #define ATA_SMART_THRESHOLD_MAXIMUM 0xFD
@@ -148,6 +161,9 @@ extern "C"
 
     #define ATA_SMART_ATTRIBUTE_AUTOSAVE_ENABLE_SIG 0xF1
     #define ATA_SMART_AUTO_OFFLINE_ENABLE_SIG 0xF8
+
+    #define ATA_SMART_ATTRIBUTE_AUTOSAVE_DISABLE_SIG 0x00
+    #define ATA_SMART_AUTO_OFFLINE_DISABLE_SIG 0x00
 
     typedef enum _eATA_CMDS {
         ATA_NOP_CMD                             = 0x00,
@@ -1022,6 +1038,8 @@ extern "C"
        ATA_MINOR_VERSION_ACS4_REV_5             = 0x005E, //ACS-4 Revision 5
 
        ATA_MINOR_VERSION_ACS3_REV_5             = 0x006D, //ACS-3 Revision 5
+
+       ATA_MINOR_VERSION_ACS6_REV_2             = 0x0073, //ACS-6 Revision 2
 
        ATA_MINOR_VERSION_ACS_2_PUBLISHED        = 0x0082, //ACS-2 published, ANSI INCITS 482-2012
 

@@ -930,7 +930,7 @@ extern "C"
                 bool firmwareCommit;
                 bool vendorUnique;
                 bool deviceSelfTest;
-                bool sanitize;
+                bool sanitize;//any sanitize command
                 bool namespaceManagement;
                 bool namespaceAttachment;
                 bool setFeatures;//this does not have granularity for which features at this time!!!
@@ -940,9 +940,12 @@ extern "C"
                 bool securityReceive;
                 bool formatUserSecureErase;//format with ses set to user erase
                 bool formatCryptoSecureErase;//format with ses set to crypto erase
+                bool sanitizeCrypto;//Sanitize crypto erase is supported
+                bool sanitizeBlock;//Sanitize block erase is supported
+                bool sanitizeOverwrite;//Sanitize overwrite erase is supported
                 //TODO: As other passthroughs are learned with different capabilities, add other commands that ARE supported by them here so that other layers of code can know what capabilities a given device has.
             }limitedCommandsSupported;
-            uint8_t reserved[3];//padd out above bools to 8 byte boundaries
+            //uint8_t reserved[1];//padd out above bools to 8 byte boundaries
             uint32_t maxTransferLength;
             uint32_t nvmepadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
         }nvmePTHacks;
@@ -1443,6 +1446,7 @@ extern "C"
         SEAGATE_VENDOR_G = BIT19,
         SEAGATE_VENDOR_H = BIT20,
         SEAGATE_VENDOR_SSD_PJ = BIT21, //Older enterprise NVMe drives that had some unique capabilities
+        SEAGATE_VENDOR_K = BIT22,
     }eSeagateFamily;
 
     //The scan flags should each be a bit in a 32bit unsigned integer.
@@ -1891,6 +1895,7 @@ extern "C"
     OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_F(tDevice *device, bool USBchildDrive);
     OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_G(tDevice *device, bool USBchildDrive);
     OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_H(tDevice *device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Vendor_K(tDevice* device);
 
 
     typedef enum _eIronwolf_NAS_Drive
