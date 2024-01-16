@@ -417,6 +417,18 @@ void print_Low_Level_Info(tDevice* device)
             {
                 printf("\t\t\t\t\t\tSanitize\n");
             }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeCrypto)
+            {
+                printf("\t\t\t\t\t\tSanitize Crypto Erase\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeBlock)
+            {
+                printf("\t\t\t\t\t\tSanitize Block Erase\n");
+            }
+            if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeOverwrite)
+            {
+                printf("\t\t\t\t\t\tSanitize Overwrite Erase\n");
+            }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceManagement)
             {
                 printf("\t\t\t\t\t\tNamespace Management\n");
@@ -2732,6 +2744,50 @@ bool is_Seagate_Model_Number_Vendor_H(tDevice *device, bool USBchildDrive)
     return isSeagateVendor;
 }
 
+bool is_Seagate_Vendor_K(tDevice* device)
+{
+    bool isVendorK = false;
+    //LaCie Vendor ID
+    if (is_LaCie(device))
+    {
+        //PID can be set to 1120, 1131, or 1132
+        if (device->drive_info.adapter_info.vendorIDValid && device->drive_info.adapter_info.vendorID == USB_Vendor_LaCie)
+        {
+            if (device->drive_info.adapter_info.productIDValid)
+            {
+                if (device->drive_info.adapter_info.productID == 0x1120 ||
+                    device->drive_info.adapter_info.productID == 0x1131 ||
+                    device->drive_info.adapter_info.productID == 0x1132
+                    )
+                {
+                    isVendorK = true;
+                }
+            }
+        }
+        else if (!device->drive_info.adapter_info.vendorIDValid)
+        {
+            //Already checked vendor ID, so check SCSI MN, then check ATA reported info
+            if (strcmp(device->drive_info.product_identification, "Rugged Mini SSD") == 0)
+            {
+                if (device->drive_info.bridge_info.isValid && strcmp(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") == 0)
+                {
+                    //Known FWRevs
+                    //W0519CR0
+                    //W0918AR0
+                    //W1005AM0
+                    if (strcmp(device->drive_info.bridge_info.childDriveFW, "W0519CR0") == 0 ||
+                        strcmp(device->drive_info.bridge_info.childDriveFW, "W0918AR0") == 0 ||
+                        strcmp(device->drive_info.bridge_info.childDriveFW, "W1005AM0") == 0)
+                    {
+                        isVendorK = true;
+                    }
+                }
+            }
+        }
+    }
+    return isVendorK;
+}
+
 eSeagateFamily is_Seagate_Family(tDevice *device)
 {
     eSeagateFamily isSeagateFamily = NON_SEAGATE;
@@ -2828,6 +2884,10 @@ eSeagateFamily is_Seagate_Family(tDevice *device)
                 if (is_Seagate_Model_Number_Vendor_F(device, true))
                 {
                     isSeagateFamily = SEAGATE_VENDOR_F;
+                }
+                else if (is_Seagate_Vendor_K(device))
+                {
+                    isSeagateFamily = SEAGATE_VENDOR_K;
                 }
             }
             break;
@@ -4936,6 +4996,30 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
+            case 0x1120:
+            case 0x1131:
+            case 0x1132://LaCie Rugged Mini SSD
+                //NOTE: Only ATA passthrough for Identify and SMART are available.
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 15;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                //mode pages are supported, but sometimes it returns an incorrect page
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;//This probably has more to do with only supporting Identify and SMART commands
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 512;//setting single sectors since this only does ID and SMART
+                break;
             default:
                 //setup some defaults that will most likely work for most current products
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
@@ -5234,7 +5318,31 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
-                //NOTE: Add max passthrough transfer length hack set to 65536
+                device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = 65536;
+                break;
+            case 0x0567://Github user reported USB to SATA adapter
+                //rev 0x05h
+                passthroughHacksSet = true;
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 11;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = false;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.reportAllOpCodes = true;//this may need better validation
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 1048576;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit = true;
+                device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition = true;//this does not crash the bridge, just useless as it's empty...just setting this as well for consistency since return reponse info works.
+                device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             case 0x0583://USB to NVMe adapter
                 //Rev 205h

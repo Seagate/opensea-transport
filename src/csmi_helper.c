@@ -441,8 +441,13 @@ static eKnownCSMIDriver get_Known_CSMI_Driver_Type(PCSMI_SAS_DRIVER_INFO driverI
         {
             csmiDriverType = CSMI_DRIVER_ARCSAS;
         }
+        else if (strstr(C_CAST(const char*, driverInfo->szName), "HpSAMD"))
+        {
+            csmiDriverType = CSMI_DRIVER_HPSAMD;
+        }
         //TODO: As more driver names found, check them here.
     }
+    printf("Known driver = %d\n", csmiDriverType);
     return csmiDriverType;
 }
 
@@ -1323,7 +1328,7 @@ static void print_CSMI_Port_Protocol(uint8_t portProtocol)
         printf("SATA");
         needComma = true;
     }
-    if (portProtocol & CSMI_SAS_PROTOCOL_SATA)
+    if (portProtocol & CSMI_SAS_PROTOCOL_SMP)
     {
         if (needComma)
         {
@@ -1332,7 +1337,7 @@ static void print_CSMI_Port_Protocol(uint8_t portProtocol)
         printf("SMP");
         needComma = true;
     }
-    if (portProtocol & CSMI_SAS_PROTOCOL_SATA)
+    if (portProtocol & CSMI_SAS_PROTOCOL_STP)
     {
         if (needComma)
         {
@@ -1341,7 +1346,7 @@ static void print_CSMI_Port_Protocol(uint8_t portProtocol)
         printf("STP");
         needComma = true;
     }
-    if (portProtocol & CSMI_SAS_PROTOCOL_SATA)
+    if (portProtocol & CSMI_SAS_PROTOCOL_SSP)
     {
         if (needComma)
         {
@@ -4004,7 +4009,8 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, ptrRa
                         if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                             || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
                             || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
-                            && knownDriver != CSMI_DRIVER_ARCSAS)
+                            && knownDriver != CSMI_DRIVER_ARCSAS
+                            )
                         {
 #if defined (CSMI_DEBUG)
                             printf("GDC: Getting RAID info\n");
@@ -4471,7 +4477,8 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                             if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                                 || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
                                 || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
-                                && knownCSMIDriver != CSMI_DRIVER_ARCSAS)
+                                && knownCSMIDriver != CSMI_DRIVER_ARCSAS
+                                )
                             {
                                 //Get RAID info & Phy info. Need to match the RAID config (below) to some of the phy info as best we can...-TJE
 #if defined (_WIN32)
@@ -5372,6 +5379,9 @@ void print_CSMI_Device_Info(tDevice *device)
             break;
         case CSMI_DRIVER_INTEL_GENERIC:
             printf("Generic Intel\n");
+            break;
+        case CSMI_DRIVER_HPSAMD:
+            printf("HP SAMD\n");
             break;
         }
         if (device->os_info.csmiDeviceData->intelRSTSupport.intelRSTSupported && device->os_info.csmiDeviceData->intelRSTSupport.nvmePassthrough)

@@ -649,10 +649,25 @@ int set_Check_Condition_Bit(uint8_t *satCDB, uint8_t transferBitsOffset)
 int set_Registers(uint8_t *satCDB, ataPassthroughCommand *ataCommandOptions)
 {
     int ret = SUCCESS;
-    //special case: if NOT NON_DATA and sector count is zero...we need to change it to 1 since some controllers don't catch this case and fail
-    if (ataCommandOptions->commandDirection != XFER_NO_DATA && ataCommandOptions->tfr.SectorCount == 0)
+    if (ataCommandOptions->commandDirection != XFER_NO_DATA && ataCommandOptions->tfr.SectorCount == 0 
+        && ataCommandOptions->ataCommandLengthLocation != ATA_PT_LEN_TPSIU && ataCommandOptions->commandType == ATA_CMD_TYPE_TASKFILE
+        && ataCommandOptions->dataSize == 512)
     {
-        ataCommandOptions->tfr.SectorCount = 1;
+        //special case for some commands (all 28bit corrected in here. Extended commands do not seem to have this issue)
+        //Some commands perform a data transfer, but the sector count was N/A and may be set to zero. Example: Identify, DCO, read/write buffer, security, set max address
+        //Other commands may use sector count + lbalow for transfer length. Example: Download microcode or trusted send/receive. These should not fall into here.
+        //all read/write userspace commands use zero to do a "maximum" transfer of 256 (28bit) or 65536 (48bit) sectors.
+        
+        //The next check is to detect format tracks and write same legacy/retired/obsolete commands. These CANNOT be corrected, but every other command I found can.-TJE
+        //Note: old write same uses same opcode as read buffer DMA, so need to check feature register as well and verify the protocol field
+        if (!(ataCommandOptions->tfr.CommandStatus == ATA_FORMAT_TRACK_CMD && ataCommandOptions->commadProtocol == ATA_PROTOCOL_PIO)
+            && !(ataCommandOptions->tfr.CommandStatus == ATA_LEGACY_WRITE_SAME && ataCommandOptions->commadProtocol == ATA_PROTOCOL_PIO
+                && (ataCommandOptions->tfr.ErrorFeature == LEGACY_WRITE_SAME_INITIALIZE_SPECIFIED_SECTORS || ataCommandOptions->tfr.ErrorFeature == LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS)
+                )
+            )
+        {
+            ataCommandOptions->tfr.SectorCount = 1;
+        }
     }
     if (satCDB[OPERATION_CODE] == ATA_PASS_THROUGH_16)
     {
@@ -3718,6 +3733,7 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
             {
                 memcpy(scsiIoCtx->pdata, response, M_Min(scsiIoCtx->dataLength, sizeof(response) / sizeof(*response)));
             }
+            scsiIoCtx->pAtaCmdOpts = NULL;
             return SUCCESS;
         }
         break;
@@ -3739,6 +3755,7 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
         bitPointer = 4;
         set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        scsiIoCtx->pAtaCmdOpts = NULL;
         return NOT_SUPPORTED;
     }
     //check tlength
@@ -3787,6 +3804,7 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
             bitPointer = counter - 1;//because we should always get a count of at least 1 if here and bits are zero indexed
             set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            scsiIoCtx->pAtaCmdOpts = NULL;
             return NOT_SUPPORTED;
         }
     }
@@ -3861,6 +3879,7 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
             }
             set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+            scsiIoCtx->pAtaCmdOpts = NULL;
             return NOT_SUPPORTED;
         }
     }
@@ -3904,6 +3923,7 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0x1D, device->drive_info.softSATFlags.senseDataDescriptorFormat, ataReturnDescriptor, 1);
 #endif
     }
+    scsiIoCtx->pAtaCmdOpts = NULL;
     return ret;
 }
 
