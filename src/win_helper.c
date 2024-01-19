@@ -4369,7 +4369,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique = true;
-                            //This block is commented out for now as we need to implement the reinitialize media IOCTL to be able to support this
+#if defined (ENABLE_TRANSLATE_FORMAT)
                             if (is_Windows_10_Version_1607_Or_Higher())
                             {
                                 if ((device->os_info.fileSystemInfo.fileSystemInfoValid && !device->os_info.fileSystemInfo.isSystemDisk) || is_Windows_PE())
@@ -4377,6 +4377,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                     device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatCryptoSecureErase = true;
                                 }
                             }
+#endif //ENABLE_TRANSLATE_FORMAT
                             if (is_Windows_10_Version_1903_Or_Higher())
                             {
 #if defined (WIN_DEBUG)
@@ -4389,7 +4390,9 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                 if ((device->os_info.fileSystemInfo.fileSystemInfoValid && !device->os_info.fileSystemInfo.isSystemDisk) || is_Windows_PE())
                                 {
                                     //Which is possible depends on the drive's capabilities. The IOCTL_STORAGE_REINITIALIZE_MEDIA changes behanvrio based on OS version and drive capabilities.
+#if defined (ENABLE_TRANSLATE_FORMAT)
                                     device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatCryptoSecureErase = true;
+#endif //ENABLE_TRANSLATE_FORMAT
                                     //NOTE: Cannot do format with user erase because that is not what MSFT translates for the Sanitize block erase...it just does sanitize block erase.
                                     //      No idea when this was implemented because the documentation on this translation is non-existent right now.
                                     //NOTE: It is not clear if sanitize crypto was switched to starting in 1903 or if it was an earlier version. The documentation only goes back to 1903 online.-TJE
@@ -11481,6 +11484,11 @@ static int nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx)
 }
 #endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
 
+#if defined (ENABLE_TRANSLATE_FORMAT)
+//This code is currently disabled due to the format unit translation not actually working.
+//Also, microsoft updated some online documentation to show this and it clarified that the sanitize CDB issues the sanitize command.
+//It is possible that some earlier version of Windows 10 supported format translation or handled sanitize differently, but that
+//information is not available.
 static int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
 {
     int ret = OS_COMMAND_NOT_AVAILABLE;
@@ -11533,6 +11541,7 @@ static int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
                 //else 
                 if (secureEraseSettings == 2)
                 {
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
                     //crypto
                     //NOTE: the IOCTL_STORAGE_REINITIALIZE_MEDIA can be used for this too IF no buffer length is passed in win 10 1607.
                     //      By 1903, this IOCTL instead issues sanitize crypto erase instead from what I can tell from trial and error testing
@@ -11544,6 +11553,7 @@ static int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
                         ret = nvme_Ioctl_Storage_Reinitialize_Media(nvmeIoCtx);
                     }
                     else
+#endif //#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
                     {
                         ret = scsi_Sanitize_Cryptographic_Erase(nvmeIoCtx->device, false, false, false);
                     }
@@ -11599,6 +11609,7 @@ static int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
     nvmeIoCtx->device->deviceVerbosity = inVerbosity;
     return ret;
 }
+#endif //ENABLE_TRANSLATE_FORMAT
 
 static int win10_Translate_Write_Uncorrectable(nvmeCmdCtx *nvmeIoCtx)
 {
@@ -12494,10 +12505,12 @@ static int send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             {
                 useNVMPassthrough = true;
             }
+#if defined (ENABLE_TRANSLATE_FORMAT)
             else
             {
                 ret = win10_Translate_Format(nvmeIoCtx);
             }
+#endif //ENABLE_TRANSLATE_FORMAT
             break;
         case NVME_ADMIN_CMD_NAMESPACE_MANAGEMENT:
         case NVME_ADMIN_CMD_NAMESPACE_ATTACHMENT:
