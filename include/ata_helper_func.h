@@ -1797,6 +1797,8 @@ extern "C"
     //recommend using numZonesSF for compatibility! Not likely possible to use AUX registers! numZonesSF means the number of zones was set by set features and is reported in the ID data log
     OPENSEA_TRANSPORT_API int ata_Zone_Query_Ext(tDevice* device, bool all, uint16_t returnPageCount, uint64_t zoneID, bool numZonesSF, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint8_t* ptrData, uint32_t dataSize);
 
+    OPENSEA_TRANSPORT_API int ata_Sequentialize_Zone_Ext(tDevice* device, bool all, uint64_t zoneID, uint16_t zoneCount);
+
     //-----------------------------------------------------------------------------
     //
     //  ata_Reset_Write_Pointers_Ext(tDevice *device, bool resetAll, uint64_t zoneID)
