@@ -1060,6 +1060,18 @@ extern "C"
        ATA_MINOR_VERSION_NOT_REPORTED_2         = 0xFFFF
    }eATAMinorVersionNumber;
 
+   typedef enum _eZACMinorVersionNumber
+   {
+       ZAC_MINOR_VERSION_NOT_REPORTED           = 0x0000,
+       ZAC_MINOR_VERSION_ZAC_REV_5              = 0x05CF,//ZAC revision 05
+       ZAC_MINOR_VERSION_ZAC2_REV_15            = 0x3612,//ZAC2 rev 15
+       ZAC_MINOR_VERSION_ZAC2_REV_1B            = 0x7317,//ZAC2 rev 1b
+       ZAC_MINOR_VERSION_ZAC_REV_4              = 0xA36C,//ZAC revision 04
+       ZAC_MINOR_VERSION_ZAC2_REV12             = 0xB403,//ZAC2 revision 12
+       ZAC_MINOR_VERSION_ZAC_REV_1              = 0xB6E8,//ZAC Revision 1
+       ZAC_MINOR_VERSION_NOT_REPORTED_2         = 0xFFFF
+   }eZACMinorVersionNumber;
+
    #define ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS UINT8_C(128)
 
    #define ATA_SECURITY_MAX_PW_LENGTH UINT8_C(32)
