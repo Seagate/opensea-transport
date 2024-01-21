@@ -513,6 +513,7 @@ extern "C"
         VPD_ATA_INFORMATION_LEN = 572,
         VPD_BLOCK_LIMITS_LEN = 64,//length if from SBC4
         VPD_LOGICAL_BLOCK_PROVISIONING_LEN = 8,//This is only a correct length if there are no provisioning group descriptors
+        VPD_ZONED_BLOCK_DEVICE_CHARACTERISTICS_LEN  = 64,//ZBC-2
     }ScsiVPDPageLengths;
 
     typedef enum _eScsiModePageControl
