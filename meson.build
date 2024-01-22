@@ -92,7 +92,7 @@ if not (target_machine.system() == 'sunos') and c.get_id().contains('gcc')
   if c.version().version_compare('<5.0')
     if c.has_argument('-std=gnu99')
       #Add this argument to the list since C99 is a minimum required C compiler standard
-      add_global_arguments('-std=gnu99', language: 'c',)
+      add_project_arguments('-std=gnu99', language: 'c',)
     else
       error('C99/GNU99 standard is required but was not able to be set!')
     endif
