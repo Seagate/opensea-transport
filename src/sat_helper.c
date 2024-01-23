@@ -13168,25 +13168,25 @@ static int translate_SCSI_Zone_Management_Out_Command(tDevice *device, ScsiIoCtx
     switch (serviceAction)
     {
     case ZM_ACTION_CLOSE_ZONE:
-        if (SUCCESS != ata_Close_Zone_Ext(device, allBit, zoneID))
+        if (SUCCESS != ata_Close_Zone_Ext(device, allBit, zoneID, 0))
         {
             set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
         }
         break;
     case ZM_ACTION_FINISH_ZONE:
-        if (SUCCESS != ata_Finish_Zone_Ext(device, allBit, zoneID))
+        if (SUCCESS != ata_Finish_Zone_Ext(device, allBit, zoneID, 0))
         {
             set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
         }
         break;
     case ZM_ACTION_OPEN_ZONE:
-        if (SUCCESS != ata_Open_Zone_Ext(device, allBit, zoneID))
+        if (SUCCESS != ata_Open_Zone_Ext(device, allBit, zoneID, 0))
         {
             set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
         }
         break;
     case ZM_ACTION_RESET_WRITE_POINTERS:
-        if (SUCCESS != ata_Reset_Write_Pointers_Ext(device, allBit, zoneID))
+        if (SUCCESS != ata_Reset_Write_Pointers_Ext(device, allBit, zoneID, 0))
         {
             set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
         }

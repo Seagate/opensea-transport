@@ -370,6 +370,7 @@ extern "C"
         COMPARE_AND_WRITE                           = 0x89,
         EXTENDED_COPY                               = 0x83,
         SCSI_FORMAT_UNIT_CMD                        = 0x04,
+        SCSI_FORMAT_WITH_PRESET_CMD                 = 0x38,
         CHANGE_ALIASES_CMD                          = 0xA4,
         GET_LBA_STATUS                              = 0x9E,
         INQUIRY_CMD                                 = 0x12,
@@ -512,6 +513,7 @@ extern "C"
         VPD_ATA_INFORMATION_LEN = 572,
         VPD_BLOCK_LIMITS_LEN = 64,//length if from SBC4
         VPD_LOGICAL_BLOCK_PROVISIONING_LEN = 8,//This is only a correct length if there are no provisioning group descriptors
+        VPD_ZONED_BLOCK_DEVICE_CHARACTERISTICS_LEN  = 64,//ZBC-2
     }ScsiVPDPageLengths;
 
     typedef enum _eScsiModePageControl

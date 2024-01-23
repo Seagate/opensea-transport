@@ -1492,10 +1492,28 @@ extern "C"
         ZONE_REPORT_LIST_FULL_ZONES                             = 0x05,
         ZONE_REPORT_LIST_READ_ONLY_ZONES                        = 0x06,
         ZONE_REPORT_LIST_OFFLINE_ZONES                          = 0x07,
+        ZONE_REPORT_LIST_INACTIVE_ZONES                         = 0x08,
         ZONE_REPORT_LIST_ZONES_WITH_RESET_SET_TO_ONE            = 0x10,
         ZONE_REPORT_LIST_ZONES_WITH_NON_SEQ_SET_TO_ONE          = 0x11,
+        ZONE_REPORT_LIST_ALL_ZONES_EXCEPT_GAP_ZONES             = 0x3E,
         ZONE_REPORT_LIST_ALL_ZONES_THAT_ARE_NOT_WRITE_POINTERS  = 0x3F
     }eZoneReportingOptions;
+
+    typedef enum _eZoneDomainReportingOptions
+    {
+        ZONE_DOMAIN_REPORT_ALL_ZONE_DOMAINS             = 0x00,
+        ZONE_DOMAIN_REPORT_ALL_ZONES_ACTIVE             = 0x01,
+        ZONE_DOMAIN_REPORT_CONTAIN_ACTIVE_ZONES         = 0x02,
+        ZONE_DOMAIN_REPORT_DO_NOT_CONTAIN_ACTIVE_ZONES  = 0x03,
+    }eZoneDomainReportingOptions;
+
+    typedef enum _eRealmsReportingOptions
+    {
+        REALMS_REPORT_ALL_REALMS                                                    = 0x00,
+        REALMS_REPORT_ALL_REALMS_CONTAIN_SEQUENTIAL_OR_BEFORE_REQUIRED_ACTIVE_ZONES = 0x01,
+        REALMS_REPORT_SEQUENTIAL_WRITE_REQUIRED_ACTIVE_ZONES                        = 0x02,
+        REALMS_REPORT_SEQUENTIAL_WRITE_PREFERRED_ACTIVE_ZONES                       = 0x03,
+    }eRealmsReportingOptions;
 
     typedef enum _eZMAction
     {
@@ -1504,6 +1522,11 @@ extern "C"
         ZM_ACTION_FINISH_ZONE           = 0x02,//non data-out
         ZM_ACTION_OPEN_ZONE             = 0x03,//non data-out
         ZM_ACTION_RESET_WRITE_POINTERS  = 0x04,//non data-out
+        ZM_ACTION_SEQUENTIALIZE_ZONE        = 0x05,//non data-out
+        ZM_ACTION_REPORT_REALMS             = 0x06,//dma in
+        ZM_ACTION_REPORT_ZONE_DOMAINS       = 0x07,//dma in
+        ZM_ACTION_ZONE_ACTIVATE             = 0x08,//dma in
+        ZM_ACTION_ZONE_QUERY                = 0x09,//dma in
     }eZMAction;
 
     OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void);

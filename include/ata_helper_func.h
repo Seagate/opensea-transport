@@ -1673,7 +1673,7 @@ extern "C"
     //
     //  ata_Zone_Management_In(tDevice *device, eZMAction action, uint8_t actionSpecificFeatureExt, uint16_t returnPageCount, uint64_t actionSpecificLBA, uint8_t *ptrData, uint32_t dataSize)
     //
-    //! \brief   Description:  Sends a zone management in command to a device.
+    //! \brief   Description:  Sends a zone management in command to a device. - recommend using helper functions below
     //
     //  Entry:
     //!   \param[in] device = file descriptor
@@ -1681,6 +1681,7 @@ extern "C"
     //!   \param[in] actionSpecificFeatureExt = set the action specific feature ext register bits.
     //!   \param[in] returnPageCount = used on data transfer commands. This is a count of 512B sectors to be transfered. Should be set to zero for non-data commands
     //!   \param[in] actionSpecificLBA = set the action specific LBA registers.
+    //!   \param[in] actionSpecificAUX = set the action specific AUX registers. NOTE: May not be possible to issue this command if these are set! Not all OS's or controllers support 32B passthrough CDBs!
     //!   \param[out] ptrData = pointer to the data buffer to use. Can be NULL for non-data actions
     //!   \param[in] dataSize = size of the data buffer used for a data transfer. Should be zero for non-data actions
     //!
@@ -1688,7 +1689,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_ZAC_Management_In(tDevice *device, eZMAction action, uint8_t actionSpecificFeatureExt, uint16_t returnPageCount, uint64_t actionSpecificLBA, uint8_t *ptrData, uint32_t dataSize);//4Ah
+    OPENSEA_TRANSPORT_API int ata_ZAC_Management_In(tDevice* device, eZMAction action, uint8_t actionSpecificFeatureExt, uint8_t actionSpecificFeatureBits, uint16_t returnPageCount, uint64_t actionSpecificLBA, uint16_t actionSpecificAUX, uint8_t* ptrData, uint32_t dataSize);//4Ah
 
     //-----------------------------------------------------------------------------
     //
@@ -1702,6 +1703,7 @@ extern "C"
     //!   \param[in] actionSpecificFeatureExt = set the action specific feature ext register bits.
     //!   \param[in] pagesToSend_ActionSpecific = used on data transfer commands. This is a count of 512B sectors to be transfered. Should be set to zero for non-data commands
     //!   \param[in] actionSpecificLBA = set the action specific LBA registers.
+    //!   \param[in] actionSpecificAUX = set the action specific AUX registers. NOTE: May not be possible to issue this command if these are set! Not all OS's or controllers support 32B passthrough CDBs!
     //!   \param[in] ptrData = pointer to the data buffer to use. Can be NULL for non-data actions
     //!   \param[in] dataSize = size of the data buffer used for a data transfer. Should be zero for non-data actions
     //!
@@ -1709,7 +1711,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_ZAC_Management_Out(tDevice *device, eZMAction action, uint8_t actionSpecificFeatureExt, uint16_t pagesToSend_ActionSpecific, uint64_t actionSpecificLBA, uint8_t *ptrData, uint32_t dataSize);//9Fh
+    OPENSEA_TRANSPORT_API int ata_ZAC_Management_Out(tDevice* device, eZMAction action, uint8_t actionSpecificFeatureExt, uint16_t pagesToSend_ActionSpecific, uint64_t actionSpecificLBA, uint16_t actionSpecificAUX, uint8_t* ptrData, uint32_t dataSize);//9Fh
 
     //-----------------------------------------------------------------------------
     //
@@ -1721,12 +1723,13 @@ extern "C"
     //!   \param[in] device = file descriptor
     //!   \param[in] closeAll = set the closeAll bit. If this is true, then the zoneID will be ignored by the device.
     //!   \param[in] zoneID = the zoneID to close
+    //!   \param[in] zoneCount = zone count to apply the action to. for backwards compatibiity with ZAC, use zero. On ZAC2 and later values of 0 and 1 mean one zone.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Close_Zone_Ext(tDevice *device, bool closeAll, uint64_t zoneID);//non-data
+    OPENSEA_TRANSPORT_API int ata_Close_Zone_Ext(tDevice *device, bool closeAll, uint64_t zoneID, uint16_t zoneCount);//non-data
 
     //-----------------------------------------------------------------------------
     //
@@ -1738,12 +1741,13 @@ extern "C"
     //!   \param[in] device = file descriptor
     //!   \param[in] finishAll = set the finishAll bit. If this is true, then the zoneID will be ignored by the device.
     //!   \param[in] zoneID = the zoneID to finish
+    //!   \param[in] zoneCount = zone count to apply the action to. for backwards compatibiity with ZAC, use zero. On ZAC2 and later values of 0 and 1 mean one zone.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Finish_Zone_Ext(tDevice *device, bool finishAll, uint64_t zoneID);//non-data
+    OPENSEA_TRANSPORT_API int ata_Finish_Zone_Ext(tDevice *device, bool finishAll, uint64_t zoneID, uint16_t zoneCount);//non-data
 
     //-----------------------------------------------------------------------------
     //
@@ -1755,12 +1759,13 @@ extern "C"
     //!   \param[in] device = file descriptor
     //!   \param[in] openAll = set the openAll bit. If this is true, then the zoneID will be ignored by the device.
     //!   \param[in] zoneID = the zoneID to open
+    //!   \param[in] zoneCount = zone count to apply the action to. for backwards compatibiity with ZAC, use zero. On ZAC2 and later values of 0 and 1 mean one zone.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Open_Zone_Ext(tDevice *device, bool openAll, uint64_t zoneID);//non-data
+    OPENSEA_TRANSPORT_API int ata_Open_Zone_Ext(tDevice *device, bool openAll, uint64_t zoneID, uint16_t zoneCount);//non-data
 
     //-----------------------------------------------------------------------------
     //
@@ -1781,7 +1786,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Report_Zones_Ext(tDevice *device, eZoneReportingOptions reportingOptions, bool partial, uint16_t returnPageCount, uint64_t zoneLocator, uint8_t *ptrData, uint32_t dataSize);//dma in
+    OPENSEA_TRANSPORT_API int ata_Report_Zones_Ext(tDevice* device, eZoneReportingOptions reportingOptions, bool partial, uint16_t returnPageCount, uint64_t zoneLocator, uint8_t* ptrData, uint32_t dataSize);//dma in
+
+    OPENSEA_TRANSPORT_API int ata_Report_Realms_Ext(tDevice* device, eRealmsReportingOptions reportingOptions, uint16_t returnPageCount, uint64_t realmLocator, uint8_t* ptrData, uint32_t dataSize);
+
+    OPENSEA_TRANSPORT_API int ata_Report_Zone_Domains_Ext(tDevice* device, eZoneDomainReportingOptions reportingOptions, uint16_t returnPageCount, uint64_t zoneDomainLocator, uint8_t* ptrData, uint32_t dataSize);
+
+    //recommend using numZonesSF for compatibility! Not likely possible to use AUX registers! numZonesSF means the number of zones was set by set features and is reported in the ID data log
+    OPENSEA_TRANSPORT_API int ata_Zone_Activate_Ext(tDevice* device, bool all, uint16_t returnPageCount, uint64_t zoneID, bool numZonesSF, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint8_t* ptrData, uint32_t dataSize);
+    //recommend using numZonesSF for compatibility! Not likely possible to use AUX registers! numZonesSF means the number of zones was set by set features and is reported in the ID data log
+    OPENSEA_TRANSPORT_API int ata_Zone_Query_Ext(tDevice* device, bool all, uint16_t returnPageCount, uint64_t zoneID, bool numZonesSF, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint8_t* ptrData, uint32_t dataSize);
+
+    OPENSEA_TRANSPORT_API int ata_Sequentialize_Zone_Ext(tDevice* device, bool all, uint64_t zoneID, uint16_t zoneCount);
 
     //-----------------------------------------------------------------------------
     //
@@ -1798,7 +1814,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Reset_Write_Pointers_Ext(tDevice *device, bool resetAll, uint64_t zoneID);//non-data
+    OPENSEA_TRANSPORT_API int ata_Reset_Write_Pointers_Ext(tDevice *device, bool resetAll, uint64_t zoneID, uint16_t zoneCount);//non-data
 
     //-----------------------------------------------------------------------------
     //
@@ -1934,6 +1950,22 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
+    //  ata_Remove_Element_And_Modify_Zones(tDevice *device, uint32_t elementIdentifier)
+    //
+    //! \brief   Description:  Sends the ATA Remove and modify zones command for ZAC devices
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to device structure
+    //!   \param[in] elementIdentifier = identifier of the element to truncate
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int ata_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elementIdentifier);
+
+    //-----------------------------------------------------------------------------
+    //
     //  ata_Restore_Elements_And_Rebuild(tDevice *device)
     //
     //! \brief   Description:  Sends the ATA Restore Elements and Rebuild command
@@ -1946,6 +1978,8 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_Restore_Elements_And_Rebuild(tDevice *device);
+
+    OPENSEA_TRANSPORT_API int ata_Mutate_Ext(tDevice* device, bool requestMaximumAccessibleCapacity, uint32_t requestedConfigurationID);
 
     //-----------------------------------------------------------------------------
     //

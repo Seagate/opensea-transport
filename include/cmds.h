@@ -523,13 +523,13 @@ extern "C"
 
     OPENSEA_TRANSPORT_API int scsi_Synchronize_Cache_Command(tDevice *device);
 
-    OPENSEA_TRANSPORT_API int close_Zone(tDevice *device, bool closeAll, uint64_t zoneID);
+    OPENSEA_TRANSPORT_API int close_Zone(tDevice *device, bool closeAll, uint64_t zoneID, uint16_t zoneCount);
 
-    OPENSEA_TRANSPORT_API int finish_Zone(tDevice *device, bool finishAll, uint64_t zoneID);
+    OPENSEA_TRANSPORT_API int finish_Zone(tDevice *device, bool finishAll, uint64_t zoneID, uint16_t zoneCount);
 
-    OPENSEA_TRANSPORT_API int open_Zone(tDevice *device, bool openAll, uint64_t zoneID);
+    OPENSEA_TRANSPORT_API int open_Zone(tDevice *device, bool openAll, uint64_t zoneID, uint16_t zoneCount);
 
-    OPENSEA_TRANSPORT_API int reset_Write_Pointer(tDevice *device, bool resetAll, uint64_t zoneID);
+    OPENSEA_TRANSPORT_API int reset_Write_Pointer(tDevice *device, bool resetAll, uint64_t zoneID, uint16_t zoneCount);
 
     OPENSEA_TRANSPORT_API int report_Zones(tDevice *device, eZoneReportingOptions reportingOptions, bool partial, uint64_t zoneLocator, uint8_t *ptrData, uint32_t dataSize);
 

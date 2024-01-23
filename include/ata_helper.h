@@ -229,6 +229,7 @@ extern "C"
         ATA_ACCESSABLE_MAX_ADDR                 = 0x78,
         ATA_REMOVE_AND_TRUNCATE                 = 0x7C,
         ATA_RESTORE_AND_REBUILD                 = 0x7D,
+        ATA_REMOVE_ELEMENT_AND_MODIFY_ZONES     = 0x7E,
         ATA_CFA_TRANSLATE_SECTOR                = 0x87,
         ATA_EXEC_DRV_DIAG                       = 0x90,
         ATA_INIT_DRV_PARAM                      = 0x91,
@@ -238,6 +239,7 @@ extern "C"
         ATA_LEGACY_ALT_STANDBY_IMMEDIATE        = 0x94,
         ATA_LEGACY_ALT_IDLE_IMMEDIATE           = 0x95,
         ATA_LEGACY_ALT_STANDBY                  = 0x96,
+        ATA_MUTATE_EXT                          = 0x96,
         ATA_LEGACY_ALT_IDLE                     = 0x97,
         ATA_LEGACY_ALT_CHECK_POWER_MODE         = 0x98,
         ATA_LEGACY_ALT_SLEEP                    = 0x99,
@@ -680,6 +682,8 @@ extern "C"
        SF_MAXIMUM_HOST_INTERFACE_SECTOR_TIMES                           = 0x43,
        SF_LEGACY_SET_VENDOR_SPECIFIC_ECC_BYTES_FOR_READ_WRITE_LONG      = 0x44,//defined in ATA, obsolete in ATA4
        SF_SET_RATE_BASIS                                                = 0x45,
+       SF_ZAC_ZONE_ACTIVATION_CONTROL                                   = 0x46,//ZAC2 to set the number of zones. Can affect the zone activate ext command or the zone query ext command
+       SF_ZAC_UPDATE_UNRESTRICTED_READ_S_WHILE_READING_ZONES            = 0x47,//ZAC2 update URSWRZ
        SF_EXTENDED_POWER_CONDITIONS                                     = 0x4A,
        SF_SET_CACHE_SEGMENTS                                            = 0x54,//defined in ATA3, obsolete in ATA4
        SF_DISABLE_READ_LOOK_AHEAD_FEATURE                               = 0x55,
@@ -1055,6 +1059,18 @@ extern "C"
 
        ATA_MINOR_VERSION_NOT_REPORTED_2         = 0xFFFF
    }eATAMinorVersionNumber;
+
+   typedef enum _eZACMinorVersionNumber
+   {
+       ZAC_MINOR_VERSION_NOT_REPORTED           = 0x0000,
+       ZAC_MINOR_VERSION_ZAC_REV_5              = 0x05CF,//ZAC revision 05
+       ZAC_MINOR_VERSION_ZAC2_REV_15            = 0x3612,//ZAC2 rev 15
+       ZAC_MINOR_VERSION_ZAC2_REV_1B            = 0x7317,//ZAC2 rev 1b
+       ZAC_MINOR_VERSION_ZAC_REV_4              = 0xA36C,//ZAC revision 04
+       ZAC_MINOR_VERSION_ZAC2_REV12             = 0xB403,//ZAC2 revision 12
+       ZAC_MINOR_VERSION_ZAC_REV_1              = 0xB6E8,//ZAC Revision 1
+       ZAC_MINOR_VERSION_NOT_REPORTED_2         = 0xFFFF
+   }eZACMinorVersionNumber;
 
    #define ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS UINT8_C(128)
 
