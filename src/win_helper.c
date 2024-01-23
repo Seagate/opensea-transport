@@ -4386,8 +4386,8 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                 //this is definitely blocked in 1809, so this seems to have started being available in 1903
                                 //NOTE: probably specific to a certain Win10 update. Not clearly documented when this became available, so need to do some testing before this is perfect
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest = true;
-                                //NOTE: These next two are set based on documentation that they will work. They definitely work on Win 10 22H2, but I have not been able to test older versions at this time.-TJE
-                                if ((device->os_info.fileSystemInfo.fileSystemInfoValid && !device->os_info.fileSystemInfo.isSystemDisk) || is_Windows_PE())
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
+                                if ((device->os_info.fileSystemInfo.fileSystemInfoValid && !device->os_info.fileSystemInfo.isSystemDisk))
                                 {
                                     //Which is possible depends on the drive's capabilities. The IOCTL_STORAGE_REINITIALIZE_MEDIA changes behanvrio based on OS version and drive capabilities.
 #if defined (ENABLE_TRANSLATE_FORMAT)
@@ -4398,6 +4398,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
                                     //NOTE: It is not clear if sanitize crypto was switched to starting in 1903 or if it was an earlier version. The documentation only goes back to 1903 online.-TJE
                                     device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeCrypto = true;
                                 }
+#endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
                             }
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securitySend = true;
@@ -4427,13 +4428,15 @@ static int get_Win_Device(const char *filename, tDevice *device )
 #if defined (WIN_DEBUG)
                                 printf("WIN: 21H1+\n");
 #endif //WIN_DEBUG
-                                if ((device->os_info.fileSystemInfo.fileSystemInfoValid && !device->os_info.fileSystemInfo.isSystemDisk) || is_Windows_PE())
+#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_20348
+                                if ((device->os_info.fileSystemInfo.fileSystemInfoValid && !device->os_info.fileSystemInfo.isSystemDisk))
                                 {
                                     //Microsoft's documentation was wrong or just worded weirdly that it seemeed like it should work in Win11 just like PE, but that is not the case!
                                     //The only way that seems to actually work is PE as always or the reinitialize media IOCTL which is slightly more limited in capabilities.
                                     device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeCrypto = true;
                                     device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeBlock = true;
                                 }
+#endif //#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_20348
                             }
                         }
                         else
