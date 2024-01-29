@@ -4847,12 +4847,11 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
-                //TODO: since we may find SATA or NVMe adapters, we cannot set below due to a union being used. May need to remove that or find another solution
                 //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
-                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
-                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
-                //device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
-                //device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             }
             break;
@@ -4952,6 +4951,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
                 //NOTE: Add max passthrough transfer length hack set to 65536
                 break;
+            case 0x10EE://Mobile SSD
             case 0x10EF://Mobile SSD
                 //NOTE: This is a weird drive
                 passthroughHacksSet = true;
@@ -5033,12 +5033,11 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
-                //TODO: since we may find SATA or NVMe adapters, we cannot set below due to a union being used. May need to remove that or find another solution
                 //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
-                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
-                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
-                //device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
-                //device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             }
             break;
