@@ -729,6 +729,17 @@ extern "C"
        SF_UNKNOWN_FEATURE
    } eATASetFeaturesSubcommands;
 
+   typedef enum _eWRVMode
+   {
+       ATA_WRV_MODE_ALL     = 0x00,//mode 0
+       ATA_WRV_MODE_65536   = 0x01,//mode 1
+       ATA_WRV_MODE_VENDOR  = 0x02,//mode 2
+       ATA_WRV_MODE_USER    = 0x03 //mode 3
+   }eWRVMode;
+
+#define MAX_WRV_USER_SECTORS UINT32_C(261120)
+#define WRV_USER_MULTIPLIER UINT16_C(1024) //sector count * this = number of sectors being verified in this mode.
+
    //this is the 7:3 bits of the count register for the SF_SET_TRANSFER_MODE option
    //Bits 2:0 can be used to specify the mode.
    typedef enum _eSetTransferModeTransferModes
