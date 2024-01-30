@@ -447,7 +447,9 @@ static eKnownCSMIDriver get_Known_CSMI_Driver_Type(PCSMI_SAS_DRIVER_INFO driverI
         }
         //TODO: As more driver names found, check them here.
     }
+#if defined (_DEBUG)
     printf("Known driver = %d\n", csmiDriverType);
+#endif //_DEBUG
     return csmiDriverType;
 }
 
