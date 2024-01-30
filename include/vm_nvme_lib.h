@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2018-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2018-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -26,7 +26,7 @@
 //TODO: confirm max transfer size
 #define NVME_MAX_XFER_SIZE            (8*1024)
 #define MAX_FW_SLOT                   7
-#define FW_REV_LEN                    8
+#define VM_FW_REV_LEN                    8
 #define MAX_ADAPTER_NAME_LEN  64
 #define MAX_FW_PATH_LEN       512
 

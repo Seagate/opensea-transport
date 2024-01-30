@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2017-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2017-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -35,9 +35,8 @@ extern "C"
 #define UEFI_MAX_CMD_TIMEOUT_SECONDS UINT32_MAX //Technically, max seconds is 18446744074, but I don't want to switch to a 64bit for the timeout. Anything with this value will round up to infinite in UEFI...where a timeout this long may as well be infinite
 
     //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
-    bool os_Is_Infinite_Timeout_Supported();
+    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void);
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
     //-----------------------------------------------------------------------------
     //
     //  pci_Read_Bar_Reg()
@@ -88,15 +87,18 @@ extern "C"
     //-----------------------------------------------------------------------------
 	long getpagesize(void);
 
-    int os_nvme_Reset(tDevice *device);
-    int os_nvme_Subsystem_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_nvme_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_nvme_Subsystem_Reset(tDevice *device);
 
-    int os_Lock_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Lock_Device(tDevice *device);
 
-    int os_Unlock_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Unlock_Device(tDevice *device);
 
-#endif
+    OPENSEA_TRANSPORT_API int os_Update_File_System_Cache(tDevice* device);
 
+    OPENSEA_TRANSPORT_API int os_Unmount_File_Systems_On_Device(tDevice *device);
+
+    OPENSEA_TRANSPORT_API int os_Erase_Boot_Sectors(tDevice* device);
 
 #if defined (__cplusplus)
 }

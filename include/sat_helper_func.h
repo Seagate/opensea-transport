@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -65,13 +65,13 @@ extern "C"
     //!   \param[in] device = pointer to the device structure for the device to issue the command to. (This may be used in the event of trying to read the passthrough results log or re-requesting sense data)
     //!   \param[in] ptrSenseData = pointer to the sense data to parse for RTFRs
     //!   \param[in] senseDataSize = number of bytes long the sense data is
-    //!   \param[in] rtfr = pointer to the struct to hold the rtfrs
+    //!   \param[in] ataCmd = pointer to the full command info. This will help with proper interpretation of sense data when asc and ascq are not necessarily "ata passthrough information available"
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseData, uint32_t senseDataSize, ataReturnTFRs *rtfr);
+    int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice* device, uint8_t* ptrSenseData, uint32_t senseDataSize, ataPassthroughCommand* ataCmd);
 
     //-----------------------------------------------------------------------------
     //

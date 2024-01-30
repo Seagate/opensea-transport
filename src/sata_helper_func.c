@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2020-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2020-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -58,7 +58,7 @@ void print_FIS(void *fis, uint32_t fisLengthBytes)
         {
         case FIS_TYPE_REG_H2D:
         {
-            ptrSataH2DFis h2dFis = (ptrSataH2DFis)fis;
+            ptrSataH2DFis h2dFis = C_CAST(ptrSataH2DFis, fis);
             if (fisLengthBytes < H2D_FIS_LENGTH)
             {
                 printf("Invalid H2D length, cannot print.\n");
@@ -93,7 +93,7 @@ void print_FIS(void *fis, uint32_t fisLengthBytes)
         break;
         case FIS_TYPE_REG_D2H:
         {
-            ptrSataD2HFis d2hFis = (ptrSataD2HFis)fis;
+            ptrSataD2HFis d2hFis = C_CAST(ptrSataD2HFis, fis);
             if (fisLengthBytes < D2H_FIS_LENGTH)
             {
                 printf("Invalid D2H length, cannot print.\n");
@@ -129,7 +129,7 @@ void print_FIS(void *fis, uint32_t fisLengthBytes)
         break;
         case FIS_TYPE_PIO_SETUP:
         {
-            ptrSataPIOSetupFis d2hFis = (ptrSataPIOSetupFis)fis;
+            ptrSataPIOSetupFis d2hFis = C_CAST(ptrSataPIOSetupFis, fis);
             if (fisLengthBytes < PIO_SETUP_FIS_LENGTH)
             {
                 printf("Invalid PIO Setup length, cannot print.\n");
@@ -166,7 +166,7 @@ void print_FIS(void *fis, uint32_t fisLengthBytes)
         break;
         case FIS_TYPE_DMA_ACT:
         {
-            ptrSataDMAActivateFis dmaActFis = (ptrSataDMAActivateFis)fis;
+            ptrSataDMAActivateFis dmaActFis = C_CAST(ptrSataDMAActivateFis, fis);
             if (fisLengthBytes < DMA_ACTIVATE_FIS_LENGTH)
             {
                 printf("Invalid DMA Activate length, cannot print.\n");
@@ -182,7 +182,7 @@ void print_FIS(void *fis, uint32_t fisLengthBytes)
         break;
         case FIS_TYPE_DMA_SETUP:
         {
-            ptrSataDMASetupFis dmaSetupFis = (ptrSataDMASetupFis)fis;
+            ptrSataDMASetupFis dmaSetupFis = C_CAST(ptrSataDMASetupFis, fis);
             if (fisLengthBytes < DMA_SETUP_FIS_LENGTH)
             {
                 printf("Invalid DMA Setup length, cannot print.\n");
@@ -207,7 +207,7 @@ void print_FIS(void *fis, uint32_t fisLengthBytes)
         break;
         case FIS_TYPE_DATA:
         {
-            ptrSataDataFis dataFis = (ptrSataDataFis)fis;
+            ptrSataDataFis dataFis = C_CAST(ptrSataDataFis, fis);
             if (fisLengthBytes < DATA_FIS_LENGTH_MIN || fisLengthBytes > DATA_FIS_LENGTH_MAX)
             {
                 printf("Invalid Data Fis length, cannot print.\n");
@@ -219,13 +219,13 @@ void print_FIS(void *fis, uint32_t fisLengthBytes)
             printf("\t\tPort Multiplier Port:\t%" PRIu8 "\n", dataFis->reserved_port.pmport);
             for (uint32_t dwordIter = 0; dwordIter < DATA_FIS_MAX_DWORDS && dwordIter < (fisLengthBytes - sizeof(uint32_t)); ++dwordIter)
             {
-                printf("\tDWORD %" PRIu16 ":\t%08" PRIX32 "\n", dwordIter + 1, dataFis->nDWordsData[dwordIter]);
+                printf("\tDWORD %" PRIu32 ":\t%08" PRIX32 "\n", dwordIter + 1, dataFis->nDWordsData[dwordIter]);
             }
         }
         break;
         case FIS_TYPE_BIST:
         {
-            ptrSataBISTActivateFis bistActFis = (ptrSataBISTActivateFis)fis;
+            ptrSataBISTActivateFis bistActFis = C_CAST(ptrSataBISTActivateFis, fis);
             if (fisLengthBytes < BIST_ACTIVATE_FIS_LENGTH)
             {
                 printf("Invalid BIST Activate length, cannot print.\n");
@@ -250,7 +250,7 @@ void print_FIS(void *fis, uint32_t fisLengthBytes)
         break;
         case FIS_TYPE_DEV_BITS:
         {
-            ptrSataSetDeviceBitsFis devBitsFis = (ptrSataSetDeviceBitsFis)fis;
+            ptrSataSetDeviceBitsFis devBitsFis = C_CAST(ptrSataSetDeviceBitsFis, fis);
             if (fisLengthBytes < SET_DEVICE_BITS_FIS_LENGTH)
             {
                 printf("Invalid Set Device Bits length, cannot print.\n");

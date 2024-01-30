@@ -1,7 +1,7 @@
 #
 # Do NOT modify or remove this copyright and license
 #
-# Copyright (c) 2012 - 2018 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+# Copyright (c) 2012 - 2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 #
 # This software is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -15,11 +15,11 @@
 NAME=opensea-transport
 FILE_OUTPUT_DIR=lib
 #Change the Major version when major interface changes are made. E.g. tDevice changes
-MAJOR=1
+MAJOR=3
 #Change the Minor version when new features are added. 
-MINOR=17
+MINOR=0
 #Change the patch version when only bug fixes are made.
-PATCH=5
+PATCH=1
 VERSION=$(MAJOR).$(MINOR).$(PATCH)
 
 DESC_ACCEPTANCE_LEVEL=certified

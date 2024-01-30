@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -17,9 +17,7 @@
 #include "scsi_helper.h"
 #include "sat_helper.h"
 #include "common_public.h"
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper.h"
-#endif
 
 
 #if defined (__cplusplus)
@@ -34,7 +32,9 @@ extern "C"
 
 #if !defined (__MINGW32__)
 #define _NTSCSI_USER_MODE_ //this must be defined before including scsi.h
-#include <Scsi.h>
+#include <scsi.h>
+#undef _NTSCSI_USER_MODE_
+#define INCLUDED_SCSI_DOT_H
 #else
 #if !defined (SRB_TYPE_SCSI_REQUEST_BLOCK)
 #define SRB_TYPE_SCSI_REQUEST_BLOCK 0
@@ -56,7 +56,7 @@ extern "C"
 #define WIN_MAX_CMD_TIMEOUT_SECONDS 108000
 
     //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
-    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported();
+    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void);
 
     //Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
     //NOTE: ARM requires 10.0.16299.0 API to get this library!
@@ -83,7 +83,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    int os_Device_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Device_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -99,7 +99,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    int os_Bus_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Bus_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -115,7 +115,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    int os_Controller_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_Controller_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -148,7 +148,21 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int os_Unlock_Device(tDevice *device);
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Unlock_Device(tDevice *device)
+    //
+    //! \brief   Description:  Issues IOCTL_DISK_UPDATE_PROPERTIES to force an update of the known filesystem...or attempts to.
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!   
+    //! 
+    //  Exit:
+    //!   \return SUCCESS = pass, NOT_SUPPORTED = IOCTL not available, or did not work. - TJE
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int os_Update_File_System_Cache(tDevice* device);
+
     //-----------------------------------------------------------------------------
     //
     //  pci_Read_Bar_Reg()
@@ -184,9 +198,9 @@ extern "C"
     //-----------------------------------------------------------------------------
     int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
 
-    int os_nvme_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_nvme_Reset(tDevice *device);
 
-    int os_nvme_Subsystem_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API int os_nvme_Subsystem_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -201,7 +215,11 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     long getpagesize(void);
-#endif
+
+
+    OPENSEA_TRANSPORT_API int os_Unmount_File_Systems_On_Device(tDevice *device);
+
+    OPENSEA_TRANSPORT_API int os_Erase_Boot_Sectors(tDevice* device);
 
 #if defined (__cplusplus)
 }

@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -13,7 +13,7 @@
 
 #pragma once
 
-#if defined (ENABLE_OFNVME) && !defined (DISABLE_NVME_PASSTHROUGH)
+#if defined (ENABLE_OFNVME)
 
 #include "common.h"
 #include "common_public.h"

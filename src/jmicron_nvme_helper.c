@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2019-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2019-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,8 +14,6 @@
 
 //All code in this file is from a JMicron USB to NVMe product specification for pass-through nvme commands.
 //This code should only be used on products that are known to use this pass-through interface.
-
-#if !defined (DISABLE_NVME_PASSTHROUGH)
 
 #include "jmicron_nvme_helper.h"
 #include "scsi_helper_func.h" //for ability to send a SCSI IO
@@ -32,7 +30,7 @@ int build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirection *cdbData
     uint32_t parameterListLength = 0;
 
     cdb[0] = JMICRON_NVME_PT_OPCODE;
-    cdb[1] = (uint8_t)jmProtocol;
+    cdb[1] = C_CAST(uint8_t, jmProtocol);
     cdb[11] = 0;//control byte
 
     //CDB bytes 3, 4, & 5 are the parameter list length
@@ -54,7 +52,7 @@ int build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirection *cdbData
             //set the signature
             memcpy(dataPtr, JMICRON_NVME_NAMESTRING, strlen(JMICRON_NVME_NAMESTRING));
             //based on vendor ctrl value, we may setup a cmd, or leave those fields blank to setup some other action
-            dataPtr[72] = (uint8_t)jmCtrl;
+            dataPtr[72] = C_CAST(uint8_t, jmCtrl);
             if (jmCtrl == JM_VENDOR_CTRL_SERVICE_PROTOCOL_FIELD)
             {
                 //send a cmd
@@ -299,7 +297,7 @@ int send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
     //Need to request the response information from the command.
     //TODO: There may be some sense data outputs where the return response info won't work or isn't necessary, but they don't seem documented today. Most likely only for illegal requests.
     bool senseDataIsAllWeGot = true;
-    if (sendRet != COMMAND_TIMEOUT)
+    if (sendRet != OS_COMMAND_TIMEOUT)
     {
         //3. build CDB for response info
         //send CDB for response info
@@ -336,7 +334,7 @@ int send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
     return ret;
 }
 
-int jm_NVMe_Normal_Shutdown(tDevice *device)
+static int jm_NVMe_Normal_Shutdown(tDevice *device)
 {
     uint8_t cdb[JMICRON_NVME_CDB_SIZE] = { 0 };
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
@@ -354,7 +352,7 @@ int jm_NVMe_Normal_Shutdown(tDevice *device)
     return ret;
 }
 
-int jm_NVMe_MCU_Reset(tDevice *device)
+static int jm_NVMe_MCU_Reset(tDevice *device)
 {
     uint8_t cdb[JMICRON_NVME_CDB_SIZE] = { 0 };
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
@@ -422,5 +420,3 @@ int jm_nvme_Subsystem_Reset(tDevice *device)
     }
     return ret;
 }
-
-#endif //DISABLE_NVME_PASSTHROUGH

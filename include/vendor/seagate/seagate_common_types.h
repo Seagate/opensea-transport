@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -20,6 +20,9 @@
 extern "C"
 {
 #endif
+
+    //All Seagate products have a max SN length of 8
+    #define SEAGATE_SERIAL_NUMBER_LEN UINT8_C(8)
     
     //Seagate IDD
     #define SEAGATE_IDD_TIMEOUT UINT16_C(300) //this is set this long to help with drives coming back to ready to receive commands after the first part of IDD
@@ -39,6 +42,8 @@ extern "C"
     #define MAXIMUM_POWER_MEASUREMENT_TIME_SECONDS  UINT16_C(65535) //18.2 hours
     #define POWER_TELEMETRY_REQUEST_MEASUREMENT_VERSION    UINT8_C(1)
     #define POWER_TELEMETRY_MAXIMUM_MEASUREMENTS    UINT16_C(1024)
+
+    #define SEAGATE_FARM_LOG_SIGNATURE UINT64_C(0x00004641524D4552)
 
     //TODO: Add any other definitions to this file that are the same drive interface types
 

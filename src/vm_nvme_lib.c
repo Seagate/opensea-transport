@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
+#include "common.h"
 
 #include "vm_nvme_lib.h"
 
@@ -66,16 +67,16 @@ Nvme_Open(struct nvme_adapter_list *adapters, const char *name)
       return NULL;
    }
 
-   handle = (struct nvme_handle *)malloc(sizeof(*handle));
+   handle = C_CAST(struct nvme_handle *, malloc(sizeof(*handle)));
    if (!handle) {
       return NULL;
    }
 
-   strncpy(handle->name, name, sizeof(handle->name));
+   snprintf(handle->name, VMK_MISC_NAME_MAX, "%s", name);
 
    signature.version = VMK_REVISION_FROM_NUMBERS(NVME_MGMT_MAJOR, NVME_MGMT_MINOR, NVME_MGMT_UPDATE, NVME_MGMT_PATCH);
-   strncpy(signature.name.string, adapter->signature, sizeof(signature.name.string));
-   strncpy(signature.vendor.string, NVME_MGMT_VENDOR, sizeof(signature.vendor.string));
+   snprintf(signature.name.string, sizeof(signature.name.string), "%s", adapter->signature);
+   snprintf(signature.vendor.string, sizeof(signature.vendor.string), NVME_MGMT_VENDOR);
    signature.numCallbacks = NVME_MGMT_CTRLR_NUM_CALLBACKS;
    signature.callbacks = nvmeCallbacks;
 
@@ -266,7 +267,7 @@ Nvme_Identify(struct nvme_handle *handle, int ns, void *id)
    uio.timeoutUs = ADMIN_TIMEOUT;
 #define PAGE_SIZE 4096
    uio.length = PAGE_SIZE;
-   uio.addr = (vmk_uint32)id;
+   uio.addr = C_CAST(vmk_uint32, id);
 
    rc = Nvme_AdminPassthru(handle, &uio);
 
@@ -361,7 +362,7 @@ int Nvme_FWLoadImage(char *fw_path, void **fw_buf, int *fw_size)
       return -EPERM;
    }
 
-   fw_file_size = (int)sb.st_size;
+   fw_file_size = C_CAST(int, sb.st_size);
    if ((*fw_buf = malloc(fw_file_size)) == NULL) {//need to free!!!!
       fprintf (stderr, "ERROR: Failed to malloc %d bytes.\n", fw_file_size);
       if (close (fd) == -1) {
@@ -424,7 +425,7 @@ int Nvme_FWDownload(struct nvme_handle *handle, int slot,  unsigned char *rom_bu
       uio.timeoutUs = ADMIN_TIMEOUT;
       uio.cmd.cmd.firmwareDownload.numDW = (size / sizeof(vmk_uint32)) - 1;
       uio.cmd.cmd.firmwareDownload.offset = offset / sizeof(vmk_uint32);
-      uio.addr = (vmk_uint32)chunk;
+      uio.addr = C_CAST(vmk_uint32, chunk);
       uio.length = size;
 
       rc = Nvme_AdminPassthru(handle, &uio);
@@ -447,7 +448,7 @@ int Nvme_FWFindSlot(struct nvme_handle *handle, int *slot)
       struct smart_log smartLog;
       struct firmware_slot_log fwSlotLog;
    } log;
-   unsigned char fw_rev_slot[MAX_FW_SLOT][FW_REV_LEN];
+   unsigned char fw_rev_slot[MAX_FW_SLOT][VM_FW_REV_LEN];
    int rc = -1;
    int i;
 

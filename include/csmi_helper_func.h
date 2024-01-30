@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -461,7 +461,6 @@ extern "C"
     //!   \param[in] device - pointer to tDevice structure for a CSMI RAID Device.
     //!
     //  Exit:
-    //!   \return void
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void print_CSMI_Device_Info(tDevice *device);

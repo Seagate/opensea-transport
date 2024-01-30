@@ -175,7 +175,7 @@ static uint8_t parse_CISS_Handle(const char * devName, char *osHandle, uint16_t 
     return parseCount;
 }
 
-bool is_Supported_ciss_Dev(const char * devName)
+static bool is_Supported_ciss_Dev(const char * devName)
 {
     bool supported = false;
     uint16_t driveNumber = 0;
@@ -364,7 +364,7 @@ typedef enum _eCISSptCmdType
 //Standard passthrough
 //physicalDriveCmd - true for most things. Only set to false when trying to issue a command directly to the controller.
 //                   Only using this flag as part of device discovery. - TJE
-int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
+static int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
 {
     int ret = BAD_PARAMETER;
     if (scsiIoCtx)
@@ -457,7 +457,7 @@ int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
                             ret = OS_COMMAND_BLOCKED;
                             break;
                         case CMD_TIMEOUT:
-                            ret = COMMAND_TIMEOUT;
+                            ret = OS_COMMAND_TIMEOUT;
                             break;
                         case CMD_PROTOCOL_ERR:
                         case CMD_HARDWARE_ERR:
@@ -556,7 +556,7 @@ int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
                         ret = OS_COMMAND_BLOCKED;
                         break;
                     case CMD_TIMEOUT:
-                        ret = COMMAND_TIMEOUT;
+                        ret = OS_COMMAND_TIMEOUT;
                         break;
                     case CMD_PROTOCOL_ERR:
                     case CMD_HARDWARE_ERR:
@@ -653,7 +653,7 @@ int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
                     ret = OS_COMMAND_BLOCKED;
                     break;
                 case CISS_CMD_TIMEOUT:
-                    ret = COMMAND_TIMEOUT;
+                    ret = OS_COMMAND_TIMEOUT;
                     break;
                 case CISS_CMD_PROTOCOL_ERR:
                 case CISS_CMD_HARDWARE_ERR:
@@ -682,7 +682,7 @@ int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
 
 //Support big passthrough for Linux. Currently not found in other header files.
 #if defined (CCISS_BIG_PASSTHRU)
-int ciss_Big_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
+static int ciss_Big_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
 {
     int ret = BAD_PARAMETER;
     if (scsiIoCtx)
@@ -771,7 +771,7 @@ int ciss_Big_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
                 ret = OS_COMMAND_BLOCKED;
                 break;
             case CMD_TIMEOUT:
-                ret = COMMAND_TIMEOUT;
+                ret = OS_COMMAND_TIMEOUT;
                 break;
             case CMD_PROTOCOL_ERR:
             case CMD_HARDWARE_ERR:
@@ -1158,8 +1158,8 @@ int get_CISS_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                 d->sanity.size = ver.size;
                                 d->sanity.version = ver.version;
                                 d->dFlags = flags;
-                                int returnValue = get_CISS_RAID_Device(handle, d);
-                                if (returnValue != SUCCESS)
+                                int ret = get_CISS_RAID_Device(handle, d);
+                                if (ret != SUCCESS)
                                 {
                                     failedGetDeviceCount++;
                                 }

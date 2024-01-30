@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -12,11 +12,916 @@
 #include "common.h"
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
+#include "vendor/seagate/seagate_common_types.h"
 #include <ctype.h>//for checking for printable characters
+#include <stdlib.h> // for bsearch
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper_func.h"
-#endif
+
+typedef struct _senseRetDesc
+{
+    eReturnValues ret;
+    const char * desc;
+}senseRetDesc;
+
+senseRetDesc senseKeyRetDesc[] = {
+    {SUCCESS, "No Error"},
+    {FAILURE, "Recovered Error"},
+    {FAILURE, "Not Ready"},
+    {FAILURE, "Medium Error"},
+    {FAILURE, "Hardware Error"},
+    {NOT_SUPPORTED, "Illegal Request"},
+    {FAILURE, "Unit Attention"},
+    {DEVICE_ACCESS_DENIED, "Data Protect"},
+    {FAILURE, "Blank Check"},
+    {FAILURE, "Vendor Specific"},
+    {FAILURE, "Copy Aborted"},
+    {ABORTED, "Aborted Command"},
+    {FAILURE, "Reserved"},
+    {FAILURE, "Volume Overflow"},
+    {FAILURE, "Miscompare"},
+    {SUCCESS, "Completed"}
+};
+
+typedef struct _ascAscqRetDesc
+{
+    uint8_t asc;
+    uint8_t ascq;
+    int ret;
+    const char * desc;
+}ascAscqRetDesc;
+
+#define KEEP_SENSE_KEY_ERROR (-1)
+
+// DO NOT break the order of ASC and ASCQ below
+// for 3rd column (ret), -1 means to keep existing ret value, don't change it
+static ascAscqRetDesc ascAscqLookUp[] = {
+    {0x00, 0x00, KEEP_SENSE_KEY_ERROR,       "No Additional Sense Information"},
+    {0x00, 0x01, KEEP_SENSE_KEY_ERROR,       "Filemark Detected"},
+    {0x00, 0x02, KEEP_SENSE_KEY_ERROR,       "End-Of_Partition/Medium Detected"},
+    {0x00, 0x03, KEEP_SENSE_KEY_ERROR,       "Setmark Detected"},
+    {0x00, 0x04, KEEP_SENSE_KEY_ERROR,       "Beginning-Of-Partition/Medium Detected"},
+    {0x00, 0x05, KEEP_SENSE_KEY_ERROR,       "End-Of-Data Detected"},
+    {0x00, 0x06, C_CAST(int, FAILURE),       "I/O Process Terminated"},
+    {0x00, 0x07, KEEP_SENSE_KEY_ERROR,       "Programmable Early Warning Detected"},
+    {0x00, 0x11, C_CAST(int, IN_PROGRESS),   "Audio Play Operation In Progress"},
+    {0x00, 0x12, KEEP_SENSE_KEY_ERROR,       "Audio Play Operation Paused"},
+    {0x00, 0x13, C_CAST(int, SUCCESS),       "Audio Play Operation Successfully Completed"},
+    {0x00, 0x14, C_CAST(int, FAILURE),       "Audio Play Operation Stopped Due To Error"},
+    {0x00, 0x15, KEEP_SENSE_KEY_ERROR,       "No Current Audio Status To Return"},
+    {0x00, 0x16, C_CAST(int, IN_PROGRESS),   "Operation In Progress"},
+    {0x00, 0x17, C_CAST(int, UNKNOWN),       "Cleaning Requested"},
+    {0x00, 0x18, C_CAST(int, IN_PROGRESS),   "Erase Operation In Progress"},
+    {0x00, 0x19, C_CAST(int, IN_PROGRESS),   "Locate Operation In Progress"},
+    {0x00, 0x1A, C_CAST(int, IN_PROGRESS),   "Rewind Operation In Progress"},
+    {0x00, 0x1B, C_CAST(int, IN_PROGRESS),   "Set Capacity Operation In Progress"},
+    {0x00, 0x1C, C_CAST(int, IN_PROGRESS),   "Verify Operation In Progress"},
+    {0x00, 0x1D, C_CAST(int, UNKNOWN),       "ATA Passthrough Information Available"},
+    {0x00, 0x1E, C_CAST(int, UNKNOWN),       "Conflicting SA Creation Request"},
+    {0x00, 0x1F, C_CAST(int, SUCCESS),       "Logical Unit Transitioning To Another Power Condition"},
+    {0x00, 0x20, C_CAST(int, SUCCESS),       "Extended Copy Information Available"},
+    {0x00, 0x21, C_CAST(int, FAILURE),       "Atomic Command Aborted Due To ACA"},
+    {0x00, 0x22, C_CAST(int, FAILURE),       "Deferred Microcode is Pending"},
+    //
+    {0x01, 0x00, C_CAST(int, FAILURE),       "No Index/Sector Signal"},
+    //
+    {0x02, 0x00, C_CAST(int, FAILURE),       "No Seek Complete"},
+    //
+    {0x03, 0x00, C_CAST(int, FAILURE),       "Peripheral Device Write Fault"},
+    {0x03, 0x01, C_CAST(int, FAILURE),       "No Write Current"},
+    {0x03, 0x02, C_CAST(int, FAILURE),       "Excessive Write Errors"},
+    //
+    {0x04, 0x00, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Cause Not Reported"},
+    {0x04, 0x01, C_CAST(int, FAILURE),       "Logical Unit Is In The Process Of Becoming Ready"},
+    {0x04, 0x02, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Initializing Command Required"},
+    {0x04, 0x03, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Manual Intervention Required"},
+    {0x04, 0x04, C_CAST(int, IN_PROGRESS),   "Logical Unit Not Ready, Format In Progress"},
+    {0x04, 0x05, C_CAST(int, IN_PROGRESS),   "Logical Unit Not Ready, Rebuild In Progress"},
+    {0x04, 0x06, C_CAST(int, IN_PROGRESS),   "Logical Unit Not Ready, Recalculation In Progress"},
+    {0x04, 0x07, C_CAST(int, IN_PROGRESS),   "Logical Unit Not Ready, Operation In Progress"},
+    {0x04, 0x09, C_CAST(int, IN_PROGRESS),   "Logical Unit Not Ready, Self-Test In Progress"},
+    {0x04, 0x0A, C_CAST(int, FAILURE),       "Logical Unit Not Accessible, Asymetric Access State Transition"},
+    {0x04, 0x0B, C_CAST(int, FAILURE),       "Logical Unit Not Accessible, Target Port In Standby State"},
+    {0x04, 0x0C, C_CAST(int, FAILURE),       "Logical Unit Not Accessible, Target Port in Unavailable State"},
+    {0x04, 0x0D, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Structure Check Required"},
+    {0x04, 0x0E, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Security Session In Progress"},
+    {0x04, 0x10, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Auxilary Memory Not Accessible"},
+    {0x04, 0x11, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Notify (Enable Spinup) Required"},
+    {0x04, 0x13, C_CAST(int, IN_PROGRESS),   "Logical Unit Not Ready, SA Creation In Progress"},
+    {0x04, 0x14, C_CAST(int, IN_PROGRESS),   "Logical Unit Not Ready, Space Allocation In Progress"},
+    {0x04, 0x15, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Robotics Disabled"},
+    {0x04, 0x16, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Configuration Required"},
+    {0x04, 0x17, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Calibration Required"},
+    {0x04, 0x18, C_CAST(int, FAILURE),       "Logical Unit Not Ready, A Door Is Open"},
+    {0x04, 0x19, C_CAST(int, IN_PROGRESS),   "Logical Unit Not Ready, Operating In Sequential Mode"},
+    {0x04, 0x1A, C_CAST(int, IN_PROGRESS),   "Logical Unit Not Ready, Start Stop Unit Command In Progress"},
+    {0x04, 0x1B, C_CAST(int, IN_PROGRESS),   "Logical Unit Not Ready, Sanitize In Progress"},
+    {0x04, 0x1C, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Additional Power Use Not Yet Granted"},
+    {0x04, 0x1D, C_CAST(int, IN_PROGRESS),   "Logical Unit Not Ready, Configuration In Progress"},
+    {0x04, 0x1E, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Microcode Activation Required"},
+    {0x04, 0x1F, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Microcode Download Required"},
+    {0x04, 0x20, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Logical Unit Reset Required"},
+    {0x04, 0x21, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Hard Reset Required"},
+    {0x04, 0x22, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Power Cycle Required"},
+    {0x04, 0x23, C_CAST(int, FAILURE),       "Logical Unit Not Ready, Affiliation Required"},
+    {0x04, 0x24, C_CAST(int, FAILURE),       "Depopulation In Progress"},
+    {0x04, 0x25, C_CAST(int, FAILURE),       "Depopulation Restoration In Progress"},
+    //
+    {0x05, 0x00, C_CAST(int, FAILURE),       "Logical Unit Does Not Respond To Selection"},
+    //
+    {0x06, 0x00, C_CAST(int, FAILURE),       "No Reference Position Found"},
+    //
+    {0x07, 0x00, C_CAST(int, FAILURE),       "Multiple Peripheral Devices Selected"},
+    //
+    {0x08, 0x00, C_CAST(int, FAILURE),       "Logical Unit Communication Failure"},
+    {0x08, 0x01, C_CAST(int, FAILURE),       "Logical Unit Communication Time-Out"},
+    {0x08, 0x02, C_CAST(int, FAILURE),       "Logical Unit Communication Parity Error"},
+    {0x08, 0x03, C_CAST(int, FAILURE),       "Logical Unit Communication CRC Error (Ultra-DMA/32)"},
+    {0x08, 0x04, C_CAST(int, FAILURE),       "Unreachable Copy Target"},
+    //
+    {0x09, 0x00, C_CAST(int, FAILURE),       "Track Following Error"},
+    {0x09, 0x01, C_CAST(int, FAILURE),       "Tracking Servo Failure"},
+    {0x09, 0x02, C_CAST(int, FAILURE),       "Focus Servo Failure"},
+    {0x09, 0x03, C_CAST(int, FAILURE),       "Spindle Servo Failure"},
+    {0x09, 0x04, C_CAST(int, FAILURE),       "Head Select Fault"},
+    {0x09, 0x05, C_CAST(int, FAILURE),       "Vibration Induced Tracking Error"},
+    {0x0A, 0x00, C_CAST(int, FAILURE),       "Error Log Overflow"},
+    //
+    {0x0B, 0x00, KEEP_SENSE_KEY_ERROR,       "Warning"},
+    {0x0B, 0x01, KEEP_SENSE_KEY_ERROR,       "Warning - Specified Temperature Exceeded"},
+    {0x0B, 0x02, KEEP_SENSE_KEY_ERROR,       "Warning - Enclosure Degraded"},
+    {0x0B, 0x03, KEEP_SENSE_KEY_ERROR,       "Warning - Background Self-Test Failed"},
+    {0x0B, 0x04, KEEP_SENSE_KEY_ERROR,       "Warning - Background Pre-Scan Detected Medium Error"},
+    {0x0B, 0x05, KEEP_SENSE_KEY_ERROR,       "Warning - Background Media Scan Detected Medium Error"},
+    {0x0B, 0x06, KEEP_SENSE_KEY_ERROR,       "Warning - Non-Volitile Cache Now Volitile"},
+    {0x0B, 0x07, KEEP_SENSE_KEY_ERROR,       "Warning - Degraded Power To Non-Volitile Cache"},
+    {0x0B, 0x08, KEEP_SENSE_KEY_ERROR,       "Warning - Power Loss Expected"},
+    {0x0B, 0x09, KEEP_SENSE_KEY_ERROR,       "Warning - Device Statistics Notification Active"},
+    {0x0B, 0x0A, KEEP_SENSE_KEY_ERROR,       "Warning - High Critical Temperature Limit Exceeded"},
+    {0x0B, 0x0B, KEEP_SENSE_KEY_ERROR,       "Warning - Low Critical Temperature Limit Exceeded"},
+    {0x0B, 0x0C, KEEP_SENSE_KEY_ERROR,       "Warning - High Operating Temperature Limit Exceeded"},
+    {0x0B, 0x0D, KEEP_SENSE_KEY_ERROR,       "Warning - Low Operating Temperature Limit Exceeded"},
+    {0x0B, 0x0E, KEEP_SENSE_KEY_ERROR,       "Warning - High Critical Humidity Limit Exceeded"},
+    {0x0B, 0x0F, KEEP_SENSE_KEY_ERROR,       "Warning - Low Critical Humidity Limit Exceeded"},
+    {0x0B, 0x10, KEEP_SENSE_KEY_ERROR,       "Warning - High Operating Humidity Limit Exceeded"},
+    {0x0B, 0x11, KEEP_SENSE_KEY_ERROR,       "Warning - Low Operating Humidity Limit Exceeded"},
+    {0x0B, 0x12, KEEP_SENSE_KEY_ERROR,       "Warning - Microcode Security At Risk"},
+    {0x0B, 0x13, KEEP_SENSE_KEY_ERROR,       "Warning - Microcode Digital Signature Validation Failure"},
+    {0x0B, 0x14, KEEP_SENSE_KEY_ERROR,       "Warning - Physical Element Status Change"},
+    //
+    {0x0C, 0x00, C_CAST(int, FAILURE),       "Write Error"},
+    {0x0C, 0x01, KEEP_SENSE_KEY_ERROR,       "Write Error - Recovered With Auto Reallocation"},
+    {0x0C, 0x02, C_CAST(int, FAILURE),       "Write Error - Auto Reallocation Failed"},
+    {0x0C, 0x03, C_CAST(int, FAILURE),       "Write Error - Recommend Reassignment"},
+    {0x0C, 0x04, C_CAST(int, FAILURE),       "Compression Check Miscompare Error"},
+    {0x0C, 0x05, C_CAST(int, FAILURE),       "Data Expansion Occurred During Compression"},
+    {0x0C, 0x06, C_CAST(int, FAILURE),       "Block Not Compressible"},
+    {0x0C, 0x07, C_CAST(int, FAILURE),       "Write Error - Recovery Needed"},
+    {0x0C, 0x08, C_CAST(int, FAILURE),       "Write Error - Recovery Failed"},
+    {0x0C, 0x09, C_CAST(int, FAILURE),       "Write Error - Loss Of Streaming"},
+    {0x0C, 0x0A, C_CAST(int, FAILURE),       "Write Error - Padding Blocks Added"},
+    {0x0C, 0x0B, C_CAST(int, FAILURE),       "Auxiliary Memory Write Error"},
+    {0x0C, 0x0C, C_CAST(int, FAILURE),       "Write Error - Unexpected Unsolicited Data"},
+    {0x0C, 0x0D, C_CAST(int, FAILURE),       "Write Error - Not Enough Unsolicited Data"},
+    {0x0C, 0x0E, C_CAST(int, FAILURE),       "Multiple Write Errors"},
+    {0x0C, 0x0F, C_CAST(int, FAILURE),       "Defects In Error Window"},
+    {0x0C, 0x10, C_CAST(int, FAILURE),       "Incomplete Multiple Atomic Write Operations"},
+    {0x0C, 0x11, C_CAST(int, FAILURE),       "Write Error - Recovery Scan Needed"},
+    {0x0C, 0x12, C_CAST(int, FAILURE),       "Write Error - Insufficient Zone Resources"},
+    //
+    {0x0D, 0x00, C_CAST(int, FAILURE),       "Error Detected By Third Party Temporary Initiator"},
+    {0x0D, 0x01, C_CAST(int, FAILURE),       "Third Party Device Failure"},
+    {0x0D, 0x02, C_CAST(int, FAILURE),       "Copy Target Device Not Reachable"},
+    {0x0D, 0x03, C_CAST(int, FAILURE),       "Incorrect Copy Target Device Type"},
+    {0x0D, 0x04, C_CAST(int, FAILURE),       "Copy Target Device Data Underrun"},
+    {0x0D, 0x05, C_CAST(int, FAILURE),       "Copy Target Device Data Overrun"},
+    //
+    {0x0E, 0x00, C_CAST(int, FAILURE),       "Invalid Information Unit"},
+    {0x0E, 0x01, C_CAST(int, FAILURE),       "Information Unit Too Short"},
+    {0x0E, 0x02, C_CAST(int, FAILURE),       "Information Unit Too Long"},
+    {0x0E, 0x03, C_CAST(int, FAILURE),       "Invalid Field In Command Information Unit"},
+    //
+    {0x10, 0x00, C_CAST(int, FAILURE),       "ID CRC Or ECC Error"},
+    {0x10, 0x01, C_CAST(int, FAILURE),       "Logical Block Guard Check Failed"},
+    {0x10, 0x02, C_CAST(int, FAILURE),       "Logical Block Application Tag Check Failed"},
+    {0x10, 0x03, C_CAST(int, FAILURE),       "Logical Block Reference Tag Check Failed"},
+    {0x10, 0x04, C_CAST(int, FAILURE),       "Logical Block Protection Error On Recover Buffered Data"},
+    {0x10, 0x05, C_CAST(int, FAILURE),       "Logical Block Protection Method Error"},
+    //
+    {0x11, 0x00, C_CAST(int, FAILURE),       "Unrecovered Read Error"},
+    {0x11, 0x01, C_CAST(int, FAILURE),       "Read Retries Exhausted"},
+    {0x11, 0x02, C_CAST(int, FAILURE),       "Error Too Long To Correct"},
+    {0x11, 0x03, C_CAST(int, FAILURE),       "Multiple Read Errors"},
+    {0x11, 0x04, C_CAST(int, FAILURE),       "Unrecovered Read Error - Auto Reallocate Failed"},
+    {0x11, 0x05, C_CAST(int, FAILURE),       "L-EC Uncorrectable Error"},
+    {0x11, 0x06, C_CAST(int, FAILURE),       "CIRC Unrecovered Error"},
+    {0x11, 0x07, C_CAST(int, FAILURE),       "Data Re-synchonization Error"},
+    {0x11, 0x08, C_CAST(int, FAILURE),       "Incomplete Block Read"},
+    {0x11, 0x09, C_CAST(int, FAILURE),       "No Gap Found"},
+    {0x11, 0x0A, C_CAST(int, FAILURE),       "Miscorrected Error"},
+    {0x11, 0x0B, C_CAST(int, FAILURE),       "Unrecovered Read Error - Recommend Reassignment"},
+    {0x11, 0x0C, C_CAST(int, FAILURE),       "Unrecovered Read Error - Recommend Rewrite The Data"},
+    {0x11, 0x0D, C_CAST(int, FAILURE),       "De-compression CRC Error"},
+    {0x11, 0x0E, C_CAST(int, FAILURE),       "Cannot Decompress Using Declared Algorithm"},
+    {0x11, 0x0F, C_CAST(int, FAILURE),       "Error Reading UPC/EAN Number"},
+    {0x11, 0x10, C_CAST(int, FAILURE),       "Error Reading ISRC Number"},
+    {0x11, 0x11, C_CAST(int, FAILURE),       "Read Error - Loss Of Streaming"},
+    {0x11, 0x12, C_CAST(int, FAILURE),       "Auxiliary Memory Read Error"},
+    {0x11, 0x13, C_CAST(int, FAILURE),       "Read Error - Failed Retransmission Request"},
+    {0x11, 0x14, C_CAST(int, FAILURE),       "Read Error - LBA Marked Bad By Application Client"},
+    {0x11, 0x15, C_CAST(int, FAILURE),       "Write After Sanitize Required"},
+    //
+    {0x12, 0x00, C_CAST(int, FAILURE),       "Address Mark Not Found for ID Field"},
+    //
+    {0x13, 0x00, C_CAST(int, FAILURE),       "Address Mark Not Found for Data Field"},
+    //
+    {0x14, 0x00, C_CAST(int, FAILURE),       "Recorded Entity Not Found"},
+    {0x14, 0x01, C_CAST(int, FAILURE),       "Record Not Found"},
+    {0x14, 0x02, C_CAST(int, FAILURE),       "Filemark Or Setmark Not Found"},
+    {0x14, 0x03, C_CAST(int, FAILURE),       "End-Of-Data Not Found"},
+    {0x14, 0x04, C_CAST(int, FAILURE),       "Block Sequence Error"},
+    {0x14, 0x05, C_CAST(int, FAILURE),       "Record Not Found - Recommend Reassignment"},
+    {0x14, 0x06, C_CAST(int, FAILURE),       "Record Not Found - Data Auto-Reallocated"},
+    {0x14, 0x07, C_CAST(int, FAILURE),       "Locate Operation Failure"},
+    //
+    {0x15, 0x00, C_CAST(int, FAILURE),       "Random Positioning Error"},
+    {0x15, 0x01, C_CAST(int, FAILURE),       "Mechanical Positioning Error"},
+    {0x15, 0x02, C_CAST(int, FAILURE),       "Positioning Error Detected By Read Of Medium"},
+    //
+    {0x16, 0x00, C_CAST(int, FAILURE),       "Data Synchronization Mark Error"},
+    {0x16, 0x01, C_CAST(int, SUCCESS),       "Data Sync Error - Data Rewritten"},
+    {0x16, 0x02, C_CAST(int, FAILURE),       "Data Sync Error - Recommend Rewrite"},
+    {0x16, 0x03, C_CAST(int, SUCCESS),       "Data Sync Error - Data Auto-Reallocation"},
+    {0x16, 0x04, C_CAST(int, FAILURE),       "Data Sync Error - Recommend Reassignment"},
+    //
+    {0x17, 0x00, KEEP_SENSE_KEY_ERROR,       "Recovered Data With No Error Correction Applied"},
+    {0x17, 0x01, KEEP_SENSE_KEY_ERROR,       "Recovered Data With Retries"},
+    {0x17, 0x02, KEEP_SENSE_KEY_ERROR,       "Recovered Data With Positive Head Offset"},
+    {0x17, 0x03, KEEP_SENSE_KEY_ERROR,       "Recovered Data With Negative Head Offset"},
+    {0x17, 0x04, KEEP_SENSE_KEY_ERROR,       "Recovered Data With Retries And/Or CIRC Applied"},
+    {0x17, 0x05, KEEP_SENSE_KEY_ERROR,       "Recovered Data Using Previous Sector ID"},
+    {0x17, 0x06, KEEP_SENSE_KEY_ERROR,       "Recovered Data Without ECC - Data Auto-Reallocated"},
+    {0x17, 0x07, KEEP_SENSE_KEY_ERROR,       "Recovered Data Without ECC - Recommend Reassignment"},
+    {0x17, 0x08, KEEP_SENSE_KEY_ERROR,       "Recovered Data Without ECC - Recommend Rewrite"},
+    {0x17, 0x09, KEEP_SENSE_KEY_ERROR,       "Recovered Data Without ECC - Data Rewritten"},
+    //
+    {0x18, 0x00, KEEP_SENSE_KEY_ERROR,       "Recovered Data With Error Correction Applied"},
+    {0x18, 0x01, KEEP_SENSE_KEY_ERROR,       "Recovered Data With Error Correction & Retries Applied"},
+    {0x18, 0x02, KEEP_SENSE_KEY_ERROR,       "Recovered Data - Data Auto-Reallocated"},
+    {0x18, 0x03, KEEP_SENSE_KEY_ERROR,       "Recovered Data With CIRC"},
+    {0x18, 0x04, KEEP_SENSE_KEY_ERROR,       "Recovered Data With L-EC"},
+    {0x18, 0x05, KEEP_SENSE_KEY_ERROR,       "Recovered Data - Recommend Reassignment"},
+    {0x18, 0x06, KEEP_SENSE_KEY_ERROR,       "Recovered Data - Recommend Rewrite"},
+    {0x18, 0x07, KEEP_SENSE_KEY_ERROR,       "Recovered Data With ECC - Data Rewritten"},
+    {0x18, 0x08, C_CAST(int, FAILURE),       "Recovered Data With Linking"},
+    //
+    {0x19, 0x00, C_CAST(int, FAILURE),       "Defect List Error"},
+    {0x19, 0x01, C_CAST(int, FAILURE),       "Defect List Not Available"},
+    {0x19, 0x02, C_CAST(int, FAILURE),       "Defect List Error In Primary List"},
+    {0x19, 0x03, C_CAST(int, FAILURE),       "Defect List Error In Grown List"},
+    //
+    {0x1A, 0x00, C_CAST(int, FAILURE),       "Parameter List Length Error"},
+    //
+    {0x1B, 0x00, C_CAST(int, FAILURE),       "Synchronous Data Transfer Error"},
+    //
+    {0x1C, 0x00, C_CAST(int, FAILURE),       "Defect List Not Found"},
+    {0x1C, 0x01, C_CAST(int, FAILURE),       "Primary Defect List Not Found"},
+    {0x1C, 0x02, C_CAST(int, FAILURE),       "Grown Defect List Not Found"},
+    //
+    {0x1D, 0x00, C_CAST(int, FAILURE),       "Miscompare During Verify Operation"},
+    {0x1D, 0x01, C_CAST(int, FAILURE),       "Miscompare During Verify Of Unmapped LBA"},
+    //
+    {0x1E, 0x00, KEEP_SENSE_KEY_ERROR,       "Recovered ID With ECC Correction"},
+    //
+    {0x1F, 0x00, C_CAST(int, FAILURE),       "Partial Defect List Transfer"},
+    //
+    {0x20, 0x00, C_CAST(int, NOT_SUPPORTED), "Invalid Command Operation Code"},
+    {0x20, 0x01, C_CAST(int, DEVICE_ACCESS_DENIED),       "Access Denied - Initiator Pending - Enrolled"},
+    {0x20, 0x02, C_CAST(int, DEVICE_ACCESS_DENIED),       "Access Denied - No Access Rights"},
+    {0x20, 0x03, C_CAST(int, DEVICE_ACCESS_DENIED),       "Access Denied - Invalid Management ID Key"},
+    {0x20, 0x04, C_CAST(int, FAILURE),       "Illegal Command While In Write Capable State"},
+    {0x20, 0x05, C_CAST(int, FAILURE),       "Illegal Command While In Read Capable State"},
+    {0x20, 0x06, C_CAST(int, FAILURE),       "Illegal Command While In Explicit Address Mode"},
+    {0x20, 0x07, C_CAST(int, FAILURE),       "Illegal Command While In Implicit Address Mode"},
+    {0x20, 0x08, C_CAST(int, DEVICE_ACCESS_DENIED),       "Access Denied - Enrollment Conflict"},
+    {0x20, 0x09, C_CAST(int, DEVICE_ACCESS_DENIED),       "Access Denied - Invalid Logical Unit Identifier"},
+    {0x20, 0x0A, C_CAST(int, DEVICE_ACCESS_DENIED),       "Access Denied - Invalid Proxy Token"},
+    {0x20, 0x0B, C_CAST(int, DEVICE_ACCESS_DENIED),       "Access Denied - ACL LUN Conflict"},
+    {0x20, 0x0C, C_CAST(int, FAILURE),       "Illegal Command When Not In Append-Only Mode"},
+    {0x20, 0x0D, C_CAST(int, FAILURE),       "Not An Administrative Logical Unit"},
+    {0x20, 0x0E, C_CAST(int, FAILURE),       "Not A Subsidiary Logical Unit"},
+    {0x20, 0x0F, C_CAST(int, FAILURE),       "Not A Conglomerate Logical Unit"},
+    //
+    {0x21, 0x00, C_CAST(int, FAILURE),       "Logical Block Address Out Of Range"},
+    {0x21, 0x01, C_CAST(int, FAILURE),       "Invalid Element Address"},
+    {0x21, 0x02, C_CAST(int, FAILURE),       "Invalid Address For Write"},
+    {0x21, 0x03, C_CAST(int, FAILURE),       "Invalid Write Crossing Layer Jump"},
+    {0x21, 0x04, C_CAST(int, FAILURE),       "Unaligned Write Command"},
+    {0x21, 0x05, C_CAST(int, FAILURE),       "Write Boundary Violation"},
+    {0x21, 0x06, C_CAST(int, FAILURE),       "Attempt To Read Invalid Data"},
+    {0x21, 0x07, C_CAST(int, FAILURE),       "Read Boundary Violation"},
+    {0x21, 0x08, C_CAST(int, FAILURE),       "Misaligned Write Command"},
+    {0x21, 0x09, C_CAST(int, FAILURE),       "Attempt To Access Gap Zone"},
+    //
+    {0x22, 0x00, C_CAST(int, NOT_SUPPORTED), "Illegal Function. Use 22 00, 24 00, or 26 00"},
+    //
+    {0x23, 0x00, C_CAST(int, FAILURE),       "Invalid Token Operation - Cause Not Reportable"},
+    {0x23, 0x01, C_CAST(int, FAILURE),       "Invalid Token Operation - Unsupported Token Type"},
+    {0x23, 0x02, C_CAST(int, NOT_SUPPORTED), "Invalid Token Operation - Remote Token Usage Not Supported"},
+    {0x23, 0x03, C_CAST(int, NOT_SUPPORTED), "Invalid Token Operation - Remote ROD Token Creation Not Supported"},
+    {0x23, 0x04, C_CAST(int, FAILURE),       "Invalid Token Operation - Token Unknown"},
+    {0x23, 0x05, C_CAST(int, FAILURE),       "Invalid Token Operation - Token Corrupt"},
+    {0x23, 0x06, C_CAST(int, FAILURE),       "Invalid Token Operation - Token Revoked"},
+    {0x23, 0x07, C_CAST(int, FAILURE),       "Invalid Token Operation - Token Expired"},
+    {0x23, 0x08, C_CAST(int, FAILURE),       "Invalid Token Operation - Token Cancelled"},
+    {0x23, 0x09, C_CAST(int, FAILURE),       "Invalid Token Operation - Token Deleted"},
+    {0x23, 0x0A, C_CAST(int, FAILURE),       "Invalid Token Operation - Invalid Token Length"},
+    //
+    {0x24, 0x00, C_CAST(int, NOT_SUPPORTED), "Invalid Field In CDB"},
+    {0x24, 0x01, C_CAST(int, FAILURE),       "CDB Decryption Error"},
+    {0x24, 0x02, C_CAST(int, FAILURE),       "Invalid CDB Field While In Explicit Block Address Model"},
+    {0x24, 0x03, C_CAST(int, FAILURE),       "Invalid CDB Field While In Implicit Block Address Model"},
+    {0x24, 0x04, C_CAST(int, FAILURE),       "Security Audit Value Frozen"},
+    {0x24, 0x05, C_CAST(int, FAILURE),       "Security Working Key Frozen"},
+    {0x24, 0x06, C_CAST(int, FAILURE),       "Nonce Not Unique"},
+    {0x24, 0x07, C_CAST(int, FAILURE),       "Nonce Timestamp Out Of Range"},
+    {0x24, 0x08, C_CAST(int, FAILURE),       "Invalid XCDB"},
+    {0x24, 0x09, C_CAST(int, FAILURE),       "Invalid Fast Format"},
+    //
+    {0x25, 0x00, C_CAST(int, NOT_SUPPORTED), "Logical Unit Not Supported"},
+    //
+    {0x26, 0x00, C_CAST(int, FAILURE),       "Invalid Field In Parameter List"},
+    {0x26, 0x01, C_CAST(int, NOT_SUPPORTED), "Parameter Not Supported"},
+    {0x26, 0x02, C_CAST(int, FAILURE),       "Parameter Value Invalid"},
+    {0x26, 0x03, C_CAST(int, NOT_SUPPORTED), "Threshold Parameters Not Supported"},
+    {0x26, 0x04, C_CAST(int, FAILURE),       "Invalid Release Of Persistent Reservation"},
+    {0x26, 0x05, C_CAST(int, FAILURE),       "Data Decryption Error"},
+    {0x26, 0x06, C_CAST(int, FAILURE),       "Too Many Target Descriptors"},
+    {0x26, 0x07, C_CAST(int, NOT_SUPPORTED), "Unsupported Target Descriptor Type Code"},
+    {0x26, 0x08, C_CAST(int, FAILURE),       "Too Many Segment Descriptors"},
+    {0x26, 0x09, C_CAST(int, FAILURE),       "Unsupported Segment Descriptor Type Code"},
+    {0x26, 0x0A, C_CAST(int, FAILURE),       "Unexpected Inexact Segment"},
+    {0x26, 0x0B, C_CAST(int, FAILURE),       "Inline Data Length Exceeded"},
+    {0x26, 0x0C, C_CAST(int, FAILURE),       "Invalid Operation For Copy Source Or Destination"},
+    {0x26, 0x0D, C_CAST(int, FAILURE),       "Copy Segment Granularity Violation"},
+    {0x26, 0x0E, C_CAST(int, FAILURE),       "Invalid Parameter While Port Is Enabled"},
+    {0x26, 0x0F, C_CAST(int, FAILURE),       "Invalid Data-Out Buffer Integrity Check Value"},
+    {0x26, 0x10, C_CAST(int, FAILURE),       "Data Decryption Key Fail Limit Reached"},
+    {0x26, 0x11, C_CAST(int, FAILURE),       "Incomplete Key-Associated Data Set"},
+    {0x26, 0x12, C_CAST(int, FAILURE),       "Vendor Specific Key Reference Not Found"},
+    {0x26, 0x13, C_CAST(int, FAILURE),       "Application Tag Mode Page Is Invalid"},
+    {0x26, 0x14, C_CAST(int, FAILURE),       "Tape Stream Mirroring Prevented"},
+    {0x26, 0x15, C_CAST(int, FAILURE),       "Copy Source Or Copy Destination Not Authorized"},
+    {0x26, 0x16, C_CAST(int, FAILURE),       "Fast Copy Not Possible"},
+    //
+    {0x27, 0x00, C_CAST(int, FAILURE),       "Write Protected"},
+    {0x27, 0x01, C_CAST(int, FAILURE),       "Hardware Write Protected"},
+    {0x27, 0x02, C_CAST(int, FAILURE),       "Logical Unit Software Write Protected"},
+    {0x27, 0x03, C_CAST(int, FAILURE),       "Associated Write Protect"},
+    {0x27, 0x04, C_CAST(int, FAILURE),       "Persistent Write Protect"},
+    {0x27, 0x05, C_CAST(int, FAILURE),       "Permanent Write Protect"},
+    {0x27, 0x06, C_CAST(int, FAILURE),       "Conditional Write Protect"},
+    {0x27, 0x07, C_CAST(int, FAILURE),       "Space Allocation Failed Write Protect"},
+    {0x27, 0x08, C_CAST(int, FAILURE),       "Zone Is Read Only"},
+    //
+    {0x28, 0x00, C_CAST(int, FAILURE),       "Not Ready To Ready Change, Medium May Have Changed"},
+    {0x28, 0x01, C_CAST(int, SUCCESS),       "Import or Export Element Accessed"},
+    {0x28, 0x02, C_CAST(int, FAILURE),       "Format-Layer May Have Changed"},
+    {0x28, 0x03, C_CAST(int, FAILURE),       "Import/Export Element Accessed, Medium Changed"},
+    //
+    {0x29, 0x00, KEEP_SENSE_KEY_ERROR,       "Power On, Reset, Or Bus Device Reset Occurred"},
+    {0x29, 0x01, KEEP_SENSE_KEY_ERROR,       "Power On Occurred"},
+    {0x29, 0x02, KEEP_SENSE_KEY_ERROR,       "SCSI Bus Reset Occurred"},
+    {0x29, 0x03, KEEP_SENSE_KEY_ERROR,       "Bus Device Reset Function Occurred"},
+    {0x29, 0x04, KEEP_SENSE_KEY_ERROR,       "Device Internal Reset"},
+    {0x29, 0x05, KEEP_SENSE_KEY_ERROR,       "Transceiver Mode Changed To Single-Ended"},
+    {0x29, 0x06, KEEP_SENSE_KEY_ERROR,       "Transceiver Mode Changed To LVD"},
+    {0x29, 0x07, C_CAST(int, FAILURE),       "I_T Nexus Loss Occurred"},
+    //
+    {0x2A, 0x00, C_CAST(int, SUCCESS),       "Parameters Changed"},
+    {0x2A, 0x01, C_CAST(int, SUCCESS),       "Mode Parameters Changed"},
+    {0x2A, 0x02, C_CAST(int, SUCCESS),       "Log Parameters Changed"},
+    {0x2A, 0x03, C_CAST(int, SUCCESS),       "Reservations Preempted"},
+    {0x2A, 0x04, C_CAST(int, SUCCESS),       "Reservations Released"},
+    {0x2A, 0x05, C_CAST(int, SUCCESS),       "Registrations Preempted"},
+    {0x2A, 0x06, C_CAST(int, FAILURE),       "Asymmetric Access State Changed"},
+    {0x2A, 0x07, C_CAST(int, FAILURE),       "Implicit Asymetric Access State Transition Failed"},
+    {0x2A, 0x08, C_CAST(int, SUCCESS),       "Priority Changed"},
+    {0x2A, 0x09, C_CAST(int, SUCCESS),       "Capacity Data Has Changed"},
+    {0x2A, 0x0A, C_CAST(int, SUCCESS),       "Error History I_T Nexus Cleared"},
+    {0x2A, 0x0B, C_CAST(int, SUCCESS),       "Error History Snapshot Released"},
+    {0x2A, 0x0C, C_CAST(int, SUCCESS),       "Error Recovery Attributes Have Changed"},
+    {0x2A, 0x0D, C_CAST(int, SUCCESS),       "Data Encryption Capabilities Changed"},
+    {0x2A, 0x10, C_CAST(int, SUCCESS),       "Timestamp Changed"},
+    {0x2A, 0x11, KEEP_SENSE_KEY_ERROR,       "Data Encryption Parameters Changed By Another I_T Nexus"},
+    {0x2A, 0x12, KEEP_SENSE_KEY_ERROR,       "Data Encryption Parameters Changed By Vendor Specific Event"},
+    {0x2A, 0x13, KEEP_SENSE_KEY_ERROR,       "Data Encryption Key Instance Counter Has Changed"},
+    {0x2A, 0x14, C_CAST(int, SUCCESS),       "SA Creation Capabilities Has Changed"},
+    {0x2A, 0x15, C_CAST(int, FAILURE),       "Medium Removal Precention Preempted"},
+    {0x2A, 0x16, KEEP_SENSE_KEY_ERROR,       "Zone Reset Write Pointer Recommended"},
+    //
+    {0x2B, 0x00, C_CAST(int, FAILURE),       "Copy Cannot Execute Since Host Cannot Disconnect"},
+    //
+    {0x2C, 0x00, C_CAST(int, FAILURE),       "Command Sequence Error"},
+    {0x2C, 0x01, C_CAST(int, FAILURE),       "Too Many Windows Specified"},
+    {0x2C, 0x02, C_CAST(int, FAILURE),       "Invalid Combination Of Windows Specified"},
+    {0x2C, 0x03, C_CAST(int, FAILURE),       "Current Program Area Is Not Empty"},
+    {0x2C, 0x04, KEEP_SENSE_KEY_ERROR,       "Current Program Area Is Empty"},
+    {0x2C, 0x05, C_CAST(int, FAILURE),       "Illegal Power Condition Request"},
+    {0x2C, 0x06, C_CAST(int, FAILURE),       "Persistent Prevent Conflict"},
+    {0x2C, 0x07, C_CAST(int, FAILURE),       "Previous Busy Status"},
+    {0x2C, 0x08, C_CAST(int, FAILURE),       "Previous Task Set Full Status"},
+    {0x2C, 0x09, C_CAST(int, FAILURE),       "Previous Reservation Conflict Status"},
+    {0x2C, 0x0A, KEEP_SENSE_KEY_ERROR,       "Partition Or Collection Contains User Objects"},
+    {0x2C, 0x0B, KEEP_SENSE_KEY_ERROR,       "Not Reserved"},
+    {0x2C, 0x0C, C_CAST(int, FAILURE),       "ORWrite Generation Does Not Match"},
+    {0x2C, 0x0D, C_CAST(int, FAILURE),       "Reset Write Pointer Not Allowed"},
+    {0x2C, 0x0E, C_CAST(int, FAILURE),       "Zone Is Offline"},
+    {0x2C, 0x0F, C_CAST(int, FAILURE),       "Stream Not Open"},
+    {0x2C, 0x10, KEEP_SENSE_KEY_ERROR,       "Unwritten Data In Zone"},
+    {0x2C, 0x11, C_CAST(int, FAILURE),       "Descriptor Format Sense Data Required"},
+    {0x2C, 0x12, C_CAST(int, FAILURE),       "Zone Is Inactive"},
+    {0x2C, 0x13, C_CAST(int, FAILURE),       "Well Known Logical Unit Access Required"},
+    //
+    {0x2D, 0x00, KEEP_SENSE_KEY_ERROR,       "Overwrite Error On Update In Place"},
+    //
+    {0x2E, 0x00, C_CAST(int, FAILURE),       "Insufficient Time For Operation"},
+    {0x2E, 0x01, C_CAST(int, FAILURE),       "Command Timeout Before Processing"},
+    {0x2E, 0x02, C_CAST(int, FAILURE),       "Command Timeout During Processing"},
+    {0x2E, 0x03, C_CAST(int, FAILURE),       "Command Timeout During Processing Due To Error Recovery"},
+    //
+    {0x2F, 0x00, C_CAST(int, FAILURE),       "Commands Cleared By Another Initiator"},
+    {0x2F, 0x01, C_CAST(int, FAILURE),       "Commands Cleared By Power Loss Notification"},
+    {0x2F, 0x02, C_CAST(int, FAILURE),       "Commands Cleared By Device Server"},
+    {0x2F, 0x03, C_CAST(int, FAILURE),       "Some Commands Cleared By Queuing Layer Event"},
+    // {0x2F, 0x07, C_CAST(int, FAILURE),       "Space Allocation Failed Write Protect"},
+    //
+    {0x30, 0x00, C_CAST(int, FAILURE),       "Incompatible Medium Installed"},
+    {0x30, 0x01, C_CAST(int, FAILURE),       "Cannot Read Medium - Unknown Format"},
+    {0x30, 0x02, C_CAST(int, FAILURE),       "Cannot Read Medium - Incompatible Format"},
+    {0x30, 0x03, C_CAST(int, UNKNOWN),       "Cleaning Cartridge Installed"},
+    {0x30, 0x04, C_CAST(int, FAILURE),       "Cannot Write Medium - Unknown Format"},
+    {0x30, 0x05, C_CAST(int, FAILURE),       "Cannot Write Medium - Incompatible Format"},
+    {0x30, 0x06, C_CAST(int, FAILURE),       "Cannot Format Medium - Incompatible Medium"},
+    {0x30, 0x07, C_CAST(int, FAILURE),       "Cleaning Failure"},
+    {0x30, 0x08, C_CAST(int, FAILURE),       "Cannot Write - Application Code Mismatch"},
+    {0x30, 0x09, C_CAST(int, FAILURE),       "Current Session Not Fixated For Append"},
+    {0x30, 0x0A, C_CAST(int, FAILURE),       "Cleaning Request Rejected"},
+    {0x30, 0x0C, C_CAST(int, FAILURE),       "WORM Medium - Overwrite Attempted"},
+    {0x30, 0x0D, C_CAST(int, FAILURE),       "WORM Medium - Integrity Check"},
+    {0x30, 0x10, C_CAST(int, FAILURE),       "Medium Not Formatted"},
+    {0x30, 0x11, C_CAST(int, FAILURE),       "Incompatible Volume Type"},
+    {0x30, 0x12, C_CAST(int, FAILURE),       "Incompatible Volume Qualifier"},
+    {0x30, 0x13, C_CAST(int, FAILURE),       "Cleaning Volume Expired"},
+    //
+    {0x31, 0x00, C_CAST(int, FAILURE),       "Medium Format Corrupted"},
+    {0x31, 0x01, C_CAST(int, FAILURE),       "Format Command Failed"},
+    {0x31, 0x02, C_CAST(int, FAILURE),       "Zoned Formatting Failed Due To Spare Linking"},
+    {0x31, 0x03, C_CAST(int, FAILURE),       "Sanitize Command Failed"},
+    {0x31, 0x04, C_CAST(int, FAILURE),       "Depopulation Failed"},
+    {0x31, 0x05, C_CAST(int, FAILURE),       "Depopulation Restoration Failed"},
+    //
+    {0x32, 0x00, C_CAST(int, FAILURE),       "No Defect Space Location Available"},
+    {0x32, 0x01, C_CAST(int, FAILURE),       "Defect List Update Failure"},
+    //
+    {0x33, 0x00, C_CAST(int, FAILURE),       "Tape Length Error"},
+    //
+    {0x34, 0x00, C_CAST(int, FAILURE),       "Enclosure Failure"},
+    //
+    {0x35, 0x00, C_CAST(int, FAILURE),       "Enclosure Services Failure"},
+    {0x35, 0x01, C_CAST(int, NOT_SUPPORTED), "Unsupported Enclosure Function"},
+    {0x35, 0x02, C_CAST(int, NOT_SUPPORTED), "Enclosure Services Unavailable"},
+    {0x35, 0x03, C_CAST(int, FAILURE),       "Enclosure Services Transfer Failure"},
+    {0x35, 0x04, C_CAST(int, FAILURE),       "Enclosure Services Transfer Refused"},
+    {0x35, 0x05, C_CAST(int, FAILURE),       "Enclosure Services Checksum Failure"},
+    //
+    {0x36, 0x00, C_CAST(int, FAILURE),       "Ribbon, Ink, Or Toner Failure"},
+    //
+    {0x37, 0x00, KEEP_SENSE_KEY_ERROR,       "Rounded Parameter"},
+    //
+    {0x38, 0x00, KEEP_SENSE_KEY_ERROR,       "Event Status Notification"},
+    {0x38, 0x02, KEEP_SENSE_KEY_ERROR,       "ESN - Power Management Class Event"},
+    {0x38, 0x04, KEEP_SENSE_KEY_ERROR,       "ESN - Media Class Event"},
+    {0x38, 0x06, KEEP_SENSE_KEY_ERROR,       "ESN - Device Busy Class Event"},
+    {0x38, 0x07, C_CAST(int, FAILURE),       "Thin Provisioning Soft Threshold Reached"},
+    {0x38, 0x08, C_CAST(int, FAILURE),       "Depopulation Interrupted"},
+    //
+    {0x39, 0x00, C_CAST(int, NOT_SUPPORTED), "Saving Parameters Not Supported"},
+    //
+    {0x3A, 0x00, C_CAST(int, FAILURE),       "Medium Not Present"},
+    {0x3A, 0x01, C_CAST(int, FAILURE),       "Medium Not Present - Tray Closed"},
+    {0x3A, 0x02, C_CAST(int, FAILURE),       "Medium Not Present - Tray Open"},
+    {0x3A, 0x03, C_CAST(int, FAILURE),       "Medium Not Present - Loadable"},
+    {0x3A, 0x04, C_CAST(int, FAILURE),       "Medium Not Present - Medium Auxilary Memory Accessible"},
+    //
+    {0x3B, 0x00, C_CAST(int, FAILURE),       "Sequential Positioning Error"},
+    {0x3B, 0x01, C_CAST(int, FAILURE),       "Tape Position Error At Beginning-Of-Medium"},
+    {0x3B, 0x02, C_CAST(int, FAILURE),       "Tape Position Error At End-Of-Medium"},
+    {0x3B, 0x03, C_CAST(int, FAILURE),       "Tape Or Electronic Vertical Forms Unit Not Ready"},
+    {0x3B, 0x04, C_CAST(int, FAILURE),       "Slew Failure"},
+    {0x3B, 0x05, C_CAST(int, FAILURE),       "Paper Jam"},
+    {0x3B, 0x06, C_CAST(int, FAILURE),       "Failed To Sense Top-Of-Form"},
+    {0x3B, 0x07, C_CAST(int, FAILURE),       "Failed To Sense Bottom-Of-Form"},
+    {0x3B, 0x08, C_CAST(int, FAILURE),       "Reposition Error"},
+    {0x3B, 0x09, C_CAST(int, FAILURE),       "Read Past End Of Medium"},
+    {0x3B, 0x0A, C_CAST(int, FAILURE),       "Read Past Beginning Of Medium"},
+    {0x3B, 0x0B, C_CAST(int, FAILURE),       "Position Past End Of Medium"},
+    {0x3B, 0x0C, C_CAST(int, FAILURE),       "Position Past Beginning Of Medium"},
+    {0x3B, 0x0D, C_CAST(int, FAILURE),       "Medium Destination Element Full"},
+    {0x3B, 0x0E, C_CAST(int, FAILURE),       "Medium Source Element Empty"},
+    {0x3B, 0x0F, KEEP_SENSE_KEY_ERROR,       "End Of Medium Reached"},
+    {0x3B, 0x11, KEEP_SENSE_KEY_ERROR,       "Medium Magazine Not Accessible"},
+    {0x3B, 0x12, KEEP_SENSE_KEY_ERROR,       "Medium Magazine Removed"},
+    {0x3B, 0x13, KEEP_SENSE_KEY_ERROR,       "Medium Magazine Inserted"},
+    {0x3B, 0x14, KEEP_SENSE_KEY_ERROR,       "Medium Magazine Locked"},
+    {0x3B, 0x15, KEEP_SENSE_KEY_ERROR,       "Medium Magazine Unlocked"},
+    {0x3B, 0x16, C_CAST(int, FAILURE),       "Mechanical Positioning Or Changer Error"},
+    {0x3B, 0x17, C_CAST(int, FAILURE),       "Read Past End Of User Object"},
+    {0x3B, 0x18, KEEP_SENSE_KEY_ERROR,       "Element Disabled"},
+    {0x3B, 0x19, KEEP_SENSE_KEY_ERROR,       "Element Enabled"},
+    {0x3B, 0x1A, KEEP_SENSE_KEY_ERROR,       "Data Transfer Device Removed"},
+    {0x3B, 0x1B, KEEP_SENSE_KEY_ERROR,       "Data Transfer Device Inserted"},
+    {0x3B, 0x1C, C_CAST(int, FAILURE),       "Too Many Logical Objects On Partition To Supported Operation"},
+    {0x3B, 0x20, C_CAST(int, FAILURE),       "Element Static Information Changed"},
+    //
+    {0x3D, 0x00, C_CAST(int, FAILURE),       "Invalid Bits In Identify Message"},
+    //
+    {0x3E, 0x00, C_CAST(int, FAILURE),       "Logical Unit Has Not Self-Configured Yet"},
+    {0x3E, 0x01, C_CAST(int, FAILURE),       "Logical Unit Failure"},
+    {0x3E, 0x02, C_CAST(int, FAILURE),       "Timeout On Logical Unit"},
+    {0x3E, 0x03, C_CAST(int, FAILURE),       "Logical Unit Failed Self-Test"},
+    {0x3E, 0x04, C_CAST(int, FAILURE),       "Logical Unit Unable to Update Self-Test Log"},
+    //
+    {0x3F, 0x00, C_CAST(int, SUCCESS),       "Target Operating Conditions Have Changed"},
+    {0x3F, 0x01, C_CAST(int, SUCCESS),       "Microcode Has Been Changed"},
+    {0x3F, 0x02, C_CAST(int, SUCCESS),       "Changed Operation Definition"},
+    {0x3F, 0x03, C_CAST(int, SUCCESS),       "Inquiry Data Has Changed"},
+    {0x3F, 0x04, C_CAST(int, SUCCESS),       "Component Device Attached"},
+    {0x3F, 0x05, C_CAST(int, SUCCESS),       "Device Identifier Changed"},
+    {0x3F, 0x06, C_CAST(int, SUCCESS),       "Redundancy Group Created Or Modified"},
+    {0x3F, 0x07, C_CAST(int, SUCCESS),       "Redundancy Group Deleted"},
+    {0x3F, 0x08, C_CAST(int, SUCCESS),       "Spare Created Or Modified"},
+    {0x3F, 0x09, C_CAST(int, SUCCESS),       "Spare Deleted"},
+    {0x3F, 0x0A, C_CAST(int, SUCCESS),       "Volume Set Created Or Modified"},
+    {0x3F, 0x0B, C_CAST(int, SUCCESS),       "Volume Set Deleted"},
+    {0x3F, 0x0C, C_CAST(int, SUCCESS),       "Volume Set Deassigned"},
+    {0x3F, 0x0D, C_CAST(int, SUCCESS),       "Volume Set Reassigned"},
+    {0x3F, 0x0E, C_CAST(int, SUCCESS),       "Reported LUNs Data Has Changed"},
+    {0x3F, 0x0F, C_CAST(int, SUCCESS),       "Echo Buffer Overwritten"},
+    {0x3F, 0x10, C_CAST(int, SUCCESS),       "Medium Loadable"},
+    {0x3F, 0x11, C_CAST(int, SUCCESS),       "Medium Auxilary Memory Accessible"},
+    {0x3F, 0x12, C_CAST(int, SUCCESS),       "iSCSI IP Address Added"},
+    {0x3F, 0x13, C_CAST(int, SUCCESS),       "iSCSI IP Address Removed"},
+    {0x3F, 0x14, C_CAST(int, SUCCESS),       "iSCSI IP Address Changed"},
+    {0x3F, 0x15, C_CAST(int, SUCCESS),       "Inspect Referrals Sense Descriptors"},
+    {0x3F, 0x16, C_CAST(int, SUCCESS),       "Microcode Has Been Changed Without Reset"},
+    {0x3F, 0x17, C_CAST(int, SUCCESS),       "Zone Transition To Full"},
+    {0x3F, 0x18, KEEP_SENSE_KEY_ERROR,       "Bind Completed"},
+    {0x3F, 0x19, KEEP_SENSE_KEY_ERROR,       "Bind Redirected"},
+    {0x3F, 0x1A, KEEP_SENSE_KEY_ERROR,       "Subsidiary Binding Changed"},
+    //
+    {0x41, 0x00, C_CAST(int, FAILURE),       "Data Path Failure (Should Use 40NN)"},
+    //
+    {0x42, 0x00, C_CAST(int, FAILURE),       "Power-on Or Self-Test Failure (Should use 40 NN)"},
+    //
+    {0x43, 0x00, C_CAST(int, FAILURE),       "Message Error"},
+    //
+    {0x44, 0x00, C_CAST(int, FAILURE),       "Internal Target Failure"},
+    {0x44, 0x01, C_CAST(int, FAILURE),       "Persistent Reservation Information Lost"},
+    {0x44, 0x71, C_CAST(int, FAILURE),       "ATA Device Failed Set Features"},
+    //
+    {0x45, 0x00, C_CAST(int, FAILURE),       "Select Or Reselect Failure"},
+    //
+    {0x46, 0x00, C_CAST(int, FAILURE),       "Unsuccessful Soft Reset"},
+    //
+    {0x47, 0x00, C_CAST(int, FAILURE),       "SCSI Parity Error"},
+    {0x47, 0x01, C_CAST(int, FAILURE),       "Data Phase CRC Error Detected"},
+    {0x47, 0x02, C_CAST(int, FAILURE),       "SCSI Parity Error Detected During ST Data Phase"},
+    {0x47, 0x03, C_CAST(int, FAILURE),       "Information Unit uiCRC Error Detected"},
+    {0x47, 0x04, C_CAST(int, FAILURE),       "Asynchronous Information Protection Error Detected"},
+    {0x47, 0x05, C_CAST(int, FAILURE),       "Protocol Service CRC Error"},
+    {0x47, 0x06, C_CAST(int, IN_PROGRESS),   "PHY Test Function In Progress"},
+    {0x47, 0x7F, C_CAST(int, FAILURE),       "Some Commands Cleared By ISCSI Protocol Event"},
+    //
+    {0x48, 0x00, C_CAST(int, SUCCESS),       "Initiator Detected Error Message Received"},
+    //
+    {0x49, 0x00, C_CAST(int, FAILURE),       "Invalid Message Error"},
+    //
+    {0x4A, 0x00, C_CAST(int, FAILURE),       "Command Phase Error"},
+    //
+    {0x4B, 0x00, C_CAST(int, FAILURE),       "Data Phase Error"},
+    {0x4B, 0x01, C_CAST(int, FAILURE),       "Invalid Target Port Transfer Tag Received"},
+    {0x4B, 0x02, C_CAST(int, FAILURE),       "Too Much Write Data"},
+    {0x4B, 0x03, C_CAST(int, FAILURE),       "ACK/NAK Timeout"},
+    {0x4B, 0x04, C_CAST(int, SUCCESS),       "NAK Received"},
+    {0x4B, 0x05, C_CAST(int, FAILURE),       "Data Offset Error"},
+    {0x4B, 0x06, C_CAST(int, FAILURE),       "Initiator Response Timeout"},
+    {0x4B, 0x07, C_CAST(int, FAILURE),       "Connection Lost"},
+    {0x4B, 0x08, C_CAST(int, FAILURE),       "Data-In Buffer Overflow - Data Buffer Size"},
+    {0x4B, 0x09, C_CAST(int, FAILURE),       "Data-In Buffer Overflow - Data Buffer Descriptor Area"},
+    {0x4B, 0x0A, C_CAST(int, FAILURE),       "Data-In Buffer Error"},
+    {0x4B, 0x0B, C_CAST(int, FAILURE),       "Data-Out Buffer Overflow - Data Buffer Size"},
+    {0x4B, 0x0C, C_CAST(int, FAILURE),       "Data-Out Buffer Overflow - Data Buffer Descriptor Area"},
+    {0x4B, 0x0D, C_CAST(int, FAILURE),       "Data-Out Buffer Error"},
+    {0x4B, 0x0E, C_CAST(int, FAILURE),       "PCIE Fabric Error"},
+    {0x4B, 0x0F, C_CAST(int, FAILURE),       "PCIE Completion Timeout"},
+    {0x4B, 0x10, C_CAST(int, FAILURE),       "PCIE Completer Abort"},
+    {0x4B, 0x11, C_CAST(int, FAILURE),       "PCIE Poisoned TLP Received"},
+    {0x4B, 0x12, C_CAST(int, FAILURE),       "PCIE ECRC Check Failed"},
+    {0x4B, 0x13, C_CAST(int, NOT_SUPPORTED), "PCIE Unsupported Request"},
+    {0x4B, 0x14, C_CAST(int, FAILURE),       "PCIE ACS Violation"},
+    {0x4B, 0x15, C_CAST(int, FAILURE),       "PCIE TLP Prefix Blocked"},
+    //
+    {0x4C, 0x00, C_CAST(int, FAILURE),       "Logical Unit Failed Self-Configuration"},
+    //
+    {0x4E, 0x00, C_CAST(int, FAILURE),       "Overlapped Commands Attempted"},
+    //
+    {0x50, 0x00, C_CAST(int, FAILURE),       "Write Append Error"},
+    {0x50, 0x01, C_CAST(int, FAILURE),       "Write Append Position Error"},
+    {0x50, 0x02, C_CAST(int, FAILURE),       "Position Error Related To Timing"},
+    //
+    {0x51, 0x00, C_CAST(int, FAILURE),       "Erase Failure"},
+    {0x51, 0x01, C_CAST(int, FAILURE),       "Erase Failure - Incomplete Erase Operation Detected"},
+    //
+    {0x52, 0x00, C_CAST(int, FAILURE),       "Cartridge Fault"},
+    //
+    {0x53, 0x00, C_CAST(int, FAILURE),       "Media Load Or Eject Failed"},
+    {0x53, 0x01, C_CAST(int, FAILURE),       "Unload Tape Failure"},
+    {0x53, 0x02, C_CAST(int, FAILURE),       "Medium Removal Prevented"},
+    {0x53, 0x03, C_CAST(int, FAILURE),       "Medium Removal Prevented By Data Transfer Element"},
+    {0x53, 0x04, C_CAST(int, FAILURE),       "Medium Thread Or Unthread Failure"},
+    {0x53, 0x05, C_CAST(int, FAILURE),       "Volume Identifier Invalid"},
+    {0x53, 0x06, C_CAST(int, FAILURE),       "Volume Identifier Missing"},
+    {0x53, 0x07, C_CAST(int, FAILURE),       "Duplicate Volume Identifier"},
+    {0x53, 0x08, C_CAST(int, FAILURE),       "Element Status Unknown"},
+    {0x53, 0x09, C_CAST(int, FAILURE),       "Data Transfer Device Error - Load Failed"},
+    {0x53, 0x0A, C_CAST(int, FAILURE),       "Data Transfer Device Error - Unload Failed"},
+    {0x53, 0x0B, C_CAST(int, FAILURE),       "Data Transfer Device Error - Unload Missing"},
+    {0x53, 0x0C, C_CAST(int, FAILURE),       "Data Transfer Device Error - Eject Failed"},
+    {0x53, 0x0D, C_CAST(int, FAILURE),       "Data Transfer Device Error - Library Communication Failed"},
+    //
+    {0x54, 0x00, C_CAST(int, FAILURE),       "SCSI To host System Interface Failure"},
+    //
+    {0x55, 0x00, C_CAST(int, FAILURE),       "System Resource Failure"},
+    {0x55, 0x01, C_CAST(int, FAILURE),       "System Buffer Full"},
+    {0x55, 0x02, C_CAST(int, FAILURE),       "Insufficient Reservation Resources"},
+    {0x55, 0x03, C_CAST(int, FAILURE),       "Insufficient Resources"},
+    {0x55, 0x04, C_CAST(int, FAILURE),       "Insufficient Registration Resources"},
+    {0x55, 0x05, C_CAST(int, FAILURE),       "Insufficient Access Control Resources"},
+    {0x55, 0x06, C_CAST(int, FAILURE),       "Auxiliary Memory Out Of Space"},
+    {0x55, 0x07, C_CAST(int, FAILURE),       "Quota Error"},
+    {0x55, 0x08, C_CAST(int, FAILURE),       "Maximum Number Of Supplemental Decryption Keys Exceeded"},
+    {0x55, 0x09, C_CAST(int, FAILURE),       "Medium Auxilary Memory Not Accessible"},
+    {0x55, 0x0A, C_CAST(int, FAILURE),       "Data Currently Unavailable"},
+    {0x55, 0x0B, C_CAST(int, FAILURE),       "Insufficient Power For Operation"},
+    {0x55, 0x0C, C_CAST(int, FAILURE),       "Insufficient Resources To Create ROD"},
+    {0x55, 0x0D, C_CAST(int, FAILURE),       "Insufficient Resources To Create ROD Token"},
+    {0x55, 0x0E, C_CAST(int, FAILURE),       "Insufficient Zone Resources"},
+    {0x55, 0x0F, KEEP_SENSE_KEY_ERROR,       "Insufficient Zone Resources To Complete Write"},
+    {0x55, 0x10, KEEP_SENSE_KEY_ERROR,       "Maximum Number Of Streams Open"},
+    {0x55, 0x11, KEEP_SENSE_KEY_ERROR,       "Insufficient Resources To Bind"},
+    //
+    {0x57, 0x00, C_CAST(int, FAILURE),       "Unable To Recover Table-Of-Contents"},
+    //
+    {0x58, 0x00, C_CAST(int, FAILURE),       "Generation Does Not Exist"},
+    //
+    {0x59, 0x00, KEEP_SENSE_KEY_ERROR,       "Updated Block Read"},
+    //
+    {0x5A, 0x00, C_CAST(int, FAILURE),       "Operator Request Or State Change Input"},
+    {0x5A, 0x01, C_CAST(int, FAILURE),       "Operator Medium Removal Request"},
+    {0x5A, 0x02, C_CAST(int, FAILURE),       "Operator Selected Write Protect"},
+    {0x5A, 0x03, C_CAST(int, FAILURE),       "Operator Selected Write Permit"},
+    //
+    {0x5B, 0x00, C_CAST(int, FAILURE),       "Log Exception"},
+    {0x5B, 0x01, C_CAST(int, FAILURE),       "Threshold Condition Met"},
+    {0x5B, 0x02, C_CAST(int, FAILURE),       "Log Counter At Maximum"},
+    {0x5B, 0x03, C_CAST(int, FAILURE),       "Log List Codes Exhausted"},
+    //
+    {0x5C, 0x00, KEEP_SENSE_KEY_ERROR,       "RPL Status Change"},
+    {0x5C, 0x01, C_CAST(int, SUCCESS),       "Spindles Synchronized"},
+    {0x5C, 0x02, C_CAST(int, FAILURE),       "Spindles Not Synchronized"},
+    //
+    {0x5D, 0x00, C_CAST(int, FAILURE),       "Failure Prediction Threshold Exceeded"},
+    {0x5D, 0x01, C_CAST(int, FAILURE),       "Media Failure Prediction Threshold Exceeded"},
+    {0x5D, 0x02, C_CAST(int, FAILURE),       "Logical Unit Failure Prediction Threshold Exceeded"},
+    {0x5D, 0x03, C_CAST(int, FAILURE),       "Spare Area Exhaustion Prediction Threshold Exceeded"},
+    {0x5D, 0x10, C_CAST(int, FAILURE),       "Hardware Impending Failure - General Hard Drive Failure"},
+    {0x5D, 0x11, C_CAST(int, FAILURE),       "Hardware Impending Failure - Drive Error Rate Too High"},
+    {0x5D, 0x12, C_CAST(int, FAILURE),       "Hardware Impending Failure - Data Error Rate Too High"},
+    {0x5D, 0x13, C_CAST(int, FAILURE),       "Hardware Impending Failure - Seek Error Rate Too High"},
+    {0x5D, 0x14, C_CAST(int, FAILURE),       "Hardware Impending Failure - Too Many Block Reassigns"},
+    {0x5D, 0x15, C_CAST(int, FAILURE),       "Hardware Impending Failure - Access Times Too High"},
+    {0x5D, 0x16, C_CAST(int, FAILURE),       "Hardware Impending Failure - Start Unit Times Too High"},
+    {0x5D, 0x17, C_CAST(int, FAILURE),       "Hardware Impending Failure - Channel Parametrics"},
+    {0x5D, 0x18, C_CAST(int, FAILURE),       "Hardware Impending Failure - Controller Detected"},
+    {0x5D, 0x19, C_CAST(int, FAILURE),       "Hardware Impending Failure - Throughput Performance"},
+    {0x5D, 0x1A, C_CAST(int, FAILURE),       "Hardware Impending Failure - Seek Time Performance"},
+    {0x5D, 0x1B, C_CAST(int, FAILURE),       "Hardware Impending Failure - Spin-Up Retry Count"},
+    {0x5D, 0x1C, C_CAST(int, FAILURE),       "Hardware Impending Failure - Drive Calibration Retry Count"},
+    {0x5D, 0x1D, C_CAST(int, FAILURE),       "Hardware Impending Failure - Power Loss Protection Circuit"},
+    {0x5D, 0x20, C_CAST(int, FAILURE),       "Controller Impending Failure - General Hard Drive Failure"},
+    {0x5D, 0x21, C_CAST(int, FAILURE),       "Controller Impending Failure - Drive Error Rate Too High"},
+    {0x5D, 0x22, C_CAST(int, FAILURE),       "Controller Impending Failure - Data Error Rate Too High"},
+    {0x5D, 0x23, C_CAST(int, FAILURE),       "Controller Impending Failure - Seek Error Rate Too High"},
+    {0x5D, 0x24, C_CAST(int, FAILURE),       "Controller Impending Failure - Too Many Block Reassigns"},
+    {0x5D, 0x25, C_CAST(int, FAILURE),       "Controller Impending Failure - Access Times Too High"},
+    {0x5D, 0x26, C_CAST(int, FAILURE),       "Controller Impending Failure - Start Unit Times Too High"},
+    {0x5D, 0x27, C_CAST(int, FAILURE),       "Controller Impending Failure - Channel Parametrics"},
+    {0x5D, 0x28, C_CAST(int, FAILURE),       "Controller Impending Failure - Controller Detected"},
+    {0x5D, 0x29, C_CAST(int, FAILURE),       "Controller Impending Failure - Throughput Performance"},
+    {0x5D, 0x2A, C_CAST(int, FAILURE),       "Controller Impending Failure - Seek Time Performance"},
+    {0x5D, 0x2B, C_CAST(int, FAILURE),       "Controller Impending Failure - Spin-Up Retry Count"},
+    {0x5D, 0x2C, C_CAST(int, FAILURE),       "Controller Impending Failure - Drive Calibration Retry Count"},
+    {0x5D, 0x30, C_CAST(int, FAILURE),       "Data Channel Impending Failure - General Hard Drive Failure"},
+    {0x5D, 0x31, C_CAST(int, FAILURE),       "Data Channel Impending Failure - Drive Error Rate Too High"},
+    {0x5D, 0x32, C_CAST(int, FAILURE),       "Data Channel Impending Failure - Data Error Rate Too High"},
+    {0x5D, 0x33, C_CAST(int, FAILURE),       "Data Channel Impending Failure - Seek Error Rate Too High"},
+    {0x5D, 0x34, C_CAST(int, FAILURE),       "Data Channel Impending Failure - Too Many Block Reassigns"},
+    {0x5D, 0x35, C_CAST(int, FAILURE),       "Data Channel Impending Failure - Access Times Too High"},
+    {0x5D, 0x36, C_CAST(int, FAILURE),       "Data Channel Impending Failure - Start Unit Times Too High"},
+    {0x5D, 0x37, C_CAST(int, FAILURE),       "Data Channel Impending Failure - Channel Parametrics"},
+    {0x5D, 0x38, C_CAST(int, FAILURE),       "Data Channel Impending Failure - Controller Detected"},
+    {0x5D, 0x39, C_CAST(int, FAILURE),       "Data Channel Impending Failure - Throughput Performance"},
+    {0x5D, 0x3A, C_CAST(int, FAILURE),       "Data Channel Impending Failure - Seek Time Performance"},
+    {0x5D, 0x3B, C_CAST(int, FAILURE),       "Data Channel Impending Failure - Spin-Up Retry Count"},
+    {0x5D, 0x3C, C_CAST(int, FAILURE),       "Data Channel Impending Failure - Drive Calibration Retry Count"},
+    {0x5D, 0x40, C_CAST(int, FAILURE),       "Servo Impending Failure - General Hard Drive Failure"},
+    {0x5D, 0x41, C_CAST(int, FAILURE),       "Servo Impending Failure - Drive Error Rate Too High"},
+    {0x5D, 0x42, C_CAST(int, FAILURE),       "Servo Impending Failure - Data Error Rate Too High"},
+    {0x5D, 0x43, C_CAST(int, FAILURE),       "Servo Impending Failure - Seek Error Rate Too High"},
+    {0x5D, 0x44, C_CAST(int, FAILURE),       "Servo Impending Failure - Too Many Block Reassigns"},
+    {0x5D, 0x45, C_CAST(int, FAILURE),       "Servo Impending Failure - Access Times Too High"},
+    {0x5D, 0x46, C_CAST(int, FAILURE),       "Servo Impending Failure - Start Unit Times Too High"},
+    {0x5D, 0x47, C_CAST(int, FAILURE),       "Servo Impending Failure - Channel Parametrics"},
+    {0x5D, 0x48, C_CAST(int, FAILURE),       "Servo Impending Failure - Controller Detected"},
+    {0x5D, 0x49, C_CAST(int, FAILURE),       "Servo Impending Failure - Throughput Performance"},
+    {0x5D, 0x4A, C_CAST(int, FAILURE),       "Servo Impending Failure - Seek Time Performance"},
+    {0x5D, 0x4B, C_CAST(int, FAILURE),       "Servo Impending Failure - Spin-Up Retry Count"},
+    {0x5D, 0x4C, C_CAST(int, FAILURE),       "Servo Impending Failure - Drive Calibration Retry Count"},
+    {0x5D, 0x50, C_CAST(int, FAILURE),       "Spindle Impending Failure - General Hard Drive Failure"},
+    {0x5D, 0x51, C_CAST(int, FAILURE),       "Spindle Impending Failure - Drive Error Rate Too High"},
+    {0x5D, 0x52, C_CAST(int, FAILURE),       "Spindle Impending Failure - Data Error Rate Too High"},
+    {0x5D, 0x53, C_CAST(int, FAILURE),       "Spindle Impending Failure - Seek Error Rate Too High"},
+    {0x5D, 0x54, C_CAST(int, FAILURE),       "Spindle Impending Failure - Too Many Block Reassigns"},
+    {0x5D, 0x55, C_CAST(int, FAILURE),       "Spindle Impending Failure - Access Times Too High"},
+    {0x5D, 0x56, C_CAST(int, FAILURE),       "Spindle Impending Failure - Start Unit Times Too High"},
+    {0x5D, 0x57, C_CAST(int, FAILURE),       "Spindle Impending Failure - Channel Parametrics"},
+    {0x5D, 0x58, C_CAST(int, FAILURE),       "Spindle Impending Failure - Controller Detected"},
+    {0x5D, 0x59, C_CAST(int, FAILURE),       "Spindle Impending Failure - Throughput Performance"},
+    {0x5D, 0x5A, C_CAST(int, FAILURE),       "Spindle Impending Failure - Seek Time Performance"},
+    {0x5D, 0x5B, C_CAST(int, FAILURE),       "Spindle Impending Failure - Spin-Up Retry Count"},
+    {0x5D, 0x5C, C_CAST(int, FAILURE),       "Spindle Impending Failure - Drive Calibration Retry Count"},
+    {0x5D, 0x60, C_CAST(int, FAILURE),       "Firmware Impending Failure - General Hard Drive Failure"},
+    {0x5D, 0x61, C_CAST(int, FAILURE),       "Firmware Impending Failure - Drive Error Rate Too High"},
+    {0x5D, 0x62, C_CAST(int, FAILURE),       "Firmware Impending Failure - Data Error Rate Too High"},
+    {0x5D, 0x63, C_CAST(int, FAILURE),       "Firmware Impending Failure - Seek Error Rate Too High"},
+    {0x5D, 0x64, C_CAST(int, FAILURE),       "Firmware Impending Failure - Too Many Block Reassigns"},
+    {0x5D, 0x65, C_CAST(int, FAILURE),       "Firmware Impending Failure - Access Times Too High"},
+    {0x5D, 0x66, C_CAST(int, FAILURE),       "Firmware Impending Failure - Start Unit Times Too High"},
+    {0x5D, 0x67, C_CAST(int, FAILURE),       "Firmware Impending Failure - Channel Parametrics"},
+    {0x5D, 0x68, C_CAST(int, FAILURE),       "Firmware Impending Failure - Controller Detected"},
+    {0x5D, 0x69, C_CAST(int, FAILURE),       "Firmware Impending Failure - Throughput Performance"},
+    {0x5D, 0x6A, C_CAST(int, FAILURE),       "Firmware Impending Failure - Seek Time Performance"},
+    {0x5D, 0x6B, C_CAST(int, FAILURE),       "Firmware Impending Failure - Spin-Up Retry Count"},
+    {0x5D, 0x6C, C_CAST(int, FAILURE),       "Firmware Impending Failure - Drive Calibration Retry Count"},
+    {0x5D, 0x73, C_CAST(int, FAILURE),       "Media Impending Failure Endurance Limit Met"},
+    {0x5D, 0xFF, C_CAST(int, FAILURE),       "Failure Prediction Threshold Exceeded (False)"},
+    //
+    {0x5E, 0x00, C_CAST(int, SUCCESS),       "Low Power Condition On"},
+    {0x5E, 0x01, C_CAST(int, SUCCESS),       "Idle Condition Activated By Timer"},
+    {0x5E, 0x02, C_CAST(int, SUCCESS),       "Standby Condition Activated By Timer"},
+    {0x5E, 0x03, C_CAST(int, SUCCESS),       "Idle Condition Activated By Command"},
+    {0x5E, 0x04, C_CAST(int, SUCCESS),       "Standby Condition Activated By Command"},
+    {0x5E, 0x05, C_CAST(int, SUCCESS),       "Idle_B Condition Activated By Timer"},
+    {0x5E, 0x06, C_CAST(int, SUCCESS),       "Idle_B Condition Activated By Command"},
+    {0x5E, 0x07, C_CAST(int, SUCCESS),       "Idle_C Condition Activated By Timer"},
+    {0x5E, 0x08, C_CAST(int, SUCCESS),       "Idle_C Condition Activated By Command"},
+    {0x5E, 0x09, C_CAST(int, SUCCESS),       "Standby_Y Condition Activated By Timer"},
+    {0x5E, 0x0A, C_CAST(int, SUCCESS),       "Standby_Y Condition Activated By Command"},
+    {0x5E, 0x41, C_CAST(int, SUCCESS),       "Power State Change To Active"},
+    {0x5E, 0x42, C_CAST(int, SUCCESS),       "Power State Change To Idle"},
+    {0x5E, 0x43, C_CAST(int, SUCCESS),       "Power State Change To Standby"},
+    {0x5E, 0x45, C_CAST(int, SUCCESS),       "Power State Change To Sleep"},
+    {0x5E, 0x47, C_CAST(int, SUCCESS),       "Power State Change To Device Control"},
+    //
+    {0x60, 0x00, C_CAST(int, FAILURE),       "Lamp Failure"},
+    //
+    {0x61, 0x00, C_CAST(int, FAILURE),       "Video ascuisition Error"},
+    {0x61, 0x01, C_CAST(int, FAILURE),       "Unable To ascuire Video"},
+    {0x61, 0x02, C_CAST(int, FAILURE),       "Out Of Focus"},
+    //
+    {0x62, 0x00, C_CAST(int, FAILURE),       "Scan Head Positioning Error"},
+    //
+    {0x63, 0x00, C_CAST(int, FAILURE),       "End Of User Area Encountered On This Track"},
+    {0x63, 0x01, C_CAST(int, FAILURE),       "Packet Does Not Fit In Available Space"},
+    //
+    {0x64, 0x00, C_CAST(int, FAILURE),       "Illegal Mode For This Track"},
+    {0x64, 0x01, C_CAST(int, FAILURE),       "Invalid Packet Size"},
+    //
+    {0x65, 0x00, C_CAST(int, FAILURE),       "Voltage Fault"},
+    //
+    {0x66, 0x00, C_CAST(int, FAILURE),       "Automatic Document Feeder Cover Up"},
+    {0x66, 0x01, C_CAST(int, FAILURE),       "Automatic Document Feeder Lift Up"},
+    {0x66, 0x02, C_CAST(int, FAILURE),       "Document Jam In Automatic Document Feeder"},
+    {0x66, 0x03, C_CAST(int, FAILURE),       "Document Miss Feed Automatic In Document Feeder"},
+    //
+    {0x67, 0x00, C_CAST(int, FAILURE),       "Configuration Failure"},
+    {0x67, 0x01, C_CAST(int, FAILURE),       "Configuration Of Incapable Logical Units Failed"},
+    {0x67, 0x02, C_CAST(int, FAILURE),       "Add Logical Unit Failed"},
+    {0x67, 0x03, C_CAST(int, FAILURE),       "Modification Of Logical Unit Failed"},
+    {0x67, 0x04, C_CAST(int, FAILURE),       "Exchange Of Logical Unit Failed"},
+    {0x67, 0x05, C_CAST(int, FAILURE),       "Remove Of Logical Unit Failed"},
+    {0x67, 0x06, C_CAST(int, FAILURE),       "Attachment Of Logical Unit Failed"},
+    {0x67, 0x07, C_CAST(int, FAILURE),       "Creation Of Logical Unit Failed"},
+    {0x67, 0x08, C_CAST(int, FAILURE),       "Assign Failure Occurred"},
+    {0x67, 0x09, C_CAST(int, FAILURE),       "Multiply Assigned Logical Unit"},
+    {0x67, 0x0A, C_CAST(int, FAILURE),       "Set Target Port Groups Command Failed"},
+    {0x67, 0x0B, C_CAST(int, NOT_SUPPORTED), "ATA Device Feature Not Enabled"},
+    {0x67, 0x0C, KEEP_SENSE_KEY_ERROR,       "Command Rejected"},
+    {0x67, 0x0D, KEEP_SENSE_KEY_ERROR,       "Explicit Bind Not Allowed"},
+    //
+    {0x68, 0x00, C_CAST(int, FAILURE),       "Logical Unit Not Configured"},
+    {0x68, 0x01, C_CAST(int, FAILURE),       "Subsidiary Logical Unit Not Configured"},
+    //
+    {0x69, 0x00, C_CAST(int, FAILURE),       "Data Loss On Logical Unit"},
+    {0x69, 0x01, C_CAST(int, FAILURE),       "Multiple Logical Unit Failures"},
+    {0x69, 0x02, C_CAST(int, FAILURE),       "Parity/Data Mismatch"},
+    //
+    {0x6A, 0x00, KEEP_SENSE_KEY_ERROR,       "Informational, Refer To Log"},
+    //
+    {0x6B, 0x00, KEEP_SENSE_KEY_ERROR,       "State Change Has Occurred"},
+    {0x6B, 0x01, KEEP_SENSE_KEY_ERROR,       "Redundancy Level Got Better"},
+    {0x6B, 0x02, KEEP_SENSE_KEY_ERROR,       "Redundancy Level Got Worse"},
+    //
+    {0x6C, 0x00, KEEP_SENSE_KEY_ERROR,       "Rebuild Failure Occurred"},
+    //
+    {0x6D, 0x00, KEEP_SENSE_KEY_ERROR,       "Recalculate Failure Occurred"},
+    //
+    {0x6E, 0x00, C_CAST(int, FAILURE),       "Command To Logical Unit Failed"},
+    //
+    {0x6F, 0x00, C_CAST(int, FAILURE),       "Copy Protection Key Exchange Failure - Authentication Failure"},
+    {0x6F, 0x01, C_CAST(int, FAILURE),       "Copy Protection Key Exchange Failure - Key Not Present"},
+    {0x6F, 0x02, C_CAST(int, FAILURE),       "Copy Protection Key Exchange Failure - Key Not Established"},
+    {0x6F, 0x03, C_CAST(int, FAILURE),       "Read Of Scrambled Sector Without Authentication"},
+    {0x6F, 0x04, C_CAST(int, FAILURE),       "Media Region Code Is Mismatched To Logical Unit Region"},
+    {0x6F, 0x05, C_CAST(int, FAILURE),       "Drive Region Must Be Permanent/Region Reset Count Error"},
+    {0x6F, 0x06, C_CAST(int, FAILURE),       "Insufficient Block Count For Binding Nonce Recording"},
+    {0x6F, 0x07, C_CAST(int, FAILURE),       "Conflict In Binding Nonce Recording"},
+    {0x6F, 0x08, KEEP_SENSE_KEY_ERROR,       "Insufficient Permission"},
+    {0x6F, 0x09, KEEP_SENSE_KEY_ERROR,       "Invalid Drive-Host Pairing Server"},
+    {0x6F, 0x0A, KEEP_SENSE_KEY_ERROR,       "Drive-Host Pairing Suspended"},
+    //
+    {0x71, 0x00, KEEP_SENSE_KEY_ERROR,       "Decompression Exception Long Algorithm ID"},
+    //
+    {0x72, 0x00, C_CAST(int, FAILURE),       "Session Fixation Error"},
+    {0x72, 0x01, C_CAST(int, FAILURE),       "Session Fixation Error Writing Lead-In"},
+    {0x72, 0x02, C_CAST(int, FAILURE),       "Session Fixation Error Writing Lead-Out"},
+    {0x72, 0x03, C_CAST(int, FAILURE),       "Session Fixation Error - Incomplete Track In Session"},
+    {0x72, 0x04, C_CAST(int, FAILURE),       "Empty Or Partially Written Reserved Track"},
+    {0x72, 0x05, C_CAST(int, FAILURE),       "No More Track Reservations Allowed"},
+    {0x72, 0x06, C_CAST(int, FAILURE),       "RMZ Extension Is Not Allowed"},
+    {0x72, 0x07, C_CAST(int, FAILURE),       "No More Test Zone Extensions Are Allowed"},
+    //
+    {0x73, 0x00, C_CAST(int, FAILURE),       "CD Control Error"},
+    {0x73, 0x01, KEEP_SENSE_KEY_ERROR,       "Power Calibration Area Almost Full"},
+    {0x73, 0x02, KEEP_SENSE_KEY_ERROR,       "Power Calibration Area Is Full"},
+    {0x73, 0x03, KEEP_SENSE_KEY_ERROR,       "Power Calibration Area Error"},
+    {0x73, 0x04, KEEP_SENSE_KEY_ERROR,       "Program Memory Area Update Failuer"},
+    {0x73, 0x05, KEEP_SENSE_KEY_ERROR,       "Program Memory Area Is Full"},
+    {0x73, 0x06, KEEP_SENSE_KEY_ERROR,       "RMA/PMA Is Almost Full"},
+    {0x73, 0x10, KEEP_SENSE_KEY_ERROR,       "Current Power Calibration Area Almost Full"},
+    {0x73, 0x11, KEEP_SENSE_KEY_ERROR,       "Current Power Calibration Area Is Full"},
+    {0x73, 0x17, KEEP_SENSE_KEY_ERROR,       "RDZ Is Full"},
+    //
+    {0x74, 0x00, C_CAST(int, FAILURE),       "Security Error"},
+    {0x74, 0x01, C_CAST(int, FAILURE),       "Unable To Decrypt Data"},
+    {0x74, 0x02, C_CAST(int, FAILURE),       "Unencrypted Data Encountered While Decrypting"},
+    {0x74, 0x03, C_CAST(int, FAILURE),       "Incorrect Data Encryption Key"},
+    {0x74, 0x04, C_CAST(int, FAILURE),       "Cryptographic Integrity Validation Failed"},
+    {0x74, 0x05, C_CAST(int, FAILURE),       "Error Decrypting Data"},
+    {0x74, 0x06, C_CAST(int, FAILURE),       "Unknown Signature Verification Key"},
+    {0x74, 0x07, C_CAST(int, FAILURE),       "Encryption Parameters Not Useable"},
+    {0x74, 0x08, C_CAST(int, FAILURE),       "Digital Signature Validation Failure"},
+    {0x74, 0x09, C_CAST(int, FAILURE),       "Encryption Mode Mismatch On Read"},
+    {0x74, 0x0A, C_CAST(int, FAILURE),       "Encrypted Block Not Raw Read Enabled"},
+    {0x74, 0x0B, C_CAST(int, FAILURE),       "Incorrect Encryption Parameters"},
+    {0x74, 0x0C, C_CAST(int, FAILURE),       "Unable To Decrypt Parameter List"},
+    {0x74, 0x0D, C_CAST(int, FAILURE),       "Encryption Algorithm Disabled"},
+    {0x74, 0x10, C_CAST(int, FAILURE),       "SA Creation Parameter Value Invalid"},
+    {0x74, 0x11, C_CAST(int, FAILURE),       "SA Creation Parameter Value Rejected"},
+    {0x74, 0x12, C_CAST(int, FAILURE),       "Invalid SA Usage"},
+    {0x74, 0x21, C_CAST(int, FAILURE),       "Data Encryption Configuration Prevented"},
+    {0x74, 0x30, C_CAST(int, NOT_SUPPORTED), "SA Creation Parameter Not Supported"},
+    {0x74, 0x40, C_CAST(int, FAILURE),       "Authenticaion Failed"},
+    {0x74, 0x61, C_CAST(int, FAILURE),       "External Data Encryption Key Manager Access Error"},
+    {0x74, 0x62, C_CAST(int, FAILURE),       "External Data Encryption Key Manager Error"},
+    {0x74, 0x63, C_CAST(int, FAILURE),       "External Data Encryption Key Not Found"},
+    {0x74, 0x64, C_CAST(int, FAILURE),       "External Data Encryption Request Not Authorized"},
+    {0x74, 0x6E, C_CAST(int, FAILURE),       "External Data Encryption Control Timeout"},
+    {0x74, 0x6F, C_CAST(int, FAILURE),       "External Data Encryption Control Error"},
+    {0x74, 0x71, C_CAST(int, FAILURE),       "Logical Unit Access Not Authorized"},
+    {0x74, 0x79, C_CAST(int, FAILURE),       "Security Conflict In Translated Device"}
+};
 
 uint16_t calculate_Logical_Block_Guard(uint8_t *buffer, uint32_t userDataLength, uint32_t totalDataLength)
 {
@@ -80,4427 +985,48 @@ void print_Field_Replacable_Unit_Code(tDevice *device, const char *fruMessage, u
     }
 }
 
+// Used with bsearch
+static int cmp_Asc_Ascq(ascAscqRetDesc* a, ascAscqRetDesc* b)
+{
+    // compare ASC, if they are same, compare ASCQ
+    int ret = a->asc - b->asc;
+    if (ret)
+    {
+        return ret;
+    }
+    else
+    {
+        return (a->ascq - b->ascq);
+    }
+}
+
 int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t asc, uint8_t ascq, uint8_t fru)
 {
     int ret = UNKNOWN;//if this gets returned from this function, then something is not right...
+    ascAscqRetDesc* asc_ascq_result = NULL;
+    ascAscqRetDesc asc_ascq_key = {asc, ascq, 0, 0};
     //first check the senseKey
     senseKey = senseKey & 0x0F;//strip off bits that are not part of the sense key
-    switch (senseKey)
+    if (senseKey < sizeof(senseKeyRetDesc) / sizeof(senseKeyRetDesc[0]))
     {
-    case SENSE_KEY_NO_ERROR:
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
-            print_sense_key("No Error", senseKey);
+            print_sense_key(senseKeyRetDesc[senseKey].desc, senseKey);
         }
-        ret = SUCCESS;
-        break;
-    case SENSE_KEY_RECOVERED_ERROR:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Recovered Error", senseKey);
-        }
-        ret = FAILURE;
-        break;
-    case SENSE_KEY_NOT_READY:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Not Ready", senseKey);
-        }
-        ret = FAILURE;
-        break;
-    case SENSE_KEY_MEDIUM_ERROR:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Medium Error", senseKey);
-        }
-        ret = FAILURE;
-        break;
-    case SENSE_KEY_HARDWARE_ERROR:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Hardware Error", senseKey);
-        }
-        ret = FAILURE;
-        break;
-    case SENSE_KEY_ILLEGAL_REQUEST:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Illegal Request", senseKey);
-        }
-        ret = NOT_SUPPORTED;
-        break;
-    case SENSE_KEY_UNIT_ATTENTION:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Unit Attention", senseKey);
-        }
-        ret = FAILURE;
-        break;
-    case SENSE_KEY_DATA_PROTECT:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Data Protect", senseKey);
-        }
-        ret = FAILURE;
-        break;
-    case SENSE_KEY_BLANK_CHECK:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Blank Check", senseKey);
-        }
-        ret = FAILURE;
-        break;
-    case SENSE_KEY_VENDOR_SPECIFIC:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Vendor Specific", senseKey);
-        }
-        ret = FAILURE;
-        break;
-    case SENSE_KEY_COPY_ABORTED:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Copy Aborted", senseKey);
-        }
-        ret = FAILURE;
-        break;
-    case SENSE_KEY_ABORTED_COMMAND:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Aborted Command", senseKey);
-        }
-        ret = ABORTED;
-        break;
-    case SENSE_KEY_RESERVED:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Reserved", senseKey);
-        }
-        ret = FAILURE;
-        break;
-    case SENSE_KEY_VOLUME_OVERFLOW:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Volume Overflow", senseKey);
-        }
-        ret = FAILURE;
-        break;
-    case SENSE_KEY_MISCOMPARE:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Miscompare", senseKey);
-        }
-        ret = FAILURE;
-        break;
-    case SENSE_KEY_COMPLETED:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Completed", senseKey);
-        }
-        ret = SUCCESS;
-        break;
-    default:
+        ret = senseKeyRetDesc[senseKey].ret;
+    }
+    else
+    {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
             print_sense_key("Invalid sense key!", senseKey);
         }
         return BAD_PARAMETER;
-        break;
     }
     //now check the asc and ascq combination...this is going to be very large set of switch cases to do this...
     //FYI there is no rhyme or reason to the order...I just went through the massive table in SPC4...and only things for direct access block devices were implemented - TJE
     switch (asc)
     {
-    case 0x00:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("No Additional Sense Information", asc, ascq);
-            }
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Filemark Detected", asc, ascq);
-            }
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("End-Of_Partition/Medium Detected", asc, ascq);
-            }
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Setmark Detected", asc, ascq);
-            }
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Beginning-Of-Partition/Medium Detected", asc, ascq);
-            }
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("End-Of-Data Detected", asc, ascq);
-            }
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("I/O Process Terminated", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Programmable Early Warning Detected", asc, ascq);
-            }
-            break;
-        case 0x11:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Audio Play Operation In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x12:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Audio Play Operation Paused", asc, ascq);
-            }
-            break;
-        case 0x13:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Audio Play Operation Successfully Completed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x14:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Audio Play Operation Stopped Due To Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x15:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("No Current Audio Status To Return", asc, ascq);
-            }
-            break;
-        case 0x16:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Operation In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x17:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Cleaning Requested", asc, ascq);
-            }
-            ret = UNKNOWN;
-            break;
-        case 0x18:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Erase Operation In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x19:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Locate Operation In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x1A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Rewind Operation In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x1B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Set Capacity Operation In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x1C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Verify Operation In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x1D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("ATA Passthrough Information Available", asc, ascq);
-            }
-            ret = UNKNOWN;
-            break;
-        case 0x1E:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Conflicting SA Creation Request", asc, ascq);
-            }
-            ret = UNKNOWN;
-            break;
-        case 0x1F:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Transitioning To Another Power Condition", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x20:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Extended Copy Information Available", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x21:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Atomic Command Aborted Due To ACA", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x01:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("No Index/Sector Signal", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x02:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("No Seek Complete", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x03:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Peripheral Device Write Fault", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("No Write Current", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Excessive Write Errors", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x04:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Cause Not Reported", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Is In The Process Of Becoming Ready", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Initializing Command Required", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Manual Intervention Required", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Format In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Rebuild In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Recalculation In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Operation In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Self-Test In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Accessible, Asymetric Access State Transition", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Accessible, Target Port In Standby State", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Accessible, Target Port in Unavailable State", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Structure Check Required", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0E:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Security Session In Progress", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x10:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Auxilary Memory Not Accessible", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x11:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Notify (Enable Spinup) Required", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x13:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, SA Creation In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x14:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Space Allocation In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x15:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Robotics Disabled", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x16:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Configuration Required", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x17:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Calibration Required", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x18:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, A Door Is Open", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x19:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Operating In Sequential Mode", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x1A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Start Stop Unit Command In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x1B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Sanitize In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x1C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Additional Power Use Not Yet Granted", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x1D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Configuration In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x1E:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Microcode Activation Required", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x1F:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Microcode Download Required", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x20:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Logical Unit Reset Required", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x21:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Hard Reset Required", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x22:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Power Cycle Required", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x23:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Ready, Affiliation Required", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x05:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Does Not Respond To Selection", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x06:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("No Reference Position Found", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x07:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Multiple Peripheral Devices Selected", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x08:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Communication Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Communication Time-Out", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Communication Parity Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Communication CRC Error (Ultra-DMA/32)", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unreachable Copy Target", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x09:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Track Following Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Tracking Servo Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Focus Servo Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spindle Servo Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Head Select Fault", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Vibration Induced Tracking Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x0A:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Error Log Overflow", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x0B:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning", asc, ascq);
-            }
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - Specified Temperature Exceeded", asc, ascq);
-            }
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - Enclosure Degraded", asc, ascq);
-            }
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - Background Self-Test Failed", asc, ascq);
-            }
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - Background Pre-Scan Detected Medium Error", asc, ascq);
-            }
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - Background Media Scan Detected Medium Error", asc, ascq);
-            }
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - Non-Volitile Cache Now Volitile", asc, ascq);
-            }
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - Degraded Power To Non-Volitile Cache", asc, ascq);
-            }
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - Power Loss Expected", asc, ascq);
-            }
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - Device Statistics Notification Active", asc, ascq);
-            }
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - High Critical Temperature Limit Exceeded", asc, ascq);
-            }
-            break;
-        case 0x0B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - Low Critical Temperature Limit Exceeded", asc, ascq);
-            }
-            break;
-        case 0x0C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - High Operating Temperature Limit Exceeded", asc, ascq);
-            }
-            break;
-        case 0x0D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - Low Operating Temperature Limit Exceeded", asc, ascq);
-            }
-            break;
-        case 0x0E:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - High Critical Humidity Limit Exceeded", asc, ascq);
-            }
-            break;
-        case 0x0F:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - Low Critical Humidity Limit Exceeded", asc, ascq);
-            }
-            break;
-        case 0x10:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - High Operating Humidity Limit Exceeded", asc, ascq);
-            }
-            break;
-        case 0x11:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - Low Operating Humidity Limit Exceeded", asc, ascq);
-            }
-            break;
-        case 0x12:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - Microcode Security At Risk", asc, ascq);
-            }
-            break;
-        case 0x13:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Warning - Microcode Digital Signature Validation Failure", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x0C:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write Error - Recovered With Auto Reallocation", asc, ascq);
-            }
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write Error - Auto Reallocation Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write Error - Recommend Reassignment", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Compression Check Miscompare Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Expansion Occurred During Compression", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Block Not Compressible", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write Error - Recovery Needed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write Error - Recovery Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write Error - Loss Of Streaming", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write Error - Padding Blocks Added", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Auxiliary Memory Write Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write Error - Unexpected Unsolicited Data", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write Error - Not Enough Unsolicited Data", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0E:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Multiple Write Errors", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0F:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Defects In Error Window", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x10:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Incomplete Multiple Atomic Write Operations", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x11:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write Error - Recovery Scan Needed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x12:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write Error - Insufficient Zone Resources", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x0D:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Error Detected By Third Party Temporary Initiator", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Third Party Device Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Copy Target Device Not Reachable", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Incorrect Copy Target Device Type", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Copy Target Device Data Underrun", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Copy Target Device Data Overrun", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x0E:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Information Unit", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Information Unit Too Short", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Information Unit Too Long", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Field In Command Information Unit", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x0F:
-        switch (ascq)
-        {
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x10:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("ID CRC Or ECC Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Block Guard Check Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Block Application Tag Check Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Block Reference Tag Check Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Block Protection Error On Recover Buffered Data", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Block Protection Method Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x11:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unrecovered Read Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Read Retries Exhausted", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Error Too Long To Correct", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Multiple Read Errors", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unrecovered Read Error - Auto Reallocate Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("L-EC Uncorrectable Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("CIRC Unrecovered Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Re-synchonization Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Incomplete Block Read", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("No Gap Found", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Miscorrected Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unrecovered Read Error - Recommend Reassignment", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unrecovered Read Error - Recommend Rewrite The Data", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("De-compression CRC Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0E:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Cannot Decompress Using Declared Algorithm", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0F:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Error Reading UPC/EAN Number", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x10:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Error Reading ISRC Number", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x11:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Read Error - Loss Of Streaming", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x12:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Auxiliary Memory Read Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x13:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Read Error - Failed Retransmission Request", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x14:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Read Error - LBA Marked Bad By Application Client", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x15:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write After Sanitize Required", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x12:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Address Mark Not Found for ID Field", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x13:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Address Mark Not Found for Data Field", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x14:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recorded Entity Not Found", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Record Not Found", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Filemark Or Setmark Not Found", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("End-Of-Data Not Found", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Block Sequence Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Record Not Found - Recommend Reassignment", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Record Not Found - Data Auto-Reallocated", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Locate Operation Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x15:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Random Positioning Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Mechanical Positioning Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Positioning Error Detected By Read Of Medium", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x16:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Synchronization Mark Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Sync Error - Data Rewritten", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Sync Error - Recommend Rewrite", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Sync Error - Data Auto-Reallocation", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Sync Error - Recommend Reassignment", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x17:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data With No Error Correction Applied", asc, ascq);
-            }
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data With Retries", asc, ascq);
-            }
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data With Positive Head Offset", asc, ascq);
-            }
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data With Negative Head Offset", asc, ascq);
-            }
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data With Retries And/Or CIRC Applied", asc, ascq);
-            }
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data Using Previous Sector ID", asc, ascq);
-            }
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data Without ECC - Data Auto-Reallocated", asc, ascq);
-            }
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data Without ECC - Recommend Reassignment", asc, ascq);
-            }
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data Without ECC - Recommend Rewrite", asc, ascq);
-            }
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data Without ECC - Data Rewritten", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x18:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data With Error Correction Applied", asc, ascq);
-            }
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data With Error Correction & Retries Applied", asc, ascq);
-            }
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data - Data Auto-Reallocated", asc, ascq);
-            }
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data With CIRC", asc, ascq);
-            }
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data With L-EC", asc, ascq);
-            }
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data - Recommend Reassignment", asc, ascq);
-            }
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data - Recommend Rewrite", asc, ascq);
-            }
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data With ECC - Data Rewritten", asc, ascq);
-            }
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered Data With Linking", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x19:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Defect List Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Defect List Not Available", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Defect List Error In Primary List", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Defect List Error In Grown List", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x1A:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Parameter List Length Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x1B:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Synchronous Data Transfer Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x1C:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Defect List Not Found", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Primary Defect List Not Found", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Grown Defect List Not Found", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x1D:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Miscompare During Verify Operation", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Miscompare During Verify Of Unmapped LBA", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x1E:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recovered ID With ECC Correction", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x1F:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Partial Defect List Transfer", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x20:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Command Operation Code", asc, ascq);
-            }
-            ret = NOT_SUPPORTED;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Access Denied - Initiator Pending - Enrolled", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Access Denied - No Access Rights", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Access Denied - Invalid Management ID Key", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Illegal Command While In Write Capable State", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Illegal Command While In Read Capable State", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Illegal Command While In Explicit Address Mode", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Illegal Command While In Implicit Address Mode", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Access Denied - Enrollment Conflict", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Access Denied - Invalid Logical Unit Identifier", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Access Denied - Invalid Proxy Token", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Access Denied - ACL LUN Conflict", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Illegal Command When Not In Append-Only Mode", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Not An Administrative Logical Unit", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0E:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Not A Subsidiary Logical Unit", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0F:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Not A Conglomerate Logical Unit", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x21:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Block Address Out Of Range", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Element Address", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Address For Write", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Write Crossing Layer Jump", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unaligned Write Command", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write Boundary Violation", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Attempt To Read Invalid Data", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Read Boundary Violation", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Misaligned Write Command", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x22:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Illegal Function. Use 22 00, 24 00, or 26 00", asc, ascq);
-            }
-            ret = NOT_SUPPORTED;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x23:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Token Operation - Cause Not Reportable", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Token Operation - Unsupported Token Type", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Token Operation - Remote Token Usage Not Supported", asc, ascq);
-            }
-            ret = NOT_SUPPORTED;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Token Operation - Remote ROD Token Creation Not Supported", asc, ascq);
-            }
-            ret = NOT_SUPPORTED;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Token Operation - Token Unknown", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Token Operation - Token Corrupt", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Token Operation - Token Revoked", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Token Operation - Token Expired", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Token Operation - Token Cancelled", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Token Operation - Token Deleted", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Token Operation - Invalid Token Length", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x24:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Field In CDB", asc, ascq);
-            }
-            ret = NOT_SUPPORTED;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("CDB Decryption Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid CDB Field While In Explicit Block Address Model", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid CDB Field While In Implicit Block Address Model", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Security Audit Value Frozen", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Security Working Key Frozen", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Nonce Not Unique", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Nonce Timestamp Out Of Range", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid XCDB", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Fast Format", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x25:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Supported", asc, ascq);
-            }
-            ret = NOT_SUPPORTED;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x26:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Field In Parameter List", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Parameter Not Supported", asc, ascq);
-            }
-            ret = NOT_SUPPORTED;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Parameter Value Invalid", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Threshold Parameters Not Supported", asc, ascq);
-            }
-            ret = NOT_SUPPORTED;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Release Of Persistent Reservation", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Decryption Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Too Many Target Descriptors", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unsupported Target Descriptor Type Code", asc, ascq);
-            }
-            ret = NOT_SUPPORTED;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Too Many Segment Descriptors", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unsupported Segment Descriptor Type Code", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unexpected Inexact Segment", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Inline Data Length Exceeded", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Operation For Copy Source Or Destination", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Copy Segment Granularity Violation", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0E:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Parameter While Port Is Enabled", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0F:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Data-Out Buffer Integrity Check Value", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x10:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Decryption Key Fail Limit Reached", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x11:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Incomplete Key-Associated Data Set", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x12:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Vendor Specific Key Reference Not Found", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x13:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Application Tag Mode Page Is Invalid", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x14:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Tape Stream Mirroring Prevented", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x15:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Copy Source Or Copy Destination Not Authorized", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x27:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write Protected", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Hardware Write Protected", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Software Write Protected", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Associated Write Protect", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Persistent Write Protect", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Permanent Write Protect", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Conditional Write Protect", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Space Allocation Failed Write Protect", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Zone Is Read Only", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x28:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Not Ready To Ready Change, Medium May Have Changed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Import or Export Element Accessed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Format-Layer May Have Changed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Import/Export Element Accessed, Medium Changed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x29:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Power On, Reset, Or Bus Device Reset Occurred", asc, ascq);
-            }
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Power On Occurred", asc, ascq);
-            }
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("SCSI Bus Reset Occurred", asc, ascq);
-            }
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Bus Device Reset Function Occurred", asc, ascq);
-            }
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Device Internal Reset", asc, ascq);
-            }
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Transceiver Mode Changed To Single-Ended", asc, ascq);
-            }
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Transceiver Mode Changed To LVD", asc, ascq);
-            }
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("I_T Nexus Loss Occurred", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x2A:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Parameters Changed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Mode Parameters Changed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Log Parameters Changed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Reservations Preempted", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Reservations Released", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Registrations Preempted", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Asymmetric Access State Changed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Implicit Asymetric Access State Transition Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Priority Changed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Capacity Data Has Changed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Error History I_T Nexus Cleared", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x0B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Error History Snapshot Released", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x0C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Error Recovery Attributes Have Changed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x0D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Encryption Capabilities Changed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x10:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Timestamp Changed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x11:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Encryption Parameters Changed By Another I_T Nexus", asc, ascq);
-            }
-            break;
-        case 0x12:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Encryption Parameters Changed By Vendor Specific Event", asc, ascq);
-            }
-            break;
-        case 0x13:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Encryption Key Instance Counter Has Changed", asc, ascq);
-            }
-            break;
-        case 0x14:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("SA Creation Capabilities Has Changed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x15:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Removal Precention Preempted", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x16:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Zone Reset Write Pointer Recommended", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x2B:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Copy Cannot Execute Since Host Cannot Disconnect", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x2C:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Command Sequence Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Too Many Windows Specified", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Combination Of Windows Specified", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Current Program Area Is Not Empty", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Current Program Area Is Empty", asc, ascq);
-            }
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Illegal Power Condition Request", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Persistent Prevent Conflict", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Previous Busy Status", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Previous Task Set Full Status", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Previous Reservation Conflict Status", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Partition Or Collection Contains User Objects", asc, ascq);
-            }
-            break;
-        case 0x0B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Not Reserved", asc, ascq);
-            }
-            break;
-        case 0x0C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("ORWrite Generation Does Not Match", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Reset Write Pointer Not Allowed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0E:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Zone Is Offline", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0F:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Stream Not Open", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x10:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unwritten Data In Zone", asc, ascq);
-            }
-            break;
-        case 0x11:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Descriptor Format Sense Data Required", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x2D:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Overwrite Error On Update In Place", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x2E:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Insufficient Time For Operation", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Command Timeout Before Processing", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Command Timeout During Processing", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Command Timeout During Processing Due To Error Recovery", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x2F:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Commands Cleared By Another Initiator", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Commands Cleared By Power Loss Notification", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Commands Cleared By Device Server", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Some Commands Cleared By Queuing Layer Event", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        /*case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Space Allocation Failed Write Protect", asc, ascq);
-            }
-            ret = FAILURE;
-            break;*/
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x30:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Incompatible Medium Installed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Cannot Read Medium - Unknown Format", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Cannot Read Medium - Incompatible Format", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Cleaning Cartridge Installed", asc, ascq);
-            }
-            ret = UNKNOWN;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Cannot Write Medium - Unknown Format", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Cannot Write Medium - Incompatible Format", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Cannot Format Medium - Incompatible Medium", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Cleaning Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Cannot Write - Application Code Mismatch", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Current Session Not Fixated For Append", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Cleaning Request Rejected", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("WORM Medium - Overwrite Attempted", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("WORM Medium - Integrity Check", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x10:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Not Formatted", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x11:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Incompatible Volume Type", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x12:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Incompatible Volume Qualifier", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x13:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Cleaning Volume Expired", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x31:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Format Corrupted", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Format Command Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Zoned Formatting Failed Due To Spare Linking", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Sanitize Command Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x32:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("No Defect Space Location Available", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Defect List Update Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x33:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Tape Length Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x34:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Enclosure Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x35:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Enclosure Services Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unsupported Enclosure Function", asc, ascq);
-            }
-            ret = NOT_SUPPORTED;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Enclosure Services Unavailable", asc, ascq);
-            }
-            ret = NOT_SUPPORTED;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Enclosure Services Transfer Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Enclosure Services Transfer Refused", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Enclosure Services Checksum Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x36:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Ribbon, Ink, Or Toner Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x37:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Rounded Parameter", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x38:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Event Status Notification", asc, ascq);
-            }
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("ESN - Power Management Class Event", asc, ascq);
-            }
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("ESN - Media Class Event", asc, ascq);
-            }
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("ESN - Device Busy Class Event", asc, ascq);
-            }
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Thin Provisioning Soft Threshold Reached", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x39:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Saving Parameters Not Supported", asc, ascq);
-            }
-            ret = NOT_SUPPORTED;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x3A:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Not Present", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Not Present - Tray Closed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Not Present - Tray Open", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Not Present - Loadable", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Not Present - Medium Auxilary Memory Accessible", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x3B:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Sequential Positioning Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Tape Position Error At Beginning-Of-Medium", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Tape Position Error At End-Of-Medium", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Tape Or Electronic Vertical Forms Unit Not Ready", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Slew Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Paper Jam", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Failed To Sense Top-Of-Form", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Failed To Sense Bottom-Of-Form", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Reposition Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Read Past End Of Medium", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Read Past Beginning Of Medium", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Position Past End Of Medium", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Position Past Beginning Of Medium", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Destination Element Full", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0E:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Source Element Empty", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0F:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("End Of Medium Reached", asc, ascq);
-            }
-            break;
-        case 0x11:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Magazine Not Accessible", asc, ascq);
-            }
-            break;
-        case 0x12:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Magazine Removed", asc, ascq);
-            }
-            break;
-        case 0x13:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Magazine Inserted", asc, ascq);
-            }
-            break;
-        case 0x14:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Magazine Locked", asc, ascq);
-            }
-            break;
-        case 0x15:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Magazine Unlocked", asc, ascq);
-            }
-            break;
-        case 0x16:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Mechanical Positioning Or Changer Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x17:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Read Past End Of User Object", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x18:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Element Disabled", asc, ascq);
-            }
-            break;
-        case 0x19:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Element Enabled", asc, ascq);
-            }
-            break;
-        case 0x1A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Transfer Device Removed", asc, ascq);
-            }
-            break;
-        case 0x1B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Transfer Device Inserted", asc, ascq);
-            }
-            break;
-        case 0x1C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Too Many Logical Objects On Partition To Supported Operation", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x3C:
-        switch (ascq)
-        {
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x3D:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Bits In Identify Message", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x3E:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Has Not Self-Configured Yet", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Timeout On Logical Unit", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Failed Self-Test", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Unable to Update Self-Test Log", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x3F:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Target Operating Conditions Have Changed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Microcode Has Been Changed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Changed Operation Definition", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Inquiry Data Has Changed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Component Device Attached", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Device Identifier Changed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Redundancy Group Created Or Modified", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Redundancy Group Deleted", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spare Created Or Modified", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spare Deleted", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Volume Set Created Or Modified", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x0B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Volume Set Deleted", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x0C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Volume Set Deassigned", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x0D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Volume Set Reassigned", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x0E:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Reported LUNs Data Has Changed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x0F:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Echo Buffer Overwritten", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x10:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Loadable", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x11:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Auxilary Memory Accessible", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x12:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("iSCSI IP Address Added", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x13:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("iSCSI IP Address Removed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x14:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("iSCSI IP Address Changed", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x15:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Inspect Referrals Sense Descriptors", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x16:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Microcode Has Been Changed Without Reset", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x17:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Zone Transition To Full", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x18:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Bind Completed", asc, ascq);
-            }
-            break;
-        case 0x19:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Bind Redirected", asc, ascq);
-            }
-            break;
-        case 0x1A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Subsidiary Binding Changed", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
     case 0x40:
         switch (ascq)
         {
@@ -4531,2606 +1057,10 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
             break;
         }
         break;
-    case 0x41:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Path Failure (Should Use 40NN)", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x42:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Power-on Or Self-Test Failure (Should use 40 NN)", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x43:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Message Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x44:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Internal Target Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Persistent Reservation Information Lost", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x71:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("ATA Device Failed Set Features", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x45:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Select Or Reselect Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x46:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unsuccessful Soft Reset", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x47:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("SCSI Parity Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Phase CRC Error Detected", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("SCSI Parity Error Detected During ST Data Phase", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Information Unit uiCRC Error Detected", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Asynchronous Information Protection Error Detected", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Protocol Service CRC Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("PHY Test Function In Progress", asc, ascq);
-            }
-            ret = IN_PROGRESS;
-            break;
-        case 0x7F:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Some Commands Cleared By ISCSI Protocol Event", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x48:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Initiator Detected Error Message Received", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x49:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Message Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x4A:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Command Phase Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x4B:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Phase Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Target Port Transfer Tag Received", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Too Much Write Data", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("ACK/NAK Timeout", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("NAK Received", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Offset Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Initiator Response Timeout", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Connection Lost", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data-In Buffer Overflow - Data Buffer Size", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data-In Buffer Overflow - Data Buffer Descriptor Area", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data-In Buffer Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data-Out Buffer Overflow - Data Buffer Size", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data-Out Buffer Overflow - Data Buffer Descriptor Area", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data-Out Buffer Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0E:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("PCIE Fabric Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0F:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("PCIE Completion Timeout", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x10:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("PCIE Completer Abort", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x11:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("PCIE Poisoned TLP Received", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x12:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("PCIE ECRC Check Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x13:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("PCIE Unsupported Request", asc, ascq);
-            }
-            ret = NOT_SUPPORTED;
-            break;
-        case 0x14:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("PCIE ACS Violation", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x15:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("PCIE TLP Prefix Blocked", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x4C:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Failed Self-Configuration", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
     case 0x4D:
-        switch (ascq)
+        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
         {
-        default:
-            if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-            {
-                printf("asc & ascq: %" PRIX8 "h - %" PRIX8 "h = Tagged Overlapped Commands. Task Tag = %02" PRIX8 "h\n", asc, ascq, ascq);
-            }
-            break;
-        }
-        break;
-    case 0x4E:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Overlapped Commands Attempted", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x4F:
-        switch (ascq)
-        {
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x50:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write Append Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Write Append Position Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Position Error Related To Timing", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x51:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Erase Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Erase Failure - Incomplete Erase Operation Detected", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x52:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Cartridge Fault", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x53:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Media Load Or Eject Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unload Tape Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Removal Prevented", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Removal Prevented By Data Transfer Element", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Thread Or Unthread Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Volume Identifier Invalid", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Volume Identifier Missing", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Duplicate Volume Identifier", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Element Status Unknown", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Transfer Device Error - Load Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Transfer Device Error - Unload Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Transfer Device Error - Unload Missing", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Transfer Device Error - Eject Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Transfer Device Error - Library Communication Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x54:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("SCSI To host System Interface Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x55:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("System Resource Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("System Buffer Full", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Insufficient Reservation Resources", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Insufficient Resources", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Insufficient Registration Resources", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Insufficient Access Control Resources", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Auxiliary Memory Out Of Space", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Quota Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Maximum Number Of Supplemental Decryption Keys Exceeded", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Medium Auxilary Memory Not Accessible", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Currently Unavailable", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Insufficient Power For Operation", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Insufficient Resources To Create ROD", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Insufficient Resources To Create ROD Token", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0E:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Insufficient Zone Resources", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0F:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Insufficient Zone Resources To Complete Write", asc, ascq);
-            }
-            break;
-        case 0x10:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Maximum Number Of Streams Open", asc, ascq);
-            }
-            break;
-        case 0x11:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Insufficient Resources To Bind", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x56:
-        switch (ascq)
-        {
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x57:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unable To Recover Table-Of-Contents", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (ascq >= 0x80/*  && ascq <= 0xFF */)
-            {
-                print_acs_ascq("Vendor specific ascq code", asc, ascq);
-            }
-            else
-            {
-                print_acs_ascq("Unknown ascq code", asc, ascq);
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x58:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Generation Does Not Exist", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x59:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Updated Block Read", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x5A:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Operator Request Or State Change Input", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Operator Medium Removal Request", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Operator Selected Write Protect", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Operator Selected Write Permit", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x5B:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Log Exception", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Threshold Condition Met", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Log Counter At Maximum", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Log List Codes Exhausted", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x5C:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("RPL Status Change", asc, ascq);
-            }
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spindles Synchronized", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spindles Not Synchronized", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x5D:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Failure Prediction Threshold Exceeded", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Media Failure Prediction Threshold Exceeded", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Failure Prediction Threshold Exceeded", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spare Area Exhaustion Prediction Threshold Exceeded", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x10:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Hardware Impending Failure - General Hard Drive Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x11:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Hardware Impending Failure - Drive Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x12:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Hardware Impending Failure - Data Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x13:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Hardware Impending Failure - Seek Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x14:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Hardware Impending Failure - Too Many Block Reassigns", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x15:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Hardware Impending Failure - Access Times Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x16:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Hardware Impending Failure - Start Unit Times Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x17:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Hardware Impending Failure - Channel Parametrics", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x18:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Hardware Impending Failure - Controller Detected", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x19:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Hardware Impending Failure - Throughput Performance", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x1A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Hardware Impending Failure - Seek Time Performance", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x1B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Hardware Impending Failure - Spin-Up Retry Count", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x1C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Hardware Impending Failure - Drive Calibration Retry Count", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x1D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Hardware Impending Failure - Power Loss Protection Circuit", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x20:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Controller Impending Failure - General Hard Drive Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x21:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Controller Impending Failure - Drive Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x22:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Controller Impending Failure - Data Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x23:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Controller Impending Failure - Seek Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x24:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Controller Impending Failure - Too Many Block Reassigns", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x25:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Controller Impending Failure - Access Times Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x26:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Controller Impending Failure - Start Unit Times Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x27:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Controller Impending Failure - Channel Parametrics", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x28:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Controller Impending Failure - Controller Detected", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x29:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Controller Impending Failure - Throughput Performance", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x2A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Controller Impending Failure - Seek Time Performance", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x2B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Controller Impending Failure - Spin-Up Retry Count", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x2C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Controller Impending Failure - Drive Calibration Retry Count", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x30:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Channel Impending Failure - General Hard Drive Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x31:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Channel Impending Failure - Drive Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x32:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Channel Impending Failure - Data Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x33:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Channel Impending Failure - Seek Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x34:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Channel Impending Failure - Too Many Block Reassigns", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x35:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Channel Impending Failure - Access Times Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x36:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Channel Impending Failure - Start Unit Times Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x37:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Channel Impending Failure - Channel Parametrics", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x38:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Channel Impending Failure - Controller Detected", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x39:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Channel Impending Failure - Throughput Performance", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x3A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Channel Impending Failure - Seek Time Performance", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x3B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Channel Impending Failure - Spin-Up Retry Count", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x3C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Channel Impending Failure - Drive Calibration Retry Count", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x40:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Servo Impending Failure - General Hard Drive Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x41:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Servo Impending Failure - Drive Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x42:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Servo Impending Failure - Data Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x43:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Servo Impending Failure - Seek Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x44:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Servo Impending Failure - Too Many Block Reassigns", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x45:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Servo Impending Failure - Access Times Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x46:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Servo Impending Failure - Start Unit Times Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x47:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Servo Impending Failure - Channel Parametrics", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x48:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Servo Impending Failure - Controller Detected", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x49:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Servo Impending Failure - Throughput Performance", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x4A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Servo Impending Failure - Seek Time Performance", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x4B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Servo Impending Failure - Spin-Up Retry Count", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x4C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Servo Impending Failure - Drive Calibration Retry Count", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x50:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spindle Impending Failure - General Hard Drive Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x51:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spindle Impending Failure - Drive Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x52:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spindle Impending Failure - Data Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x53:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spindle Impending Failure - Seek Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x54:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spindle Impending Failure - Too Many Block Reassigns", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x55:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spindle Impending Failure - Access Times Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x56:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spindle Impending Failure - Start Unit Times Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x57:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spindle Impending Failure - Channel Parametrics", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x58:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spindle Impending Failure - Controller Detected", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x59:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spindle Impending Failure - Throughput Performance", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x5A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spindle Impending Failure - Seek Time Performance", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x5B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spindle Impending Failure - Spin-Up Retry Count", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x5C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Spindle Impending Failure - Drive Calibration Retry Count", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x60:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Firmware Impending Failure - General Hard Drive Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x61:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Firmware Impending Failure - Drive Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x62:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Firmware Impending Failure - Data Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x63:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Firmware Impending Failure - Seek Error Rate Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x64:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Firmware Impending Failure - Too Many Block Reassigns", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x65:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Firmware Impending Failure - Access Times Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x66:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Firmware Impending Failure - Start Unit Times Too High", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x67:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Firmware Impending Failure - Channel Parametrics", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x68:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Firmware Impending Failure - Controller Detected", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x69:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Firmware Impending Failure - Throughput Performance", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x6A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Firmware Impending Failure - Seek Time Performance", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x6B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Firmware Impending Failure - Spin-Up Retry Count", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x6C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Firmware Impending Failure - Drive Calibration Retry Count", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x73:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Media Impending Failure Endurance Limit Met", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0xFF:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Failure Prediction Threshold Exceeded (False)", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x5E:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Low Power Condition On", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Idle Condition Activated By Timer", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Standby Condition Activated By Timer", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Idle Condition Activated By Command", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Standby Condition Activated By Command", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Idle_B Condition Activated By Timer", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Idle_B Condition Activated By Command", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Idle_C Condition Activated By Timer", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Idle_C Condition Activated By Command", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Standby_Y Condition Activated By Timer", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Standby_Y Condition Activated By Command", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x41:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Power State Change To Active", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x42:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Power State Change To Idle", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x43:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Power State Change To Standby", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x45:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Power State Change To Sleep", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        case 0x47:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Power State Change To Device Control", asc, ascq);
-            }
-            ret = SUCCESS;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x5F:
-        switch (ascq)
-        {
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x60:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Lamp Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x61:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Video ascuisition Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unable To ascuire Video", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Out Of Focus", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x62:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Scan Head Positioning Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x63:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("End Of User Area Encountered On This Track", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Packet Does Not Fit In Available Space", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x64:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Illegal Mode For This Track", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Packet Size", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x65:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Voltage Fault", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x66:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Automatic Document Feeder Cover Up", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Automatic Document Feeder Lift Up", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Document Jam In Automatic Document Feeder", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Document Miss Feed Automatic In Document Feeder", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x67:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Configuration Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Configuration Of Incapable Logical Units Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Add Logical Unit Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Modification Of Logical Unit Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Exchange Of Logical Unit Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Remove Of Logical Unit Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Attachment Of Logical Unit Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Creation Of Logical Unit Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Assign Failure Occurred", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Multiply Assigned Logical Unit", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Set Target Port Groups Command Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("ATA Device Feature Not Enabled", asc, ascq);
-            }
-            ret = NOT_SUPPORTED;
-            break;
-        case 0x0C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Command Rejected", asc, ascq);
-            }
-            break;
-        case 0x0D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Explicit Bind Not Allowed", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x68:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Not Configured", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Subsidiary Logical Unit Not Configured", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x69:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Loss On Logical Unit", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Multiple Logical Unit Failures", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Parity/Data Mismatch", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x6A:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Informational, Refer To Log", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x6B:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("State Change Has Occurred", asc, ascq);
-            }
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Redundancy Level Got Better", asc, ascq);
-            }
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Redundancy Level Got Worse", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x6C:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Rebuild Failure Occurred", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x6D:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Recalculate Failure Occurred", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x6E:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Command To Logical Unit Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x6F:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Copy Protection Key Exchange Failure - Authentication Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Copy Protection Key Exchange Failure - Key Not Present", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Copy Protection Key Exchange Failure - Key Not Established", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Read Of Scrambled Sector Without Authentication", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Media Region Code Is Mismatched To Logical Unit Region", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Drive Region Must Be Permanent/Region Reset Count Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Insufficient Block Count For Binding Nonce Recording", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Conflict In Binding Nonce Recording", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Insufficient Permission", asc, ascq);
-            }
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid Drive-Host Pairing Server", asc, ascq);
-            }
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Drive-Host Pairing Suspended", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
+            printf("asc & ascq: %" PRIX8 "h - %" PRIX8 "h = Tagged Overlapped Commands. Task Tag = %02" PRIX8 "h\n", asc, ascq, ascq);
         }
         break;
     case 0x70:
@@ -7139,623 +1069,57 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
             printf("asc & ascq: %" PRIX8 "h - %" PRIX8 "h = Decompression Exception Short Algorithm ID of %" PRIX8 "", asc, ascq, ascq);
         }
         break;
-    case 0x71:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Decompression Exception Long Algorithm ID", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x72:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Session Fixation Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Session Fixation Error Writing Lead-In", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Session Fixation Error Writing Lead-Out", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Session Fixation Error - Incomplete Track In Session", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Empty Or Partially Written Reserved Track", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("No More Track Reservations Allowed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("RMZ Extension Is Not Allowed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("No More Test Zone Extensions Are Allowed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x73:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("CD Control Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Power Calibration Area Almost Full", asc, ascq);
-            }
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Power Calibration Area Is Full", asc, ascq);
-            }
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Power Calibration Area Error", asc, ascq);
-            }
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Program Memory Area Update Failuer", asc, ascq);
-            }
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Program Memory Area Is Full", asc, ascq);
-            }
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("RMA/PMA Is Almost Full", asc, ascq);
-            }
-            break;
-        case 0x10:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Current Power Calibration Area Almost Full", asc, ascq);
-            }
-            break;
-        case 0x11:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Current Power Calibration Area Is Full", asc, ascq);
-            }
-            break;
-        case 0x17:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("RDZ Is Full", asc, ascq);
-            }
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x74:
-        switch (ascq)
-        {
-        case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Security Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x01:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unable To Decrypt Data", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x02:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unencrypted Data Encountered While Decrypting", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x03:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Incorrect Data Encryption Key", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x04:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Cryptographic Integrity Validation Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x05:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Error Decrypting Data", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x06:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unknown Signature Verification Key", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x07:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Encryption Parameters Not Useable", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x08:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Digital Signature Validation Failure", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x09:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Encryption Mode Mismatch On Read", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0A:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Encrypted Block Not Raw Read Enabled", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0B:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Incorrect Encryption Parameters", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0C:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Unable To Decrypt Parameter List", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x0D:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Encryption Algorithm Disabled", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x10:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("SA Creation Parameter Value Invalid", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x11:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("SA Creation Parameter Value Rejected", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x12:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Invalid SA Usage", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x21:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Data Encryption Configuration Prevented", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x30:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("SA Creation Parameter Not Supported", asc, ascq);
-            }
-            ret = NOT_SUPPORTED;
-            break;
-        case 0x40:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Authenticaion Failed", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x61:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("External Data Encryption Key Manager Access Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x62:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("External Data Encryption Key Manager Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x63:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("External Data Encryption Key Not Found", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x64:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("External Data Encryption Request Not Authorized", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x6E:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("External Data Encryption Control Timeout", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x6F:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("External Data Encryption Control Error", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x71:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Logical Unit Access Not Authorized", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        case 0x79:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("Security Conflict In Translated Device", asc, ascq);
-            }
-            ret = FAILURE;
-            break;
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x75:
-        switch (ascq)
-        {
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x76:
-        switch (ascq)
-        {
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x77:
-        switch (ascq)
-        {
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x78:
-        switch (ascq)
-        {
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x79:
-        switch (ascq)
-        {
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x7A:
-        switch (ascq)
-        {
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x7B:
-        switch (ascq)
-        {
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x7C:
-        switch (ascq)
-        {
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x7D:
-        switch (ascq)
-        {
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x7E:
-        switch (ascq)
-        {
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
-    case 0x7F:
-        switch (ascq)
-        {
-        default:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                if (ascq >= 0x80/*  && ascq <= 0xFF */)
-                {
-                    print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                }
-                else
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
-            }
-            ret = UNKNOWN;
-            break;
-        }
-        break;
     default:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+        asc_ascq_result = C_CAST(ascAscqRetDesc*, bsearch(
+            &asc_ascq_key, ascAscqLookUp,
+            sizeof(ascAscqLookUp) / sizeof(ascAscqLookUp[0]), sizeof(ascAscqLookUp[0]),
+            (int (*)(const void*, const void*))cmp_Asc_Ascq
+        ));
+        if (asc_ascq_result)
         {
-            if (asc >= 0x80 /* && asc <= 0xFF */)
+            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                print_acs_ascq("Vendor specific ASC & ascq code", asc, ascq);
+                print_acs_ascq(asc_ascq_result->desc, asc, ascq);
+            }
+            // Return code of -1 means follow return code determined by sense key, do not change
+            if (asc_ascq_result->ret > KEEP_SENSE_KEY_ERROR)
+            {
+                ret = C_CAST(eReturnValues, asc_ascq_result->ret);
+            }
+        }
+        else
+        {
+            if (asc < 0x80 /* && asc >= 0 */)
+            {
+                if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                {
+                    if (ascq >= 0x80/*  && ascq <= 0xFF */)
+                    {
+                        print_acs_ascq("Vendor specific ascq code", asc, ascq);
+                    }
+                    else
+                    {
+                        print_acs_ascq("Unknown ascq code", asc, ascq);
+                    }
+                }
+                ret = UNKNOWN;
             }
             else
             {
-                print_acs_ascq("Unknown ASC & ASCQ code", asc, ascq);
+                if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                {
+                    if (asc >= 0x80 /* && asc <= 0xFF */)
+                    {
+                        print_acs_ascq("Vendor specific ASC & ascq code", asc, ascq);
+                    }
+                    else
+                    {
+                        print_acs_ascq("Unknown ASC & ASCQ code", asc, ascq);
+                    }
+                }
+                ret = UNKNOWN;
             }
         }
-        ret = UNKNOWN;
         break;
     }
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
@@ -7769,7 +1133,7 @@ void get_Sense_Key_ASC_ASCQ_FRU(uint8_t *pbuf, uint32_t pbufSize, uint8_t *sense
 {
     uint8_t format = pbuf[0] & 0x7F; //Stripping the last bit.
     uint8_t additionalSenseLength = pbuf[7];//total sense data length
-    uint32_t iter = 8;//set to beginning of the descriptors
+    uint32_t iter = UINT32_C(8);//set to beginning of the descriptors
     //clear everything to zero first
     *senseKey = 0;
     *asc = 0;
@@ -7793,7 +1157,7 @@ void get_Sense_Key_ASC_ASCQ_FRU(uint8_t *pbuf, uint32_t pbufSize, uint8_t *sense
         *asc = pbuf[2];
         *ascq = pbuf[3];
         //for descriptor format we have to loop through the buffer until we find the FRU descriptor (if available)
-        while (iter < SPC3_SENSE_LEN && iter < pbufSize && iter < (C_CAST(uint32_t, additionalSenseLength) + UINT16_C(8)))
+        while (iter < SPC3_SENSE_LEN && iter < pbufSize && iter < (C_CAST(uint32_t, additionalSenseLength) + UINT32_C(8)))
         {
             bool gotFRU = false;
             uint8_t descriptorType = pbuf[iter];
@@ -8407,8 +1771,16 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
                 }
             }
             break;
+        case SCSI_SENSE_VENDOR_SPECIFIC:
+            //vendor specific format and meaning. Nothing we can do here
+            break;
         default:
-            //unknown sense data format! Can't do anything
+            //this is either unknown format or possible SASI format.
+            //for this, there is no real translation. For these formats everything in scsi says "Vendor unique" however one really old copy of SASI does
+            // define some error codes....so maybe set "sense key" to error class, asq to "error code" and a bool to say "possibly SASI" somewhere.
+            // if the valid bit is set, then an LBA is reported that we can put into the information field like fixed format sense data typically does.
+            //for SASI and SCSI, the definition is simple. in byte 0, bit 7 is "valid" for LBA address, bits 6-4 is error class, bits 3-0 are error code.
+            //In byte 1, bits 7:4 are vendor unique, then all remaiing bits (20) are the LBA
             break;
         }
     }
@@ -8499,7 +1871,7 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
                 printf("Actual Retry Count: %" PRIu16 "\n", senseFields->senseKeySpecificInformation.retryCount.actualRetryCount);
                 break;
             case SENSE_KEY_SPECIFIC_PROGRESS_INDICATION:
-                printf("Progress: %0.02f%%\n", (double)senseFields->senseKeySpecificInformation.progress.progressIndication / 65536.0);
+                printf("Progress: %0.02f%%\n", C_CAST(double, senseFields->senseKeySpecificInformation.progress.progressIndication) / 65536.0);
                 break;
             case SENSE_KEY_SPECIFIC_SEGMENT_POINTER:
                 if (senseFields->senseKeySpecificInformation.segment.segmentDescriptor)
@@ -8625,6 +1997,31 @@ void copy_Inquiry_Data( uint8_t *pbuf, driveInfo *info )
     info->product_identification[INQ_DATA_PRODUCT_ID_LEN] = '\0';
     memcpy(info->product_revision, &pbuf[32], INQ_DATA_PRODUCT_REV_LEN);
     info->product_revision[INQ_DATA_PRODUCT_REV_LEN] = '\0';
+    //Need to check if vendor ID, MN, and FWRev are printable or not
+    //vendor ID
+    for (uint8_t iter = 0; iter < T10_VENDOR_ID_LEN; ++iter)
+    {
+        if (!is_ASCII(info->T10_vendor_ident[iter]) || !isprint(info->T10_vendor_ident[iter]))
+        {
+            info->T10_vendor_ident[iter] = ' ';
+        }
+    }
+    //product ID
+    for (uint8_t iter = 0; iter < MODEL_NUM_LEN && iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
+    {
+        if (!is_ASCII(info->product_identification[iter]) || !isprint(info->product_identification[iter]))
+        {
+            info->product_identification[iter] = ' ';
+        }
+    }
+    //FWRev
+    for (uint8_t iter = 0; iter < FW_REV_LEN && iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
+    {
+        if (!is_ASCII(info->product_revision[iter]) || !isprint(info->product_revision[iter]))
+        {
+            info->product_revision[iter] = ' ';
+        }
+    }
     remove_Leading_And_Trailing_Whitespace(info->product_identification);
     remove_Leading_And_Trailing_Whitespace(info->product_revision);
     remove_Leading_And_Trailing_Whitespace(info->T10_vendor_ident);
@@ -8633,11 +2030,17 @@ void copy_Inquiry_Data( uint8_t *pbuf, driveInfo *info )
 // \brief copy the serial number off of 0x80 VPD page data.
 void copy_Serial_Number( uint8_t *pbuf, char *serialNumber )
 {
-    uint16_t snLen = ((uint16_t)pbuf[2] << 8) | pbuf[3];
+    uint16_t snLen = M_BytesTo2ByteValue(pbuf[2], pbuf[3]);
     memcpy(serialNumber, &pbuf[4], M_Min(snLen,SERIAL_NUM_LEN));
-    serialNumber[M_Min(snLen,SERIAL_NUM_LEN)]='\0';
-    remove_Leading_Whitespace(serialNumber);
-    remove_Trailing_Whitespace(serialNumber);
+    serialNumber[M_Min(snLen,SERIAL_NUM_LEN)] = '\0';
+    for (uint16_t iter = 0; iter < SERIAL_NUM_LEN && iter < snLen; ++iter)
+    {
+        if (!is_ASCII(serialNumber[iter]) || !isprint(serialNumber[iter]))
+        {
+            serialNumber[iter] = ' ';
+        }
+    }
+    remove_Leading_And_Trailing_Whitespace(serialNumber);
 }
 
 void copy_Read_Capacity_Info(uint32_t *logicalBlockSize, uint32_t *physicalBlockSize, uint64_t *maxLBA, uint16_t *sectorAlignment, uint8_t *ptrBuf, bool readCap16)
@@ -8651,7 +2054,7 @@ void copy_Read_Capacity_Info(uint32_t *logicalBlockSize, uint32_t *physicalBlock
         *logicalBlockSize = M_BytesTo4ByteValue(ptrBuf[8], ptrBuf[9], ptrBuf[10], ptrBuf[11]);
         //get the physical sector size
         sectorSizeExponent = ptrBuf[13] & 0x0F;
-        *physicalBlockSize = (uint32_t)(*logicalBlockSize * power_Of_Two(sectorSizeExponent));
+        *physicalBlockSize = C_CAST(uint32_t, *logicalBlockSize * power_Of_Two(sectorSizeExponent));
         //set the sector alignment info
         *sectorAlignment = M_GETBITRANGE(M_BytesTo2ByteValue(ptrBuf[14], ptrBuf[15]), 13, 0);
     }
@@ -8680,9 +2083,9 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
         //DO NOT try a SAT identify on these devices if we already know what they are. These should be treated as SCSI since they are either SCSI or ATA packet devices
         return NOT_SUPPORTED;
     }
-    if (!device->drive_info.passThroughHacks.scsiHacks.noVPDPages)//if this is set, then the device is known to not support VPD pages, so just skip to the SAT identify
+    if (!device->drive_info.passThroughHacks.scsiHacks.noVPDPages && !device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage)//if this is set, then the device is known to not support VPD pages, so just skip to the SAT identify
     {
-        uint8_t *ataInformation = (uint8_t *)calloc_aligned(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
+        uint8_t *ataInformation = C_CAST(uint8_t *, calloc_aligned(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!ataInformation)
         {
             perror("Error allocating memory to read the ATA Information VPD page");
@@ -8732,7 +2135,7 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
         {
             return NOT_SUPPORTED;
         }
-        safe_Free_aligned(ataInformation);
+        safe_Free_aligned(ataInformation)
     }
     if (issueSATIdentify)
     {
@@ -8750,18 +2153,39 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
     return ret;
 }
 
-bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
+static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
 {
     bool passthroughTypeSet = false;
-    char vendorID[9] = { 0 };
-    char productID[17] = { 0 };
-    char revision[5] = { 0 };
+    char vendorID[INQ_DATA_T10_VENDOR_ID_LEN + 1] = { 0 };
+    char productID[INQ_DATA_PRODUCT_ID_LEN + 1] = { 0 };
+    char revision[INQ_DATA_PRODUCT_REV_LEN + 1] = { 0 };
     uint8_t responseFormat = M_Nibble0(device->drive_info.scsiVpdData.inquiryData[3]);
     if (responseFormat == 2)
     {
-        memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], 8);
-        memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], 16);
-        memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], 4);
+        memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], INQ_DATA_T10_VENDOR_ID_LEN);
+        memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], INQ_DATA_PRODUCT_ID_LEN);
+        memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN);
+        for (uint8_t iter = 0; iter < INQ_DATA_T10_VENDOR_ID_LEN; ++iter)
+        {
+            if (!is_ASCII(vendorID[iter]) || !isprint(vendorID[iter]))
+            {
+                vendorID[iter] = ' ';
+            }
+        }
+        for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
+        {
+            if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
+            {
+                productID[iter] = ' ';
+            }
+        }
+        for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
+        {
+            if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
+            {
+                revision[iter] = ' ';
+            }
+        }
         remove_Leading_And_Trailing_Whitespace(vendorID);
         remove_Leading_And_Trailing_Whitespace(productID);
         remove_Leading_And_Trailing_Whitespace(revision);
@@ -8769,6 +2193,36 @@ bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
         {
             passthroughTypeSet = true;
             device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+        }
+        else if (strcmp(vendorID, "Realtek") == 0 && strstr(productID, "9210"))
+        {
+            //realtek's USB to nvme/sata adapter
+            //setup the following hacks to make this thing work as best we can for now
+            device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+            device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+            device->drive_info.passThroughHacks.turfValue = 34;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+            device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+            device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+            device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;//this supports some mode pages, but unable to test for subpages, so considering them not supported at this time -TJE
+            device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+            //NOTE: Security protocol is supported according to online web page. I do not have a device supporting security to test against at this time to see if INC512 is needed/required -TJE
+            device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+            //device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = true;
+            device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+            //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+            //Check condition will always return RTFRs, HOWEVER on data transfers it returns empty data. Seems like a device bug. Only use check condition for non-data commands-TJE
+            //NOTE: It may be interesting to try an SCT command (write log) to see how check condition works, but at least with reads, this is a no-go
+            device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+            device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//seems to make no difference whether this is used or not. Can switch this to "limited use" if we need to
+            device->drive_info.passThroughHacks.ataPTHacks.singleSectorPIOOnly = true;
+            device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 4096;
+            device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe = true;//no way to tell at this point. Will need to make full determination in the fill_ATA_Info function
+            device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands = true;//probably not needed, but after what I saw testing this, it can't hurt to set this
         }
         else if (strcmp(vendorID, "SMI") == 0)
         {
@@ -8795,6 +2249,11 @@ bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
             {
                 passthroughTypeSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_NEC;
+                device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+                if (device->drive_info.interface_type != USB_INTERFACE)
+                {
+                    device->drive_info.interface_type = USB_INTERFACE;
+                }
             }
         }
         else if (strcmp(vendorID, "Seagate") == 0)
@@ -8803,7 +2262,10 @@ bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
             //If we are in this function, then the low-level was unable to get PID/VID, so we need to set some generic hacks to make sure things work, then do device specific things.
             device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
             device->drive_info.passThroughHacks.turfValue = TURF_LIMIT + 1;//Doing this generically here for now to force this!
-
+            if (device->drive_info.interface_type != USB_INTERFACE)
+            {
+                device->drive_info.interface_type = USB_INTERFACE;
+            }
             //known device specific hacks
             if (strcmp(productID, "BlackArmorDAS25") == 0)
             {
@@ -8813,6 +2275,25 @@ bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
             {
                 device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
                 //TODO: this device previously had a hack that SMART check isn't supported, so need to migrate that too.
+            }
+            else
+            {
+                //setup some defaults that will most likely work for most current products
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                //TODO: since we may find SATA or NVMe adapters, we cannot set below due to a union being used. May need to remove that or find another solution
+                //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                //device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
             }
         }
         else if (strcmp(vendorID, "Samsung") == 0)
@@ -8824,7 +2305,11 @@ bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
                 //TODO: this device previously had a hack that SMART check isn't supported, so need to migrate that too.
             }
-        } 
+            if (device->drive_info.interface_type != USB_INTERFACE)
+            {
+                device->drive_info.interface_type = USB_INTERFACE;
+            }
+        }
         else
         {
             //Don't set anything! We don't know!
@@ -8837,10 +2322,10 @@ bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
         //Returned inq example:
         /*
         00 00 00 00 1f 00 00 00 53 54 39 31 32 30 38 32  ........ST912082
-        36 41 20 20 20 20 20 20 20 20 20 20 20 20 20 20  6A              
+        36 41 20 20 20 20 20 20 20 20 20 20 20 20 20 20  6A
         30 30 30 30 00 00 00 00 00 00 00 00 04 00 41 41  0000..........AA
         33 41 30 35 20 20 54 53 31 39 30 32 32 38 41 36  3A05  TS190228A6
-        20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20                  
+        20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20
         20 20 20 20 20 20 20 20 20 20 20 20 20 20 01 80                .�
         00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
         //Example 2:
@@ -8859,46 +2344,245 @@ bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice *device)
         cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ����������������
         cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ����������������
         */
-        memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], 8);
+        memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], INQ_DATA_T10_VENDOR_ID_LEN);
+
+        for (uint8_t iter = 0; iter < INQ_DATA_T10_VENDOR_ID_LEN; ++iter)
+        {
+            if (!is_ASCII(vendorID[iter]) || !isprint(vendorID[iter]))
+            {
+                vendorID[iter] = ' ';
+            }
+        }
         remove_Leading_And_Trailing_Whitespace(vendorID);
         if (strcmp(vendorID, "Seagate") == 0)
         {
-            char internalModel[41] = { 0 };//this may or may not be useful...
-            memcpy(internalModel, &device->drive_info.scsiVpdData.inquiryData[54], 40);
+            char internalModel[MODEL_NUM_LEN + 1] = { 0 };//this may or may not be useful...
+            memcpy(internalModel, &device->drive_info.scsiVpdData.inquiryData[54], MODEL_NUM_LEN);
+            for (uint8_t iter = 0; iter < MODEL_NUM_LEN; ++iter)
+            {
+                if (!is_ASCII(internalModel[iter]) || !isprint(internalModel[iter]))
+                {
+                    internalModel[iter] = ' ';
+                }
+            }
             remove_Leading_And_Trailing_Whitespace(internalModel);
             //this looks like format 2 data, but doesn't report that way...
-            memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], 16);
-            memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], 4);
+            memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], INQ_DATA_PRODUCT_ID_LEN);
+            memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN);
+            for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
+            {
+                if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
+                {
+                    productID[iter] = ' ';
+                }
+            }
+            for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
+            {
+                if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
+                {
+                    revision[iter] = ' ';
+                }
+            }
             remove_Leading_And_Trailing_Whitespace(vendorID);
             remove_Leading_And_Trailing_Whitespace(productID);
             if (strcmp(productID, "External Drive") == 0 && strlen(internalModel))//doing strlen of internal model number to catch others of this type with something set here
             {
                 passthroughTypeSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
+                if (device->drive_info.interface_type != USB_INTERFACE)
+                {
+                    device->drive_info.interface_type = USB_INTERFACE;
+                }
             }
         }
         else if (strcmp(vendorID, "Samsung") == 0)
         {
-            memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], 16);
-            memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[36], 4);
+            memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], INQ_DATA_PRODUCT_ID_LEN);
+            memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[36], INQ_DATA_PRODUCT_REV_LEN);
+            for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
+            {
+                if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
+                {
+                    productID[iter] = ' ';
+                }
+            }
+            for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
+            {
+                if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
+                {
+                    revision[iter] = ' ';
+                }
+            }
             remove_Leading_And_Trailing_Whitespace(vendorID);
             remove_Leading_And_Trailing_Whitespace(productID);
         }
         else
         {
-            memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[8], 16);
-            memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], 4);
+            memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[8], INQ_DATA_PRODUCT_ID_LEN);
+            memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN);
+            for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
+            {
+                if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
+                {
+                    productID[iter] = ' ';
+                }
+            }
+            for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
+            {
+                if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
+                {
+                    revision[iter] = ' ';
+                }
+            }
             remove_Leading_And_Trailing_Whitespace(productID);
             remove_Leading_And_Trailing_Whitespace(revision);
             if (strcmp(productID, "ST9120826A") == 0)
             {
-                memset(vendorID, 0, 8);
+                memset(vendorID, 0, INQ_DATA_T10_VENDOR_ID_LEN);
                 passthroughTypeSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
+                if (device->drive_info.interface_type != USB_INTERFACE)
+                {
+                    device->drive_info.interface_type = USB_INTERFACE;
+                }
             }
         }
     }
     return passthroughTypeSet;
+}
+
+bool is_LaCie_USB_Vendor_ID(const char* t10VendorIdent)
+{
+    if (t10VendorIdent)
+    {
+        if (strncmp(t10VendorIdent, "LaCie", 5) == 0)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool is_Seagate_USB_Vendor_ID(const char* t10VendorIdent)
+{
+    if (t10VendorIdent)
+    {
+        if (strncmp(t10VendorIdent, "Seagate", 7) == 0)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool is_Seagate_SAS_Vendor_ID(const char* t10VendorIdent)
+{
+    if (t10VendorIdent)
+    {
+        if (strncmp(t10VendorIdent, "SEAGATE", 7) == 0)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    else
+    {
+        return false;
+    }
+}
+
+void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSerialNumber, size_t unitSNSize)
+{
+    if (t10VendorIdent && unitSerialNumber && *unitSerialNumber)
+    {
+        if (is_Seagate_USB_Vendor_ID(t10VendorIdent) || is_LaCie_USB_Vendor_ID(t10VendorIdent))
+        {
+            //sometimes these report with padded zeroes at beginning or end. Detect this and remove the extra zeroes
+            //All of these SNs should be only 8 characters long.
+            char zeroes[SERIAL_NUM_LEN + 1] = { 0 };//making bigger than needed for now.
+            memset(zeroes, '0', SERIAL_NUM_LEN);
+            if (strncmp(zeroes, *unitSerialNumber, SEAGATE_SERIAL_NUMBER_LEN) == 0)
+            {
+                //8 zeroes at the beginning. Strip them off
+                memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+                memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+            }
+            else if (strncmp(zeroes, &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN) == 0)
+            {
+                //zeroes at the end. Write nulls over them
+                //This is not correct, reverse the string as this is a product defect.
+                char currentSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
+                char newSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
+                uint8_t serialMaxSize = C_CAST(uint8_t, M_Min(SERIAL_NUM_LEN, unitSNSize));
+                //backup current just in case
+                memcpy(currentSerialNumber, (*unitSerialNumber), M_Min(SERIAL_NUM_LEN, unitSNSize));
+                for (uint8_t curSN = serialMaxSize, newSN = 0; newSN < serialMaxSize; --curSN)
+                {
+                    if ((*unitSerialNumber)[curSN] != '\0')
+                    {
+                        newSerialNumber[newSN] = (*unitSerialNumber)[curSN];
+                        ++newSN;
+                    }
+                    if (curSN == 0)
+                    {
+                        break;
+                    }
+                }
+                memcpy((*unitSerialNumber), newSerialNumber, M_Min(SERIAL_NUM_LEN, unitSNSize));
+                //At this point the zeroes will now all be at the end.
+                if (strncmp(zeroes, (*unitSerialNumber), SEAGATE_SERIAL_NUMBER_LEN) == 0)
+                {
+                    //zeroes at the beginning. Strip them off
+                    memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
+                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
+                }
+                else if (strncmp(zeroes, (*unitSerialNumber), 4) == 0)
+                {
+                    //zeroes at the beginning. Strip them off
+                    memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[4], strlen((*unitSerialNumber)) - 4);
+                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - 4);
+                }
+                else
+                {
+                    //after string reverse, the SN still wasn't right, so go back to stripping off the zeroes from the end.
+                    memcpy((*unitSerialNumber), currentSerialNumber, M_Min(SERIAL_NUM_LEN, unitSNSize));
+                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
+                }
+            }
+            else if (strncmp(zeroes, (*unitSerialNumber), 4) == 0)
+            {
+                //4 zeroes at the beginning. Strip them off
+                memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[4], strlen((*unitSerialNumber)) - 4);
+                memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - 4);
+            }
+            //TODO: Add more cases if we observe other strange reporting behavior.
+            //NOTE: For LaCie, it is unknown what format their SNs were before Seagate acquired them, so may need to add different cases for these older LaCie products.
+        }
+        else if (is_Seagate_SAS_Vendor_ID(t10VendorIdent))
+        {
+            //SAS Seagate drives have a maximum SN length of 8
+            //Other information in here is the PCBA SN
+            memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
+        }
+    }
+    return;
 }
 
 // \fn fill_In_Device_Info(device device)
@@ -8911,7 +2595,23 @@ int fill_In_Device_Info(tDevice *device)
     #ifdef _DEBUG
     printf("%s: -->\n",__FUNCTION__);
     #endif
-    uint8_t *inq_buf = (uint8_t*)calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment);
+
+    bool mediumNotPresent = false;//assume medium is available until we find out otherwise.
+    scsiStatus turStatus;
+    memset(&turStatus, 0, sizeof(scsiStatus));
+    scsi_Test_Unit_Ready(device, &turStatus);
+    if (turStatus.senseKey != SENSE_KEY_NO_ERROR)
+    {
+        if (turStatus.senseKey == SENSE_KEY_NOT_READY)
+        {
+            if (turStatus.asc == 0x3A)//NOTE: 3A seems to be all the "medium not present" status's, so not currently checking for ascq - TJE
+            {
+                mediumNotPresent = true;
+            }
+        }
+    }
+
+    uint8_t *inq_buf = C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!inq_buf)
     {
         perror("Error allocating memory for standard inquiry data (scsi)");
@@ -8983,34 +2683,6 @@ int fill_In_Device_Info(tDevice *device)
         }
 
         uint8_t responseFormat = M_GETBITRANGE(inq_buf[3], 3, 0);
-        if (responseFormat < 2)
-        {
-            //Need to check if vendor ID, MN, and FWRev are printable or not
-            //vendor ID
-            for (uint8_t iter = 0; iter < T10_VENDOR_ID_LEN; ++iter)
-            {
-                if (!is_ASCII(device->drive_info.T10_vendor_ident[iter]) || !isprint(device->drive_info.T10_vendor_ident[iter]))
-                {
-                    device->drive_info.T10_vendor_ident[iter] = ' ';
-                }
-            }
-            //product ID
-            for (uint8_t iter = 0; iter < MODEL_NUM_LEN && iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
-            {
-                if (!is_ASCII(device->drive_info.product_identification[iter]) ||!isprint(device->drive_info.product_identification[iter]))
-                {
-                    device->drive_info.product_identification[iter] = ' ';
-                }
-            }
-            //FWRev
-            for (uint8_t iter = 0; iter < FW_REV_LEN && iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
-            {
-                if (!is_ASCII(device->drive_info.product_revision[iter]) ||!isprint(device->drive_info.product_revision[iter]))
-                {
-                    device->drive_info.product_revision[iter] = ' ';
-                }
-            }
-        }
         uint8_t version = inq_buf[2];
         switch (version) //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
         {
@@ -9115,6 +2787,60 @@ int fill_In_Device_Info(tDevice *device)
             device->drive_info.media_type = MEDIA_UNKNOWN;
             break;
         }
+
+        bool foundUSBStandardDescriptor = false;
+        bool foundSATStandardDescriptor = false;
+        bool foundATAStandardDescriptor = false;
+
+        //check version descriptors first (If returned sense data is long enough and reports all of this)
+        //This can help improve SAT detection and other passthrough quirks
+        for (uint16_t versionIter = 0, offset = 58; versionIter < 7 && offset < (inq_buf[4] + 4); ++versionIter, offset += 2)
+        {
+            uint16_t versionDescriptor = M_BytesTo2ByteValue(device->drive_info.scsiVpdData.inquiryData[offset + 0], device->drive_info.scsiVpdData.inquiryData[offset + 1]);
+            if (!foundUSBStandardDescriptor && (is_Standard_Supported(versionDescriptor, STANDARD_CODE_USB)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_UAS)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_UAS2)))
+            {
+                foundUSBStandardDescriptor = true;
+            }
+            else if (!foundSATStandardDescriptor && (is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT2)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT3)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT4)))
+            {
+                foundSATStandardDescriptor = true;
+            }
+            else if (!foundATAStandardDescriptor && (is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI6)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI7)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI8)
+                || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ACSx)))
+            {
+                foundATAStandardDescriptor = true;
+            }
+        }
+
+        //special USB detection case. If not already USB interface, do a few more checks to get the interface correct
+        if (device->drive_info.interface_type == SCSI_INTERFACE)
+        {
+            if (foundUSBStandardDescriptor)
+            {
+                device->drive_info.interface_type = USB_INTERFACE;
+            }
+            
+            //Only rely on this as a last resort. Try using version descriptors when possible
+            //NOTE: This is different from SAS where the ID is in all CAPS, which makes this identification possible.
+            //TODO: LaCie? Need to make sure this only catches USB and not something else like thunderbolt
+            if (device->drive_info.interface_type == SCSI_INTERFACE)
+            {
+                if (is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident))
+                {
+                    device->drive_info.interface_type = USB_INTERFACE;
+                }
+            }
+        }
+        bool hisup = M_ToBool(inq_buf[3] & BIT4);//historical support...this is set to 1 for nvme (SNTL) and not specified in SAT...may be useful later - TJE
+        bool rmb = M_ToBool(inq_buf[1] & BIT1);//removable medium. This should be zero for all modern HDDs and any SSD, even over USB, but USB sometimes plays by it's own rules. - TJE
+        bool cmdQueue = M_ToBool(inq_buf[7] & BIT1);//set to 1 for nvme, unspecified for SAT
         //check for additional bits to try and filter out when to check for SAT
         if (checkForSAT && !device->drive_info.passThroughHacks.hacksSetByReportedID)
         {
@@ -9192,7 +2918,7 @@ int fill_In_Device_Info(tDevice *device)
 
         //As per NVM Express SCSI Translation Reference. 
         //NOTE: Setting this type here allows us to skip sending some extra commands. (e.g. SAT compliant)
-        if (memcmp(device->drive_info.T10_vendor_ident, "NVMe",4) == 0 )
+        if (memcmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0 )
         {
             //DO NOT set the drive type to NVMe here. We need to treat it as a SCSI device since we can only issue SCSI translatable commands!!!
             //device->drive_info.drive_type  = NVME_DRIVE;
@@ -9211,83 +2937,7 @@ int fill_In_Device_Info(tDevice *device)
             checkForSAT = false;
         }
 
-        //If this is a suspected NVMe device, specifically ASMedia 236X chip, need to do an inquiry with EXACTLY 38bytes to check for a specific signature
-        //This will check for some known outputs to know when to do the additional inquiry command for ASMedia detection. This may not catch everything. - TJE
-        if (!(device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
-            &&
-            (strncmp(device->drive_info.T10_vendor_ident, "ASMT", 4) == 0 || strncmp(device->drive_info.T10_vendor_ident, "ASMedia", 7) == 0 
-            || strstr(device->drive_info.product_identification, "ASM236X") || strstr(device->drive_info.product_identification, "NVME"))
-            )
-        {
-            //This is likely a ASMedia 236X device. Need to do another inquiry command in order to confirm.
-            uint8_t asmtInq[38] = { 0 };
-            if (SUCCESS == scsi_Inquiry(device, asmtInq, 38, 0, false, false))
-            {
-                if (asmtInq[36] == 0x60 && asmtInq[37] == 0x23)//todo: add checking length ahead of this for improved backwards compatibility with SCSI 2 devices.
-                {
-                    //This is an ASMedia device with the 236X chip which supports USB to NVMe passthrough
-                    //This code will setup known hacks for these devices since it wasn't already detected by lower layers based on VID/PID reported over the USB interface
-                    checkForSAT = false;
-                    device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_ASMEDIA_BASIC;
-                    device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
-                    device->drive_info.passThroughHacks.turfValue = 33;
-                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in the case an ATA passthrough command is attempted, it won't try this opcode since it can cause performance problems or crash the bridge
-                    device->drive_info.drive_type = NVME_DRIVE;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
-                    device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
-                    device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
-                    device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
-                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
-                    device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
-                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
-                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric = true;
-                }
-            }
-        }
-
-        //Need to check version descriptors here since they may be useful below, but also because it can be used to help rule-out some USB to NVMe devices.
-        bool satVersionDescriptorFound = false;
-        if (!device->drive_info.passThroughHacks.hacksSetByReportedID && version >= 4 && (inq_buf[4] + 4 > 57))//if less than this length, then there definitely won't be a reason to check version descriptors
-        {
-            uint16_t versionDescriptor = 0;
-            if(strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0 || strstr(device->drive_info.product_identification, "NVME"))
-            {
-                //This means we most likely have some sort of NVMe device, so SAT (ATA passthrough) makes no sense to check for.
-                checkForSAT = false;
-            }
-            else
-            {
-                for (uint16_t versionIter = 0, offset = 58; versionIter < 7 && offset < (inq_buf[4] + 4); ++versionIter, offset += 2)
-                {
-                    versionDescriptor = M_BytesTo2ByteValue(device->drive_info.scsiVpdData.inquiryData[offset + 0], device->drive_info.scsiVpdData.inquiryData[offset + 1]);
-                    if (is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT2)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT3)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_SAT4)
-                        //Next version descriptors aren't sat but should only appear on a SAT interface...at least we know they are ATA/ATAPI so it won't hurt to try issuing a command to the drive.
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI6)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI7)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ATA_ATAPI8)
-                        || is_Standard_Supported(versionDescriptor, STANDARD_CODE_ACSx)
-                        )
-                    {
-                        //This is a workaround for some USB to NVMe adapters that list a SAT descriptor, which makes no sense.
-                        if (strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0 || strstr(device->drive_info.product_identification, "NVME") == NULL)
-                        {
-                            satVersionDescriptorFound = true;
-                        }
-                        else
-                        {
-                            checkForSAT = false;
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-
+        bool knownMemoryStickID = false;
         //Checking the product identification for "Generic-" device to see if they are MMC, SD, etc type devices
         if (strcmp(device->drive_info.T10_vendor_ident, "Generic-") == 0)
         {
@@ -9304,12 +2954,129 @@ int fill_In_Device_Info(tDevice *device)
                 //      Either need to start using it, or make more changes to handle it better -TJE
                 //device->drive_info.drive_type = FLASH_DRIVE;
                 device->drive_info.media_type = MEDIA_SSM_FLASH;
-                if (strcmp(device->drive_info.product_identification, "Compact Flash") != 0)
+                if (strcmp(device->drive_info.product_identification, "Compact Flash") != 0 || mediumNotPresent)
                 {
                     //Only check for SAT on compact flash since it uses ATA commands. May need another case for CFast as well.
                     checkForSAT = false;
                 }
+                knownMemoryStickID = true;
             }
+        }
+
+        //If this is a suspected NVMe device, specifically ASMedia 236X chip, need to do an inquiry with EXACTLY 38bytes to check for a specific signature
+        //This will check for some known outputs to know when to do the additional inquiry command for ASMedia detection. This may not catch everything. - TJE
+        if (!knownMemoryStickID && !device->drive_info.passThroughHacks.hacksSetByReportedID  && !(device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
+            &&
+            (strncmp(device->drive_info.T10_vendor_ident, "ASMT", 4) == 0 || strncmp(device->drive_info.T10_vendor_ident, "ASMedia", 7) == 0 
+            || strstr(device->drive_info.product_identification, "ASM236X") || strstr(device->drive_info.product_identification, "NVME")
+            || is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the ASmedia NVMe chips
+            //TODO: Check when FWRev is set to 2364? At least one device I have does this, but not sure this is a good thing to add in here or not -TJE
+            && !hisup && !rmb //hisup shoiuld be 1 and rmb should be zero...on the asmedia chips I have tested, hisup is zero
+            && responseFormat >= 2 //filter out any weird old drives with bizarre responses
+            && inq_buf[4] == 0x47 //SNTL says 1F, but a couple of adapter I have sets 47h...using this for now to help filter the list
+            && cmdQueue //should be set for all NVMe SNTL translators
+            )
+        {
+            //This is likely a ASMedia 236X device. Need to do another inquiry command in order to confirm.
+            uint8_t asmtInq[38] = { 0 };
+            if (SUCCESS == scsi_Inquiry(device, asmtInq, 38, 0, false, false))
+            {
+                if (asmtInq[36] == 0x60 && asmtInq[37] == 0x23)//todo: add checking length ahead of this for improved backwards compatibility with SCSI 2 devices.
+                {
+                    //This is an ASMedia device with the 236X chip which supports USB to NVMe passthrough
+                    //will attempt to check for full passthrough support first
+                    uint8_t* nvmeIdentify = C_CAST(uint8_t*, calloc_aligned(NVME_IDENTIFY_DATA_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    bool fullCmdSupport = false;
+                    //setup hacks/flags common for both types of passthrough
+                    device->drive_info.drive_type = NVME_DRIVE;
+                    device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                    device->drive_info.passThroughHacks.turfValue = 33;
+                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in the case an ATA passthrough command is attempted, it won't try this opcode since it can cause performance problems or crash the bridge
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                    if (nvmeIdentify)
+                    {
+                        device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_ASMEDIA;
+                        //attempt the full passthrough
+                        if (SUCCESS == nvme_Identify(device, nvmeIdentify, 0, NVME_IDENTIFY_CTRL))
+                        {
+                            fullCmdSupport = true;
+                        }
+                        safe_Free_aligned(nvmeIdentify);
+                    }
+                    //This code will setup known hacks for these devices since it wasn't already detected by lower layers based on VID/PID reported over the USB interface
+                    checkForSAT = false;
+                    if (!fullCmdSupport)
+                    {
+                        //if the full cmd above failed, but we are here, that means it supports the basic passthrough
+                        //change to this passthrough and set the limited capabilities flags
+                        device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_ASMEDIA_BASIC;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric = true;
+                    }
+                    checkForSAT = false;
+                }
+            }
+        }
+
+        //Need to check version descriptors here since they may be useful below, but also because it can be used to help rule-out some USB to NVMe devices.
+        bool satVersionDescriptorFound = false;
+        if(strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0 || strstr(device->drive_info.product_identification, "NVME") || strstr(device->drive_info.product_identification, "NVMe"))
+        {
+            //This means we most likely have some sort of NVMe device, so SAT (ATA passthrough) makes no sense to check for.
+            checkForSAT = false;
+        }
+        else
+        {
+            if (foundSATStandardDescriptor || foundATAStandardDescriptor)
+            {
+                if (strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0 || strstr(device->drive_info.product_identification, "NVME") == NULL || strstr(device->drive_info.product_identification, "NVMe") == NULL)
+                {
+                    satVersionDescriptorFound = true;
+                    checkForSAT = true; //Setting it as true, since some Marvell controller set SYNC bit, which is preventing our auto-discovery as ATA drive and sending SAT commands.
+                }
+                else
+                {
+                    checkForSAT = false;
+                }
+            }
+        }
+
+        bool checkJMicronNVMe = false;
+        if (!device->drive_info.passThroughHacks.hacksSetByReportedID && checkForSAT && !(device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
+            && (
+                strncmp(device->drive_info.T10_vendor_ident, "JMicron", 4) == 0 || //check anything coming up as Jmicron
+                (strncmp(device->drive_info.T10_vendor_ident, "JMicron", 4) == 0 && strncmp(device->drive_info.product_identification, "Tech", 4) == 0 && (strncmp(device->drive_info.product_revision, "0204", 4) == 0 || strncmp(device->drive_info.product_revision, "0205", 4) == 0)) //this is specific to known Jmicron-nvme adapters
+                || is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the Jmicron NVMe chips
+            && foundSATStandardDescriptor && !foundATAStandardDescriptor //these chips report SAT, but not an ATA standard...might reduce how often this check is performed - TJE
+            && hisup && !rmb //hisup shoiuld be 1 and rmb should be zero...this should filter SOME, but not all USB adapters that are actually SATA drives - TJE
+            && responseFormat >= 2 //filter out any weird old drives with bizarre responses
+            //&& inq_buf[4] == 0x5b //SNTL says 1F, but one adapter I have sets 5B...need to make sure other adapters do the same before we enforce this check - TJE
+            && cmdQueue //should be set for all NVMe SNTL translators
+            )
+        {
+            //this is some additional checks for JMicron NVMe passthrough
+            checkJMicronNVMe = true;
+            //Do not turn off SAT checks because there is not enough information to filter down into a known NVMe vs known SATA device in this "auto-detect" case
+            //checking for this will come, most likely, after SAT check.
+            //TODO: Further improvement: Detect A1h command supported, but 85h is NOT. A1 is the opcode supported by this device's passthrough and anything supporting 85h will have to be SAT, not this unique NVMe passthrough - TJE
+            //      note: there is not currently a good way to track the results from these commands in fill_ATA_Drive_Info...that is something we can work on going forward.
+            //      A1 SAT identify should return "Invalid field in CDB" and 85h should return "Invalid operation code". While SOME SAT device may do this too, this will reduce commanmds sent to genuine SAT devices.
+        }
+
+        if (device->drive_info.interface_type == SCSI_INTERFACE && is_Seagate_SAS_Vendor_ID(device->drive_info.T10_vendor_ident))
+        {
+            //do NOT do a SAT check. For some reason sometimes a combo of HBA and some SAS drives will respond with no sense errors on A1h CDB
+            //This seems to happen on LSI 9300-8i and some combinations of SAS drives....but not all of them. It is oddly specific.
+            //Same HBA and drive on Windows? Works fine. 
+            //I want a better check than this using other fields, but this should be reasonably safe for now since vendor id of "SEAGATE " is only used on SAS drives
+            checkForSAT = false;
         }
 
         if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE)
@@ -9324,8 +3091,36 @@ int fill_In_Device_Info(tDevice *device)
                )
             {
                 ret = fill_In_ATA_Drive_Info(device);
+                if (ret != SUCCESS && checkJMicronNVMe)
+                {
+                    device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
+                    ret = fill_In_NVMe_Device_Info(device);
+                    if (ret == SUCCESS)
+                    {
+                        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                        device->drive_info.passThroughHacks.turfValue = 13;
+                        device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in 
+                        device->drive_info.drive_type = NVME_DRIVE;
+                        device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                        device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = false;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                        device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
+                    }
+                    else
+                    {
+                        device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                        ret = SUCCESS;//do not fail here since this should otherwise be treated as a SCSI drive
+                    }
+                }
             }
-            safe_Free_aligned(inq_buf);
+            safe_Free_aligned(inq_buf)
             return ret;
         }
 
@@ -9335,7 +3130,7 @@ int fill_In_Device_Info(tDevice *device)
             {
                 //I'm reading only the unit serial number page here for a quick scan and the device information page for WWN - TJE
                 uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
-                uint8_t *unitSerialNumber = (uint8_t*)calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment);
+                uint8_t *unitSerialNumber = C_CAST(uint8_t*, calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!unitSerialNumber)
                 {
                     perror("Error allocating memory to read the unit serial number");
@@ -9350,14 +3145,17 @@ int fill_In_Device_Info(tDevice *device)
                         {
                             memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
                             device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
-                            remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
                             for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
                             {
-                                if (!isprint(device->drive_info.serialNumber[iter]))
+                                if (!is_ASCII(device->drive_info.serialNumber[iter]) || !isprint(device->drive_info.serialNumber[iter]))
                                 {
                                     device->drive_info.serialNumber[iter] = ' ';
                                 }
                             }
+                            remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
+                            char* snPtr = device->drive_info.serialNumber;
+                            const char* t10VIDPtr = device->drive_info.T10_vendor_ident;
+                            seagate_Serial_Number_Cleanup(t10VIDPtr, &snPtr, SERIAL_NUM_LEN + 1);
                         }
                         else
                         {
@@ -9369,7 +3167,7 @@ int fill_In_Device_Info(tDevice *device)
                         memset(device->drive_info.serialNumber, 0, SERIAL_NUM_LEN);
                     }
                 }
-                safe_Free_aligned(unitSerialNumber);
+                safe_Free_aligned(unitSerialNumber)
             }
             else
             {
@@ -9387,11 +3185,11 @@ int fill_In_Device_Info(tDevice *device)
             }
             if (version >= 3 && !device->drive_info.passThroughHacks.scsiHacks.noVPDPages)//device identification added in SPC
             {
-                uint8_t *deviceIdentification = (uint8_t*)calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment);
+                uint8_t *deviceIdentification = C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!deviceIdentification)
                 {
                     perror("Error allocating memory to read device identification VPD page");
-                    safe_Free_aligned(inq_buf);
+                    safe_Free_aligned(inq_buf)
                     return MEMORY_FAILURE;
                 }
                 if (SUCCESS == scsi_Inquiry(device, deviceIdentification, INQ_RETURN_DATA_LENGTH, DEVICE_IDENTIFICATION, true, false))
@@ -9403,22 +3201,49 @@ int fill_In_Device_Info(tDevice *device)
                         byte_Swap_64(&device->drive_info.worldWideName);
                     }
                 }
-                safe_Free_aligned(deviceIdentification);
+                safe_Free_aligned(deviceIdentification)
             }
             //One last thing...Need to do a SAT scan...
             if (checkForSAT)
             {
-                check_SAT_Compliance_And_Set_Drive_Type(device);
+                if (SUCCESS != check_SAT_Compliance_And_Set_Drive_Type(device) && checkJMicronNVMe)
+                {
+                    device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
+                    ret = fill_In_NVMe_Device_Info(device);
+                    if (ret == SUCCESS)
+                    {
+                        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                        device->drive_info.passThroughHacks.turfValue = 13;
+                        device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in 
+                        device->drive_info.drive_type = NVME_DRIVE;
+                        device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                        device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = false;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                        device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
+                    }
+                    else
+                    {
+                        device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                        ret = SUCCESS;//do not fail here since this should otherwise be treated as a SCSI drive
+                    }
+                }
             }
-            safe_Free_aligned(inq_buf);
+            safe_Free_aligned(inq_buf)
             return ret;
         }
 
-        if (device->drive_info.interface_type != USB_INTERFACE && device->drive_info.interface_type != IEEE_1394_INTERFACE)
+        if (device->drive_info.scsiVersion > SCSI_VERSION_SCSI2 && device->drive_info.interface_type != USB_INTERFACE && device->drive_info.interface_type != IEEE_1394_INTERFACE)
         {
             //Issue report LUNs to figure out how many logical units are present.
-            uint8_t reportLuns[8] = { 0 };//only really need first 4 bytes, but this will make sure we get the length, hopefully without error
-            if (SUCCESS == scsi_Report_Luns(device, 0, 8, reportLuns))
+            uint8_t reportLuns[REPORT_LUNS_MIN_LENGTH] = { 0 };//only really need first 4 bytes, but this will make sure we get the length, hopefully without error
+            if (SUCCESS == scsi_Report_Luns(device, 0, REPORT_LUNS_MIN_LENGTH, reportLuns))
             {
                 uint32_t lunListLength = M_BytesTo4ByteValue(reportLuns[0], reportLuns[1], reportLuns[2], reportLuns[3]);
                 device->drive_info.numberOfLUs = lunListLength / 8;//each LUN is 8 bytes long
@@ -9494,7 +3319,7 @@ int fill_In_Device_Info(tDevice *device)
                         inq_buf[offset] = DEVICE_IDENTIFICATION;
                         ++offset;
                     }
-                    if (checkForSAT)
+                    if (checkForSAT && !device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage)
                     {
                         inq_buf[offset] = ATA_INFORMATION;
                         ++offset;
@@ -9516,11 +3341,11 @@ int fill_In_Device_Info(tDevice *device)
             }
             //first, get the length of the supported pages
             uint16_t supportedVPDPagesLength = M_BytesTo2ByteValue(inq_buf[2], inq_buf[3]);
-            uint8_t *supportedVPDPages = (uint8_t*)calloc(supportedVPDPagesLength, sizeof(uint8_t));
+            uint8_t *supportedVPDPages = C_CAST(uint8_t*, calloc(supportedVPDPagesLength, sizeof(uint8_t)));
             if (!supportedVPDPages)
             {
                 perror("Error allocating memory for supported VPD pages!\n");
-                safe_Free_aligned(inq_buf);
+                safe_Free_aligned(inq_buf)
                 return MEMORY_FAILURE;
             }
             memcpy(supportedVPDPages, &inq_buf[4], supportedVPDPagesLength);
@@ -9533,7 +3358,7 @@ int fill_In_Device_Info(tDevice *device)
                 case UNIT_SERIAL_NUMBER://Device serial number (only grab 20 characters worth since that's what we need for the device struct)
                 {
                     uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
-                    uint8_t *unitSerialNumber = (uint8_t*)calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment);
+                    uint8_t *unitSerialNumber = C_CAST(uint8_t*, calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment));
                     if (!unitSerialNumber)
                     {
                         perror("Error allocating memory to read the unit serial number");
@@ -9548,23 +3373,26 @@ int fill_In_Device_Info(tDevice *device)
                             {
                                 memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
                                 device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
-                                remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
                                 for (size_t iter = 0; iter < SERIAL_NUM_LEN && iter < strlen(device->drive_info.serialNumber); ++iter)
                                 {
-                                    if (!isprint(device->drive_info.serialNumber[iter]))
+                                    if (!is_ASCII(device->drive_info.serialNumber[iter]) || !isprint(device->drive_info.serialNumber[iter]))
                                     {
                                         device->drive_info.serialNumber[iter] = ' ';
                                     }
                                 }
+                                remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
+                                char* snPtr = device->drive_info.serialNumber;
+                                const char* t10VIDPtr = device->drive_info.T10_vendor_ident;
+                                seagate_Serial_Number_Cleanup(t10VIDPtr, &snPtr, SERIAL_NUM_LEN + 1);
                             }
                         }
                     }
-                    safe_Free_aligned(unitSerialNumber);
+                    safe_Free_aligned(unitSerialNumber)
                     break;
                 }
                 case DEVICE_IDENTIFICATION://World wide name
                 {
-                    uint8_t *deviceIdentification = (uint8_t*)calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment);
+                    uint8_t *deviceIdentification = C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
                     if (!deviceIdentification)
                     {
                         perror("Error allocating memory to read device identification VPD page");
@@ -9579,7 +3407,7 @@ int fill_In_Device_Info(tDevice *device)
                             byte_Swap_64(&device->drive_info.worldWideName);
                         }
                     }
-                    safe_Free_aligned(deviceIdentification);
+                    safe_Free_aligned(deviceIdentification)
                     break;
                 }
                 case ATA_INFORMATION: //use this to determine if it's SAT compliant
@@ -9596,6 +3424,35 @@ int fill_In_Device_Info(tDevice *device)
                         {
                             //send test unit ready to get the device responding again (For better performance on some USB devices that don't support this page)
                             scsi_Test_Unit_Ready(device, NULL);
+                            //TODO: Check jmicron here???
+                            if (checkJMicronNVMe)
+                            {
+                                device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
+                                ret = fill_In_NVMe_Device_Info(device);
+                                if (ret == SUCCESS)
+                                {
+                                    device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                                    device->drive_info.passThroughHacks.turfValue = 13;
+                                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in 
+                                    device->drive_info.drive_type = NVME_DRIVE;
+                                    device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = false;
+                                    device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                                    device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
+                                }
+                                else
+                                {
+                                    device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                                    ret = SUCCESS;//do not fail here since this should otherwise be treated as a SCSI drive
+                                }
+                            }
                         }
                         satComplianceChecked = true;
                     }
@@ -9603,7 +3460,7 @@ int fill_In_Device_Info(tDevice *device)
                 }
                 case BLOCK_DEVICE_CHARACTERISTICS: //use this to determine if it's SSD or HDD and whether it's a HDD or not
                 {
-                    uint8_t *blockDeviceCharacteristics = (uint8_t*)calloc_aligned(VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
+                    uint8_t *blockDeviceCharacteristics = C_CAST(uint8_t*, calloc_aligned(VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
                     if (!blockDeviceCharacteristics)
                     {
                         perror("Error allocating memory to read block device characteistics VPD page");
@@ -9630,12 +3487,10 @@ int fill_In_Device_Info(tDevice *device)
                                     {
                                         device->drive_info.media_type = MEDIA_HDD;
                                     }
-                                }
-                                else
-                                {
-                                    if (!satVPDPageRead)
+                                    if (checkJMicronNVMe)
                                     {
-                                        device->drive_info.media_type = MEDIA_UNKNOWN;
+                                        //The logic here is that there are no NVMe HDDs that will use this bridge, so do not do a SAT check, and instead check only for JMicron NVMe adapter - TJE
+                                        checkForSAT = false;
                                     }
                                 }
                             }
@@ -9679,7 +3534,7 @@ int fill_In_Device_Info(tDevice *device)
                             }
                         }
                     }
-                    safe_Free_aligned(blockDeviceCharacteristics);
+                    safe_Free_aligned(blockDeviceCharacteristics)
                     break;
                 }
                 default:
@@ -9687,7 +3542,7 @@ int fill_In_Device_Info(tDevice *device)
                     break;
                 }
             }
-            safe_Free(supportedVPDPages);
+            safe_Free(supportedVPDPages)
         }
         else
         {
@@ -9704,16 +3559,16 @@ int fill_In_Device_Info(tDevice *device)
             }
         }
 
-        if (readCapacity)
+        if (readCapacity && !mediumNotPresent)
         {
             //if inquiry says SPC or lower (3), then only do read capacity 10
             //Anything else can have read capacity 16 command available
 
             //send a read capacity command to get the device's logical block size...read capacity 10 should be enough for this
-            uint8_t *readCapBuf = (uint8_t*)calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment);
+            uint8_t *readCapBuf = C_CAST(uint8_t*, calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
             if (!readCapBuf)
             {
-                safe_Free_aligned(inq_buf);
+                safe_Free_aligned(inq_buf)
                 return MEMORY_FAILURE;
             }
             if (SUCCESS == scsi_Read_Capacity_10(device, readCapBuf, READ_CAPACITY_10_LEN))
@@ -9722,11 +3577,11 @@ int fill_In_Device_Info(tDevice *device)
                 if (version > 3)//SPC2 and higher can reference SBC2 and higher which introduced read capacity 16
                 {
                     //try a read capacity 16 anyways and see if the data from that was valid or not since that will give us a physical sector size whereas readcap10 data will not
-                    uint8_t* temp = (uint8_t*)realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment);
+                    uint8_t* temp = C_CAST(uint8_t*, realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
                     if (!temp)
                     {
-                        safe_Free_aligned(readCapBuf);
-                        safe_Free_aligned(inq_buf);
+                        safe_Free_aligned(readCapBuf)
+                        safe_Free_aligned(inq_buf)
                         return MEMORY_FAILURE;
                     }
                     readCapBuf = temp;
@@ -9751,6 +3606,7 @@ int fill_In_Device_Info(tDevice *device)
                         if (readCapBuf[12] & BIT0)
                         {
                             device->drive_info.currentProtectionType = M_GETBITRANGE(readCapBuf[12], 3, 1) + 1;
+                            checkForSAT = false;
                         }
                     }
                 }
@@ -9758,11 +3614,11 @@ int fill_In_Device_Info(tDevice *device)
             else
             {
                 //try read capacity 16, if that fails we are done trying
-                uint8_t* temp = (uint8_t*)realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment);
+                uint8_t* temp = C_CAST(uint8_t*, realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
                 if (temp == NULL)
                 {
-                    safe_Free_aligned(readCapBuf);
-                    safe_Free_aligned(inq_buf);
+                    safe_Free_aligned(readCapBuf)
+                    safe_Free_aligned(inq_buf)
                     return MEMORY_FAILURE;
                 }
                 readCapBuf = temp;
@@ -9775,10 +3631,11 @@ int fill_In_Device_Info(tDevice *device)
                     if (readCapBuf[12] & BIT0)
                     {
                         device->drive_info.currentProtectionType = M_GETBITRANGE(readCapBuf[12], 3, 1) + 1;
+                        checkForSAT = false;
                     }
                 }
             }
-            safe_Free_aligned(readCapBuf);
+            safe_Free_aligned(readCapBuf)
             if (device->drive_info.devicePhyBlockSize == 0)
             {
                 //If we did not get a physical blocksize, we need to set it to the blocksize (logical).
@@ -9787,23 +3644,59 @@ int fill_In_Device_Info(tDevice *device)
             }
         }
 
-        //printf("passthrough type set to %d\n", device->drive_info.passThroughHacks.passthroughType);
+        //NOTE: You would think that checking if physical and logical block sizes don't match you can filter NVMe (they are supposed to be the same in translation),
+        //      but this DOES NOT WORK. For whatever reason, some report 512B logical, 4k physical....for no apparent reason. - TJE
 
+        //printf("passthrough type set to %d\n", device->drive_info.passThroughHacks.passthroughType);
+        int satCheck = FAILURE;
         //if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just issue a SAT identify in here to set things up...might reduce multiple commands later
         if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE) 
             && device->drive_info.media_type != MEDIA_UNKNOWN && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
         {
-            check_SAT_Compliance_And_Set_Drive_Type(device);
+            satCheck = check_SAT_Compliance_And_Set_Drive_Type(device);
         }
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
         //Because we may find an NVMe over USB device, if we find one of these, perform a little more discovery...
-        if (device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
+        if ((device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
+            ||
+            (satCheck != SUCCESS && checkJMicronNVMe)
+            )
         {
+            int scsiRet = ret;
+            if (checkJMicronNVMe)
+            {
+                device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
+            }
             //NOTE: It is OK if this fails since it will fall back to treating as SCSI
-            fill_In_NVMe_Device_Info(device);
+            ret = fill_In_NVMe_Device_Info(device);
+            if (ret == SUCCESS && checkJMicronNVMe)
+            {
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                device->drive_info.passThroughHacks.turfValue = 13;
+                device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//set this so in 
+                device->drive_info.drive_type = NVME_DRIVE;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = false;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
+                device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
+            }
+            else if(checkJMicronNVMe)
+            {
+                device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                ret = scsiRet;//do not fail here since this should otherwise be treated as a SCSI drive
+            }
+            else
+            {
+                ret = scsiRet;//do not fail here since this should otherwise be treated as a SCSI drive
+            }
         }
-#endif
     }
     else
     {
@@ -9813,7 +3706,7 @@ int fill_In_Device_Info(tDevice *device)
         }
         ret = COMMAND_FAILURE;
     }
-    safe_Free_aligned(inq_buf);
+    safe_Free_aligned(inq_buf)
 
     #ifdef _DEBUG
     printf("\nscsi helper\n");
@@ -9845,377 +3738,377 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
     {
             //1 - 8 architecture model
     case STANDARD_CODE_SAM:
-        sprintf(versionString, "SAM");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM");
         break;
     case STANDARD_CODE_SAM2:
-        sprintf(versionString, "SAM-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM-2");
         break;
     case STANDARD_CODE_SAM3:
-        sprintf(versionString, "SAM-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM-3");
         break;
     case STANDARD_CODE_SAM4:
-        sprintf(versionString, "SAM-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM-4");
         break;
     case STANDARD_CODE_SAM5:
-        sprintf(versionString, "SAM-5");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM-5");
         break;
     case STANDARD_CODE_SAM6:
-        sprintf(versionString, "SAM-6");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM-6");
         break;
             //9-64 Command Set
     case STANDARD_CODE_SPC:
-        sprintf(versionString, "SPC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPC");
         break;
     case STANDARD_CODE_MMC:
-        sprintf(versionString, "MMC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC");
         break;
     case STANDARD_CODE_SCC:
-        sprintf(versionString, "SCC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SCC");
         break;
     case STANDARD_CODE_SBC:
-        sprintf(versionString, "SBC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBC");
         break;
     case STANDARD_CODE_SMC:
-        sprintf(versionString, "SMC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SMC");
         break;
     case STANDARD_CODE_SES:
-        sprintf(versionString, "SES");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SES");
         break;
     case STANDARD_CODE_SCC2:
-        sprintf(versionString, "SCC-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SCC-2");
         break;
     case STANDARD_CODE_SSC:
-        sprintf(versionString, "SSC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSC");
         break;
     case STANDARD_CODE_RBC:
-        sprintf(versionString, "RBC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "RBC");
         break;
     case STANDARD_CODE_MMC2:
-        sprintf(versionString, "MMC-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC-2");
         break;
     case STANDARD_CODE_SPC2:
-        sprintf(versionString, "SPC-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPC-2");
         break;
     case STANDARD_CODE_OCRW:
-        sprintf(versionString, "OCRW");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "OCRW");
         break;
     case STANDARD_CODE_MMC3:
-        sprintf(versionString, "MMC-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC-3");
         break;
     case STANDARD_CODE_RMC:
-        sprintf(versionString, "RMC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "RMC");
         break;
     case STANDARD_CODE_SMC2:
-        sprintf(versionString, "SMC-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SMC-2");
         break;
     case STANDARD_CODE_SPC3:
-        sprintf(versionString, "SPC-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPC-3");
         break;
     case STANDARD_CODE_SBC2:
-        sprintf(versionString, "SBC-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBC-2");
         break;
     case STANDARD_CODE_OSD:
-        sprintf(versionString, "OSD");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "OSD");
         break;
     case STANDARD_CODE_SSC2:
-        sprintf(versionString, "SSC-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSC-2");
         break;
     case STANDARD_CODE_BCC:
-        sprintf(versionString, "BCC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "BCC");
         break;
     case STANDARD_CODE_MMC4:
-        sprintf(versionString, "MMC-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC-4");
         break;
     case STANDARD_CODE_ADC:
-        sprintf(versionString, "ADC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADC");
         break;
     case STANDARD_CODE_SES2:
-        sprintf(versionString, "SES-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SES-2");
         break;
     case STANDARD_CODE_SSC3:
-        sprintf(versionString, "SSC-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSC-3");
         break;
     case STANDARD_CODE_MMC5:
-        sprintf(versionString, "MMC-5");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC-5");
         break;
     case STANDARD_CODE_OSD2:
-        sprintf(versionString, "OSD-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "OSD-2");
         break;
     case STANDARD_CODE_SPC4:
-        sprintf(versionString, "SPC-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPC-4");
         break;
     case STANDARD_CODE_SMC3:
-        sprintf(versionString, "SMC-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SMC-3");
         break;
     case STANDARD_CODE_ADC2:
-        sprintf(versionString, "ADC-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADC-2");
         break;
     case STANDARD_CODE_SBC3:
-        sprintf(versionString, "SBC-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBC-3");
         break;
     case STANDARD_CODE_MMC6:
-        sprintf(versionString, "MMC-6");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC-6");
         break;
     case STANDARD_CODE_ADC3:
-        sprintf(versionString, "ADC-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADC-3");
         break;
     case STANDARD_CODE_SSC4:
-        sprintf(versionString, "SSC-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSC-4");
         break;
     case STANDARD_CODE_OSD3:
-        sprintf(versionString, "OSD-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "OSD-3");
         break;
     case STANDARD_CODE_SES3:
-        sprintf(versionString, "SES-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SES-3");
         break;
     case STANDARD_CODE_SSC5:
-        sprintf(versionString, "SSC-5");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSC-5");
         break;
     case STANDARD_CODE_SPC5:
-        sprintf(versionString, "SPC-5");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPC-5");
         break;
     case STANDARD_CODE_SFSC:
-        sprintf(versionString, "SFSC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SFSC");
         break;
     case STANDARD_CODE_SBC4:
-        sprintf(versionString, "SBC-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBC-4");
         break;
     case STANDARD_CODE_ZBC:
-        sprintf(versionString, "ZBC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ZBC");
         break;
     case STANDARD_CODE_ADC4:
-        sprintf(versionString, "ADC-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADC-4");
         break;
     case STANDARD_CODE_ZBC2:
-        sprintf(versionString, "ZBC-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ZBC-2");
         break;
     case STANDARD_CODE_SES4:
-        sprintf(versionString, "SES-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SES-4");
         break;
             //65 - 84 Physical Mapping protocol
     case STANDARD_CODE_SSA_TL2:
-        sprintf(versionString, "SSA-TL2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-TL2");
         break;
     case STANDARD_CODE_SSA_TL1:
-        sprintf(versionString, "SSA-TL1");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-TL1");
         break;
     case STANDARD_CODE_SSA_S3P:
-        sprintf(versionString, "SSA-S3P");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-S3P");
         break;
     case STANDARD_CODE_SSA_S2P:
-        sprintf(versionString, "SSA-S2P");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-S2P");
         break;
     case STANDARD_CODE_SIP:
-        sprintf(versionString, "SIP");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SIP");
         break;
     case STANDARD_CODE_FCP:
-        sprintf(versionString, "FCP");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FCP");
         break;
     case STANDARD_CODE_SBP2:
-        sprintf(versionString, "SBP-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBP-2");
         break;
     case STANDARD_CODE_FCP2:
-        sprintf(versionString, "FCP-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FCP-2");
         break;
     case STANDARD_CODE_SST:
-        sprintf(versionString, "SST");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SST");
         break;
     case STANDARD_CODE_SRP:
-        sprintf(versionString, "SRP");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SRP");
         break;
     case STANDARD_CODE_iSCSI:
-        sprintf(versionString, "iSCSI");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "iSCSI");
         break;
     case STANDARD_CODE_SBP3:
-        sprintf(versionString, "SBP-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBP-3");
         break;
     case STANDARD_CODE_SRP2:
-        sprintf(versionString, "SRP-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SRP-2");
         break;
     case STANDARD_CODE_ADP:
-        sprintf(versionString, "ADP");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADP");
         break;
     case STANDARD_CODE_ADT:
-        sprintf(versionString, "ADT");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADT");
         break;
     case STANDARD_CODE_FCP3:
-        sprintf(versionString, "FCP-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FCP-3");
         break;
     case STANDARD_CODE_ADT2:
-        sprintf(versionString, "ADT-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADT-2");
         break;
     case STANDARD_CODE_FCP4:
-        sprintf(versionString, "FCP-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FCP-4");
         break;
     case STANDARD_CODE_ADT3:
-        sprintf(versionString, "ADT-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADT-3");
         break;
             //85 - 94 Parallel SCSI Physical
     case STANDARD_CODE_SPI:
-        sprintf(versionString, "SPI");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPI");
         break;
     case STANDARD_CODE_FAST20:
-        sprintf(versionString, "Fast-20");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "Fast-20");
         break;
     case STANDARD_CODE_SPI2:
-        sprintf(versionString, "SPI-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPI-2");
         break;
     case STANDARD_CODE_SPI3:
-        sprintf(versionString, "SPI-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPI-3");
         break;
     case STANDARD_CODE_EPI:
-        sprintf(versionString, "EPI");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "EPI");
         break;
     case STANDARD_CODE_SPI4:
-        sprintf(versionString, "SPI-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPI-4");
         break;
     case STANDARD_CODE_SPI5:
-        sprintf(versionString, "SPI-5");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPI-5");
         break;
             //95 - 104 Serial Attached SCSI
     case STANDARD_CODE_SAS:
-        sprintf(versionString, "SAS");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS");
         break;
     case STANDARD_CODE_SAS1_1:
-        sprintf(versionString, "SAS-1.1");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS-1.1");
         break;
     case STANDARD_CODE_SAS2:
-        sprintf(versionString, "SAS-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS-2");
         break;
     case STANDARD_CODE_SAS2_1:
-        sprintf(versionString, "SAS-2.1");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS-2.1");
         break;
     case STANDARD_CODE_SAS3:
-        sprintf(versionString, "SAS-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS-3");
         break;
     case STANDARD_CODE_SAS4:
-        sprintf(versionString, "SAS-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS-4");
         break;
             //105 - 154 Fibre Channel
     case STANDARD_CODE_FC_PH:
-        sprintf(versionString, "FC-PH");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PH");
         break;
     case STANDARD_CODE_FC_AL:
-        sprintf(versionString, "FC-AL");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-AL");
         break;
     case STANDARD_CODE_FC_AL2:
-        sprintf(versionString, "FC-AL-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-AL-2");
         break;
     case STANDARD_CODE_AC_PH3:
-        sprintf(versionString, "FC-PH-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PH-3");
         break;
     case STANDARD_CODE_FC_FS:
-        sprintf(versionString, "FC-FS");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-FS");
         break;
     case STANDARD_CODE_FC_PI:
-        sprintf(versionString, "FC-PI");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI");
         break;
     case STANDARD_CODE_FC_PI2:
-        sprintf(versionString, "FC-PI-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI-2");
         break;
     case STANDARD_CODE_FC_FS2:
-        sprintf(versionString, "FC-FS-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-FS-2");
         break;
     case STANDARD_CODE_FC_LS:
-        sprintf(versionString, "FC-LS");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-LS");
         break;
     case STANDARD_CODE_FC_SP:
-        sprintf(versionString, "FC-SP");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-SP");
         break;
     case STANDARD_CODE_FC_PI3:
-        sprintf(versionString, "FC-PI-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI-3");
         break;
     case STANDARD_CODE_FC_PI4:
-        sprintf(versionString, "FC-PI-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI-4");
         break;
     case STANDARD_CODE_FC_10GFC:
-        sprintf(versionString, "FC 10GFC");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC 10GFC");
         break;
     case STANDARD_CODE_FC_SP2:
-        sprintf(versionString, "FC-SP-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-SP-2");
         break;
     case STANDARD_CODE_FC_FS3:
-        sprintf(versionString, "FC-FS-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-FS-3");
         break;
     case STANDARD_CODE_FC_LS2:
-        sprintf(versionString, "FC-LS-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-LS-2");
         break;
     case STANDARD_CODE_FC_PI5:
-        sprintf(versionString, "FC-PI-5");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI-5");
         break;
     case STANDARD_CODE_FC_PI6:
-        sprintf(versionString, "FC-PI-6");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI-6");
         break;
     case STANDARD_CODE_FC_FS4:
-        sprintf(versionString, "FC-FS-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-FS-4");
         break;
     case STANDARD_CODE_FC_LS3:
-        sprintf(versionString, "FC-LS-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-LS-3");
         break;
     case STANDARD_CODE_FC_SCM:
-        sprintf(versionString, "FC-SCM");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-SCM");
         break;
     case STANDARD_CODE_FC_DA2:
-        sprintf(versionString, "FC-DA-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-DA-2");
         break;
     case STANDARD_CODE_FC_DA:
-        sprintf(versionString, "FC-DA");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-DA");
         break;
     case STANDARD_CODE_FC_TAPE:
-        sprintf(versionString, "FC-Tape");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-Tape");
         break;
     case STANDARD_CODE_FC_FLA:
-        sprintf(versionString, "FC-FLA");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-FLA");
         break;
     case STANDARD_CODE_FC_PLDA:
-        sprintf(versionString, "FC-PLDA");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PLDA");
         break;
             //155 - 164 SSA
     case STANDARD_CODE_SSA_PH2:
-        sprintf(versionString, "SSA-PH2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-PH2");
         break;
     case STANDARD_CODE_SSA_PH3:
-        sprintf(versionString, "SSA-PH3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-PH3");
         break;
             //165 - 174 IEEE 1394
     case STANDARD_CODE_IEEE_1394_1995:
-        sprintf(versionString, "IEEE-1394-1995");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "IEEE-1394-1995");
         break;
     case STANDARD_CODE_IEEE_1394a:
-        sprintf(versionString, "IEEE-1394a");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "IEEE-1394a");
         break;
     case STANDARD_CODE_IEEE_1394b:
-        sprintf(versionString, "IEEE-1394b");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "IEEE-1394b");
         break;
             //175 - 200 ATAPI & USB
     case STANDARD_CODE_ATA_ATAPI6:
-        sprintf(versionString, "ATA/ATAPI-6");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ATA/ATAPI-6");
         break;
     case STANDARD_CODE_ATA_ATAPI7:
-        sprintf(versionString, "ATA/ATAPI-7");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ATA/ATAPI-7");
         break;
     case STANDARD_CODE_ATA_ATAPI8:
-        sprintf(versionString, "ATA8-ACS");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ATA8-ACS");
         break;
     case STANDARD_CODE_USB:
         switch (versionDescriptor)
         {
         case 0x1728: //USB 1.1
-            sprintf(versionString, "USB-1.1");
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "USB-1.1");
             break;
         case 0x1729: //USB 2.0
-            sprintf(versionString, "USB-2.0");
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "USB-2.0");
             break;
         case 0x1730: //USB BOT
-            sprintf(versionString, "USB-BOT");
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "USB-BOT");
             break;
         default:
-            sprintf(versionString, "USB");
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "USB");
             break;
         }
         break;
     case STANDARD_CODE_UAS:
-        sprintf(versionString, "UAS");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "UAS");
         break;
     case STANDARD_CODE_ACSx:
         //special case, look at the version descriptor to set an exact version number
@@ -10223,75 +4116,75 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
         {
         case 0x1761: //ACS-2
         case 0x1762:
-            sprintf(versionString, "ACS-2");
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ACS-2");
             break;
         case 0x1765: //ACS-3
         case 0x1766: //ACS-3 INCITS 522-2014
-            sprintf(versionString, "ACS-3");
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ACS-3");
             break;
         case 0x1767: //ACS-4 INCITS 529-2018
-            sprintf(versionString, "ACS-4");
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ACS-4");
             break;
         default:
-            sprintf(versionString, "ACS-x");
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ACS-x");
             break;
         }
         break;
     case STANDARD_CODE_UAS2:
-        sprintf(versionString, "UAS-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "UAS-2");
         break;
             //201 - 224 Networking
             //225 - 244 ATM
             //245 - 260 Translators
     case STANDARD_CODE_SAT:
-        sprintf(versionString, "SAT");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAT");
         break;
     case STANDARD_CODE_SAT2:
-        sprintf(versionString, "SAT-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAT-2");
         break;
     case STANDARD_CODE_SAT3:
-        sprintf(versionString, "SAT-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAT-3");
         break;
     case STANDARD_CODE_SAT4:
-        sprintf(versionString, "SAT-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAT-4");
         break;
             //261 - 270 SAS Transport Protocols
     case STANDARD_CODE_SPL:
-        sprintf(versionString, "SPL");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPL");
         break;
     case STANDARD_CODE_SPL2:
-        sprintf(versionString, "SPL-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPL-2");
         break;
     case STANDARD_CODE_SPL3:
-        sprintf(versionString, "SPL-3");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPL-3");
         break;
     case STANDARD_CODE_SPL4:
-        sprintf(versionString, "SPL-4");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPL-4");
         break;
             //271 - 290 SCSI over PCI Extress Transport Protocols
     case STANDARD_CODE_SOP:
-        sprintf(versionString, "SOP");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SOP");
         break;
     case STANDARD_CODE_PQI:
-        sprintf(versionString, "PQI");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "PQI");
         break;
     case STANDARD_CODE_SOP2:
-        sprintf(versionString, "SOP-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SOP-2");
         break;
     case STANDARD_CODE_PQI2:
-        sprintf(versionString, "PQI-2");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "PQI-2");
         break;
             //291 - 2045 Reserved for Expansion
     case STANDARD_CODE_IEEE_1667:
-        sprintf(versionString, "IEEE-1667");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "IEEE-1667");
         break;
     case STANDARD_CODE_RESERVED:
-        sprintf(versionString, "RESERVED");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "RESERVED");
         break;
     case STANDARD_CODE_NOT_SUPPORTED:
     default:
-        sprintf(versionString, "----");
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "----");
         break;
     }
-    strcat(versionString, "\0");
+    return;
 }

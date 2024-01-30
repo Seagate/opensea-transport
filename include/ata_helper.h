@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -24,6 +24,7 @@ extern "C"
     #define ATA_STATUS_BIT_BUSY BIT7 //if this is set, all other bits are invalid and not to be used
     #define ATA_STATUS_BIT_READY BIT6
     #define ATA_STATUS_BIT_DEVICE_FAULT BIT5 //also called the write fault bit
+    #define ATA_STATUS_BIT_STREAM_ERROR BIT5
     #define ATA_STATUS_BIT_SEEK_COMPLETE BIT4 //old/obsolete and unused. Old drives still set it for backwards compatability
     #define ATA_STATUS_BIT_SERVICE BIT4 //DMA Queued commands. Tagged command queuing AFAIK
     #define ATA_STATUS_BIT_DEFERRED_WRITE_ERROR BIT4 //write stream commands
@@ -32,9 +33,10 @@ extern "C"
     #define ATA_STATUS_BIT_ALIGNMENT_ERROR BIT2
     #define ATA_STATUS_BIT_INDEX BIT1 //old/obsolete. flips state with each drive revolution
     #define ATA_STATUS_BIT_SENSE_DATA_AVAILABLE BIT1 //set when sense data is available for the command
+    #define ATA_STATUS_BIT_CHECK_CONDITION BIT0 //ATAPI
     #define ATA_STATUS_BIT_ERROR BIT0 //an error occured
 
-    #define ATA_ERROR_BIT_BAD_BLOCK BIT7 //old/obsolete
+    #define ATA_ERROR_BIT_BAD_BLOCK BIT7 //old/obsolete - ATA-1
     #define ATA_ERROR_BIT_INTERFACE_CRC BIT7
     #define ATA_ERROR_BIT_UNCORRECTABLE_DATA BIT6
     #define ATA_ERROR_BIT_WRITE_PROTECTED BIT6 //old/obsolete - removable medium
@@ -43,10 +45,15 @@ extern "C"
     #define ATA_ERROR_BIT_MEDIA_CHANGE_REQUEST BIT3
     #define ATA_ERROR_BIT_ABORT BIT2
     #define ATA_ERROR_BIT_TRACK_ZERO_NOT_FOUND BIT1 //old/obsolete
-    #define ATA_ERROR_BIT_END_OF_MEDIA BIT1
+    #define ATA_ERROR_BIT_END_OF_MEDIA BIT1 //ATAPI
     #define ATA_ERROR_BIT_NO_MEDIA BIT1 //old/obsolete - removable medium
+    #define ATA_ERROR_BIT_INSUFFICIENT_LBA_RANGE_ENTRIES_REMAINING BIT1 //add LBAs to NV cache pinned set command only - ranges
     #define ATA_ERROR_BIT_ADDRESS_MARK_NOT_FOUND BIT0 //old/obsolete
     #define ATA_ERROR_BIT_COMMAND_COMPLETION_TIME_OUT BIT0 //streaming feature
+    #define ATAPI_ERROR_BIT_ILLEGAL_LENGTH_INDICATOR BIT0
+    #define ATAPI_ERROR_BIT_MEDIA_ERROR BIT0
+    #define ATA_ERROR_BIT_ATTEMPTED_PARTIAL_RANGE_REMOVAL BIT0 //remove LBAs from NV cache pinned set command only
+    #define ATA_ERROR_BIT_INSUFFICIENT_NV_CACHE_SPACE BIT0 //add LBAs to NV cache pinned set command only
 
     #define ATA_DL_MICROCODE_OFFSET_SAVE (0x03)
     #define ATA_DL_MICROCODE_SAVE (0x07)
@@ -55,7 +62,25 @@ extern "C"
 
     #define LBA_MODE_BIT BIT6 //Set this in the device/head register to set LBA mode.
     #define DEVICE_SELECT_BIT BIT4 //On PATA, this is to select drive 1. Device/Head register
-    #define DEVICE_REG_BACKWARDS_COMPATIBLE_BITS 0xA0 //device/head in ATA & ATA3 say these bits should be set on every command. New specs mark these obsolete in commands that are from old specs. New commands may use these for other purposes.
+    #define DEVICE_REG_BACKWARDS_COMPATIBLE_BITS 0xA0 
+            //device/head in ATA & ATA3 say bits 7&5 should be set on every command. 
+            //New specs mark these obsolete in commands that are from old specs. 
+            //New commands may use these for other purposes.
+            //Device/Head pre-ATA standardization called this the Sector Size, Device, Head register
+            //bit7 was defined as the ECC bit. With this set to zero it used CRC
+            //bits 6:5 were the sector size. 11b=128B, 00b=256B, 01b=512B, 10b=1024B.
+            //With standardization forcing these bits to A0 sets ECC and 512B sector size, which is all that was likely used in the real-world
+            //For backwards compatibility with these really old devices, it is recommended to set this register to these values.
+            //This is not necessary for SATA drives unless they are aborting commands for no other reason.
+            //Setting these bits may not be necessary for most PATA devices that conform to ATA standards
+
+    //This is a basic validity indicator for a given ATA identify word. Checks that it is non-zero and not FFFFh
+    OPENSEA_TRANSPORT_API bool is_ATA_Identify_Word_Valid(uint16_t word);
+    //This one is a little more advanced as some words specify bit 15 is zero and bit 14 is 1 as a key, so it checks for this in addition to checking non-zero and non FFFFh
+    //example: Word 83, 84, 87, 93 (pata), 106, 119, 120, 209
+    OPENSEA_TRANSPORT_API bool is_ATA_Identify_Word_Valid_With_Bits_14_And_15(uint16_t word);
+    //checks same as is_ATA_Identify_Word_Valid and that bit 0 is cleared to zero in the SATA words (76 - 79)
+    OPENSEA_TRANSPORT_API bool is_ATA_Identify_Word_Valid_SATA(uint16_t word);
 
     #define ATA_CHECKSUM_VALIDITY_INDICATOR 0xA5
 
@@ -125,6 +150,9 @@ extern "C"
     #define ATA_SMART_STATUS_FLAG_EVENT_COUNT BIT4
     #define ATA_SMART_STATUS_FLAG_SELF_PRESERVING BIT5
 
+    #define ATA_SMART_ATTRIBUTE_NOMINAL_COMMON_START 0x64 //most attributes start at 100, but there are occasionally some that don't
+    #define ATA_SMART_ATTRIBUTE_WORST_COMMON_START 0xFD //It's fairly common for a worst-ever to start at this highest possible value then move down as data is collected.
+
     #define ATA_SMART_THRESHOLD_ALWAYS_PASSING 0x00
     #define ATA_SMART_THRESHOLD_MINIMUM 0x01
     #define ATA_SMART_THRESHOLD_MAXIMUM 0xFD
@@ -133,6 +161,9 @@ extern "C"
 
     #define ATA_SMART_ATTRIBUTE_AUTOSAVE_ENABLE_SIG 0xF1
     #define ATA_SMART_AUTO_OFFLINE_ENABLE_SIG 0xF8
+
+    #define ATA_SMART_ATTRIBUTE_AUTOSAVE_DISABLE_SIG 0x00
+    #define ATA_SMART_AUTO_OFFLINE_DISABLE_SIG 0x00
 
     typedef enum _eATA_CMDS {
         ATA_NOP_CMD                             = 0x00,
@@ -143,11 +174,11 @@ extern "C"
         ATAPI_RESET                             = 0x08,
         ATA_DEV_RESET                           = 0x08,
         ATA_REQUEST_SENSE_DATA                  = 0x0B,
-        ATA_RECALIBRATE                         = 0x10,
+        ATA_RECALIBRATE_CMD                     = 0x10,
         ATA_GET_PHYSICAL_ELEMENT_STATUS         = 0x12,
         ATA_READ_SECT                           = 0x20,
         ATA_READ_SECT_NORETRY                   = 0x21,
-        ATA_READ_LONG_RETRY                     = 0x22,
+        ATA_READ_LONG_RETRY_CMD                 = 0x22,
         ATA_READ_LONG_NORETRY                   = 0x23,
         ATA_READ_SECT_EXT                       = 0x24,
         ATA_READ_DMA_EXT                        = 0x25,
@@ -159,7 +190,7 @@ extern "C"
         ATA_READ_LOG_EXT                        = 0x2F,
         ATA_WRITE_SECT                          = 0x30,
         ATA_WRITE_SECT_NORETRY                  = 0x31,
-        ATA_WRITE_LONG_RETRY                    = 0x32,
+        ATA_WRITE_LONG_RETRY_CMD                = 0x32,
         ATA_WRITE_LONG_NORETRY                  = 0x33,
         ATA_WRITE_SECT_EXT                      = 0x34,
         ATA_WRITE_DMA_EXT                       = 0x35,
@@ -180,7 +211,7 @@ extern "C"
         ATA_WRITE_UNCORRECTABLE_EXT             = 0x45,
         ATA_READ_LOG_EXT_DMA                    = 0x47,
         ATA_ZONE_MANAGEMENT_IN                  = 0x4A,
-        ATA_FORMAT_TRACK                        = 0x50,
+        ATA_FORMAT_TRACK_CMD                    = 0x50,
         ATA_CONFIGURE_STREAM                    = 0x51,
         ATA_WRITE_LOG_EXT_DMA                   = 0x57,
         ATA_TRUSTED_NON_DATA                    = 0x5B,
@@ -198,22 +229,24 @@ extern "C"
         ATA_ACCESSABLE_MAX_ADDR                 = 0x78,
         ATA_REMOVE_AND_TRUNCATE                 = 0x7C,
         ATA_RESTORE_AND_REBUILD                 = 0x7D,
+        ATA_REMOVE_ELEMENT_AND_MODIFY_ZONES     = 0x7E,
         ATA_CFA_TRANSLATE_SECTOR                = 0x87,
         ATA_EXEC_DRV_DIAG                       = 0x90,
         ATA_INIT_DRV_PARAM                      = 0x91,
         ATA_DLND_CODE                           = 0x92,
-        ATA_DOWNLOAD_MICROCODE                  = 0x92,
+        ATA_DOWNLOAD_MICROCODE_CMD              = 0x92,
         ATA_DOWNLOAD_MICROCODE_DMA              = 0x93,
         ATA_LEGACY_ALT_STANDBY_IMMEDIATE        = 0x94,
         ATA_LEGACY_ALT_IDLE_IMMEDIATE           = 0x95,
         ATA_LEGACY_ALT_STANDBY                  = 0x96,
+        ATA_MUTATE_EXT                          = 0x96,
         ATA_LEGACY_ALT_IDLE                     = 0x97,
         ATA_LEGACY_ALT_CHECK_POWER_MODE         = 0x98,
         ATA_LEGACY_ALT_SLEEP                    = 0x99,
         ATA_ZONE_MANAGEMENT_OUT                 = 0x9F,
         ATAPI_COMMAND                           = 0xA0,
         ATAPI_IDENTIFY                          = 0xA1,
-        ATA_SMART                               = 0xB0,
+        ATA_SMART_CMD                           = 0xB0,
         ATA_DCO                                 = 0xB1,
         ATA_SET_SECTOR_CONFIG_EXT               = 0xB2,
         ATA_SANITIZE                            = 0xB4,
@@ -222,13 +255,13 @@ extern "C"
         ATA_CFA_KEY_MANAGEMENT                  = 0xB9,
         ATA_CFA_STREAMING_PERFORMANCE           = 0xBB,
         ATA_CFA_ERASE_SECTORS                   = 0xC0,
-        ATA_READ_MULTIPLE                       = 0xC4,
-        ATA_WRITE_MULTIPLE                      = 0xC5,
+        ATA_READ_MULTIPLE_CMD                   = 0xC4,
+        ATA_WRITE_MULTIPLE_CMD                  = 0xC5,
         ATA_SET_MULTIPLE                        = 0xC6,
         ATA_READ_DMA_QUEUED_CMD                 = 0xC7,
-        ATA_READ_DMA_RETRY                      = 0xC8,
+        ATA_READ_DMA_RETRY_CMD                  = 0xC8,
         ATA_READ_DMA_NORETRY                    = 0xC9,
-        ATA_WRITE_DMA_RETRY                     = 0xCA,
+        ATA_WRITE_DMA_RETRY_CMD                 = 0xCA,
         ATA_WRITE_DMA_NORETRY                   = 0xCB,
         ATA_WRITE_DMA_QUEUED_CMD                = 0xCC,
         ATA_WRITE_MULTIPLE_FUA_EXT              = 0xCE,
@@ -237,16 +270,16 @@ extern "C"
         ATA_ACK_MEDIA_CHANGE                    = 0xDB,
         ATA_POST_BOOT                           = 0xDC,
         ATA_PRE_BOOT                            = 0xDD,
-        ATA_DOOR_LOCK                           = 0xDE,
-        ATA_DOOR_UNLOCK                         = 0xDF,
+        ATA_DOOR_LOCK_CMD                       = 0xDE,
+        ATA_DOOR_UNLOCK_CMD                     = 0xDF,
         ATA_STANDBY_IMMD                        = 0xE0,
         ATA_IDLE_IMMEDIATE_CMD                  = 0xE1,
-        ATA_STANDBY                             = 0xE2,
-        ATA_IDLE                                = 0xE3,
+        ATA_STANDBY_CMD                         = 0xE2,
+        ATA_IDLE_CMD                            = 0xE3,
         ATA_READ_BUF                            = 0xE4,
-        ATA_CHECK_POWER_MODE                    = 0xE5,
+        ATA_CHECK_POWER_MODE_CMD                = 0xE5,
         ATA_SLEEP_CMD                           = 0xE6,
-        ATA_FLUSH_CACHE                         = 0xE7,
+        ATA_FLUSH_CACHE_CMD                     = 0xE7,
         ATA_WRITE_BUF                           = 0xE8,
         ATA_READ_BUF_DMA                        = 0xE9,
         ATA_LEGACY_WRITE_SAME                   = 0xE9,
@@ -429,6 +462,8 @@ extern "C"
         bool                            fwdlLastSegment;//firmware download unique flag to help low-level OSs (Windows)
     } ataPassthroughCommand;
 
+#define SMART_ATTRIBUTE_RAW_DATA_BYTE_COUNT UINT8_C(7)
+
     //added these packs to make sure this structure gets interpreted correctly
     // in the code when I point it to a buffer and try and access it.
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
@@ -440,7 +475,7 @@ extern "C"
         uint16_t    status;//bit 0 = prefail warranty bit, bit 1 = online collection, bit 2 = performance, bit 3 = error rate, bit 4 = even counter, bit 5 = self preserving
         uint8_t     nominal;
         uint8_t     worstEver;
-        uint8_t     rawData[7];//attribute and vendor specific
+        uint8_t     rawData[SMART_ATTRIBUTE_RAW_DATA_BYTE_COUNT];//attribute and vendor specific
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataSMARTAttribute;
     #pragma pack(pop)
@@ -448,6 +483,7 @@ extern "C"
     }__attribute__((packed,aligned(1))) ataSMARTAttribute;
     #endif
 
+#define SMART_THRESHOLD_RESERVED_DATA_BYTE_COUNT UINT8_C(10)
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     #pragma pack(push, 1)
     #endif
@@ -455,7 +491,7 @@ extern "C"
     {
         uint8_t      attributeNumber;
         uint8_t      thresholdValue;
-        uint8_t      reservedBytes[10];
+        uint8_t      reservedBytes[SMART_THRESHOLD_RESERVED_DATA_BYTE_COUNT];
     #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
     }ataSMARTThreshold;
     #pragma pack(pop)
@@ -552,9 +588,10 @@ extern "C"
         bool                 isWarrantied;
     } ataSMARTValue;
 
+#define ATA_SMART_LOG_MAX_ATTRIBUTES (256)
     typedef struct _ataSMARTLog 
     {
-        ataSMARTValue    attributes[256];//attribute numbers 1 - 255 are valid (check valid bit to make sure it's a used attribute)
+        ataSMARTValue    attributes[ATA_SMART_LOG_MAX_ATTRIBUTES];//attribute numbers 1 - 255 are valid (check valid bit to make sure it's a used attribute)
     } ataSMARTLog;
 
     typedef enum _eNVCacheFeatures {
@@ -645,6 +682,8 @@ extern "C"
        SF_MAXIMUM_HOST_INTERFACE_SECTOR_TIMES                           = 0x43,
        SF_LEGACY_SET_VENDOR_SPECIFIC_ECC_BYTES_FOR_READ_WRITE_LONG      = 0x44,//defined in ATA, obsolete in ATA4
        SF_SET_RATE_BASIS                                                = 0x45,
+       SF_ZAC_ZONE_ACTIVATION_CONTROL                                   = 0x46,//ZAC2 to set the number of zones. Can affect the zone activate ext command or the zone query ext command
+       SF_ZAC_UPDATE_UNRESTRICTED_READ_S_WHILE_READING_ZONES            = 0x47,//ZAC2 update URSWRZ
        SF_EXTENDED_POWER_CONDITIONS                                     = 0x4A,
        SF_SET_CACHE_SEGMENTS                                            = 0x54,//defined in ATA3, obsolete in ATA4
        SF_DISABLE_READ_LOOK_AHEAD_FEATURE                               = 0x55,
@@ -689,6 +728,17 @@ extern "C"
        //F0 - FF are reserved for CFA
        SF_UNKNOWN_FEATURE
    } eATASetFeaturesSubcommands;
+
+   typedef enum _eWRVMode
+   {
+       ATA_WRV_MODE_ALL     = 0x00,//mode 0
+       ATA_WRV_MODE_65536   = 0x01,//mode 1
+       ATA_WRV_MODE_VENDOR  = 0x02,//mode 2
+       ATA_WRV_MODE_USER    = 0x03 //mode 3
+   }eWRVMode;
+
+#define MAX_WRV_USER_SECTORS UINT32_C(261120)
+#define WRV_USER_MULTIPLIER UINT16_C(1024) //sector count * this = number of sectors being verified in this mode.
 
    //this is the 7:3 bits of the count register for the SF_SET_TRANSFER_MODE option
    //Bits 2:0 can be used to specify the mode.
@@ -813,6 +863,38 @@ extern "C"
        ATA_LOG_CONCURRENT_POSITIONING_RANGES            = 0x47,
        ATA_LOG_SENSE_DATA                               = 0x53,
        //80h - 9F are host specific logs
+       ATA_LOG_HOST_SPECIFIC_80H                        = 0x80,
+       ATA_LOG_HOST_SPECIFIC_81H                        = 0x81,
+       ATA_LOG_HOST_SPECIFIC_82H                        = 0x82,
+       ATA_LOG_HOST_SPECIFIC_83H                        = 0x83,
+       ATA_LOG_HOST_SPECIFIC_84H                        = 0x84,
+       ATA_LOG_HOST_SPECIFIC_85H                        = 0x85,
+       ATA_LOG_HOST_SPECIFIC_86H                        = 0x86,
+       ATA_LOG_HOST_SPECIFIC_87H                        = 0x87,
+       ATA_LOG_HOST_SPECIFIC_88H                        = 0x88,
+       ATA_LOG_HOST_SPECIFIC_89H                        = 0x89,
+       ATA_LOG_HOST_SPECIFIC_8AH                        = 0x8A,
+       ATA_LOG_HOST_SPECIFIC_8BH                        = 0x8B,
+       ATA_LOG_HOST_SPECIFIC_8CH                        = 0x8C,
+       ATA_LOG_HOST_SPECIFIC_8DH                        = 0x8D,
+       ATA_LOG_HOST_SPECIFIC_8EH                        = 0x8E,
+       ATA_LOG_HOST_SPECIFIC_8FH                        = 0x8F,
+       ATA_LOG_HOST_SPECIFIC_90H                        = 0x90,
+       ATA_LOG_HOST_SPECIFIC_91H                        = 0x91,
+       ATA_LOG_HOST_SPECIFIC_92H                        = 0x92,
+       ATA_LOG_HOST_SPECIFIC_93H                        = 0x93,
+       ATA_LOG_HOST_SPECIFIC_94H                        = 0x94,
+       ATA_LOG_HOST_SPECIFIC_95H                        = 0x95,
+       ATA_LOG_HOST_SPECIFIC_96H                        = 0x96,
+       ATA_LOG_HOST_SPECIFIC_97H                        = 0x97,
+       ATA_LOG_HOST_SPECIFIC_98H                        = 0x98,
+       ATA_LOG_HOST_SPECIFIC_99H                        = 0x99,
+       ATA_LOG_HOST_SPECIFIC_9AH                        = 0x9A,
+       ATA_LOG_HOST_SPECIFIC_9BH                        = 0x9B,
+       ATA_LOG_HOST_SPECIFIC_9CH                        = 0x9C,
+       ATA_LOG_HOST_SPECIFIC_9DH                        = 0x9D,
+       ATA_LOG_HOST_SPECIFIC_9EH                        = 0x9E,
+       ATA_LOG_HOST_SPECIFIC_9FH                        = 0x9F,
        //A0-DF are vendor specific logs
        ATA_SCT_COMMAND_STATUS                           = 0xE0,
        ATA_SCT_DATA_TRANSFER                            = 0xE1,
@@ -831,6 +913,7 @@ extern "C"
        ATA_ID_DATA_LOG_SERIAL_ATA               = 0x08,
        ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION = 0x09,
    }eIdentifyDeviceDataLogPage;
+    #define ATA_ID_DATA_SUP_PG_LIST_OFFSET UINT16_C(9) //when reading the ID Data log's list of supported pages, this is the offset to start at to find the page numbers that are supported.
 
     //
    typedef enum _eDeviceStatisticsLog //Log Address 04h, ACS-4 Section 9.5
@@ -957,7 +1040,7 @@ extern "C"
        ATA_MINOR_VERSION_ATA8_ACS_REV_3C        = 0x0027, //ATA8-ACS version 3c
        ATA_MINOR_VERSION_ATA8_ACS_REV_6         = 0x0028, //ATA8-ACS version 6
        ATA_MINOR_VERSION_ATA8_ACS_REV_4         = 0x0029, //ATA8-ACS version 4
-
+       ATA_MINOR_VERSION_ACS5_REV_8             = 0x0030, //ACS-5 version 8
        ATA_MINOR_VERSION_ACS2_REV_2             = 0x0031, //ASC-2 Revision 2
 
        ATA_MINOR_VERSION_ATA8_ACS_REV_3E        = 0x0033, //ATA8-ACS version 3e
@@ -972,7 +1055,11 @@ extern "C"
 
        ATA_MINOR_VERSION_ACS3_REV_5             = 0x006D, //ACS-3 Revision 5
 
+       ATA_MINOR_VERSION_ACS6_REV_2             = 0x0073, //ACS-6 Revision 2
+
        ATA_MINOR_VERSION_ACS_2_PUBLISHED        = 0x0082, //ACS-2 published, ANSI INCITS 482-2012
+
+       ATA_MINOR_VERSION_ACS4_PUBLISHED         = 0x009C, //ACS-4 published, ANSI, INCITS 529-2018
 
        ATA_MINOR_VERSION_ATA8_ACS_REV_2D        = 0x0107, //ATA8-ACS version 2d
 
@@ -984,6 +1071,18 @@ extern "C"
 
        ATA_MINOR_VERSION_NOT_REPORTED_2         = 0xFFFF
    }eATAMinorVersionNumber;
+
+   typedef enum _eZACMinorVersionNumber
+   {
+       ZAC_MINOR_VERSION_NOT_REPORTED           = 0x0000,
+       ZAC_MINOR_VERSION_ZAC_REV_5              = 0x05CF,//ZAC revision 05
+       ZAC_MINOR_VERSION_ZAC2_REV_15            = 0x3612,//ZAC2 rev 15
+       ZAC_MINOR_VERSION_ZAC2_REV_1B            = 0x7317,//ZAC2 rev 1b
+       ZAC_MINOR_VERSION_ZAC_REV_4              = 0xA36C,//ZAC revision 04
+       ZAC_MINOR_VERSION_ZAC2_REV12             = 0xB403,//ZAC2 revision 12
+       ZAC_MINOR_VERSION_ZAC_REV_1              = 0xB6E8,//ZAC Revision 1
+       ZAC_MINOR_VERSION_NOT_REPORTED_2         = 0xFFFF
+   }eZACMinorVersionNumber;
 
    #define ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS UINT8_C(128)
 

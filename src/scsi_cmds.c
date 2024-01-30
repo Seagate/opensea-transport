@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -25,7 +25,7 @@ int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields)
     ptrSenseDataFields localSenseFields = NULL;
     if (!pSenseFields)
     {
-        localSenseFields = (ptrSenseDataFields)calloc(1, sizeof(senseDataFields));
+        localSenseFields = C_CAST(ptrSenseDataFields, calloc(1, sizeof(senseDataFields)));
         if (!localSenseFields)
         {
             return MEMORY_FAILURE;
@@ -93,7 +93,7 @@ int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields)
 
     if ((scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > scsiIoCtx->timeout)
     {
-        ret = COMMAND_TIMEOUT;
+        ret = OS_COMMAND_TIMEOUT;
     }
 
     //Send a test unit ready command if a problem was found to keep the device performing optimally
@@ -126,7 +126,7 @@ int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields)
 
     if (localSenseFieldsAllocated)
     {
-        safe_Free(localSenseFields);
+        safe_Free(localSenseFields)
     }
     return ret;
 }
@@ -384,7 +384,7 @@ int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit,
         memcpy(&overwriteBuffer[4], pattern, patternLengthBytes);
     }
     ret = scsi_Sanitize_Cmd(device, SCSI_SANITIZE_OVERWRITE, immediate, znr, allowUnrestrictedSanitizeExit, patternLengthBytes + 4, overwriteBuffer);
-    safe_Free_aligned(overwriteBuffer);
+    safe_Free_aligned(overwriteBuffer)
     return ret;
 }
 
@@ -792,7 +792,7 @@ int scsi_Write_Buffer(tDevice *device, eWriteBufferMode mode, uint8_t modeSpecif
 
     // Set up the CDB.
     cdb[OPERATION_CODE] = WRITE_BUFFER_CMD;
-    cdb[1] = (uint8_t)mode;
+    cdb[1] = C_CAST(uint8_t, mode);
     cdb[1] |= (modeSpecific & 0x07) << 5;
     cdb[2] = bufferID;
     cdb[3] = M_Byte2(bufferOffset);
@@ -1787,6 +1787,42 @@ int scsi_Format_Unit(tDevice *device, uint8_t fmtpInfo, bool longList, bool fmtD
     return ret;
 }
 
+int scsi_Format_With_Preset(tDevice* device, bool immed, bool fmtmaxlba, uint32_t presetID, uint32_t timeoutSeconds)
+{
+    int ret = FAILURE;
+    uint8_t cdb[CDB_LEN_10] = { 0 };
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending SCSI Format With Preset\n");
+    }
+
+    cdb[OPERATION_CODE] = SCSI_FORMAT_WITH_PRESET_CMD;
+    if (immed)
+    {
+        cdb[1] |= BIT7;
+    }
+    if (fmtmaxlba)
+    {
+        cdb[1] |= BIT6;
+    }
+    cdb[2] = M_Byte3(presetID);
+    cdb[3] = M_Byte2(presetID);
+    cdb[4] = M_Byte1(presetID);
+    cdb[5] = M_Byte0(presetID);
+    cdb[6] = RESERVED;
+    cdb[7] = RESERVED;
+    cdb[8] = RESERVED;
+    cdb[9] = 0;//control byte
+
+    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeoutSeconds);
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Format With Preset", ret);
+    }
+    return ret;
+}
+
 int scsi_Get_Lba_Status(tDevice *device, uint64_t logicalBlockAddress, uint32_t allocationLength, uint8_t *ptrData)
 {
     int       ret = FAILURE;
@@ -2603,7 +2639,7 @@ int scsi_Start_Stop_Unit(tDevice *device, bool immediate, uint8_t powerCondition
     }
     if (start)
     {
-        cdb[5] |= BIT0;
+        cdb[4] |= BIT0;
     }
     cdb[5] = 0;//control
     
@@ -3279,10 +3315,10 @@ int scsi_Write_And_Verify_16(tDevice *device, uint8_t wrprotect, bool dpo, uint8
         cdb[1] |= BIT4;
     }
     cdb[1] |= (byteCheck & 0x03) << 1;
-    cdb[6] = M_Byte7(logicalBlockAddress);
-    cdb[6] = M_Byte6(logicalBlockAddress);
-    cdb[6] = M_Byte5(logicalBlockAddress);
-    cdb[6] = M_Byte4(logicalBlockAddress);
+    cdb[2] = M_Byte7(logicalBlockAddress);
+    cdb[3] = M_Byte6(logicalBlockAddress);
+    cdb[4] = M_Byte5(logicalBlockAddress);
+    cdb[5] = M_Byte4(logicalBlockAddress);
     cdb[6] = M_Byte3(logicalBlockAddress);
     cdb[7] = M_Byte2(logicalBlockAddress);
     cdb[8] = M_Byte1(logicalBlockAddress);
@@ -3746,13 +3782,13 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    {
 //        cdb[1] |= BIT0;
 //    }
-//    cdb[2] = (uint8_t)(logicalBlockAddress >> 24);
-//    cdb[3] = (uint8_t)(logicalBlockAddress >> 16);
-//    cdb[4] = (uint8_t)(logicalBlockAddress >> 8);
-//    cdb[5] = (uint8_t)logicalBlockAddress;
+//    cdb[2] = C_CAST(uint8_t, logicalBlockAddress >> 24);
+//    cdb[3] = C_CAST(uint8_t, logicalBlockAddress >> 16);
+//    cdb[4] = C_CAST(uint8_t, logicalBlockAddress >> 8);
+//    cdb[5] = C_CAST(uint8_t, logicalBlockAddress);
 //    cdb[6] = groupNumber & 0x1F;
-//    cdb[7] = (uint8_t)(transferLength >> 8);
-//    cdb[8] = (uint8_t)transferLength;
+//    cdb[7] = C_CAST(uint8_t, transferLength >> 8);
+//    cdb[8] = C_CAST(uint8_t, transferLength);
 //    cdb[9] = 0;//control
 //
 //    // Set up the CTX
@@ -3848,14 +3884,14 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //        cdb[10] |= BIT0;
 //    }
 //    cdb[11] = RESERVED;
-//    cdb[12] = (uint8_t)(logicalBlockAddress >> 56);
-//    cdb[13] = (uint8_t)(logicalBlockAddress >> 48);
-//    cdb[14] = (uint8_t)(logicalBlockAddress >> 40);
-//    cdb[15] = (uint8_t)(logicalBlockAddress >> 32);
-//    cdb[16] = (uint8_t)(logicalBlockAddress >> 24);
-//    cdb[17] = (uint8_t)(logicalBlockAddress >> 16);
-//    cdb[18] = (uint8_t)(logicalBlockAddress >> 8);
-//    cdb[19] = (uint8_t)logicalBlockAddress;
+//    cdb[12] = C_CAST(uint8_t, logicalBlockAddress >> 56);
+//    cdb[13] = C_CAST(uint8_t, logicalBlockAddress >> 48);
+//    cdb[14] = C_CAST(uint8_t, logicalBlockAddress >> 40);
+//    cdb[15] = C_CAST(uint8_t, logicalBlockAddress >> 32);
+//    cdb[16] = C_CAST(uint8_t, logicalBlockAddress >> 24);
+//    cdb[17] = C_CAST(uint8_t, logicalBlockAddress >> 16);
+//    cdb[18] = C_CAST(uint8_t, logicalBlockAddress >> 8);
+//    cdb[19] = C_CAST(uint8_t, logicalBlockAddress);
 //    cdb[20] = RESERVED;
 //    cdb[21] = RESERVED;
 //    cdb[22] = RESERVED;
@@ -3864,10 +3900,10 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    cdb[25] = RESERVED;
 //    cdb[26] = RESERVED;
 //    cdb[27] = RESERVED;
-//    cdb[28] = (uint8_t)(transferLength >> 24);
-//    cdb[29] = (uint8_t)(transferLength >> 16);
-//    cdb[30] = (uint8_t)(transferLength >> 8);
-//    cdb[31] = (uint8_t)transferLength;
+//    cdb[28] = C_CAST(uint8_t, transferLength >> 24);
+//    cdb[29] = C_CAST(uint8_t, transferLength >> 16);
+//    cdb[30] = C_CAST(uint8_t, transferLength >> 8);
+//    cdb[31] = C_CAST(uint8_t, transferLength);
 //
 //    // Set up the CTX
 //    scsiIoCtx.device = device;
@@ -4008,7 +4044,125 @@ int scsi_xp_Write_32(tDevice *device, bool dpo, bool fua, bool xoprinfo, uint64_
     return ret;
 }
 
-int scsi_Zone_Management_In(tDevice *device, eZMAction action, uint8_t actionSpecific, uint32_t allocationLength, uint64_t actionSpecificLBA, uint8_t *ptrData)//95h
+int scsi_Zone_Management_Out_Std_Format_CDB(tDevice *device, eZMAction action, uint64_t zoneID, uint16_t zoneCount, bool all, uint16_t commandSPecific_10_11, uint8_t cmdSpecificBits1, uint8_t actionSpecific14)//94h
+{
+    int ret = FAILURE;
+    uint8_t cdb[CDB_LEN_16] = { 0 };
+
+    switch (action)
+    {
+    case ZM_ACTION_CLOSE_ZONE:
+    case ZM_ACTION_FINISH_ZONE:
+    case ZM_ACTION_OPEN_ZONE:
+    case ZM_ACTION_RESET_WRITE_POINTERS:
+    case ZM_ACTION_SEQUENTIALIZE_ZONE:
+        break;
+    default://Need to add new zm actions as they are defined in the spec
+        return BAD_PARAMETER;
+    }
+
+    //strip invalid bits from cmdspecific fields to avoid collision issues later
+    cmdSpecificBits1 &= UINT8_C(0xE0);//remove bits 4:0 as these are the action field
+    M_CLEAR_BIT(actionSpecific14, 0);//remove possible collision with all bit
+
+    cdb[OPERATION_CODE] = ZONE_MANAGEMENT_OUT;
+    //set the service action
+    cdb[1] = action;
+    //set lba field
+    cdb[2] = M_Byte7(zoneID);
+    cdb[3] = M_Byte6(zoneID);
+    cdb[4] = M_Byte5(zoneID);
+    cdb[5] = M_Byte4(zoneID);
+    cdb[6] = M_Byte3(zoneID);
+    cdb[7] = M_Byte2(zoneID);
+    cdb[8] = M_Byte1(zoneID);
+    cdb[9] = M_Byte0(zoneID);
+    cdb[10] = M_Byte1(commandSPecific_10_11);
+    cdb[11] = M_Byte0(commandSPecific_10_11);
+    cdb[12] = M_Byte1(zoneCount);
+    cdb[13] = M_Byte0(zoneCount);
+    //action specific
+    cdb[14] = actionSpecific14;
+    if (all)
+    {
+        cdb[14] |= all;
+    }
+    cdb[15] = 0;//control
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending SCSI Zone Management Out\n");
+    }
+    //send the command
+    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Zone Management Out", ret);
+    }
+    return ret;
+}
+
+int scsi_Close_Zone(tDevice *device, bool all, uint64_t zoneID, uint16_t zoneCount)
+{
+    if (all)
+    {
+        return scsi_Zone_Management_Out_Std_Format_CDB(device, ZM_ACTION_CLOSE_ZONE, 0, 0, true, 0, 0, 0);
+    }
+    else
+    {
+        return scsi_Zone_Management_Out_Std_Format_CDB(device, ZM_ACTION_CLOSE_ZONE, zoneID, zoneCount, false, 0, 0, 0);
+    }
+}
+
+int scsi_Finish_Zone(tDevice *device, bool all, uint64_t zoneID, uint16_t zoneCount)
+{
+    if (all)
+    {
+        return scsi_Zone_Management_Out_Std_Format_CDB(device, ZM_ACTION_FINISH_ZONE, 0, 0, true, 0, 0, 0);
+    }
+    else
+    {
+        return scsi_Zone_Management_Out_Std_Format_CDB(device, ZM_ACTION_FINISH_ZONE, zoneID, zoneCount, false, 0, 0, 0);
+    }
+}
+
+int scsi_Open_Zone(tDevice *device, bool all, uint64_t zoneID, uint16_t zoneCount)
+{
+    if (all)
+    {
+        return scsi_Zone_Management_Out_Std_Format_CDB(device, ZM_ACTION_OPEN_ZONE, 0, 0, true, 0, 0, 0);
+    }
+    else
+    {
+        return scsi_Zone_Management_Out_Std_Format_CDB(device, ZM_ACTION_OPEN_ZONE, zoneID, zoneCount, false, 0, 0, 0);
+    }
+}
+
+int scsi_Reset_Write_Pointers(tDevice *device, bool all, uint64_t zoneID, uint16_t zoneCount)
+{
+    if (all)
+    {
+        return scsi_Zone_Management_Out_Std_Format_CDB(device, ZM_ACTION_CLOSE_ZONE, 0, 0, true, 0, 0, 0);
+    }
+    else
+    {
+        return scsi_Zone_Management_Out_Std_Format_CDB(device, ZM_ACTION_CLOSE_ZONE, zoneID, zoneCount, false, 0, 0, 0);
+    }
+}
+
+int scsi_Sequentialize_Zone(tDevice* device, bool all, uint64_t zoneID, uint16_t zoneCount)
+{
+    if (all)
+    {
+        return scsi_Zone_Management_Out_Std_Format_CDB(device, ZM_ACTION_SEQUENTIALIZE_ZONE, 0, 0, true, 0, 0, 0);
+    }
+    else
+    {
+        return scsi_Zone_Management_Out_Std_Format_CDB(device, ZM_ACTION_SEQUENTIALIZE_ZONE, zoneID, zoneCount, false, 0, 0, 0);
+    }
+}
+
+int scsi_Zone_Management_In_Report(tDevice* device, eZMAction action, uint8_t actionSpecific1, uint64_t location, bool partial, uint8_t reportingOptions, uint32_t allocationLength, uint8_t* ptrData)//95h
 {
     int ret = FAILURE;
     uint8_t cdb[CDB_LEN_16] = { 0 };
@@ -4017,11 +4171,13 @@ int scsi_Zone_Management_In(tDevice *device, eZMAction action, uint8_t actionSpe
     switch (action)
     {
     case ZM_ACTION_REPORT_ZONES:
+    case ZM_ACTION_REPORT_REALMS:
+    case ZM_ACTION_REPORT_ZONE_DOMAINS:
         dataDir = XFER_DATA_IN;
         break;
+        //zone activate and zone query are below
     default://Need to add new zm actions as they are defined in the spec
         return BAD_PARAMETER;
-        break;
     }
 
     if (dataDir == XFER_NO_DATA)
@@ -4029,25 +4185,32 @@ int scsi_Zone_Management_In(tDevice *device, eZMAction action, uint8_t actionSpe
         allocationLength = 0;
     }
 
+    actionSpecific1 &= UINT8_C(0xE0);//remove bits 4:0 as these are the service action
+    reportingOptions &= UINT8_C(0x3F);//remove bits 7&6 since those are partial and reserved
+
     cdb[OPERATION_CODE] = ZONE_MANAGEMENT_IN;
     //set the service action
     cdb[1] = action;
     //set lba field
-    cdb[2] = M_Byte7(actionSpecificLBA);
-    cdb[3] = M_Byte6(actionSpecificLBA);
-    cdb[4] = M_Byte5(actionSpecificLBA);
-    cdb[5] = M_Byte4(actionSpecificLBA);
-    cdb[6] = M_Byte3(actionSpecificLBA);
-    cdb[7] = M_Byte2(actionSpecificLBA);
-    cdb[8] = M_Byte1(actionSpecificLBA);
-    cdb[9] = M_Byte0(actionSpecificLBA);
+    cdb[2] = M_Byte7(location);
+    cdb[3] = M_Byte6(location);
+    cdb[4] = M_Byte5(location);
+    cdb[5] = M_Byte4(location);
+    cdb[6] = M_Byte3(location);
+    cdb[7] = M_Byte2(location);
+    cdb[8] = M_Byte1(location);
+    cdb[9] = M_Byte0(location);
     //allocation length
     cdb[10] = M_Byte3(allocationLength);
     cdb[11] = M_Byte2(allocationLength);
     cdb[12] = M_Byte1(allocationLength);
     cdb[13] = M_Byte0(allocationLength);
     //action specific
-    cdb[14] = actionSpecific;
+    cdb[14] = reportingOptions;
+    if (partial)
+    {
+        cdb[14] |= BIT7;
+    }
     cdb[15] = 0;//control
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -4063,7 +4226,8 @@ int scsi_Zone_Management_In(tDevice *device, eZMAction action, uint8_t actionSpe
     return ret;
 }
 
-int scsi_Zone_Management_Out(tDevice *device, eZMAction action, uint8_t actionSpecific, uint32_t allocationLength, uint64_t actionSpecificLBA, uint8_t *ptrData)//94h
+//for zone activate and zone query commands
+int scsi_Zone_Management_In_ZD(tDevice* device, eZMAction action, bool all, uint64_t zoneID, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint16_t allocationLength, uint8_t* ptrData)//95h
 {
     int ret = FAILURE;
     uint8_t cdb[CDB_LEN_16] = { 0 };
@@ -4071,15 +4235,12 @@ int scsi_Zone_Management_Out(tDevice *device, eZMAction action, uint8_t actionSp
 
     switch (action)
     {
-    case ZM_ACTION_CLOSE_ZONE:
-    case ZM_ACTION_FINISH_ZONE:
-    case ZM_ACTION_OPEN_ZONE:
-    case ZM_ACTION_RESET_WRITE_POINTERS:
+    case ZM_ACTION_ZONE_ACTIVATE:
+    case ZM_ACTION_ZONE_QUERY:
+        dataDir = XFER_DATA_IN;
         break;
-    case ZM_ACTION_REPORT_ZONES://this is a zone management in command, so return bad parameter
     default://Need to add new zm actions as they are defined in the spec
         return BAD_PARAMETER;
-        break;
     }
 
     if (dataDir == XFER_NO_DATA)
@@ -4087,96 +4248,69 @@ int scsi_Zone_Management_Out(tDevice *device, eZMAction action, uint8_t actionSp
         allocationLength = 0;
     }
 
-    cdb[OPERATION_CODE] = ZONE_MANAGEMENT_OUT;
+
+    cdb[OPERATION_CODE] = ZONE_MANAGEMENT_IN;
     //set the service action
     cdb[1] = action;
+    if (all)
+    {
+        cdb[1] |= BIT7;
+    }
     //set lba field
-    cdb[2] = M_Byte7(actionSpecificLBA);
-    cdb[3] = M_Byte6(actionSpecificLBA);
-    cdb[4] = M_Byte5(actionSpecificLBA);
-    cdb[5] = M_Byte4(actionSpecificLBA);
-    cdb[6] = M_Byte3(actionSpecificLBA);
-    cdb[7] = M_Byte2(actionSpecificLBA);
-    cdb[8] = M_Byte1(actionSpecificLBA);
-    cdb[9] = M_Byte0(actionSpecificLBA);
+    cdb[2] = M_Byte7(zoneID);
+    cdb[3] = M_Byte6(zoneID);
+    cdb[4] = M_Byte5(zoneID);
+    cdb[5] = M_Byte4(zoneID);
+    cdb[6] = M_Byte3(zoneID);
+    cdb[7] = M_Byte2(zoneID);
+    cdb[8] = M_Byte1(zoneID);
+    cdb[9] = M_Byte0(zoneID);
+    //number of zones
+    cdb[10] = M_Byte1(numberOfZones);
+    cdb[11] = M_Byte0(numberOfZones);
     //allocation length
-    cdb[10] = M_Byte3(allocationLength);
-    cdb[11] = M_Byte2(allocationLength);
     cdb[12] = M_Byte1(allocationLength);
     cdb[13] = M_Byte0(allocationLength);
     //action specific
-    cdb[14] = actionSpecific;
+    cdb[14] = otherZoneDomainID;
     cdb[15] = 0;//control
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Zone Management Out\n");
+        printf("Sending SCSI Zone Management In\n");
     }
     //send the command
     ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, dataDir, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        print_Return_Enum("Zone Management Out", ret);
+        print_Return_Enum("Zone Management In", ret);
     }
     return ret;
 }
 
-int scsi_Close_Zone(tDevice *device, bool closeAll, uint64_t zoneID)
+int scsi_Zone_Activate(tDevice* device, bool all, uint64_t zoneID, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint16_t allocationLength, uint8_t* ptrData)
 {
-    if (closeAll)
-    {
-        return scsi_Zone_Management_Out(device, ZM_ACTION_CLOSE_ZONE, BIT0, RESERVED, 0, NULL);
-    }
-    else
-    {
-        return scsi_Zone_Management_Out(device, ZM_ACTION_CLOSE_ZONE, RESERVED, RESERVED, zoneID, NULL);
-    }
+    return scsi_Zone_Management_In_ZD(device, ZM_ACTION_ZONE_ACTIVATE, all, zoneID, numberOfZones, otherZoneDomainID, allocationLength, ptrData);
 }
 
-int scsi_Finish_Zone(tDevice *device, bool finishAll, uint64_t zoneID)
+int scsi_Zone_Query(tDevice* device, bool all, uint64_t zoneID, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint16_t allocationLength, uint8_t* ptrData)
 {
-    if (finishAll)
-    {
-        return scsi_Zone_Management_Out(device, ZM_ACTION_FINISH_ZONE, BIT0, RESERVED, 0, NULL);
-    }
-    else
-    {
-        return scsi_Zone_Management_Out(device, ZM_ACTION_FINISH_ZONE, RESERVED, RESERVED, zoneID, NULL);
-    }
+    return scsi_Zone_Management_In_ZD(device, ZM_ACTION_ZONE_QUERY, all, zoneID, numberOfZones, otherZoneDomainID, allocationLength, ptrData);
 }
 
-int scsi_Open_Zone(tDevice *device, bool openAll, uint64_t zoneID)
+int scsi_Report_Zones(tDevice* device, eZoneReportingOptions reportingOptions, bool partial, uint32_t allocationLength, uint64_t zoneStartLBA, uint8_t* ptrData)
 {
-    if (openAll)
-    {
-        return scsi_Zone_Management_Out(device, ZM_ACTION_OPEN_ZONE, BIT0, RESERVED, 0, NULL);
-    }
-    else
-    {
-        return scsi_Zone_Management_Out(device, ZM_ACTION_OPEN_ZONE, RESERVED, RESERVED, zoneID, NULL);
-    }
+    return scsi_Zone_Management_In_Report(device, ZM_ACTION_REPORT_ZONES, 0, zoneStartLBA, partial,reportingOptions, allocationLength, ptrData);
 }
 
-int scsi_Report_Zones(tDevice *device, eZoneReportingOptions reportingOptions, bool partial, uint32_t allocationLength, uint64_t zoneStartLBA, uint8_t *ptrData)
+int scsi_Report_Realms(tDevice* device, eRealmsReportingOptions reportingOptions, uint32_t allocationLength, uint64_t realmLocator, uint8_t* ptrData)
 {
-    uint8_t actionSpecific = reportingOptions;
-    if (partial)
-    {
-        actionSpecific |= BIT7;
-    }
-    return scsi_Zone_Management_In(device, ZM_ACTION_REPORT_ZONES, actionSpecific, allocationLength, zoneStartLBA, ptrData);
+    return scsi_Zone_Management_In_Report(device, ZM_ACTION_REPORT_REALMS, 0, realmLocator, false, reportingOptions, allocationLength, ptrData);
 }
 
-int scsi_Reset_Write_Pointers(tDevice *device, bool resetAll, uint64_t zoneID)
+int scsi_Report_Zone_Domains(tDevice* device, eZoneDomainReportingOptions reportingOptions, uint32_t allocationLength, uint64_t zoneDomainLocator, uint8_t* ptrData)
 {
-    if (resetAll)
-    {
-        return scsi_Zone_Management_Out(device, ZM_ACTION_RESET_WRITE_POINTERS, BIT0, RESERVED, 0, NULL);
-    }
-    else
-    {
-        return scsi_Zone_Management_Out(device, ZM_ACTION_RESET_WRITE_POINTERS, RESERVED, RESERVED, zoneID, NULL);
-    }
+    return scsi_Zone_Management_In_Report(device, ZM_ACTION_REPORT_ZONE_DOMAINS, 0, zoneDomainLocator, false, reportingOptions, allocationLength, ptrData);
 }
 
 int scsi_Get_Physical_Element_Status(tDevice *device, uint32_t startingElement, uint32_t allocationLength, uint8_t filter, uint8_t reportType, uint8_t *ptrData)
@@ -4270,6 +4404,54 @@ int scsi_Remove_And_Truncate(tDevice *device, uint64_t requestedCapacity, uint32
     return ret;
 }
 
+int scsi_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elementIdentifier)
+{
+    int ret = FAILURE;
+    uint8_t cdb[CDB_LEN_16] = { 0 };
+
+    uint32_t timeout = 0;
+    if (os_Is_Infinite_Timeout_Supported())
+    {
+        timeout = INFINITE_TIMEOUT_VALUE;
+    }
+    else
+    {
+        timeout = MAX_CMD_TIMEOUT_SECONDS;
+    }
+
+    cdb[OPERATION_CODE] = 0x9E;
+    //set the service action
+    cdb[1] = 0x1A;
+    //requested capacity
+    cdb[2] = RESERVED;
+    cdb[3] = RESERVED;
+    cdb[4] = RESERVED;
+    cdb[5] = RESERVED;
+    cdb[6] = RESERVED;
+    cdb[7] = RESERVED;
+    cdb[8] = RESERVED;
+    cdb[9] = RESERVED;
+    //allocation length
+    cdb[10] = M_Byte3(elementIdentifier);
+    cdb[11] = M_Byte2(elementIdentifier);
+    cdb[12] = M_Byte1(elementIdentifier);
+    cdb[13] = M_Byte0(elementIdentifier);
+    cdb[14] = RESERVED;
+    cdb[15] = 0;//control
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending SCSI Remove Element And Modify Zones\n");
+    }
+    //send the command
+    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Remove Element And Modify Zones", ret);
+    }
+    return ret;
+}
+
 int scsi_Restore_Elements_And_Rebuild(tDevice *device)
 {
     int ret = FAILURE;
@@ -4337,7 +4519,7 @@ int scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t 
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Persistent Reserve In - %" PRIu8 "\n", (uint8_t)M_GETBITRANGE(serviceAction, 4, 0));
+        printf("Sending SCSI Persistent Reserve In - %" PRIu8 "\n", C_CAST(uint8_t, M_GETBITRANGE(serviceAction, 4, 0)));
     }
     //send the command
     if (ptrData && allocationLength)
@@ -4377,7 +4559,7 @@ int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t 
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Persistent Reserve Out - %" PRIu8 "\n", (uint8_t)M_GETBITRANGE(serviceAction, 4, 0));
+        printf("Sending SCSI Persistent Reserve Out - %" PRIu8 "\n", C_CAST(uint8_t, M_GETBITRANGE(serviceAction, 4, 0)));
     }
     //send the command
     if (ptrData && parameterListLength)
@@ -4391,6 +4573,30 @@ int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Persistent Reserve Out", ret);
+    }
+    return ret;
+}
+
+int scsi_Rezero_Unit(tDevice* device)
+{
+    int ret = FAILURE;
+    uint8_t cdb[CDB_LEN_6] = { 0 };
+    cdb[OPERATION_CODE] = REZERO_UNIT_CMD;
+    cdb[1] = RESERVED;//technically has lun in here, but that is old SCSI2 ism that is long gone and is autofilled by low-level drivers on these old devices -TJE
+    cdb[2] = RESERVED;
+    cdb[3] = RESERVED;
+    cdb[4] = RESERVED;
+    cdb[5] = 0;
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending SCSI Rezero Unit\n");
+    }
+    //send the command
+    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Rezero Unit", ret);
     }
     return ret;
 }

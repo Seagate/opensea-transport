@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -33,7 +33,7 @@
 #elif defined (_WIN32)
 #include "win_helper.h"
 #elif defined (_AIX)//IBM Unix
-#error "Need a AIX passthrough helper file"
+#include "aix_helper.h"
 #elif defined (__hpux)//HP Unix
 #error "Need a HP UX passthrough helper file"
 #elif defined (__APPLE__)

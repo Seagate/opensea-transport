@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,7 +14,6 @@
 
 #pragma once
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 #include "nvme_helper.h"
 #if defined (__cplusplus)
 extern "C"
@@ -296,11 +295,17 @@ OPENSEA_TRANSPORT_API int nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegiste
 
 OPENSEA_TRANSPORT_API int nvme_Abort_Command(tDevice *device, uint16_t commandIdentifier, uint16_t submissionQueueIdentifier);
 
+//Do not use the asynchronous event request at this time. More work is required at low levels to properly support this.
+//This definition is here for completeness at this time.
+OPENSEA_TRANSPORT_API int nvme_Asynchronous_Event_Request(tDevice *device, uint8_t *logPageIdentifier, uint8_t *asynchronousEventInformation, uint8_t *asynchronousEventType);
+
 OPENSEA_TRANSPORT_API int nvme_Device_Self_Test(tDevice *device, uint32_t nsid, uint8_t selfTestCode);
 
 OPENSEA_TRANSPORT_API int nvme_Security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t nvmeSecuritySpecificField, uint8_t *ptrData, uint32_t dataLength);
 
 OPENSEA_TRANSPORT_API int nvme_Security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t nvmeSecuritySpecificField, uint8_t *ptrData, uint32_t dataLength);
+
+OPENSEA_TRANSPORT_API int nvme_Verify(tDevice* device, uint64_t startingLBA, bool limitedRetry, bool fua, uint16_t numberOfLogicalBlocks);
 
 OPENSEA_TRANSPORT_API int nvme_Write_Uncorrectable(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks);
 
@@ -342,6 +347,4 @@ OPENSEA_TRANSPORT_API int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_
 
 #if defined (__cplusplus)
 }
-#endif
-
 #endif

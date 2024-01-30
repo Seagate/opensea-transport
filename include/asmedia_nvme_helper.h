@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2019-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2019-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -19,7 +19,6 @@
 
 #pragma once
 #include <inttypes.h>
-#if !defined (DISABLE_NVME_PASSTHROUGH)
 
 #include "nvme_helper.h"
 #include "scsi_helper.h"
@@ -112,5 +111,3 @@ extern "C"
 #if defined (__cplusplus)
 }
 #endif
-
-#endif //DISABLE_NVME_PASSTHROUGH

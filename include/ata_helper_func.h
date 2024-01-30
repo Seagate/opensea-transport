@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -403,6 +403,9 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_SMART_Auto_Offline(tDevice *device, bool enable);
 
+    //This assumes standard ATA identify like reported from ata_Identify or page 1 of the ID data log. 512B long and as reported by the standards.
+    OPENSEA_TRANSPORT_API void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData, char ataMN[ATA_IDENTIFY_MN_LENGTH + 1], char ataSN[ATA_IDENTIFY_SN_LENGTH + 1], char ataFW[ATA_IDENTIFY_FW_LENGTH + 1]);
+
     //-----------------------------------------------------------------------------
     //
     //  ata_Identify()
@@ -769,197 +772,8 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_Set_Max_Address_Ext(tDevice *device, uint64_t newMaxLBA, bool volatileValue); //obsolete on new drives
 
-    //-----------------------------------------------------------------------------
-    //
-    //  ata_SCT()
-    //
-    //! \brief   Description:  This command sends a SCT (SMART Command Transport) command to a device or retrieves data from a device
-    //!                        Identify device word 206 indicates SCT command support
-    //
-    //  Entry:
-    //!   \param device - device handle
-    //!   \param useGPL - Use the GPL feature set instead of the SMART feature set (max number of bytes transported: SMART-130,560 B    GPL-33,553,920 B)
-    //!   \param useDMA - This bool specifies to use the readlogextDMA/writelogextDMA commands. This only applies when useGPL is set to true.
-    //!   \param direction - set to the data transfer direction you want to use
-    //!   \param logAddress - SCT Command/Status = E0h, SCT Data Transfer = E1h
-    //!   \param dataBuf - pointer to the buffer to use for the SCT command
-    //!   \param dataSize - size of the data buffer to use for the SCT command pointed to by dataBuf
-    //!   \param[in] forceRTFRs = this was added to force returning rtfrs on a command, specifically for SCT feature control commands
-    //
-    //  Exit:
-    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SCT(tDevice *device, bool useGPL, bool useDMA, eDataTransferDirection direction, uint8_t logAddress, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  ata_SCT_Status()
-    //
-    //! \brief   Description:  This command sends a SCT (SMART Command Transport) status command to a device
-    //
-    //  Entry:
-    //!   \param device - device handle
-    //!   \param useGPL - Use the GPL feature set instead of the SMART feature set (max number of bytes transported: SMART-130,560 B    GPL-33,553,920 B)
-    //!   \param useDMA - This bool specifies to use the readlogextDMA/writelogextDMA commands. This only applies when useGPL is set to true.
-    //!   \param dataBuf - pointer to the data buffer that will be used
-    //!   \param dataSize - size of the data buffer
-    //
-    //  Exit:
-    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SCT_Status(tDevice *device, bool useGPL, bool useDMA, uint8_t *dataBuf, uint32_t dataSize);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  ata_SCT_Status()
-    //
-    //! \brief   Description:  This command sends a SCT (SMART Command Transport) command to a device (fill in the data buffer before using this)
-    //
-    //  Entry:
-    //!   \param device - device handle
-    //!   \param useGPL - Use the GPL feature set instead of the SMART feature set (max number of bytes transported: SMART-130,560 B    GPL-33,553,920 B)
-    //!   \param useDMA - This bool specifies to use the readlogextDMA/writelogextDMA commands. This only applies when useGPL is set to true.
-    //!   \param dataBuf - pointer to the data buffer that will be used
-    //!   \param dataSize - size of the data buffer
-    //!   \param[in] forceRTFRs = this was added to force returning rtfrs on a command, specifically for SCT feature control commands
-    //
-    //  Exit:
-    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SCT_Command(tDevice *device, bool useGPL, bool useDMA, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  ata_SCT_Status()
-    //
-    //! \brief   Description:  This command sends a SCT (SMART Command Transport) data transfer command to a device
-    //
-    //  Entry:
-    //!   \param device - device handle
-    //!   \param useGPL - Use the GPL feature set instead of the SMART feature set (max number of bytes transported: SMART-130,560 B    GPL-33,553,920 B)
-    //!   \param useDMA - This bool specifies to use the readlogextDMA/writelogextDMA commands. This only applies when useGPL is set to true.
-    //!   \param direction - specify whether this is a data in or data out command so that we send or receive data
-    //!   \param dataBuf - pointer to the data buffer that will be used
-    //!   \param dataSize - size of the data buffer
-    //
-    //  Exit:
-    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SCT_Data_Transfer(tDevice *device, bool useGPL, bool useDMA, eDataTransferDirection direction, uint8_t *dataBuf, uint32_t dataSize);
-
-    OPENSEA_TRANSPORT_API int ata_SCT_Check_Status(tDevice *device, uint32_t retries, uint16_t actionCode, uint16_t functionCode);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  ata_SCT_Read_Write_Long(tDevice *device, bool useGPL, bool useDMA, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested)
-    //
-    //! \brief   Description:  This command sends a SCT (SMART Command Transport) read long or write long command to a device
-    //
-    //  Entry:
-    //!   \param device - device handle
-    //!   \param useGPL - Use the GPL feature set instead of the SMART feature set (max number of bytes transported: SMART-130,560 B    GPL-33,553,920 B)
-    //!   \param useDMA - This bool specifies to use the readlogextDMA/writelogextDMA commands. This only applies when useGPL is set to true.
-    //!   \param mode - set to read long or write long
-    //!   \param lba - set the LBA to read or write long
-    //!   \param dataBuf - pointer to data buffer to use for read or write long data transfer
-    //!   \param dataSize - length of data buffer
-    //!   \param numberOfECCCRCBytes - (optional) if successful at getting RTFRs, this will be set to the number of ECC or CRC bytes returned by the device
-    //!   \param numberOfBlocksRequested - (optional) if successful at getting RTFRs, this will be set to the number of 512B sectors the device expects to be transferred
-    //
-    //  Exit:
-    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SCT_Read_Write_Long(tDevice *device, bool useGPL, bool useDMA, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  ata_SCT_Write_Same()
-    //
-    //! \brief   Description:  This command sends a SCT (SMART Command Transport) write same command to a device
-    //
-    //  Entry:
-    //!   \param device - device handle
-    //!   \param useGPL - Use the GPL feature set instead of the SMART feature set (max number of bytes transported: SMART-130,560 B    GPL-33,553,920 B)
-    //!   \param useDMA - This bool specifies to use the readlogextDMA/writelogextDMA commands. This only applies when useGPL is set to true.
-    //!   \param functionCode - The specific code for which write same to issue. Foreground vs background, pattern, etc. (use enum vallue from ata_helper.h)
-    //!   \param startLBA - use with the correct function code
-    //!   \param fillCount - length to write
-    //!   \param pattern - pointer to a structure containing the pattern to write
-    //!   \param patternLength - if using modes WRITE_SAME_BACKGROUND_USE_PATTERN_FIELD or WRITE_SAME_FOREGROUND_USE_PATTERN_FIELD, this is the number of bytes in the pattern pointer. For all other modes this is a count of the number of logical sectors for the pattern that will be transferred. For all these modes, the buffer that pattern is pointing to must be a size in multiples of the device's logical sector size.
-    //
-    //  Exit:
-    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SCT_Write_Same(tDevice *device, bool useGPL, bool useDMA, eSCTWriteSameFunctions functionCode, uint64_t startLBA, uint64_t fillCount, uint8_t *pattern, uint64_t patternLength);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  ata_SCT_Error_Recovery_Control()
-    //
-    //! \brief   Description:  This command sends a SCT (SMART Command Transport) error recovery control command to a device
-    //
-    //  Entry:
-    //!   \param device - device handle
-    //!   \param useGPL - Use the GPL feature set instead of the SMART feature set (max number of bytes transported: SMART-130,560 B    GPL-33,553,920 B)
-    //!   \param useDMA - This bool specifies to use the readlogextDMA/writelogextDMA commands. This only applies when useGPL is set to true.
-    //!   \param functionCode - The specific code for which operation to perform. (0001h = set new value, 0002h = return current value)
-    //!   \param selectionCode - 0001h = read command timer, 0002h = write command timer
-    //!   \param currentValue - if the function code is set to 0002h, this will hold the value returned from the device, otherwise this should be set to NULL
-    //!   \param recoveryTimeLimit - contains the recovery time limit in 100ms units. 1 = 100ms, 2 = 200ms, etc (set to zero to perform all available error recovery proceedures...may be slow)
-    //
-    //  Exit:
-    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SCT_Error_Recovery_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  ata_SCT_Feature_Control()
-    //
-    //! \brief   Description:  This command sends a SCT (SMART Command Transport) feature control command to a device
-    //
-    //  Entry:
-    //!   \param device - device handle
-    //!   \param useGPL - Use the GPL feature set instead of the SMART feature set (max number of bytes transported: SMART-130,560 B    GPL-33,553,920 B)
-    //!   \param useDMA - This bool specifies to use the readlogextDMA/writelogextDMA commands. This only applies when useGPL is set to true.
-    //!   \param functionCode - The specific code for which operation to perform. (0001h = set state and option flags for a feature, 0002h = return current state, 0003h = return current option flags)
-    //!   \param featureCode - value specifying the feature to set
-    //!   \param state - pointer to uint16 value holding the state to set, or will be used to return current state. MUST BE NON-NULL regardless of operation to perform!
-    //!   \param optionFlags - pointer to uint16 value holding the optionFlags to set, or will be used to return current option flags. MUST BE NON-NULL regardless of operation to perform!
-    //
-    //  Exit:
-    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SCT_Feature_Control(tDevice *device, bool useGPL, bool useDMA, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  ata_SCT_Data_Table()
-    //
-    //! \brief   Description:  This command sends a SCT (SMART Command Transport) data table command to a device
-    //
-    //  Entry:
-    //!   \param device - device handle
-    //!   \param useGPL - Use the GPL feature set instead of the SMART feature set (max number of bytes transported: SMART-130,560 B    GPL-33,553,920 B)
-    //!   \param useDMA - This bool specifies to use the readlogextDMA/writelogextDMA commands. This only applies when useGPL is set to true.
-    //!   \param functionCode - The specific code for function to be used (currently only "Read Table" 0001h is defined)
-    //!   \param tableID - The ID of the table to read (currently only "HDA temperature" 0002h is defined)
-    //!   \param dataBuf - pointer to the data buffer that will be used
-    //!   \param dataSize - size of the data buffer
-    //
-    //  Exit:
-    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SCT_Data_Table(tDevice *device, bool useGPL, bool useDMA, uint16_t functionCode, uint16_t tableID, uint8_t *dataBuf, uint32_t dataSize);
+    //ATA SCT definitions that were here were removed in favor of the versions starting with send_ in ata_helper since those include retries as needed to work around adapter issues
+    // and reduce confusion on the code that was implemented for performing SCT operations more easily.
 
     //-----------------------------------------------------------------------------
     //
@@ -1779,6 +1593,7 @@ extern "C"
     //
     //  Entry:
     //!   \param device - device handle
+    //!   \param useDMA - set to true to use the DMA version of the command (drive must support this, check identify data)
     //!   \param ptrData - pointer to the data buffer to use.
     //!   \param dataSize - the size of the data buffer being used.
     //
@@ -1786,7 +1601,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Identify(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int ata_DCO_Identify(tDevice *device, bool useDMA, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1796,6 +1611,7 @@ extern "C"
     //
     //  Entry:
     //!   \param device - device handle
+    //! //!   \param useDMA - set to true to use the DMA version of the command (drive must support this, check identify data)
     //!   \param ptrData - pointer to the data buffer to use.
     //!   \param dataSize - the size of the data buffer being used.
     //
@@ -1803,41 +1619,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Set(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  ata_DCO_Identify_DMA()
-    //
-    //! \brief   Description:  This function sends a DCO identify DMA command
-    //
-    //  Entry:
-    //!   \param device - device handle
-    //!   \param ptrData - pointer to the data buffer to use.
-    //!   \param dataSize - the size of the data buffer being used.
-    //
-    //  Exit:
-    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Identify_DMA(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  ata_DCO_Set_DMA()
-    //
-    //! \brief   Description:  This function sends a DCO set DMA command
-    //
-    //  Entry:
-    //!   \param device - device handle
-    //!   \param ptrData - pointer to the data buffer to use.
-    //!   \param dataSize - the size of the data buffer being used.
-    //
-    //  Exit:
-    //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Set_DMA(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API int ata_DCO_Set(tDevice *device, bool useDMA, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1865,7 +1647,6 @@ extern "C"
     //!   \param[in] ataCommandOptions = structure with the TFR information filled in to be printed out. (and protocol and direction)
     //!
     //  Exit:
-    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void print_Verbose_ATA_Command_Information(ataPassthroughCommand *ataCommandOptions);
@@ -1878,12 +1659,11 @@ extern "C"
     //
     //  Entry:
     //!   \param[in] ataCommandOptions = structure with the TFR information filled in to be printed out. (and protocol and direction)
-    //!
+    //!   \param[in] device = pointer to device struct so that some things can be verified about capabilities and features before printing the meaning of status and error bits.
     //  Exit:
-    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataCommandOptions);
+    OPENSEA_TRANSPORT_API void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataCommandOptions, tDevice *device);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
     ///         Zoned Device Commands - subject to change as these aren't finialized yet        ///
@@ -1893,7 +1673,7 @@ extern "C"
     //
     //  ata_Zone_Management_In(tDevice *device, eZMAction action, uint8_t actionSpecificFeatureExt, uint16_t returnPageCount, uint64_t actionSpecificLBA, uint8_t *ptrData, uint32_t dataSize)
     //
-    //! \brief   Description:  Sends a zone management in command to a device.
+    //! \brief   Description:  Sends a zone management in command to a device. - recommend using helper functions below
     //
     //  Entry:
     //!   \param[in] device = file descriptor
@@ -1901,6 +1681,7 @@ extern "C"
     //!   \param[in] actionSpecificFeatureExt = set the action specific feature ext register bits.
     //!   \param[in] returnPageCount = used on data transfer commands. This is a count of 512B sectors to be transfered. Should be set to zero for non-data commands
     //!   \param[in] actionSpecificLBA = set the action specific LBA registers.
+    //!   \param[in] actionSpecificAUX = set the action specific AUX registers. NOTE: May not be possible to issue this command if these are set! Not all OS's or controllers support 32B passthrough CDBs!
     //!   \param[out] ptrData = pointer to the data buffer to use. Can be NULL for non-data actions
     //!   \param[in] dataSize = size of the data buffer used for a data transfer. Should be zero for non-data actions
     //!
@@ -1908,7 +1689,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_ZAC_Management_In(tDevice *device, eZMAction action, uint8_t actionSpecificFeatureExt, uint16_t returnPageCount, uint64_t actionSpecificLBA, uint8_t *ptrData, uint32_t dataSize);//4Ah
+    OPENSEA_TRANSPORT_API int ata_ZAC_Management_In(tDevice* device, eZMAction action, uint8_t actionSpecificFeatureExt, uint8_t actionSpecificFeatureBits, uint16_t returnPageCount, uint64_t actionSpecificLBA, uint16_t actionSpecificAUX, uint8_t* ptrData, uint32_t dataSize);//4Ah
 
     //-----------------------------------------------------------------------------
     //
@@ -1922,6 +1703,7 @@ extern "C"
     //!   \param[in] actionSpecificFeatureExt = set the action specific feature ext register bits.
     //!   \param[in] pagesToSend_ActionSpecific = used on data transfer commands. This is a count of 512B sectors to be transfered. Should be set to zero for non-data commands
     //!   \param[in] actionSpecificLBA = set the action specific LBA registers.
+    //!   \param[in] actionSpecificAUX = set the action specific AUX registers. NOTE: May not be possible to issue this command if these are set! Not all OS's or controllers support 32B passthrough CDBs!
     //!   \param[in] ptrData = pointer to the data buffer to use. Can be NULL for non-data actions
     //!   \param[in] dataSize = size of the data buffer used for a data transfer. Should be zero for non-data actions
     //!
@@ -1929,7 +1711,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_ZAC_Management_Out(tDevice *device, eZMAction action, uint8_t actionSpecificFeatureExt, uint16_t pagesToSend_ActionSpecific, uint64_t actionSpecificLBA, uint8_t *ptrData, uint32_t dataSize);//9Fh
+    OPENSEA_TRANSPORT_API int ata_ZAC_Management_Out(tDevice* device, eZMAction action, uint8_t actionSpecificFeatureExt, uint16_t pagesToSend_ActionSpecific, uint64_t actionSpecificLBA, uint16_t actionSpecificAUX, uint8_t* ptrData, uint32_t dataSize);//9Fh
 
     //-----------------------------------------------------------------------------
     //
@@ -1941,12 +1723,13 @@ extern "C"
     //!   \param[in] device = file descriptor
     //!   \param[in] closeAll = set the closeAll bit. If this is true, then the zoneID will be ignored by the device.
     //!   \param[in] zoneID = the zoneID to close
+    //!   \param[in] zoneCount = zone count to apply the action to. for backwards compatibiity with ZAC, use zero. On ZAC2 and later values of 0 and 1 mean one zone.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Close_Zone_Ext(tDevice *device, bool closeAll, uint64_t zoneID);//non-data
+    OPENSEA_TRANSPORT_API int ata_Close_Zone_Ext(tDevice *device, bool closeAll, uint64_t zoneID, uint16_t zoneCount);//non-data
 
     //-----------------------------------------------------------------------------
     //
@@ -1958,12 +1741,13 @@ extern "C"
     //!   \param[in] device = file descriptor
     //!   \param[in] finishAll = set the finishAll bit. If this is true, then the zoneID will be ignored by the device.
     //!   \param[in] zoneID = the zoneID to finish
+    //!   \param[in] zoneCount = zone count to apply the action to. for backwards compatibiity with ZAC, use zero. On ZAC2 and later values of 0 and 1 mean one zone.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Finish_Zone_Ext(tDevice *device, bool finishAll, uint64_t zoneID);//non-data
+    OPENSEA_TRANSPORT_API int ata_Finish_Zone_Ext(tDevice *device, bool finishAll, uint64_t zoneID, uint16_t zoneCount);//non-data
 
     //-----------------------------------------------------------------------------
     //
@@ -1975,12 +1759,13 @@ extern "C"
     //!   \param[in] device = file descriptor
     //!   \param[in] openAll = set the openAll bit. If this is true, then the zoneID will be ignored by the device.
     //!   \param[in] zoneID = the zoneID to open
+    //!   \param[in] zoneCount = zone count to apply the action to. for backwards compatibiity with ZAC, use zero. On ZAC2 and later values of 0 and 1 mean one zone.
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Open_Zone_Ext(tDevice *device, bool openAll, uint64_t zoneID);//non-data
+    OPENSEA_TRANSPORT_API int ata_Open_Zone_Ext(tDevice *device, bool openAll, uint64_t zoneID, uint16_t zoneCount);//non-data
 
     //-----------------------------------------------------------------------------
     //
@@ -2001,7 +1786,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Report_Zones_Ext(tDevice *device, eZoneReportingOptions reportingOptions, bool partial, uint16_t returnPageCount, uint64_t zoneLocator, uint8_t *ptrData, uint32_t dataSize);//dma in
+    OPENSEA_TRANSPORT_API int ata_Report_Zones_Ext(tDevice* device, eZoneReportingOptions reportingOptions, bool partial, uint16_t returnPageCount, uint64_t zoneLocator, uint8_t* ptrData, uint32_t dataSize);//dma in
+
+    OPENSEA_TRANSPORT_API int ata_Report_Realms_Ext(tDevice* device, eRealmsReportingOptions reportingOptions, uint16_t returnPageCount, uint64_t realmLocator, uint8_t* ptrData, uint32_t dataSize);
+
+    OPENSEA_TRANSPORT_API int ata_Report_Zone_Domains_Ext(tDevice* device, eZoneDomainReportingOptions reportingOptions, uint16_t returnPageCount, uint64_t zoneDomainLocator, uint8_t* ptrData, uint32_t dataSize);
+
+    //recommend using numZonesSF for compatibility! Not likely possible to use AUX registers! numZonesSF means the number of zones was set by set features and is reported in the ID data log
+    OPENSEA_TRANSPORT_API int ata_Zone_Activate_Ext(tDevice* device, bool all, uint16_t returnPageCount, uint64_t zoneID, bool numZonesSF, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint8_t* ptrData, uint32_t dataSize);
+    //recommend using numZonesSF for compatibility! Not likely possible to use AUX registers! numZonesSF means the number of zones was set by set features and is reported in the ID data log
+    OPENSEA_TRANSPORT_API int ata_Zone_Query_Ext(tDevice* device, bool all, uint16_t returnPageCount, uint64_t zoneID, bool numZonesSF, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint8_t* ptrData, uint32_t dataSize);
+
+    OPENSEA_TRANSPORT_API int ata_Sequentialize_Zone_Ext(tDevice* device, bool all, uint64_t zoneID, uint16_t zoneCount);
 
     //-----------------------------------------------------------------------------
     //
@@ -2018,7 +1814,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Reset_Write_Pointers_Ext(tDevice *device, bool resetAll, uint64_t zoneID);//non-data
+    OPENSEA_TRANSPORT_API int ata_Reset_Write_Pointers_Ext(tDevice *device, bool resetAll, uint64_t zoneID, uint16_t zoneCount);//non-data
 
     //-----------------------------------------------------------------------------
     //
@@ -2034,6 +1830,51 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_Media_Eject(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  ata_Get_Media_Status(tDevice *device)
+    //
+    //! \brief   Description:  Sends a ATA get media status command to a device.
+    //
+    //  Entry:
+    //!   \param[in] device = file descriptor
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int ata_Get_Media_Status(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  ata_Media_Lock(tDevice *device)
+    //
+    //! \brief   Description:  Sends a ATA media lock command to a device.
+    //
+    //  Entry:
+    //!   \param[in] device = file descriptor
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int ata_Media_Lock(tDevice *device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  ata_Media_Unlock(tDevice *device)
+    //
+    //! \brief   Description:  Sends a ATA media unlock command to a device.
+    //
+    //  Entry:
+    //!   \param[in] device = file descriptor
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int ata_Media_Unlock(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2109,6 +1950,22 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
+    //  ata_Remove_Element_And_Modify_Zones(tDevice *device, uint32_t elementIdentifier)
+    //
+    //! \brief   Description:  Sends the ATA Remove and modify zones command for ZAC devices
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to device structure
+    //!   \param[in] elementIdentifier = identifier of the element to truncate
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int ata_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elementIdentifier);
+
+    //-----------------------------------------------------------------------------
+    //
     //  ata_Restore_Elements_And_Rebuild(tDevice *device)
     //
     //! \brief   Description:  Sends the ATA Restore Elements and Rebuild command
@@ -2121,6 +1978,8 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int ata_Restore_Elements_And_Rebuild(tDevice *device);
+
+    OPENSEA_TRANSPORT_API int ata_Mutate_Ext(tDevice* device, bool requestMaximumAccessibleCapacity, uint32_t requestedConfigurationID);
 
     //-----------------------------------------------------------------------------
     //
@@ -2172,9 +2031,9 @@ extern "C"
     OPENSEA_TRANSPORT_API int set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize);
 
     //A couple helper functions to help with Legacu drives
-    bool is_LBA_Mode_Supported(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_LBA_Mode_Supported(tDevice *device);
 
-    bool is_CHS_Mode_Supported(tDevice *device);
+    OPENSEA_TRANSPORT_API bool is_CHS_Mode_Supported(tDevice *device);
 
     OPENSEA_TRANSPORT_API int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t *lba);
 
@@ -2201,6 +2060,10 @@ extern "C"
     OPENSEA_TRANSPORT_API int ata_Legacy_Read_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
 
     OPENSEA_TRANSPORT_API int ata_Legacy_Read_Verify_Sectors_CHS(tDevice *device, bool extendedCmd, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector);
+
+    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Verify_Sectors_No_Retry_CHS(tDevice *device, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector);
+
+    OPENSEA_TRANSPORT_API int ata_Read_Verify_Sectors_No_Retry(tDevice *device, uint16_t numberOfSectors, uint64_t LBA);
 
     OPENSEA_TRANSPORT_API int ata_Legacy_Write_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua);
 
@@ -2233,6 +2096,8 @@ extern "C"
     //last seen in ATA-3
     OPENSEA_TRANSPORT_API int ata_Legacy_Identify_Device_DMA(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
 
+    OPENSEA_TRANSPORT_API int ata_Legacy_Check_Power_Mode(tDevice *device, uint8_t *powerMode);
+
 
     //These functions below are commands that can be sent in PIO or DMA Mode.
     //They will automatically try DMA if it is supported, then retry with PIO mode if the Translator or Driver doesn't support issuing DMA mode commands.
@@ -2256,6 +2121,26 @@ extern "C"
     OPENSEA_TRANSPORT_API int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit);
     OPENSEA_TRANSPORT_API int send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags);
     OPENSEA_TRANSPORT_API int send_ATA_SCT_Data_Table(tDevice *device, uint16_t functionCode, uint16_t tableID, uint8_t *dataBuf, uint32_t dataSize);
+
+    //NCQ command definitions
+    //NOTE: You can try these all you want, but it is basically impossible to issue these in passthrough.
+    //      Some USB adapters will allow SOME of them.
+    //      libata in Linux will allow most of them.
+    //      No other HBAs or operating systems are known to support/allow these to be issued.
+    //      Stick to the synchronous commands whenever possible due to how limited support for these commands is.
+    OPENSEA_TRANSPORT_API int ata_NCQ_Non_Data(tDevice *device, uint8_t subCommand /*bits 4:0*/, uint16_t subCommandSpecificFeature /*bits 11:0*/, uint8_t subCommandSpecificCount, uint8_t ncqTag /*bits 5:0*/, uint64_t lba, uint32_t auxilary);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Abort_NCQ_Queue(tDevice *device, uint8_t abortType /*bits0:3*/, uint8_t prio /*bits 1:0*/, uint8_t ncqTag, uint8_t tTag);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Deadline_Handling(tDevice *device, bool rdnc, bool wdnc, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Set_Features(tDevice *device, eATASetFeaturesSubcommands subcommand, uint8_t subcommandCountField, uint8_t subcommandLBALo, uint8_t subcommandLBAMid, uint16_t subcommandLBAHi, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Zeros_Ext(tDevice *device, uint16_t numberOfLogicalSectors, uint64_t lba, bool trim, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Receive_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*/, uint16_t sectorCount /*ft*/, uint8_t prio /*bits 1:0*/, uint8_t ncqTag, uint64_t lba, uint32_t auxilary, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Read_Log_DMA_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint16_t featureRegister, uint8_t prio /*bits 1:0*/, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Send_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*/, uint16_t sectorCount /*ft*/, uint8_t prio /*bits 1:0*/, uint8_t ncqTag, uint64_t lba, uint32_t auxilary, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uint32_t dataSize, uint8_t prio /*bits 1:0*/, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Write_Log_DMA_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint8_t prio /*bits 1:0*/, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Read_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba, uint8_t *ptrData, uint16_t sectorCount, uint8_t prio, uint8_t ncqTag, uint8_t icc);
+    OPENSEA_TRANSPORT_API int ata_NCQ_Write_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba, uint8_t *ptrData, uint16_t sectorCount, uint8_t prio, uint8_t ncqTag, uint8_t icc);
+
 
 
     #if defined (__cplusplus)

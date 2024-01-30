@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -72,7 +72,8 @@ extern "C"
         SENSE_KEY_VENDOR_SPECIFIC = 0x09,
         SENSE_KEY_COPY_ABORTED    = 0x0A,
         SENSE_KEY_ABORTED_COMMAND = 0x0B,
-        SENSE_KEY_RESERVED        = 0x0C,
+        SENSE_KEY_EQUAL           = 0x0C,//scsi and scsi 2 defined this as "EQUAL" to say a "search data" command found an equal comparison.
+        SENSE_KEY_RESERVED        = 0x0C,//marked obsolete in SPC3 and reserved in later standards
         SENSE_KEY_VOLUME_OVERFLOW = 0x0D,
         SENSE_KEY_MISCOMPARE      = 0x0E,
         SENSE_KEY_COMPLETED       = 0x0F
@@ -108,7 +109,7 @@ extern "C"
     #define SCSI_SENSE_INFO_FIELD_MSB_INDEX  (3)
     #define SCSI_FIXED_FORMAT_CMD_INFO_INDEX (8)
 
-    #define SCSI_MAX_21_LBA 0x001FFFFF //read/write 6byte commands
+    #define SCSI_MAX_21_LBA UINT32_C(0x001FFFFF) //read/write 6byte commands
     #define SCSI_MAX_32_LBA UINT32_MAX
     #define SCSI_MAX_64_LBA UINT64_MAX
 
@@ -305,6 +306,18 @@ extern "C"
         SANITIZE_OVERWRITE_VENDOR3      = 0x03
     }eScsiSanitizeOverwriteTest;
 
+    typedef enum _eReadBufferMode
+    {
+        SCSI_RB_COMBINED_HEADER_AND_DATA                                = 0x00, //obsolete (see SPC or SCSI2)
+        SCSI_RB_VENDOR_SPECIFIC                                         = 0x01,
+        SCSI_RB_DATA                                                    = 0x02,
+        SCSI_RB_DESCRIPTOR                                              = 0x03,
+        SCSI_RB_READ_DATA_FROM_ECHO_BUFFER                              = 0x0A,
+        SCSI_RB_ECHO_BUFFER_DESCRIPTOR                                  = 0x0B,
+        SCSI_RB_READ_MICROCODE_STATUS                                   = 0x0F,
+        SCSI_RB_ENABLE_EXPANDER_COMMUNICATIONS_PROTOCOL_AND_ECHO_BUFFER = 0x1A, //obsolete (See SPC3)
+        SCSI_RB_ERROR_HISTORY                                           = 0x1C,
+    }eReadBufferMode;
 
     typedef enum _eWriteBufferMode
     {
@@ -357,6 +370,7 @@ extern "C"
         COMPARE_AND_WRITE                           = 0x89,
         EXTENDED_COPY                               = 0x83,
         SCSI_FORMAT_UNIT_CMD                        = 0x04,
+        SCSI_FORMAT_WITH_PRESET_CMD                 = 0x38,
         CHANGE_ALIASES_CMD                          = 0xA4,
         GET_LBA_STATUS                              = 0x9E,
         INQUIRY_CMD                                 = 0x12,
@@ -407,6 +421,7 @@ extern "C"
         REPORT_SUPPORTED_TASK_MANAGEMENT_FUNCS      = 0xA3,
         REPORT_TARGET_PORT_GROUPS_CMD               = 0xA3,
         REQUEST_SENSE_CMD                           = 0x03,
+        REZERO_UNIT_CMD                             = 0x01,
         SANITIZE_CMD                                = 0x48,
         SECURITY_PROTOCOL_IN                        = 0xA2,
         SECURITY_PROTOCOL_OUT                       = 0xB5,
@@ -498,6 +513,7 @@ extern "C"
         VPD_ATA_INFORMATION_LEN = 572,
         VPD_BLOCK_LIMITS_LEN = 64,//length if from SBC4
         VPD_LOGICAL_BLOCK_PROVISIONING_LEN = 8,//This is only a correct length if there are no provisioning group descriptors
+        VPD_ZONED_BLOCK_DEVICE_CHARACTERISTICS_LEN  = 64,//ZBC-2
     }ScsiVPDPageLengths;
 
     typedef enum _eScsiModePageControl
@@ -865,6 +881,7 @@ extern "C"
         STANDARD_CODE_SPL2 = 262,
         STANDARD_CODE_SPL3 = 263,
         STANDARD_CODE_SPL4 = 264,
+        STANDARD_CODE_SPL5 = 265,
         //271 - 290 SCSI over PCI Extress Transport Protocols
         STANDARD_CODE_SOP = 271,
         STANDARD_CODE_PQI = 272,
@@ -902,6 +919,34 @@ extern "C"
         SAT_SECURITY_PROTOCOL_SPECIFIC_DISABLE_PASSWORD = 0x0006, //disable password command with provided password
         //All others are reserved
     }eSATSecurityDevicePassword;
+
+    typedef enum _eSCSIProtocolID
+    {
+        SCSI_PROTOCOL_ID_FIBRE_CHANNEL  = 0x0,
+        SCSI_PROTOCOL_ID_SPI            = 0x1,//Parallel SCSI
+        SCSI_PROTOCOL_ID_SSA            = 0x2,//Serial Storage Architecture
+        SCSI_PROTOCOL_ID_SBP            = 0x3,//IEEE 1394
+        SCSI_PROTOCOL_ID_SRP            = 0x4,//SCSI RDMA
+        SCSI_PROTOCOL_ID_iSCSI          = 0x5,//internet SCSI
+        SCSI_PROTOCOL_ID_SAS            = 0x6,//Serial Attached SCSI
+        SCSI_PROTOCOL_ID_ADT            = 0x7,//Automation/Drive interface transport protocol
+        SCSI_PROTOCOL_ID_ATA            = 0x8,//AT Attachment Interface
+        SCSI_PROTOCOL_ID_UAS            = 0x9,//USB Attached SCSI
+        SCSI_PROTOCOL_ID_SOP            = 0xA,//SCSI over PCI express
+        SCSI_PROTOCOL_ID_PCIe           = 0xB,//PCI Express Protocols
+        SCSI_PROTOCOL_ID_RESERVED1      = 0xC,
+        SCSI_PROTOCOL_ID_RESERVED2      = 0xD,
+        SCSI_PROTOCOL_ID_RESERVED3      = 0xE,
+        SCSI_PROTOCOL_ID_NO_SPECIFIC_PROTOCOL   = 0xF
+    }eSCSIProtocolID;
+
+    #define REPORT_LUNS_MIN_LENGTH UINT16_C(16)  //this is the minimum length from SPC, but this requirement was removed later -TJE
+
+    OPENSEA_TRANSPORT_API bool is_LaCie_USB_Vendor_ID(const char* t10VendorIdent);
+    OPENSEA_TRANSPORT_API bool is_Seagate_USB_Vendor_ID(const char* t10VendorIdent);
+    OPENSEA_TRANSPORT_API bool is_Seagate_SAS_Vendor_ID(const char* t10VendorIdent);
+    OPENSEA_TRANSPORT_API void seagate_Serial_Number_Cleanup(const char* t10VendorIdent, char** unitSerialNumber, size_t unitSNSize);
+
 
     #if defined (__cplusplus)
 } //extern "C"

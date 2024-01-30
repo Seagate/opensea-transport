@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h> // offsetof
 #include <sys/types.h>
 #include <fcntl.h>
 #include <assert.h>
@@ -35,9 +36,19 @@
 #include "sata_types.h"
 #include "sata_helper_func.h"
 
+#if defined (_DEBUG) && !defined(CSMI_DEBUG)
+#define CSMI_DEBUG
+#endif
+
 extern bool validate_Device_Struct(versionBlock);
 
-void print_IOCTL_Return_Code(uint32_t returnCode)
+#if defined (_WIN32)
+void print_Last_Error(DWORD lastError);
+#else
+void print_Last_Error(int lastError);
+#endif
+
+static void print_IOCTL_Return_Code(uint32_t returnCode)
 {
     printf("IOCTL Status: ");
     switch (returnCode)
@@ -123,12 +134,12 @@ void print_Last_Error(DWORD lastError)
 {
     print_Windows_Error_To_Screen(lastError);
 }
-#else
+#else //_WIN32
 void print_Last_Error(int lastError)
 {
     print_Errno_To_Screen(lastError);
 }
-#endif
+#endif //_WIN32
 
 static int csmi_Return_To_OpenSea_Result(uint32_t returnCode)
 {
@@ -254,7 +265,7 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
     timer = csmiIoOutParams->ioctlTimer;
     if (!timer)
     {
-        timer = (seatimer_t*)calloc(1, sizeof(seatimer_t));
+        timer = C_CAST(seatimer_t*, calloc(1, sizeof(seatimer_t)));
         localTimer = true;
     }
 
@@ -281,7 +292,7 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
     {
         if (localTimer)
         {
-            safe_Free(timer);
+            safe_Free(timer)
         }
         return MEMORY_FAILURE;
     }
@@ -341,9 +352,123 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
     csmiIoOutParams->sysIoctlReturn = localIoctlReturn;
     if (localTimer)
     {
-        safe_Free(timer);
+        safe_Free(timer)
     }
     return ret;
+}
+
+/*
+Examples from different drivers/configurations:
+====CSMI Driver Info====
+    Driver Name: rcraid
+    Description: AMD-RAID Controller [storport] Device Driver
+    Driver Version: 9.3.0.38
+    CSMI Version: 1.7
+
+====CSMI Driver Info====
+    Driver Name: iaStorE
+    Description: Intel Virtual RAID on CPU
+    Driver Version: 7.7.0.1260
+    CSMI Version: 0.76
+
+====CSMI Driver Info====
+    Driver Name: iaStorAC
+    Description: Intel(R) Rapid Storage Technology
+    Driver Version: 17.8.0.1065
+    CSMI Version: 0.81
+
+====CSMI Driver Info====
+    Driver Name: iaStorAC
+    Description: Intel(R) Rapid Storage Technology
+    Driver Version: 17.9.2.1013
+    CSMI Version: 0.81
+
+====CSMI Driver Info====
+    Driver Name: HpCISSS3.sys
+    Description: Smart Array SAS/SATA Controller Storport Driver
+    Driver Version: 63.12.0.64
+    CSMI Version: 0.82
+
+====CSMI Driver Info====
+    Driver Name: arcsas
+    Description: Adaptec RAID Storport Driver
+    Driver Version: 7.5.59005.0
+    CSMI Version: 0.82
+
+====CSMI Driver Info====
+    Driver Name: iaStorVD
+    Description: Intel(R) Rapid Storage Technology
+    Driver Version: 19.2.0.1003
+    CSMI Version: 0.81
+
+*/
+static eKnownCSMIDriver get_Known_CSMI_Driver_Type(PCSMI_SAS_DRIVER_INFO driverInfo)
+{
+    eKnownCSMIDriver csmiDriverType = CSMI_DRIVER_UNKNOWN;
+    if (driverInfo)
+    {
+        //TODO: May need to track specific driver versions if capabilities vary significantly at any point-TJE
+        if (strstr(C_CAST(const char *, driverInfo->szName), "iaStorAC"))
+        {
+            //classic intel rapid storage technology
+            csmiDriverType = CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY;
+        }
+        else if (strstr(C_CAST(const char *, driverInfo->szName), "iaStorE"))
+        {
+            //intel virtual raid on chip (VROC)
+            csmiDriverType = CSMI_DRIVER_INTEL_VROC;
+        }
+        else if (strstr(C_CAST(const char*, driverInfo->szName), "iaStorVD"))
+        {
+            //intel rapid storage technology VD driver. No idea what VD means or how it differs yet.
+            csmiDriverType = CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY_VD;
+        }
+        //Check for a generic Intel match LAST. Check all other intel driver variants above this condition to have a better intel driver classification!
+        else if (strstr(C_CAST(const char*, driverInfo->szName), "iaStor"))
+        {
+            //some kind of intel driver. Not sure all of the capabilities, but we are unable to further discover anything else about it for now.
+            csmiDriverType = CSMI_DRIVER_INTEL_GENERIC;
+        }
+        else if (strstr(C_CAST(const char*, driverInfo->szName), "rcraid"))
+        {
+            //amd's CSMI compatible RAID driver for SATA raid chipsets
+            csmiDriverType = CSMI_DRIVER_AMD_RCRAID;
+        }
+        else if (strstr(C_CAST(const char *, driverInfo->szName), "HpCISSS3") || strstr(C_CAST(const char *, driverInfo->szName), "HpCISSs3")) //need to check if final s can also be lowercase
+        {
+            csmiDriverType = CSMI_DRIVER_HPCISS;
+        }
+        else if (strstr(C_CAST(const char *, driverInfo->szName), "arcsas"))
+        {
+            csmiDriverType = CSMI_DRIVER_ARCSAS;
+        }
+        else if (strstr(C_CAST(const char*, driverInfo->szName), "HpSAMD"))
+        {
+            csmiDriverType = CSMI_DRIVER_HPSAMD;
+        }
+        //TODO: As more driver names found, check them here.
+    }
+#if defined (_DEBUG)
+    printf("Known driver = %d\n", csmiDriverType);
+#endif //_DEBUG
+    return csmiDriverType;
+}
+
+static bool is_Intel_Driver(eKnownCSMIDriver knownDriver)
+{
+    bool isIntel = false;
+    switch (knownDriver)
+    {
+    case CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY:
+    case CSMI_DRIVER_INTEL_VROC:
+    case CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY_VD:
+    case CSMI_DRIVER_INTEL_GENERIC:
+        isIntel = true;
+        break;
+    default:
+        break;
+    }
+    return isIntel;
 }
 
 //More for debugging than anything else
@@ -418,8 +543,8 @@ static void print_CSMI_Controller_Configuration(PCSMI_SAS_CNTLR_CONFIG config)
         printf("\tBase IO Address: %08" CPRIX32 "h\n", config->uBaseIoAddress);
         printf("\tBase Memory Address: %08" CPRIX32 "%08" CPRIX32 "h\n", config->BaseMemoryAddress.uHighPart, config->BaseMemoryAddress.uLowPart);
         printf("\tBoard ID: %08" CPRIX32 "h\n", config->uBoardID);
-        printf("\t\tVendor ID: %04" CPRIX16 "h\n", M_DoubleWord0(config->uBoardID));
-        printf("\t\tSubsystem ID: %04" CPRIX16 "h\n", M_DoubleWord1(config->uBoardID));
+        printf("\t\tVendor ID: %04" CPRIX16 "h\n", M_Word0(config->uBoardID));
+        printf("\t\tSubsystem ID: %04" CPRIX16 "h\n", M_Word1(config->uBoardID));
         printf("\tSlot Number: ");
         if (SLOT_NUMBER_UNKNOWN == config->usSlotNumber)
         {
@@ -558,7 +683,7 @@ static void print_CSMI_Controller_Status(PCSMI_SAS_CNTLR_STATUS status)
             printf("Unknown\n");
             break;
         }
-        if (status->uStatus)
+        if (status->uStatus == CSMI_SAS_CNTLR_STATUS_OFFLINE)
         {
             printf("\tOffline Reason: ");
             switch (status->uOfflineReason)
@@ -708,6 +833,32 @@ static void print_CSMI_RAID_Info(PCSMI_SAS_RAID_INFO raidInfo)
     return;
 }
 
+//Sample RAID info outputs from some drivers:
+//AMD rcraid: - 1 non-RAID drive and 1 RAID with 2 drives.
+//====CSMI RAID Info====
+//	Number of RAID Sets: 3
+//	Maximum # of drives per set: 16
+//	Maximum # of RAID Sets: 16
+//	Maximum # of RAID Types: 14
+//	Minimum RAID Set Blocks: 2048
+//	Maximum RAID Set Blocks: 18446744073709551615
+//	Maximum Physical Drives: 16
+//	Maximum Extents: 1
+//	Maximum Modules: 0
+//	Maximum Transformational Memory: 0
+//	Change Count: 0
+
+//Intel iaStorE: - 1 raid with 2 drives
+//====CSMI RAID Info====
+//	Number of RAID Sets: 1
+//	Maximum # of drives per set: 2
+
+//ArcSAS - all "raids" are individual drives. RAID config does NOT work
+//====CSMI RAID Info====
+//	Number of RAID Sets: 23
+//	Maximum # of drives per set: 128
+
+
 int csmi_Get_RAID_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_INFO_BUFFER raidInfoBuffer, eVerbosityLevels verbosity)
 {
     int ret = SUCCESS;
@@ -757,6 +908,7 @@ int csmi_Get_RAID_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSM
     return ret;
 }
 
+//TODO: Need to pass in CSMI version information
 static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t configLength)
 {
     if (config)
@@ -863,12 +1015,38 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
             printf("\tFailure Code: %" CPRIu32 "\n", config->uFailureCode);
             printf("\tChange Count: %" CPRIu32 "\n", config->uChangeCount);
         }
-        switch (config->bDataType)
+        bool driveDataValid = true;
+        //If an ASCII character is in the bDataType offset, this is Intel's driver
+        //at some point, need to switch to using CSMI version information....somehow
+        //driverInfo.Information.usCSMIMajorRevision > 0 || driverInfo.Information.usCSMIMinorRevision > 81
+        if (!is_ASCII(config->bDataType))
         {
-        case CSMI_SAS_RAID_DATA_DRIVES:
+            switch (config->bDataType)
+            {
+            case CSMI_SAS_RAID_DATA_DRIVES:
+                printf("RAID Drive Data\n");
+                break;
+            case CSMI_SAS_RAID_DATA_DEVICE_ID:
+                //TODO: Print this out...device identification VPD page
+                printf("Device ID (Debug info not supported at this time)\n");
+                driveDataValid = false;
+                break;
+            case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
+                //TODO: Print this out
+                printf("Additional Data (Debug info not supported at this time)\n");
+                driveDataValid = false;
+                break;
+            default:
+                printf("Unknown data type.\n");
+                driveDataValid = false;
+                break;
+            }
+        }
+        if (driveDataValid)
+        {
             if (config->bDriveCount < 0xF1)
             {
-                uint32_t totalDrives = (uint32_t)((configLength - 36) / sizeof(CSMI_SAS_RAID_DRIVES));//36 bytes prior to drive data
+                uint32_t totalDrives = C_CAST(uint32_t, (configLength - UINT32_C(36)) / sizeof(CSMI_SAS_RAID_DRIVES));//36 bytes prior to drive data
                 for (uint32_t iter = 0; iter < totalDrives && iter < config->bDriveCount; ++iter)
                 {
                     char model[41] = { 0 };
@@ -934,7 +1112,8 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
                         break;
                     }
                     //end of original RAID drive data in spec. Check if empty
-                    if (!is_Empty(&config->Drives[iter].usBlockSize, 30))//original spec says 22 reserved bytes, however I count 30 more bytes to check...-TJE
+                    size_t previouslyReservedBytes = sizeof(CSMI_SAS_RAID_DRIVES) - offsetof(CSMI_SAS_RAID_DRIVES, usBlockSize);
+                    if (!is_Empty(&config->Drives[iter].usBlockSize, previouslyReservedBytes))//original spec says 22 reserved bytes, however I count 30 more bytes to check...-TJE
                     {
                         printf("\t\tBlock Size: %" CPRIu16 "\n", config->Drives[iter].usBlockSize);
                         printf("\t\tDrive Type: ");
@@ -967,22 +1146,122 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
                     }
                 }
             }
-            break;
-        case CSMI_SAS_RAID_DATA_DEVICE_ID:
-            //TODO: Print this out...device identification VPD page
-            printf("Device ID (Debug info not supported at this time)\n");
-            break;
-        case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
-            //TODO: Print this out
-            printf("Additional Data (Debug info not supported at this time)\n");
-            break;
-        default:
-            printf("Unknown data type.\n");
-            break;
         }
     }
     return;
 }
+
+//example RAID config output from different drives:
+
+//AMD Rcraid:
+//====CSMI RAID Configuration====
+//	RAID Set Index: 0 <- non-raid individual drive
+//	Capacity (MB): 122104
+//	Stripe Size (KB): 0
+//	RAID Type: Other
+//	Status: OK
+//	Drive Count: 1
+//	----RAID Drive 0----
+//		Model #: 
+//		Firmware: 
+//		Serial #: 
+//		SAS Address: 0000000000000000h
+//		SAS LUN: 0000000000000000h
+//		Drive Status: OK
+//		Drive Usage: Member
+//		Block Size: 512
+//		Drive Type: SATA
+//		Drive Index: 1
+//		Total User Blocks: 0
+//====CSMI RAID Configuration====
+//	RAID Set Index: 1 <-raid 1 of 2 drives
+//	Capacity (MB): 17165814
+//	Stripe Size (KB): 0
+//	RAID Type: 1
+//	Status: OK
+//	Drive Count: 2
+//	----RAID Drive 0----
+//		Model #: 
+//		Firmware: 
+//		Serial #: 
+//		SAS Address: 0000000000000000h
+//		SAS LUN: 0000000000000000h
+//		Drive Status: OK
+//		Drive Usage: Member
+//		Block Size: 512
+//		Drive Type: SATA
+//		Drive Index: 0
+//		Total User Blocks: 0
+//	----RAID Drive 1----
+//		Model #: 
+//		Firmware: 
+//		Serial #: 
+//		SAS Address: 0000000000000000h
+//		SAS LUN: 0000000000000000h
+//		Drive Status: OK
+//		Drive Usage: Member
+//		Block Size: 512
+//		Drive Type: SATA
+//		Drive Index: 2
+//		Total User Blocks: 0
+//====CSMI RAID Configuration====
+//	RAID Set Index: 2 <-appears to be duplicate of index 1 for some reason
+//	Capacity (MB): 17165814
+//	Stripe Size (KB): 0
+//	RAID Type: 1
+//	Status: OK
+//	Drive Count: 2
+//	----RAID Drive 0----
+//		Model #: 
+//		Firmware: 
+//		Serial #: 
+//		SAS Address: 0000000000000000h
+//		SAS LUN: 0000000000000000h
+//		Drive Status: OK
+//		Drive Usage: Member
+//		Block Size: 512
+//		Drive Type: SATA
+//		Drive Index: 0
+//		Total User Blocks: 0
+//	----RAID Drive 1----
+//		Model #: 
+//		Firmware: 
+//		Serial #: 
+//		SAS Address: 0000000000000000h
+//		SAS LUN: 0000000000000000h
+//		Drive Status: OK
+//		Drive Usage: Member
+//		Block Size: 512
+//		Drive Type: SATA
+//		Drive Index: 2
+//		Total User Blocks: 0
+
+//Intel isStorE:
+//====CSMI RAID Configuration====
+//	RAID Set Index: 0 <- raid of 2 drives
+//	Capacity (MB): 16308008
+//	Stripe Size (KB): 64
+//	RAID Type: 1
+//	Status: OK
+//	Drive Count: 2
+//	Failure Code: 0
+//	Change Count: 0
+//	----RAID Drive 0----
+//		Model #: ST18000NM000J-2TV103                    
+//		Firmware: SN02    
+//		Serial #:             WR507HEG
+//		SAS Address: 0000040400000000h
+//		SAS LUN: 0000000000000000h
+//		Drive Status: OK
+//		Drive Usage: Member
+//	----RAID Drive 1----
+//		Model #: ST18000NM000J-2TV103                    
+//		Firmware: SN02    
+//		Serial #:             WR5081B1
+//		SAS Address: 0000050500000000h
+//		SAS LUN: 0000000000000000h
+//		Drive Status: OK
+//		Drive Usage: Member
 
 //NOTE: This buffer should be allocated as sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES)) at minimum. If the device identification VPD page is returned instead, it may be longer
 //      RAID set index must be lower than the number of raid sets listed as supported by RAID INFO
@@ -1046,24 +1325,40 @@ int csmi_Get_RAID_Config(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PC
 
 static void print_CSMI_Port_Protocol(uint8_t portProtocol)
 {
-    switch (portProtocol)
+    bool needComma = false;
+    if (portProtocol & CSMI_SAS_PROTOCOL_SATA)
     {
-    case CSMI_SAS_PROTOCOL_SATA:
-        printf("SATA\n");
-        break;
-    case CSMI_SAS_PROTOCOL_SMP:
-        printf("SMP\n");
-        break;
-    case CSMI_SAS_PROTOCOL_STP:
-        printf("STP\n");
-        break;
-    case CSMI_SAS_PROTOCOL_SSP:
-        printf("SSP\n");
-        break;
-    default:
-        printf("Unknown\n");
-        break;
+        printf("SATA");
+        needComma = true;
     }
+    if (portProtocol & CSMI_SAS_PROTOCOL_SMP)
+    {
+        if (needComma)
+        {
+            printf(", ");
+        }
+        printf("SMP");
+        needComma = true;
+    }
+    if (portProtocol & CSMI_SAS_PROTOCOL_STP)
+    {
+        if (needComma)
+        {
+            printf(", ");
+        }
+        printf("STP");
+        needComma = true;
+    }
+    if (portProtocol & CSMI_SAS_PROTOCOL_SSP)
+    {
+        if (needComma)
+        {
+            printf(", ");
+        }
+        printf("SSP");
+        needComma = true;
+    }
+    printf("\n");
     return;
 }
 
@@ -1124,7 +1419,8 @@ static void print_CSMI_SAS_Identify(PCSMI_SAS_IDENTIFY identify)
 
 static void print_CSMI_Link_Rate(uint8_t linkRate)
 {
-    switch (linkRate)
+    //low nibble is rate. High nibble is flags
+    switch (M_Nibble0(linkRate))
     {
     case CSMI_SAS_LINK_RATE_UNKNOWN:
         printf("Unknown\n");
@@ -1153,12 +1449,14 @@ static void print_CSMI_Link_Rate(uint8_t linkRate)
     case CSMI_SAS_LINK_RATE_12_0_GBPS:
         printf("12.0 Gb/s\n");
         break;
-    case CSMI_SAS_LINK_VIRTUAL:
-        printf("Virtual\n");
-        break;
     default:
         printf("Unknown - %02" CPRIX8 "h\n", linkRate);
         break;
+    }
+    //now review known flags
+    if (linkRate & CSMI_SAS_LINK_VIRTUAL)
+    {
+        printf("\tVirtual link rate\n");
     }
 }
 
@@ -1223,6 +1521,510 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
     }
     return;
 }
+
+//NOTE: AMD's rcraid driver seems to treat non-raid drives slightly different in the phy info output. In the case I observed, the raid drives were in the phy info, but the
+//      non-RAID drive was not shown here at all. However in the RAID IOCTLs, it does show as a separate single drive raid (but no MN or SN info to match to it).
+//      So it does not appear possible to issue a CSMI passthrough command to non-raid drives. This is completely opposite of what the Intel drivers do.
+//      Intel's drivers show every drive attached, RAID or non-RAID in the phy info.
+//      This may be something we want to detect in the future to reduce the number of IOCTLs sent, but for now, it works ok. We can optimize this more later. -TJE
+
+//Below are some sample outputs of the Phy Info:
+
+//AMD rcraid:
+//====CSMI Phy Info====
+//	Number Of Phys: 2
+//	----Phy 0----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//		Port Identifier: 0
+//		Negotiated Link Rate: 6.0 Gb/s
+//		Minimum Link Rate: 6.0 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Complete
+//		Phy Features: Virtual SMP
+//		Attached:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 1----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 1
+//			Signal Class: Unknown
+//		Port Identifier: 5
+//		Negotiated Link Rate: 6.0 Gb/s
+//		Minimum Link Rate: 6.0 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Complete
+//		Phy Features: Virtual SMP
+//		Attached:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+
+//Intel iaStorE - 7.7.0.1260
+//====CSMI Phy Info====
+//	Number Of Phys: 8
+//	----Phy 0----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: 
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//		Port Identifier: 0
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: Unknown
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: 
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 1----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: 
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 1
+//			Signal Class: Unknown
+//		Port Identifier: 1
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: Unknown
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: 
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000010000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 2----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: 
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 2
+//			Signal Class: Unknown
+//		Port Identifier: 2
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: Unknown
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: 
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000020000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 3----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: 
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 3
+//			Signal Class: Unknown
+//		Port Identifier: 3
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: Unknown
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: 
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000030000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 4----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: 
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 4
+//			Signal Class: Unknown
+//		Port Identifier: 4
+//		Negotiated Link Rate: 6.0 Gb/s
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: 
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000040000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 5----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: 
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 5
+//			Signal Class: Unknown
+//		Port Identifier: 5
+//		Negotiated Link Rate: 6.0 Gb/s
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: 
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000050000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 6----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: 
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 6
+//			Signal Class: Unknown
+//		Port Identifier: 6
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: Unknown
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: 
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000060000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 7----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA, SMP, STP, SSP
+//			Target Port Protocol: 
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 7
+//			Signal Class: Unknown
+//		Port Identifier: 7
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: Unknown
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: 
+//			Target Port Protocol: SATA, SMP, STP, SSP
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000070000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+
+//Intel iaStorAC phy info:
+//====CSMI Phy Info====
+//	Number Of Phys: 8
+//	----Phy 0----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA
+//			Target Port Protocol: Unknown
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//		Port Identifier: 0
+//		Negotiated Link Rate: 6.0 Gb/s
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: Unknown
+//			Target Port Protocol: SATA
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 1----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA
+//			Target Port Protocol: Unknown
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 1
+//			Signal Class: Unknown
+//		Port Identifier: 1
+//		Negotiated Link Rate: 6.0 Gb/s
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: Unknown
+//			Target Port Protocol: SATA
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0001000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 2----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA
+//			Target Port Protocol: Unknown
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 2
+//			Signal Class: Unknown
+//		Port Identifier: 2
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: Unknown
+//			Target Port Protocol: SATA
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0002000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 3----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA
+//			Target Port Protocol: Unknown
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 3
+//			Signal Class: Unknown
+//		Port Identifier: 3
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: Unknown
+//			Target Port Protocol: SATA
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0003000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 4----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA
+//			Target Port Protocol: Unknown
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 4
+//			Signal Class: Unknown
+//		Port Identifier: 4
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: Unknown
+//			Target Port Protocol: SATA
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0004000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 5----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA
+//			Target Port Protocol: Unknown
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 5
+//			Signal Class: Unknown
+//		Port Identifier: 5
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: Unknown
+//			Target Port Protocol: SATA
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0005000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 6----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA
+//			Target Port Protocol: Unknown
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 6
+//			Signal Class: Unknown
+//		Port Identifier: 6
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: Unknown
+//			Target Port Protocol: SATA
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0006000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+//
+//	----Phy 7----
+//		Identify:
+//			Device Type: End Device
+//			Restricted: 00h
+//			Initiator Port Protocol: SATA
+//			Target Port Protocol: Unknown
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0000000000000000h
+//			Phy Identifier: 7
+//			Signal Class: Unknown
+//		Port Identifier: 7
+//		Negotiated Link Rate: Unknown
+//		Minimum Link Rate: 1.5 Gb/s
+//		Maximum Link Rate: 6.0 Gb/s
+//		Phy Change Count: 0
+//		Auto Discover: Not Supported
+//		Phy Features: None
+//		Attached:
+//			Device Type: Unused or No Device Attached
+//			Restricted: 00h
+//			Initiator Port Protocol: Unknown
+//			Target Port Protocol: SATA
+//			Restricted 2: 0000000000000000h
+//			SAS Address: 0007000000000000h
+//			Phy Identifier: 0
+//			Signal Class: Unknown
+
 //Caller allocated full buffer, then we fill in the rest and send it. Data length not needed since this one is a fixed size
 int csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_PHY_INFO_BUFFER phyInfoBuffer, eVerbosityLevels verbosity)
 {
@@ -1396,7 +2198,7 @@ typedef struct _csmiSSPOut
     uint8_t connectionStatus;
 }csmiSSPOut, *ptrCsmiSSPOut;
 
-int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, ptrCsmiSSPIn sspInputs, ptrCsmiSSPOut sspOutputs, eVerbosityLevels verbosity)
+static int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, ptrCsmiSSPIn sspInputs, ptrCsmiSSPOut sspOutputs, eVerbosityLevels verbosity)
 {
     int ret = SUCCESS;
     csmiIOin ioIn;
@@ -1411,7 +2213,7 @@ int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
         return BAD_PARAMETER;
     }
     sspPassthroughBufferLength = sizeof(CSMI_SAS_SSP_PASSTHRU_BUFFER) + sspInputs->dataLength;
-    sspPassthrough = (PCSMI_SAS_SSP_PASSTHRU_BUFFER)calloc_aligned(sizeof(uint8_t), sspPassthroughBufferLength, sizeof(void*));
+    sspPassthrough = C_CAST(PCSMI_SAS_SSP_PASSTHRU_BUFFER, calloc_aligned(sizeof(uint8_t), sspPassthroughBufferLength, sizeof(void*)));
     if (!sspPassthrough)
     {
         return MEMORY_FAILURE;
@@ -1435,7 +2237,7 @@ int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
     {
         if (sspInputs->cdbLength > 40)
         {
-            safe_Free_aligned(sspPassthrough);
+            safe_Free_aligned(sspPassthrough)
             return OS_COMMAND_NOT_AVAILABLE;
         }
         //copy to cdb, then additional CDB
@@ -1467,7 +2269,7 @@ int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
         }
         else
         {
-            safe_Free_aligned(sspPassthrough);
+            safe_Free_aligned(sspPassthrough)
             return BAD_PARAMETER;
         }
     }
@@ -1532,7 +2334,7 @@ int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
         print_Return_Enum("CSMI SSP Passthrough\n", ret);
     }
 
-    safe_Free_aligned(sspPassthrough);
+    safe_Free_aligned(sspPassthrough)
 
     return ret;
 }
@@ -1560,7 +2362,7 @@ typedef struct _csmiSTPOut
     bool retryAsSSPPassthrough;//This may be set, but will only be set, if the driver does not support STP passthrough, but DOES support taking a SCSI translatable CDB. This cannot tell whether to use SAT or legacy CSMI passthrough though...that's a trial and error thing unless we figure out which drivers and versions require that. -TJE
 }csmiSTPOut, *ptrCsmiSTPOut;
 
-int csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, ptrCsmiSTPIn stpInputs, ptrCsmiSTPOut stpOutputs, eVerbosityLevels verbosity)
+static int csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, ptrCsmiSTPIn stpInputs, ptrCsmiSTPOut stpOutputs, eVerbosityLevels verbosity)
 {
     int ret = SUCCESS;
     csmiIOin ioIn;
@@ -1575,7 +2377,7 @@ int csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
         return BAD_PARAMETER;
     }
     stpPassthroughBufferLength = sizeof(CSMI_SAS_STP_PASSTHRU_BUFFER) + stpInputs->dataLength;
-    stpPassthrough = (PCSMI_SAS_STP_PASSTHRU_BUFFER)calloc_aligned(sizeof(uint8_t), stpPassthroughBufferLength, sizeof(void*));
+    stpPassthrough = C_CAST(PCSMI_SAS_STP_PASSTHRU_BUFFER, calloc_aligned(sizeof(uint8_t), stpPassthroughBufferLength, sizeof(void*)));
     if (!stpPassthrough)
     {
         return MEMORY_FAILURE;
@@ -1614,7 +2416,7 @@ int csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
         }
         else
         {
-            safe_Free_aligned(stpPassthrough);
+            safe_Free_aligned(stpPassthrough)
             return BAD_PARAMETER;
         }
     }
@@ -1671,7 +2473,7 @@ int csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, pt
         print_Return_Enum("CSMI STP Passthrough\n", ret);
     }
 
-    safe_Free_aligned(stpPassthrough);
+    safe_Free_aligned(stpPassthrough)
 
     return ret;
 }
@@ -2055,7 +2857,7 @@ int csmi_Get_Connector_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber,
     return ret;
 }
 
-static int csmi_Get_Driver_And_Controller_Data(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_DRIVER_INFO_BUFFER driverInfo, PCSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig, eVerbosityLevels verbosity)
+static int csmi_Get_Basic_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_DRIVER_INFO_BUFFER driverInfo, PCSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig, PCSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus, eVerbosityLevels verbosity)
 {
     int ret = SUCCESS;
     if (deviceHandle != CSMI_INVALID_HANDLE && driverInfo && controllerConfig)
@@ -2065,6 +2867,10 @@ static int csmi_Get_Driver_And_Controller_Data(CSMI_HANDLE deviceHandle, uint32_
             ret = FAILURE;
         }
         if (SUCCESS != csmi_Get_Controller_Configuration(deviceHandle, controllerNumber, controllerConfig, verbosity))
+        {
+            ret = FAILURE;
+        }
+        if (SUCCESS != csmi_Get_Controller_Status(deviceHandle, controllerNumber, controllerStatus, verbosity))
         {
             ret = FAILURE;
         }
@@ -2088,9 +2894,11 @@ bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, eVerbosityLevels verbosit
         //int csmi_Get_Controller_Configuration(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_CONFIG_BUFFER ctrlConfigBuffer, eVerbosityLevels verbosity)
         CSMI_SAS_DRIVER_INFO_BUFFER driverInfo;
         CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
+        CSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus;
         memset(&driverInfo, 0, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
         memset(&controllerConfig, 0, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
-        if (SUCCESS == csmi_Get_Driver_And_Controller_Data(deviceHandle, 0, &driverInfo, &controllerConfig, verbosity))
+        memset(&controllerStatus, 0, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
+        if (SUCCESS == csmi_Get_Basic_Info(deviceHandle, 0, &driverInfo, &controllerConfig, &controllerStatus, verbosity))
         {
             csmiSupported = true;
         }
@@ -2111,35 +2919,42 @@ bool device_Supports_CSMI_With_RST(tDevice *device)
         {
             csmiWithRSTSupported = true;
         }
-#endif
+#endif //ENABLE_INTEL_RST
     }
     return csmiWithRSTSupported;
 }
-#endif
+#endif //_WIN32
 //This is really only here for Windows, but could be used under Linux if you wanted to use CSMI instead of SGIO, but that really is unnecessary
 //controller number is to target the CSMI IOCTL inputs on non-windows. hostController is a SCSI address number, which may or may not be different...If these end up the same on Linux, this should be update to remove the duplicate parameters. If not, delete part of this comment.
 //NOTE: this does not handle Intel NVMe devices in JBOD mode right now. These devices will be handled separately from this function which focuses on SATA/SAS
 int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device, uint8_t controllerNumber, uint8_t hostController, uint8_t pathidBus, uint8_t targetID, uint8_t lun)
 {
     int ret = SUCCESS;
-    device->os_info.csmiDeviceData = (ptrCsmiDeviceInfo)calloc(1, sizeof(csmiDeviceInfo));
+    device->os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, calloc(1, sizeof(csmiDeviceInfo)));
     if (device->os_info.csmiDeviceData)
     {
 #if defined (_WIN32)
         device->os_info.csmiDeviceData->csmiDevHandle = device->os_info.scsiSRBHandle;
-#else
+#else //_WIN32
         device->os_info.csmiDeviceData->csmiDevHandle = device->os_info.fd;
-#endif
+#endif //_WIN32
         device->os_info.csmiDeviceData->controllerNumber = controllerNumber;
         device->os_info.csmiDeviceData->csmiDeviceInfoValid = true;
         //Read controller info, driver info, get phy info for this device too...in non-RAID mode, Windows scsi address should match the csmi scsi address
         CSMI_SAS_DRIVER_INFO_BUFFER driverInfo;
         CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
-        if (SUCCESS == csmi_Get_Driver_And_Controller_Data(device->os_info.csmiDeviceData->csmiDevHandle, 0, &driverInfo, &controllerConfig, device->deviceVerbosity))
+        CSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus;
+        memset(&driverInfo, 0, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
+        memset(&controllerConfig, 0, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
+        memset(&controllerStatus, 0, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
+#if defined (CSMI_DEBUG)
+        printf("JSCI: Getting driver Info, controller config, and controller status\n");
+#endif //CSMI_DEBUG
+        if (SUCCESS == csmi_Get_Basic_Info(device->os_info.csmiDeviceData->csmiDevHandle, 0, &driverInfo, &controllerConfig, &controllerStatus, device->deviceVerbosity))
         {
             bool gotSASAddress = false;
-            device->os_info.csmiDeviceData->csmiMajorVersion = driverInfo.Information.usMajorRevision;
-            device->os_info.csmiDeviceData->csmiMinorVersion = driverInfo.Information.usMinorRevision;
+            device->os_info.csmiDeviceData->csmiMajorVersion = driverInfo.Information.usCSMIMajorRevision;
+            device->os_info.csmiDeviceData->csmiMinorVersion = driverInfo.Information.usCSMIMinorRevision;
             device->os_info.csmiDeviceData->controllerFlags = controllerConfig.Configuration.uControllerFlags;
             device->os_info.csmiDeviceData->lun = lun;
             //set CSMI scsi address based on what was passed in since it may be needed later
@@ -2148,56 +2963,107 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
             device->os_info.csmiDeviceData->scsiAddress.targetId = targetID;
             device->os_info.csmiDeviceData->scsiAddress.lun = lun;
             device->os_info.csmiDeviceData->scsiAddressValid = true;
+
+            //before continuing, check if this is a known driver to work around known issues.
+            device->os_info.csmiDeviceData->csmiKnownDriverType = get_Known_CSMI_Driver_Type(&driverInfo.Information);
                 
             //get SAS Address
+#if defined (CSMI_DEBUG)
+            printf("JSCI: Getting SAS Address\n");
+#endif //CSMI_DEBUG
             CSMI_SAS_GET_DEVICE_ADDRESS_BUFFER addressBuffer;
-            if (SUCCESS == csmi_Get_Device_Address(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &addressBuffer, hostController, pathidBus, targetID, lun, device->deviceVerbosity))
+            //skip this on HPCISS as it causes a hang for some unknown reason.
+            if (device->os_info.csmiDeviceData->csmiKnownDriverType != CSMI_DRIVER_HPCISS && SUCCESS == csmi_Get_Device_Address(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &addressBuffer, hostController, pathidBus, targetID, lun, device->deviceVerbosity))
             {
                 memcpy(device->os_info.csmiDeviceData->sasAddress, addressBuffer.bSASAddress, 8);
                 memcpy(device->os_info.csmiDeviceData->sasLUN, addressBuffer.bSASLun, 8);
                 gotSASAddress = true;
+#if defined (CSMI_DEBUG)
+                printf("JSCI: Successfully got SAS address\n");
+#endif //CSMI_DEBUG
             }
             else
             {
                 //Need to figure out the device another way to get the SAS address IF this is a SAS drive. If this is SATA, this is less important overall unless it's on a SAS HBA, but a driver should be able to handle this call already.
                 //The only other place to find a SAS Address is in the RAID Config, but the drive may or may not be listed there...try it anyways...if we still don't find it, we'll only get the sasAddress from the phy info.
                 //RAID info/config will only be available if it's a SAS or SATA RAID capable controller
+#if defined (CSMI_DEBUG)
+                printf("JSCI: Using alternate method to get SAS address. Checking for compatible controller flags first.\n");
+#endif //CSMI_DEBUG
                 if (controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
                 {
                     CSMI_SAS_RAID_INFO_BUFFER raidInfo;
+#if defined (CSMI_DEBUG)
+                    printf("JSCI: Getting RAID info\n");
+#endif //CSMI_DEBUG
                     if (SUCCESS == csmi_Get_RAID_Info(device->os_info.csmiDeviceData->csmiDevHandle, 0, &raidInfo, device->deviceVerbosity))
                     {
+#if defined (CSMI_DEBUG)
+                        printf("JSCI: Checking RAID sets. Number of RAID sets: %" CPRIu32 "\n", raidInfo.Information.uNumRaidSets);
+#endif //CSMI_DEBUG
                         for (uint32_t raidSet = 0; !gotSASAddress && raidSet < raidInfo.Information.uNumRaidSets; ++raidSet)
                         {
                             //with the RAID info, now we can allocate and read the RAID config
-                            uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) - 1 + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
-                            PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
+                            uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
+                            PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                             if (raidConfig)
                             {
+#if defined (CSMI_DEBUG)
+                                printf("JSCI: Getting RAID config for RAID set %" PRIu32 "\n", raidSet);
+#endif //CSMI_DEBUG
                                 if (SUCCESS == csmi_Get_RAID_Config(device->os_info.csmiDeviceData->csmiDevHandle, 0, raidConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, device->deviceVerbosity))
                                 {
+#if defined (CSMI_DEBUG)
+                                    printf("JSCI: Checking drive count (%" CPRIu8 ")\n", raidConfig->Configuration.bDriveCount);
+#endif //CSMI_DEBUG
                                     if (raidConfig->Configuration.bDriveCount < CSMI_SAS_RAID_DRIVE_COUNT_TOO_BIG)
                                     {
                                         for (uint32_t driveIter = 0; !gotSASAddress && driveIter < raidInfo.Information.uMaxDrivesPerSet && driveIter < raidConfig->Configuration.bDriveCount; ++driveIter)
                                         {
-                                            switch (raidConfig->Configuration.bDataType)
+                                            bool driveInfoValid = true;//for version 81 and earlier, assume this is true.
+#if defined (CSMI_DEBUG)
+                                            printf("JSCI: Checking CSMI Revision: %" CPRIu16 ".%" CPRIu16 "\n", driverInfo.Information.usCSMIMajorRevision, driverInfo.Information.usCSMIMinorRevision);
+#endif //CSMI_DEBUG
+                                            if (driverInfo.Information.usCSMIMajorRevision > 0 || driverInfo.Information.usCSMIMinorRevision > 81)
                                             {
-                                            case CSMI_SAS_RAID_DATA_DRIVES:
-                                                if (strstr((const char*)raidConfig->Configuration.Drives[driveIter].bModel, device->drive_info.product_identification) && strstr((const char*)raidConfig->Configuration.Drives[driveIter].bSerialNumber, device->drive_info.serialNumber))
+#if defined (CSMI_DEBUG)
+                                                printf("JSCI: CSMI Minor rev > 81, so checking bDataType\n");
+#endif //CSMI_DEBUG
+                                                switch (raidConfig->Configuration.bDataType)
+                                                {
+                                                case CSMI_SAS_RAID_DATA_DRIVES:
+                                                    break;
+                                                case CSMI_SAS_RAID_DATA_DEVICE_ID:
+                                                case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
+                                                default:
+                                                    driveInfoValid = false;
+                                                    break;
+                                                }
+                                            }
+                                            if (driveInfoValid)
+                                            {
+#if defined (CSMI_DEBUG)
+                                                printf("JSCI: Checking for matching device information\n");
+#endif //CSMI_DEBUG
+                                                if (strstr(C_CAST(const char*, raidConfig->Configuration.Drives[driveIter].bModel), device->drive_info.product_identification) && strstr(C_CAST(const char*, raidConfig->Configuration.Drives[driveIter].bSerialNumber), device->drive_info.serialNumber))
                                                 {
                                                     //Found the match!!!
-                                                    gotSASAddress = true;
                                                     memcpy(device->os_info.csmiDeviceData->sasAddress, raidConfig->Configuration.Drives[driveIter].bSASAddress, 8);
                                                     memcpy(device->os_info.csmiDeviceData->sasLUN, raidConfig->Configuration.Drives[driveIter].bSASLun, 8);
+                                                    //Intel drivers are known to support a SASAddress that is all zeroes as a valid address, so trust this result for these drivers -TJE
+                                                    if (is_Intel_Driver(device->os_info.csmiDeviceData->csmiKnownDriverType) || !is_Empty(device->os_info.csmiDeviceData->sasAddress, 8)) //an empty (all zeros) SAS address means it is not valid, such as on a SATA controller. NOTE: Some SATA controllers will fill this is, but this is not guaranteed-TJE
+                                                    {
+#if defined (CSMI_DEBUG)
+                                                        printf("JSCI: Found matching drive data. Can send CSMI IOs in addition to normal system IOs\n");
+#endif //CSMI_DEBUG
+                                                        gotSASAddress = true;
+                                                    }
                                                 }
-                                                break;
-                                            default:
-                                                break;
                                             }
                                         }
                                     }
                                 }
-                                safe_Free(raidConfig);
+                                safe_Free(raidConfig)
                             }
                         }
                     }
@@ -2205,15 +3071,30 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
             }
 
             //Attempt to read phy info to get phy identifier and port identifier data...this may not work on RST NVMe if this code is hit...that's OK since we are unlikely to see that.
+            //NOTE: AMD's rcraid driver seems to treat non-raid drives slightly different in the phy info output. In the case I observed, the raid drives were in the phy info, but the
+            //      non-RAID drive was not shown here at all. However in the RAID IOCTLs, it does show as a separate single drive raid (but no MN or SN info to match to it).
+            //      So it does not appear possible to issue a CSMI passthrough command to non-raid drives. This is completely opposite of what the Intel drivers do.
+            //      Intel's drivers show every drive attached, RAID or non-RAID in the phy info.
+            //      This may be something we want to detect in the future to reduce the number of IOCTLs sent, but for now, it works ok. We can optimize this more later. -TJE
             CSMI_SAS_PHY_INFO_BUFFER phyInfo;
             bool foundPhyInfo = false;
+#if defined (CSMI_DEBUG)
+            printf("JSCI: Getting Phy info\n");
+#endif //CSMI_DEBUG
             if (SUCCESS == csmi_Get_Phy_Info(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &phyInfo, device->deviceVerbosity))
             {
                 //TODO: Is there a better way to match against the port identifier with the address information provided? match to attached port or phy identifier???
-                for (uint8_t phyIter = 0; !foundPhyInfo && phyIter < phyInfo.Information.bNumberOfPhys && phyIter < 32; ++phyIter)
+#if defined (CSMI_DEBUG)
+                printf("JSCI: Checking Phy info for a match. Number of phys: %" CPRIu8 "\n", phyInfo.Information.bNumberOfPhys);
+#endif //CSMI_DEBUG
+                for (uint8_t phyIter = 0, physFound = 0; !foundPhyInfo && physFound < phyInfo.Information.bNumberOfPhys && phyIter < 32; ++phyIter)
                 {
                     if (phyInfo.Information.Phy[phyIter].Attached.bDeviceType != CSMI_SAS_NO_DEVICE_ATTACHED)
                     {
+                        ++physFound;
+#if defined (CSMI_DEBUG)
+                        printf("JSCI: Checking SAS address match\n");
+#endif //CSMI_DEBUG
                         if (gotSASAddress && memcmp(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, device->os_info.csmiDeviceData->sasAddress, 8) == 0)
                         {
                             //Found it. We can save the portID and phyID to use to issue commands :)
@@ -2221,9 +3102,15 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                             device->os_info.csmiDeviceData->phyIdentifier = phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier;
                             device->os_info.csmiDeviceData->portProtocol = phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol;
                             foundPhyInfo = true;
+#if defined (CSMI_DEBUG)
+                            printf("JSCI: Found a matching SAS address!\n");
+#endif //CSMI_DEBUG
                         }
                         else if (!gotSASAddress)
                         {
+#if defined (CSMI_DEBUG)
+                            printf("JSCI: No SAS address to match. Attempting passthrough commands to match\n");
+#endif //CSMI_DEBUG
                             ScsiIoCtx csmiPTCmd;
                             memset(&csmiPTCmd, 0, sizeof(ScsiIoCtx));
                             csmiPTCmd.device = device;
@@ -2257,28 +3144,27 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                                 identify.tfr.CommandStatus = ATA_IDENTIFY;
                                 identify.tfr.SectorCount = 1;
                                 identify.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+#if defined (CSMI_DEBUG)
+                                printf("JSCI: Detected SATA protocol. Attempting Identify CMD\n");
+#endif //CSMI_DEBUG
                                 if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
                                 {
                                     //compare MN and SN...if match, then we have found the drive!
-                                    char ataMN[41] = { 0 };
-                                    char ataSN[41] = { 0 };
-                                    //char ataFW[9] = { 0 };
-                                    //copy strings
-                                    memcpy(ataSN, &identifyData[20], 40);
-                                    //memcpy(ataFW, &identifyData[46], 8);
-                                    memcpy(ataMN, &identifyData[54], 40);
-                                    //byte-swap due to ATA string silliness.
-                                    byte_Swap_String(ataSN);
-                                    byte_Swap_String(ataMN);
-                                    //byte_Swap_String(ataFW);
-                                    //remove whitespace
-                                    remove_Leading_And_Trailing_Whitespace(ataSN);
-                                    remove_Leading_And_Trailing_Whitespace(ataMN);
-                                    //remove_Leading_And_Trailing_Whitespace(ataFW);
+                                    char ataMN[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
+                                    char ataSN[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
+                                    char ataFW[ATA_IDENTIFY_FW_LENGTH + 1] = { 0 };
+                                    fill_ATA_Strings_From_Identify_Data(identifyData, ataMN, ataSN, ataFW);
+
                                     //check for a match
+#if defined (CSMI_DEBUG)
+                                    printf("JSCI: Identify Successful\n");
+#endif //CSMI_DEBUG
                                     if (strcmp(ataMN, device->drive_info.product_identification) == 0 && strcmp(ataSN, device->drive_info.serialNumber) == 0)
                                     {
                                         //found a match!
+#if defined (CSMI_DEBUG)
+                                        printf("JSCI: Found a matching MN/SN!\n");
+#endif //CSMI_DEBUG
                                         foundPhyInfo = true;
                                     }
                                 }
@@ -2302,7 +3188,9 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                                 memcpy(csmiPTCmd.cdb, cdb, 6);
                                 csmiPTCmd.dataLength = 96;
                                 csmiPTCmd.pdata = inqData;
-                                
+#if defined (CSMI_DEBUG)
+                                printf("JSCI: Detected SSP protocol. Attempting Inquiry\n");
+#endif //CSMI_DEBUG
                                 if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
                                 {
                                     //TODO: If this is a multi-LUN device, this won't currently work and it may not be possible to make this work if we got to this case in the first place. HOPEFULLY the other CSMI translation IOCTLs just work and this is unnecessary. - TJE
@@ -2319,28 +3207,40 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                                     remove_Leading_And_Trailing_Whitespace(inqProductID);
                                     //remove_Leading_And_Trailing_Whitespace(inqProductRev);
                                     //compare to tDevice
+#if defined (CSMI_DEBUG)
+                                    printf("JSCI: Inquiry Successful\n");
+#endif //CSMI_DEBUG
                                     if (strcmp(inqVendor, device->drive_info.T10_vendor_ident) == 0 && strcmp(inqProductID, device->drive_info.product_identification) == 0)
                                     {
+#if defined (CSMI_DEBUG)
+                                        printf("JSCI: MN/Vendor match. Checking SN\n");
+#endif //CSMI_DEBUG
                                         //now read the unit SN VPD page since this matches so far that way we can compare the serial number. Not checking SCSI 2 since every SAS drive *SHOULD* support this.
                                         memset(inqData, 0, 96);
                                         //change CDB to read unit SN page
                                         cdb[1] |= BIT0;
                                         cdb[2] = UNIT_SERIAL_NUMBER;
+#if defined (CSMI_DEBUG)
+                                        printf("JSCI: Requesting Unit SN page\n");
+#endif //CSMI_DEBUG
                                         if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
                                         {
                                             //check the SN
                                             uint16_t serialNumberLength = M_Min(M_BytesTo2ByteValue(inqData[2], inqData[3]), 96) + 1;
-                                            char *serialNumber = (char*)calloc(serialNumberLength, sizeof(char));
+                                            char *serialNumber = C_CAST(char*, calloc(serialNumberLength, sizeof(char)));
                                             if (serialNumber)
                                             {
                                                 memcpy(serialNumber, &inqData[4], serialNumberLength - 1);//minus 1 to leave null terminator in tact at the end
                                                 if (strcmp(serialNumber, device->drive_info.serialNumber) == 0)
                                                 {
+#if defined (CSMI_DEBUG)
+                                                    printf("JSCI: Found a matching SN!\n");
+#endif //CSMI_DEBUG
                                                     //found a match!
                                                     foundPhyInfo = true;
                                                     //TODO: To help prevent multiport or multi-lun issues, we should REALLY check the device identification VPD page, but that can be a future enhancement
                                                 }
-                                                safe_Free(serialNumber);
+                                                safe_Free(serialNumber)
                                             }
                                         }
                                         //else...catastrophic failure? Not sure what to do here since this should be really rare to begin with.
@@ -2349,27 +3249,42 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                             }
                         }
                     }
+                    else
+                    {
+#if defined (CSMI_DEBUG)
+                        printf("JSCI: Skipping phy %" PRIu8 " as it is marked no device attached\n", phyIter);
+#endif //CSMI_DEBUG
+                    }
                 }
             }
 
             if (!foundPhyInfo)
             {
+#if defined (CSMI_DEBUG)
+                printf("JSCI: No phy info. Not enough information to use CSMI passthrough\n");
+#endif //CSMI_DEBUG
                 //We don't have enough information to use CSMI passthrough on this device. Free memory and return NOT_SUPPORTED
-                safe_Free(device->os_info.csmiDeviceData);
+                safe_Free(device->os_info.csmiDeviceData)
                 ret = NOT_SUPPORTED;
             }
 
 #if defined (_WIN32) && defined (ENABLE_INTEL_RST)
             //Check if Intel Driver and if FWDL IOs are supported or not. version 14.8+
-            if (strncmp((const char*)driverInfo.Information.szName, "iaStor", 6) == 0)
+            if (strncmp(C_CAST(const char*, driverInfo.Information.szName), "iaStor", 6) == 0)
             {
+#if defined (CSMI_DEBUG)
+                printf("JSCI: Detected intel driver\n");
+#endif //CSMI_DEBUG
                 //Intel driver, check for Additional IOCTLs by trying to read FWDL info
                 if (supports_Intel_Firmware_Download(device))
                 {
                     //No need to do anything here right now since the function above will fill in parameters as necessary.
+#if defined (CSMI_DEBUG)
+                    printf("JSCI: Intel driver supports unique FWDL IOCTLs\n");
+#endif //CSMI_DEBUG
                 }
             }
-#endif
+#endif //_WIN32 && ENABLE_INTEL_RST
         }
         else
         {
@@ -2380,6 +3295,9 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
     {
         ret = MEMORY_FAILURE;
     }
+#if defined (CSMI_DEBUG)
+    printf("JSCI: Returning %d\n", ret);
+#endif //CSMI_DEBUG
     return ret;
 }
 
@@ -2403,8 +3321,10 @@ int close_CSMI_RAID_Device(tDevice *device)
 #if defined (_WIN32)
         CloseHandle(device->os_info.fd);
         device->os_info.last_error = GetLastError();
+        safe_Free(device->os_info.csmiDeviceData)
+        device->os_info.last_error = 0;
         device->os_info.fd = INVALID_HANDLE_VALUE;
-#else
+#else //_WIN32
         if(close(device->os_info.fd))
         {
             device->os_info.last_error = errno;
@@ -2414,7 +3334,7 @@ int close_CSMI_RAID_Device(tDevice *device)
             device->os_info.last_error = 0;
         }
         device->os_info.fd = -1;
-#endif
+#endif //_WIN32
         safe_Free(device->os_info.csmiDeviceData);
         device->os_info.last_error = 0;
         return SUCCESS;
@@ -2433,6 +3353,9 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
     //Need to open this handle and setup some information then fill in the device information.
     if (!(validate_Device_Struct(device->sanity)))
     {
+#if defined (CSMI_DEBUG)
+        printf("GRD: Failure validating device struct\n");
+#endif //CSMI_DEBUG
         return LIBRARY_MISMATCH;
     }
     //set the handle name first...since the tokenizing below will break it apart
@@ -2441,47 +3364,68 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
     bool intelNVMe = false;
     uint32_t *intelPathID = &portID, *intelTargetID = &phyID, *intelLun = &lun;
     //Check if it's Intel NVMe PTL format
+#if defined (CSMI_DEBUG)
+    printf("GRD: detecting CSMI handle format\n");
+#endif //CSMI_DEBUG
     int sscanfret = sscanf(filename, "csmi:%" SCNu32 ":N:%" SCNu32 ":%" SCNu32 ":%" SCNu32 "", &controllerNum, intelPathID, intelTargetID, intelLun);
     if (sscanfret != 0 && sscanfret != EOF && sscanfret == 4)
     {
+#if defined (CSMI_DEBUG)
+        printf("GRD: Detected Intel NVMe CSMI format\n");
+#endif //CSMI_DEBUG
         intelNVMe = true;
-        sprintf(device->os_info.friendlyName, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":N:%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, *intelPathID, *intelTargetID, *intelLun);
+        snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH,  CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":N:%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, *intelPathID, *intelTargetID, *intelLun);
     }
     else
     {
         sscanfret = sscanf(filename, "csmi:%" SCNu32 ":%" SCNu32 ":%" SCNu32 ":%" SCNu32 "", &controllerNum, &portID, &phyID, &lun);
         if (sscanfret != 0 && sscanfret != EOF)
         {
-            sprintf(device->os_info.friendlyName, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, portID, phyID, lun);
+#if defined (CSMI_DEBUG)
+            printf("GRD: Detected standard CSMI handle format\n");
+#endif //CSMI_DEBUG
+            if (portID == CSMI_SAS_IGNORE_PORT && phyID == CSMI_SAS_USE_PORT_IDENTIFIER)
+            {
+#if defined (CSMI_DEBUG)
+                printf("GRD: ERROR - portID and phyID both set to FFh, which is not allowed!\n");
+#endif //CSMI_DEBUG
+                return BAD_PARAMETER;
+            }
+            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, portID, phyID, lun);
         }
         else
         {
+#if defined (CSMI_DEBUG)
+            printf("GRD: Handle doesn't match std csmi format or Intel NVMe csmi format!\n");
+#endif //CSMI_DEBUG
             return BAD_PARAMETER;
         }
     }
-#else
+#else //_WIN32
     //TODO: handle non-Windows OS with CSMI
     char nixBaseHandleBuf[10] = { 0 };
     char *nixBaseHandle = &nixBaseHandleBuf[0];
     int sscanfret = sscanf(filename, "csmi:%" SCNu32 ":%" SCNu32 ":%" SCNu32 " :%s", &controllerNum, &portID, &lun, nixBaseHandle);
     if (sscanfret != 0 && sscanfret != EOF)
     {
-        sprintf(device->os_info.friendlyName, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%s", controllerNum, portID, lun, nixBaseHandle);
+        snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%s", controllerNum, portID, lun, nixBaseHandle);
     }
     else
     {
         return BAD_PARAMETER;
     }
-#endif
-
+#endif //_WIN32
+#if defined (CSMI_DEBUG)
+    printf("GRD: Opening low-level device handle\n");
+#endif //CSMI_DEBUG
 #if defined(_WIN32)
     TCHAR device_name[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
     CONST TCHAR *ptrDeviceName = &device_name[0];
 #if defined (_MSC_VER) && _MSC_VER < SEA_MSC_VER_VS2015
     _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\SCSI") TEXT("%") TEXT("lu") TEXT(":"), controllerNum);
-#else
+#else //_MSC_VER && _MSCVER < VS2015
     _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\SCSI") TEXT("%") TEXT(PRIu32) TEXT(":"), controllerNum);
-#endif
+#endif //_MSC_VER && _MSC_VER < VS2015
     //lets try to open the device.
     device->os_info.fd = CreateFile(ptrDeviceName,
         GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
@@ -2490,23 +3434,29 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
         OPEN_EXISTING,
 #if !defined(WINDOWS_DISABLE_OVERLAPPED)
         FILE_FLAG_OVERLAPPED,
-#else
+#else //!WINDOWS_DISABLE_OVERLAPPED
         0,
-#endif
+#endif //WINDOWS_DISABLE_OVERLAPPED
         NULL);
     //DWORD lastError = GetLastError();
     if (device->os_info.fd != INVALID_HANDLE_VALUE)
-#else
+#else //_WIN32
     if ((device->os_info.fd = open(nixBaseHandle, O_RDWR | O_NONBLOCK)) >= 0)
-#endif
+#endif //_WIN32
     {
+#if defined (CSMI_DEBUG)
+        printf("GRD: Successfully opened handle. Setting up default CSMI info.\n");
+#endif //CSMI_DEBUG
         device->os_info.minimumAlignment = sizeof(void *);//setting alignment this way to be compatible across OSs since CSMI doesn't really dictate an alignment, but we should set something. - TJE
-        device->issue_io = (issue_io_func)send_CSMI_IO;
+        device->issue_io = C_CAST(issue_io_func, send_CSMI_IO);
         device->drive_info.drive_type = SCSI_DRIVE;//assume SCSI for now. Can be changed later
         device->drive_info.interface_type = RAID_INTERFACE;//TODO: Only set RAID interface for one that needs a function pointer and is in a RAID!!!
-        device->os_info.csmiDeviceData = (ptrCsmiDeviceInfo)calloc(1, sizeof(csmiDeviceInfo));
+        device->os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, calloc(1, sizeof(csmiDeviceInfo)));
         if (!device->os_info.csmiDeviceData)
         {
+#if defined (CSMI_DEBUG)
+            printf("GRD: Failed to allocate csmiDeviceInfo structure\n");
+#endif //CSMI_DEBUG
             return MEMORY_FAILURE;
         }
         device->os_info.csmiDeviceData->csmiDevHandle = device->os_info.fd;
@@ -2515,34 +3465,49 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
         //we were able to open the requested handle...now it's time to collect some information we'll need to save for this device so we can talk to it later.
         //get some controller/driver into then start checking for connected ports and increment the counter.
         CSMI_SAS_DRIVER_INFO_BUFFER driverInfo;
+#if defined (CSMI_DEBUG)
+        printf("GRD: Getting driver info\n");
+#endif //CSMI_DEBUG
         if (SUCCESS == csmi_Get_Driver_Info(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &driverInfo, device->deviceVerbosity))
         {
             device->os_info.csmiDeviceData->csmiMajorVersion = driverInfo.Information.usCSMIMajorRevision;
             device->os_info.csmiDeviceData->csmiMinorVersion = driverInfo.Information.usCSMIMinorRevision;
             //TODO: If this is an Intel RST driver, check the name and additionally check to see if it supports the Intel IOCTLs
             //NOTE: If it's an Intel NVMe, then we need to special case some of the below IOCTLs since it won't respond the same...
-            device->os_info.csmiDeviceData->securityAccess = get_CSMI_Security_Access((char*)driverInfo.Information.szName);//With this, we could add some intelligence to when commands are supported or not, at least under Windows, but mostly just a placeholder today. - TJE
+            device->os_info.csmiDeviceData->securityAccess = get_CSMI_Security_Access(C_CAST(char*, driverInfo.Information.szName));//With this, we could add some intelligence to when commands are supported or not, at least under Windows, but mostly just a placeholder today. - TJE
         }
         else
         {
+#if defined (CSMI_DEBUG)
+            printf("GRD: CSMI get device failure due to driver info failure\n");
+#endif //CSMI_DEBUG
             ret = FAILURE;//TODO: should this fail here??? This IOCTL is required...
         }
         CSMI_SAS_CNTLR_CONFIG_BUFFER ctrlConfig;
+#if defined (CSMI_DEBUG)
+        printf("GRD: Getting controller config\n");
+#endif //CSMI_DEBUG
         if (SUCCESS == csmi_Get_Controller_Configuration(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &ctrlConfig, device->deviceVerbosity))
         {
             device->os_info.csmiDeviceData->controllerFlags = ctrlConfig.Configuration.uControllerFlags;
         }
         else
         {
+#if defined (CSMI_DEBUG)
+            printf("GRD: CSMI get device failure due to controller config failure\n");
+#endif //CSMI_DEBUG
             ret = FAILURE;//TODO: should this fail here??? This IOCTL is required...
         }
 
-#if defined (_WIN32) && defined (ENABLE_INTEL_RST) && !defined (DISABLE_NVME_PASSTHROUGH)
+#if defined (_WIN32) && defined (ENABLE_INTEL_RST)
         if (intelNVMe)
         {
+#if defined (CSMI_DEBUG)
+            printf("GRD: Setting Intel NVMe function pointers\n");
+#endif //CSMI_DEBUG
             device->drive_info.drive_type = NVME_DRIVE;
-            device->issue_io = (issue_io_func)send_Intel_NVM_SCSI_Command;
-            device->issue_nvme_io = (issue_io_func)send_Intel_NVM_Command;
+            device->issue_io = C_CAST(issue_io_func, send_Intel_NVM_SCSI_Command);
+            device->issue_nvme_io = C_CAST(issue_io_func, send_Intel_NVM_Command);
             device->os_info.csmiDeviceData->intelRSTSupport.intelRSTSupported = true;
             device->os_info.csmiDeviceData->intelRSTSupport.nvmePassthrough = true;
             device->os_info.csmiDeviceData->scsiAddressValid = true;
@@ -2555,22 +3520,44 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
             device->drive_info.namespaceID = *intelLun + 1;//LUN is 0 indexed, whereas namespaces start at 1.
         }
         else
-#endif //_WIN32
+#endif //_WIN32 && ENABLE_INTEL_RST
         {
             device->os_info.csmiDeviceData->portIdentifier = C_CAST(uint8_t, portID);
             device->os_info.csmiDeviceData->phyIdentifier = C_CAST(uint8_t, phyID);
             //read phy info and match the provided port and phy identifier values with the phy data to store sasAddress since it may be needed later.
             CSMI_SAS_PHY_INFO_BUFFER phyInfo;
+#if defined (CSMI_DEBUG)
+            printf("GRD: Getting phy info\n");
+#endif //CSMI_DEBUG
+            //NOTE: AMD's rcraid driver seems to treat non-raid drives slightly different in the phy info output. In the case I observed, the raid drives were in the phy info, but the
+            //      non-RAID drive was not shown here at all. However in the RAID IOCTLs, it does show as a separate single drive raid (but no MN or SN info to match to it).
+            //      So it does not appear possible to issue a CSMI passthrough command to non-raid drives. This is completely opposite of what the Intel drivers do.
+            //      Intel's drivers show every drive attached, RAID or non-RAID in the phy info.
+            //      This may be something we want to detect in the future to reduce the number of IOCTLs sent, but for now, it works ok. We can optimize this more later. -TJE
             if (SUCCESS == csmi_Get_Phy_Info(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &phyInfo, device->deviceVerbosity))
             {
                 //Using the data we've already gotten, we need to save phy identifier, port identifier, port protocol, and SAS address.
                 //TODO: Check if we should be using the Identify or Attached structure information to populate the support fields.
                 //Identify appears to contain initiator data, and attached seems to include target data...
                 //bool foundPhyInfoForDevice = false;
+#if defined (CSMI_DEBUG)
+                printf("GRD: Number of phys: %" CPRIu8 "\n", phyInfo.Information.bNumberOfPhys);
+#endif //CSMI_DEBUG
                 for(uint8_t portNum = 0; portNum < 32 && portNum < phyInfo.Information.bNumberOfPhys; ++portNum)
                 {
-                    if (phyInfo.Information.Phy[portNum].bPortIdentifier == portID && phyInfo.Information.Phy[portNum].Attached.bPhyIdentifier == phyID)
+#if defined (CSMI_DEBUG)
+                    printf("GRD: Checking for portID and phyID match for port %" PRIu8 "\n", portNum);
+                    printf("GRD: phyInfo portID = %" PRIu8 " == %" PRIu32 "\n", phyInfo.Information.Phy[portNum].bPortIdentifier, portID);
+                    printf("GRD: phyInfo phyID  = %" PRIu8 " == %" PRIu32 "\n", phyInfo.Information.Phy[portNum].Attached.bPhyIdentifier, phyID);
+#endif //CSMI_DEBUG
+                    if ((phyInfo.Information.Phy[portNum].bPortIdentifier == portID && phyInfo.Information.Phy[portNum].Attached.bPhyIdentifier == phyID)
+                        || (portID == CSMI_SAS_IGNORE_PORT && phyInfo.Information.Phy[portNum].Attached.bPhyIdentifier == phyID)
+                        || (phyInfo.Information.Phy[portNum].bPortIdentifier == portID && phyID == CSMI_SAS_USE_PORT_IDENTIFIER)
+                        )
                     {
+#if defined (CSMI_DEBUG)
+                        printf("GRD: Port and phy ID match found\n");
+#endif //CSMI_DEBUG
                         device->os_info.csmiDeviceData->portProtocol = phyInfo.Information.Phy[portNum].Attached.bTargetPortProtocol;
                         memcpy(device->os_info.csmiDeviceData->sasAddress, phyInfo.Information.Phy[portNum].Attached.bSASAddress, 8);
                         //foundPhyInfoForDevice = true;
@@ -2579,38 +3566,72 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
                 }
             }
 
+#if defined (CSMI_DEBUG)
+            printf("GRD: Done matching phyinfo. Setting up stuff based on protocol\n");
+#endif //CSMI_DEBUG
+
             //Need to get SASLun from RAID config IF SSP is supported since we need the SAS LUN value for issuing commands
             //This is not needed for other protocols.
             if (device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SSP)
             {
                 //Read the RAID config and find the matching device from SAS address. This is needed because SSP passthrough will need the SAS LUN
+#if defined (CSMI_DEBUG)
+                printf("GRD: SSP protocol, looking up SASLun value in RAID config\n");
+#endif //CSMI_DEBUG
                 CSMI_SAS_RAID_INFO_BUFFER raidInfo;
+#if defined (CSMI_DEBUG)
+                printf("GRD: Getting RAID info\n");
+#endif //CSMI_DEBUG
                 if (SUCCESS == csmi_Get_RAID_Info(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &raidInfo, device->deviceVerbosity))
                 {
                     bool foundDrive = false;
+#if defined (CSMI_DEBUG)
+                    printf("GRD: Got RAID info, checking RAID sets. Number of RAID sets: %" CPRIu32 "\n", raidInfo.Information.uNumRaidSets);
+#endif //CSMI_DEBUG
                     for (uint32_t raidSet = 0; raidSet < raidInfo.Information.uNumRaidSets && !foundDrive; ++raidSet)
                     {
                         //need to parse the RAID info to figure out how much memory to allocate and read the 
-                        uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) - 1 + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
-                        PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
+                        uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
+                        PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                         if (!raidConfig)
                         {
                             return MEMORY_FAILURE;
                         }
+#if defined (CSMI_DEBUG)
+                        printf("GRD: Reading RAID config for raid set %" PRIu32 "\n", raidSet);
+#endif //CSMI_DEBUG
                         if (SUCCESS == csmi_Get_RAID_Config(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, raidConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, device->deviceVerbosity))
                         {
                             //iterate through the drives and find a matching SAS address.
                             //If we find a matching SAS address, we need to check the LUN....since we are only doing this for SSP, we should be able to use the get SCSI address function and validate that we have the correct lun.
+#if defined (CSMI_DEBUG)
+                            printf("GRD: Iterating through drives in RAID set\n");
+#endif //CSMI_DEBUG
                             for (uint32_t driveIter = 0; driveIter < raidConfig->Configuration.bDriveCount && driveIter < raidInfo.Information.uMaxDrivesPerSet && !foundDrive; ++driveIter)
                             {
+#if defined (CSMI_DEBUG)
+                                printf("GRD: Checking for matching SAS address\n");
+#endif //CSMI_DEBUG
                                 if (memcmp(raidConfig->Configuration.Drives[driveIter].bSASAddress, device->os_info.csmiDeviceData->sasAddress, 8) == 0)
                                 {
+#if defined (CSMI_DEBUG)
+                                    printf("GRD: Match found!\n");
+#endif //CSMI_DEBUG
                                     //take the SAS Address and SAS Lun and convert to SCSI Address...this should be supported IF we find a SAS drive.
                                     CSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddress;
+#if defined (CSMI_DEBUG)
+                                    printf("GRD: Calling get SCSI Address\n");
+#endif //CSMI_DEBUG
                                     if (SUCCESS == csmi_Get_SCSI_Address(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &scsiAddress, raidConfig->Configuration.Drives[driveIter].bSASAddress, raidConfig->Configuration.Drives[driveIter].bSASLun, device->deviceVerbosity))
                                     {
+#if defined (CSMI_DEBUG)
+                                        printf("GRD: Got SCSI address\n");
+#endif //CSMI_DEBUG
                                         if (scsiAddress.bLun == lun)
                                         {
+#if defined (CSMI_DEBUG)
+                                            printf("GRD: Matching LUN found\n");
+#endif //CSMI_DEBUG
                                             device->os_info.csmiDeviceData->scsiAddress.hostIndex = scsiAddress.bHostIndex;
                                             device->os_info.csmiDeviceData->scsiAddress.pathId = scsiAddress.bPathId;
                                             device->os_info.csmiDeviceData->scsiAddress.targetId = scsiAddress.bTargetId;
@@ -2623,7 +3644,7 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
                                 }
                             }
                         }
-                        safe_Free(raidConfig);
+                        safe_Free(raidConfig)
                     }
                 }
             }
@@ -2631,11 +3652,17 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
             if ((device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SATA) == 0 && !device->os_info.csmiDeviceData->scsiAddressValid)//TODO: Need to test this. May just want to always try it
             {
                 //get scsi address
+#if defined (CSMI_DEBUG)
+                printf("GRD: Calling get SCSI address since it is not valid\n");
+#endif //CSMI_DEBUG
                 //TODO: Need to figure out how we get the LUN...it's part of RAID config drive information, but it is not part of other reported information...only need this under RAID most likely...-TJE
                 //TODO: Check to see if SMP requests can somehow figure out the 8 byte SAS Lun values. Will only need it on non-SATA devices. SATA has only a singe LUN, but SAS may have multiple LUNs
                 CSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddress;
                 if (SUCCESS == csmi_Get_SCSI_Address(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &scsiAddress, device->os_info.csmiDeviceData->sasAddress, device->os_info.csmiDeviceData->sasLUN, device->deviceVerbosity))
                 {
+#if defined (CSMI_DEBUG)
+                    printf("GRD: Got valid SCSI address\n");
+#endif //CSMI_DEBUG
                     device->os_info.csmiDeviceData->scsiAddressValid = true;
                     device->os_info.csmiDeviceData->scsiAddress.hostIndex = scsiAddress.bHostIndex;
                     device->os_info.csmiDeviceData->scsiAddress.pathId = scsiAddress.bPathId;
@@ -2646,11 +3673,17 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
 
             if (device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SATA || device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_STP)
             {
+#if defined (CSMI_DEBUG)
+                printf("GRD: Getting SATA signature\n");
+#endif //CSMI_DEBUG
                 CSMI_SAS_SATA_SIGNATURE_BUFFER signature;
                 device->drive_info.drive_type = ATA_DRIVE;
                 //get sata signature fis and set pmport
                 if (SUCCESS == csmi_Get_SATA_Signature(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &signature, device->os_info.csmiDeviceData->phyIdentifier, device->deviceVerbosity))
                 {
+#if defined (CSMI_DEBUG)
+                    printf("GRD: Got SATA signature\n");
+#endif //CSMI_DEBUG
                     memcpy(&device->os_info.csmiDeviceData->signatureFIS, &signature.Signature.bSignatureFIS, sizeof(sataD2HFis));
                     device->os_info.csmiDeviceData->signatureFISValid = true;
                     device->os_info.csmiDeviceData->sataPMPort = M_Nibble0(device->os_info.csmiDeviceData->signatureFIS.byte1);//lower nibble of this byte holds the port multiplier port that the device is attached to...this can help route the FIS properly
@@ -2658,12 +3691,18 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
             }
 
             //Need to check for Intel IOCTL support on SATA drives so we can send the Intel FWDL ioctls instead of passthrough.
-            if (strncmp((const char*)driverInfo.Information.szName, "iaStorA", 7) == 0)
+            if (strncmp(C_CAST(const char*, driverInfo.Information.szName), "iaStorA", 7) == 0)
             {
                 //This is an intel driver.
+#if defined (CSMI_DEBUG)
+                printf("GRD: Detected Intel driver.\n");
+#endif //CSMI_DEBUG
                 //There is a way to get path-target-lun data from the SAS address if the other IOCTLs didn't work (which they don't seem to support this translation anyways)
                 if (!device->os_info.csmiDeviceData->scsiAddressValid)
                 {
+#if defined (CSMI_DEBUG)
+                    printf("GRD: Manually setting SCSI address for Intel driver\n");
+#endif //CSMI_DEBUG
                     //convert SAS address to SCSI address using proprietary intel formatting since IOCTLs above didn't work or weren't used.
                     //NOTE: This is only valid for the noted driver. Previous versions used different formats for sasAddress that don't support firmware update IOCTLs, and are not supported - TJE
                     device->os_info.csmiDeviceData->scsiAddress.lun = device->os_info.csmiDeviceData->sasAddress[0];
@@ -2673,8 +3712,13 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
                 }
             }
         }
-
+#if defined (CSMI_DEBUG)
+        printf("GRD: Initialization of structures completed. Calling fill drive info\n");
+#endif //CSMI_DEBUG
         ret = fill_Drive_Info_Data(device);
+#if defined (CSMI_DEBUG)
+        printf("GRD: Fill drive info returned %d\n", ret);
+#endif //CSMI_DEBUG
     }
     return ret;
 }
@@ -2690,68 +3734,168 @@ bool is_CSMI_Handle(const char * filename)
     return isCSMI;
 }
 
+//There are 2 possible keys depending on if this is a port or miniport driver.
+//Miniport will use an ASCII string in DriverParameter for CSMI=accessLevel
+//Storport will use a DWORD named CSMI set to a value between 0 and 3 (0=no access, 3 = full access)
+//The following link describes where to find the DriverParameter key:
+//https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/registry-entries-for-storport-miniport-drivers
+//Miniport scope: HKLM\System\CurrentControlSet\Services<miniport name>\Parameters\Device
+//Adapter scope:  HKLM\System\CurrentControlSet\Services<miniport name>\Parameters\Device<adapter#>
+//Storport key location
+//HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\<PortDriverName>\Parameters\CSMI = dword value
 eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
 {
     eCSMISecurityAccess access = CSMI_SECURITY_ACCESS_NONE;
 #if defined (_WIN32)
-    HKEY keyHandle;
-    TCHAR *baseRegKeyPath = TEXT("SYSTEM\\CurrentControlSet\\Services\\");
-    TCHAR *paramRegKeyPath = TEXT("\\Parameters");
-    size_t tdriverNameLength = (strlen(driverName) + 1) * sizeof(TCHAR);
-    size_t registryKeyStringLength = _tcslen(baseRegKeyPath) + tdriverNameLength + _tcslen(paramRegKeyPath);
-    TCHAR *registryKey = (TCHAR*)calloc(registryKeyStringLength, sizeof(TCHAR));
-    TCHAR *tdriverName = (TCHAR*)calloc(tdriverNameLength, sizeof(TCHAR));
-    if (tdriverName)
+    if (strstr(driverName, "iaStor"))//TODO: Expand this list as other drives not using these registry keys are found-TJE
     {
-        _stprintf_s(tdriverName, tdriverNameLength, TEXT("%hs"), driverName);
+        //Intel's driver does not use these registry keys
+        access = CSMI_SECURITY_ACCESS_FULL;
     }
-    if (registryKey)
+    else
     {
-        _stprintf_s(registryKey, registryKeyStringLength, TEXT("%s%s%s"), baseRegKeyPath, tdriverName, paramRegKeyPath);
-    }
-    if (tdriverName && registryKey && _tcslen(tdriverName) > 0 && _tcslen(registryKey) > 0)
-    {
-        if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_LOCAL_MACHINE, registryKey, 0, KEY_READ, &keyHandle))
+        HKEY keyHandle;
+        TCHAR* baseRegKeyPath = TEXT("SYSTEM\\CurrentControlSet\\Services\\");
+        TCHAR* paramRegKeyPath = TEXT("\\Parameters");
+        size_t tdriverNameLength = (strlen(driverName) + 1) * sizeof(TCHAR);
+        size_t registryKeyStringLength = _tcslen(baseRegKeyPath) + tdriverNameLength + _tcslen(paramRegKeyPath);
+        TCHAR* registryKey = C_CAST(TCHAR*, calloc(registryKeyStringLength, sizeof(TCHAR)));
+        TCHAR* tdriverName = C_CAST(TCHAR*, calloc(tdriverNameLength, sizeof(TCHAR)));
+        if (tdriverName)
         {
-            //Found the driver's parameters. Now search for CSMI DWORD
-            DWORD dataLen = 4;
-            BYTE regData[4] = { 0 };
-            TCHAR *valueName = TEXT("CSMI");
-            DWORD valueType = REG_DWORD;
-            if (ERROR_SUCCESS == RegQueryValueEx(keyHandle, valueName, NULL, &valueType, regData, &dataLen))
+            _stprintf_s(tdriverName, tdriverNameLength, TEXT("%hs"), driverName);
+        }
+        if (registryKey)
+        {
+            _stprintf_s(registryKey, registryKeyStringLength, TEXT("%s%s%s"), baseRegKeyPath, tdriverName, paramRegKeyPath);
+        }
+        if (tdriverName && registryKey && _tcslen(tdriverName) > 0 && _tcslen(registryKey) > 0)
+        {
+            LSTATUS openKeyStatus = RegOpenKeyEx(HKEY_LOCAL_MACHINE, registryKey, 0, KEY_READ, &keyHandle);
+            if (ERROR_SUCCESS == openKeyStatus)
             {
-                int32_t dwordVal = M_BytesTo4ByteValue(regData[3], regData[2], regData[1], regData[0]);
-                switch (dwordVal)
+                //Found the driver's parameters. Now search for CSMI DWORD for port drivers
+                DWORD storportdataLen = 4;
+                BYTE storportregData[4] = { 0 };
+                TCHAR* storportvalueName = TEXT("CSMI");
+                DWORD storportvalueType = REG_DWORD;
+                LSTATUS regQueryStatus = RegQueryValueEx(keyHandle, storportvalueName, NULL, &storportvalueType, storportregData, &storportdataLen);
+                if (ERROR_SUCCESS == regQueryStatus)
                 {
-                case 0:
-                    access = CSMI_SECURITY_ACCESS_NONE;
-                    break;
-                case 1:
-                    access = CSMI_SECURITY_ACCESS_RESTRICTED;
-                    break;
-                case 2:
+                    int32_t dwordVal = C_CAST(int32_t, M_BytesTo4ByteValue(storportregData[3], storportregData[2], storportregData[1], storportregData[0]));
+                    switch (dwordVal)
+                    {
+                    case 0:
+                        access = CSMI_SECURITY_ACCESS_NONE;
+                        break;
+                    case 1:
+                        access = CSMI_SECURITY_ACCESS_RESTRICTED;
+                        break;
+                    case 2:
+                        access = CSMI_SECURITY_ACCESS_LIMITED;
+                        break;
+                    case 3:
+                    default:
+                        access = CSMI_SECURITY_ACCESS_FULL;
+                        break;
+                    }
+                    RegCloseKey(keyHandle);
+                }
+                else if (ERROR_FILE_NOT_FOUND == regQueryStatus)
+                {
+                    RegCloseKey(keyHandle);
+                    //the CSMI key did not exist. Check for miniport/adapter keys
+                    //No port driver key found. Check for the miniport driver key in DriverParameter for Device or Device#
+                    TCHAR* paramDeviceKeyPath = TEXT("\\Device");
+                    size_t paramDeviceKeyPathLength = _tcsclen(paramDeviceKeyPath);
+                    registryKeyStringLength += paramDeviceKeyPathLength + 3;//Adding 3 for if we need to check for a device number (adapter number)
+                    TCHAR* temp = realloc(registryKey, registryKeyStringLength * sizeof(TCHAR));
+                    if (temp)
+                    {
+                        registryKey = temp;
+                        _stprintf_s(registryKey, registryKeyStringLength, TEXT("%s%s%s%s"), baseRegKeyPath, tdriverName, paramRegKeyPath, paramDeviceKeyPath);
+                        if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_LOCAL_MACHINE, registryKey, 0, KEY_READ, &keyHandle))
+                        {
+                            DWORD dataLen = 0;
+                            BYTE* regData = NULL;//will be allocated to correct length
+                            TCHAR* valueName = TEXT("DriverParameter");
+                            DWORD valueType = REG_SZ;
+                            regQueryStatus = RegQueryValueEx(keyHandle, valueName, NULL, &valueType, regData, &dataLen);
+                            if (regQueryStatus == ERROR_SUCCESS)//since we had no memory allocated, this returned success rather than ERROR_MORE_DATA so we can go and allocate then read it.-TJE
+                            {
+                                //found, now allocate memory
+                                regData = calloc(dataLen, sizeof(BYTE));
+                                if (regData)
+                                {
+                                    regQueryStatus = RegQueryValueEx(keyHandle, valueName, NULL, &valueType, regData, &dataLen);
+                                    if (regQueryStatus == ERROR_SUCCESS)
+                                    {
+                                        //now interpret the regData as a string
+                                        TCHAR* driverParamterVal = C_CAST(TCHAR*, regData);
+                                        TCHAR* csmiConfig = _tcsstr(driverParamterVal, TEXT("CSMI="));
+                                        if (csmiConfig)
+                                        {
+                                            //interpret the value and set proper level
+                                            //Possible values are "None, Restricted, Limited, Full"
+                                            //Note: Case sensitive match for now. Switch to _tcsnicmp if needing to eliminate case sensitivity-TJE
+                                            //TODO: spec shows terminating with a semi-colon...is this necessary to check for this terminating character?
+                                            if (0 == _tcsncmp(csmiConfig, TEXT("CSMI=None"), 9))
+                                            {
+                                                access = CSMI_SECURITY_ACCESS_NONE;
+                                            }
+                                            else if (0 == _tcsncmp(csmiConfig, TEXT("CSMI=Restricted"), 15))
+                                            {
+                                                access = CSMI_SECURITY_ACCESS_RESTRICTED;
+                                            }
+                                            else if (0 == _tcsncmp(csmiConfig, TEXT("CSMI=Limited"), 12))
+                                            {
+                                                access = CSMI_SECURITY_ACCESS_LIMITED;
+                                            }
+                                            else if (0 == _tcsncmp(csmiConfig, TEXT("CSMI=Full"), 9))
+                                            {
+                                                access = CSMI_SECURITY_ACCESS_FULL;
+                                            }
+                                            else
+                                            {
+                                                access = CSMI_SECURITY_ACCESS_LIMITED;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            //No CSMI level specified
+                                            access = CSMI_SECURITY_ACCESS_LIMITED;
+                                        }
+                                        safe_Free(regData);
+                                    }
+                                }
+                            }
+                            else if (regQueryStatus == ERROR_FILE_NOT_FOUND)
+                            {
+                                //No driver parameter
+                                access = CSMI_SECURITY_ACCESS_LIMITED;
+                            }
+                            RegCloseKey(keyHandle);
+                        }
+                        else //ERROR_FILE_NOT_FOUND
+                        {
+                            //TODO: Handle looping through adapters. Should always start and find adapter zero \\Device0. If this doesn't exist, then the driver isn't enumerating this way at all and we can exit-TJE
+                        }
+                    }
+                }
+                else
+                {
                     access = CSMI_SECURITY_ACCESS_LIMITED;
-                    break;
-                case 3:
-                default:
-                    access = CSMI_SECURITY_ACCESS_FULL;
-                    break;
                 }
             }
             else
             {
-                //This key doesn't exist. It is not entirely clear what this means when it is not present, so for now, this returns "FULL" since that matches what I see for intel drivers - TJE
-                access = CSMI_SECURITY_ACCESS_FULL;
+                //This shouldn't happen, but it could happen...setting Limited for now - TJE
+                access = CSMI_SECURITY_ACCESS_LIMITED;
             }
         }
-        else
-        {
-            //This shouldn't happen, but it could happen...setting Limited for now - TJE
-            access = CSMI_SECURITY_ACCESS_LIMITED;
-        }
+        safe_Free(tdriverName)
+        safe_Free(registryKey)
     }
-    safe_Free(tdriverName);
-    safe_Free(registryKey);
 #else //not windows, need root, otherwise not available at all. Return FULL if running as root
     M_USE_UNUSED(driverName);
     if (is_Running_Elevated())
@@ -2781,30 +3925,52 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags, ptrRaidHandleToScan *beginningOfList)
+int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, ptrRaidHandleToScan *beginningOfList)
 {
     CSMI_HANDLE fd = CSMI_INVALID_HANDLE;
 #if defined (_WIN32)
     TCHAR deviceName[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
-#else
+#else //_WIN32
     char deviceName[CSMI_NIX_MAX_DEVICE_NAME_LENGTH] = { 0 };
-#endif
+#endif //_WIN32
     eVerbosityLevels csmiCountVerbosity = VERBOSITY_DEFAULT;//change this if debugging
     ptrRaidHandleToScan raidList = NULL;
     ptrRaidHandleToScan previousRaidListEntry = NULL;
-    uint32_t controllerNumber = 0, found = 0;
+    uint32_t controllerNumber = 0;
+    int found = 0, raidConfigDrivesFound = 0, phyInfoDrivesFound = 0;
 
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
+    {
+        csmiCountVerbosity = VERBOSITY_COMMAND_NAMES;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE)
+    {
+        csmiCountVerbosity = VERBOSITY_COMMAND_VERBOSE;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_BUFFERS)
+    {
+        csmiCountVerbosity = VERBOSITY_BUFFERS;
+    }
+
+#if defined (CSMI_DEBUG)
+    printf("GDC: Begin\n");
+#endif //CSMI_DEBUG
     if (!beginningOfList || !*beginningOfList)
     {
         //don't do anything. Only scan when we get a list to use.
         //Each OS that want's to do this should generate a list of handles to look for.
+#if defined (CSMI_DEBUG)
+        printf("GDC: no list provided\n");
+#endif //CSMI_DEBUG
         return SUCCESS;
     }
 
     raidList = *beginningOfList;
 
     //On non-Windows systems, we also have to check controller numbers...so there is one extra top-level loop for this on these systems.
-    
+#if defined (CSMI_DEBUG)
+    printf("GDC: Beginning iteration of raidList\n");
+#endif //CSMI_DEBUG
     while(raidList)
     {
         bool handleRemoved = false;
@@ -2826,10 +3992,13 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                 NULL);
             if (fd != INVALID_HANDLE_VALUE)
 #else
-            sprintf(deviceName, "%s", raidList->handle);
+            snprintf(deviceName, (sizeof(deviceName) / sizeof(*deviceName)), "%s", raidList->handle);
             if ((fd = open(deviceName, O_RDWR | O_NONBLOCK)) >= 0)
 #endif
             {
+#if defined (CSMI_DEBUG)
+                printf("GDC: Handle valid and opened\n");
+#endif //CSMI_DEBUG
 #if !defined (_WIN32)
                 for (controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS; ++controllerNumber)
                 {
@@ -2837,64 +4006,270 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                     //first, check if this handle supports CSMI before we try anything else
                     CSMI_SAS_DRIVER_INFO_BUFFER driverInfo;
                     CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
+                    CSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus;
                     memset(&driverInfo, 0, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
                     memset(&controllerConfig, 0, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
-                    if (SUCCESS == csmi_Get_Driver_And_Controller_Data(fd, controllerNumber, &driverInfo, &controllerConfig, csmiCountVerbosity))
+                    memset(&controllerStatus, 0, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
+#if defined (CSMI_DEBUG)
+                    printf("GDC: Getting controller config, controller status, and driver info\n");
+#endif //CSMI_DEBUG
+                    if (SUCCESS == csmi_Get_Basic_Info(fd, controllerNumber, &driverInfo, &controllerConfig, &controllerStatus, csmiCountVerbosity))
                     {
+#if defined (CSMI_DEBUG)
+                        printf("GDC: Checking controller flags: %" CPRIX32 "h\n", controllerConfig.Configuration.uControllerFlags);
+#endif //CSMI_DEBUG
+                        eKnownCSMIDriver knownDriver = get_Known_CSMI_Driver_Type(&driverInfo.Information);
                         //Check if it's a RAID capable controller. We only want to enumerate devices on those in this function
-                        if (controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
+                        if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                             || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
                             || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
+                            && knownDriver != CSMI_DRIVER_ARCSAS
+                            )
                         {
+#if defined (CSMI_DEBUG)
+                            printf("GDC: Getting RAID info\n");
+#endif //CSMI_DEBUG
                             //Get RAID info
+                            //TODO: Adaptec's API doesn't seem to like this. May need to pull phy info instead if this fails. -TJE
                             CSMI_SAS_RAID_INFO_BUFFER csmiRAIDInfo;
                             csmi_Get_RAID_Info(fd, controllerNumber, &csmiRAIDInfo, csmiCountVerbosity);
                             //Get RAID config
+#if defined (CSMI_DEBUG)
+                            printf("GDC: Number of RAID sets: %" CPRIu32 "\n", csmiRAIDInfo.Information.uNumRaidSets);
+#endif //CSMI_DEBUG
+                            bool raidConfigIncomplete = false;//if a driver has not filled in SASAddress or MN/SN info, then set this to true to use the PhyInfo instead. This may also happen for specific drivers in the future - TJE
+                            //note: not checking raidConfigIncomplete in this loop to assist with some debug output later. This allows for warning about possible duplicates here.
                             for (uint32_t raidSet = 0; raidSet < csmiRAIDInfo.Information.uNumRaidSets; ++raidSet)
                             {
                                 //start with a length that adds no padding for extra drives, then reallocate to a new size when we know the new size
-                                uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES);
-                                PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
+                                uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES);//Intel driver recommends allocating for 8 drives to make sure nothing is missed. Maybe check if maxdriverperset less than this to allcoate for 8???
+                                PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                                 if (csmiRAIDConfig)
                                 {
+#if defined (CSMI_DEBUG)
+                                    printf("GDC: Getting raid config\n");
+#endif //CSMI_DEBUG
                                     if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, csmiCountVerbosity))
                                     {
                                         //make sure we got all the drive information...if now, we need to reallocate with some more memory
+#if defined (CSMI_DEBUG)
+                                        printf("GDC: Checking drives. Max drives per set: %" CPRIu32 "\tDrive Count: %" CPRIu8 "\n", csmiRAIDInfo.Information.uMaxDrivesPerSet, csmiRAIDConfig->Configuration.bDriveCount);
+#endif //CSMI_DEBUG
                                         for (uint32_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet; ++iter)
                                         {
-                                            switch (csmiRAIDConfig->Configuration.bDataType)
+                                            bool driveInfoValid = true;//for version 81 and earlier, assume this is true.
+#if defined (CSMI_DEBUG)
+                                            printf("GDC: Checking CSMI Revision: %" CPRIu16 ".%" CPRIu16 "\n", driverInfo.Information.usCSMIMajorRevision, driverInfo.Information.usCSMIMinorRevision);
+#endif //CSMI_DEBUG
+                                            if (driverInfo.Information.usCSMIMajorRevision > 0 || driverInfo.Information.usCSMIMinorRevision > 81)
                                             {
-                                            case CSMI_SAS_RAID_DATA_DRIVES:
+#if defined (CSMI_DEBUG)
+                                                printf("GDC: CSMI Minor rev > 81, so checking bDataType\n");
+#endif //CSMI_DEBUG
+                                                switch (csmiRAIDConfig->Configuration.bDataType)
+                                                {
+                                                case CSMI_SAS_RAID_DATA_DRIVES:
+                                                    break;
+                                                case CSMI_SAS_RAID_DATA_DEVICE_ID:
+                                                case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
+                                                default:
+                                                    driveInfoValid = false;
+                                                    break;
+                                                }
+                                            }
+                                            if (driveInfoValid)
+                                            {
                                                 switch (csmiRAIDConfig->Configuration.Drives[iter].bDriveUsage)
                                                 {
                                                 case CSMI_SAS_DRIVE_CONFIG_NOT_USED:
                                                     //Don't count drives with this flag, because they are not configured in a RAID at this time. We only want those configured in a RAID/RAID-like scenario.
+#if defined (CSMI_DEBUG)
+                                                    printf("GDC: Drive set as not used. Ignoring...\n");
+#endif //CSMI_DEBUG
                                                     break;
                                                 case CSMI_SAS_DRIVE_CONFIG_MEMBER:
                                                 case CSMI_SAS_DRIVE_CONFIG_SPARE:
                                                 case CSMI_SAS_DRIVE_CONFIG_SPARE_ACTIVE:
                                                 case CSMI_SAS_DRIVE_CONFIG_SRT_CACHE:
                                                 case CSMI_SAS_DRIVE_CONFIG_SRT_DATA:
-                                                    ++found;
+                                                    ++raidConfigDrivesFound;
+                                                    //check if SAS address is non-Zero or if MN/SN are available.
+                                                    //removed special intel case since it appears to only work in some configurations for some driver versions
+                                                    if (!raidConfigIncomplete
+                                                        && ((is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bModel, 40) || is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSerialNumber, 40))
+                                                            || is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8)))
+                                                    {
+                                                        raidConfigIncomplete = true;
+#if defined (CSMI_DEBUG)
+                                                        printf("GDC: Detected incomplete raid config data. Will need phy info to complete count\n");
+#endif //CSMI_DEBUG
+                                                    }
+
+#if defined (CSMI_DEBUG)
+                                                    printf("GDC: Found a drive\n");
+#endif //CSMI_DEBUG
                                                     break;
                                                 default:
+#if defined (CSMI_DEBUG)
+                                                    printf("GDC: Unknown drive usage: %u. Ignoring...\n", csmiRAIDConfig->Configuration.Drives[iter].bDriveUsage);
+#endif //CSMI_DEBUG
                                                     break;
                                                 }
-                                                break;
-                                            case CSMI_SAS_RAID_DATA_DEVICE_ID:
-                                            case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
-                                            default:
-                                                break;
                                             }
                                         }
                                     }
-                                    safe_Free(csmiRAIDConfig);
+                                    else //didn't successfully read a RAID config, which is most likely a driver problem. This code requests data that SHOULD be available.
+                                    {
+                                        raidConfigIncomplete = true;
+                                    }
+                                    safe_Free(csmiRAIDConfig)
+                                }
+                            }
+                            if (raidConfigIncomplete)
+                            {
+                                //Need to check the phy info as a fall back since there is not enough information to uniquely identify all drives attached to this CSMI driver.
+                                CSMI_SAS_PHY_INFO_BUFFER phyInfo;
+                                memset(&phyInfo, 0, sizeof(CSMI_SAS_PHY_INFO_BUFFER));
+#if defined (CSMI_DEBUG)
+                                printf("GDC: Getting phy info due to incomplete RAID configuration info.\n");
+#endif //CSMI_DEBUG
+                                //NOTE: AMD's rcraid driver seems to treat non-raid drives slightly different in the phy info output. In the case I observed, the raid drives were in the phy info, but the
+                                //      non-RAID drive was not shown here at all. However in the RAID IOCTLs, it does show as a separate single drive raid (but no MN or SN info to match to it).
+                                //      So it does not appear possible to issue a CSMI passthrough command to non-raid drives. This is completely opposite of what the Intel drivers do.
+                                //      Intel's drivers show every drive attached, RAID or non-RAID in the phy info.
+                                //      This may be something we want to detect in the future to reduce the number of IOCTLs sent, but for now, it works ok. We can optimize this more later. -TJE
+                                if (SUCCESS == csmi_Get_Phy_Info(fd, controllerNumber, &phyInfo, csmiCountVerbosity))
+                                {
+                                    for (uint8_t phyIter = 0; phyIter < 32 && phyInfoDrivesFound < phyInfo.Information.bNumberOfPhys; ++phyIter)
+                                    {
+                                        if (phyInfo.Information.Phy[phyIter].Attached.bDeviceType == CSMI_SAS_NO_DEVICE_ATTACHED)
+                                        {
+                                            continue;
+                                        }
+#if defined (CSMI_DEBUG)
+                                        printf("GDC: target port protocol(s): ");
+                                        print_CSMI_Port_Protocol(phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol);
+#endif //CSMI_DEBUG
+                                        //Creating a temporary tDevice structure to use for the passthrough commands.-TJE
+                                        tDevice tempDevice;
+                                        tempDevice.os_info.minimumAlignment = sizeof(void*);//setting alignment this way to be compatible across OSs since CSMI doesn't really dictate an alignment, but we should set something. - TJE
+                                        tempDevice.issue_io = C_CAST(issue_io_func, send_CSMI_IO);
+                                        tempDevice.drive_info.drive_type = SCSI_DRIVE;//assume SCSI for now. Can be changed later
+                                        tempDevice.drive_info.interface_type = RAID_INTERFACE;//TODO: Only set RAID interface for one that needs a function pointer and is in a RAID!!!
+                                        tempDevice.os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, calloc(1, sizeof(csmiDeviceInfo)));
+                                        if (!tempDevice.os_info.csmiDeviceData)
+                                        {
+#if defined (CSMI_DEBUG)
+                                            printf("GDC: Failed to allocate csmiDeviceInfo structure\n");
+#endif //CSMI_DEBUG
+                                            continue;
+                                        }
+                                        tempDevice.os_info.csmiDeviceData->csmiDevHandle = fd;
+                                        tempDevice.os_info.csmiDeviceData->controllerNumber = controllerNumber;
+                                        tempDevice.os_info.csmiDeviceData->csmiDeviceInfoValid = true;
+                                        ScsiIoCtx csmiPTCmd;
+                                        memset(&csmiPTCmd, 0, sizeof(ScsiIoCtx));
+                                        csmiPTCmd.device = &tempDevice;
+                                        csmiPTCmd.timeout = 15;
+                                        csmiPTCmd.direction = XFER_DATA_IN;
+                                        csmiPTCmd.psense = tempDevice.drive_info.lastCommandSenseData;
+                                        csmiPTCmd.senseDataSize = SPC3_SENSE_LEN;
+                                        //Don't have a SAS Address to match to, so we need to send an identify or inquiry to the device to see if it is the same MN, then check the SN.
+                                        //NOTE: This will not work if we don't already know the sasLUN for SAS drives. SATA will be ok though.
+                                        tempDevice.os_info.csmiDeviceData->portIdentifier = phyInfo.Information.Phy[phyIter].bPortIdentifier;
+                                        tempDevice.os_info.csmiDeviceData->phyIdentifier = phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier;
+                                        tempDevice.os_info.csmiDeviceData->portProtocol = phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol;
+                                        memcpy(&tempDevice.os_info.csmiDeviceData->sasAddress[0], phyInfo.Information.Phy[phyIter].Attached.bSASAddress, 8);
+                                        //Attempt passthrough command and compare identifying data.
+                                        //for this to work, SCSIIoCTX structure must be manually defined for what we want to do right now and call the CSMI IO directly...not great, but don't want to have other force flags elsewhere at the moment- TJE
+                                        if (phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_SATA || phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_STP)
+                                        {
+                                            //ATA identify
+                                            uint8_t identifyData[512] = { 0 };
+                                            ataPassthroughCommand identify;
+                                            memset(&identify, 0, sizeof(ataPassthroughCommand));
+                                            identify.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
+                                            identify.ataTransferBlocks = ATA_PT_512B_BLOCKS;
+                                            identify.commadProtocol = ATA_PROTOCOL_PIO;
+                                            identify.commandDirection = XFER_DATA_IN;
+                                            identify.commandType = ATA_CMD_TYPE_TASKFILE;
+                                            identify.timeout = 15;
+                                            csmiPTCmd.pdata = identify.ptrData = identifyData;
+                                            csmiPTCmd.dataLength = identify.dataSize = 512;
+                                            csmiPTCmd.pAtaCmdOpts = &identify;
+                                            identify.tfr.CommandStatus = ATA_IDENTIFY;
+                                            identify.tfr.SectorCount = 1;
+                                            identify.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+#if defined (CSMI_DEBUG)
+                                            printf("GDC: Detected SATA protocol. Attempting Identify CMD\n");
+#endif //CSMI_DEBUG
+                                            if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
+                                            {
+#if defined (CSMI_DEBUG)
+                                                printf("GDC: Identify Successful. Adding to count.\n");
+#endif //CSMI_DEBUG
+                                                ++phyInfoDrivesFound;
+                                            }
+                                            else
+                                            {
+                                                //possibly an ATAPI drive
+                                                identify.tfr.CommandStatus = ATAPI_IDENTIFY;
+                                                if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
+                                                {
+#if defined (CSMI_DEBUG)
+                                                    printf("GDC: ATAPI Identify Successful\n");
+                                                    printf("GDC: Not adding to the count since ATAPI should use system handle instead.\n");
+#endif //CSMI_DEBUG
+                                                }
+                                            }
+                                        }
+                                        else if (phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_SSP)
+                                        {
+                                            //SCSI Inquiry and read unit serial number VPD page
+                                            uint8_t inqData[96] = { 0 };
+                                            uint8_t cdb[CDB_LEN_6] = { 0 };
+                                            cdb[OPERATION_CODE] = INQUIRY_CMD;
+                                            /*if (evpd)
+                                            {
+                                                cdb[1] |= BIT0;
+                                            }*/
+                                            cdb[2] = 0;// pageCode;
+                                            cdb[3] = M_Byte1(96);
+                                            cdb[4] = M_Byte0(96);
+                                            cdb[5] = 0;//control
+
+                                            csmiPTCmd.cdbLength = CDB_LEN_6;
+                                            memcpy(csmiPTCmd.cdb, cdb, 6);
+                                            csmiPTCmd.dataLength = 96;
+                                            csmiPTCmd.pdata = inqData;
+#if defined (CSMI_DEBUG)
+                                            printf("GDC: Detected SSP protocol. Attempting Inquiry\n");
+#endif //CSMI_DEBUG
+                                            if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
+                                            {
+                                                //TODO: If this is a multi-LUN device, this won't currently work and it may not be possible to make this work if we got to this case in the first place. HOPEFULLY the other CSMI translation IOCTLs just work and this is unnecessary. - TJE
+#if defined (CSMI_DEBUG)
+                                                printf("GDC: Inquiry Successful\n");
+#endif //CSMI_DEBUG
+                                                ++phyInfoDrivesFound;
+                                            }
+                                        }
+                                    }
+                                }
+                                else
+                                {
+#if defined (CSMI_DEBUG)
+                                    printf("GDC: Unable to get Phy info! Unrecoverable error.\n");
+#endif //CSMI_DEBUG
                                 }
                             }
                         }
                         //printf("Found CSMI Handle: %s\tRemoving from list.\n", raidList->handle);
                         //This was a CSMI handle, remove it from the list!
                         //This will also increment us to the next handle
+#if defined (CSMI_DEBUG)
+                        printf("GDC: Updating the raid list\n");
+#endif //CSMI_DEBUG
                         bool pointerAtBeginningOfRAIDList = raidList == *beginningOfList ? true : false;
                         raidList = remove_RAID_Handle(raidList, previousRaidListEntry);
                         if (pointerAtBeginningOfRAIDList)
@@ -2929,7 +4304,16 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
             raidList = raidList->next;
         }
     }
+    found = raidConfigDrivesFound;
+    if (phyInfoDrivesFound > raidConfigDrivesFound)
+    {
+        printf("WARNING: Possible duplicate devices found due to incomplete RAID config response from CSMI driver\n");
+        found = phyInfoDrivesFound;
+    }
     *numberOfDevices = found;
+#if defined (CSMI_DEBUG)
+    printf("GDC: Returning CSMI count as %d\n", found);
+#endif //CSMI_DEBUG
     return SUCCESS;
 }
 
@@ -2970,20 +4354,45 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 #endif
     eVerbosityLevels csmiListVerbosity = VERBOSITY_DEFAULT;//If debugging, change this and down below where this is set per device will also need changing
     
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
+    {
+        csmiListVerbosity = VERBOSITY_COMMAND_NAMES;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE)
+    {
+        csmiListVerbosity = VERBOSITY_COMMAND_VERBOSE;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_BUFFERS)
+    {
+        csmiListVerbosity = VERBOSITY_BUFFERS;
+    }
+
+#if defined (CSMI_DEBUG)
+    printf("GDL: Begin\n");
+#endif //CSMI_DEBUG
     if (!beginningOfList || !*beginningOfList)
     {
         //don't do anything. Only scan when we get a list to use.
         //Each OS that want's to do this should generate a list of handles to look for.
+#if defined (CSMI_DEBUG)
+        printf("GDL: no list provided\n");
+#endif //CSMI_DEBUG
         return SUCCESS;
     }
 
     //TODO: Check if sizeInBytes is a multiple of
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
+#if defined (CSMI_DEBUG)
+        printf("GDL: Invalid size for list\n");
+#endif //CSMI_DEBUG
         returnValue = BAD_PARAMETER;
     }
     else if ((!(validate_Device_Struct(ver))))
     {
+#if defined (CSMI_DEBUG)
+        printf("GDL: Invalid device structure\n");
+#endif //CSMI_DEBUG
         returnValue = LIBRARY_MISMATCH;
     }
     else
@@ -2996,7 +4405,9 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         d = ptrToDeviceList;
 
         //On non-Windows systems, we also have to check controller numbers...so there is one extra top-level loop for this on these systems.
-        
+#if defined (CSMI_DEBUG)
+        printf("GDL: beginning scan of raid list\n");
+#endif //CSMI_DEBUG
         while (raidList && found < numberOfDevices)
         {
             bool handleRemoved = false;
@@ -3006,9 +4417,9 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 #if defined (_WIN32)
                 //Get the controller number from the scsi handle since we need it later!
                 int ret = sscanf(raidList->handle, "\\\\.\\SCSI%d:", &controllerNumber);
-                if (ret == 0 || ret != EOF)
+                if (ret == 0 || ret == EOF)
                 {
-                    printf("WARNING: Unable to scan controller number!\n");
+                    printf("WARNING: Unable to scan controller number! raid handle = %s\t ret = %d\n", raidList->handle, ret);
                 }
 
                 _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), raidList->handle);
@@ -3020,29 +4431,41 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                     OPEN_EXISTING,
 #if !defined(WINDOWS_DISABLE_OVERLAPPED)
                     FILE_FLAG_OVERLAPPED,
-#else
+#else //WINDOWS_DISABLE_OVERLAPPED
                     0,
-#endif
+#endif //WINDOWS_DISABLE_OVERLAPPED
                     NULL);
                 if (fd != INVALID_HANDLE_VALUE)
-#else
+#else //_WIN32
                 snprintf(deviceName, CSMI_NIX_MAX_DEVICE_NAME_LENGTH, "%s", raidList->handle);
                 if ((fd = open(deviceName, O_RDWR | O_NONBLOCK)) >= 0)
-#endif
+#endif //_WIN32
                 {
+#if defined (CSMI_DEBUG)
+                    printf("GDL: Handle valid and opened\n");
+#endif //CSMI_DEBUG
 #if !defined (_WIN32)
                     for (controllerNumber = 0; controllerNumber < OPENSEA_MAX_CONTROLLERS && found < numberOfDevices; ++controllerNumber)
                     {
-#endif
+#endif //_WIN32
                         //first, check if this handle supports CSMI before we try anything else
                         CSMI_SAS_DRIVER_INFO_BUFFER driverInfo;
                         CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
+                        CSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus;
                         memset(&driverInfo, 0, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
                         memset(&controllerConfig, 0, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
+                        memset(&controllerStatus, 0, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
                         csmiListVerbosity = d->deviceVerbosity;//this is to preserve any verbosity set when coming into this function
-                        if (SUCCESS == csmi_Get_Driver_And_Controller_Data(fd, controllerNumber, &driverInfo, &controllerConfig, csmiListVerbosity))
+#if defined (CSMI_DEBUG)
+                        printf("GDL: Getting controller config, controller status, and driver info\n");
+#endif //CSMI_DEBUG
+                        if (SUCCESS == csmi_Get_Basic_Info(fd, controllerNumber, &driverInfo, &controllerConfig, &controllerStatus, csmiListVerbosity))
                         {
-                            csmiAccess = get_CSMI_Security_Access((char*)driverInfo.Information.szName);
+                            eKnownCSMIDriver knownCSMIDriver = get_Known_CSMI_Driver_Type(&driverInfo.Information);
+#if defined (CSMI_DEBUG)
+                            printf("GDL: Getting driver security access\n");
+#endif //CSMI_DEBUG
+                            csmiAccess = get_CSMI_Security_Access(C_CAST(char*, driverInfo.Information.szName));
                             switch (csmiAccess)
                             {
                             case CSMI_SECURITY_ACCESS_NONE:
@@ -3056,49 +4479,101 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                 break;
                             case CSMI_SECURITY_ACCESS_FULL:
                             default:
+#if defined (CSMI_DEBUG)
+                                printf("GDL: Full security access available for this driver\n");
+#endif //CSMI_DEBUG
                                 break;
                             }
+#if defined (CSMI_DEBUG)
+                            printf("GDL: Checking controller flags\n");
+#endif //CSMI_DEBUG
                             //Check if it's a RAID capable controller. We only want to enumerate devices on those in this function
-                            if (controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
+                            if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                                 || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
                                 || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
+                                && knownCSMIDriver != CSMI_DRIVER_ARCSAS
+                                )
                             {
                                 //Get RAID info & Phy info. Need to match the RAID config (below) to some of the phy info as best we can...-TJE
 #if defined (_WIN32)
                                 bool isIntelDriver = false;
-#endif
+#endif //_WIN32
                                 CSMI_SAS_PHY_INFO_BUFFER phyInfo;
                                 CSMI_SAS_RAID_INFO_BUFFER csmiRAIDInfo;
+#if defined (CSMI_DEBUG)
+                                printf("GDL: getting RAID info\n");
+#endif //CSMI_DEBUG
                                 csmi_Get_RAID_Info(fd, controllerNumber, &csmiRAIDInfo, csmiListVerbosity);
+#if defined (CSMI_DEBUG)
+                                printf("GDL: Getting phy info\n");
+#endif //CSMI_DEBUG
+                                //NOTE: AMD's rcraid driver seems to treat non-raid drives slightly different in the phy info output. In the case I observed, the raid drives were in the phy info, but the
+                                //      non-RAID drive was not shown here at all. However in the RAID IOCTLs, it does show as a separate single drive raid (but no MN or SN info to match to it).
+                                //      So it does not appear possible to issue a CSMI passthrough command to non-raid drives. This is completely opposite of what the Intel drivers do.
+                                //      Intel's drivers show every drive attached, RAID or non-RAID in the phy info.
+                                //      This may be something we want to detect in the future to reduce the number of IOCTLs sent, but for now, it works ok. We can optimize this more later. -TJE
                                 csmi_Get_Phy_Info(fd, controllerNumber, &phyInfo, csmiListVerbosity);
 #if defined (_WIN32)
-                                if (strncmp((const char*)driverInfo.Information.szName, "iaStor", 6) == 0)
+                                if (knownCSMIDriver == CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY || knownCSMIDriver == CSMI_DRIVER_INTEL_VROC)
                                 {
                                     isIntelDriver = true;
                                 }
-#endif
+#endif //_WIN32
                                 //Get RAID config
+#if defined (CSMI_DEBUG)
+                                printf("GDL: Checking RAID configs. Number of RAID sets: %" CPRIu32 "\n", csmiRAIDInfo.Information.uNumRaidSets);
+#endif //CSMI_DEBUG
+                                bool raidInfoIncomplete = false;
+                                bool matchedPhys[32] = { false };//array is used to track which phys have already been scanned and matched correctly
                                 for (uint32_t raidSet = 0; raidSet < csmiRAIDInfo.Information.uNumRaidSets && found < numberOfDevices; ++raidSet)
                                 {
                                     //start with a length that adds no padding for extra drives, then reallocate to a new size when we know the new size
                                     uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES);
-                                    PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = (PCSMI_SAS_RAID_CONFIG_BUFFER)calloc(raidConfigLength, sizeof(uint8_t));
+                                    PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                                     if (csmiRAIDConfig)
                                     {
+#if defined (CSMI_DEBUG)
+                                        printf("GDL: getting RAID config\n");
+#endif //CSMI_DEBUG
                                         if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength, raidSet, CSMI_SAS_RAID_DATA_DRIVES, csmiListVerbosity))
                                         {
+#if defined (CSMI_DEBUG)
+                                            printf("GDL: Checking drive usage in each RAID config. Max Drives per set: %" CPRIu32 "\tDrive Count: %" CPRIu8 "\n", csmiRAIDInfo.Information.uMaxDrivesPerSet, csmiRAIDConfig->Configuration.bDriveCount);
+#endif //CSMI_DEBUG
                                             //make sure we got all the drive information...if now, we need to reallocate with some more memory
                                             for (uint32_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet && found < numberOfDevices; ++iter)
                                             {
                                                 bool foundDevice = false;
-                                                char handle[40] = { 0 };
-                                                switch (csmiRAIDConfig->Configuration.bDataType)
+                                                char handle[RAID_HANDLE_STRING_MAX_LEN] = { 0 };
+                                                bool driveInfoValid = true;//for version 81 and earlier, assume this is true.
+#if defined (CSMI_DEBUG)
+                                                printf("GDL: Checking CSMI Revision: %" CPRIu16 ".%" CPRIu16 "\n", driverInfo.Information.usCSMIMajorRevision, driverInfo.Information.usCSMIMinorRevision);
+#endif //CSMI_DEBUG
+                                                if (driverInfo.Information.usCSMIMajorRevision > 0 || driverInfo.Information.usCSMIMinorRevision > 81)
                                                 {
-                                                case CSMI_SAS_RAID_DATA_DRIVES:
+#if defined (CSMI_DEBUG)
+                                                    printf("GDL: CSMI Minor rev > 81, so checking bDataType\n");
+#endif //CSMI_DEBUG
+                                                    switch (csmiRAIDConfig->Configuration.bDataType)
+                                                    {
+                                                    case CSMI_SAS_RAID_DATA_DRIVES:
+                                                        break;
+                                                    case CSMI_SAS_RAID_DATA_DEVICE_ID:
+                                                    case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
+                                                    default:
+                                                        driveInfoValid = false;
+                                                        break;
+                                                    }
+                                                }
+                                                if (driveInfoValid)
+                                                {
                                                     switch (csmiRAIDConfig->Configuration.Drives[iter].bDriveUsage)
                                                     {
                                                     case CSMI_SAS_DRIVE_CONFIG_NOT_USED:
                                                         //Don't count drives with this flag, because they are not configured in a RAID at this time. We only want those configured in a RAID/RAID-like scenario.
+#if defined (CSMI_DEBUG)
+                                                        printf("GDL: Not used. Skipping...\n");
+#endif //CSMI_DEBUG
                                                         break;
                                                     case CSMI_SAS_DRIVE_CONFIG_MEMBER:
                                                     case CSMI_SAS_DRIVE_CONFIG_SPARE:
@@ -3107,8 +4582,11 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                     case CSMI_SAS_DRIVE_CONFIG_SRT_DATA:
                                                         //Need to setup a handle and try get_Device to see if it works.
                                                         //NOTE: Need to know if on intel AND if model contains "NVMe" because we need to setup that differently to discover it properly
-#if defined (_WIN32)
-                                                        if (isIntelDriver && strncmp((const char*)csmiRAIDConfig->Configuration.Drives[iter].bModel, "NVMe", 4) == 0)
+#if defined (CSMI_DEBUG)
+                                                        printf("GDL: Valid drive to use.\n");
+#endif //CSMI_DEBUG
+#if defined (_WIN32)                                    
+                                                        if (isIntelDriver && strncmp(C_CAST(const char*, csmiRAIDConfig->Configuration.Drives[iter].bModel), "NVMe", 4) == 0)
                                                         {
                                                             //This should only happen on Intel Drivers using SRT
                                                             //The SAS Address holds port-target-lun data in it. NOTE: This is correct for this version of the driver, but this is not necessarily true for previous RST drivers according to documentation received from Intel. -TJE
@@ -3118,46 +4596,331 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                             path = csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[2];
                                                             //TODO: don't know which bytes hold target and lun...leaving as zero since they are TECHNICALLY reserved in the documentation
                                                             //\\.\SCSI?: number is needed in windows, this is the controllerNumber in Windows.
-                                                            sprintf(handle, "csmi:%" CPRIu8 ":N:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber, path, target, lun);
+                                                            snprintf(handle, RAID_HANDLE_STRING_MAX_LEN, "csmi:%" CPRIu8 ":N:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber, path, target, lun);
                                                             foundDevice = true;
+#if defined (CSMI_DEBUG)
+                                                            printf("GDL: Intel NVMe detected, setting up handle as %s\n", handle);
+#endif //CSMI_DEBUG
                                                         }
                                                         else //SAS or SATA drive
-#endif
+#endif //_WIN32
                                                         {
+#if defined (CSMI_DEBUG)
+                                                            printf("GDL: Standard CSMI detected. Checking phy info. Number of Phys: %" CPRIu8 "\n", phyInfo.Information.bNumberOfPhys);
+#endif //CSMI_DEBUG
                                                             //Compare this drive info to phy info as best we can using SASAddress field. 
                                                             //NOTE: If this doesn't work on some controllers, then this will get even more complicated as we will need to try other CSMI commands and attempt reading drive identify or inquiry data to make the match correctly!!!
                                                             //Loop through phy info and find matching SAS address...should only occur ONCE even with multiple Luns since they attach to the same Phy
-                                                            for (uint8_t phyIter = 0; !foundDevice && phyIter < 32 && phyIter < phyInfo.Information.bNumberOfPhys; ++phyIter)
+                                                            for (uint8_t phyIter = 0, physFound = 0; !foundDevice && phyIter < 32 && physFound < phyInfo.Information.bNumberOfPhys; ++phyIter)
                                                             {
-                                                                if (memcmp(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8) == 0)
+#if defined (CSMI_DEBUG)
+                                                                printf("GDL: Comparing SAS address to RAID config SAS address\n");
+#endif //CSMI_DEBUG
+                                                                if (phyInfo.Information.Phy[phyIter].Attached.bDeviceType == CSMI_SAS_NO_DEVICE_ATTACHED)
                                                                 {
-                                                                    uint8_t lun = 0;
-                                                                    if (!is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSASLun, 8))//Check if there is a lun value...should be zero on SATA and single Lun SAS drives...otherwise we'll need to convert it!
+                                                                    //nothing here, so continue
+#if defined (CSMI_DEBUG)
+                                                                    printf("GDL: skipping %" PRIu8 " as attached data shows no device connected.\n", phyIter);
+#endif //CSMI_DEBUG
+                                                                    continue;
+                                                                }
+                                                                ++physFound;//increment since we have found a valid phy to check information on.
+                                                                if (matchedPhys[phyIter] == false)
+                                                                {
+                                                                    //NOTE: SATA controllers will set SASAddress to zero (unless It's Intel, they fill this in anyways), so this is not enough of a check.
+                                                                    //      If there is a non-zero SASAddress, use it. Otherwise, we need to roll back to matching MN, SN, with an Identify command -TJE
+                                                                    //Removed special case for Intel since that seems to only work for specific versions of the drive and specific configurations.
+                                                                    if ((!is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8) && !is_Empty(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, 8)
+                                                                        && memcmp(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8) == 0))
                                                                     {
-                                                                        //This would be a multi-lun SAS drive. This device and the driver should actually be able to translate SASAddress and SASLun to a SCSI address for us.
-                                                                        CSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddress;
-                                                                        if (SUCCESS == csmi_Get_SCSI_Address(fd, controllerNumber, &scsiAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASLun, VERBOSITY_DEFAULT))
+    #if defined (CSMI_DEBUG)
+                                                                        printf("GDL: Matching SAS address in Phy info found\n");
+    #endif //CSMI_DEBUG
+                                                                        uint8_t lun = 0;
+                                                                        if (!is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSASLun, 8))//Check if there is a lun value...should be zero on SATA and single Lun SAS drives...otherwise we'll need to convert it!
                                                                         {
-                                                                            lun = scsiAddress.bLun;
+    #if defined (CSMI_DEBUG)
+                                                                            printf("GDL: Converting SASLun value\n");
+    #endif //CSMI_DEBUG
+                                                                            //This would be a multi-lun SAS drive. This device and the driver should actually be able to translate SASAddress and SASLun to a SCSI address for us.
+                                                                            CSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddress;
+                                                                            if (SUCCESS == csmi_Get_SCSI_Address(fd, controllerNumber, &scsiAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, csmiRAIDConfig->Configuration.Drives[iter].bSASLun, VERBOSITY_DEFAULT))
+                                                                            {
+                                                                                lun = scsiAddress.bLun;
+    #if defined (CSMI_DEBUG)
+                                                                                printf("GDL: lun converted to %" PRIu8 "\n", lun);
+    #endif //CSMI_DEBUG
+                                                                            }
+                                                                            else
+                                                                            {
+    #if defined (CSMI_DEBUG)
+                                                                                printf("GDL: Error converting SASLun to SCSI Address lun!\n");
+    #endif //CSMI_DEBUG
+                                                                            }
                                                                         }
-                                                                        else
+                                                                        switch (phyInfo.Information.Phy[phyIter].Attached.bDeviceType)
                                                                         {
-                                                                            printf("Error converting SASLun to SCSI Address lun!\n");
-                                                                            //TODO: This is likely actually enough for a SCSI drive to work, but we would need to change more code to accept a full SAS Address and SAS Lun style handle.
+                                                                        case CSMI_SAS_END_DEVICE:
+                                                                            foundDevice = true;
+                                                                            snprintf(handle, RAID_HANDLE_STRING_MAX_LEN, "csmi:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber, phyInfo.Information.Phy[phyIter].bPortIdentifier, phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier, lun);
+    #if defined (CSMI_DEBUG)
+                                                                            printf("GDL: End device handle found and set as %s\n", handle);
+    #endif //CSMI_DEBUG
+                                                                            matchedPhys[phyIter] = true;
+                                                                            break;
+                                                                        case CSMI_SAS_NO_DEVICE_ATTACHED:
+    #if defined (CSMI_DEBUG)
+                                                                            printf("GDL: No device attached. Skipping...\n");
+    #endif //CSMI_DEBUG
+                                                                            break;
+                                                                        case CSMI_SAS_EDGE_EXPANDER_DEVICE:
+    #if defined (CSMI_DEBUG)
+                                                                            printf("GDL: Edge expander. Skipping...\n");
+    #endif //CSMI_DEBUG
+                                                                            break;
+                                                                        case CSMI_SAS_FANOUT_EXPANDER_DEVICE:
+    #if defined (CSMI_DEBUG)
+                                                                            printf("GDL: Fanout Expander Device. Skipping...\n");
+    #endif //CSMI_DEBUG
+                                                                            break;
+                                                                        default:
+    #if defined (CSMI_DEBUG)
+                                                                            printf("GDL: Unknown device type: %" CPRIu8 "\n", phyInfo.Information.Phy[phyIter].Attached.bDeviceType);
+    #endif //CSMI_DEBUG
                                                                             break;
                                                                         }
                                                                     }
-                                                                    switch (phyInfo.Information.Phy[phyIter].Attached.bDeviceType)
+                                                                    else if ((is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8) || is_Empty(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, 8)) //SAS address is empty
+                                                                        && !is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bModel, 40) && !is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSerialNumber, 40)) //MN and SN are NOT empty
                                                                     {
-                                                                    case CSMI_SAS_END_DEVICE:
-                                                                        foundDevice = true;
-                                                                        sprintf(handle, "csmi:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber, phyInfo.Information.Phy[phyIter].bPortIdentifier, phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier, lun);
-                                                                        break;
-                                                                    case CSMI_SAS_NO_DEVICE_ATTACHED:
-                                                                    case CSMI_SAS_EDGE_EXPANDER_DEVICE:
-                                                                    case CSMI_SAS_FANOUT_EXPANDER_DEVICE:
-                                                                    default:
-                                                                        break;
+                                                                        //This is most likely a SATA drive on a SATA controller.
+                                                                        //Since we do not have a SAS address to use for matching, we need to issue an identify command and match the MN and SN.
+    #if defined (CSMI_DEBUG)
+                                                                        printf("GDL: No SASAddress, so matching with identify command\n");
+    #endif //CSMI_DEBUG
+                                                                        char csmiRaidDevModel[41] = { 0 };
+                                                                        char csmiRaidDevSerial[41] = { 0 };
+                                                                        snprintf(csmiRaidDevModel, 41, "%s", csmiRAIDConfig->Configuration.Drives[iter].bModel);
+                                                                        snprintf(csmiRaidDevSerial, 41, "%s", csmiRAIDConfig->Configuration.Drives[iter].bSerialNumber);
+                                                                        remove_Leading_And_Trailing_Whitespace(csmiRaidDevModel);
+                                                                        remove_Leading_And_Trailing_Whitespace(csmiRaidDevSerial);
+                                                                        //Creating a temporary tDevice structure to use for the passthrough commands.-TJE
+                                                                        tDevice tempDevice;
+                                                                        tempDevice.os_info.minimumAlignment = sizeof(void *);//setting alignment this way to be compatible across OSs since CSMI doesn't really dictate an alignment, but we should set something. - TJE
+                                                                        tempDevice.issue_io = C_CAST(issue_io_func, send_CSMI_IO);
+                                                                        tempDevice.drive_info.drive_type = SCSI_DRIVE;//assume SCSI for now. Can be changed later
+                                                                        tempDevice.drive_info.interface_type = RAID_INTERFACE;//TODO: Only set RAID interface for one that needs a function pointer and is in a RAID!!!
+                                                                        tempDevice.os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, calloc(1, sizeof(csmiDeviceInfo)));
+                                                                        if (!tempDevice.os_info.csmiDeviceData)
+                                                                        {
+    #if defined (CSMI_DEBUG)
+                                                                            printf("GRL: Failed to allocate csmiDeviceInfo structure\n");
+    #endif //CSMI_DEBUG
+                                                                            return MEMORY_FAILURE;
+                                                                        }
+                                                                        tempDevice.os_info.csmiDeviceData->csmiDevHandle = fd;
+                                                                        tempDevice.os_info.csmiDeviceData->controllerNumber = controllerNumber;
+                                                                        tempDevice.os_info.csmiDeviceData->csmiDeviceInfoValid = true;
+                                                                        ScsiIoCtx csmiPTCmd;
+                                                                        memset(&csmiPTCmd, 0, sizeof(ScsiIoCtx));
+                                                                        csmiPTCmd.device = &tempDevice;
+                                                                        csmiPTCmd.timeout = 15;
+                                                                        csmiPTCmd.direction = XFER_DATA_IN;
+                                                                        csmiPTCmd.psense = tempDevice.drive_info.lastCommandSenseData;
+                                                                        csmiPTCmd.senseDataSize = SPC3_SENSE_LEN;
+                                                                        //Don't have a SAS Address to match to, so we need to send an identify or inquiry to the device to see if it is the same MN, then check the SN.
+                                                                        //NOTE: This will not work if we don't already know the sasLUN for SAS drives. SATA will be ok though.
+                                                                        tempDevice.os_info.csmiDeviceData->portIdentifier = phyInfo.Information.Phy[phyIter].bPortIdentifier;
+                                                                        tempDevice.os_info.csmiDeviceData->phyIdentifier = phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier;
+                                                                        tempDevice.os_info.csmiDeviceData->portProtocol = phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol;
+                                                                        memcpy(&tempDevice.os_info.csmiDeviceData->sasAddress[0], phyInfo.Information.Phy[phyIter].Attached.bSASAddress, 8);
+                                                                        //Attempt passthrough command and compare identifying data.
+                                                                        //for this to work, SCSIIoCTX structure must be manually defined for what we want to do right now and call the CSMI IO directly...not great, but don't want to have other force flags elsewhere at the moment- TJE
+                                                                        if (phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_SATA || phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_STP)
+                                                                        {
+                                                                            //ATA identify
+                                                                            uint8_t identifyData[512] = { 0 };
+                                                                            ataPassthroughCommand identify;
+                                                                            memset(&identify, 0, sizeof(ataPassthroughCommand));
+                                                                            identify.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
+                                                                            identify.ataTransferBlocks = ATA_PT_512B_BLOCKS;
+                                                                            identify.commadProtocol = ATA_PROTOCOL_PIO;
+                                                                            identify.commandDirection = XFER_DATA_IN;
+                                                                            identify.commandType = ATA_CMD_TYPE_TASKFILE;
+                                                                            identify.timeout = 15;
+                                                                            csmiPTCmd.pdata = identify.ptrData = identifyData;
+                                                                            csmiPTCmd.dataLength = identify.dataSize = 512;
+                                                                            csmiPTCmd.pAtaCmdOpts = &identify;
+                                                                            identify.tfr.CommandStatus = ATA_IDENTIFY;
+                                                                            identify.tfr.SectorCount = 1;
+                                                                            identify.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+    #if defined (CSMI_DEBUG)
+                                                                            printf("GDL: Detected SATA protocol. Attempting Identify CMD\n");
+    #endif //CSMI_DEBUG
+                                                                            if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
+                                                                            {
+                                                                                //compare MN and SN...if match, then we have found the drive!
+                                                                                char ataMN[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
+                                                                                char ataSN[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
+                                                                                char ataFW[ATA_IDENTIFY_FW_LENGTH + 1] = { 0 };
+                                                                                fill_ATA_Strings_From_Identify_Data(identifyData, ataMN, ataSN, ataFW);
+                                                                                //check for a match
+    #if defined (CSMI_DEBUG)
+                                                                                printf("GDL: Identify Successful\n");
+    #endif //CSMI_DEBUG
+                                                                                if (strstr(ataMN, csmiRaidDevModel) && strstr(ataSN, csmiRaidDevSerial))
+                                                                                {
+                                                                                    //found a match!
+    #if defined (CSMI_DEBUG)
+                                                                                    printf("GDL: Found a matching MN/SN!\n");
+    #endif //CSMI_DEBUG
+                                                                                    snprintf(handle, RAID_HANDLE_STRING_MAX_LEN, "csmi:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber, phyInfo.Information.Phy[phyIter].bPortIdentifier, phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier, 0);
+                                                                                    matchedPhys[phyIter] = true;
+    #if defined (CSMI_DEBUG)
+                                                                                    printf("GDL: End device handle found and set as %s\n", handle);
+    #endif //CSMI_DEBUG
+                                                                                    foundDevice = true;
+                                                                                }
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                //possibly an ATAPI drive
+                                                                                identify.tfr.CommandStatus = ATAPI_IDENTIFY;
+                                                                                if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
+                                                                                {
+                                                                                    //compare MN and SN...if match, then we have found the drive!
+                                                                                    char ataMN[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
+                                                                                    char ataSN[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
+                                                                                    char ataFW[ATA_IDENTIFY_FW_LENGTH + 1] = { 0 };
+                                                                                    fill_ATA_Strings_From_Identify_Data(identifyData, ataMN, ataSN, ataFW);
+                                                                                    //check for a match
+    #if defined (CSMI_DEBUG)
+                                                                                    printf("GDL: ATAPI Identify Successful\n");
+                                                                                    printf("GDL: Not adding to the list since ATAPI should use system handle instead.\n");
+    #endif //CSMI_DEBUG
+                                                                                    if (strstr(ataMN, csmiRaidDevModel) && strstr(ataSN, csmiRaidDevSerial))
+                                                                                    {
+                                                                                        //found a match!
+    #if defined (CSMI_DEBUG)
+                                                                                        printf("GDL: Found a matching MN/SN!\n");
+    #endif //CSMI_DEBUG
+                                                                                        snprintf(handle, RAID_HANDLE_STRING_MAX_LEN, "csmi:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber, phyInfo.Information.Phy[phyIter].bPortIdentifier, phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier, 0);
+                                                                                        matchedPhys[phyIter] = true;
+    #if defined (CSMI_DEBUG)
+                                                                                        printf("GDL: End device handle found and set as %s\n", handle);
+    #endif //CSMI_DEBUG
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                        else if (phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_SSP)
+                                                                        {
+                                                                            //SCSI Inquiry and read unit serial number VPD page
+                                                                            uint8_t inqData[96] = { 0 };
+                                                                            uint8_t cdb[CDB_LEN_6] = { 0 };
+                                                                            cdb[OPERATION_CODE] = INQUIRY_CMD;
+                                                                            /*if (evpd)
+                                                                            {
+                                                                                cdb[1] |= BIT0;
+                                                                            }*/
+                                                                            cdb[2] = 0;// pageCode;
+                                                                            cdb[3] = M_Byte1(96);
+                                                                            cdb[4] = M_Byte0(96);
+                                                                            cdb[5] = 0;//control
+
+                                                                            csmiPTCmd.cdbLength = CDB_LEN_6;
+                                                                            memcpy(csmiPTCmd.cdb, cdb, 6);
+                                                                            csmiPTCmd.dataLength = 96;
+                                                                            csmiPTCmd.pdata = inqData;
+    #if defined (CSMI_DEBUG)
+                                                                            printf("GDL: Detected SSP protocol. Attempting Inquiry\n");
+    #endif //CSMI_DEBUG
+                                                                            if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
+                                                                            {
+                                                                                //TODO: If this is a multi-LUN device, this won't currently work and it may not be possible to make this work if we got to this case in the first place. HOPEFULLY the other CSMI translation IOCTLs just work and this is unnecessary. - TJE
+                                                                                //If MN matches, send inquiry to unit SN vpd page to confirm we have a matching SN
+                                                                                char inqVendor[9] = { 0 };
+                                                                                char inqProductID[17] = { 0 };
+                                                                                char vidCatPid[41] = { 0 };
+                                                                                //char inqProductRev[5] = { 0 };
+                                                                                //copy the strings
+                                                                                memcpy(inqVendor, &inqData[8], 8);
+                                                                                memcpy(inqProductID, &inqData[16], 16);
+                                                                                //memcpy(inqProductRev, &inqData[32], 4);
+                                                                                snprintf(vidCatPid, 41, "%s%s", inqVendor, inqProductID);//concatenate now before removing spaces-TJE
+                                                                                //remove whitespace
+                                                                                remove_Leading_And_Trailing_Whitespace(inqVendor);
+                                                                                remove_Leading_And_Trailing_Whitespace(inqProductID);
+                                                                                //remove_Leading_And_Trailing_Whitespace(inqProductRev);
+                                                                                remove_Leading_And_Trailing_Whitespace(vidCatPid);
+    #if defined (CSMI_DEBUG)
+                                                                                printf("GDL: Inquiry Successful\n");
+    #endif //CSMI_DEBUG
+                                                                                //For SAS drives, the model is the concatenation of the vendor
+                                                                                //identification and product identification fields from a standard INQUIRY
+    #if defined (CSMI_DEBUG)
+                                                                                printf("GDL: Comparing Inq vid cat pid (%s) with csmi model (%s)\n", vidCatPid, csmiRaidDevSerial);
+    #endif //CSMI_DEBUG
+                                                                                if (strstr(inqVendor, csmiRaidDevModel) && strstr(inqProductID, csmiRaidDevModel))//check with strstr that both the vendorID and model are found so we don't need to guess on the concatenation-TJE
+                                                                                {
+    #if defined (CSMI_DEBUG)
+                                                                                    printf("GDL: MN/Vendor match. Checking SN\n");
+    #endif //CSMI_DEBUG
+                                                                                    //now read the unit SN VPD page since this matches so far that way we can compare the serial number. Not checking SCSI 2 since every SAS drive *SHOULD* support this.
+                                                                                    memset(inqData, 0, 96);
+                                                                                    //change CDB to read unit SN page
+                                                                                    cdb[1] |= BIT0;
+                                                                                    cdb[2] = UNIT_SERIAL_NUMBER;
+    #if defined (CSMI_DEBUG)
+                                                                                    printf("GDL: Requesting Unit SN page\n");
+    #endif //CSMI_DEBUG
+                                                                                    if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
+                                                                                    {
+                                                                                        //check the SN
+                                                                                        uint16_t serialNumberLength = M_Min(M_BytesTo2ByteValue(inqData[2], inqData[3]), 96) + 1;
+                                                                                        char *serialNumber = C_CAST(char*, calloc(serialNumberLength, sizeof(char)));
+                                                                                        if (serialNumber)
+                                                                                        {
+                                                                                            memcpy(serialNumber, &inqData[4], serialNumberLength - 1);//minus 1 to leave null terminator in tact at the end
+                                                                                            if (strcmp(serialNumber, csmiRaidDevSerial))
+                                                                                            {
+    #if defined (CSMI_DEBUG)
+                                                                                                printf("GDL: Found a matching SN!\n");
+    #endif //CSMI_DEBUG
+                                                                                                //found a match!
+                                                                                                foundDevice = true;
+                                                                                                snprintf(handle, RAID_HANDLE_STRING_MAX_LEN, "csmi:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber, phyInfo.Information.Phy[phyIter].bPortIdentifier, phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier, 0);
+                                                                                                matchedPhys[phyIter] = true;
+    #if defined (CSMI_DEBUG)
+                                                                                                printf("GDL: End device handle found and set as %s\n", handle);
+    #endif //CSMI_DEBUG
+                                                                                                //TODO: To help prevent multiport or multi-lun issues, we should REALLY check the device identification VPD page, but that can be a future enhancement
+                                                                                            }
+                                                                                            safe_Free(serialNumber)
+                                                                                        }
+                                                                                    }
+                                                                                    //else...catastrophic failure? Not sure what to do here since this should be really rare to begin with.
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                        safe_Free(tempDevice.os_info.csmiDeviceData);
+                                                                    }
+                                                                    else if ((is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8) || is_Empty(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, 8)) //SAS address is empty
+                                                                           && is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bModel, 40) && !is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSerialNumber, 40)) //MN is empty, but SN is not. Missing drive from the set.
+                                                                    {
+                                                                        //in this case the MN is blank, but there is a SN. So this is likely a case of a missing drive, so do NOT scan the phyinfo
+    #if defined (CSMI_DEBUG)
+                                                                        printf("GDL: No SAS address and MN is blank, but has a SN, so likely a missing drive from the RAID set.\n");
+    #endif //CSMI_DEBUG
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        raidInfoIncomplete = true;
+                                                                        matchedPhys[phyIter] = false;
+    #if defined (CSMI_DEBUG)
+                                                                        printf("GDL: Logging error for iter = %" PRIu8 "\n", phyIter);
+                                                                        printf("GDL: Cannot use SASAddress or MN+SN to match drives. Trying final possibility: PhyInfo\n");
+    #endif //CSMI_DEBUG
                                                                     }
                                                                 }
                                                             }
@@ -3168,9 +4931,15 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                             d->sanity.size = ver.size;
                                                             d->sanity.version = ver.version;
                                                             d->dFlags = flags;
+#if defined (CSMI_DEBUG)
+                                                            printf("GDL: Calling get_CSMI_RAID_Device\n");
+#endif //CSMI_DEBUG
                                                             returnValue = get_CSMI_RAID_Device(handle, d);
                                                             if (returnValue != SUCCESS)
                                                             {
+#if defined (CSMI_DEBUG)
+                                                                printf("GDL: Failed to get CSMI RAID device\n");
+#endif //CSMI_DEBUG
                                                                 failedGetDeviceCount++;
                                                             }
                                                             ++d;
@@ -3181,26 +4950,89 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                     default:
                                                         break;
                                                     }
-                                                    break;
-                                                case CSMI_SAS_RAID_DATA_DEVICE_ID:
-                                                case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
-                                                default:
-                                                    break;
                                                 }
                                             }
                                         }
-                                        safe_Free(csmiRAIDConfig);
+                                        safe_Free(csmiRAIDConfig)
+                                    }
+                                }
+                                if (raidInfoIncomplete)
+                                {
+                                    //So there is not any other method that will work to match devices. So this will rely strictly on the PhyInfo.
+                                    //This has a lot of draw backs. There is nothing that can be done to ensure we find all drives, we also may end up finding duplicates, or even extras.
+                                    //Solving these problems is probably possible by removing duplicates at the end, but that is far from optimal -TJE
+                                    for (uint8_t phyIter = 0, physFound = 0; phyIter < 32 && physFound < phyInfo.Information.bNumberOfPhys && found < numberOfDevices; ++phyIter)
+                                    {
+                                        if (phyInfo.Information.Phy[phyIter].Attached.bDeviceType == CSMI_SAS_NO_DEVICE_ATTACHED) 
+                                        {
+                                            //nothing here, so continue
+#if defined (CSMI_DEBUG)
+                                            printf("GDL: skipping %" PRIu8 " as attached data shows no device connected.\n", phyIter);
+#endif //CSMI_DEBUG
+                                            continue;
+                                        }
+                                        ++physFound;//increment since we have found a valid phy to check information on.
+                                        if (!matchedPhys[phyIter])//only do this for phys we did not already scan successfully above-TJE
+                                        {
+#if defined (CSMI_DEBUG)
+                                            printf("Checking phy error list with phy %" PRIu8"\n", phyIter);
+#endif //CSMI_DEBUG
+                                            //Each attached device will be considered a "found device" in this case.
+                                            char handle[RAID_HANDLE_STRING_MAX_LEN] = { 0 };
+                                            snprintf(handle, RAID_HANDLE_STRING_MAX_LEN, "csmi:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber, phyInfo.Information.Phy[phyIter].bPortIdentifier, phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier, 0);
+#if defined (CSMI_DEBUG)
+                                            printf("GDL: Phy Info last resort device handle found and set as %s\n", handle);
+#endif //CSMI_DEBUG
+                                            memset(d, 0, sizeof(tDevice));
+                                            d->sanity.size = ver.size;
+                                            d->sanity.version = ver.version;
+                                            d->dFlags = flags;
+                                            d->deviceVerbosity = 4;
+#if defined (CSMI_DEBUG)
+                                            printf("GDL: Calling get_CSMI_RAID_Device\n");
+#endif //CSMI_DEBUG
+                                            returnValue = get_CSMI_RAID_Device(handle, d);
+                                            if (returnValue != SUCCESS)
+                                            {
+#if defined (CSMI_DEBUG)
+                                                printf("GDL: Failed to get CSMI RAID device\n");
+#endif //CSMI_DEBUG
+                                                failedGetDeviceCount++;
+                                            }
+                                            else if(d->drive_info.drive_type == ATAPI_DRIVE || d->drive_info.drive_type == UNKNOWN_DRIVE)
+                                            {
+                                                //ATAPI drives can show up, but we do not need to scan them with CSMI, so check if it is ATAPI or not!
+                                                //ATAPI devices will not be part of a RAID, so we do not need to add them in CSMI code.
+                                                //If we want to show them in the software, windows can scan \\.\CDROM<id> handles
+#if defined (CSMI_DEBUG)
+                                                printf("GDL: Found ATAPI drive. Skipping.\n");
+#endif //CSMI_DEBUG
+                                                //memset the device because it can still show up and we do not want it to leave anything behind if we are reusing the device structure for a different device.
+                                                memset(d, 0, sizeof(tDevice));
+                                                continue;
+                                            }
+                                            ++d;
+                                            //If we were unable to open the device using get_CSMI_Device, then  we need to increment the failure counter. - TJE
+                                            ++found;
+                                        }
                                     }
                                 }
                             }
                         }
-                        //This was a CSMI handle, remove it from the list!
-                        //This will also increment us to the next handle
+#if defined (CSMI_DEBUG)
+                        printf("GDL: Updating raid list\n");
+#endif //CSMI_DEBUG
+                        bool pointerAtBeginningOfRAIDList = raidList == *beginningOfList ? true : false;
                         raidList = remove_RAID_Handle(raidList, previousRaidListEntry);
+                        if (pointerAtBeginningOfRAIDList)
+                        {
+                            //if the first entry in the list was removed, we need up update the pointer before we exit so that the code that called here won't have an invalid pointer
+                            *beginningOfList = raidList;
+                        }
                         handleRemoved = true;
 #if !defined (_WIN32) //loop through controller numbers
                     }
-#endif
+#endif //_WIN32
                 }
                 //close handle to the controller
 #if defined (_WIN32)
@@ -3208,12 +5040,12 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 {
                     CloseHandle(fd);
                 }
-#else
+#else //_WIN32
                 if (fd < 0)
                 {
                     close(fd);
                 }
-#endif
+#endif //_WIN32
                 if (!handleRemoved)
                 {
                     previousRaidListEntry = raidList;//store handle we just looked at in case we need to remove one from the list
@@ -3224,11 +5056,17 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         }
         if (found == failedGetDeviceCount)
         {
+#if defined (CSMI_DEBUG)
+            printf("GDL: Setting failure as no RAID devices could be opened\n");
+#endif //CSMI_DEBUG
             returnValue = FAILURE;
         }
         else if (failedGetDeviceCount)
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
+#if defined (CSMI_DEBUG)
+            printf("GDL: Setting warning that not all device enumerated properly\n");
+#endif //CSMI_DEBUG
         }
     }
     return returnValue;
@@ -3527,6 +5365,37 @@ void print_CSMI_Device_Info(tDevice *device)
             break;
         case CSMI_SECURITY_ACCESS_FULL:
             printf("Full\n");
+            break;
+        }
+        printf("\tCSMI Known driver type: ");
+        switch (device->os_info.csmiDeviceData->csmiKnownDriverType)
+        {
+        case CSMI_DRIVER_UNKNOWN:
+            printf("Unknown\n");
+            break;
+        case CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY:
+            printf("Intel Rapid Storage Technology\n");
+            break;
+        case CSMI_DRIVER_INTEL_VROC:
+            printf("Intel VROC\n");
+            break;
+        case CSMI_DRIVER_AMD_RCRAID:
+            printf("AMD RCRAID\n");
+            break;
+        case CSMI_DRIVER_HPCISS:
+            printf("HPCISS\n");
+            break;
+        case CSMI_DRIVER_ARCSAS:
+            printf("ARCSAS\n");
+            break;
+        case CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY_VD:
+            printf("Intel RST VD\n");
+            break;
+        case CSMI_DRIVER_INTEL_GENERIC:
+            printf("Generic Intel\n");
+            break;
+        case CSMI_DRIVER_HPSAMD:
+            printf("HP SAMD\n");
             break;
         }
         if (device->os_info.csmiDeviceData->intelRSTSupport.intelRSTSupported && device->os_info.csmiDeviceData->intelRSTSupport.nvmePassthrough)

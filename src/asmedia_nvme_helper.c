@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2019-2021 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2019-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -12,7 +12,6 @@
 // \file asmedia_nvme_helper.h
 // \brief Defines the functions for ASMedia NVMe-USB pass-through
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
 
 //All code in this file is from a ASMedia USB to NVMe product specification for pass-through NVMe commands.
 //This code should only be used on products that are known to use this pass-through interface.
@@ -47,7 +46,7 @@
 //2 - reserved
 //3 - DW10, byte 0 (bits 7:0) - CNS
 //4 - 15 are reserved
-int build_Basic_Passthrough_CDB(nvmeCmdCtx *nvmCmd, uint8_t* cdb)
+static int build_Basic_Passthrough_CDB(nvmeCmdCtx *nvmCmd, uint8_t* cdb)
 {
     int ret = SUCCESS;
     if (!nvmCmd || !cdb)
@@ -146,7 +145,7 @@ int send_ASMedia_Basic_NVMe_Passthrough_Cmd(nvmeCmdCtx *nvmCmd)
     return ret;
 }
 
-int build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransferDirection *cdbDataDirection, eASM_NVMPacket_Operation asmOperation, uint8_t parameter1, nvmeCmdCtx *nvmCmd, uint8_t * dataPtr, uint32_t dataSize)
+static int build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransferDirection *cdbDataDirection, eASM_NVMPacket_Operation asmOperation, uint8_t parameter1, nvmeCmdCtx *nvmCmd, uint8_t * dataPtr, uint32_t dataSize)
 {
     int ret = SUCCESS;
 
@@ -169,7 +168,7 @@ int build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransferDirection *cdbDa
     case ASMEDIA_NVMP_OP_RELINK_USB:
         cdb[OPERATION_CODE] = ASMEDIA_NVME_PACKET_WRITE_OP;
         cdb[1] = ASMEDIA_NVME_PACKET_SIGNATURE;
-        cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET] = (uint8_t)asmOperation;
+        cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET] = C_CAST(uint8_t, asmOperation);
         cdb[ASMEDIA_NVME_PACKET_PARAMETER_1_OFFSET] = parameter1;
         //cdb[ASMEDIA_NVME_PACKET_PARAMETER_2_OFFSET] = parameter2;//parameter 2 is unused for these operations
         *cdbDataDirection = XFER_NO_DATA;
@@ -177,7 +176,7 @@ int build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransferDirection *cdbDa
     case ASMEDIA_NVMP_OP_GET_BRIDGE_INFO:
         cdb[OPERATION_CODE] = ASMEDIA_NVME_PACKET_READ_OP;
         cdb[1] = ASMEDIA_NVME_PACKET_SIGNATURE;
-        cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET] = (uint8_t)asmOperation;
+        cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET] = C_CAST(uint8_t, asmOperation);
         cdb[ASMEDIA_NVME_PACKET_PARAMETER_1_OFFSET] = parameter1;
         //cdb[ASMEDIA_NVME_PACKET_PARAMETER_2_OFFSET] = parameter2;//parameter 2 is unused for this operation
         //set allocation length to 40h
@@ -196,7 +195,7 @@ int build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransferDirection *cdbDa
         {
             cdb[OPERATION_CODE] = ASMEDIA_NVME_PACKET_WRITE_OP;
             cdb[1] = ASMEDIA_NVME_PACKET_SIGNATURE;
-            cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET] = (uint8_t)asmOperation;
+            cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET] = C_CAST(uint8_t, asmOperation);
             //ignore input parameter 1 value as we can look at the nvmCmd structure to set it properly for this command
             //setup transfer length as 64B since that's the size of the command in NVMe and that is what the spec shows it is looking for.
             cdb[10] = M_Byte3(ASM_NVMP_DWORDS_DATA_PACKET_SIZE);
@@ -356,7 +355,7 @@ int build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransferDirection *cdbDa
         uint32_t allocationLength = dataSize;
         cdb[OPERATION_CODE] = ASMEDIA_NVME_PACKET_READ_OP;
         cdb[1] = ASMEDIA_NVME_PACKET_SIGNATURE;
-        cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET] = (uint8_t)asmOperation;
+        cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET] = C_CAST(uint8_t, asmOperation);
 
         //set param 1 for command type
         if (nvmCmd->commandType == NVM_ADMIN_CMD)
@@ -411,7 +410,7 @@ int build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransferDirection *cdbDa
     case ASMEDIA_NVMP_OP_GET_NVM_COMPLETION:
         cdb[OPERATION_CODE] = ASMEDIA_NVME_PACKET_READ_OP;
         cdb[1] = ASMEDIA_NVME_PACKET_SIGNATURE;
-        cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET] = (uint8_t)asmOperation;
+        cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET] = C_CAST(uint8_t, asmOperation);
 
         //set allocation length to 10h
         cdb[10] = M_Byte3(ASM_NVMP_RESPONSE_DATA_SIZE);
@@ -473,17 +472,19 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     eDataTransferDirection asmCDBDir = 0;
     //if the NVMe command is not doing a multiple of 512B data transfer, we need to allocate local memory, rounded up to 512B boundaries before the command.
     //Then we can copy that back to the smaller buffer after command is complete.
-    uint8_t *dataPhasePtr = nvmCmd->ptrData;
-    uint32_t dataPhaseSize = nvmCmd->dataSize;
+    uint8_t *dataPhasePtr = NULL;
+    uint32_t dataPhaseSize = 0;
     bool localMemory = false;
     if (!nvmCmd)
     {
         return BAD_PARAMETER;
     }
+    dataPhasePtr = nvmCmd->ptrData;
+    dataPhaseSize = nvmCmd->dataSize;
     if (nvmCmd->ptrData && nvmCmd->dataSize > 0 && nvmCmd->dataSize % 512)
     {
         dataPhaseSize = ((nvmCmd->dataSize + 511) / 512) * 512;//round up to nearest 512B boundary
-        dataPhasePtr = (uint8_t*)calloc_aligned(dataPhaseSize, sizeof(uint8_t), nvmCmd->device->os_info.minimumAlignment);
+        dataPhasePtr = C_CAST(uint8_t*, calloc_aligned(dataPhaseSize, sizeof(uint8_t), nvmCmd->device->os_info.minimumAlignment));
         if (!dataPhasePtr)
         {
             return MEMORY_FAILURE;
@@ -502,7 +503,7 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     {
         if (localMemory)
         {
-            safe_Free_aligned(dataPhasePtr);
+            safe_Free_aligned(dataPhasePtr)
         }
         return ret;
     }
@@ -511,7 +512,7 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     {
         if (localMemory)
         {
-            safe_Free_aligned(dataPhasePtr);
+            safe_Free_aligned(dataPhasePtr)
         }
         return ret;
     }
@@ -522,7 +523,7 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     {
         if (localMemory)
         {
-            safe_Free_aligned(dataPhasePtr);
+            safe_Free_aligned(dataPhasePtr)
         }
         return ret;
     }
@@ -535,11 +536,11 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
         {
             memcpy(nvmCmd->ptrData, dataPhasePtr, nvmCmd->dataSize);
         }
-        safe_Free_aligned(dataPhasePtr);
+        safe_Free_aligned(dataPhasePtr)
     }
 
     bool senseDataIsAllWeGot = true;
-    if (sendRet != COMMAND_TIMEOUT)
+    if (sendRet != OS_COMMAND_TIMEOUT)
     {
         //3. get the command completion
         uint8_t completionData[ASM_NVMP_RESPONSE_DATA_SIZE] = { 0 };
@@ -582,7 +583,7 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     return ret;
 }
 
-int asm_nvme_Shutdown(tDevice *device, bool withShutdownProcessing)
+static int asm_nvme_Shutdown(tDevice *device, bool withShutdownProcessing)
 {
     uint8_t cdb[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
@@ -599,7 +600,7 @@ int asm_nvme_Shutdown(tDevice *device, bool withShutdownProcessing)
     return ret;
 }
 
-int asm_nvme_Reset_Bridge(tDevice *device)
+static int asm_nvme_Reset_Bridge(tDevice *device)
 {
     uint8_t cdb[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
@@ -616,7 +617,7 @@ int asm_nvme_Reset_Bridge(tDevice *device)
     return ret;
 }
 
-int asm_nvme_Relink_Bridge(tDevice *device, bool normalShutdownBeforeDisconnect)
+static int asm_nvme_Relink_Bridge(tDevice *device, bool normalShutdownBeforeDisconnect)
 {
     uint8_t cdb[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
@@ -666,4 +667,3 @@ int asm_nvme_Subsystem_Reset(tDevice *device)
     //relink USB command
     return asm_nvme_Relink_Bridge(device, true);
 }
-#endif //DISABLE_NVME_PASSTHROUGH
