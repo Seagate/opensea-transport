@@ -2226,9 +2226,9 @@ eSkyhawk_Drive is_Skyhawk_Drive(tDevice * device, bool USBchildDrive)
 
     if (strlen(modelNumber))
     {
-        if (wildcard_Match("ST*VX*", modelNumber))   //check if Skyhawk HDD
+        if (wildcard_Match("ST*VX*", modelNumber) || wildcard_Match("ST*HKVS*", modelNumber))   //check if Skyhawk HDD
             isSkyhawkDrive = SKYHAWK_DRIVE;
-        else if (wildcard_Match("ST*VE*", modelNumber))  //check if Skyhawk AI HDD
+        else if (wildcard_Match("ST*VE*", modelNumber) || wildcard_Match("ST*HKAI*", modelNumber))  //check if Skyhawk AI HDD
             isSkyhawkDrive = SKYHAWK_AI_DRIVE;
     }
 
