@@ -47,7 +47,7 @@ extern "C"
     }raidTypeHint;
 
     //Define the max string length
-    #define RAID_HANDLE_STRING_MAX_LEN UINT8_C(24)
+    #define RAID_HANDLE_STRING_MAX_LEN UINT8_C(32)
 
     typedef struct _raidHandleToScan
     {

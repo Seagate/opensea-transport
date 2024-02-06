@@ -12,13 +12,6 @@
 // \brief Defines the constants structures to help with CISS implementation. This attempts to be generic for any unix-like OS. Windows support is through CSMI.
 
 #if defined (ENABLE_CISS)
-#include "common.h"
-#include "common_public.h"
-#include "scsi_helper.h"
-#include "ciss_helper.h"
-#include "raid_scan_helper.h"
-#include "scsi_helper_func.h"
-
 #if defined (__unix__) //this is only done in case someone sets weird defines for Windows even though this isn't supported
 #include <fcntl.h>
 #include <unistd.h> // for close
@@ -35,9 +28,11 @@
 //define this macro before these includes. Doesn't need to match exactly, just make the compiler happy.-TJE
 #ifndef __user
 #define __user
-#endif
-#include "external/ciss/linux/cciss_defs.h"
-#include "external/ciss/linux/cciss_ioctl.h"
+#endif //__user
+//usr/include/linux has the cciss_defs and cciss_ioctl files.
+//Include these instead of our own copy.
+#include <linux/cciss_defs.h>
+#include <linux/cciss_ioctl.h>
 #elif defined (__FreeBSD__)
 #include "external/ciss/freebsd/cissio.h"
 //TODO: need anything special to handle smartpqi? https://github.com/FreeBSDDesktop/freebsd-base/blob/master/sys/dev/smartpqi/smartpqi_defines.h
@@ -45,9 +40,14 @@
 #elif defined (__sun)
 #include "external/ciss/solaris/cpqary3.h"
 #include "external/ciss/solaris/cpqary3_ioctl.h"
-#else
+#else //not a supported OS for CISS
 #pragma message "CISS support is not available for this OS"
 #endif //checking platform specific macros
+
+#include "ciss_helper.h"
+#include "ciss_helper_func.h"
+#include "scsi_helper_func.h"
+#include "common_platform.h"
 
 extern bool validate_Device_Struct(versionBlock);
 
@@ -61,7 +61,7 @@ static bool is_SmartPQI_Unique_IOCTLs_Supported(int fd)
         supported = true;
     }
     else
-#endif
+#endif //__FreeBSD__
     {
         M_USE_UNUSED(fd);
         return false;
@@ -80,6 +80,7 @@ static bool supports_CISS_IOCTLs(int fd)
     {
         supported = true;
     }
+    //If Linux SMARTPQI does not respond to this, maybe try some of the other non-passthrough IOCTLs to see if we get a valid response-TJE
     #if defined (__FreeBSD__)
     else
     {
@@ -159,7 +160,7 @@ static uint8_t parse_CISS_Handle(const char * devName, char *osHandle, uint16_t 
                 case 2://physical drive number
                     if (isdigit(token[0]))
                     {
-                        *physicalDriveNumber = (uint16_t)atoi(token);
+                        *physicalDriveNumber = C_CAST(uint16_t, atoi(token));
                         ++parseCount;
                     }
                     break;
@@ -372,7 +373,7 @@ static int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
         if (scsiIoCtx->cdbLength <= 16 && scsiIoCtx->dataLength <= UINT16_MAX)
         {
             #if defined (__linux__) || defined (__FreeBSD__) //interface is the same on Linux and FreeBSD
-                if(scsiIoCtx->device->os_info.cissDeviceData->smartpqi)
+                if (scsiIoCtx->device->os_info.cissDeviceData->smartpqi)
                 {
                     #if defined (__FreeBSD__)
                         //if the smartpqi bool is set, use the structures from that driver to issue the command to ensure
@@ -801,9 +802,8 @@ int issue_io_ciss_Dev(ScsiIoCtx * scsiIoCtx)
     if (scsiIoCtx->device->os_info.cissDeviceData)
     {
     #if defined (CCISS_BIG_PASSTHRU)
-        //for now use big passthrough whenever available
-        //scsiIoCtx->dataLength > UINT16_MAX && 
-        if (scsiIoCtx->device->os_info.cissDeviceData->bigPassthroughAvailable)
+        //use big passthrough only when making a large enough data transfer to matter - TJE
+        if (scsiIoCtx->dataLength > UINT16_MAX && scsiIoCtx->device->os_info.cissDeviceData->bigPassthroughAvailable)
         {
             return ciss_Big_Passthrough(scsiIoCtx, CISS_CMD_PHYSICAL_LUN);
         }
@@ -1204,6 +1204,4 @@ int get_CISS_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     }
     return returnValue;
 }
-
-
 #endif //ENABLE_CISS

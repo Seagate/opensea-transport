@@ -91,6 +91,11 @@
     #endif
 #endif
 
+#if defined (ENABLE_CISS)
+#include "raid_scan_helper.h"
+#include "ciss_helper_func.h"
+#endif //ENABLE_CISS
+
 #if defined(DEGUG_SCAN_TIME)
 #include "common_platform.h"
 #endif
@@ -1880,13 +1885,68 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     #endif
 
     num_devs = scandir("/dev", &namelist, sg_filter, sortFunc); 
-    if(num_devs == 0)
+    if (num_devs == 0)
     {
         //check for SD devices
         num_devs = scandir("/dev", &namelist, sd_filter, sortFunc); 
     }
+    #if defined (ENABLE_CISS)
+    //build a list of devices to scan for physical drives behind a RAID
+    ptrRaidHandleToScan raidHandleList = NULL;
+    ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
+    raidTypeHint raidHint;
+    memset(&raidHint, 0, sizeof(raidTypeHint));
+    //need to check if existing sg/sd handles are attached to hpsa or smartpqi drives in addition to /dev/cciss devices
+    struct dirent **ccisslist;
+    int num_ccissdevs = scandir("/dev", &ccisslist, ciss_filter, sortFunc);
+    if (num_ccissdevs > 0)
+    {
+        raidHint.cissRAID = true;//true as all the following will be CISS devices
+        for (int cissIter = 0; cissIter < num_ccissdevs; ++cissIter)
+        {
+            raidHandleList = add_RAID_Handle_If_Not_In_List(beginRaidHandleList, raidHandleList, ccisslist[cissIter]->d_name, raidHint);
+            if (!beginRaidHandleList)
+            {
+                beginRaidHandleList = raidHandleList;
+            }
+            //now free this as we are done with it.
+            safe_Free(ccisslist[cissIter])
+        }
+        safe_Free(ccisslist)
+    }
+    for (int iter = 0; iter < num_devs; ++iter)
+    {
+        //before freeing, check if any of these handles may be a RAID handle
+        tDevice temp;
+        set_Device_Fields_From_Handle(namelist[iter]->d_name, &temp);
+        memset(&raidHint, 0, sizeof(raidTypeHint));//clear out before checking driver name since this will be expanded to check other drivers in the future
+        #if defined (ENABLE_CISS)
+        if (strcmp(temp.drive_info.driver_info.driverName, "hpsa") == 0)
+        {
+            raidHint.cissRAID = true;
+            //this handle is a /dev/sg handle with the hpsa driver, so we can scan for cciss devices
+            raidHandleList = add_RAID_Handle_If_Not_In_List(beginRaidHandleList, raidHandleList, namelist[iter]->d_name, raidHint);
+            if (!beginRaidHandleList)
+            {
+                beginRaidHandleList = raidHandleList;
+            }
+        }
+        else if (strcmp(temp.drive_info.driver_info.driverName, "smartpqi") == 0)
+        {
+            raidHint.cissRAID = true;
+            //this handle is a /dev/sg handle with the smartpqi driver, so we can scan for cciss devices
+            raidHandleList = add_RAID_Handle_If_Not_In_List(beginRaidHandleList, raidHandleList, namelist[iter]->d_name, raidHint);
+            if (!beginRaidHandleList)
+            {
+                beginRaidHandleList = raidHandleList;
+            }
+        }
+        #endif //ENABLE_CISS
+    }
+    #endif //ENABLE_CISS
+
     //free the list of names to not leak memory
-    for(int iter = 0; iter < num_devs; ++iter)
+    for (int iter = 0; iter < num_devs; ++iter)
     {
     	safe_Free(namelist[iter])
     }
@@ -1901,6 +1961,18 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     safe_Free(nvmenamelist)
 
     *numberOfDevices = num_devs + num_nvme_devs;
+
+#if defined (ENABLE_CISS)
+    uint32_t cissDeviceCount = 0;
+    int cissRet = get_CISS_RAID_Device_Count(&cissDeviceCount, flags, &beginRaidHandleList);
+    if (cissRet == SUCCESS)
+    {
+        *numberOfDevices += cissDeviceCount;
+    }
+#endif //ENABLE_CISS
+
+    //Clean up RAID handle list
+    delete_RAID_List(beginRaidHandleList);
 
     M_USE_UNUSED(flags);    
     return SUCCESS;
@@ -1944,6 +2016,10 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     memset(&getDeviceTimer, 0, sizeof(seatimer_t));
     memset(&getDeviceListTimer, 0, sizeof(seatimer_t));
 #endif
+    ptrRaidHandleToScan raidHandleList = NULL;
+    ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
+    raidTypeHint raidHint;
+    memset(&raidHint, 0, sizeof(raidTypeHint));
     
     int  num_sg_devs = 0, num_sd_devs = 0, num_nvme_devs = 0;
 
@@ -1986,6 +2062,24 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
     safe_Free(namelist)
     safe_Free(nvmenamelist)
+
+    struct dirent **ccisslist;
+    int num_ccissdevs = scandir("/dev", &ccisslist, ciss_filter, sortFunc);
+    if (num_ccissdevs > 0)
+    {
+        raidHint.cissRAID = true;//true as all the following will be CISS devices
+        for (int cissIter = 0; cissIter < num_ccissdevs; ++cissIter)
+        {
+            raidHandleList = add_RAID_Handle_If_Not_In_List(beginRaidHandleList, raidHandleList, ccisslist[cissIter]->d_name, raidHint);
+            if (!beginRaidHandleList)
+            {
+                beginRaidHandleList = raidHandleList;
+            }
+            //now free this as we are done with it.
+            safe_Free(ccisslist[cissIter])
+        }
+        safe_Free(ccisslist)
+    }
 
     //TODO: Check if sizeInBytes is a multiple of 
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -2037,6 +2131,32 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 {
                     failedGetDeviceCount++;
                 }
+                else
+                {
+                    memset(&raidHint, 0, sizeof(raidTypeHint));
+#if defined (ENABLE_CISS)
+                    if (strcmp(d->drive_info.driver_info.driverName, "hpsa") == 0)
+                    {
+                        raidHint.cissRAID = true;
+                        //this handle is a /dev/sg handle with the hpsa driver, so we can scan for cciss devices
+                        raidHandleList = add_RAID_Handle_If_Not_In_List(beginRaidHandleList, raidHandleList, name, raidHint);
+                        if (!beginRaidHandleList)
+                        {
+                            beginRaidHandleList = raidHandleList;
+                        }
+                    }
+                    else if (strcmp(d->drive_info.driver_info.driverName, "smartpqi") == 0)
+                    {
+                        raidHint.cissRAID = true;
+                        //this handle is a /dev/sg handle with the smartpqi driver, so we can scan for cciss devices
+                        raidHandleList = add_RAID_Handle_If_Not_In_List(beginRaidHandleList, raidHandleList, name, raidHint);
+                        if (!beginRaidHandleList)
+                        {
+                            beginRaidHandleList = raidHandleList;
+                        }
+                    }
+#endif //ENABLE_CISS
+                }
                 found++;
                 d++;
             }
@@ -2052,10 +2172,25 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             //free the dev[deviceNumber] since we are done with it now.
             safe_Free(devs[driveNumber])
         }
+
+#if defined (ENABLE_CISS)
+        uint32_t cissDeviceCount = numberOfDevices - found;
+        int cissRet = get_CISS_RAID_Device_List(&ptrToDeviceList[found], cissDeviceCount * sizeof(tDevice), ver, flags, &beginRaidHandleList);
+        if (returnValue == SUCCESS && cissRet != SUCCESS)
+        {
+            //this will override the normal ret if it is already set to success with the CISS return value
+            returnValue = cissRet;
+        }
+#endif //ENABLE_CISS
+
+        //Clean up RAID handle list
+        delete_RAID_List(beginRaidHandleList);
+
 #if defined (DEGUG_SCAN_TIME)
         stop_Timer(&getDeviceListTimer);
         printf("Time to get all device = %fms\n", get_Milli_Seconds(getDeviceListTimer));
 #endif
+
 	    if (found == failedGetDeviceCount)
 	    {
 	        returnValue = FAILURE;

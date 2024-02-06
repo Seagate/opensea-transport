@@ -39,11 +39,11 @@ extern "C"
         #define CSMI_DEVIVE_NAME_MAX_LENGTH CSMI_WIN_MAX_DEVICE_NAME_LENGTH
     #elif defined (__unix__)
         #define NIX_CSMI_DRIVE  "/dev/hba" //This is purely an example, not really useful beyond this
-        #define CSMI_NIX_MAX_DEVICE_NAME_LENGTH UINT8_C(24)
+        #define CSMI_NIX_MAX_DEVICE_NAME_LENGTH UINT8_C(32)
         #define CSMI_DEVIVE_NAME_MAX_LENGTH CSMI_NIX_MAX_DEVICE_NAME_LENGTH
     #else
         #message Unknown OS...may or may not need a device prefix.
-        #define CSMI_DEVIVE_NAME_MAX_LENGTH UINT8_C(24)
+        #define CSMI_DEVIVE_NAME_MAX_LENGTH UINT8_C(32)
     #endif
 
     #if defined (_WIN32)

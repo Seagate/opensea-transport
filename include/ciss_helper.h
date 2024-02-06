@@ -18,14 +18,11 @@
 
 #include "common.h"
 #include <stdint.h>
-#if defined (__unix__) //this is only done in case someone sets weird defines for Windows even though this isn't supported
-#include <dirent.h>
-#endif //__unix__
 
 #if defined (__cplusplus)
 extern "C"
 {
-#endif
+#endif //__cplusplus
 
 //Windows: Support may be through CSMI: https://listi.jpberlin.de/pipermail/smartmontools-support/2018-April/000122.html
 //Look for this registry key: [HKLM\SYSTEM\CurrentControlSet\Services\HpCISSs2\Parameters\Device]
@@ -43,25 +40,26 @@ extern "C"
 
     #define CISS_HANDLE_MAX_LENGTH 40
 
+    typedef enum _eCISS_Driver
+    {
+        CISS_DRIVER_UNKNOWN = 0, //unable to detect the driver or it is unknown type that is responding correctly.
+        CISS_DRIVER_CISS, //classic CISS/CCISS driver. Illumos/Solaris cpqqry3 will set this as well.
+        CISS_DRIVER_HPSA, //newer HPSA driver
+        CISS_DRIVER_SMARTPQI, //smartpqi driver is also compatible with some IOCTLs or needs some modifications to work.
+    }eCISS_Driver;
+
     typedef struct _cissDeviceInfo 
     {
         int cissHandle;
         uint32_t driveNumber;
+        uint32_t maxTransferSize;//most likely 64k unless in Linux with big passthrough support.
         uint8_t physicalLocation[8];//This comes from a CISS specific CDB and is used when sending commands to physical drive locations
         bool bigPassthroughAvailable;//Only available in Linux so far.
         bool smartpqi;//freeBSD has a slightly different set of IOCTLs for this driver, although passthrough is likely exactly the same. (all structs are marked as packed though)
     }cissDeviceInfo, *ptrCissDeviceInfo;
 
-#if defined (__unix__) //this is only done in case someone sets weird defines for Windows even though this isn't supported
-    //These filter functions help with scandir on /dev to find ciss compatible devices.
-    //NOTE: On Linux, new devices are given /dev/sg, and those need to be tested for support in addition to these filters.
-    //NOTE: smartpqi filter is only available on freeBSD. It will return 0 on all other OS's.
-    int ciss_filter(const struct dirent *entry);
-    int smartpqi_filter(const struct dirent *entry);
-#endif //__unix__
-
 #if defined (__cplusplus)
 }
-#endif
+#endif //__cplusplus
 
 #endif //ENABLE_CISS
