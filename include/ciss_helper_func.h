@@ -39,6 +39,8 @@ extern "C"
     int smartpqi_filter(const struct dirent *entry);
     #endif //__unix__
 
+    bool is_Supported_ciss_Dev(const char * devName);
+
     int issue_io_ciss_Dev(ScsiIoCtx * scsiIoCtx);
 
     int get_CISS_RAID_Device(const char *filename, tDevice *device);

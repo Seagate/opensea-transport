@@ -176,7 +176,7 @@ static uint8_t parse_CISS_Handle(const char * devName, char *osHandle, uint16_t 
     return parseCount;
 }
 
-static bool is_Supported_ciss_Dev(const char * devName)
+bool is_Supported_ciss_Dev(const char * devName)
 {
     bool supported = false;
     uint16_t driveNumber = 0;
@@ -835,7 +835,7 @@ int get_CISS_RAID_Device(const char *filename, tDevice *device)
     if (PARSE_COUNT_SUCCESS == parse_CISS_Handle(filename, handlePtr, &driveNumber))
     {
         device->os_info.cissDeviceData = calloc(1, sizeof(cissDeviceInfo));
-        if(device->os_info.cissDeviceData)
+        if (device->os_info.cissDeviceData)
         {
             if ((device->os_info.cissDeviceData->cissHandle = open(handlePtr, O_RDWR | O_NONBLOCK)) >= 0)
             {
@@ -852,6 +852,8 @@ int get_CISS_RAID_Device(const char *filename, tDevice *device)
                     strncpy(&device->os_info.friendlyName[0], filename, M_Min(strlen(filename), 20));
                     device->os_info.minimumAlignment = sizeof(void*);
                     device->os_info.cissDeviceData->smartpqi = is_SmartPQI_Unique_IOCTLs_Supported(device->os_info.cissDeviceData->cissHandle);
+                    device->os_info.fd = device->os_info.cissDeviceData->cissHandle;//set this just to make the upper layers that validate this happy-TJE
+                    device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA = true;//this may not be true for all CISS controllers, but will likely work with any of them -TJE
                     //handle opened, now get the physical device location from the C2h command
                     //This is done here to reuse lots of other code to issue commands.
                     if (SUCCESS == (ret = get_Physical_Device_Location_Data(device, device->os_info.cissDeviceData->physicalLocation)))
@@ -863,6 +865,7 @@ int get_CISS_RAID_Device(const char *filename, tDevice *device)
                     {
                         //something went wrong, so clean up.
                         close(device->os_info.cissDeviceData->cissHandle);
+                        device->os_info.fd = 0;
                         safe_Free(device->os_info.cissDeviceData);
                     }
                 }
@@ -1017,6 +1020,7 @@ int get_CISS_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
     uint32_t found = 0;
     char deviceName[CISS_HANDLE_MAX_LENGTH] = { 0 };
 
+
     if (!beginningOfList || !*beginningOfList)
     {
         //don't do anything. Only scan when we get a list to use.
@@ -1026,13 +1030,21 @@ int get_CISS_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
 
     raidList = *beginningOfList;
 
-    while(raidList)
+    while (raidList)
     {
         bool handleRemoved = false;
         if (raidList->raidHint.cissRAID || raidList->raidHint.unknownRAID)
         {
             memset(deviceName, 0, CISS_HANDLE_MAX_LENGTH);
-            snprintf(deviceName, CISS_HANDLE_MAX_LENGTH, "%s", raidList->handle);
+            //check if the passed in handle contains /dev/ or not so we can open it correctly
+            if (strstr(raidList->handle, "/dev/"))
+            {
+                snprintf(deviceName, CISS_HANDLE_MAX_LENGTH, "%s", raidList->handle);
+            }
+            else
+            {
+                snprintf(deviceName, CISS_HANDLE_MAX_LENGTH, "/dev/%s", raidList->handle);
+            }
             if ((fd = open(deviceName, O_RDWR | O_NONBLOCK)) >= 0)//TODO: Verify O_NONBLOCK on FreeBSD and/or Solaris
             {
                 if (supports_CISS_IOCTLs(fd))
@@ -1062,6 +1074,12 @@ int get_CISS_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
                 //close handle to the controller
                 close(fd);
                 fd = -1;
+            }
+            else
+            {
+                printf("Failed to open handle with error: ");
+                print_Errno_To_Screen(errno);
+                printf("\n");
             }
         }
         if (!handleRemoved)
@@ -1110,7 +1128,6 @@ int get_CISS_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         return SUCCESS;
     }
 
-    //TODO: Check if sizeInBytes is a multiple of
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
         return BAD_PARAMETER;
@@ -1122,20 +1139,26 @@ int get_CISS_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     else
     {
         tDevice * d = ptrToDeviceList;
-        ptrRaidHandleToScan raidList = NULL;
+        ptrRaidHandleToScan raidList = *beginningOfList;
         ptrRaidHandleToScan previousRaidListEntry = NULL;
         int fd = -1;
         uint32_t numberOfDevices = sizeInBytes / sizeof(tDevice);
         uint32_t found = 0, failedGetDeviceCount = 0;
         char deviceName[CISS_HANDLE_MAX_LENGTH] = { 0 };
-        
-        while(raidList && found < numberOfDevices)
+        while (raidList && found < numberOfDevices)
         {
             bool handleRemoved = false;
             if (raidList->raidHint.cissRAID || raidList->raidHint.unknownRAID)
             {
                 memset(deviceName, 0, CISS_HANDLE_MAX_LENGTH);
-                snprintf(deviceName, CISS_HANDLE_MAX_LENGTH, "%s", raidList->handle);
+                if (strstr(raidList->handle, "/dev/"))
+                {
+                    snprintf(deviceName, CISS_HANDLE_MAX_LENGTH, "%s", raidList->handle);
+                }
+                else
+                {
+                    snprintf(deviceName, CISS_HANDLE_MAX_LENGTH, "/dev/%s", raidList->handle);
+                }
                 if ((fd = open(deviceName, O_RDWR | O_NONBLOCK)) >= 0)//TODO: Verify O_NONBLOCK on FreeBSD and/or Solaris
                 {
                     if (supports_CISS_IOCTLs(fd))
@@ -1148,7 +1171,7 @@ int get_CISS_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                         if (SUCCESS == get_CISS_Physical_LUN_Count(fd, &countDevsOnThisHandle))
                         {
                             //from here we need to do get_CISS_Device on each of these available physical LUNs
-                            for( uint32_t currentDev = 0; currentDev < countDevsOnThisHandle; ++currentDev)
+                            for (uint32_t currentDev = 0; currentDev < countDevsOnThisHandle; ++currentDev)
                             {
                                 char handle[CISS_HANDLE_MAX_LENGTH] = { 0 };
                                 //handle is formatted as "ciss:os_handle:driveNumber" NOTE: osHandle is everything after /dev/

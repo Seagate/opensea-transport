@@ -1136,7 +1136,7 @@ static int set_Device_Partition_Info(tDevice* device)
 }
 
 #define LIN_MAX_HANDLE_LENGTH 16
-int get_Device(const char *filename, tDevice *device)
+static int get_Lin_Device(const char *filename, tDevice *device)
 {
     char *deviceHandle = NULL;
     int ret = SUCCESS, k = 0;
@@ -1144,7 +1144,7 @@ int get_Device(const char *filename, tDevice *device)
     printf("%s: Getting device for %s\n", __FUNCTION__, filename);
     #endif
 
-    if(is_Block_Device_Handle(filename))
+    if (is_Block_Device_Handle(filename))
     {
         //printf("\tBlock handle found, mapping...\n");
         char *genHandle = NULL;
@@ -1153,7 +1153,7 @@ int get_Device(const char *filename, tDevice *device)
         #if defined (_DEBUG)
         printf("sg = %s\tsd = %s\n", genHandle, blockHandle);
         #endif
-        if(mapResult == SUCCESS && genHandle!=NULL)
+        if (mapResult == SUCCESS && genHandle!=NULL)
         {
             deviceHandle = C_CAST(char*, calloc(LIN_MAX_HANDLE_LENGTH, sizeof(char)));
             //printf("Changing filename to SG device....\n");
@@ -1348,6 +1348,18 @@ int get_Device(const char *filename, tDevice *device)
     safe_Free(deviceHandle)
     return ret;
 }
+
+int get_Device(const char *filename, tDevice *device)
+{
+    #if defined (ENABLE_CISS)
+    if (is_Supported_ciss_Dev(filename))
+    {
+        return get_CISS_RAID_Device(filename, device);
+    }
+    #endif //ENABLE_CISS
+    return get_Lin_Device(filename, device);
+}
+
 //http://www.tldp.org/HOWTO/SCSI-Generic-HOWTO/scsi_reset.html
 //sgResetType should be one of the values from the link above...so bus or device...controller will work but that shouldn't be done ever.
 static int sg_reset(int fd, int resetType)
@@ -2175,11 +2187,14 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 
 #if defined (ENABLE_CISS)
         uint32_t cissDeviceCount = numberOfDevices - found;
-        int cissRet = get_CISS_RAID_Device_List(&ptrToDeviceList[found], cissDeviceCount * sizeof(tDevice), ver, flags, &beginRaidHandleList);
-        if (returnValue == SUCCESS && cissRet != SUCCESS)
+        if (cissDeviceCount > 0)
         {
-            //this will override the normal ret if it is already set to success with the CISS return value
-            returnValue = cissRet;
+            int cissRet = get_CISS_RAID_Device_List(&ptrToDeviceList[found], cissDeviceCount * sizeof(tDevice), ver, flags, &beginRaidHandleList);
+            if (returnValue == SUCCESS && cissRet != SUCCESS)
+            {
+                //this will override the normal ret if it is already set to success with the CISS return value
+                returnValue = cissRet;
+            }
         }
 #endif //ENABLE_CISS
 
