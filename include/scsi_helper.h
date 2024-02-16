@@ -649,6 +649,18 @@ extern "C"
     #define READ_CAPACITY_10_LEN 8
     #define READ_CAPACITY_16_LEN 32
 
+    typedef enum _eSCSIPeripheralQualifier
+    {
+        PERIPHERAL_QUALIFIER_ACCESSIBLE_TO_TASK_ROUTER                  = 0x00,
+        PERIPHERAL_QUALIFIER_NOT_ACCESSIBLE_TO_TASK_ROUTER_BUT_CAPABLE  = 0x01,
+        PERIPHERAL_QUALIFIER_RESERVED_2                                 = 0x02,
+        PERIPHERAL_QUALIFIER_NOT_ACCESSIBLE_TO_TASK_ROUTER              = 0x03,
+        PERIPHERAL_QUALIFIER_RESERVED_4                                 = 0x04,
+        PERIPHERAL_QUALIFIER_RESERVED_5                                 = 0x05,
+        PERIPHERAL_QUALIFIER_RESERVED_6                                 = 0x06,
+        PERIPHERAL_QUALIFIER_RESERVED_7                                 = 0x07
+    }eSCSIPeripheralQualifier;
+
     typedef enum _eSCSIPeripheralDeviceType
     {
         PERIPHERAL_DIRECT_ACCESS_BLOCK_DEVICE           = 0x00,
