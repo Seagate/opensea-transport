@@ -501,6 +501,7 @@ extern "C"
         BLOCK_LIMITS_EXTENSION                          = 0xB7,
         FORMAT_PRESETS                                  = 0xB8,
         CONCURRENT_POSITIONING_RANGES                   = 0xB9,
+        CAPACITY_PRODUCT_IDENTIFICATION_MAPPING         = 0xBA,
         //C0h - FFh are Vendor specific
     }eScsiVpdPages;
 
