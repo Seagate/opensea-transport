@@ -319,8 +319,8 @@ static int ciss_Scsi_Report_Physical_LUNs(tDevice *device, uint8_t extendedDataT
 static int get_Physical_Device_Location_Data(tDevice *device, uint8_t *physicalLocationData)
 {
     int ret = UNKNOWN;
-    uint32_t dataLength = 8 + (PHYSICAL_LUN_DESCRIPTOR_LENGTH * CISS_MAX_PHYSICAL_DRIVES);
-    uint8_t * physicalDrives = (uint8_t*)calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment);
+    uint32_t dataLength = UINT32_C(8) + (PHYSICAL_LUN_DESCRIPTOR_LENGTH * CISS_MAX_PHYSICAL_DRIVES);
+    uint8_t * physicalDrives = C_CAST(uint8_t*, calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
     if(physicalDrives)
     {
         ret = ciss_Scsi_Report_Physical_LUNs(device, CISS_REPORT_PHYSICAL_LUNS_NO_EXTENDED_DATA, physicalDrives, dataLength);
@@ -921,7 +921,7 @@ static int get_CISS_Physical_LUN_Count(int fd, uint32_t *count)
         uint8_t cdb[12] = { 0 };
         uint32_t dataLength = (CISS_MAX_PHYSICAL_DRIVES * PHYSICAL_LUN_DESCRIPTOR_LENGTH) + 8;//8 byte header
         uint8_t *data = C_CAST(uint8_t*, calloc_aligned(dataLength, sizeof(uint8_t), sizeof(void*)));
-        if(data)
+        if (data)
         {
             //setup the psuedo device
             memset(&pseudoDev, 0, sizeof(tDevice));
@@ -930,7 +930,7 @@ static int get_CISS_Physical_LUN_Count(int fd, uint32_t *count)
             pseudoDev.sanity.size = sizeof(tDevice);
 
             //setup the cdb
-            cdb[OPERATION_CODE] = CISS_REPORT_LOGICAL_LUNS_OP;
+            cdb[OPERATION_CODE] = CISS_REPORT_PHYSICAL_LUNS_OP;
             cdb[1] = 0;//no extended data as it is not needed and this will maximize compatibility with controllers and firmwares.
             cdb[2] = RESERVED;
             cdb[3] = RESERVED;
@@ -965,6 +965,8 @@ static int get_CISS_Physical_LUN_Count(int fd, uint32_t *count)
 
             //done with this memory now, so clean it up
             safe_Free(pseudoDev.os_info.cissDeviceData);
+
+            //print_Data_Buffer(data, dataLength, false);
 
             if (ret == SUCCESS)
             {
