@@ -2101,8 +2101,9 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
                 memcpy(&device->drive_info.bridge_info.SATfwRev[0], &ataInformation[32], 4);
 
                 //Setup flags for ATA passthrough if we know the SAT vendor/product/rev info
-                if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "PMCS") == 0)
+                if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "PMCS    ") == 0)
                 {
+                    //printf("Found PMCS SATL\n");
                     //PMCS is a PMC translator. Sometimes these also show up on HPE controllers.
                     //Tested:
                     //SAT Vendor ID: PMCS
@@ -2132,7 +2133,31 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
                     device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA = true;
                     //debugging in a RAID environment is giving a few odd results with max transfer length, so not setting that for now-TJE
                 }
-                else if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "linux") == 0)
+                else if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "LSI     ") == 0)
+                {
+                    //printf("Found LSI SATL\n");
+                    //LSI/Avago/Broadcom HBAs
+                    // Got SAT Vendor ID as LSI
+                    // Got SAT Product ID as LSI SATL
+                    // Got SAT Product Revision as 0008
+                    // SCSI Hacks: RW6, RW10, RW12, RW16, NRSUPOP, SECPROT, MXFER:1052160
+                    // ATA Hacks:  SAT, A1, TPSIU, CHK, MPTXFER:1052160
+                    //NOTE: Handles zero length transfers for rw10,12,16 properly it seems
+                    //Should be retested in Linux. Results are from Windows, which may be more limited, but cannot confirm
+                    device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                    device->drive_info.passThroughHacks.hacksSetByReportedID = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                    device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;//note: Need to enable this with kernel param
+                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 1052160;
+                    device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                    device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 1052160;
+                    //device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//while supported, not necessary to use
+                }
+                else if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "linux   ") == 0)
                 {
                     //libATA provides SAT translation.
                     //There are changes between kernel versions, but this should be pretty accurate
@@ -2141,6 +2166,7 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
                     // SAT Vendor ID: linux
                     // SAT Product ID: libata
                     // SAT Product Rev: 3.00
+                    //printf("Found linux SATL\n");
                     device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
                     device->drive_info.passThroughHacks.hacksSetByReportedID = true;
                     device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
