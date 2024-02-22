@@ -12,6 +12,7 @@
 #include "common.h"
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
+#include "sat_helper.h"
 #include "vendor/seagate/seagate_common_types.h"
 #include <ctype.h>//for checking for printable characters
 #include <stdlib.h> // for bsearch
@@ -2096,9 +2097,9 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
             if (ataInformation[1] == ATA_INFORMATION)
             {
                 //set some of the bridge info in the device structure
-                memcpy(&device->drive_info.bridge_info.t10SATvendorID[0], &ataInformation[8], 8);
-                memcpy(&device->drive_info.bridge_info.SATproductID[0], &ataInformation[16], 16);
-                memcpy(&device->drive_info.bridge_info.SATfwRev[0], &ataInformation[32], 4);
+                memcpy(&device->drive_info.bridge_info.t10SATvendorID[0], &ataInformation[SAT_ATA_VPD_T10_VENDOR_OFFSET], SAT_ATA_VPD_T10_VENDOR_LENGTH);
+                memcpy(&device->drive_info.bridge_info.SATproductID[0], &ataInformation[SAT_ATA_VPD_T10_PRODUCT_ID_OFFSET], SAT_ATA_VPD_T10_PRODUCT_ID_LENGTH);
+                memcpy(&device->drive_info.bridge_info.SATfwRev[0], &ataInformation[SAT_ATA_VPD_T10_PRODUCT_REV_OFFSET], SAT_ATA_VPD_T10_PRODUCT_REV_LENGTH);
 
                 //Setup flags for ATA passthrough if we know the SAT vendor/product/rev info
                 if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "PMCS    ") == 0)
@@ -2181,7 +2182,7 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
                     //device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//while supported, not necessary to use
                 }
 
-                if (ataInformation[36] == 0) //checking for PATA drive
+                if (ataInformation[SAT_ATA_VPD_SIGNATURE_OFFSET] == 0) //checking for PATA drive
                 {
                     if (ataInformation[43] & DEVICE_SELECT_BIT)//ATA signature device register is here. Checking for the device select bit being set to know it's device 1 (Not that we really need it)
                     {
@@ -2189,13 +2190,13 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
                     }
                 }
 
-                if (ataInformation[56] == ATA_IDENTIFY || ataInformation[56] == ATA_READ_LOG_EXT || ataInformation[56] == ATA_READ_LOG_EXT_DMA)//Added read log commands here since they are in SAT4. Only HDD/SSD should use these.
+                if (ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] == ATA_IDENTIFY || ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] == ATA_READ_LOG_EXT || ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] == ATA_READ_LOG_EXT_DMA)//Added read log commands here since they are in SAT4. Only HDD/SSD should use these.
                 {
                     issueSATIdentify = true;
                     device->drive_info.media_type = MEDIA_HDD;
                     device->drive_info.drive_type = ATA_DRIVE;
                 }
-                else if (ataInformation[56] == ATAPI_IDENTIFY)
+                else if (ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] == ATAPI_IDENTIFY)
                 {
                     issueSATIdentify = false;//Do not read it since we want to treat ATAPI as SCSI/with SCSI commands (at least for now)-TJE
                     device->drive_info.media_type = MEDIA_OPTICAL;
