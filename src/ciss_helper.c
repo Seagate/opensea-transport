@@ -644,25 +644,28 @@ static int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
                 //check for errors to set ret properly
                 switch (cissCmd.error_info.CommandStatus)
                 {
-                case CISS_CMD_SUCCESS:
-                case CISS_CMD_TARGET_STATUS:
-                case CISS_CMD_DATA_UNDERRUN:
-                case CISS_CMD_DATA_OVERRUN:
+                case CMD_SUCCESS:
                     ret = SUCCESS;
                     break;
-                case CISS_CMD_INVALID:
+                case CMD_TARGET_STATUS:
+                case CMD_DATA_UNDERRUN:
+                case CMD_DATA_OVERRUN:
+                    printf("Data Error\n");
+                    ret = OS_PASSTHROUGH_FAILURE;
+                    break;
+                case CMD_INVALID:
                     ret = OS_COMMAND_BLOCKED;
                     break;
-                case CISS_CMD_TIMEOUT:
+                case CMD_TIMEOUT:
                     ret = OS_COMMAND_TIMEOUT;
                     break;
-                case CISS_CMD_PROTOCOL_ERR:
-                case CISS_CMD_HARDWARE_ERR:
-                case CISS_CMD_CONNECTION_LOST:
-                case CISS_CMD_ABORTED:
-                case CISS_CMD_ABORT_FAILED:
-                case CISS_CMD_UNSOLICITED_ABORT:
-                case CISS_CMD_UNABORTABLE:
+                case CMD_PROTOCOL_ERR:
+                case CMD_HARDWARE_ERR:
+                case CMD_CONNECTION_LOST:
+                case CMD_ABORTED:
+                case CMD_ABORT_FAILED:
+                case CMD_UNSOLICITED_ABORT:
+                case CMD_UNABORTABLE:
                 default:
                     ret = OS_PASSTHROUGH_FAILURE;
                     break;
@@ -763,10 +766,13 @@ static int ciss_Big_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
             switch (cissCmd.error_info.CommandStatus)
             {
             case CMD_SUCCESS:
+                ret = SUCCESS;
+                break;
             case CMD_TARGET_STATUS:
             case CMD_DATA_UNDERRUN:
             case CMD_DATA_OVERRUN:
-                ret = SUCCESS;
+                printf("Data Error\n");
+                ret = OS_PASSTHROUGH_FAILURE;
                 break;
             case CMD_INVALID:
                 ret = OS_COMMAND_BLOCKED;
@@ -890,12 +896,13 @@ int close_CISS_RAID_Device(tDevice *device)
 {
     if (device && device->os_info.cissDeviceData)
     {
-        if(close(device->os_info.cissDeviceData->cissHandle))
+        if (close(device->os_info.cissDeviceData->cissHandle))
         {
             device->os_info.last_error = errno;
         }
         else
         {
+            device->os_info.cissDeviceData->cissHandle = -1;
             device->os_info.last_error = 0;
         }
         device->os_info.fd = -1;

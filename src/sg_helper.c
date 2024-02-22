@@ -2391,14 +2391,21 @@ int close_Device(tDevice *dev)
     int retValue = 0;
     if (dev)
     {
-        retValue = close(dev->os_info.fd);
-        dev->os_info.last_error = errno;
-
-        if(dev->os_info.secondHandleValid && dev->os_info.secondHandleOpened)
+        if (dev->os_info.cissDeviceData)
         {
-            if(close(dev->os_info.fd2) == 0)
+            close_CISS_RAID_Device(dev);
+        }
+        else
+        {
+            retValue = close(dev->os_info.fd);
+            dev->os_info.last_error = errno;
+
+            if(dev->os_info.secondHandleValid && dev->os_info.secondHandleOpened)
             {
-                dev->os_info.fd2 = -1;
+                if(close(dev->os_info.fd2) == 0)
+                {
+                    dev->os_info.fd2 = -1;
+                }
             }
         }
 
