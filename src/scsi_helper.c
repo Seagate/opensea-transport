@@ -2100,6 +2100,61 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
                 memcpy(&device->drive_info.bridge_info.SATproductID[0], &ataInformation[16], 16);
                 memcpy(&device->drive_info.bridge_info.SATfwRev[0], &ataInformation[32], 4);
 
+                //Setup flags for ATA passthrough if we know the SAT vendor/product/rev info
+                if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "PMCS") == 0)
+                {
+                    //PMCS is a PMC translator. Sometimes these also show up on HPE controllers.
+                    //Tested:
+                    //SAT Vendor ID: PMCS
+                    //SAT Product ID: SRC73208_01
+                    //SAT Product Rev: 0106
+                    //NOTE: There is a weird case where a 1TB drive cannot report native maxLBA, but a 10TB can on this controller. 
+                    //      I'm guessing there is some logic to how sense data is handled based on capacity or some other factor affecting this.
+                    //      The control mode page's d_sense bit changes between the 1TB (0) and 10TB (1), so this seems to be related to the behavior differences -TJE
+                    //      Need to try changing the mode page value for d-sense to see if it gets around this issue.
+                    //This translator properly handles 0 length transfers for RW10, 12, & 16
+                    //Tested this same translator on an HPE controller with HPSA driver and non-HPE with smartpqi driver
+                    //The SAT level info did not change and most behavior was the same, but there were a few odd results between them both.
+                    //Leaving the below rules since they seem to work in both despite slightly different behavior.
+                    //NOTE: Seems that the translators both report SAT-3 and ACS-2 compliance in inquiry, but there are slight variations in support.
+                    //      One ran self-test and discovered the feature properly, whereas the other did not. Possibly different minor versions of these
+                    //      standards compliance or possibly some other limitation in the translator that cannot be revealed by looking at the revision on this page alone -TJE
+                    device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                    device->drive_info.passThroughHacks.hacksSetByReportedID = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65024;
+                    device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                    device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA = true;
+                    //debugging in a RAID environment is giving a few odd results with max transfer length, so not setting that for now-TJE
+                }
+                else if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "linux") == 0)
+                {
+                    //libATA provides SAT translation.
+                    //There are changes between kernel versions, but this should be pretty accurate
+                    //This code may not currently be used due to how the low-level passthrough detects capabilities, but this will not hurt to setup
+                    // Tested:
+                    // SAT Vendor ID: linux
+                    // SAT Product ID: libata
+                    // SAT Product Rev: 3.00
+                    device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                    device->drive_info.passThroughHacks.hacksSetByReportedID = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                    device->drive_info.passThroughHacks.scsiHacks.reportAllOpCodes = true;
+                    device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;//note: Need to enable this with kernel param
+                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 2097152;//may vary depending on OS/kernel config among other things
+                    device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                    device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 2097152;//may vary depending on OS/kernel config among other things
+                    //device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//while supported, not necessary to use
+                }
+
                 if (ataInformation[36] == 0) //checking for PATA drive
                 {
                     if (ataInformation[43] & DEVICE_SELECT_BIT)//ATA signature device register is here. Checking for the device select bit being set to know it's device 1 (Not that we really need it)
