@@ -2160,7 +2160,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
     char productID[INQ_DATA_PRODUCT_ID_LEN + 1] = { 0 };
     char revision[INQ_DATA_PRODUCT_REV_LEN + 1] = { 0 };
     uint8_t responseFormat = M_Nibble0(device->drive_info.scsiVpdData.inquiryData[3]);
-    if (responseFormat == 2)
+    if (responseFormat >= INQ_RESPONSE_FMT_CURRENT)
     {
         memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], INQ_DATA_T10_VENDOR_ID_LEN);
         memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], INQ_DATA_PRODUCT_ID_LEN);
@@ -2621,52 +2621,6 @@ int fill_In_Device_Info(tDevice *device)
     memset(device->drive_info.T10_vendor_ident, 0, sizeof(device->drive_info.T10_vendor_ident));
     memset(device->drive_info.product_identification, 0, sizeof(device->drive_info.product_identification));
     memset(device->drive_info.product_revision, 0, sizeof(device->drive_info.product_revision));
-    //By default, we need to set up some information about drive type based on what is known so far from the OS level code telling us the interface the device is attached on. We can change it later if need be
-    //Remember, these are assumptions ONLY based off what interface the OS level code is reporting. It should default to something, then get changed later when we know more about it.
-//  switch (device->drive_info.interface_type)
-//  {
-//  case IDE_INTERFACE:
-//      if (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != LEGACY_TAPE_DRIVE)
-//      {
-//          device->drive_info.drive_type = ATA_DRIVE;
-//          device->drive_info.media_type = MEDIA_HDD;
-//      }
-//      break;
-//  case RAID_INTERFACE:
-//      //This has already been set by the RAID level, don't change it.
-//      if(device->drive_info.drive_type == UNKNOWN_DRIVE)
-//      {
-//          device->drive_info.drive_type = RAID_DRIVE;
-//      }
-//      if(device->drive_info.media_type == MEDIA_UNKNOWN)
-//      {
-//          device->drive_info.media_type = MEDIA_HDD;
-//      }
-//      break;
-//  case NVME_INTERFACE:
-//      device->drive_info.drive_type = NVME_DRIVE;
-//      device->drive_info.media_type = MEDIA_NVM;
-//      break;
-//  case SCSI_INTERFACE:
-//  case USB_INTERFACE:
-//  case IEEE_1394_INTERFACE:
-//      if (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != LEGACY_TAPE_DRIVE)
-//      {
-//          device->drive_info.drive_type = SCSI_DRIVE;
-//          device->drive_info.media_type = MEDIA_HDD;
-//      }
-//      break;
-//  case MMC_INTERFACE:
-//  case SD_INTERFACE:
-//      device->drive_info.drive_type = FLASH_DRIVE;
-//      device->drive_info.media_type = MEDIA_SSM_FLASH;
-//      break;
-//  case UNKNOWN_INTERFACE:
-//  default:
-//      device->drive_info.media_type = MEDIA_UNKNOWN;
-//      break;
-//  }
-    //now start getting data from the device itself
     if (SUCCESS == scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, 0, false, false))
     {
         bool checkForSAT = true;
@@ -2972,7 +2926,7 @@ int fill_In_Device_Info(tDevice *device)
             || is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the ASmedia NVMe chips
             //TODO: Check when FWRev is set to 2364? At least one device I have does this, but not sure this is a good thing to add in here or not -TJE
             && !hisup && !rmb //hisup shoiuld be 1 and rmb should be zero...on the asmedia chips I have tested, hisup is zero
-            && responseFormat >= 2 //filter out any weird old drives with bizarre responses
+            && responseFormat >= INQ_RESPONSE_FMT_CURRENT //filter out any weird old drives with bizarre responses
             && inq_buf[4] == 0x47 //SNTL says 1F, but a couple of adapter I have sets 47h...using this for now to help filter the list
             && cmdQueue //should be set for all NVMe SNTL translators
             )
@@ -3056,7 +3010,7 @@ int fill_In_Device_Info(tDevice *device)
                 || is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the Jmicron NVMe chips
             && foundSATStandardDescriptor && !foundATAStandardDescriptor //these chips report SAT, but not an ATA standard...might reduce how often this check is performed - TJE
             && hisup && !rmb //hisup shoiuld be 1 and rmb should be zero...this should filter SOME, but not all USB adapters that are actually SATA drives - TJE
-            && responseFormat >= 2 //filter out any weird old drives with bizarre responses
+            && responseFormat >= INQ_RESPONSE_FMT_CURRENT //filter out any weird old drives with bizarre responses
             //&& inq_buf[4] == 0x5b //SNTL says 1F, but one adapter I have sets 5B...need to make sure other adapters do the same before we enforce this check - TJE
             && cmdQueue //should be set for all NVMe SNTL translators
             )
