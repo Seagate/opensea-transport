@@ -899,6 +899,7 @@ extern "C"
        ATA_SCT_COMMAND_STATUS                           = 0xE0,
        ATA_SCT_DATA_TRANSFER                            = 0xE1,
    }eATALog;
+    #define ATA_LOG_PAGE_LEN_BYTES UINT16_C(512) //each page of a log is 512 bytes. A given log may be multiple pages long, or multiples of this value.
 
    typedef enum _eIdentifyDeviceDataLogPage //Log address 30h, ACS-4 Section 9.11
    {
@@ -913,7 +914,10 @@ extern "C"
        ATA_ID_DATA_LOG_SERIAL_ATA               = 0x08,
        ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION = 0x09,
    }eIdentifyDeviceDataLogPage;
+    #define ATA_ID_DATA_SUP_PG_LIST_LEN_OFFSET UINT16_C(8) //this is the offset in the data where the list length is specified to be read from. The next value is where the list of supported pages begins.
     #define ATA_ID_DATA_SUP_PG_LIST_OFFSET UINT16_C(9) //when reading the ID Data log's list of supported pages, this is the offset to start at to find the page numbers that are supported.
+    #define ATA_ID_DATA_QWORD_VALID_BIT BIT63 //If bit 63 is set, then the qword is valid
+    #define ATA_ID_DATA_VERSION_1 (0x0001) //to check for at least revision 1 on each page of the log.
 
     //
    typedef enum _eDeviceStatisticsLog //Log Address 04h, ACS-4 Section 9.5
@@ -929,6 +933,10 @@ extern "C"
        ATA_DEVICE_STATS_LOG_ZONED_DEVICE    = 0x08,
        //Add more
    } eDeviceStatisticsLog;
+    #define ATA_DEV_STATS_SUP_PG_LIST_LEN_OFFSET UINT16_C(8) //this is the offset in the data where the list length is specified to be read from. The next value is where the list of supported pages begins.
+    #define ATA_DEV_STATS_SUP_PG_LIST_OFFSET UINT16_C(9) //when reading the device statistics log's list of supported pages, this is the offset to start at to find the page numbers that are supported.
+    #define ATA_DEV_STATS_QWORD_VALID_BIT BIT63 //If bit 63 is set, then the qword is valid
+    #define ATA_DEV_STATS_VERSION_1 (0x0001) //to check for at least revision 1 on each page of the log.
 
    typedef enum _eSCTDeviceState
    {
