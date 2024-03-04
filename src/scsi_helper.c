@@ -2135,6 +2135,10 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
         {
             return NOT_SUPPORTED;
         }
+        else
+        {
+            device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+        }
         safe_Free_aligned(ataInformation)
     }
     if (issueSATIdentify)

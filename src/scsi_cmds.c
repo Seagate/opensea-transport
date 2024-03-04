@@ -251,6 +251,8 @@ int scsi_Report_Supported_Operation_Codes(tDevice *device, bool rctd, uint8_t re
 {
     int       ret       = FAILURE;
     uint8_t   cdb[CDB_LEN_12]       = { 0 };
+    senseDataFields senseFields;
+    memset(&senseFields, 0, sizeof(senseDataFields));
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -285,6 +287,53 @@ int scsi_Report_Supported_Operation_Codes(tDevice *device, bool rctd, uint8_t re
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Supported Op Codes", ret);
+    }
+    if (ret != SUCCESS)
+    {
+        get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseFields);
+        if (senseFields.validStructure)
+        {
+            //if invalid operation code, set hack that this is not supported. Do not block this command in this function, just set that so upper layers can choose what to do.
+            if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && senseFields.scsiStatusCodes.asc == 0x20 && senseFields.scsiStatusCodes.ascq == 0x00)
+            {
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+            }
+            else if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && senseFields.scsiStatusCodes.asc == 0x24 && senseFields.scsiStatusCodes.ascq == 0x00)
+            {
+                //If invalid field in CDB, check the field pointer (if available) and see if it doesn't like the report type
+                //if the field pointer is not available, assume it does not support the report type...-not great, but will probably work well enough for translated devices.
+                if (senseFields.senseKeySpecificInformation.senseKeySpecificValid && senseFields.senseKeySpecificInformation.type == SENSE_KEY_SPECIFIC_FIELD_POINTER)
+                {
+                    if (senseFields.senseKeySpecificInformation.field.cdbOrData && senseFields.senseKeySpecificInformation.field.fieldPointer == 2)
+                    {
+                        if ((senseFields.senseKeySpecificInformation.field.bitPointerValid && senseFields.senseKeySpecificInformation.field.bitPointer == 2) || !rctd)
+                        {
+                            //reporting options is not liked.
+                            if (reportingOptions == REPORT_ALL)
+                            {
+                                device->drive_info.passThroughHacks.scsiHacks.reportAllOpCodes = false;
+                            }
+                            else //assume all other report types are not supported for single operation codes being requested.
+                            {
+                                device->drive_info.passThroughHacks.scsiHacks.reportSingleOpCodes = false;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    //assuming report type was not liked...should mostly be translators here. Native SCSI devices should give the field pointer.
+                    if (reportingOptions == REPORT_ALL)
+                    {
+                        device->drive_info.passThroughHacks.scsiHacks.reportAllOpCodes = false;
+                    }
+                    else //assume all other report types are not supported for single operation codes being requested.
+                    {
+                        device->drive_info.passThroughHacks.scsiHacks.reportSingleOpCodes = false;
+                    }
+                }
+            }
+        }
     }
     return ret;
 }
@@ -430,6 +479,8 @@ int scsi_Log_Sense_Cmd(tDevice *device, bool saveParameters, uint8_t pageControl
 {
     int       ret       = FAILURE;
     uint8_t   cdb[CDB_LEN_10]       = { 0 };
+    senseDataFields senseFields;
+    memset(&senseFields, 0, sizeof(senseDataFields));
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -461,6 +512,30 @@ int scsi_Log_Sense_Cmd(tDevice *device, bool saveParameters, uint8_t pageControl
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Log Sense", ret);
+    }
+    if (ret != SUCCESS)
+    {
+        get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseFields);
+        if (senseFields.validStructure)
+        {
+            //if invalid operation code, set hack that this is not supported. Do not block this command in this function, just set that so upper layers can choose what to do.
+            if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && senseFields.scsiStatusCodes.asc == 0x20 && senseFields.scsiStatusCodes.ascq == 0x00)
+            {
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+            }
+            else if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && senseFields.scsiStatusCodes.asc == 0x24 && senseFields.scsiStatusCodes.ascq == 0x00)
+            {
+                //If invalid field in CDB, check the field pointer (if available) and see if it doesn't like the report type
+                //if the field pointer is not available, assume it does not support the report type...-not great, but will probably work well enough for translated devices.
+                if (senseFields.senseKeySpecificInformation.senseKeySpecificValid && senseFields.senseKeySpecificInformation.type == SENSE_KEY_SPECIFIC_FIELD_POINTER)
+                {
+                    if (senseFields.senseKeySpecificInformation.field.cdbOrData && senseFields.senseKeySpecificInformation.field.fieldPointer == 3)
+                    {
+                        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                    }
+                }
+            }
+        }
     }
     return ret;
 }
@@ -607,6 +682,8 @@ int scsi_Mode_Sense_6(tDevice * device, uint8_t pageCode, uint8_t allocationLeng
 {
     int ret = UNKNOWN;
     uint8_t cdb[CDB_LEN_6] = { 0 };
+    senseDataFields senseFields;
+    memset(&senseFields, 0, sizeof(senseDataFields));
     
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -635,6 +712,30 @@ int scsi_Mode_Sense_6(tDevice * device, uint8_t pageCode, uint8_t allocationLeng
     {
         print_Return_Enum("Mode Sense 6", ret);
     }
+    if (ret != SUCCESS)
+    {
+        get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseFields);
+        if (senseFields.validStructure)
+        {
+            //if invalid operation code, set hack that this is not supported. Do not block this command in this function, just set that so upper layers can choose what to do.
+            if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && senseFields.scsiStatusCodes.asc == 0x20 && senseFields.scsiStatusCodes.ascq == 0x00)
+            {
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+            }
+            else if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && senseFields.scsiStatusCodes.asc == 0x24 && senseFields.scsiStatusCodes.ascq == 0x00)
+            {
+                //If invalid field in CDB, check the field pointer (if available) and see if it doesn't like the report type
+                //if the field pointer is not available, assume it does not support the report type...-not great, but will probably work well enough for translated devices.
+                if (senseFields.senseKeySpecificInformation.senseKeySpecificValid && senseFields.senseKeySpecificInformation.type == SENSE_KEY_SPECIFIC_FIELD_POINTER)
+                {
+                    if (senseFields.senseKeySpecificInformation.field.cdbOrData && senseFields.senseKeySpecificInformation.field.fieldPointer == 3)
+                    {
+                        device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
+                    }
+                }
+            }
+        }
+    }
     return ret;
 }
 
@@ -642,6 +743,8 @@ int scsi_Mode_Sense_10(tDevice *device, uint8_t pageCode, uint32_t allocationLen
 {
     int       ret       = FAILURE;
     uint8_t   cdb[CDB_LEN_10]       = { 0 };
+    senseDataFields senseFields;
+    memset(&senseFields, 0, sizeof(senseDataFields));
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -678,6 +781,31 @@ int scsi_Mode_Sense_10(tDevice *device, uint8_t pageCode, uint32_t allocationLen
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Mode Sense 10", ret);
+    }
+    if (ret != SUCCESS)
+    {
+        get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseFields);
+        if (senseFields.validStructure)
+        {
+            //if invalid operation code, set hack that this is not supported. Do not block this command in this function, just set that so upper layers can choose what to do.
+            if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && senseFields.scsiStatusCodes.asc == 0x20 && senseFields.scsiStatusCodes.ascq == 0x00)
+            {
+                //do NOT set mode pages not supported. Tell this to retry with 6 byte by setting this first
+                device->drive_info.passThroughHacks.scsiHacks.mode6bytes = true;
+            }
+            else if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && senseFields.scsiStatusCodes.asc == 0x24 && senseFields.scsiStatusCodes.ascq == 0x00)
+            {
+                //If invalid field in CDB, check the field pointer (if available) and see if it doesn't like the report type
+                //if the field pointer is not available, assume it does not support the report type...-not great, but will probably work well enough for translated devices.
+                if (senseFields.senseKeySpecificInformation.senseKeySpecificValid && senseFields.senseKeySpecificInformation.type == SENSE_KEY_SPECIFIC_FIELD_POINTER)
+                {
+                    if (senseFields.senseKeySpecificInformation.field.cdbOrData && senseFields.senseKeySpecificInformation.field.fieldPointer == 3)
+                    {
+                        device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
+                    }
+                }
+            }
+        }
     }
     return ret;
 }

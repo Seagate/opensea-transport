@@ -932,10 +932,16 @@ extern "C"
        ATA_DEVICE_STATS_LOG_SSD             = 0x07,
        ATA_DEVICE_STATS_LOG_ZONED_DEVICE    = 0x08,
        //Add more
+       ATA_DEVICE_STATS_LOG_VENDOR_SPECIFIC = 0xFF
    } eDeviceStatisticsLog;
     #define ATA_DEV_STATS_SUP_PG_LIST_LEN_OFFSET UINT16_C(8) //this is the offset in the data where the list length is specified to be read from. The next value is where the list of supported pages begins.
     #define ATA_DEV_STATS_SUP_PG_LIST_OFFSET UINT16_C(9) //when reading the device statistics log's list of supported pages, this is the offset to start at to find the page numbers that are supported.
-    #define ATA_DEV_STATS_QWORD_VALID_BIT BIT63 //If bit 63 is set, then the qword is valid
+    #define ATA_DEV_STATS_STATISTIC_SUPPORTED_BIT BIT63 //If bit 63 is set, then the qword is valid
+    #define ATA_DEV_STATS_VALID_VALUE_BIT BIT62
+    #define ATA_DEV_STATS_NORMALIZED_STAT_BIT BIT61
+    #define ATA_DEV_STATS_SUPPORTS_DSN  BIT60
+    #define ATA_DEV_STATS_MONITORED_CONDITION_MET   BIT59
+    #define ATA_DEV_STATS_READ_THEN_INIT_SUPPORTED  BIT58
     #define ATA_DEV_STATS_VERSION_1 (0x0001) //to check for at least revision 1 on each page of the log.
 
    typedef enum _eSCTDeviceState
