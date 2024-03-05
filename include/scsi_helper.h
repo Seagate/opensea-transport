@@ -32,6 +32,8 @@ extern "C"
     #define INQ_RESPONSE_FMT_CCS        (1) //SCSI common command set definition. More or less meets modern requirements
     #define INQ_RESPONSE_FMT_CURRENT    (2) //SCSI2 and later all use this format to report inquiry data
 
+    #define INQ_MAX_VERSION_DESCRIPTORS (8)
+
     typedef enum _eSCSIVersion 
     {
         SCSI_VERSION_SASI           = 0,
