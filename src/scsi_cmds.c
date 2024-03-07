@@ -720,6 +720,10 @@ int scsi_Mode_Sense_6(tDevice * device, uint8_t pageCode, uint8_t allocationLeng
             //if invalid operation code, set hack that this is not supported. Do not block this command in this function, just set that so upper layers can choose what to do.
             if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && senseFields.scsiStatusCodes.asc == 0x20 && senseFields.scsiStatusCodes.ascq == 0x00)
             {
+                //This is only accurate for drives that ONLY support the mode sense/select 6 byte commands.
+                //May need to expand this condition further to make sure it does not cause more impact.
+                //by default, almost all opensea-operations code uses the 10 byte command instead for modern drives.
+                //This is expected to have little to no impact on modern devices - TJE
                 device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
             }
             else if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && senseFields.scsiStatusCodes.asc == 0x24 && senseFields.scsiStatusCodes.ascq == 0x00)
