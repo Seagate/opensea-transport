@@ -818,6 +818,7 @@ extern "C"
             //NORWZ/NZTL - not currently handled. No zero length on read or write commands since adapter doesn't handle these properly.
             MXFER - maxTransferLength (bytes)
             WBND - write buffer no deferred download. PMC specific workaround at this time.-TJE
+            MP6FORSPZ - use mode sense/select 6 for pages with subpage 0. Some USB adapters will support a page only with mode sense/select 6 but will not support the same page with the 10 byte command.
             TODO: More hacks for strange adapters as needed can be added in here.
             */
             bool unitSNAvailable;//This means we can request this page even if other VPD pages don't work.
@@ -851,7 +852,9 @@ extern "C"
                 uint8_t serialNumberLength;
             }scsiInq;
             bool writeBufferNoDeferredDownload;//Write buffer is filtered and does not allow updating firmware using deferred download. Specific to PMC 8070 for now
-            uint8_t reserved[5];//padd out above to 8 byte boundaries
+            bool mode6BSPZValid;//this is for the next option so that it can be set when detected automatically-TJE
+            bool useMode6BForSubpageZero;//mode pages with subpage zero are supported, but only using 6 byte mode commands for some unknown reason.
+            uint8_t reserved[3];//padd out above to 8 byte boundaries
             uint32_t maxTransferLength;//Maximum SCSI command transfer length in bytes. Mostly here for USB where translations aren't accurate or don't show this properly.
             bool noSATVPDPage;//when this is set, the SAT VPD is not available and should not be read, skipping ahead to instead directly trying a passthrough command
             uint8_t scsipadding[3];//padd 4 more bytes after transfer length to keep 8 byte boundaries
