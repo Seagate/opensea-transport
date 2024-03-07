@@ -93,6 +93,7 @@ extern "C"
         SEAGATE_FARM_TIME_SERIES_DISC  = 0x00,
         SEAGATE_FARM_TIME_SERIES_FLASH = 0x01,
         SEAGATE_FARM_TIME_SERIES_WLTR  = 0x02,
+        SEAGATE_FARM_TIME_SERIES_NEURAL_NW = 0x03
     }eSeagateFARMTimeSeriesSublogs;
 
     typedef enum _eSeagateSelfTests
