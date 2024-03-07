@@ -1098,6 +1098,14 @@ extern "C"
        ZAC_MINOR_VERSION_NOT_REPORTED_2         = 0xFFFF
    }eZACMinorVersionNumber;
 
+   typedef enum _eTransportMinorVersionNumber
+   {
+       TRANSPORT_MINOR_VERSION_NOT_REPORTED                 = 0x0000,
+       TRANSPORT_MINOR_VERSION_ATA8_AST_D1697_VERSION_0B    = 0x0021,//ATA8-AST T13 Project D1697 Version 0b
+       TRANSPORT_MINOR_VERSION_ATA8_AST_D1697_VERSION_1     = 0x0051,//ATA8-AST T13 Project D1697 Version 0b
+       TRANSPORT_MINOR_VERSION_NOT_REPORTED2                = 0xFFFF
+   }eTransportMinorVersionNumber;
+
    #define ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS UINT8_C(128)
 
    #define ATA_SECURITY_MAX_PW_LENGTH UINT8_C(32)
