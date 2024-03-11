@@ -1027,7 +1027,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             }
         }
 
-        bool words64to70Valid = false;
+        //bool words64to70Valid = false;
         bool word88Valid = false;
         if (is_ATA_Identify_Word_Valid(ident_word[53]))
         {
@@ -1035,10 +1035,10 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             {
                 word88Valid = true;
             }
-            if (ident_word[53] & BIT1)
+            /*if (ident_word[53] & BIT1)
             {
                 words64to70Valid = true;
-            }
+            }*/
             if ((ident_word[53] & BIT0)
                 || (is_ATA_Identify_Word_Valid(ident_word[54])
                     && is_ATA_Identify_Word_Valid(ident_word[55])
