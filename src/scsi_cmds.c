@@ -534,7 +534,43 @@ int scsi_Log_Sense_Cmd(tDevice *device, bool saveParameters, uint8_t pageControl
                         device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
                     }
                 }
+                else
+                {
+                    //no sense key specific information, so we need to check a few other things to decide when this is not supported.
+                    if (device->drive_info.passThroughHacks.scsiHacks.attemptedLPs < UINT8_MAX)
+                    {
+                        device->drive_info.passThroughHacks.scsiHacks.attemptedLPs += 1;
+                    }
+                    //only come into here if we have not previously read a log page page successfully.
+                    if (device->drive_info.passThroughHacks.scsiHacks.successfulLPs == 0)
+                    {
+                        if (pageCode == 0 && subpageCode == 0xFF)
+                        {
+                            //since list of page and subpages supported returned an error, assume subpages are not supported.
+                            device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                        }
+                        else if (pageCode == 0 && subpageCode == 0)
+                        {
+                            //assume that since the list of supported pages was requested that this device does not
+                            //support log pages at all. This is a reasonable assumption to make and should help with USB drives
+                            device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                        }
+                        else if (device->drive_info.passThroughHacks.scsiHacks.attemptedLPs >= MAX_LP_ATTEMPTS)
+                        {
+                            //we've attempted at least MAX_LP_ATTEMPTS to read a log page page and it has not been successful,
+                            //so assume this device does not support log pages.
+                            device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                        }
+                    }
+                }
             }
+        }
+    }
+    else if (ret == SUCCESS)
+    {
+        if (device->drive_info.passThroughHacks.scsiHacks.successfulLPs < UINT8_MAX)
+        {
+            device->drive_info.passThroughHacks.scsiHacks.successfulLPs += 1;
         }
     }
     return ret;
@@ -712,7 +748,7 @@ int scsi_Mode_Sense_6(tDevice * device, uint8_t pageCode, uint8_t allocationLeng
     {
         print_Return_Enum("Mode Sense 6", ret);
     }
-    if (ret != SUCCESS)
+    if (ret != SUCCESS)// && !device->drive_info.passThroughHacks.hacksSetByReportedID)//only setup these hacks if the device has not been looked up for results in our internal database-TJE
     {
         get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseFields);
         if (senseFields.validStructure)
@@ -724,7 +760,10 @@ int scsi_Mode_Sense_6(tDevice * device, uint8_t pageCode, uint8_t allocationLeng
                 //May need to expand this condition further to make sure it does not cause more impact.
                 //by default, almost all opensea-operations code uses the 10 byte command instead for modern drives.
                 //This is expected to have little to no impact on modern devices - TJE
-                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                if (device->drive_info.passThroughHacks.scsiHacks.successfulMP6s == 0 && device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s >= MAX_MP_ATTEMPTS)
+                {
+                    device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                }
             }
             else if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && senseFields.scsiStatusCodes.asc == 0x24 && senseFields.scsiStatusCodes.ascq == 0x00)
             {
@@ -737,7 +776,30 @@ int scsi_Mode_Sense_6(tDevice * device, uint8_t pageCode, uint8_t allocationLeng
                         device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
                     }
                 }
+                else
+                {
+                    //no sense key specific information, so we need to check a few other things to decide when this is not supported.
+                    if (device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s < UINT8_MAX)
+                    {
+                        device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s += 1;
+                    }
+                    //only come into here if we have not previously read a log page page successfully.
+                    if (device->drive_info.passThroughHacks.scsiHacks.successfulMP6s == 0
+                        && device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s >= MAX_MP_ATTEMPTS)
+                    {
+                        //we've attempted at least MAX_MP_ATTEMPTS to read a log page page and it has not been successful,
+                        //so assume this device does not support log pages.
+                        device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                    }
+                }
             }
+        }
+    }
+    else
+    {
+        if (device->drive_info.passThroughHacks.scsiHacks.successfulMP6s < UINT8_MAX)
+        {
+            device->drive_info.passThroughHacks.scsiHacks.successfulMP6s += 1;
         }
     }
     return ret;
@@ -795,7 +857,10 @@ int scsi_Mode_Sense_10(tDevice *device, uint8_t pageCode, uint32_t allocationLen
             if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && senseFields.scsiStatusCodes.asc == 0x20 && senseFields.scsiStatusCodes.ascq == 0x00)
             {
                 //do NOT set mode pages not supported. Tell this to retry with 6 byte by setting this first
-                device->drive_info.passThroughHacks.scsiHacks.mode6bytes = true;
+                if (device->drive_info.passThroughHacks.scsiHacks.successfulMP10s == 0)
+                {
+                    device->drive_info.passThroughHacks.scsiHacks.mode6bytes = true;
+                }
             }
             else if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && senseFields.scsiStatusCodes.asc == 0x24 && senseFields.scsiStatusCodes.ascq == 0x00)
             {
@@ -808,7 +873,30 @@ int scsi_Mode_Sense_10(tDevice *device, uint8_t pageCode, uint32_t allocationLen
                         device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
                     }
                 }
+                else
+                {
+                    //no sense key specific information, so we need to check a few other things to decide when this is not supported.
+                    if (device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s < UINT8_MAX)
+                    {
+                        device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s += 1;
+                    }
+                    //only come into here if we have not previously read a log page page successfully.
+                    if (device->drive_info.passThroughHacks.scsiHacks.successfulMP10s == 0
+                        && device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s >= MAX_MP_ATTEMPTS)
+                    {
+                        //we've attempted at least MAX_MP_ATTEMPTS to read a log page page and it has not been successful,
+                        //so assume this device does not support log pages.
+                        device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                    }
+                }
             }
+        }
+    }
+    else
+    {
+        if (device->drive_info.passThroughHacks.scsiHacks.successfulMP10s < UINT8_MAX)
+        {
+            device->drive_info.passThroughHacks.scsiHacks.successfulMP10s += 1;
         }
     }
     return ret;
@@ -1036,6 +1124,67 @@ int scsi_Inquiry(tDevice *device, uint8_t *pdata, uint32_t dataLength, uint8_t p
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Inquiry", ret);
+    }
+    if (ret != SUCCESS && evpd)
+    {
+        //check if invalid field in CDB for VPD pages.
+        senseDataFields senseFields;
+        memset(&senseFields, 0, sizeof(senseDataFields));
+        get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseFields);
+        if (senseFields.validStructure)
+        {
+            if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST
+                && senseFields.scsiStatusCodes.asc == 0x24 && senseFields.scsiStatusCodes.ascq == 0
+                && senseFields.senseKeySpecificInformation.senseKeySpecificValid
+                && senseFields.senseKeySpecificInformation.type == SENSE_KEY_SPECIFIC_FIELD_POINTER)
+            {
+                //this reported enough information to know what the error is, so we can use it to determine if we set a hack or not.
+                if (senseFields.senseKeySpecificInformation.field.cdbOrData && senseFields.senseKeySpecificInformation.field.fieldPointer == 1)
+                {
+                    //assume it did not like the evpd bit
+                    if (!cmdDt)
+                    {
+                        device->drive_info.passThroughHacks.scsiHacks.noVPDPages = true;
+                    }
+                }
+            }
+            else if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST)
+            {
+                //only checking for illegal request because not all USB devices are reporting correct asc, ascq for unsupported pages.-TJE
+                //If hacks are not already set, we can set them here if there have not already been other successful VPD reads.
+                //In the most common case, this code will read the list of supported pages first, then only read those pages.
+                //However, it is possible that some code will just request a VPD page.
+                //If there has been at least 1 successful read before and the no VPD hack is not set, then do not turn off VPD pages for no reason.
+                if (device->drive_info.passThroughHacks.scsiHacks.attemptedVPDs < UINT8_MAX)
+                {
+                    device->drive_info.passThroughHacks.scsiHacks.attemptedVPDs += 1;
+                }
+                //only come into here if we have not previously read a VPD page successfully.
+                if (device->drive_info.passThroughHacks.scsiHacks.successfulVPDs == 0 &&
+                    pageCode == 0 && !device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable)
+                {
+                    //assume that since the list of supported pages was requested that this device does not
+                    //support VPD pages at all. This is a reasonable assumption to make and should help with USB drives
+                    device->drive_info.passThroughHacks.scsiHacks.noVPDPages = true;
+                }
+                if (device->drive_info.passThroughHacks.scsiHacks.successfulVPDs == 0
+                    && device->drive_info.passThroughHacks.scsiHacks.attemptedVPDs >= MAX_VPD_ATTEMPTS)
+                {
+                    //we've attempted at least MAX_VPD_ATTEMPTS to read a VPD page and it has not been successful,
+                    //so assume this device does not support VPD pages.
+                    device->drive_info.passThroughHacks.scsiHacks.noVPDPages = true;
+                }
+            }
+        }
+    }
+    else if (ret == SUCCESS && evpd)
+    {
+        //increment this since we got a successful command completion.
+        //NOTE: This does not validate the page code is correct, but that should be added at some point-TJE
+        if (device->drive_info.passThroughHacks.scsiHacks.successfulVPDs < UINT8_MAX)
+        {
+            device->drive_info.passThroughHacks.scsiHacks.successfulVPDs += 1;
+        }
     }
 
     return ret;

@@ -784,7 +784,9 @@ extern "C"
 
     //This is for test unit ready after failures to keep up performance on devices that slow down a LOT durring error processing (USB mostly)
     #define TURF_LIMIT 10
-
+    #define MAX_VPD_ATTEMPTS 5
+    #define MAX_LP_ATTEMPTS 5
+    #define MAX_MP_ATTEMPTS 5
     //The passthroughHacks structure is to hold information to help with passthrough on OSs, USB adapters, SCSI adapters, etc. Most of this is related to USB adapters though.
     typedef struct _passthroughHacks
     {
@@ -854,10 +856,18 @@ extern "C"
             bool writeBufferNoDeferredDownload;//Write buffer is filtered and does not allow updating firmware using deferred download. Specific to PMC 8070 for now
             bool mode6BSPZValid;//this is for the next option so that it can be set when detected automatically-TJE
             bool useMode6BForSubpageZero;//mode pages with subpage zero are supported, but only using 6 byte mode commands for some unknown reason.
-            uint8_t reserved[3];//padd out above to 8 byte boundaries
+            uint8_t attemptedMP6s;
+            uint8_t successfulMP6s;//counter for number of times mode page 6 read correctly. Can be used for automatic setting of hacks.
+            uint8_t attemptedMP10s;
+            uint8_t successfulMP10s;//counter for number of times mode page 10 read correctly. Can be used for automatic setting of hacks.
+            uint8_t attemptedLPs;
+            uint8_t successfulLPs;//counter for number of times a log page read correctly. Can be used for automatic setting of hacks.
+            uint8_t attemptedVPDs;
+            uint8_t successfulVPDs;//counter for number of times a VPD page read correctly. Can be used for automatic setting of hacks.
+            uint8_t reserved[3];
             uint32_t maxTransferLength;//Maximum SCSI command transfer length in bytes. Mostly here for USB where translations aren't accurate or don't show this properly.
             bool noSATVPDPage;//when this is set, the SAT VPD is not available and should not be read, skipping ahead to instead directly trying a passthrough command
-            uint8_t scsipadding[3];//padd 4 more bytes after transfer length to keep 8 byte boundaries
+            uint8_t reserved2[3];
         }scsiHacks;
         //ATA Hacks refer to SAT translation issues or workarounds.
         struct {
