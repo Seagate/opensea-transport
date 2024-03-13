@@ -3501,6 +3501,12 @@ int fill_In_Device_Info(tDevice *device)
                 }
             }
             safe_Free(supportedVPDPages)
+            if (!satVPDPageRead && !dummyUpVPDSupport)
+            {
+                //This device returned a list of pages already, so we know what it supports.
+                //Since we did not find it in it's list of supported pages, set this to skip trying to read SAT VPD since it is definitely not supported.
+                device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+            }
         }
         else
         {
