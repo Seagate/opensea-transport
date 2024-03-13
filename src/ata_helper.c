@@ -1046,10 +1046,16 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                     && is_ATA_Identify_Word_Valid(ident_word[57])
                     && is_ATA_Identify_Word_Valid(ident_word[58])))
             {
-                //override these variables to use them instead since this is what the drive was configured with from the BIOS
-                cylinder = M_BytesTo2ByteValue(identifyData[109], identifyData[108]);//word 54
-                head = identifyData[110];//Word55
-                spt = identifyData[112];//Word56
+                //only override if these are non-zero. If all are zero, then we cannot determine the current configuration
+                //and should rely on the defaults read earlier.
+                //This is being checked again sincea device may set bit0 of word 53 meaning this is a valid field.
+                //however if the values are zero, we do not want to use them.
+                if (M_BytesTo2ByteValue(identifyData[109], identifyData[108]) > 0 && identifyData[110] > 0 && identifyData[112] > 0)
+                {
+                    cylinder = M_BytesTo2ByteValue(identifyData[109], identifyData[108]);//word 54
+                    head = identifyData[110];//Word55
+                    spt = identifyData[112];//Word56
+                }
                 
             }
         }
@@ -1068,8 +1074,9 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         //simulate a max LBA into device information
         *fillMaxLba = C_CAST(uint64_t, cylinder) * C_CAST(uint64_t, head) * C_CAST(uint64_t, spt);
 
-        if (lbaModeSupported && (is_ATA_Identify_Word_Valid(ident_word[60]) || is_ATA_Identify_Word_Valid(ident_word[61])))
+        if (lbaModeSupported || (is_ATA_Identify_Word_Valid(ident_word[60]) || is_ATA_Identify_Word_Valid(ident_word[61])))
         {
+            lbaModeSupported = true;//workaround for some USB devices that do support lbamode as can be seen by reading this LBA value
             *fillMaxLba = M_BytesTo4ByteValue(identifyData[123], identifyData[122], identifyData[121], identifyData[120]);
         }
         else
@@ -1180,7 +1187,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         }
         if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(ident_word[87]))
         {
-            word84Valid = true;
+            word87Valid = true;
         }
 
         //GPL support
