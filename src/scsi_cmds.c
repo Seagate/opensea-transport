@@ -801,6 +801,10 @@ int scsi_Mode_Sense_6(tDevice * device, uint8_t pageCode, uint8_t allocationLeng
         {
             device->drive_info.passThroughHacks.scsiHacks.successfulMP6s += 1;
         }
+        if (subPageCode == 0 && device->drive_info.passThroughHacks.scsiHacks.mp6sp0Success < UINT8_MAX)
+        {
+            device->drive_info.passThroughHacks.scsiHacks.mp6sp0Success += 1;
+        }
     }
     return ret;
 }
@@ -882,11 +886,25 @@ int scsi_Mode_Sense_10(tDevice *device, uint8_t pageCode, uint32_t allocationLen
                     }
                     //only come into here if we have not previously read a log page page successfully.
                     if (device->drive_info.passThroughHacks.scsiHacks.successfulMP10s == 0
-                        && device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s >= MAX_MP_ATTEMPTS)
+                        && device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s >= MAX_MP_ATTEMPTS
+                        && device->drive_info.passThroughHacks.scsiHacks.successfulMP6s == 0
+                        && device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s >= MAX_MP_ATTEMPTS
+                        )
                     {
                         //we've attempted at least MAX_MP_ATTEMPTS to read a log page page and it has not been successful,
                         //so assume this device does not support log pages.
                         device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                    }
+                    else if (device->drive_info.passThroughHacks.scsiHacks.successfulMP10s == 0 && device->drive_info.passThroughHacks.scsiHacks.mp6sp0Success > 0 && subPageCode == 0)
+                    {
+                        device->drive_info.passThroughHacks.scsiHacks.useMode6BForSubpageZero = true;
+                    }
+                    else if (device->drive_info.passThroughHacks.scsiHacks.successfulMP10s == 0
+                        && device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s >= MAX_MP_ATTEMPTS
+                        && device->drive_info.passThroughHacks.scsiHacks.successfulMP6s > 0
+                        && !device->drive_info.passThroughHacks.scsiHacks.useMode6BForSubpageZero)
+                    {
+                        device->drive_info.passThroughHacks.scsiHacks.mode6bytes = true;
                     }
                 }
             }

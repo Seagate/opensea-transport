@@ -3309,7 +3309,7 @@ int fill_In_Device_Info(tDevice *device)
             memcpy(supportedVPDPages, &inq_buf[4], supportedVPDPagesLength);
             //now loop through and read pages as we need to, only reading the pages that we care about
             uint16_t vpdIter = 0;
-            for (vpdIter = 0; vpdIter < supportedVPDPagesLength && vpdIter < INQ_RETURN_DATA_LENGTH; vpdIter++)
+            for (vpdIter = 0; vpdIter < supportedVPDPagesLength && vpdIter < INQ_RETURN_DATA_LENGTH && !device->drive_info.passThroughHacks.scsiHacks.noVPDPages; vpdIter++)
             {
                 switch (supportedVPDPages[vpdIter])
                 {
@@ -3686,7 +3686,9 @@ int fill_In_Device_Info(tDevice *device)
 //The simplest thing to do is take the version descriptor and divide it by 32. Using iteger division we can check if that matches the standard we're looking for. - TJE
 bool is_Standard_Supported(uint16_t versionDescriptor, eStandardCode standardCode)
 {
-    if ((eStandardCode)(versionDescriptor / 32) == standardCode)
+    //SPC defines the version descriptor codes.
+    //To convert it to a standard, divide it by 32 as indicated in the formula in the annex-TJE
+    if ((eStandardCode)(versionDescriptor / UINT16_C(32)) == standardCode)
     {
         return true;
     }

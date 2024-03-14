@@ -854,7 +854,7 @@ extern "C"
                 uint8_t serialNumberLength;
             }scsiInq;
             bool writeBufferNoDeferredDownload;//Write buffer is filtered and does not allow updating firmware using deferred download. Specific to PMC 8070 for now
-            bool mode6BSPZValid;//this is for the next option so that it can be set when detected automatically-TJE
+            uint8_t mp6sp0Success;//this is for the next option so that it can be set when detected automatically-TJE
             bool useMode6BForSubpageZero;//mode pages with subpage zero are supported, but only using 6 byte mode commands for some unknown reason.
             uint8_t attemptedMP6s;
             uint8_t successfulMP6s;//counter for number of times mode page 6 read correctly. Can be used for automatic setting of hacks.
