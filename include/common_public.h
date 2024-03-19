@@ -1304,7 +1304,7 @@ extern "C"
 
     typedef int (*issue_io_func)( void * );
 
-    #define DEVICE_BLOCK_VERSION    (8)
+    #define DEVICE_BLOCK_VERSION    (9)
 
     // verification for compatibility checking
     typedef struct _versionBlock
