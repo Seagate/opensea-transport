@@ -874,7 +874,8 @@ int scsi_Mode_Sense_10(tDevice *device, uint8_t pageCode, uint32_t allocationLen
                 {
                     if (senseFields.senseKeySpecificInformation.field.cdbOrData && senseFields.senseKeySpecificInformation.field.fieldPointer == 3)
                     {
-                        device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
+                        //Do not set this here since it may just be a page code that isn't supported-TJE
+                        //device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
                     }
                 }
                 else
