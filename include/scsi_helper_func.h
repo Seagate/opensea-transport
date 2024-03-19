@@ -2084,7 +2084,7 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API int scsi_Reset_Write_Pointers(tDevice *device, bool resetAll, uint64_t zoneID, uint16_t zoneCount);
 
-    #define MAX_VERSION_DESCRIPTOR_STRING_LENGTH 16
+    #define MAX_VERSION_DESCRIPTOR_STRING_LENGTH 65
     //-----------------------------------------------------------------------------
     //
     //  decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* versionString)

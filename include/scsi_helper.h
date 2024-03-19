@@ -22,10 +22,17 @@ extern "C"
 {
 #endif
 
+    #define INQ_RETURN_DATA_LENGTH_SCSI2 (36)
     #define INQ_RETURN_DATA_LENGTH      (96)
     #define INQ_DATA_T10_VENDOR_ID_LEN  (8) //bytes
     #define INQ_DATA_PRODUCT_ID_LEN     (16)
     #define INQ_DATA_PRODUCT_REV_LEN    (4)
+
+    #define INQ_RESPONSE_FMT_SCSI       (0) //original response format - basically all vendor unique information
+    #define INQ_RESPONSE_FMT_CCS        (1) //SCSI common command set definition. More or less meets modern requirements
+    #define INQ_RESPONSE_FMT_CURRENT    (2) //SCSI2 and later all use this format to report inquiry data
+
+    #define INQ_MAX_VERSION_DESCRIPTORS (8)
 
     typedef enum _eSCSIVersion 
     {
