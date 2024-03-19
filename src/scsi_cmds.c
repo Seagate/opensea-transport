@@ -760,7 +760,7 @@ int scsi_Mode_Sense_6(tDevice * device, uint8_t pageCode, uint8_t allocationLeng
                 //May need to expand this condition further to make sure it does not cause more impact.
                 //by default, almost all opensea-operations code uses the 10 byte command instead for modern drives.
                 //This is expected to have little to no impact on modern devices - TJE
-                if (device->drive_info.passThroughHacks.scsiHacks.successfulMP6s == 0 && device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s >= MAX_MP_ATTEMPTS)
+                if (device->drive_info.passThroughHacks.scsiHacks.successfulMP6s == 0 && device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s >= MAX_MP6_ATTEMPTS)
                 {
                     device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
                 }
@@ -785,7 +785,7 @@ int scsi_Mode_Sense_6(tDevice * device, uint8_t pageCode, uint8_t allocationLeng
                     }
                     //only come into here if we have not previously read a log page page successfully.
                     if (device->drive_info.passThroughHacks.scsiHacks.successfulMP6s == 0
-                        && device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s >= MAX_MP_ATTEMPTS)
+                        && device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s >= MAX_MP6_ATTEMPTS)
                     {
                         //we've attempted at least MAX_MP_ATTEMPTS to read a log page page and it has not been successful,
                         //so assume this device does not support log pages.
@@ -886,9 +886,9 @@ int scsi_Mode_Sense_10(tDevice *device, uint8_t pageCode, uint32_t allocationLen
                     }
                     //only come into here if we have not previously read a log page page successfully.
                     if (device->drive_info.passThroughHacks.scsiHacks.successfulMP10s == 0
-                        && device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s >= MAX_MP_ATTEMPTS
+                        && device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s >= MAX_MP10_ATTEMPTS
                         && device->drive_info.passThroughHacks.scsiHacks.successfulMP6s == 0
-                        && device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s >= MAX_MP_ATTEMPTS
+                        && device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s >= MAX_MP6_ATTEMPTS
                         )
                     {
                         //we've attempted at least MAX_MP_ATTEMPTS to read a log page page and it has not been successful,
@@ -900,7 +900,7 @@ int scsi_Mode_Sense_10(tDevice *device, uint8_t pageCode, uint32_t allocationLen
                         device->drive_info.passThroughHacks.scsiHacks.useMode6BForSubpageZero = true;
                     }
                     else if (device->drive_info.passThroughHacks.scsiHacks.successfulMP10s == 0
-                        && device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s >= MAX_MP_ATTEMPTS
+                        && device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s >= MAX_MP10_ATTEMPTS
                         && device->drive_info.passThroughHacks.scsiHacks.successfulMP6s > 0
                         && !device->drive_info.passThroughHacks.scsiHacks.useMode6BForSubpageZero)
                     {

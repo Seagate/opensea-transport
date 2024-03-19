@@ -760,7 +760,7 @@ extern "C"
     //This is used by the software SAT translation layer. DO NOT Update this directly
     typedef struct _softwareSATFlags
     {
-        bool identifyDeviceDataLogSupported;
+        bool identifyDeviceDataLogSupported; //TODO: each supported subpage of this log
         bool deviceStatisticsSupported; //if set to true, any 1 of the bools in the following struct is set to true (supported)
         struct
         {
@@ -780,13 +780,41 @@ extern "C"
         bool zeroExtSupported;
         uint8_t rtfrIndex;
         ataReturnTFRs ataPassthroughResults[16];
+        //Other flags that would simplify the software SAT code:
+        // it may be possible to combine software SAT and drive_info flags to simplify this all-TJE
+        //SMART supported/enabled
+        //SMART self test support
+        //long self test time
+        //SMART error logging
+        //TRIM support (rzat, drat) + sectors per trim
+        //dataset management xl support
+        //write uncorrectable ext support
+        //EPC supported/enabled
+        //Legacy standby timer matches values in standard (versus being vendor specific)
+        //APM supported/enabled and current value. Store initial value of APM when software SAT translator was started for default page as well.
+        //save initial read-look ahead and write cache settings when SAT translator was started for default values
+        //separate supported/enabled flags for these features as well.
+        //maxLBA
+        //logical block size
+        //physical block size exponenet
+        //GPL supported
+        //detected pata vs SATA drive
+        //current transfer mode and supported modes (UDMA, MWDMA, PIO, etc)
+        //store last value of legacy standby timer
+        //media SN
+        //WWN
+        //MN?
+        //SN?
+        //download microcode support (dma, modes, etc)
+        //Sanitize modes supported
     }softwareSATFlags;
 
     //This is for test unit ready after failures to keep up performance on devices that slow down a LOT durring error processing (USB mostly)
     #define TURF_LIMIT 10
     #define MAX_VPD_ATTEMPTS 5
     #define MAX_LP_ATTEMPTS 5
-    #define MAX_MP_ATTEMPTS 5
+    #define MAX_MP6_ATTEMPTS 8
+    #define MAX_MP10_ATTEMPTS 8
     //The passthroughHacks structure is to hold information to help with passthrough on OSs, USB adapters, SCSI adapters, etc. Most of this is related to USB adapters though.
     typedef struct _passthroughHacks
     {
