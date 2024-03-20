@@ -73,7 +73,7 @@ extern "C"
     #define OPENSEA_MAX_CONTROLLERS (8U)
     #define MAX_DEVICES_PER_CONTROLLER (256U)
     #define MAX_DEVICES_TO_SCAN (OPENSEA_MAX_CONTROLLERS * MAX_DEVICES_PER_CONTROLLER)
-	#define MAX_DRIVER_NAME			40
+    #define MAX_DRIVER_NAME			40
     #define MAX_DRIVER_VER_STR      24
 
     #define SERIAL_NUM_LEN          (20) //Going with ATA lengths
@@ -674,9 +674,9 @@ extern "C"
         uint32_t specifierID;//Used on IEEE1394 only
     }adapterInfo;
 
-	typedef struct _driverInfo
-	{
-		char driverName[MAX_DRIVER_NAME];
+    typedef struct _driverInfo
+    {
+        char driverName[MAX_DRIVER_NAME];
         char driverVersionString[MAX_DRIVER_VER_STR];//raw, unparsed string in case parsing into below values goes wrong due to variability in how this is reported between linux drivers.-TJE
         bool majorVerValid;
         bool minorVerValid;
@@ -687,7 +687,7 @@ extern "C"
         uint32_t driverMinorVersion;
         uint32_t driverRevision;
         uint32_t driverBuildNumber;//Likely Windows only
-	} driverInfo;
+    } driverInfo;
 
     typedef enum _eATASynchronousDMAMode
     {
@@ -761,7 +761,7 @@ extern "C"
     //This is used by the software SAT translation layer. DO NOT Update this directly
     typedef struct _softwareSATFlags
     {
-        bool identifyDeviceDataLogSupported;
+        bool identifyDeviceDataLogSupported; //TODO: each supported subpage of this log
         bool deviceStatisticsSupported; //if set to true, any 1 of the bools in the following struct is set to true (supported)
         struct
         {
@@ -781,11 +781,41 @@ extern "C"
         bool zeroExtSupported;
         uint8_t rtfrIndex;
         ataReturnTFRs ataPassthroughResults[16];
+        //Other flags that would simplify the software SAT code:
+        // it may be possible to combine software SAT and drive_info flags to simplify this all-TJE
+        //SMART supported/enabled
+        //SMART self test support
+        //long self test time
+        //SMART error logging
+        //TRIM support (rzat, drat) + sectors per trim
+        //dataset management xl support
+        //write uncorrectable ext support
+        //EPC supported/enabled
+        //Legacy standby timer matches values in standard (versus being vendor specific)
+        //APM supported/enabled and current value. Store initial value of APM when software SAT translator was started for default page as well.
+        //save initial read-look ahead and write cache settings when SAT translator was started for default values
+        //separate supported/enabled flags for these features as well.
+        //maxLBA
+        //logical block size
+        //physical block size exponenet
+        //GPL supported
+        //detected pata vs SATA drive
+        //current transfer mode and supported modes (UDMA, MWDMA, PIO, etc)
+        //store last value of legacy standby timer
+        //media SN
+        //WWN
+        //MN?
+        //SN?
+        //download microcode support (dma, modes, etc)
+        //Sanitize modes supported
     }softwareSATFlags;
 
     //This is for test unit ready after failures to keep up performance on devices that slow down a LOT durring error processing (USB mostly)
     #define TURF_LIMIT 10
-
+    #define MAX_VPD_ATTEMPTS 5
+    #define MAX_LP_ATTEMPTS 5
+    #define MAX_MP6_ATTEMPTS 8
+    #define MAX_MP10_ATTEMPTS 8
     //The passthroughHacks structure is to hold information to help with passthrough on OSs, USB adapters, SCSI adapters, etc. Most of this is related to USB adapters though.
     typedef struct _passthroughHacks
     {
@@ -819,6 +849,7 @@ extern "C"
             //NORWZ/NZTL - not currently handled. No zero length on read or write commands since adapter doesn't handle these properly.
             MXFER - maxTransferLength (bytes)
             WBND - write buffer no deferred download. PMC specific workaround at this time.-TJE
+            MP6FORSPZ - use mode sense/select 6 for pages with subpage 0. Some USB adapters will support a page only with mode sense/select 6 but will not support the same page with the 10 byte command.
             TODO: More hacks for strange adapters as needed can be added in here.
             */
             bool unitSNAvailable;//This means we can request this page even if other VPD pages don't work.
@@ -852,10 +883,20 @@ extern "C"
                 uint8_t serialNumberLength;
             }scsiInq;
             bool writeBufferNoDeferredDownload;//Write buffer is filtered and does not allow updating firmware using deferred download. Specific to PMC 8070 for now
-            uint8_t reserved[5];//padd out above to 8 byte boundaries
+            uint8_t mp6sp0Success;//this is for the next option so that it can be set when detected automatically-TJE
+            bool useMode6BForSubpageZero;//mode pages with subpage zero are supported, but only using 6 byte mode commands for some unknown reason.
+            uint8_t attemptedMP6s;
+            uint8_t successfulMP6s;//counter for number of times mode page 6 read correctly. Can be used for automatic setting of hacks.
+            uint8_t attemptedMP10s;
+            uint8_t successfulMP10s;//counter for number of times mode page 10 read correctly. Can be used for automatic setting of hacks.
+            uint8_t attemptedLPs;
+            uint8_t successfulLPs;//counter for number of times a log page read correctly. Can be used for automatic setting of hacks.
+            uint8_t attemptedVPDs;
+            uint8_t successfulVPDs;//counter for number of times a VPD page read correctly. Can be used for automatic setting of hacks.
+            uint8_t reserved[3];
             uint32_t maxTransferLength;//Maximum SCSI command transfer length in bytes. Mostly here for USB where translations aren't accurate or don't show this properly.
             bool noSATVPDPage;//when this is set, the SAT VPD is not available and should not be read, skipping ahead to instead directly trying a passthrough command
-            uint8_t scsipadding[3];//padd 4 more bytes after transfer length to keep 8 byte boundaries
+            uint8_t reserved2[3];
         }scsiHacks;
         //ATA Hacks refer to SAT translation issues or workarounds.
         struct {
@@ -999,7 +1040,7 @@ extern "C"
         //TODO: a union or something so that we don't need to keep adding more bytes for drive types that won't use the ATA stuff or NVMe stuff in this struct.
         bridgeInfo      bridge_info;
         adapterInfo     adapter_info;
-		driverInfo		driver_info;
+        driverInfo		driver_info;
         ataOptions      ata_Options;
         uint64_t        lastCommandTimeNanoSeconds;//The time the last command took in nanoseconds
         softwareSATFlags softSATFlags;//This is used by the software SAT translation layer. DO NOT Update this directly. This should only be updated by the lower layers of opensea-transport.
@@ -1267,7 +1308,7 @@ extern "C"
 
     typedef int (*issue_io_func)( void * );
 
-    #define DEVICE_BLOCK_VERSION    (8)
+    #define DEVICE_BLOCK_VERSION    (9)
 
     // verification for compatibility checking
     typedef struct _versionBlock

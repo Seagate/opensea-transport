@@ -4564,7 +4564,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
                         //test an identify command with IDE pass-through
                         device->os_info.ioType = WIN_IOCTL_IDE_PASSTHROUGH_ONLY;
                         //TODO: use check power mode command instead?
-                        if (SUCCESS == ata_Identify(device, (uint8_t *)&device->drive_info.IdentifyData.ata.Word000, sizeof(tAtaIdentifyData)) || SUCCESS == ata_Identify_Packet_Device(device, (uint8_t *)&device->drive_info.IdentifyData.ata.Word000, sizeof(tAtaIdentifyData)))
+                        if (SUCCESS == ata_Identify(device, C_CAST(uint8_t *, &device->drive_info.IdentifyData.ata.Word000), sizeof(tAtaIdentifyData)) || SUCCESS == ata_Identify_Packet_Device(device, C_CAST(uint8_t *, &device->drive_info.IdentifyData.ata.Word000), sizeof(tAtaIdentifyData)))
                         {
                             idePassThroughSupported = true;
                         }

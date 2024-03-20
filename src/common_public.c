@@ -2226,9 +2226,9 @@ eSkyhawk_Drive is_Skyhawk_Drive(tDevice * device, bool USBchildDrive)
 
     if (strlen(modelNumber))
     {
-        if (wildcard_Match("ST*VX*", modelNumber))   //check if Skyhawk HDD
+        if (wildcard_Match("ST*VX*", modelNumber) || wildcard_Match("ST*HKVS*", modelNumber) || wildcard_Match("ST*VM*", modelNumber))   //check if Skyhawk HDD
             isSkyhawkDrive = SKYHAWK_DRIVE;
-        else if (wildcard_Match("ST*VE*", modelNumber))  //check if Skyhawk AI HDD
+        else if (wildcard_Match("ST*VE*", modelNumber) || wildcard_Match("ST*HKAI*", modelNumber))  //check if Skyhawk AI HDD
             isSkyhawkDrive = SKYHAWK_AI_DRIVE;
     }
 
@@ -2953,7 +2953,7 @@ bool is_SATA(tDevice *device)
     if (device->drive_info.drive_type == ATA_DRIVE)
     {
         //Word 76 will be greater than zero, and never 0xFFFF on a SATA drive (bit 0 must be cleared to zero)
-        if (device->drive_info.IdentifyData.ata.Word076 > 0 && device->drive_info.IdentifyData.ata.Word076 != 0xFFFF)
+        if (is_ATA_Identify_Word_Valid_SATA(device->drive_info.IdentifyData.ata.Word076))
         {
             return true;
         }
@@ -3281,7 +3281,10 @@ int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDe
     bool sameSlNo = false;
     int ret = UNKNOWN;
 
-
+    if (!deviceList || !numberOfDevices)
+    {
+        return BAD_PARAMETER;
+    }
     /*
     Go through all the devices in the list.
     */
@@ -3299,8 +3302,8 @@ int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDe
             ret = SUCCESS;
             sameSlNo = false;
 
-            if (((deviceList + i) && strlen((deviceList + i)->drive_info.serialNumber) > 0) &&
-                ((deviceList + j) && strlen((deviceList + j)->drive_info.serialNumber) > 0))
+            if ((strlen((deviceList + i)->drive_info.serialNumber) > 0) &&
+                (strlen((deviceList + j)->drive_info.serialNumber) > 0))
             {
                 sameSlNo = (strncmp((deviceList + i)->drive_info.serialNumber,
                     (deviceList + j)->drive_info.serialNumber,
@@ -3329,10 +3332,10 @@ int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDe
                         j--;
                     }
                 }
-#else 
+#else //!_WIN32
                 M_USE_UNUSED(rmvDevFlag);
 
-#endif
+#endif //_WIN32
             }
         }
     }
@@ -3448,7 +3451,7 @@ bool is_Removable_Media(tDevice *device)
             device->drive_info.media_type == MEDIA_SSM_FLASH ||
             device->drive_info.media_type == MEDIA_TAPE ||
             device->drive_info.media_type == MEDIA_UNKNOWN ||
-            (device->drive_info.IdentifyData.ata.Word000 & BIT7))
+            (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word000) && device->drive_info.IdentifyData.ata.Word000 & BIT7))
         {
             result = true;
         }
@@ -3688,6 +3691,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             case 0x203C://One Touch SSD
+            case 0x203E://One Touch SSD
             case 0x2013://Expansion SSD
             case 0x202D://Game Drive SSD
                 //NOTE: This is a weird drive.
@@ -4850,7 +4854,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
-                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = false;//turning this off because this causes some products to report "Invalid operation code" instead of "invalid field in CDB"
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             }
@@ -5036,7 +5040,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
-                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = false;
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             }
