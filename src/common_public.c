@@ -3281,7 +3281,10 @@ int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDe
     bool sameSlNo = false;
     int ret = UNKNOWN;
 
-
+    if (!deviceList || !numberOfDevices)
+    {
+        return BAD_PARAMETER;
+    }
     /*
     Go through all the devices in the list.
     */
@@ -3299,8 +3302,8 @@ int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDe
             ret = SUCCESS;
             sameSlNo = false;
 
-            if (((deviceList + i) && strlen((deviceList + i)->drive_info.serialNumber) > 0) &&
-                ((deviceList + j) && strlen((deviceList + j)->drive_info.serialNumber) > 0))
+            if ((strlen((deviceList + i)->drive_info.serialNumber) > 0) &&
+                (strlen((deviceList + j)->drive_info.serialNumber) > 0))
             {
                 sameSlNo = (strncmp((deviceList + i)->drive_info.serialNumber,
                     (deviceList + j)->drive_info.serialNumber,
@@ -3329,10 +3332,10 @@ int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDe
                         j--;
                     }
                 }
-#else 
+#else //!_WIN32
                 M_USE_UNUSED(rmvDevFlag);
 
-#endif
+#endif //_WIN32
             }
         }
     }
