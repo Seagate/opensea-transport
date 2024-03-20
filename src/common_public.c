@@ -3688,6 +3688,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             case 0x203C://One Touch SSD
+            case 0x203E://One Touch SSD
             case 0x2013://Expansion SSD
             case 0x202D://Game Drive SSD
                 //NOTE: This is a weird drive.
@@ -4850,7 +4851,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
                 //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
                 device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
-                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = false;//turning this off because this causes some products to report "Invalid operation code" instead of "invalid field in CDB"
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
                 break;
             }
