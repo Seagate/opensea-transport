@@ -333,6 +333,11 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
                 if (SUCCESS == scsi_Request_Sense_Cmd(device, true, descriptorFormatSenseData, SPC3_SENSE_LEN))
                 {
                     ret = get_RTFRs_From_Descriptor_Format_Sense_Data(descriptorFormatSenseData, SPC3_SENSE_LEN, &ataCmd->rtfr);
+                    if (ret == FAILURE)
+                    {
+                        //preserve the incomplete RTFR warning
+                        ret = WARN_INCOMPLETE_RFTRS;
+                    }
                 }
                 safe_Free_aligned(descriptorFormatSenseData)
             }
@@ -340,7 +345,19 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
         //Some devices say passthrough info available, but populate nothing...so need to set this error!
         if (ataCmd->rtfr.error == 0 && ataCmd->rtfr.status == 0 && ataCmd->rtfr.device == 0 && ataCmd->rtfr.secCnt == 0 && ataCmd->rtfr.lbaHi == 0 && ataCmd->rtfr.lbaMid == 0 && ataCmd->rtfr.lbaLow == 0)
         {
-            ret = FAILURE;
+            if ((ataCmd->commadProtocol == ATA_PROTOCOL_PIO && ataCmd->commandDirection == XFER_DATA_IN)
+                || ataCmd->commadProtocol == ATA_PROTOCOL_DMA_FPDMA)
+            {
+                //PIO-in and FPDMA will only give valid RTFRs on a failure.
+                //If it succeeds and data came back, these may be empty on some translators.
+                //Do not consider this a failure, but success
+                ataCmd->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
+                ret = SUCCESS;
+            }
+            else
+            {
+                ret = FAILURE;
+            }
         }
     }
     else
@@ -412,75 +429,81 @@ bool get_Return_TFRs_From_Sense_Data(tDevice *device, ataPassthroughCommand *ata
             case SENSE_KEY_HARDWARE_ERROR:
                 if (asc == 0x44 && ascq == 0x00 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = BIT5;
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_DEVICE_FAULT;
                     gotRTFRsFromSenseData = true;
                 }
                 break;
             case SENSE_KEY_NOT_READY:
                 if (asc == 0x3A && ascq == 0x00 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = BIT1;//nm bit
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_NO_MEDIA;//nm bit
                     gotRTFRsFromSenseData = true;
                 }
                 break;
             case SENSE_KEY_MEDIUM_ERROR:
                 if (asc == 0x11 && ascq == 0x00 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = BIT6;//unc bit
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_UNCORRECTABLE_DATA;//unc bit
                     gotRTFRsFromSenseData = true;
                 }
                 else if (asc == 0x14 && ascq == 0x01 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = BIT4;//idnf bit
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_ID_NOT_FOUND;//idnf bit
                     gotRTFRsFromSenseData = true;
                 }
                 break;
             case SENSE_KEY_DATA_PROTECT:
                 if (asc == 0x27 && ascq == 0x00 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = BIT6;//wp bit
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_WRITE_PROTECTED;//wp bit
                     gotRTFRsFromSenseData = true;
                 }
                 break;
             case SENSE_KEY_ILLEGAL_REQUEST:
                 if (asc == 0x21 && ascq == 0x00 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = BIT4;//idnf bit
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_ID_NOT_FOUND;//idnf bit
                     gotRTFRsFromSenseData = true;
                 }
                 break;
             case SENSE_KEY_ABORTED_COMMAND:
                 if (asc == 0x47 && ascq == 0x03 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = BIT4;//icrc bit
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_INTERFACE_CRC;//icrc bit
                     gotRTFRsFromSenseData = true;
                 }
                 else
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = 0x04;//abort
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_ABORT;//abort
                     gotRTFRsFromSenseData = true;
                 }
                 break;
             case SENSE_KEY_UNIT_ATTENTION:
                 if (asc == 0x28 && ascq == 0x00 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = BIT5;//mc bit
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_MEDIA_CHANGE;//mc bit
                     gotRTFRsFromSenseData = true;
                 }
                 else if (asc == 0x47 && ascq == 0x03 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = BIT3;//mcr bit
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_MEDIA_CHANGE_REQUEST;//mcr bit
                     gotRTFRsFromSenseData = true;
                 }
+                break;
+            case SENSE_KEY_NO_ERROR:
+                //if no error is reported, then consider this a passing command.
+                ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY;
+                ataCommandOptions->rtfr.error = 0;
+                gotRTFRsFromSenseData = true;
                 break;
             default:
                 //Don't do anything! We don't have enough information to decide what happened. The SATL be returning it's own error that is not related to the command being sent.
@@ -1187,6 +1210,19 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
         }
         //Now get the RTFRs from the sense data or request them as necessary.
         bool gotRTFRs = get_Return_TFRs_From_Sense_Data(device, ataCommandOptions, sendIOret, senseRet);
+        if (gotRTFRs)
+        {
+            //check if incomplete RTFRs
+            //Most likely case is RTFRs coming back all FF in ext
+            //The secCntExt == 0xFF may happen, but it's likely not common.
+            //NOTE: This is a workaround due to the bool above which is not ideal.
+            //      The SAT passthorugh probably needs refactoring to fix this better -TJE
+            if ((ataCommandOptions->rtfr.lbaLowExt == 0xFF && ataCommandOptions->rtfr.lbaMidExt == 0xFF && ataCommandOptions->rtfr.lbaHiExt == 0xFF)
+                || ataCommandOptions->rtfr.secCntExt == 0xFF)
+            {
+                ret = WARN_INCOMPLETE_RFTRS;
+            }
+        }
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         {
             //Print out the RTFRs that we got
