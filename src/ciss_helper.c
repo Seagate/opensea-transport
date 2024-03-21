@@ -507,9 +507,9 @@ static int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
                         case CMD_INVALID:
                             printf("CISS Invalid\n");
                             //print out additional invalid command info
-                            printf("\toffense_size  = %" PRIu8 "\n", pqiCmd.error_info.MoreErrInfo.offense_size);
-                            printf("\toffense_num   = %" PRIu8 "\n", pqiCmd.error_info.MoreErrInfo.offense_num);
-                            printf("\toffense_value = %" PRIu32 "\n", pqiCmd.error_info.MoreErrInfo.offense_value);
+                            printf("\toffense_size  = %" PRIu8 "\n", pqiCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_size);
+                            printf("\toffense_num   = %" PRIu8 "\n", pqiCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_num);
+                            printf("\toffense_value = %" PRIu32 "\n", pqiCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_value);
                             break;
                         case CMD_TIMEOUT:
                             printf("CISS Timeout\n");
@@ -718,9 +718,9 @@ static int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
                         case CMD_INVALID:
                             printf("CISS Invalid\n");
                             //print out additional invalid command info
-                            printf("\toffense_size  = %" PRIu8 "\n", cissCmd.error_info.MoreErrInfo.offense_size);
-                            printf("\toffense_num   = %" PRIu8 "\n", cissCmd.error_info.MoreErrInfo.offense_num);
-                            printf("\toffense_value = %" PRIu32 "\n", cissCmd.error_info.MoreErrInfo.offense_value);
+                            printf("\toffense_size  = %" PRIu8 "\n", cissCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_size);
+                            printf("\toffense_num   = %" PRIu8 "\n", cissCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_num);
+                            printf("\toffense_value = %" PRIu32 "\n", cissCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_value);
                             break;
                         case CMD_TIMEOUT:
                             printf("CISS Timeout\n");
@@ -927,9 +927,9 @@ static int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
                         case CMD_INVALID:
                             printf("CISS Invalid\n");
                             //print out additional invalid command info
-                            printf("\toffense_size  = %" PRIu8 "\n", cissCmd.err_info.MoreErrInfo.offense_size);
-                            printf("\toffense_num   = %" PRIu8 "\n", cissCmd.err_info.MoreErrInfo.offense_num);
-                            printf("\toffense_value = %" PRIu32 "\n", cissCmd.err_info.MoreErrInfo.offense_value);
+                            printf("\toffense_size  = %" PRIu8 "\n", cissCmd.err_info.MoreErrInfo.Invalid_Cmd.offense_size);
+                            printf("\toffense_num   = %" PRIu8 "\n", cissCmd.err_info.MoreErrInfo.Invalid_Cmd.offense_num);
+                            printf("\toffense_value = %" PRIu32 "\n", cissCmd.err_info.MoreErrInfo.Invalid_Cmd.offense_value);
                             break;
                         case CMD_TIMEOUT:
                             printf("CISS Timeout\n");
