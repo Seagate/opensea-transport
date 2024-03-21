@@ -1115,8 +1115,17 @@ int build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, ataPassthr
             break;
         default:
             //don't set the bit...unless we're being forced to do so
-            if (ataCommandOptions->forceCheckConditionBit || device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable)
+            if (ataCommandOptions->forceCheckConditionBit)
             {
+                set_Check_Condition_Bit(*satCDB, transferBitsOffset);
+            }
+            else if (device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable
+                && !((ataCommandOptions->commadProtocol == ATA_PROTOCOL_PIO && ataCommandOptions->commandDirection == XFER_DATA_IN)
+                      || ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA_FPDMA))
+            {
+                //check condition is available by the translator for any command.
+                //So set it for all cases EXCEPT PIO-in and FPDMA. These will not return useful information when they pass.
+                //If these protocols fail, they WILL return useful completion, so check condition is not necessary.
                 set_Check_Condition_Bit(*satCDB, transferBitsOffset);
             }
             break;
