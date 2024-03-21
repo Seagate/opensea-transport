@@ -966,6 +966,22 @@ extern "C"
     OPENSEA_TRANSPORT_API bool is_Seagate_SAS_Vendor_ID(const char* t10VendorIdent);
     OPENSEA_TRANSPORT_API void seagate_Serial_Number_Cleanup(const char* t10VendorIdent, char** unitSerialNumber, size_t unitSNSize);
 
+    //SCSI Architecture model status's
+    typedef enum _eSAMStatus
+    {
+        SAM_STATUS_GOOD                         = 0x00,
+        SAM_STATUS_CHECK_CONDITION              = 0x02,
+        SAM_STATUS_CONDITION_MET                = 0x03,
+        SAM_STATUS_BUSY                         = 0x04,
+        SAM_STATUS_INTERMEDIATE                 = 0x10,
+        SAM_STATUS_INTERMEDIATE_CONDITION_MET   = 0x14,
+        SAM_STATUS_RESERVATION_CONFLICT         = 0x18,
+        SAM_STATUS_COMMAND_TERMINATED           = 0x22,
+        SAM_STATUS_TASK_SET_FULL                = 0x28,
+        SAM_STATUS_ACA_ACTIVE                   = 0x30,
+        SAM_STATUS_TASK_ABORTED                 = 0x40,
+    }eSAMStatus;
+
 
     #if defined (__cplusplus)
 } //extern "C"
