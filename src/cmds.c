@@ -82,7 +82,13 @@ int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool in
         {
             ataPattern = M_BytesTo4ByteValue(pattern[3], pattern[2], pattern[1], pattern[0]);
         }
-        ret = ata_Sanitize_Overwrite_Erase(device, exitFailureMode, invertBetweenPasses, overwritePasses & 0x0F, ataPattern, znr, false);
+        //Note: ATA drives have a "definitive ending pattern bit"
+        //      In order to be consistent with SCSI and NVMe specifications, this should be set when the
+        //      Device supports it. Basically it means that the provided pattern WILL DEFINITELY be the
+        //      pattern on the drive no matter how many passes or inversions happen.
+        //      When this is not supported/set then the device may or may not be consistent with this behavior...it's up to the firmware to decide.
+        //      Because of this, this bit will be set when it is discovered as supported whenever possible -TJE
+        ret = ata_Sanitize_Overwrite_Erase(device, exitFailureMode, invertBetweenPasses, overwritePasses & 0x0F, ataPattern, znr, device->drive_info.ata_Options.sanitizeOverwriteDefinitiveEndingPattern);
     }
         break;
     case NVME_DRIVE:
