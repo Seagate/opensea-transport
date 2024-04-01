@@ -1106,11 +1106,16 @@ extern "C"
        TRANSPORT_MINOR_VERSION_NOT_REPORTED2                = 0xFFFF
    }eTransportMinorVersionNumber;
 
-   #define ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS UINT8_C(128)
+    #define ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS UINT8_C(128)
 
-   #define ATA_SECURITY_MAX_PW_LENGTH UINT8_C(32)
+    #define ATA_SECURITY_MAX_PW_LENGTH UINT8_C(32)
+    #define ATA_SECURITY_GREATER_THAN_MAX_TIME_VALUE UINT16_C(255) //raw ATA identify device value
+    #define ATA_SECURITY_MAX_TIME_MINUTES UINT16_C(508) //raw minutes value
+    #define ATA_SECURITY_GREATER_THAN_MAX_EXTENDED_TIME_VALUE UINT16_C(32767) //raw ATA identify device value
+    #define ATA_SECURITY_MAX_EXTENDED_TIME_MINUTES UINT16_C(65532) //raw minutes value
+    #define ATA_SECURITY_TIME_MULTIPLIER UINT16_C(2)
 
-   typedef enum _eATASecurityState
+    typedef enum _eATASecurityState
     {
         ATA_SEC0 = 0, //powered off, we will never see this
         ATA_SEC1 = 1, //not enabled, locked, or frozen
