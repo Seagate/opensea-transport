@@ -30,7 +30,9 @@ int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode, bool znr)
         ret = ata_Sanitize_Block_Erase(device, exitFailureMode, znr);
         break;
     case NVME_DRIVE:
-        ret = nvme_Sanitize(device, false, false, 0, exitFailureMode, SANITIZE_NVM_BLOCK_ERASE, 0);
+        //TODO: Reusing ZNR arg for the no-deallocate option.
+        //      If NVMe's zoned device command set adds a separate ZNR argument, we will need to create a different function/API to handle both bits-TJE
+        ret = nvme_Sanitize(device, znr, false, 0, exitFailureMode, SANITIZE_NVM_BLOCK_ERASE, 0);
         break;
     case SCSI_DRIVE:
         ret = scsi_Sanitize_Block_Erase(device, exitFailureMode, true, znr);
@@ -54,7 +56,9 @@ int send_Sanitize_Crypto_Erase(tDevice *device, bool exitFailureMode, bool znr)
         ret = ata_Sanitize_Crypto_Scramble(device, exitFailureMode, znr);
         break;
     case NVME_DRIVE:
-        ret = nvme_Sanitize(device, false, false, 0, exitFailureMode, SANITIZE_NVM_CRYPTO, 0);
+        //TODO: Reusing ZNR arg for the no-deallocate option.
+        //      If NVMe's zoned device command set adds a separate ZNR argument, we will need to create a different function/API to handle both bits-TJE
+        ret = nvme_Sanitize(device, znr, false, 0, exitFailureMode, SANITIZE_NVM_CRYPTO, 0);
         break;
     case SCSI_DRIVE:
         ret = scsi_Sanitize_Cryptographic_Erase(device, exitFailureMode, true, znr);
@@ -98,7 +102,9 @@ int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool in
         {
             nvmPattern = M_BytesTo4ByteValue(pattern[3], pattern[2], pattern[1], pattern[0]);
         }
-        ret = nvme_Sanitize(device, false, invertBetweenPasses, overwritePasses, exitFailureMode, SANITIZE_NVM_OVERWRITE, nvmPattern);
+        //TODO: Reusing ZNR arg for the no-deallocate option.
+        //      If NVMe's zoned device command set adds a separate ZNR argument, we will need to create a different function/API to handle both bits-TJE
+        ret = nvme_Sanitize(device, znr, invertBetweenPasses, overwritePasses, exitFailureMode, SANITIZE_NVM_OVERWRITE, nvmPattern);
     }
         break;
     case SCSI_DRIVE:
