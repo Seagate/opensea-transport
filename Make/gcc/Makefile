@@ -129,7 +129,8 @@ LIB_SRC_FILES = \
 	$(SRC_DIR)jmicron_nvme_helper.c\
 	$(SRC_DIR)asmedia_nvme_helper.c\
 	$(SRC_DIR)csmi_legacy_pt_cdb_helper.c\
-	$(SRC_DIR)csmi_helper.c
+	$(SRC_DIR)csmi_helper.c\
+	$(SRC_DIR)ciss_helper.c
 
 UNAME := $(shell uname)
 
@@ -178,7 +179,7 @@ endif
 
 #setting std=c99 instead of std-gnu99 because we want __has_include to work. This means we must add -D_GNU_SOURCE to the project defines to keep the same functionality in Linux
 #PROJECT_DEFINES += -D_GNU_SOURCE -DDISABLE_NVME_PASSTHROUGH #-D_DEBUG
-PROJECT_DEFINES += -D_GNU_SOURCE 
+PROJECT_DEFINES += -D_GNU_SOURCE -DENABLE_CISS -DENABLE_CSMI
 
 #All of the source files have associated object files
 LIB_OBJ_FILES = $(LIB_SRC_FILES:.c=.o)
