@@ -656,7 +656,7 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
-        if (device->drive_info.IdentifyData.ata.Word206 & BIT2)
+        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word206) && device->drive_info.IdentifyData.ata.Word206 & BIT2)
         {
             if (noDataTransfer)
             {
@@ -670,9 +670,10 @@ int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBl
                 ret = send_ATA_SCT_Write_Same(device, WRITE_SAME_BACKGROUND_USE_SINGLE_LOGICAL_SECTOR, startingLba, numberOfLogicalBlocks, pattern, 1);
             }
         }
-        else if (((device->drive_info.IdentifyData.ata.Word080 == 0 || device->drive_info.IdentifyData.ata.Word080 == UINT16_MAX) || /*check for device not setting spec support bits*/
+        else if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word080) &&
             (device->drive_info.IdentifyData.ata.Word080 & BIT1 || device->drive_info.IdentifyData.ata.Word080 & BIT2)) && /*check for ATA or ATA-2 support*/
-            !(device->drive_info.IdentifyData.ata.Word069 & BIT11))//Legacy Write same uses same op-code as read buffer DMA, so that command cannot be supported or the drive won't do the right thing
+            (!(is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word053) && device->drive_info.IdentifyData.ata.Word053 & BIT1) /* this is a validity bit for field 69 */
+              && (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word069) && (device->drive_info.IdentifyData.ata.Word069 & BIT11))))//Legacy Write same uses same op-code as read buffer DMA, so that command cannot be supported or the drive won't do the right thing
         {
             bool localPattern = false;
             bool performWriteSame = false;
@@ -1266,7 +1267,8 @@ int ata_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrD
                     else
                     {
                         //word84 bit6 or word87 bit6
-                        if (forceUnitAccess && ((device->drive_info.IdentifyData.ata.Word084 != 0 && device->drive_info.IdentifyData.ata.Word084 != UINT16_MAX && device->drive_info.IdentifyData.ata.Word084 & BIT6) || (device->drive_info.IdentifyData.ata.Word087 != 0 && device->drive_info.IdentifyData.ata.Word084 != UINT16_MAX && device->drive_info.IdentifyData.ata.Word087 & BIT6)))
+                        if (forceUnitAccess && ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) && device->drive_info.IdentifyData.ata.Word084 & BIT6) 
+                            || (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) && device->drive_info.IdentifyData.ata.Word087 & BIT6)))
                         {
                             writeDMAFUA = true;
                         }
@@ -1867,7 +1869,7 @@ int verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
 int ata_Flush_Cache_Command(tDevice *device)
 {
     bool ext = false;
-    if (device->drive_info.IdentifyData.ata.Word083 & BIT13)
+    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) && device->drive_info.IdentifyData.ata.Word083 & BIT13)
     {
         ext = true;
     }

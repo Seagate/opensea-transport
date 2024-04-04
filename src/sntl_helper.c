@@ -1634,14 +1634,14 @@ static int sntl_Translate_Logical_Block_Provisioning_VPD_Page_B2h(tDevice *devic
     //TODO: if we extend spec support for unmap and allow setting the unmap bit, then we should enable these next two bits
     //lbpws bit
     /*
-    if (device->drive_info.IdentifyData.ata.Word169 & BIT0)
+    if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT2)
     {
     logicalBlockProvisioning[5] |= BIT6;
     }
     */
     //lbpws10 bit (set to zero since we don't support unmap during write same yet)
     /*
-    if (device->drive_info.IdentifyData.ata.Word169 & BIT0)
+    if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT2)
     {
     logicalBlockProvisioning[5] |= BIT5;
     }
@@ -6393,7 +6393,7 @@ static int sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoC
                         if(SUCCESS == nvme_Dataset_Management(device, numberOfRanges, true, false, false, dsmBuffer, 4096))
                         {
                             //clear the buffer for reuse
-                            memset(dsmBuffer, 0, device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE);
+                            memset(dsmBuffer, 0, 4096);
                             //reset the ataTrimOffset
                             nvmeDSMOffset = 0;
                             numberOfRanges = 0;
@@ -9314,10 +9314,10 @@ static int sntl_Create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd,
     }
 #if defined (SNTL_EXT) //SNTL sanitize extension
     //SANITIZE_CMD = 0x48//4 possible service actions
-    if (device->drive_info.IdentifyData.ata.Word059 & BIT12)
+    if (device->drive_info.IdentifyData.nvme.ctrl.sanicap != 0)
     {
         //check overwrite
-        if (device->drive_info.IdentifyData.ata.Word059 & BIT14)
+        if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT2)
         {
             pdata[0][offset + 0] = SANITIZE_CMD;
             pdata[0][offset + 1] = RESERVED;
@@ -9337,7 +9337,7 @@ static int sntl_Create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd,
             }
         }
         //check block erase
-        if (device->drive_info.IdentifyData.ata.Word059 & BIT15)
+        if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT1)
         {
             pdata[0][offset + 0] = SANITIZE_CMD;
             pdata[0][offset + 1] = RESERVED;
@@ -9357,7 +9357,7 @@ static int sntl_Create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd,
             }
         }
         //check crypto erase
-        if (device->drive_info.IdentifyData.ata.Word059 & BIT13)
+        if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT0)
         {
             pdata[0][offset + 0] = SANITIZE_CMD;
             pdata[0][offset + 1] = RESERVED;

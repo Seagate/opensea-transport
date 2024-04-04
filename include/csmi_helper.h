@@ -17,7 +17,7 @@
 
 #include "common.h"
 #include <stdint.h>
-#include "csmisas.h"
+#include "external/csmi/csmisas.h"
 #include "sata_types.h"
 
 #if defined (__cplusplus)
@@ -36,10 +36,14 @@ extern "C"
         //NOTE: Would reuse definitions from win_helper.h, however that causes a circular include problem, so these are redefined here...if we find a better solution, it would be preferred to reuse the win_helper.h definitions
         #define WIN_CSMI_DRIVE  "\\\\.\\SCSI" // WIN_SCSI_SRB //In windows, we need to open the base SCSI SRB handle to issue CSMI IOs
         #define CSMI_WIN_MAX_DEVICE_NAME_LENGTH UINT8_C(40) //WIN_MAX_DEVICE_NAME_LENGTH
+        #define CSMI_DEVIVE_NAME_MAX_LENGTH CSMI_WIN_MAX_DEVICE_NAME_LENGTH
     #elif defined (__unix__)
         #define NIX_CSMI_DRIVE  "/dev/hba" //This is purely an example, not really useful beyond this
+        #define CSMI_NIX_MAX_DEVICE_NAME_LENGTH UINT8_C(32)
+        #define CSMI_DEVIVE_NAME_MAX_LENGTH CSMI_NIX_MAX_DEVICE_NAME_LENGTH
     #else
         #message Unknown OS...may or may not need a device prefix.
+        #define CSMI_DEVIVE_NAME_MAX_LENGTH UINT8_C(32)
     #endif
 
     #if defined (_WIN32)
@@ -127,10 +131,11 @@ extern "C"
     //Linux includes linux/types.h for these. They are defined in csmisas.h for Windows
     //NOTE: not taking into account netware because it isn't supported or used at this point.
     //NOTE: only defining the printf macros we used. Adding a "C" to the beginning to differentiating them with the standards
-#ifdef __KERNEL__
+#ifdef __linux__
     //Define these as best we can based on linux/types.h which varies depending on architecture
     //Since this include path includes another file actually making the definition, check which one it is using the definitions they define
     //TODO: if __WORDSIZE == 64 may also work to switch between, but not positive - TJE
+
     #if defined(_ASM_GENERIC_INT_L64_H)
         #define CPRIu8 "u"
         #define CPRIu16 "u"
@@ -155,6 +160,7 @@ extern "C"
         #error "Need to define CSMI printf macros for this OS"
     #endif
 #else
+
     //match the csmisas.h definitions of the types as best we can
     #define CPRIu8 "u"
     #define CPRIu16 "u"
@@ -180,4 +186,5 @@ extern "C"
 #if defined (__cplusplus)
 }
 #endif
-#endif
+
+#endif //ENABLE_CSMI

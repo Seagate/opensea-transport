@@ -12,6 +12,7 @@
 #include "common.h"
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
+#include "sat_helper.h"
 #include "vendor/seagate/seagate_common_types.h"
 #include <ctype.h>//for checking for printable characters
 #include <stdlib.h> // for bsearch
@@ -2096,11 +2097,92 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
             if (ataInformation[1] == ATA_INFORMATION)
             {
                 //set some of the bridge info in the device structure
-                memcpy(&device->drive_info.bridge_info.t10SATvendorID[0], &ataInformation[8], 8);
-                memcpy(&device->drive_info.bridge_info.SATproductID[0], &ataInformation[16], 16);
-                memcpy(&device->drive_info.bridge_info.SATfwRev[0], &ataInformation[32], 4);
+                memcpy(&device->drive_info.bridge_info.t10SATvendorID[0], &ataInformation[SAT_ATA_VPD_T10_VENDOR_OFFSET], SAT_ATA_VPD_T10_VENDOR_LENGTH);
+                memcpy(&device->drive_info.bridge_info.SATproductID[0], &ataInformation[SAT_ATA_VPD_T10_PRODUCT_ID_OFFSET], SAT_ATA_VPD_T10_PRODUCT_ID_LENGTH);
+                memcpy(&device->drive_info.bridge_info.SATfwRev[0], &ataInformation[SAT_ATA_VPD_T10_PRODUCT_REV_OFFSET], SAT_ATA_VPD_T10_PRODUCT_REV_LENGTH);
 
-                if (ataInformation[36] == 0) //checking for PATA drive
+                //Setup flags for ATA passthrough if we know the SAT vendor/product/rev info
+                if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "PMCS    ") == 0)
+                {
+                    //printf("Found PMCS SATL\n");
+                    //PMCS is a PMC translator. Sometimes these also show up on HPE controllers.
+                    //Tested:
+                    //SAT Vendor ID: PMCS
+                    //SAT Product ID: SRC73208_01
+                    //SAT Product Rev: 0106
+                    //NOTE: There is a weird case where a 1TB drive cannot report native maxLBA, but a 10TB can on this controller. 
+                    //      I'm guessing there is some logic to how sense data is handled based on capacity or some other factor affecting this.
+                    //      The control mode page's d_sense bit changes between the 1TB (0) and 10TB (1), so this seems to be related to the behavior differences -TJE
+                    //      Need to try changing the mode page value for d-sense to see if it gets around this issue.
+                    //This translator properly handles 0 length transfers for RW10, 12, & 16
+                    //Tested this same translator on an HPE controller with HPSA driver and non-HPE with smartpqi driver
+                    //The SAT level info did not change and most behavior was the same, but there were a few odd results between them both.
+                    //Leaving the below rules since they seem to work in both despite slightly different behavior.
+                    //NOTE: Seems that the translators both report SAT-3 and ACS-2 compliance in inquiry, but there are slight variations in support.
+                    //      One ran self-test and discovered the feature properly, whereas the other did not. Possibly different minor versions of these
+                    //      standards compliance or possibly some other limitation in the translator that cannot be revealed by looking at the revision on this page alone -TJE
+                    device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                    device->drive_info.passThroughHacks.hacksSetByReportedID = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65024;
+                    device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                    device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA = true;
+                    //debugging in a RAID environment is giving a few odd results with max transfer length, so not setting that for now-TJE
+                }
+                else if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "LSI     ") == 0)
+                {
+                    //printf("Found LSI SATL\n");
+                    //LSI/Avago/Broadcom HBAs
+                    // Got SAT Vendor ID as LSI
+                    // Got SAT Product ID as LSI SATL
+                    // Got SAT Product Revision as 0008
+                    // SCSI Hacks: RW6, RW10, RW12, RW16, NRSUPOP, SECPROT, MXFER:1052160
+                    // ATA Hacks:  SAT, A1, TPSIU, CHK, MPTXFER:1052160
+                    //NOTE: Handles zero length transfers for rw10,12,16 properly it seems
+                    //Should be retested in Linux. Results are from Windows, which may be more limited, but cannot confirm
+                    device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                    device->drive_info.passThroughHacks.hacksSetByReportedID = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                    device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;//note: Need to enable this with kernel param
+                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 1052160;
+                    device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                    device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 1052160;
+                    //device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//while supported, not necessary to use
+                }
+                else if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "linux   ") == 0)
+                {
+                    //libATA provides SAT translation.
+                    //There are changes between kernel versions, but this should be pretty accurate
+                    //This code may not currently be used due to how the low-level passthrough detects capabilities, but this will not hurt to setup
+                    // Tested:
+                    // SAT Vendor ID: linux
+                    // SAT Product ID: libata
+                    // SAT Product Rev: 3.00
+                    //printf("Found linux SATL\n");
+                    device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                    device->drive_info.passThroughHacks.hacksSetByReportedID = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                    device->drive_info.passThroughHacks.scsiHacks.reportAllOpCodes = true;
+                    device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;//note: Need to enable this with kernel param
+                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 2097152;//may vary depending on OS/kernel config among other things
+                    device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                    device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 2097152;//may vary depending on OS/kernel config among other things
+                    //device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//while supported, not necessary to use
+                }
+
+                if (ataInformation[SAT_ATA_VPD_SIGNATURE_OFFSET] == 0) //checking for PATA drive
                 {
                     if (ataInformation[43] & DEVICE_SELECT_BIT)//ATA signature device register is here. Checking for the device select bit being set to know it's device 1 (Not that we really need it)
                     {
@@ -2108,13 +2190,13 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
                     }
                 }
 
-                if (ataInformation[56] == ATA_IDENTIFY || ataInformation[56] == ATA_READ_LOG_EXT || ataInformation[56] == ATA_READ_LOG_EXT_DMA)//Added read log commands here since they are in SAT4. Only HDD/SSD should use these.
+                if (ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] == ATA_IDENTIFY || ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] == ATA_READ_LOG_EXT || ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] == ATA_READ_LOG_EXT_DMA)//Added read log commands here since they are in SAT4. Only HDD/SSD should use these.
                 {
                     issueSATIdentify = true;
                     device->drive_info.media_type = MEDIA_HDD;
                     device->drive_info.drive_type = ATA_DRIVE;
                 }
-                else if (ataInformation[56] == ATAPI_IDENTIFY)
+                else if (ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] == ATAPI_IDENTIFY)
                 {
                     issueSATIdentify = false;//Do not read it since we want to treat ATAPI as SCSI/with SCSI commands (at least for now)-TJE
                     device->drive_info.media_type = MEDIA_OPTICAL;
@@ -2134,6 +2216,10 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
         else if (device->drive_info.interface_type == MMC_INTERFACE || device->drive_info.interface_type == NVME_INTERFACE || device->drive_info.interface_type == SD_INTERFACE)
         {
             return NOT_SUPPORTED;
+        }
+        else
+        {
+            device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
         }
         safe_Free_aligned(ataInformation)
     }
@@ -2160,7 +2246,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
     char productID[INQ_DATA_PRODUCT_ID_LEN + 1] = { 0 };
     char revision[INQ_DATA_PRODUCT_REV_LEN + 1] = { 0 };
     uint8_t responseFormat = M_Nibble0(device->drive_info.scsiVpdData.inquiryData[3]);
-    if (responseFormat == 2)
+    if (responseFormat >= INQ_RESPONSE_FMT_CURRENT)
     {
         memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], INQ_DATA_T10_VENDOR_ID_LEN);
         memcpy(productID, &device->drive_info.scsiVpdData.inquiryData[16], INQ_DATA_PRODUCT_ID_LEN);
@@ -2621,52 +2707,6 @@ int fill_In_Device_Info(tDevice *device)
     memset(device->drive_info.T10_vendor_ident, 0, sizeof(device->drive_info.T10_vendor_ident));
     memset(device->drive_info.product_identification, 0, sizeof(device->drive_info.product_identification));
     memset(device->drive_info.product_revision, 0, sizeof(device->drive_info.product_revision));
-    //By default, we need to set up some information about drive type based on what is known so far from the OS level code telling us the interface the device is attached on. We can change it later if need be
-    //Remember, these are assumptions ONLY based off what interface the OS level code is reporting. It should default to something, then get changed later when we know more about it.
-//  switch (device->drive_info.interface_type)
-//  {
-//  case IDE_INTERFACE:
-//      if (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != LEGACY_TAPE_DRIVE)
-//      {
-//          device->drive_info.drive_type = ATA_DRIVE;
-//          device->drive_info.media_type = MEDIA_HDD;
-//      }
-//      break;
-//  case RAID_INTERFACE:
-//      //This has already been set by the RAID level, don't change it.
-//      if(device->drive_info.drive_type == UNKNOWN_DRIVE)
-//      {
-//          device->drive_info.drive_type = RAID_DRIVE;
-//      }
-//      if(device->drive_info.media_type == MEDIA_UNKNOWN)
-//      {
-//          device->drive_info.media_type = MEDIA_HDD;
-//      }
-//      break;
-//  case NVME_INTERFACE:
-//      device->drive_info.drive_type = NVME_DRIVE;
-//      device->drive_info.media_type = MEDIA_NVM;
-//      break;
-//  case SCSI_INTERFACE:
-//  case USB_INTERFACE:
-//  case IEEE_1394_INTERFACE:
-//      if (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != LEGACY_TAPE_DRIVE)
-//      {
-//          device->drive_info.drive_type = SCSI_DRIVE;
-//          device->drive_info.media_type = MEDIA_HDD;
-//      }
-//      break;
-//  case MMC_INTERFACE:
-//  case SD_INTERFACE:
-//      device->drive_info.drive_type = FLASH_DRIVE;
-//      device->drive_info.media_type = MEDIA_SSM_FLASH;
-//      break;
-//  case UNKNOWN_INTERFACE:
-//  default:
-//      device->drive_info.media_type = MEDIA_UNKNOWN;
-//      break;
-//  }
-    //now start getting data from the device itself
     if (SUCCESS == scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, 0, false, false))
     {
         bool checkForSAT = true;
@@ -2972,7 +3012,7 @@ int fill_In_Device_Info(tDevice *device)
             || is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the ASmedia NVMe chips
             //TODO: Check when FWRev is set to 2364? At least one device I have does this, but not sure this is a good thing to add in here or not -TJE
             && !hisup && !rmb //hisup shoiuld be 1 and rmb should be zero...on the asmedia chips I have tested, hisup is zero
-            && responseFormat >= 2 //filter out any weird old drives with bizarre responses
+            && responseFormat >= INQ_RESPONSE_FMT_CURRENT //filter out any weird old drives with bizarre responses
             && inq_buf[4] == 0x47 //SNTL says 1F, but a couple of adapter I have sets 47h...using this for now to help filter the list
             && cmdQueue //should be set for all NVMe SNTL translators
             )
@@ -3056,7 +3096,7 @@ int fill_In_Device_Info(tDevice *device)
                 || is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the Jmicron NVMe chips
             && foundSATStandardDescriptor && !foundATAStandardDescriptor //these chips report SAT, but not an ATA standard...might reduce how often this check is performed - TJE
             && hisup && !rmb //hisup shoiuld be 1 and rmb should be zero...this should filter SOME, but not all USB adapters that are actually SATA drives - TJE
-            && responseFormat >= 2 //filter out any weird old drives with bizarre responses
+            && responseFormat >= INQ_RESPONSE_FMT_CURRENT //filter out any weird old drives with bizarre responses
             //&& inq_buf[4] == 0x5b //SNTL says 1F, but one adapter I have sets 5B...need to make sure other adapters do the same before we enforce this check - TJE
             && cmdQueue //should be set for all NVMe SNTL translators
             )
@@ -3351,7 +3391,7 @@ int fill_In_Device_Info(tDevice *device)
             memcpy(supportedVPDPages, &inq_buf[4], supportedVPDPagesLength);
             //now loop through and read pages as we need to, only reading the pages that we care about
             uint16_t vpdIter = 0;
-            for (vpdIter = 0; vpdIter < supportedVPDPagesLength && vpdIter < INQ_RETURN_DATA_LENGTH; vpdIter++)
+            for (vpdIter = 0; vpdIter < supportedVPDPagesLength && vpdIter < INQ_RETURN_DATA_LENGTH && !device->drive_info.passThroughHacks.scsiHacks.noVPDPages; vpdIter++)
             {
                 switch (supportedVPDPages[vpdIter])
                 {
@@ -3543,6 +3583,12 @@ int fill_In_Device_Info(tDevice *device)
                 }
             }
             safe_Free(supportedVPDPages)
+            if (!satVPDPageRead && !dummyUpVPDSupport)
+            {
+                //This device returned a list of pages already, so we know what it supports.
+                //Since we did not find it in it's list of supported pages, set this to skip trying to read SAT VPD since it is definitely not supported.
+                device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+            }
         }
         else
         {
@@ -3722,7 +3768,9 @@ int fill_In_Device_Info(tDevice *device)
 //The simplest thing to do is take the version descriptor and divide it by 32. Using iteger division we can check if that matches the standard we're looking for. - TJE
 bool is_Standard_Supported(uint16_t versionDescriptor, eStandardCode standardCode)
 {
-    if ((eStandardCode)(versionDescriptor / 32) == standardCode)
+    //SPC defines the version descriptor codes.
+    //To convert it to a standard, divide it by 32 as indicated in the formula in the annex-TJE
+    if ((eStandardCode)(versionDescriptor / UINT16_C(32)) == standardCode)
     {
         return true;
     }
@@ -3732,459 +3780,1092 @@ bool is_Standard_Supported(uint16_t versionDescriptor, eStandardCode standardCod
     }
 }
 
+typedef struct _scsiVersionDescriptor
+{
+    uint16_t versionCode; //combined version descriptor code as reported by the drive
+    const char* stringDescription; //string for the meaning of this specific revision code
+}scsiVersionDescriptor;
+
+// This must be kept in order.
+//This list was created using https://www.t10.org/lists/stds-num.txt
+static scsiVersionDescriptor scsiVersionDescriptorTable[] = {
+    { 0x0000, "Version Descriptor Not Supported or No Standard Identified     " },
+    { 0x0020, "SAM (no version claimed)                                       " },
+    { 0x003B, "SAM T10/0994-D revision 18                                     " },
+    { 0x003C, "SAM INCITS 270-1996                                            " },
+    { 0x003D, "SAM ISO/IEC 14776-411                                          " },
+    { 0x0040, "SAM-2 (no version claimed)                                     " },
+    { 0x0054, "SAM-2 T10/1157-D revision 23                                   " },
+    { 0x0055, "SAM-2 T10/1157-D revision 24                                   " },
+    { 0x005C, "SAM-2 INCITS 366-2003                                          " },
+    { 0x005E, "SAM-2 ISO/IEC 14776-412                                        " },
+    { 0x0060, "SAM-3 (no version claimed)                                     " },
+    { 0x0062, "SAM-3 T10/1561-D revision 7                                    " },
+    { 0x0075, "SAM-3 T10/1561-D revision 13                                   " },
+    { 0x0076, "SAM-3 T10/1561-D revision 14                                   " },
+    { 0x0077, "SAM-3 INCITS 402-2005                                          " },
+    { 0x0079, "SAM-3 ISO/IEC 14776-413                                        " },
+    { 0x0080, "SAM-4 (no version claimed)                                     " },
+    { 0x0087, "SAM-4 T10/1683-D revision 13                                   " },
+    { 0x008B, "SAM-4 T10/1683-D revision 14                                   " },
+    { 0x0090, "SAM-4 INCITS 447-2008                                          " },
+    { 0x0092, "SAM-4 ISO/IEC 14776-414                                        " },
+    { 0x00A0, "SAM-5 (no version claimed)                                     " },
+    { 0x00A2, "SAM-5 T10/2104-D revision 4                                    " },
+    { 0x00A4, "SAM-5 T10/2104-D revision 20                                   " },
+    { 0x00A6, "SAM-5 T10/2104-D revision 21                                   " },
+    { 0x00A8, "SAM-5 INCITS 515-2016                                          " },
+    { 0x00AA, "SAM-5 ISO/IEC 14776-415                                        " },
+    { 0x00C0, "SAM-6 (no version claimed)                                     " },
+    { 0x00C2, "SAM-6 INCITS 546-2021                                          " },
+    { 0x00D4, "SAM-6 BSR INCITS 546 revision 10                               " },
+    { 0x0120, "SPC (no version claimed)                                       " },
+    { 0x013B, "SPC T10/0995-D revision 11a                                    " },
+    { 0x013C, "SPC INCITS 301-1997                                            " },
+    { 0x0140, "MMC (no version claimed)                                       " },
+    { 0x015B, "MMC T10/1048-D revision 10a                                    " },
+    { 0x015C, "MMC INCITS 304-1997                                            " },
+    { 0x0160, "SCC (no version claimed)                                       " },
+    { 0x017B, "SCC T10/1047-D revision 06c                                    " },
+    { 0x017C, "SCC INCITS 276-1997                                            " },
+    { 0x0180, "SBC (no version claimed)                                       " },
+    { 0x019B, "SBC T10/0996-D revision 08c                                    " },
+    { 0x019C, "SBC INCITS 306-1998                                            " },
+    { 0x019E, "SBC ISO/IEC 14776-321                                          " },
+    { 0x01A0, "SMC (no version claimed)                                       " },
+    { 0x01BB, "SMC T10/0999-D revision 10a                                    " },
+    { 0x01BC, "SMC INCITS 314-1998                                            " },
+    { 0x01BE, "SMC ISO/IEC 14776-351                                          " },
+    { 0x01C0, "SES (no version claimed)                                       " },
+    { 0x01DB, "SES T10/1212-D revision 08b                                    " },
+    { 0x01DC, "SES INCITS 305-1998                                            " },
+    { 0x01DD, "SES T10/1212 revision 08b w/ Amendment INCITS 305/AM1-2000     " },
+    { 0x01DE, "SES INCITS 305-1998 w/ Amendment INCITS 305/AM1-2000           " },
+    { 0x01E0, "SCC-2 (no version claimed)                                     " },
+    { 0x01FB, "SCC-2 T10/1125-D revision 04                                   " },
+    { 0x01FC, "SCC-2 INCITS 318-1998                                          " },
+    { 0x0200, "SSC (no version claimed)                                       " },
+    { 0x0201, "SSC T10/0997-D revision 17                                     " },
+    { 0x0207, "SSC T10/0997-D revision 22                                     " },
+    { 0x021C, "SSC INCITS 335-2000                                            " },
+    { 0x021E, "SSC ISO/IEC 14776-331                                          " },
+    { 0x0220, "RBC (no version claimed)                                       " },
+    { 0x0238, "RBC T10/1240-D revision 10a                                    " },
+    { 0x023C, "RBC INCITS 330-2000                                            " },
+    { 0x023E, "RBC ISO/IEC 14776-326                                          " },
+    { 0x0240, "MMC-2 (no version claimed)                                     " },
+    { 0x0255, "MMC-2 T10/1228-D revision 11                                   " },
+    { 0x025B, "MMC-2 T10/1228-D revision 11a                                  " },
+    { 0x025C, "MMC-2 INCITS 333-2000                                          " },
+    { 0x0260, "SPC-2 (no version claimed)                                     " },
+    { 0x0267, "SPC-2 T10/1236-D revision 12                                   " },
+    { 0x0269, "SPC-2 T10/1236-D revision 18                                   " },
+    { 0x0275, "SPC-2 T10/1236-D revision 19                                   " },
+    { 0x0276, "SPC-2 T10/1236-D revision 20                                   " },
+    { 0x0277, "SPC-2 INCITS 351-2001                                          " },
+    { 0x0278, "SPC-2 ISO/IEC 14776-452                                        " },
+    { 0x0280, "OCRW (no version claimed)                                      " },
+    { 0x029E, "OCRW ISO/IEC 14776-381                                         " },
+    { 0x02A0, "MMC-3 (no version claimed)                                     " },
+    { 0x02B5, "MMC-3 T10/1363-D revision 9                                    " },
+    { 0x02B6, "MMC-3 T10/1363-D revision 10g                                  " },
+    { 0x02B8, "MMC-3 INCITS 360-2002                                          " },
+    { 0x02E0, "SMC-2 (no version claimed)                                     " },
+    { 0x02F5, "SMC-2 T10/1383-D revision 5                                    " },
+    { 0x02FC, "SMC-2 T10/1383-D revision 6                                    " },
+    { 0x02FD, "SMC-2 T10/1383-D revision 7                                    " },
+    { 0x02FE, "SMC-2 INCITS 382-2004                                          " },
+    { 0x0300, "SPC-3 (no version claimed)                                     " },
+    { 0x0301, "SPC-3 T10/1416-D revision 7                                    " },
+    { 0x0307, "SPC-3 T10/1416-D revision 21                                   " },
+    { 0x030F, "SPC-3 T10/1416-D revision 22                                   " },
+    { 0x0312, "SPC-3 T10/1416-D revision 23                                   " },
+    { 0x0314, "SPC-3 INCITS 408-2005                                          " },
+    { 0x0316, "SPC-3 ISO/IEC 14776-453                                        " },
+    { 0x0320, "SBC-2 (no version claimed)                                     " },
+    { 0x0322, "SBC-2 T10/1417-D revision 5a                                   " },
+    { 0x0324, "SBC-2 T10/1417-D revision 15                                   " },
+    { 0x033B, "SBC-2 T10/1417-D revision 16                                   " },
+    { 0x033D, "SBC-2 INCITS 405-2005                                          " },
+    { 0x033E, "SBC-2 ISO/IEC 14776-322                                        " },
+    { 0x0340, "OSD (no version claimed)                                       " },
+    { 0x0341, "OSD T10/1355-D revision 0                                      " },
+    { 0x0342, "OSD T10/1355-D revision 7a                                     " },
+    { 0x0343, "OSD T10/1355-D revision 8                                      " },
+    { 0x0344, "OSD T10/1355-D revision 9                                      " },
+    { 0x0355, "OSD T10/1355-D revision 10                                     " },
+    { 0x0356, "OSD INCITS 400-2004                                            " },
+    { 0x0360, "SSC-2 (no version claimed)                                     " },
+    { 0x0374, "SSC-2 T10/1434-D revision 7                                    " },
+    { 0x0375, "SSC-2 T10/1434-D revision 9                                    " },
+    { 0x037D, "SSC-2 INCITS 380-2003                                          " },
+    { 0x037E, "SSC-2 ISO/IEC 14776-342                                        " },
+    { 0x0380, "BCC (no version claimed)                                       " },
+    { 0x03A0, "MMC-4 (no version claimed)                                     " },
+    { 0x03B0, "MMC-4 T10/1545-D revision 5                                    " },
+    { 0x03B1, "MMC-4 T10/1545-D revision 5a                                   " },
+    { 0x03BD, "MMC-4 T10/1545-D revision 3                                    " },
+    { 0x03BE, "MMC-4 T10/1545-D revision 3d                                   " },
+    { 0x03BF, "MMC-4 INCITS 401-2005                                          " },
+    { 0x03C0, "ADC (no version claimed)                                       " },
+    { 0x03D5, "ADC T10/1558-D revision 6                                      " },
+    { 0x03D6, "ADC T10/1558-D revision 7                                      " },
+    { 0x03D7, "ADC INCITS 403-2005                                            " },
+    { 0x03E0, "SES-2 (no version claimed)                                     " },
+    { 0x03E1, "SES-2 T10/1559-D revision 16                                   " },
+    { 0x03E7, "SES-2 T10/1559-D revision 19                                   " },
+    { 0x03EB, "SES-2 T10/1559-D revision 20                                   " },
+    { 0x03F0, "SES-2 INCITS 448-2008                                          " },
+    { 0x03F2, "SES-2 ISO/IEC 14776-372                                        " },
+    { 0x0400, "SSC-3 (no version claimed)                                     " },
+    { 0x0403, "SSC-3 T10/1611-D revision 04a                                  " },
+    { 0x0407, "SSC-3 T10/1611-D revision 05                                   " },
+    { 0x0409, "SSC-3 INCITS 467-2011                                          " },
+    { 0x040B, "SSC-3 ISO/IEC 14776-333                                        " },
+    { 0x0420, "MMC-5 (no version claimed)                                     " },
+    { 0x042F, "MMC-5 T10/1675-D revision 03                                   " },
+    { 0x0431, "MMC-5 T10/1675-D revision 03b                                  " },
+    { 0x0432, "MMC-5 T10/1675-D revision 04                                   " },
+    { 0x0434, "MMC-5 INCITS 430-2007                                          " },
+    { 0x0440, "OSD-2 (no version claimed)                                     " },
+    { 0x0444, "OSD-2 T10/1729-D revision 4                                    " },
+    { 0x0446, "OSD-2 T10/1729-D revision 5                                    " },
+    { 0x0448, "OSD-2 INCITS 458-2011                                          " },
+    { 0x0460, "SPC-4 (no version claimed)                                     " },
+    { 0x0461, "SPC-4 T10/BSR INCITS 513 revision 16                           " },
+    { 0x0462, "SPC-4 T10/BSR INCITS 513 revision 18                           " },
+    { 0x0463, "SPC-4 T10/BSR INCITS 513 revision 23                           " },
+    { 0x0466, "SPC-4 T10/BSR INCITS 513 revision 36                           " },
+    { 0x0468, "SPC-4 T10/BSR INCITS 513 revision 37                           " },
+    { 0x0469, "SPC-4 T10/BSR INCITS 513 revision 37a                          " },
+    { 0x046C, "SPC-4 INCITS 513-2015                                          " },
+    { 0x046E, "SPC-4 ISO/IEC 14776-454                                        " },
+    { 0x0480, "SMC-3 (no version claimed)                                     " },
+    { 0x0482, "SMC-3 T10/1730-D revision 15                                   " },
+    { 0x0484, "SMC-3 T10/1730-D revision 16                                   " },
+    { 0x0486, "SMC-3 INCITS 484-2012                                          " },
+    { 0x04A0, "ADC-2 (no version claimed)                                     " },
+    { 0x04A7, "ADC-2 T10/1741-D revision 7                                    " },
+    { 0x04AA, "ADC-2 T10/1741-D revision 8                                    " },
+    { 0x04AC, "ADC-2 INCITS 441-2008                                          " },
+    { 0x04C0, "SBC-3 (no version claimed)                                     " },
+    { 0x04C3, "SBC-3 T10/BSR INCITS 514 revision 35                           " },
+    { 0x04C5, "SBC-3 T10/BSR INCITS 514 revision 36                           " },
+    { 0x04C8, "SBC-3 INCITS 514-2014                                          " },
+    { 0x04CA, "SBC-3 ISO/IEC 14776-323                                        " },
+    { 0x04E0, "MMC-6 (no version claimed)                                     " },
+    { 0x04E3, "MMC-6 T10/1836-D revision 02b                                  " },
+    { 0x04E5, "MMC-6 T10/1836-D revision 02g                                  " },
+    { 0x04E6, "MMC-6 INCITS 468-2010                                          " },
+    { 0x04E7, "MMC-6 INCITS 468-2010 + MMC-6/AM1 INCITS 468-2010/AM 1         " },
+    { 0x0500, "ADC-3 (no version claimed)                                     " },
+    { 0x0502, "ADC-3 T10/1895-D revision 04                                   " },
+    { 0x0504, "ADC-3 T10/1895-D revision 05                                   " },
+    { 0x0506, "ADC-3 T10/1895-D revision 05a                                  " },
+    { 0x050A, "ADC-3 INCITS 497-2012                                          " },
+    { 0x0520, "SSC-4 (no version claimed)                                     " },
+    { 0x0523, "SSC-4 T10/BSR INCITS 516 revision 2                            " },
+    { 0x0525, "SSC-4 T10/BSR INCITS 516 revision 3                            " },
+    { 0x0527, "SSC-4 INCITS 516-2013                                          " },
+    { 0x0560, "OSD-3 (no version claimed)                                     " },
+    { 0x0580, "SES-3 (no version claimed)                                     " },
+    { 0x0582, "SES-3 T10/BSR INCITS 518 revision 13                           " },
+    { 0x0584, "SES-3 T10/BSR INCITS 518 revision 14                           " },
+    { 0x0591, "SES-3 INCITS 518-2017                                          " },
+    { 0x05A0, "SSC-5 (no version claimed)                                     " },
+    { 0x05A2, "SSC-5 BSR INCITS 503-2022                                      " },
+    { 0x05AB, "SSC-5 BSR INCITS 503 revision 06                               " },
+    { 0x05AF, "SSC-5 AM1 (no version claimed)                                 " },
+    { 0x05C0, "SPC-5 (no version claimed)                                     " },
+    { 0x05C2, "SPC-5 INCITS 502-2019                                          " },
+    { 0x05CB, "SPC-5 BSR INCITS 502 revision 22                               " },
+    { 0x05E0, "SFSC (no version claimed)                                      " },
+    { 0x05E3, "SFSC BSR INCITS 501 revision 01                                " },
+    { 0x05E5, "SFSC BSR INCITS 501 revision 02                                " },
+    { 0x05E8, "SFSC INCITS 501-2016                                           " },
+    { 0x05EA, "SFSC ISO/IEC 14776-481                                         " },
+    { 0x0600, "SBC-4 (no version claimed)                                     " },
+    { 0x0602, "SBC-4 INCITS 506-2021                                          " },
+    { 0x060F, "SBC-4 BSR INCITS 506 revision 20a                              " },
+    { 0x0610, "SBC-4 BSR INCITS 506 revision 22                               " },
+    { 0x0620, "ZBC (no version claimed)                                       " },
+    { 0x0622, "ZBC BSR INCITS 536 revision 02                                 " },
+    { 0x0624, "ZBC BSR INCITS 536 revision 05                                 " },
+    { 0x0628, "ZBC INCITS 536-2016                                            " },
+    { 0x0629, "ZBC AM1 INCITS 536-2016/AM1-2019                               " },
+    { 0x0640, "ADC-4 (no version claimed)                                     " },
+    { 0x0642, "ADC-4 INCITS 541-2023                                          " },
+    { 0x064B, "ADC-4 BSR INCITS 541 revision 04                               " },
+    { 0x064C, "ADC-4 BSR INCITS 541 revision 05                               " },
+    { 0x0660, "ZBC-2 (no version claimed)                                     " },
+    { 0x0662, "ZBC-2 INCITS 550-2023                                          " },
+    { 0x066B, "ZBC-2 BSR INCITS 550 revision 13                               " },
+    { 0x0680, "SES-4 (no version claimed)                                     " },
+    { 0x0682, "SES-4 INCITS 555-2020                                          " },
+    { 0x068F, "SES-4 BSR INCITS 555 revision 03                               " },
+    { 0x0690, "SES-4 BSR INCITS 555 revision 05                               " },
+    { 0x06A0, "ZBC-3 (no version claimed)                                     " },
+    { 0x06C0, "SBC-5 (no version claimed)                                     " },
+    { 0x06E0, "SPC-6 (no version claimed)                                     " },
+    { 0x06E8, "SPC-6 SCSI/INCITS 566 revision 12                              " },
+    { 0x0700, "SPC-7 (no version claimed)                                     " },
+    { 0x0820, "SSA-TL2 (no version claimed)                                   " },
+    { 0x083B, "SSA-TL2 T10.1/1147-D revision 05b                              " },
+    { 0x083C, "SSA-TL2 INCITS 308-1998                                        " },
+    { 0x0840, "SSA-TL1 (no version claimed)                                   " },
+    { 0x085B, "SSA-TL1 T10.1/0989-D revision 10b                              " },
+    { 0x085C, "SSA-TL1 INCITS 295-1996                                        " },
+    { 0x0860, "SSA-S3P (no version claimed)                                   " },
+    { 0x087B, "SSA-S3P T10.1/1051-D revision 05b                              " },
+    { 0x087C, "SSA-S3P INCITS 309-1998                                        " },
+    { 0x0880, "SSA-S2P (no version claimed)                                   " },
+    { 0x089B, "SSA-S2P T10.1/1121-D revision 07b                              " },
+    { 0x089C, "SSA-S2P INCITS 294-1996                                        " },
+    { 0x08A0, "SIP (no version claimed)                                       " },
+    { 0x08BB, "SIP T10/0856-D revision 10                                     " },
+    { 0x08BC, "SIP INCITS 292-1997                                            " },
+    { 0x08C0, "FCP (no version claimed)                                       " },
+    { 0x08DB, "FCP T10/0993-D revision 12                                     " },
+    { 0x08DC, "FCP INCITS 269-1996                                            " },
+    { 0x08E0, "SBP-2 (no version claimed)                                     " },
+    { 0x08FB, "SBP-2 T10/1155-D revision 04                                   " },
+    { 0x08FC, "SBP-2 INCITS 325-1998                                          " },
+    { 0x0900, "FCP-2 (no version claimed)                                     " },
+    { 0x0901, "FCP-2 T10/1144-D revision 4                                    " },
+    { 0x0915, "FCP-2 T10/1144-D revision 7                                    " },
+    { 0x0916, "FCP-2 T10/1144-D revision 7a                                   " },
+    { 0x0917, "FCP-2 INCITS 350-2003                                          " },
+    { 0x0918, "FCP-2 T10/1144-D revision 8                                    " },
+    { 0x091A, "FCP-2 ISO/IEC 14776-222                                        " },
+    { 0x0920, "SST (no version claimed)                                       " },
+    { 0x0935, "SST T10/1380-D revision 8b                                     " },
+    { 0x0940, "SRP (no version claimed)                                       " },
+    { 0x0954, "SRP T10/1415-D revision 10                                     " },
+    { 0x0955, "SRP T10/1415-D revision 16a                                    " },
+    { 0x095C, "SRP INCITS 365-2002                                            " },
+    { 0x0960, "iSCSI (no version claimed)                                     " },
+    { 0x0961, "iSCSI (Protocol Level 1)                                       " },
+    { 0x0962, "iSCSI (Protocol Level 2)                                       " },
+    { 0x0963, "iSCSI (Protocol Level 3)                                       " },
+    { 0x0964, "iSCSI (Protocol Level 4)                                       " },
+    { 0x0965, "iSCSI (Protocol Level 5)                                       " },
+    { 0x0966, "iSCSI (Protocol Level 6)                                       " },
+    { 0x0967, "iSCSI (Protocol Level 7)                                       " },
+    { 0x0968, "iSCSI (Protocol Level 8)                                       " },
+    { 0x0969, "iSCSI (Protocol Level 9)                                       " },
+    { 0x096A, "iSCSI (Protocol Level 10)                                      " },
+    { 0x096B, "iSCSI (Protocol Level 11)                                      " },
+    { 0x096C, "iSCSI (Protocol Level 12)                                      " },
+    { 0x096D, "iSCSI (Protocol Level 13)                                      " },
+    { 0x096E, "iSCSI (Protocol Level 14)                                      " },
+    { 0x096F, "iSCSI (Protocol Level 15)                                      " },
+    { 0x0970, "iSCSI (Protocol Level 16)                                      " },
+    { 0x0971, "iSCSI (Protocol Level 17)                                      " },
+    { 0x0972, "iSCSI (Protocol Level 18)                                      " },
+    { 0x0973, "iSCSI (Protocol Level 19)                                      " },
+    { 0x0974, "iSCSI (Protocol Level 20)                                      " },
+    { 0x0975, "iSCSI (Protocol Level 21)                                      " },
+    { 0x0976, "iSCSI (Protocol Level 22)                                      " },
+    { 0x0977, "iSCSI (Protocol Level 23)                                      " },
+    { 0x0978, "iSCSI (Protocol Level 24)                                      " },
+    { 0x0979, "iSCSI (Protocol Level 25)                                      " },
+    { 0x097A, "iSCSI (Protocol Level 26)                                      " },
+    { 0x097B, "iSCSI (Protocol Level 27)                                      " },
+    { 0x097C, "iSCSI (Protocol Level 28)                                      " },
+    { 0x097D, "iSCSI (Protocol Level 29)                                      " },
+    { 0x097E, "iSCSI (Protocol Level 30)                                      " },
+    { 0x097F, "iSCSI (Protocol Level 31)                                      " },
+    { 0x0980, "SBP-3 (no version claimed)                                     " },
+    { 0x0982, "SBP-3 T10/1467-D revision 1f                                   " },
+    { 0x0994, "SBP-3 T10/1467-D revision 3                                    " },
+    { 0x099A, "SBP-3 T10/1467-D revision 4                                    " },
+    { 0x099B, "SBP-3 T10/1467-D revision 5                                    " },
+    { 0x099C, "SBP-3 INCITS 375-2004                                          " },
+    { 0x09A0, "SRP-2 (no version claimed)                                     " },
+    { 0x09BC, "SRP-2 INCITS 551-2019                                          " },
+    { 0x09C0, "ADP (no version claimed)                                       " },
+    { 0x09E0, "ADT (no version claimed)                                       " },
+    { 0x09F9, "ADT T10/1557-D revision 11                                     " },
+    { 0x09FA, "ADT T10/1557-D revision 14                                     " },
+    { 0x09FD, "ADT INCITS 406-2005                                            " },
+    { 0x0A00, "FCP-3 (no version claimed)                                     " },
+    { 0x0A07, "FCP-3 T10/1560-D revision 3f                                   " },
+    { 0x0A0F, "FCP-3 T10/1560-D revision 4                                    " },
+    { 0x0A11, "FCP-3 INCITS 416-2006                                          " },
+    { 0x0A1C, "FCP-3 ISO/IEC 14776-223                                        " },
+    { 0x0A20, "ADT-2 (no version claimed)                                     " },
+    { 0x0A22, "ADT-2 T10/1742-D revision 06                                   " },
+    { 0x0A27, "ADT-2 T10/1742-D revision 08                                   " },
+    { 0x0A28, "ADT-2 T10/1742-D revision 09                                   " },
+    { 0x0A2B, "ADT-2 INCITS 472-2011                                          " },
+    { 0x0A40, "FCP-4 (no version claimed)                                     " },
+    { 0x0A42, "FCP-4 T10/1828-D revision 01                                   " },
+    { 0x0A44, "FCP-4 T10/1828-D revision 02                                   " },
+    { 0x0A45, "FCP-4 T10/1828-D revision 02b                                  " },
+    { 0x0A46, "FCP-4 INCITS 481-2011                                          " },
+    { 0x0A50, "FCP-4 ISO/IEC 14776-224                                        " },
+    { 0x0A52, "FCP-4 AM1 INCITS 481-2011/AM1-2018                             " },
+    { 0x0A60, "ADT-3 (no version claimed)                                     " },
+    { 0x0A62, "ADT-3 INCITS 542-2022                                          " },
+    { 0x0A6B, "ADT-3 BSR INCITS 542 revision 03                               " },
+    { 0x0A80, "FCP-5 (no version claimed)                                     " },
+    { 0x0A82, "FCP-5 INCITS 563-2023                                          " },
+    { 0x0A8B, "FCP-5 BSR INCITS 563 revision 04                               " },
+    { 0x0AA0, "SPI (no version claimed)                                       " },
+    { 0x0AB9, "SPI T10/0855-D revision 15a                                    " },
+    { 0x0ABA, "SPI INCITS 253-1995                                            " },
+    { 0x0ABB, "SPI T10/0855-D revision 15a with SPI Amnd revision 3a          " },
+    { 0x0ABC, "SPI INCITS 253-1995 with SPI Amnd INCITS 253/AM1-1998          " },
+    { 0x0AC0, "Fast-20 (no version claimed)                                   " },
+    { 0x0ADB, "Fast-20 T10/1071 revision 06                                   " },
+    { 0x0ADC, "Fast-20 INCITS 277-1996                                        " },
+    { 0x0AE0, "SPI-2 (no version claimed)                                     " },
+    { 0x0AFB, "SPI-2 T10/1142-D revision 20b                                  " },
+    { 0x0AFC, "SPI-2 INCITS 302-1999                                          " },
+    { 0x0B00, "SPI-3 (no version claimed)                                     " },
+    { 0x0B18, "SPI-3 T10/1302-D revision 10                                   " },
+    { 0x0B19, "SPI-3 T10/1302-D revision 13a                                  " },
+    { 0x0B1A, "SPI-3 T10/1302-D revision 14                                   " },
+    { 0x0B1C, "SPI-3 INCITS 336-2000                                          " },
+    { 0x0B20, "EPI (no version claimed)                                       " },
+    { 0x0B3B, "EPI T10/1134 revision 16                                       " },
+    { 0x0B3C, "EPI INCITS TR-23 1999                                          " },
+    { 0x0B40, "SPI-4 (no version claimed)                                     " },
+    { 0x0B54, "SPI-4 T10/1365-D revision 7                                    " },
+    { 0x0B55, "SPI-4 T10/1365-D revision 9                                    " },
+    { 0x0B56, "SPI-4 INCITS 362-2002                                          " },
+    { 0x0B59, "SPI-4 T10/1365-D revision 10                                   " },
+    { 0x0B60, "SPI-5 (no version claimed)                                     " },
+    { 0x0B79, "SPI-5 T10/1525-D revision 3                                    " },
+    { 0x0B7A, "SPI-5 T10/1525-D revision 5                                    " },
+    { 0x0B7B, "SPI-5 T10/1525-D revision 6                                    " },
+    { 0x0B7C, "SPI-5 INCITS 367-2003                                          " },
+    { 0x0BE0, "SAS (no version claimed)                                       " },
+    { 0x0BE1, "SAS T10/1562-D revision 01                                     " },
+    { 0x0BF5, "SAS T10/1562-D revision 03                                     " },
+    { 0x0BFA, "SAS T10/1562-D revision 4                                      " },
+    { 0x0BFB, "SAS T10/1562-D revision 04                                     " },
+    { 0x0BFC, "SAS T10/1562-D revision 05                                     " },
+    { 0x0BFD, "SAS INCITS 376-2003                                            " },
+    { 0x0BFE, "SAS ISO/IEC 14776-150                                          " },
+    { 0x0C00, "SAS-1.1 (no version claimed)                                   " },
+    { 0x0C07, "SAS-1.1 T10/1601-D revision 9                                  " },
+    { 0x0C0F, "SAS-1.1 T10/1601-D revision 10                                 " },
+    { 0x0C11, "SAS-1.1 INCITS 417-2006                                        " },
+    { 0x0C12, "SAS-1.1 ISO/IEC 14776-151                                      " },
+    { 0x0C20, "SAS-2 (no version claimed)                                     " },
+    { 0x0C23, "SAS-2 T10/1760-D revision 14                                   " },
+    { 0x0C27, "SAS-2 T10/1760-D revision 15                                   " },
+    { 0x0C28, "SAS-2 T10/1760-D revision 16                                   " },
+    { 0x0C2A, "SAS-2 INCITS 457-2010                                          " },
+    { 0x0C40, "SAS-2.1 (no version claimed)                                   " },
+    { 0x0C48, "SAS-2.1 T10/2125-D revision 04                                 " },
+    { 0x0C4A, "SAS-2.1 T10/2125-D revision 06                                 " },
+    { 0x0C4B, "SAS-2.1 T10/2125-D revision 07                                 " },
+    { 0x0C4E, "SAS-2.1 INCITS 478-2011                                        " },
+    { 0x0C4F, "SAS-2.1 INCITS 478-2011 w/ Amnd 1 INCITS 478/AM1-2014          " },
+    { 0x0C52, "SAS-2.1 ISO/IEC 14776-153                                      " },
+    { 0x0C60, "SAS-3 (no version claimed)                                     " },
+    { 0x0C63, "SAS-3 T10/BSR INCITS 519 revision 05a                          " },
+    { 0x0C65, "SAS-3 T10/BSR INCITS 519 revision 06                           " },
+    { 0x0C68, "SAS-3 INCITS 519-2014                                          " },
+    { 0x0C6A, "SAS-3 ISO/IEC 14776-154                                        " },
+    { 0x0C80, "SAS-4 (no version claimed)                                     " },
+    { 0x0C82, "SAS-4 T10/BSR INCITS 534 revision 08a                          " },
+    { 0x0C84, "SAS-4 T10/BSR INCITS 534 revision 09                           " },
+    { 0x0C92, "SAS-4 INCITS 534-2019                                          " },
+    { 0x0CA0, "SAS-4.1 (no version claimed)                                   " },
+    { 0x0CA2, "SAS-4.1 INCITS 567-2023                                        " },
+    { 0x0CAF, "SAS-4.1 BSR INCITS 567 revision 03                             " },
+    { 0x0CB0, "SAS-4.1 BSR INCITS 567 revision 04                             " },
+    { 0x0D20, "FC-PH (no version claimed)                                     " },
+    { 0x0D3B, "FC-PH INCITS 230-1994                                          " },
+    { 0x0D3C, "FC-PH INCITS 230-1994 with Amnd 1 INCITS 230/AM1-1996          " },
+    { 0x0D40, "FC-AL (no version claimed)                                     " },
+    { 0x0D5C, "FC-AL INCITS 272-1996                                          " },
+    { 0x0D60, "FC-AL-2 (no version claimed)                                   " },
+    { 0x0D61, "FC-AL-2 T11/1133-D revision 7.0                                " },
+    { 0x0D63, "FC-AL-2 INCITS 332-1999 with AM1-2003 & AM2-2006               " },
+    { 0x0D64, "FC-AL-2 INCITS 332-1999 with Amnd 2 AM2-2006                   " },
+    { 0x0D65, "FC-AL-2 ISO/IEC 14165-122 with AM1 & AM2                       " },
+    { 0x0D7C, "FC-AL-2 INCITS 332-1999                                        " },
+    { 0x0D7D, "FC-AL-2 INCITS 332-1999 with Amnd 1 AM1-2003                   " },
+    { 0x0D80, "FC-PH-3 (no version claimed)                                   " },
+    { 0x0D9C, "FC-PH-3 INCITS 303-1998                                        " },
+    { 0x0DA0, "FC-FS (no version claimed)                                     " },
+    { 0x0DB7, "FC-FS T11/1331-D revision 1.2                                  " },
+    { 0x0DB8, "FC-FS T11/1331-D revision 1.7                                  " },
+    { 0x0DBC, "FC-FS INCITS 373-2003                                          " },
+    { 0x0DBD, "FC-FS ISO/IEC 14165-251                                        " },
+    { 0x0DC0, "FC-PI (no version claimed)                                     " },
+    { 0x0DDC, "FC-PI INCITS 352-2002                                          " },
+    { 0x0DE0, "FC-PI-2 (no version claimed)                                   " },
+    { 0x0DE2, "FC-PI-2 T11/1506-D revision 5.0                                " },
+    { 0x0DE4, "FC-PI-2 INCITS 404-2006                                        " },
+    { 0x0E00, "FC-FS-2 (no version claimed)                                   " },
+    { 0x0E02, "FC-FS-2 INCITS 242-2007                                        " },
+    { 0x0E03, "FC-FS-2 INCITS 242-2007 with AM1 INCITS 242/AM1-2007           " },
+    { 0x0E20, "FC-LS (no version claimed)                                     " },
+    { 0x0E21, "FC-LS T11/1620-D revision 1.62                                 " },
+    { 0x0E29, "FC-LS INCITS 433-2007                                          " },
+    { 0x0E40, "FC-SP (no version claimed)                                     " },
+    { 0x0E42, "FC-SP T11/1570-D revision 1.6                                  " },
+    { 0x0E45, "FC-SP INCITS 426-2007                                          " },
+    { 0x0E60, "FC-PI-3 (no version claimed)                                   " },
+    { 0x0E62, "FC-PI-3 T11/1625-D revision 2.0                                " },
+    { 0x0E68, "FC-PI-3 T11/1625-D revision 2.1                                " },
+    { 0x0E6A, "FC-PI-3 T11/1625-D revision 4.0                                " },
+    { 0x0E6E, "FC-PI-3 INCITS 460-2011                                        " },
+    { 0x0E80, "FC-PI-4 (no version claimed)                                   " },
+    { 0x0E82, "FC-PI-4 T11/1647-D revision 8.0                                " },
+    { 0x0E88, "FC-PI-4 INCITS 450-2009                                        " },
+    { 0x0EA0, "FC 10GFC (no version claimed)                                  " },
+    { 0x0EA2, "FC 10GFC INCITS 364-2003                                       " },
+    { 0x0EA3, "FC 10GFC ISO/IEC 14165-116                                     " },
+    { 0x0EA5, "FC 10GFC ISO/IEC 14165-116 with AM1                            " },
+    { 0x0EA6, "FC 10GFC INCITS 364-2003 with AM1 INCITS 364/AM1-2007          " },
+    { 0x0EC0, "FC-SP-2 (no version claimed)                                   " },
+    { 0x0EE0, "FC-FS-3 (no version claimed)                                   " },
+    { 0x0EE2, "FC-FS-3 T11/1861-D revision 0.9                                " },
+    { 0x0EE7, "FC-FS-3 T11/1861-D revision 1.0                                " },
+    { 0x0EE9, "FC-FS-3 T11/1861-D revision 1.10                               " },
+    { 0x0EEB, "FC-FS-3 INCITS 470-2011                                        " },
+    { 0x0F00, "FC-LS-2 (no version claimed)                                   " },
+    { 0x0F03, "FC-LS-2 T11/2103-D revision 2.11                               " },
+    { 0x0F05, "FC-LS-2 T11/2103-D revision 2.21                               " },
+    { 0x0F07, "FC-LS-2 INCITS 477-2011                                        " },
+    { 0x0F20, "FC-PI-5 (no version claimed)                                   " },
+    { 0x0F27, "FC-PI-5 T11/2118-D revision 2.00                               " },
+    { 0x0F28, "FC-PI-5 T11/2118-D revision 3.00                               " },
+    { 0x0F2A, "FC-PI-5 T11/2118-D revision 6.00                               " },
+    { 0x0F2B, "FC-PI-5 T11/2118-D revision 6.10                               " },
+    { 0x0F2E, "FC-PI-5 INCITS 479-2011                                        " },
+    { 0x0F40, "FC-PI-6 (no version claimed)                                   " },
+    { 0x0F60, "FC-FS-4 (no version claimed)                                   " },
+    { 0x0F80, "FC-LS-3 (no version claimed)                                   " },
+    { 0x12A0, "FC-SCM (no version claimed)                                    " },
+    { 0x12A3, "FC-SCM T11/1824DT revision 1.0                                 " },
+    { 0x12A5, "FC-SCM T11/1824DT revision 1.1                                 " },
+    { 0x12A7, "FC-SCM T11/1824DT revision 1.4                                 " },
+    { 0x12AA, "FC-SCM INCITS TR-47 2012                                       " },
+    { 0x12C0, "FC-DA-2 (no version claimed)                                   " },
+    { 0x12C3, "FC-DA-2 T11/1870DT revision 1.04                               " },
+    { 0x12C5, "FC-DA-2 T11/1870DT revision 1.06                               " },
+    { 0x12C9, "FC-DA-2 INCITS TR-49 2012                                      " },
+    { 0x12E0, "FC-DA (no version claimed)                                     " },
+    { 0x12E2, "FC-DA T11/1513-DT revision 3.1                                 " },
+    { 0x12E8, "FC-DA INCITS TR-36 2004                                        " },
+    { 0x12E9, "FC-DA ISO/IEC 14165-341                                        " },
+    { 0x1300, "FC-Tape (no version claimed)                                   " },
+    { 0x1301, "FC-Tape T11/1315 revision 1.16                                 " },
+    { 0x131B, "FC-Tape T11/1315 revision 1.17                                 " },
+    { 0x131C, "FC-Tape INCITS TR-24 1999                                      " },
+    { 0x1320, "FC-FLA (no version claimed)                                    " },
+    { 0x133B, "FC-FLA T11/1235 revision 7                                     " },
+    { 0x133C, "FC-FLA INCITS TR-20 1998                                       " },
+    { 0x1340, "FC-PLDA (no version claimed)                                   " },
+    { 0x135B, "FC-PLDA T11/1162 revision 2.1                                  " },
+    { 0x135C, "FC-PLDA INCITS TR-19 1998                                      " },
+    { 0x1360, "SSA-PH2 (no version claimed)                                   " },
+    { 0x137B, "SSA-PH2 T10.1/1145-D revision 09c                              " },
+    { 0x137C, "SSA-PH2 INCITS 293-1996                                        " },
+    { 0x1380, "SSA-PH3 (no version claimed)                                   " },
+    { 0x139B, "SSA-PH3 T10.1/1146-D revision 05b                              " },
+    { 0x139C, "SSA-PH3 INCITS 307-1998                                        " },
+    { 0x14A0, "IEEE 1394 (no version claimed)                                 " },
+    { 0x14BD, "IEEE 1394-1995                                                 " },
+    { 0x14C0, "IEEE 1394a (no version claimed)                                " },
+    { 0x14E0, "IEEE 1394b (no version claimed)                                " },
+    { 0x15E0, "ATA/ATAPI-6 (no version claimed)                               " },
+    { 0x15FD, "ATA/ATAPI-6 INCITS 361-2002                                    " },
+    { 0x1600, "ATA/ATAPI-7 (no version claimed)                               " },
+    { 0x1602, "ATA/ATAPI-7 T13/1532-D revision 3                              " },
+    { 0x161C, "ATA/ATAPI-7 INCITS 397-2005                                    " },
+    { 0x161E, "ATA/ATAPI-7 ISO/IEC 24739                                      " },
+    { 0x1620, "ATA/ATAPI-8 ATA8-AAM (no version claimed)                      " },
+    { 0x1621, "ATA/ATAPI-8 ATA8-APT Parallel Transport (no version claimed)   " },
+    { 0x1622, "ATA/ATAPI-8 ATA8-AST Serial Transport (no version claimed)     " },
+    { 0x1623, "ATA/ATAPI-8 ATA8-ACS ATA/ATAPI Command Set (no version claimed)" },
+    { 0x1628, "ATA/ATAPI-8 ATA8-AAM INCITS 451-2008                           " },
+    { 0x162A, "ATA/ATAPI-8 ATA8-ACS INCITS 452-2009 w/ Amendment 1            " },
+    { 0x1630, "ATA/ATAPI-8 ATA8-ACS ATA/ATAPI Command Set ISO/IEC 17760-101   " },
+    { 0x1728, "Universal Serial Bus Specification, Revision 1.1               " },
+    { 0x1729, "Universal Serial Bus Specification, Revision 2.0               " },
+    { 0x172A, "Universal Serial Bus 3.2 Specification Revision 1.0            " },
+    { 0x172B, "Universal Serial Bus 4 Specification Version 1.0               " },
+    { 0x172C, "Universal Serial Bus 4 Specification Version 2.0               " },
+    { 0x1730, "USB Mass Storage Class Bulk-Only Transport, Revision 1.0       " },
+    { 0x1740, "UAS (no version claimed)                                       " },
+    { 0x1743, "UAS T10/2095-D revision 02                                     " },
+    { 0x1747, "UAS T10/2095-D revision 04                                     " },
+    { 0x1748, "UAS INCITS 471-2010                                            " },
+    { 0x1749, "UAS ISO/IEC 14776-251                                          " },
+    { 0x1761, "ACS-2 (no version claimed)                                     " },
+    { 0x1762, "ACS-2 INCITS 482-2013                                          " },
+    { 0x1765, "ACS-3 (no version claimed)                                     " },
+    { 0x1766, "ACS-3 INCITS 522-2014                                          " },
+    { 0x1767, "ACS-4 INCITS 529-2018                                          " },
+    { 0x1768, "ACS-4 (no version claimed)                                     " },
+    { 0x1769, "ACS-5 (no version claimed)                                     " },
+    { 0x176A, "ACS-5 INCITS 558-2021                                          " },
+    { 0x176E, "ACS-6 (no version claimed)                                     " },
+    { 0x1778, "ACS-2 ISO/IEC 17760-102                                        " },
+    { 0x1779, "ACS-3 ISO/IEC 17760-103                                        " },
+    { 0x177B, "ACS-5 ISO/IEC 17760-105                                        " },
+    { 0x1780, "UAS-2 (no version claimed)                                     " },
+    { 0x17A3, "ZAC (no version claimed)                                       " },
+    { 0x17A4, "ZAC INCITS 537-2016                                            " },
+    { 0x17A5, "ZAC-2 INCITS 549-2022                                          " },
+    { 0x17A6, "ZAC-2 (no version claimed)                                     " },
+    { 0x17A7, "ZAC-3 (no version claimed)                                     " },
+    { 0x17BC, "ZAC AM1 INCITS 537-2016/AM1-2019                               " },
+    { 0x17C0, "UAS-3 (no version claimed)                                     " },
+    { 0x17C2, "UAS-3 INCITS 572-2021                                          " },
+    { 0x17C5, "UAS-3 BSR INCITS 572 revision 05                               " },
+    { 0x1807, "UAS-3 ISO/IEC 14776-253                                        " },
+    { 0x1EA0, "SAT (no version claimed)                                       " },
+    { 0x1EA7, "SAT T10/1711-D revision 8                                      " },
+    { 0x1EAB, "SAT T10/1711-D revision 9                                      " },
+    { 0x1EAD, "SAT INCITS 431-2007                                            " },
+    { 0x1EC0, "SAT-2 (no version claimed)                                     " },
+    { 0x1EC4, "SAT-2 T10/1826-D revision 06                                   " },
+    { 0x1EC8, "SAT-2 T10/1826-D revision 09                                   " },
+    { 0x1ECA, "SAT-2 INCITS 465-2010                                          " },
+    { 0x1EE0, "SAT-3 (no version claimed)                                     " },
+    { 0x1EE2, "SAT-3 T10/BSR INCITS 517 revision 4                            " },
+    { 0x1EE4, "SAT-3 T10/BSR INCITS 517 revision 7                            " },
+    { 0x1EE8, "SAT-3 INCITS 517-2015                                          " },
+    { 0x1F00, "SAT-4 (no version claimed)                                     " },
+    { 0x1F02, "SAT-4 T10/BSR INCITS 491 revision 5                            " },
+    { 0x1F04, "SAT-4 T10/BSR INCITS 491 revision 6                            " },
+    { 0x1F0C, "SAT-4 INCITS 491-2018                                          " },
+    { 0x1F20, "SAT-5 (no version claimed)                                     " },
+    { 0x1F25, "SAT-5 BSR INCITS 577 revision 10                               " },
+    { 0x1F40, "SAT-6 (no version claimed)                                     " },
+    { 0x1F60, "SNT (no version claimed)                                       " },
+    { 0x20A0, "SPL (no version claimed)                                       " },
+    { 0x20A3, "SPL T10/2124-D revision 6a                                     " },
+    { 0x20A5, "SPL T10/2124-D revision 7                                      " },
+    { 0x20A7, "SPL INCITS 476-2011                                            " },
+    { 0x20A8, "SPL INCITS 476-2011 + SPL AM1 INCITS 476/AM1 2012              " },
+    { 0x20AA, "SPL ISO/IEC 14776-261                                          " },
+    { 0x20C0, "SPL-2 (no version claimed)                                     " },
+    { 0x20C2, "SPL-2 T10/BSR INCITS 505 revision 4                            " },
+    { 0x20C4, "SPL-2 T10/BSR INCITS 505 revision 5                            " },
+    { 0x20C8, "SPL-2 INCITS 505-2013                                          " },
+    { 0x20C9, "SPL-2 ISO/IEC 14776-262                                        " },
+    { 0x20E0, "SPL-3 (no version claimed)                                     " },
+    { 0x20E4, "SPL-3 T10/BSR INCITS 492 revision 6                            " },
+    { 0x20E6, "SPL-3 T10/BSR INCITS 492 revision 7                            " },
+    { 0x20E8, "SPL-3 INCITS 492-2015                                          " },
+    { 0x20E9, "SPL-3 ISO/IEC 14776-263                                        " },
+    { 0x2100, "SPL-4 (no version claimed)                                     " },
+    { 0x2102, "SPL-4 T10/BSR INCITS 538 revision 08a                          " },
+    { 0x2104, "SPL-4 T10/BSR INCITS 538 revision 10                           " },
+    { 0x2105, "SPL-4 T10/BSR INCITS 538 revision 11                           " },
+    { 0x2107, "SPL-4 T10/BSR INCITS 538 revision 13                           " },
+    { 0x2110, "SPL-4 INCITS 538-2018                                          " },
+    { 0x2120, "SPL-5 (no version claimed)                                     " },
+    { 0x2122, "SPL-5 INCITS 554-2023                                          " },
+    { 0x212E, "SPL-5 BSR INCITS 554 revision 14                               " },
+    { 0x212F, "SPL-5 BSR INCITS 554 revision 15                               " },
+    { 0x21E0, "SOP (no version claimed)                                       " },
+    { 0x21E4, "SOP T10/BSR INCITS 489 revision 4                              " },
+    { 0x21E6, "SOP T10/BSR INCITS 489 revision 5                              " },
+    { 0x21E8, "SOP INCITS 489-2014                                            " },
+    { 0x2200, "PQI (no version claimed)                                       " },
+    { 0x2204, "PQI T10/BSR INCITS 490 revision 6                              " },
+    { 0x2206, "PQI T10/BSR INCITS 490 revision 7                              " },
+    { 0x2208, "PQI INCITS 490-2014                                            " },
+    { 0x2220, "SOP-2 (no draft published)                                     " },
+    { 0x2240, "PQI-2 (no version claimed)                                     " },
+    { 0x2242, "PQI-2 T10/BSR INCITS 507 revision 01                           " },
+    { 0x2244, "PQI-2 INCITS 507-2016                                          " },
+    { 0x2460, "ADT-4 (no version claimed)                                     " },
+    { 0x246B, "ADT-4 INCITS 541-2023                                          " },
+    { 0xFFC0, "IEEE 1667 (no version claimed)                                 " },
+    { 0xFFC1, "IEEE 1667-2006                                                 " },
+    { 0xFFC2, "IEEE 1667-2009                                                 " },
+    { 0xFFC3, "IEEE 1667-2015                                                 " },
+    { 0xFFC4, "IEEE 1667-2018                                                 " },
+};
+
+// Used with bsearch to get the string
+static int cmp_Version_Descriptor(scsiVersionDescriptor* a, scsiVersionDescriptor* b)
+{
+    return (a->versionCode - b->versionCode);
+}
+
 void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* versionString)
 {
-    switch (versionDescriptor / 32)
+    //use binary search to find it from the massive list above
+    //If that fails, fall into the switch below as a fall-back
+    scsiVersionDescriptor* versionDescriptorResult = NULL;
+    scsiVersionDescriptor versionDescriptorKey = { versionDescriptor, NULL };
+
+    versionDescriptorResult = C_CAST(scsiVersionDescriptor*, bsearch(
+        &versionDescriptorKey, scsiVersionDescriptorTable,
+        sizeof(scsiVersionDescriptorTable) / sizeof(scsiVersionDescriptorTable[0]), sizeof(scsiVersionDescriptorTable[0]),
+        (int (*)(const void*, const void*))cmp_Version_Descriptor
+    ));
+    if (versionDescriptorResult)
     {
+        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "%s", versionDescriptorResult->stringDescription);
+    }
+    else
+    {
+        switch (versionDescriptor / UINT16_C(32))
+        {
             //1 - 8 architecture model
-    case STANDARD_CODE_SAM:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM");
-        break;
-    case STANDARD_CODE_SAM2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM-2");
-        break;
-    case STANDARD_CODE_SAM3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM-3");
-        break;
-    case STANDARD_CODE_SAM4:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM-4");
-        break;
-    case STANDARD_CODE_SAM5:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM-5");
-        break;
-    case STANDARD_CODE_SAM6:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAM-6");
-        break;
+        case STANDARD_CODE_SAM:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM");
+            break;
+        case STANDARD_CODE_SAM2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-2");
+            break;
+        case STANDARD_CODE_SAM3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-3");
+            break;
+        case STANDARD_CODE_SAM4:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-4");
+            break;
+        case STANDARD_CODE_SAM5:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-5");
+            break;
+        case STANDARD_CODE_SAM6:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-6");
+            break;
             //9-64 Command Set
-    case STANDARD_CODE_SPC:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPC");
-        break;
-    case STANDARD_CODE_MMC:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC");
-        break;
-    case STANDARD_CODE_SCC:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SCC");
-        break;
-    case STANDARD_CODE_SBC:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBC");
-        break;
-    case STANDARD_CODE_SMC:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SMC");
-        break;
-    case STANDARD_CODE_SES:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SES");
-        break;
-    case STANDARD_CODE_SCC2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SCC-2");
-        break;
-    case STANDARD_CODE_SSC:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSC");
-        break;
-    case STANDARD_CODE_RBC:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "RBC");
-        break;
-    case STANDARD_CODE_MMC2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC-2");
-        break;
-    case STANDARD_CODE_SPC2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPC-2");
-        break;
-    case STANDARD_CODE_OCRW:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "OCRW");
-        break;
-    case STANDARD_CODE_MMC3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC-3");
-        break;
-    case STANDARD_CODE_RMC:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "RMC");
-        break;
-    case STANDARD_CODE_SMC2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SMC-2");
-        break;
-    case STANDARD_CODE_SPC3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPC-3");
-        break;
-    case STANDARD_CODE_SBC2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBC-2");
-        break;
-    case STANDARD_CODE_OSD:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "OSD");
-        break;
-    case STANDARD_CODE_SSC2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSC-2");
-        break;
-    case STANDARD_CODE_BCC:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "BCC");
-        break;
-    case STANDARD_CODE_MMC4:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC-4");
-        break;
-    case STANDARD_CODE_ADC:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADC");
-        break;
-    case STANDARD_CODE_SES2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SES-2");
-        break;
-    case STANDARD_CODE_SSC3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSC-3");
-        break;
-    case STANDARD_CODE_MMC5:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC-5");
-        break;
-    case STANDARD_CODE_OSD2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "OSD-2");
-        break;
-    case STANDARD_CODE_SPC4:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPC-4");
-        break;
-    case STANDARD_CODE_SMC3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SMC-3");
-        break;
-    case STANDARD_CODE_ADC2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADC-2");
-        break;
-    case STANDARD_CODE_SBC3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBC-3");
-        break;
-    case STANDARD_CODE_MMC6:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "MMC-6");
-        break;
-    case STANDARD_CODE_ADC3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADC-3");
-        break;
-    case STANDARD_CODE_SSC4:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSC-4");
-        break;
-    case STANDARD_CODE_OSD3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "OSD-3");
-        break;
-    case STANDARD_CODE_SES3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SES-3");
-        break;
-    case STANDARD_CODE_SSC5:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSC-5");
-        break;
-    case STANDARD_CODE_SPC5:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPC-5");
-        break;
-    case STANDARD_CODE_SFSC:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SFSC");
-        break;
-    case STANDARD_CODE_SBC4:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBC-4");
-        break;
-    case STANDARD_CODE_ZBC:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ZBC");
-        break;
-    case STANDARD_CODE_ADC4:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADC-4");
-        break;
-    case STANDARD_CODE_ZBC2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ZBC-2");
-        break;
-    case STANDARD_CODE_SES4:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SES-4");
-        break;
+        case STANDARD_CODE_SPC:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC");
+            break;
+        case STANDARD_CODE_MMC:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC");
+            break;
+        case STANDARD_CODE_SCC:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SCC");
+            break;
+        case STANDARD_CODE_SBC:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBC");
+            break;
+        case STANDARD_CODE_SMC:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SMC");
+            break;
+        case STANDARD_CODE_SES:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SES");
+            break;
+        case STANDARD_CODE_SCC2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SCC-2");
+            break;
+        case STANDARD_CODE_SSC:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC");
+            break;
+        case STANDARD_CODE_RBC:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "RBC");
+            break;
+        case STANDARD_CODE_MMC2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-2");
+            break;
+        case STANDARD_CODE_SPC2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC-2");
+            break;
+        case STANDARD_CODE_OCRW:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "OCRW");
+            break;
+        case STANDARD_CODE_MMC3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-3");
+            break;
+        case STANDARD_CODE_RMC:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "RMC");
+            break;
+        case STANDARD_CODE_SMC2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SMC-2");
+            break;
+        case STANDARD_CODE_SPC3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC-3");
+            break;
+        case STANDARD_CODE_SBC2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBC-2");
+            break;
+        case STANDARD_CODE_OSD:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "OSD");
+            break;
+        case STANDARD_CODE_SSC2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC-2");
+            break;
+        case STANDARD_CODE_BCC:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "BCC");
+            break;
+        case STANDARD_CODE_MMC4:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-4");
+            break;
+        case STANDARD_CODE_ADC:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADC");
+            break;
+        case STANDARD_CODE_SES2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SES-2");
+            break;
+        case STANDARD_CODE_SSC3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC-3");
+            break;
+        case STANDARD_CODE_MMC5:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-5");
+            break;
+        case STANDARD_CODE_OSD2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "OSD-2");
+            break;
+        case STANDARD_CODE_SPC4:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC-4");
+            break;
+        case STANDARD_CODE_SMC3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SMC-3");
+            break;
+        case STANDARD_CODE_ADC2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADC-2");
+            break;
+        case STANDARD_CODE_SBC3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBC-3");
+            break;
+        case STANDARD_CODE_MMC6:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-6");
+            break;
+        case STANDARD_CODE_ADC3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADC-3");
+            break;
+        case STANDARD_CODE_SSC4:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC-4");
+            break;
+        case STANDARD_CODE_OSD3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "OSD-3");
+            break;
+        case STANDARD_CODE_SES3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SES-3");
+            break;
+        case STANDARD_CODE_SSC5:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC-5");
+            break;
+        case STANDARD_CODE_SPC5:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC-5");
+            break;
+        case STANDARD_CODE_SFSC:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SFSC");
+            break;
+        case STANDARD_CODE_SBC4:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBC-4");
+            break;
+        case STANDARD_CODE_ZBC:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ZBC");
+            break;
+        case STANDARD_CODE_ADC4:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADC-4");
+            break;
+        case STANDARD_CODE_ZBC2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ZBC-2");
+            break;
+        case STANDARD_CODE_SES4:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SES-4");
+            break;
             //65 - 84 Physical Mapping protocol
-    case STANDARD_CODE_SSA_TL2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-TL2");
-        break;
-    case STANDARD_CODE_SSA_TL1:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-TL1");
-        break;
-    case STANDARD_CODE_SSA_S3P:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-S3P");
-        break;
-    case STANDARD_CODE_SSA_S2P:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-S2P");
-        break;
-    case STANDARD_CODE_SIP:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SIP");
-        break;
-    case STANDARD_CODE_FCP:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FCP");
-        break;
-    case STANDARD_CODE_SBP2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBP-2");
-        break;
-    case STANDARD_CODE_FCP2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FCP-2");
-        break;
-    case STANDARD_CODE_SST:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SST");
-        break;
-    case STANDARD_CODE_SRP:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SRP");
-        break;
-    case STANDARD_CODE_iSCSI:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "iSCSI");
-        break;
-    case STANDARD_CODE_SBP3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SBP-3");
-        break;
-    case STANDARD_CODE_SRP2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SRP-2");
-        break;
-    case STANDARD_CODE_ADP:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADP");
-        break;
-    case STANDARD_CODE_ADT:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADT");
-        break;
-    case STANDARD_CODE_FCP3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FCP-3");
-        break;
-    case STANDARD_CODE_ADT2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADT-2");
-        break;
-    case STANDARD_CODE_FCP4:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FCP-4");
-        break;
-    case STANDARD_CODE_ADT3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ADT-3");
-        break;
+        case STANDARD_CODE_SSA_TL2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-TL2");
+            break;
+        case STANDARD_CODE_SSA_TL1:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-TL1");
+            break;
+        case STANDARD_CODE_SSA_S3P:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-S3P");
+            break;
+        case STANDARD_CODE_SSA_S2P:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-S2P");
+            break;
+        case STANDARD_CODE_SIP:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SIP");
+            break;
+        case STANDARD_CODE_FCP:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FCP");
+            break;
+        case STANDARD_CODE_SBP2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBP-2");
+            break;
+        case STANDARD_CODE_FCP2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FCP-2");
+            break;
+        case STANDARD_CODE_SST:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SST");
+            break;
+        case STANDARD_CODE_SRP:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SRP");
+            break;
+        case STANDARD_CODE_iSCSI:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "iSCSI");
+            break;
+        case STANDARD_CODE_SBP3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBP-3");
+            break;
+        case STANDARD_CODE_SRP2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SRP-2");
+            break;
+        case STANDARD_CODE_ADP:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADP");
+            break;
+        case STANDARD_CODE_ADT:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADT");
+            break;
+        case STANDARD_CODE_FCP3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FCP-3");
+            break;
+        case STANDARD_CODE_ADT2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADT-2");
+            break;
+        case STANDARD_CODE_FCP4:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FCP-4");
+            break;
+        case STANDARD_CODE_ADT3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADT-3");
+            break;
             //85 - 94 Parallel SCSI Physical
-    case STANDARD_CODE_SPI:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPI");
-        break;
-    case STANDARD_CODE_FAST20:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "Fast-20");
-        break;
-    case STANDARD_CODE_SPI2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPI-2");
-        break;
-    case STANDARD_CODE_SPI3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPI-3");
-        break;
-    case STANDARD_CODE_EPI:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "EPI");
-        break;
-    case STANDARD_CODE_SPI4:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPI-4");
-        break;
-    case STANDARD_CODE_SPI5:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPI-5");
-        break;
+        case STANDARD_CODE_SPI:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI");
+            break;
+        case STANDARD_CODE_FAST20:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "Fast-20");
+            break;
+        case STANDARD_CODE_SPI2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI-2");
+            break;
+        case STANDARD_CODE_SPI3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI-3");
+            break;
+        case STANDARD_CODE_EPI:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "EPI");
+            break;
+        case STANDARD_CODE_SPI4:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI-4");
+            break;
+        case STANDARD_CODE_SPI5:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI-5");
+            break;
             //95 - 104 Serial Attached SCSI
-    case STANDARD_CODE_SAS:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS");
-        break;
-    case STANDARD_CODE_SAS1_1:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS-1.1");
-        break;
-    case STANDARD_CODE_SAS2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS-2");
-        break;
-    case STANDARD_CODE_SAS2_1:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS-2.1");
-        break;
-    case STANDARD_CODE_SAS3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS-3");
-        break;
-    case STANDARD_CODE_SAS4:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAS-4");
-        break;
+        case STANDARD_CODE_SAS:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS");
+            break;
+        case STANDARD_CODE_SAS1_1:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-1.1");
+            break;
+        case STANDARD_CODE_SAS2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-2");
+            break;
+        case STANDARD_CODE_SAS2_1:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-2.1");
+            break;
+        case STANDARD_CODE_SAS3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-3");
+            break;
+        case STANDARD_CODE_SAS4:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-4");
+            break;
             //105 - 154 Fibre Channel
-    case STANDARD_CODE_FC_PH:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PH");
-        break;
-    case STANDARD_CODE_FC_AL:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-AL");
-        break;
-    case STANDARD_CODE_FC_AL2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-AL-2");
-        break;
-    case STANDARD_CODE_AC_PH3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PH-3");
-        break;
-    case STANDARD_CODE_FC_FS:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-FS");
-        break;
-    case STANDARD_CODE_FC_PI:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI");
-        break;
-    case STANDARD_CODE_FC_PI2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI-2");
-        break;
-    case STANDARD_CODE_FC_FS2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-FS-2");
-        break;
-    case STANDARD_CODE_FC_LS:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-LS");
-        break;
-    case STANDARD_CODE_FC_SP:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-SP");
-        break;
-    case STANDARD_CODE_FC_PI3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI-3");
-        break;
-    case STANDARD_CODE_FC_PI4:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI-4");
-        break;
-    case STANDARD_CODE_FC_10GFC:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC 10GFC");
-        break;
-    case STANDARD_CODE_FC_SP2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-SP-2");
-        break;
-    case STANDARD_CODE_FC_FS3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-FS-3");
-        break;
-    case STANDARD_CODE_FC_LS2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-LS-2");
-        break;
-    case STANDARD_CODE_FC_PI5:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI-5");
-        break;
-    case STANDARD_CODE_FC_PI6:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PI-6");
-        break;
-    case STANDARD_CODE_FC_FS4:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-FS-4");
-        break;
-    case STANDARD_CODE_FC_LS3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-LS-3");
-        break;
-    case STANDARD_CODE_FC_SCM:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-SCM");
-        break;
-    case STANDARD_CODE_FC_DA2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-DA-2");
-        break;
-    case STANDARD_CODE_FC_DA:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-DA");
-        break;
-    case STANDARD_CODE_FC_TAPE:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-Tape");
-        break;
-    case STANDARD_CODE_FC_FLA:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-FLA");
-        break;
-    case STANDARD_CODE_FC_PLDA:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "FC-PLDA");
-        break;
+        case STANDARD_CODE_FC_PH:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PH");
+            break;
+        case STANDARD_CODE_FC_AL:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-AL");
+            break;
+        case STANDARD_CODE_FC_AL2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-AL-2");
+            break;
+        case STANDARD_CODE_AC_PH3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PH-3");
+            break;
+        case STANDARD_CODE_FC_FS:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FS");
+            break;
+        case STANDARD_CODE_FC_PI:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI");
+            break;
+        case STANDARD_CODE_FC_PI2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-2");
+            break;
+        case STANDARD_CODE_FC_FS2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FS-2");
+            break;
+        case STANDARD_CODE_FC_LS:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-LS");
+            break;
+        case STANDARD_CODE_FC_SP:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-SP");
+            break;
+        case STANDARD_CODE_FC_PI3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-3");
+            break;
+        case STANDARD_CODE_FC_PI4:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-4");
+            break;
+        case STANDARD_CODE_FC_10GFC:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC 10GFC");
+            break;
+        case STANDARD_CODE_FC_SP2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-SP-2");
+            break;
+        case STANDARD_CODE_FC_FS3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FS-3");
+            break;
+        case STANDARD_CODE_FC_LS2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-LS-2");
+            break;
+        case STANDARD_CODE_FC_PI5:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-5");
+            break;
+        case STANDARD_CODE_FC_PI6:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-6");
+            break;
+        case STANDARD_CODE_FC_FS4:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FS-4");
+            break;
+        case STANDARD_CODE_FC_LS3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-LS-3");
+            break;
+        case STANDARD_CODE_FC_SCM:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-SCM");
+            break;
+        case STANDARD_CODE_FC_DA2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-DA-2");
+            break;
+        case STANDARD_CODE_FC_DA:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-DA");
+            break;
+        case STANDARD_CODE_FC_TAPE:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-Tape");
+            break;
+        case STANDARD_CODE_FC_FLA:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FLA");
+            break;
+        case STANDARD_CODE_FC_PLDA:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PLDA");
+            break;
             //155 - 164 SSA
-    case STANDARD_CODE_SSA_PH2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-PH2");
-        break;
-    case STANDARD_CODE_SSA_PH3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SSA-PH3");
-        break;
+        case STANDARD_CODE_SSA_PH2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-PH2");
+            break;
+        case STANDARD_CODE_SSA_PH3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-PH3");
+            break;
             //165 - 174 IEEE 1394
-    case STANDARD_CODE_IEEE_1394_1995:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "IEEE-1394-1995");
-        break;
-    case STANDARD_CODE_IEEE_1394a:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "IEEE-1394a");
-        break;
-    case STANDARD_CODE_IEEE_1394b:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "IEEE-1394b");
-        break;
+        case STANDARD_CODE_IEEE_1394_1995:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "IEEE-1394-1995");
+            break;
+        case STANDARD_CODE_IEEE_1394a:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "IEEE-1394a");
+            break;
+        case STANDARD_CODE_IEEE_1394b:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "IEEE-1394b");
+            break;
             //175 - 200 ATAPI & USB
-    case STANDARD_CODE_ATA_ATAPI6:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ATA/ATAPI-6");
-        break;
-    case STANDARD_CODE_ATA_ATAPI7:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ATA/ATAPI-7");
-        break;
-    case STANDARD_CODE_ATA_ATAPI8:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ATA8-ACS");
-        break;
-    case STANDARD_CODE_USB:
-        switch (versionDescriptor)
-        {
-        case 0x1728: //USB 1.1
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "USB-1.1");
+        case STANDARD_CODE_ATA_ATAPI6:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ATA/ATAPI-6");
             break;
-        case 0x1729: //USB 2.0
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "USB-2.0");
+        case STANDARD_CODE_ATA_ATAPI7:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ATA/ATAPI-7");
             break;
-        case 0x1730: //USB BOT
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "USB-BOT");
+        case STANDARD_CODE_ATA_ATAPI8:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ATA8-ACS");
             break;
-        default:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "USB");
+        case STANDARD_CODE_USB:
+            switch (versionDescriptor)
+            {
+            case 0x1728: //USB 1.1
+                snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "USB-1.1");
+                break;
+            case 0x1729: //USB 2.0
+                snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "USB-2.0");
+                break;
+            case 0x1730: //USB BOT
+                snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "USB-BOT");
+                break;
+            default:
+                snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "USB");
+                break;
+            }
             break;
-        }
-        break;
-    case STANDARD_CODE_UAS:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "UAS");
-        break;
-    case STANDARD_CODE_ACSx:
-        //special case, look at the version descriptor to set an exact version number
-        switch (versionDescriptor)
-        {
-        case 0x1761: //ACS-2
-        case 0x1762:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ACS-2");
+        case STANDARD_CODE_UAS:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "UAS");
             break;
-        case 0x1765: //ACS-3
-        case 0x1766: //ACS-3 INCITS 522-2014
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ACS-3");
+        case STANDARD_CODE_ACSx:
+            //special case, look at the version descriptor to set an exact version number
+            switch (versionDescriptor)
+            {
+            case 0x1761: //ACS-2
+            case 0x1762:
+                snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ACS-2");
+                break;
+            case 0x1765: //ACS-3
+            case 0x1766: //ACS-3 INCITS 522-2014
+                snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ACS-3");
+                break;
+            case 0x1767: //ACS-4 INCITS 529-2018
+                snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ACS-4");
+                break;
+            default:
+                snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ACS-x");
+                break;
+            }
             break;
-        case 0x1767: //ACS-4 INCITS 529-2018
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ACS-4");
+        case STANDARD_CODE_UAS2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "UAS-2");
             break;
-        default:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "ACS-x");
-            break;
-        }
-        break;
-    case STANDARD_CODE_UAS2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "UAS-2");
-        break;
             //201 - 224 Networking
             //225 - 244 ATM
             //245 - 260 Translators
-    case STANDARD_CODE_SAT:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAT");
-        break;
-    case STANDARD_CODE_SAT2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAT-2");
-        break;
-    case STANDARD_CODE_SAT3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAT-3");
-        break;
-    case STANDARD_CODE_SAT4:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SAT-4");
-        break;
+        case STANDARD_CODE_SAT:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAT");
+            break;
+        case STANDARD_CODE_SAT2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAT-2");
+            break;
+        case STANDARD_CODE_SAT3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAT-3");
+            break;
+        case STANDARD_CODE_SAT4:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAT-4");
+            break;
             //261 - 270 SAS Transport Protocols
-    case STANDARD_CODE_SPL:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPL");
-        break;
-    case STANDARD_CODE_SPL2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPL-2");
-        break;
-    case STANDARD_CODE_SPL3:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPL-3");
-        break;
-    case STANDARD_CODE_SPL4:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SPL-4");
-        break;
+        case STANDARD_CODE_SPL:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPL");
+            break;
+        case STANDARD_CODE_SPL2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPL-2");
+            break;
+        case STANDARD_CODE_SPL3:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPL-3");
+            break;
+        case STANDARD_CODE_SPL4:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPL-4");
+            break;
             //271 - 290 SCSI over PCI Extress Transport Protocols
-    case STANDARD_CODE_SOP:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SOP");
-        break;
-    case STANDARD_CODE_PQI:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "PQI");
-        break;
-    case STANDARD_CODE_SOP2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "SOP-2");
-        break;
-    case STANDARD_CODE_PQI2:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "PQI-2");
-        break;
+        case STANDARD_CODE_SOP:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SOP");
+            break;
+        case STANDARD_CODE_PQI:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "PQI");
+            break;
+        case STANDARD_CODE_SOP2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SOP-2");
+            break;
+        case STANDARD_CODE_PQI2:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "PQI-2");
+            break;
             //291 - 2045 Reserved for Expansion
-    case STANDARD_CODE_IEEE_1667:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "IEEE-1667");
-        break;
-    case STANDARD_CODE_RESERVED:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "RESERVED");
-        break;
-    case STANDARD_CODE_NOT_SUPPORTED:
-    default:
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH,  "----");
-        break;
+        case STANDARD_CODE_IEEE_1667:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "IEEE-1667");
+            break;
+        case STANDARD_CODE_RESERVED:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "RESERVED");
+            break;
+        case STANDARD_CODE_NOT_SUPPORTED:
+        default:
+            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "----");
+            break;
+        }
     }
     return;
 }

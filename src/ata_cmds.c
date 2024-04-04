@@ -123,7 +123,7 @@ int ata_Identify(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
     }
 
 #if defined (__BIG_ENDIAN__)
-    if(ptrData == (uint8_t*)&device->drive_info.IdentifyData.ata.Word000)
+    if (ptrData == C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000))
     {
         byte_Swap_ID_Data_Buffer(&device->drive_info.IdentifyData.ata.Word000);
     }
@@ -3752,14 +3752,14 @@ int ata_Identify_Packet_Device(tDevice *device, uint8_t *ptrData, uint32_t dataS
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (ret == SUCCESS && ptrData != (uint8_t*)&device->drive_info.IdentifyData.ata.Word000)
+    if (ret == SUCCESS && ptrData != C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000))
     {
         //copy the data to the device structure so that it's not (as) stale
         memcpy(&device->drive_info.IdentifyData.ata.Word000, ptrData, sizeof(tAtaIdentifyData));
     }
 
 #if defined (__BIG_ENDIAN__)
-    if(ptrData == (uint8_t*)&device->drive_info.IdentifyData.ata.Word000)
+    if (ptrData == C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000))
     {
         byte_Swap_ID_Data_Buffer(&device->drive_info.IdentifyData.ata.Word000);
     }

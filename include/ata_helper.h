@@ -900,6 +900,7 @@ extern "C"
        ATA_SCT_COMMAND_STATUS                           = 0xE0,
        ATA_SCT_DATA_TRANSFER                            = 0xE1,
    }eATALog;
+    #define ATA_LOG_PAGE_LEN_BYTES UINT16_C(512) //each page of a log is 512 bytes. A given log may be multiple pages long, or multiples of this value.
 
    typedef enum _eIdentifyDeviceDataLogPage //Log address 30h, ACS-4 Section 9.11
    {
@@ -914,7 +915,10 @@ extern "C"
        ATA_ID_DATA_LOG_SERIAL_ATA               = 0x08,
        ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION = 0x09,
    }eIdentifyDeviceDataLogPage;
+    #define ATA_ID_DATA_SUP_PG_LIST_LEN_OFFSET UINT16_C(8) //this is the offset in the data where the list length is specified to be read from. The next value is where the list of supported pages begins.
     #define ATA_ID_DATA_SUP_PG_LIST_OFFSET UINT16_C(9) //when reading the ID Data log's list of supported pages, this is the offset to start at to find the page numbers that are supported.
+    #define ATA_ID_DATA_QWORD_VALID_BIT BIT63 //If bit 63 is set, then the qword is valid
+    #define ATA_ID_DATA_VERSION_1 (0x0001) //to check for at least revision 1 on each page of the log.
 
     //
    typedef enum _eDeviceStatisticsLog //Log Address 04h, ACS-4 Section 9.5
@@ -929,7 +933,17 @@ extern "C"
        ATA_DEVICE_STATS_LOG_SSD             = 0x07,
        ATA_DEVICE_STATS_LOG_ZONED_DEVICE    = 0x08,
        //Add more
+       ATA_DEVICE_STATS_LOG_VENDOR_SPECIFIC = 0xFF
    } eDeviceStatisticsLog;
+    #define ATA_DEV_STATS_SUP_PG_LIST_LEN_OFFSET UINT16_C(8) //this is the offset in the data where the list length is specified to be read from. The next value is where the list of supported pages begins.
+    #define ATA_DEV_STATS_SUP_PG_LIST_OFFSET UINT16_C(9) //when reading the device statistics log's list of supported pages, this is the offset to start at to find the page numbers that are supported.
+    #define ATA_DEV_STATS_STATISTIC_SUPPORTED_BIT BIT63 //If bit 63 is set, then the qword is valid
+    #define ATA_DEV_STATS_VALID_VALUE_BIT BIT62
+    #define ATA_DEV_STATS_NORMALIZED_STAT_BIT BIT61
+    #define ATA_DEV_STATS_SUPPORTS_DSN  BIT60
+    #define ATA_DEV_STATS_MONITORED_CONDITION_MET   BIT59
+    #define ATA_DEV_STATS_READ_THEN_INIT_SUPPORTED  BIT58
+    #define ATA_DEV_STATS_VERSION_1 (0x0001) //to check for at least revision 1 on each page of the log.
 
    typedef enum _eSCTDeviceState
    {
@@ -1084,6 +1098,14 @@ extern "C"
        ZAC_MINOR_VERSION_ZAC_REV_1              = 0xB6E8,//ZAC Revision 1
        ZAC_MINOR_VERSION_NOT_REPORTED_2         = 0xFFFF
    }eZACMinorVersionNumber;
+
+   typedef enum _eTransportMinorVersionNumber
+   {
+       TRANSPORT_MINOR_VERSION_NOT_REPORTED                 = 0x0000,
+       TRANSPORT_MINOR_VERSION_ATA8_AST_D1697_VERSION_0B    = 0x0021,//ATA8-AST T13 Project D1697 Version 0b
+       TRANSPORT_MINOR_VERSION_ATA8_AST_D1697_VERSION_1     = 0x0051,//ATA8-AST T13 Project D1697 Version 0b
+       TRANSPORT_MINOR_VERSION_NOT_REPORTED2                = 0xFFFF
+   }eTransportMinorVersionNumber;
 
    #define ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS UINT8_C(128)
 

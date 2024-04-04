@@ -333,6 +333,11 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
                 if (SUCCESS == scsi_Request_Sense_Cmd(device, true, descriptorFormatSenseData, SPC3_SENSE_LEN))
                 {
                     ret = get_RTFRs_From_Descriptor_Format_Sense_Data(descriptorFormatSenseData, SPC3_SENSE_LEN, &ataCmd->rtfr);
+                    if (ret == FAILURE)
+                    {
+                        //preserve the incomplete RTFR warning
+                        ret = WARN_INCOMPLETE_RFTRS;
+                    }
                 }
                 safe_Free_aligned(descriptorFormatSenseData)
             }
@@ -340,7 +345,19 @@ int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseDat
         //Some devices say passthrough info available, but populate nothing...so need to set this error!
         if (ataCmd->rtfr.error == 0 && ataCmd->rtfr.status == 0 && ataCmd->rtfr.device == 0 && ataCmd->rtfr.secCnt == 0 && ataCmd->rtfr.lbaHi == 0 && ataCmd->rtfr.lbaMid == 0 && ataCmd->rtfr.lbaLow == 0)
         {
-            ret = FAILURE;
+            if ((ataCmd->commadProtocol == ATA_PROTOCOL_PIO && ataCmd->commandDirection == XFER_DATA_IN)
+                || ataCmd->commadProtocol == ATA_PROTOCOL_DMA_FPDMA)
+            {
+                //PIO-in and FPDMA will only give valid RTFRs on a failure.
+                //If it succeeds and data came back, these may be empty on some translators.
+                //Do not consider this a failure, but success
+                ataCmd->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
+                ret = SUCCESS;
+            }
+            else
+            {
+                ret = FAILURE;
+            }
         }
     }
     else
@@ -412,75 +429,81 @@ bool get_Return_TFRs_From_Sense_Data(tDevice *device, ataPassthroughCommand *ata
             case SENSE_KEY_HARDWARE_ERROR:
                 if (asc == 0x44 && ascq == 0x00 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = BIT5;
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_DEVICE_FAULT;
                     gotRTFRsFromSenseData = true;
                 }
                 break;
             case SENSE_KEY_NOT_READY:
                 if (asc == 0x3A && ascq == 0x00 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = BIT1;//nm bit
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_NO_MEDIA;//nm bit
                     gotRTFRsFromSenseData = true;
                 }
                 break;
             case SENSE_KEY_MEDIUM_ERROR:
                 if (asc == 0x11 && ascq == 0x00 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = BIT6;//unc bit
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_UNCORRECTABLE_DATA;//unc bit
                     gotRTFRsFromSenseData = true;
                 }
                 else if (asc == 0x14 && ascq == 0x01 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = BIT4;//idnf bit
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_ID_NOT_FOUND;//idnf bit
                     gotRTFRsFromSenseData = true;
                 }
                 break;
             case SENSE_KEY_DATA_PROTECT:
                 if (asc == 0x27 && ascq == 0x00 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = BIT6;//wp bit
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_WRITE_PROTECTED;//wp bit
                     gotRTFRsFromSenseData = true;
                 }
                 break;
             case SENSE_KEY_ILLEGAL_REQUEST:
                 if (asc == 0x21 && ascq == 0x00 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = BIT4;//idnf bit
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_ID_NOT_FOUND;//idnf bit
                     gotRTFRsFromSenseData = true;
                 }
                 break;
             case SENSE_KEY_ABORTED_COMMAND:
                 if (asc == 0x47 && ascq == 0x03 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = BIT4;//icrc bit
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_INTERFACE_CRC;//icrc bit
                     gotRTFRsFromSenseData = true;
                 }
                 else
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = 0x04;//abort
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_ABORT;//abort
                     gotRTFRsFromSenseData = true;
                 }
                 break;
             case SENSE_KEY_UNIT_ATTENTION:
                 if (asc == 0x28 && ascq == 0x00 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = BIT5;//mc bit
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_MEDIA_CHANGE;//mc bit
                     gotRTFRsFromSenseData = true;
                 }
                 else if (asc == 0x47 && ascq == 0x03 && fru == 0)
                 {
-                    ataCommandOptions->rtfr.status = 0x51;
-                    ataCommandOptions->rtfr.error = BIT3;//mcr bit
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                    ataCommandOptions->rtfr.error = ATA_ERROR_BIT_MEDIA_CHANGE_REQUEST;//mcr bit
                     gotRTFRsFromSenseData = true;
                 }
+                break;
+            case SENSE_KEY_NO_ERROR:
+                //if no error is reported, then consider this a passing command.
+                ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY;
+                ataCommandOptions->rtfr.error = 0;
+                gotRTFRsFromSenseData = true;
                 break;
             default:
                 //Don't do anything! We don't have enough information to decide what happened. The SATL be returning it's own error that is not related to the command being sent.
@@ -1092,8 +1115,17 @@ int build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, ataPassthr
             break;
         default:
             //don't set the bit...unless we're being forced to do so
-            if (ataCommandOptions->forceCheckConditionBit || device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable)
+            if (ataCommandOptions->forceCheckConditionBit)
             {
+                set_Check_Condition_Bit(*satCDB, transferBitsOffset);
+            }
+            else if (device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable
+                && !((ataCommandOptions->commadProtocol == ATA_PROTOCOL_PIO && ataCommandOptions->commandDirection == XFER_DATA_IN)
+                      || ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA_FPDMA))
+            {
+                //check condition is available by the translator for any command.
+                //So set it for all cases EXCEPT PIO-in and FPDMA. These will not return useful information when they pass.
+                //If these protocols fail, they WILL return useful completion, so check condition is not necessary.
                 set_Check_Condition_Bit(*satCDB, transferBitsOffset);
             }
             break;
@@ -1187,6 +1219,19 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
         }
         //Now get the RTFRs from the sense data or request them as necessary.
         bool gotRTFRs = get_Return_TFRs_From_Sense_Data(device, ataCommandOptions, sendIOret, senseRet);
+        if (gotRTFRs)
+        {
+            //check if incomplete RTFRs
+            //Most likely case is RTFRs coming back all FF in ext
+            //The secCntExt == 0xFF may happen, but it's likely not common.
+            //NOTE: This is a workaround due to the bool above which is not ideal.
+            //      The SAT passthorugh probably needs refactoring to fix this better -TJE
+            if ((ataCommandOptions->rtfr.lbaLowExt == 0xFF && ataCommandOptions->rtfr.lbaMidExt == 0xFF && ataCommandOptions->rtfr.lbaHiExt == 0xFF)
+                || ataCommandOptions->rtfr.secCntExt == 0xFF)
+            {
+                ret = WARN_INCOMPLETE_RFTRS;
+            }
+        }
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         {
             //Print out the RTFRs that we got
@@ -1698,7 +1743,8 @@ static void set_Sense_Data_By_RTFRs(tDevice *device, ataReturnTFRs *rtfrs, uint8
         }
     }
     //We processed the error above according to other RTFRs, but if the sense data available bit is set, then we should request sense data and return that info back up instead of our translated info
-    if (device->drive_info.IdentifyData.ata.Word120 & BIT6 && rtfrs->status & BIT1)
+    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) && device->drive_info.IdentifyData.ata.Word086 & BIT15)/*words 119, 120 valid*/
+        && (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word120) && device->drive_info.IdentifyData.ata.Word120 & BIT6 && rtfrs->status & BIT1))
     {
         ataReturnTFRs rtfrBackup;
         memcpy(&rtfrBackup, rtfrs, sizeof(ataReturnTFRs));
@@ -1721,17 +1767,18 @@ static void set_Sense_Data_By_RTFRs(tDevice *device, ataReturnTFRs *rtfrs, uint8
 }
 
 //To be used by the SATL when issuing a single read command (non-ncq)
+//not using NCQ as this software translation cannot issue NCQ commands reliably, so issuing what we can issue here.-TJE
 static int satl_Read_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba, uint8_t *ptrData, uint32_t dataSize, bool fua)
 {
     int ret = SUCCESS;
     bool dmaSupported = false;
-    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word049 & BIT8)
+    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word049 & BIT8)//lba mode
     {
-        if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2))
+        if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2)) //mwdma
         {
             dmaSupported = true;
         }
-        else if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word088 & 0xFF)
+        else if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word088 & 0xFF)//udma
         {
             dmaSupported = true;
         }
@@ -1798,13 +1845,13 @@ static int satl_Write_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba, uint8_t *ptrDa
 {
     int ret = SUCCESS;
     bool dmaSupported = false;
-    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word049 & BIT8)
+    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word049 & BIT8)//lba mode
     {
-        if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2))
+        if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2))//mwdma
         {
             dmaSupported = true;
         }
-        else if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word088 & 0xFF)
+        else if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word088 & 0xFF)//udma
         {
             dmaSupported = true;
         }
@@ -1876,13 +1923,13 @@ static int satl_Read_Verify_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba, uint32_t
     int ret = SUCCESS;
     bool dmaSupported = false;
     uint32_t verificationLength = dataSize / scsiIoCtx->device->drive_info.deviceBlockSize;
-    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word049 & BIT8)
+    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word049 & BIT8)//lba mode
     {
-        if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2))
+        if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2))//mwdma
         {
             dmaSupported = true;
         }
-        else if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word088 & 0xFF)
+        else if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word088 & 0xFF)//udma
         {
             dmaSupported = true;
         }
@@ -2093,12 +2140,12 @@ static int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *sc
     uint8_t peripheralDevice = 0;
     uint8_t commandCode = ATA_IDENTIFY;
     uint8_t ataInformation[572] = { 0 };
-#if SAT_SPEC_SUPPORTED > 3
+#if defined (SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
     if (device->drive_info.softSATFlags.identifyDeviceDataLogSupported)
     {
-        if (SUCCESS != ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
+        if (SUCCESS != ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000), LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
         {
-            if (SUCCESS != ata_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
+            if (SUCCESS != ata_Identify(device, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000), LEGACY_DRIVE_SEC_SIZE))
             {
                 return FAILURE;
             }
@@ -2116,11 +2163,11 @@ static int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *sc
         }
     }
     else 
-#endif
-    if (SUCCESS != ata_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
+#endif //SAT_SPEC_SUPPORTED
+    if (SUCCESS != ata_Identify(device, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000), LEGACY_DRIVE_SEC_SIZE))
     {
         //that failed, so try an identify packet device
-        if (SUCCESS != ata_Identify_Packet_Device(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
+        if (SUCCESS != ata_Identify_Packet_Device(device, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000), LEGACY_DRIVE_SEC_SIZE))
         {
             //if we still didn't get anything, then it's time to return a failure
             return FAILURE;
@@ -2129,12 +2176,12 @@ static int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *sc
         commandCode = ATAPI_IDENTIFY;
     }
     set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-#if SAT_SPEC_SUPPORTED > 3
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
     if (device->drive_info.zonedType == ZONED_TYPE_DEVICE_MANAGED)
     {
         peripheralDevice = 0x14;
     }
-#endif
+#endif //SAT_SPEC_SUPPORTED
     ataInformation[0] = peripheralDevice;
     ataInformation[1] = ATA_INFORMATION;
     ataInformation[2] = M_Byte1(VPD_ATA_INFORMATION_LEN);
@@ -2180,9 +2227,13 @@ static int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *sc
     ataInformation[32] = 'S';
     ataInformation[33] = 'A';
     ataInformation[34] = 'T';
+#if defined (SAT_SPEC_SUPPORTED)
     ataInformation[35] = 48 + SAT_SPEC_SUPPORTED;//set's the ascii character for which sat level the code is enabled for
+#else
+    ataInformation[35] = '?';
+#endif //SAT_SPEC_SUPPORTED
     //device signature (response from identify command)
-    if (device->drive_info.IdentifyData.ata.Word076 > 0 && device->drive_info.IdentifyData.ata.Word076 != 0xFFFF)//Only Serial ATA Devices will set the bits in words 76-79
+    if (is_ATA_Identify_Word_Valid_SATA(device->drive_info.IdentifyData.ata.Word076))//Only Serial ATA Devices will set the bits in words 76-79
     {
         ataInformation[36] = 0x34;
     }
@@ -2283,15 +2334,6 @@ static int translate_ATA_Information_VPD_Page_89h(tDevice *device, ScsiIoCtx *sc
     }
     //command code
     ataInformation[56] = commandCode;
-    //Old code below, now using variable to set command code since we may read identify data with a read log ext command
-    /*if (peripheralDevice == 0x05)
-    {
-        ataInformation[56] = ATAPI_IDENTIFY;
-    }
-    else
-    {
-        ataInformation[56] = ATA_IDENTIFY;
-    }*/
     //reserved
     ataInformation[57] = RESERVED;
     ataInformation[58] = RESERVED;
@@ -2312,18 +2354,17 @@ static int translate_Unit_Serial_Number_VPD_Page_80h(tDevice *device, ScsiIoCtx 
     uint8_t unitSerialNumber[24] = { 0 };
     char ataSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
     uint8_t peripheralDevice = 0;
-#if SAT_SPEC_SUPPORTED > 3
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
     if (device->drive_info.zonedType == ZONED_TYPE_DEVICE_MANAGED)
     {
         peripheralDevice = 0x14;
     }
-#endif
+#endif //SAT_SPEC_SUPPORTED
     unitSerialNumber[0] = peripheralDevice;
     //use the cached information
     memcpy(ataSerialNumber, device->drive_info.IdentifyData.ata.SerNum, SERIAL_NUM_LEN);
     //now byteswap the string
     byte_Swap_String(ataSerialNumber);
-    remove_Leading_And_Trailing_Whitespace(ataSerialNumber);
     unitSerialNumber[1] = UNIT_SERIAL_NUMBER;
     unitSerialNumber[2] = M_Byte1(strlen(ataSerialNumber));
     unitSerialNumber[3] = M_Byte0(strlen(ataSerialNumber));
@@ -2353,7 +2394,7 @@ static int translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoC
     char *ataVendorId = "ATA     ";
     //will hold the complete data to return
     uint8_t *deviceIdentificationPage = NULL;
-    if (device->drive_info.IdentifyData.ata.Word087 & BIT8) //NAA and SCSI Name String
+    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) && device->drive_info.IdentifyData.ata.Word087 & BIT8) //NAA and SCSI Name String
     {
         uint64_t wwn = M_WordsTo8ByteValue(device->drive_info.IdentifyData.ata.Word108,\
                                            device->drive_info.IdentifyData.ata.Word109,\
@@ -2414,7 +2455,7 @@ static int translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoC
     memcpy(&t10VendorIdDesignator[52], ataSerialNumber, ATA_IDENTIFY_SN_LENGTH);
 
     //now setup the device identification page
-    deviceIdentificationPage = C_CAST(uint8_t*, calloc((4U + 72U + naaDesignatorLength + SCSINameStringDesignatorLength) * sizeof(uint8_t), sizeof(uint8_t)));
+    deviceIdentificationPage = C_CAST(uint8_t*, calloc((UINT32_C(4) + UINT32_C(72) + C_CAST(uint32_t, naaDesignatorLength) + C_CAST(uint32_t, SCSINameStringDesignatorLength)) * sizeof(uint8_t), sizeof(uint8_t)));
     if (!deviceIdentificationPage)
     {
         safe_Free(SCSINameStringDesignator)
@@ -2422,16 +2463,16 @@ static int translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoC
         return MEMORY_FAILURE;
     }
     uint8_t peripheralDevice = 0;
-#if SAT_SPEC_SUPPORTED > 3
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
     if (device->drive_info.zonedType == ZONED_TYPE_DEVICE_MANAGED)
     {
         peripheralDevice = 0x14;
     }
-#endif
+#endif //SAT_SPEC_SUPPORTED
     deviceIdentificationPage[0] = peripheralDevice;
     deviceIdentificationPage[1] = DEVICE_IDENTIFICATION;
-    deviceIdentificationPage[2] = M_Byte1(72U + naaDesignatorLength + SCSINameStringDesignatorLength);
-    deviceIdentificationPage[3] = M_Byte0(72U + naaDesignatorLength + SCSINameStringDesignatorLength);
+    deviceIdentificationPage[2] = M_Byte1(UINT32_C(72) + naaDesignatorLength + SCSINameStringDesignatorLength);
+    deviceIdentificationPage[3] = M_Byte0(UINT32_C(72) + naaDesignatorLength + SCSINameStringDesignatorLength);
     //copy naa first
     if (naaDesignatorLength > 0)
     {
@@ -2443,14 +2484,14 @@ static int translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoC
         memcpy(&deviceIdentificationPage[4 + naaDesignatorLength], SCSINameStringDesignator, SCSINameStringDesignatorLength);
     }
     //t10 vendor identification last
-    memcpy(&deviceIdentificationPage[4 + naaDesignatorLength + SCSINameStringDesignatorLength], t10VendorIdDesignator, 72U);
+    memcpy(&deviceIdentificationPage[4 + naaDesignatorLength + SCSINameStringDesignatorLength], t10VendorIdDesignator, UINT32_C(72));
     //now free the memory we no longer need
     safe_Free(naaDesignator)
     safe_Free(SCSINameStringDesignator)
     //copy the final data back for the command
     if (scsiIoCtx->pdata)
     {
-        memcpy(scsiIoCtx->pdata, deviceIdentificationPage, M_Min(72U + naaDesignatorLength + SCSINameStringDesignatorLength, scsiIoCtx->dataLength));
+        memcpy(scsiIoCtx->pdata, deviceIdentificationPage, M_Min(UINT32_C(72) + naaDesignatorLength + SCSINameStringDesignatorLength, scsiIoCtx->dataLength));
     }
     safe_Free(deviceIdentificationPage)
     return ret;
@@ -2461,23 +2502,29 @@ static int translate_Block_Device_Characteristics_VPD_Page_B1h(tDevice *device, 
     int ret = SUCCESS;
     uint8_t blockDeviceCharacteriticsPage[64] = { 0 };
     uint8_t peripheralDevice = 0;
-#if SAT_SPEC_SUPPORTED > 3
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
     if (device->drive_info.zonedType == ZONED_TYPE_DEVICE_MANAGED)
     {
         peripheralDevice = 0x14;
     }
-#endif
+#endif //SAT_SPEC_SUPPORTED
     blockDeviceCharacteriticsPage[0] = peripheralDevice;
     blockDeviceCharacteriticsPage[1] = BLOCK_DEVICE_CHARACTERISTICS;
     blockDeviceCharacteriticsPage[2] = 0x00;
     blockDeviceCharacteriticsPage[3] = 0x3C;
     //rotation rate
-    blockDeviceCharacteriticsPage[4] = M_Byte1(device->drive_info.IdentifyData.ata.Word217);
-    blockDeviceCharacteriticsPage[5] = M_Byte0(device->drive_info.IdentifyData.ata.Word217);
+    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word217))
+    {
+        blockDeviceCharacteriticsPage[4] = M_Byte1(device->drive_info.IdentifyData.ata.Word217);
+        blockDeviceCharacteriticsPage[5] = M_Byte0(device->drive_info.IdentifyData.ata.Word217);
+    }
     //product type
     blockDeviceCharacteriticsPage[6] = 0;
     //form factor
-    blockDeviceCharacteriticsPage[7] = M_Nibble0(device->drive_info.IdentifyData.ata.Word168);
+    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word168))
+    {
+        blockDeviceCharacteriticsPage[7] = M_Nibble0(device->drive_info.IdentifyData.ata.Word168);
+    }
     switch (device->drive_info.zonedType)
     {
     case 1://host aware
@@ -2512,12 +2559,12 @@ static int translate_Power_Condition_VPD_Page_8Ah(tDevice *device, ScsiIoCtx *sc
         ataPowerConditionsDescriptor *descriptor = NULL;
         uint8_t powerConditionPage[18] = { 0 };
         uint8_t peripheralDevice = 0;
-#if SAT_SPEC_SUPPORTED > 3
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
         if (device->drive_info.zonedType == ZONED_TYPE_DEVICE_MANAGED)
         {
             peripheralDevice = 0x14;
         }
-#endif
+#endif //SAT_SPEC_SUPPORTED
         powerConditionPage[0] = peripheralDevice;
         powerConditionPage[1] = POWER_CONDITION;
         powerConditionPage[2] = 0x00;
@@ -2526,7 +2573,7 @@ static int translate_Power_Condition_VPD_Page_8Ah(tDevice *device, ScsiIoCtx *sc
         powerConditionPage[6] = 0x00;
         powerConditionPage[7] = 0x00;
         //standby y
-        descriptor = (ataPowerConditionsDescriptor*)&powerConditionsLog[384 + LEGACY_DRIVE_SEC_SIZE];//in second sector
+        descriptor = C_CAST(ataPowerConditionsDescriptor*, &powerConditionsLog[384 + LEGACY_DRIVE_SEC_SIZE]);//in second sector
         if (descriptor->powerConditionFlags & BIT7)
         {
             powerConditionPage[4] |= BIT1;
@@ -2542,7 +2589,7 @@ static int translate_Power_Condition_VPD_Page_8Ah(tDevice *device, ScsiIoCtx *sc
             powerConditionPage[11] = M_Byte0(descriptor->nomincalRecoveryTimeToPM0);
         }
         //standby z
-        descriptor = (ataPowerConditionsDescriptor*)&powerConditionsLog[448 + LEGACY_DRIVE_SEC_SIZE];//in second sector
+        descriptor = C_CAST(ataPowerConditionsDescriptor*, &powerConditionsLog[448 + LEGACY_DRIVE_SEC_SIZE]);//in second sector
         if (descriptor->powerConditionFlags & BIT7)
         {
             powerConditionPage[4] |= BIT0;
@@ -2558,7 +2605,7 @@ static int translate_Power_Condition_VPD_Page_8Ah(tDevice *device, ScsiIoCtx *sc
             powerConditionPage[9] = M_Byte0(descriptor->nomincalRecoveryTimeToPM0);
         }
         //idle a
-        descriptor = (ataPowerConditionsDescriptor*)&powerConditionsLog[0];
+        descriptor = C_CAST(ataPowerConditionsDescriptor*, &powerConditionsLog[0]);
         if (descriptor->powerConditionFlags & BIT7)
         {
             powerConditionPage[5] |= BIT0;
@@ -2574,7 +2621,7 @@ static int translate_Power_Condition_VPD_Page_8Ah(tDevice *device, ScsiIoCtx *sc
             powerConditionPage[9] = M_Byte0(descriptor->nomincalRecoveryTimeToPM0);
         }
         //idle b
-        descriptor = (ataPowerConditionsDescriptor*)&powerConditionsLog[64];
+        descriptor = C_CAST(ataPowerConditionsDescriptor*, &powerConditionsLog[64]);
         if (descriptor->powerConditionFlags & BIT7)
         {
             powerConditionPage[5] |= BIT1;
@@ -2590,7 +2637,7 @@ static int translate_Power_Condition_VPD_Page_8Ah(tDevice *device, ScsiIoCtx *sc
             powerConditionPage[9] = M_Byte0(descriptor->nomincalRecoveryTimeToPM0);
         }
         //idle c
-        descriptor = (ataPowerConditionsDescriptor*)&powerConditionsLog[128];
+        descriptor = C_CAST(ataPowerConditionsDescriptor*, &powerConditionsLog[128]);
         if (descriptor->powerConditionFlags & BIT7)
         {
             powerConditionPage[5] |= BIT2;
@@ -2625,12 +2672,12 @@ static int translate_Logical_Block_Provisioning_VPD_Page_B2h(tDevice *device, Sc
     int ret = SUCCESS;
     uint8_t logicalBlockProvisioning[8] = { 0 };
     uint8_t peripheralDevice = 0;
-#if SAT_SPEC_SUPPORTED > 3
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
     if (device->drive_info.zonedType == ZONED_TYPE_DEVICE_MANAGED)
     {
         peripheralDevice = 0x14;
     }
-#endif
+#endif //SAT_SPEC_SUPPORTED
     logicalBlockProvisioning[0] = peripheralDevice;
     logicalBlockProvisioning[1] = 0xB2;
     logicalBlockProvisioning[2] = 0x00;
@@ -2638,33 +2685,26 @@ static int translate_Logical_Block_Provisioning_VPD_Page_B2h(tDevice *device, Sc
     //threshold exponent
     logicalBlockProvisioning[4] = 0;
     //lbpu bit
-    if (device->drive_info.IdentifyData.ata.Word169 & BIT0)
+    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word169))
     {
-        logicalBlockProvisioning[5] |= BIT7;
-    }
-    //lbpws bit (set to zero since we don't support unmap during write same yet)
-    /*
-    if (device->drive_info.IdentifyData.ata.Word169 & BIT0)
-    {
-    logicalBlockProvisioning[5] |= BIT6;
-    }
-    */
-    //lbpws10 bit (set to zero since we don't support unmap during write same yet)
-    /*
-    if (device->drive_info.IdentifyData.ata.Word169 & BIT0)
-    {
-    logicalBlockProvisioning[5] |= BIT5;
-    }
-    */
-    //lbprz
-    if (device->drive_info.IdentifyData.ata.Word169 & BIT0 && device->drive_info.IdentifyData.ata.Word069 & BIT5)
-    {
-        logicalBlockProvisioning[5] |= BIT2;
-    }
-    //anc_sup
-    if (device->drive_info.IdentifyData.ata.Word169 & BIT0 && device->drive_info.IdentifyData.ata.Word069 & BIT14)
-    {
-        logicalBlockProvisioning[5] |= BIT1;
+        if (device->drive_info.IdentifyData.ata.Word169 & BIT0)
+        {
+            logicalBlockProvisioning[5] |= BIT7;
+            //lbpws bit (set to zero since we don't support unmap during write same yet)
+            //logicalBlockProvisioning[5] |= BIT6;
+            //lbpws10 bit (set to zero since we don't support unmap during write same yet)
+            //logicalBlockProvisioning[5] |= BIT5;
+            //lbprz
+            if (device->drive_info.IdentifyData.ata.Word069 & BIT5)
+            {
+                logicalBlockProvisioning[5] |= BIT2;
+            }
+            //anc_sup
+            if (device->drive_info.IdentifyData.ata.Word069 & BIT14)
+            {
+                logicalBlockProvisioning[5] |= BIT1;
+            }
+        }
     }
     //dp (set to zero since we don't support a resource descriptor
     if (scsiIoCtx->pdata)
@@ -2679,12 +2719,12 @@ static int translate_Block_Limits_VPD_Page_B0h(tDevice *device, ScsiIoCtx *scsiI
     int ret = SUCCESS;
     uint8_t blockLimits[64] = { 0 };
     uint8_t peripheralDevice = 0;
-#if SAT_SPEC_SUPPORTED > 3
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
     if (device->drive_info.zonedType == ZONED_TYPE_DEVICE_MANAGED)
     {
         peripheralDevice = 0x14;
     }
-#endif
+#endif //SAT_SPEC_SUPPORTED
     blockLimits[0] = peripheralDevice;
     blockLimits[1] = 0xB0;
     blockLimits[2] = 0x00;
@@ -2717,18 +2757,23 @@ static int translate_Block_Limits_VPD_Page_B0h(tDevice *device, ScsiIoCtx *scsiI
     //maximum prefetch length (unspecified....we decide) - leave at zero since we don't support the prefetch command
 
     //unmap stuff
-    if (device->drive_info.IdentifyData.ata.Word169 & BIT0 && device->drive_info.IdentifyData.ata.Word069 & BIT14)
+    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word169) && device->drive_info.IdentifyData.ata.Word169 & BIT0 && device->drive_info.IdentifyData.ata.Word069 & BIT14)
     {
-#if SAT_SPEC_SUPPORTED > 3
+        uint32_t maxBlocks = 1;
+        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word105))
+        {
+            maxBlocks = device->drive_info.IdentifyData.ata.Word105;
+        }
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
         uint8_t maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
         uint64_t maxUnmapRangePerDescriptor = device->drive_info.softSATFlags.dataSetManagementXLSupported ? UINT64_MAX : UINT16_MAX;
-        uint64_t maxLBAsPerUnmap = C_CAST(uint64_t, maxDescriptorsPerBlock) * C_CAST(uint64_t, device->drive_info.IdentifyData.ata.Word105) * maxUnmapRangePerDescriptor;
+        uint64_t maxLBAsPerUnmap = C_CAST(uint64_t, maxDescriptorsPerBlock) * C_CAST(uint64_t, maxBlocks) * maxUnmapRangePerDescriptor;
         uint32_t unmapLBACount = maxLBAsPerUnmap > UINT32_MAX ? UINT32_MAX : C_CAST(uint32_t, maxLBAsPerUnmap);
-        uint32_t unmapMaxBlockDescriptors = maxDescriptorsPerBlock * device->drive_info.IdentifyData.ata.Word105;
-#else
-        uint32_t unmapLBACount = 64 * device->drive_info.IdentifyData.ata.Word105 * UINT16_MAX;
-        uint32_t unmapMaxBlockDescriptors = 64 * device->drive_info.IdentifyData.ata.Word105;
-#endif
+        uint32_t unmapMaxBlockDescriptors = maxDescriptorsPerBlock * maxBlocks;
+#else //SAT_SPEC_SUPPORTED <= 3
+        uint32_t unmapLBACount = 64 * maxBlocks * UINT16_MAX;
+        uint32_t unmapMaxBlockDescriptors = 64 * maxBlocks;
+#endif //SAT_SPEC_SUPPORTED
         //maximum unmap LBA count (unspecified....we decide)
         blockLimits[20] = M_Byte3(unmapLBACount);
         blockLimits[21] = M_Byte2(unmapLBACount);
@@ -2777,12 +2822,12 @@ static int translate_Mode_Page_Policy_VPD_Page_87h(tDevice *device, ScsiIoCtx *s
     uint8_t modePagePolicy[LEGACY_DRIVE_SEC_SIZE] = { 0 };
     uint16_t pageOffset = 4;//set to where we'll write the first descriptor
     uint8_t peripheralDevice = 0;
-#if SAT_SPEC_SUPPORTED > 3
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
     if (device->drive_info.zonedType == ZONED_TYPE_DEVICE_MANAGED)
     {
         peripheralDevice = 0x14;
     }
-#endif
+#endif //SAT_SPEC_SUPPORTED
     modePagePolicy[0] = peripheralDevice;
     modePagePolicy[1] = 0x87;
     //set each page policy descriptor
@@ -2798,16 +2843,16 @@ static int translate_Mode_Page_Policy_VPD_Page_87h(tDevice *device, ScsiIoCtx *s
     modePagePolicy[pageOffset + 2] = 0x01;//mlus = 0 | modePagePolicy = 01b (per target port)
     modePagePolicy[pageOffset + 3] = RESERVED;//Reserved
     pageOffset += 4;
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
     //power condition
     modePagePolicy[pageOffset + 0] = 0x1A;//pageCode
     modePagePolicy[pageOffset + 1] = 0x00;//subpage code
     modePagePolicy[pageOffset + 2] = 0x01;//mlus = 0 | modePagePolicy = 01b (per target port)
     modePagePolicy[pageOffset + 3] = RESERVED;//Reserved
     pageOffset += 4;
-#endif
+#endif //SAT_SPEC_SUPPORTED
     //ATA power condition
-    if (device->drive_info.IdentifyData.ata.Word083 & BIT3)
+    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) && device->drive_info.IdentifyData.ata.Word083 & BIT3)
     {
         modePagePolicy[pageOffset + 0] = 0x1A;//pageCode
         modePagePolicy[pageOffset + 1] = 0xF1;//subpage code
@@ -2827,15 +2872,15 @@ static int translate_Mode_Page_Policy_VPD_Page_87h(tDevice *device, ScsiIoCtx *s
     modePagePolicy[pageOffset + 2] = 0x01;//mlus = 0 | modePagePolicy = 01b (per target port)
     modePagePolicy[pageOffset + 3] = RESERVED;//Reserved
     pageOffset += 4;
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
     //control extension
     modePagePolicy[pageOffset + 0] = 0xA0;//pageCode
     modePagePolicy[pageOffset + 1] = 0x01;//subpage code
     modePagePolicy[pageOffset + 2] = 0x01;//mlus = 0 | modePagePolicy = 01b (per target port)
     modePagePolicy[pageOffset + 3] = RESERVED;//Reserved
     pageOffset += 4;
-#endif
-    if (device->drive_info.IdentifyData.ata.Word076 == 0 || device->drive_info.IdentifyData.ata.Word076 == 0xFFFF)//Only Serial ATA Devices will set the bits in words 76-79. Bit zero should always be set to zero, so the FFFF case won't be an issue
+#endif //SAT_SPEC_SUPPORTED
+    if (is_ATA_Identify_Word_Valid_SATA(device->drive_info.IdentifyData.ata.Word076))//Only Serial ATA Devices will set the bits in words 76-79. Bit zero should always be set to zero, so the FFFF case won't be an issue
     {
         //pata control
         modePagePolicy[pageOffset + 0] = 0xA0;//pageCode
@@ -2873,7 +2918,7 @@ static int translate_Zoned_Block_Device_Characteristics_VPD_Page_B6h(tDevice *de
         zonedDeviceCharacteristics[1] = 0xB6;
         zonedDeviceCharacteristics[2] = 0x00;
         zonedDeviceCharacteristics[3] = 0x3C;
-        if (zonedQword & BIT63 && pageNumber == ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION)
+        if (zonedQword & ATA_ID_DATA_QWORD_VALID_BIT && pageNumber == ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION)
         {
             uint32_t optimalNumberOfOpenSequentialWritePreferredZones = M_BytesTo4ByteValue(zonedDeviceInformation[19], zonedDeviceInformation[18], zonedDeviceInformation[17], zonedDeviceInformation[16]);
             uint32_t optimalNumberOfNonSequentiallyWrittenSequentialWritePreferredZones = M_BytesTo4ByteValue(zonedDeviceInformation[27], zonedDeviceInformation[26], zonedDeviceInformation[25], zonedDeviceInformation[24]);
@@ -2922,12 +2967,12 @@ static int translate_Extended_Inquiry_Data_VPD_Page_86h(tDevice *device, ScsiIoC
     int ret = SUCCESS;
     uint8_t extendedInquiry[64] = { 0 };
     uint8_t peripheralDevice = 0;
-#if SAT_SPEC_SUPPORTED > 3
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
     if (device->drive_info.zonedType == ZONED_TYPE_DEVICE_MANAGED)
     {
         peripheralDevice = 0x14;
     }
-#endif
+#endif //SAT_SPEC_SUPPORTED
     extendedInquiry[0] = peripheralDevice;
     extendedInquiry[1] = EXTENDED_INQUIRY_DATA;
     extendedInquiry[2] = 0x00;
@@ -2937,14 +2982,19 @@ static int translate_Extended_Inquiry_Data_VPD_Page_86h(tDevice *device, ScsiIoC
     //activate microcode may be 0 (not specified) or 01b (activates before completion of final command in write buffer sequence)
     extendedInquiry[4] |= BIT6;//01b
     //WU_SUP - set to value of ATA Write Uncorrectable command support from identify data.
-    if (device->drive_info.IdentifyData.ata.Word119 & BIT2 || device->drive_info.IdentifyData.ata.Word120 & BIT2)
+    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) && device->drive_info.IdentifyData.ata.Word086 & BIT15)/*words 119, 120 valid*/
     {
-        extendedInquiry[6] |= BIT3;
-        //CRD_SUP (Obsolete is SPC5) set to value of WU_SUP
-        extendedInquiry[6] |= BIT2;
+        if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) && device->drive_info.IdentifyData.ata.Word119 & BIT2)
+            || (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word120) && device->drive_info.IdentifyData.ata.Word120 & BIT2))
+        {
+            extendedInquiry[6] |= BIT3;
+            //CRD_SUP (Obsolete is SPC5) set to value of WU_SUP
+            extendedInquiry[6] |= BIT2;
+        }
     }
     //extended self test completion time minutes to value from SMART Read Data command
-    if (device->drive_info.IdentifyData.ata.Word085 & BIT0 && device->drive_info.IdentifyData.ata.Word084 & BIT1)//smart enabled and self test supported
+    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085  & BIT0 
+        && is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) && device->drive_info.IdentifyData.ata.Word084 & BIT1)//smart enabled and self test supported
     {
         uint8_t smartData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
         if (SUCCESS == ata_SMART_Read_Data(device, smartData, LEGACY_DRIVE_SEC_SIZE))
@@ -2983,12 +3033,12 @@ static int translate_Supported_VPD_Pages_00h(tDevice *device, ScsiIoCtx *scsiIoC
     uint8_t supportedPages[LEGACY_DRIVE_SEC_SIZE] = { 0 };
     uint16_t pageOffset = 4;
     uint8_t peripheralDevice = 0;
-#if SAT_SPEC_SUPPORTED > 3
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
     if (device->drive_info.zonedType == ZONED_TYPE_DEVICE_MANAGED)
     {
         peripheralDevice = 0x14;
     }
-#endif
+#endif //SAT_SPEC_SUPPORTED
     supportedPages[0] = peripheralDevice;
     supportedPages[1] = 0;//page 0
     //set page 0 in here
@@ -3000,51 +3050,54 @@ static int translate_Supported_VPD_Pages_00h(tDevice *device, ScsiIoCtx *scsiIoC
     //device identification
     supportedPages[pageOffset] = DEVICE_IDENTIFICATION;
     pageOffset++;
-#if SAT_SPEC_SUPPORTED > 3 && SAT_4_ERROR_HISTORY_FEATURE
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3 && SAT_4_ERROR_HISTORY_FEATURE
     //extended inquiry data
     supportedPages[pageOffset] = EXTENDED_INQUIRY_DATA;
     pageOffset++;
-#endif
+#endif //SAT_SPEC_SUPPORTED
     //mode page policy
     supportedPages[pageOffset] = MODE_PAGE_POLICY;
     pageOffset++;
     //ATA Information
     supportedPages[pageOffset] = ATA_INFORMATION;
     pageOffset++;
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
     //power condition (only is EPC is supported on the drive)
-    if (device->drive_info.IdentifyData.ata.Word119 & BIT7)
+    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) && device->drive_info.IdentifyData.ata.Word086 & BIT15)/*words 119, 120 valid*/
     {
-        supportedPages[pageOffset] = POWER_CONDITION;
-        pageOffset++;
+        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) && device->drive_info.IdentifyData.ata.Word119 & BIT7)
+        {
+            supportedPages[pageOffset] = POWER_CONDITION;
+            pageOffset++;
+        }
     }
-#endif
-#if SAT_SPEC_SUPPORTED > 2
+#endif //SAT_SPEC_SUPPORTED
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
     //block limits
     supportedPages[pageOffset] = BLOCK_LIMITS;
     pageOffset++;
-#endif
-#if SAT_SPEC_SUPPORTED > 1
+#endif //SAT_SPEC_SUPPORTED
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 1
     //block device characteristics
     supportedPages[pageOffset] = BLOCK_DEVICE_CHARACTERISTICS;
     pageOffset++;
-#endif
-#if SAT_SPEC_SUPPORTED > 2
+#endif //SAT_SPEC_SUPPORTED
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
     //logical block provisioning (only show when we have a drive that supports the TRIM command...otherwise this page has little to no meaning)
-    if (device->drive_info.IdentifyData.ata.Word169 & BIT0)
+    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word169) && device->drive_info.IdentifyData.ata.Word169 & BIT0)
     {
         supportedPages[pageOffset] = LOGICAL_BLOCK_PROVISIONING;
         pageOffset++;
     }
-#endif
-#if SAT_SPEC_SUPPORTED > 3
+#endif //SAT_SPEC_SUPPORTED
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
     //zoned device characteristics
     if (device->drive_info.zonedType == ZONED_TYPE_HOST_AWARE || device->drive_info.zonedType == ZONED_TYPE_HOST_MANAGED)
     {
         supportedPages[pageOffset] = ZONED_BLOCK_DEVICE_CHARACTERISTICS;
         pageOffset++;
     }
-#endif
+#endif //SAT_SPEC_SUPPORTED
     //set the page length last
     supportedPages[2] = M_Byte1(pageOffset - 4);
     supportedPages[3] = M_Byte0(pageOffset - 4);
@@ -3096,20 +3149,21 @@ static int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             case DEVICE_IDENTIFICATION:
                 ret = translate_Device_Identification_VPD_Page_83h(device, scsiIoCtx);
                 break;
-#if SAT_SPEC_SUPPORTED > 3 && SAT_4_ERROR_HISTORY_FEATURE
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3 && SAT_4_ERROR_HISTORY_FEATURE
             case EXTENDED_INQUIRY_DATA:
                 ret = translate_Extended_Inquiry_Data_VPD_Page_86h(device, scsiIoCtx);
                 break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
             case MODE_PAGE_POLICY:
                 ret = translate_Mode_Page_Policy_VPD_Page_87h(device, scsiIoCtx);
                 break;
             case ATA_INFORMATION:
                 ret = translate_ATA_Information_VPD_Page_89h(device, scsiIoCtx);
                 break;
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
             case POWER_CONDITION:
-                if (device->drive_info.IdentifyData.ata.Word119 & BIT7)
+                if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) && device->drive_info.IdentifyData.ata.Word086 & BIT15)/*words 119, 120 valid*/
+                    && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) && device->drive_info.IdentifyData.ata.Word119 & BIT7))
                 {
                     ret = translate_Power_Condition_VPD_Page_8Ah(device, scsiIoCtx);
                 }
@@ -3125,16 +3179,16 @@ static int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             case BLOCK_LIMITS:
                 ret = translate_Block_Limits_VPD_Page_B0h(device, scsiIoCtx);
                 break;
-#endif
-#if SAT_SPEC_SUPPORTED > 1
+#endif //SAT_SPEC_SUPPORTED
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 1
             case BLOCK_DEVICE_CHARACTERISTICS:
                 ret = translate_Block_Device_Characteristics_VPD_Page_B1h(device, scsiIoCtx);
                 break;
-#endif
-#if SAT_SPEC_SUPPORTED > 2
+#endif //SAT_SPEC_SUPPORTED
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
             case LOGICAL_BLOCK_PROVISIONING:
                 //only bother supporting this page if the drive supports trim
-                if (device->drive_info.IdentifyData.ata.Word169 & BIT0)
+                if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word169) && device->drive_info.IdentifyData.ata.Word169 & BIT0)
                 {
                     ret = translate_Logical_Block_Provisioning_VPD_Page_B2h(device, scsiIoCtx);
                 }
@@ -3147,8 +3201,8 @@ static int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 }
                 break;
-#endif
-#if SAT_SPEC_SUPPORTED > 3
+#endif //SAT_SPEC_SUPPORTED
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
             case ZONED_BLOCK_DEVICE_CHARACTERISTICS:
                 if (device->drive_info.zonedType == ZONED_TYPE_HOST_AWARE || device->drive_info.zonedType == ZONED_TYPE_HOST_MANAGED)
                 {
@@ -3163,7 +3217,7 @@ static int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 }
                 break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
             default:
                 ret = NOT_SUPPORTED;
                 fieldPointer = 2;
@@ -3187,10 +3241,10 @@ static int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 return NOT_SUPPORTED;
             }
-            if (SUCCESS != ata_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
+            if (SUCCESS != ata_Identify(device, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000), LEGACY_DRIVE_SEC_SIZE))
             {
                 //that failed, so try an identify packet device
-                if (SUCCESS != ata_Identify_Packet_Device(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
+                if (SUCCESS != ata_Identify_Packet_Device(device, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000), LEGACY_DRIVE_SEC_SIZE))
                 {
                     set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NOT_READY, 0x04, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
                     return FAILURE;
@@ -3198,31 +3252,31 @@ static int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 peripheralDevice = 0x05;
             }
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-#if SAT_SPEC_SUPPORTED > 3
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
             if (device->drive_info.zonedType == ZONED_TYPE_DEVICE_MANAGED)
             {
                 peripheralDevice = 0x14;
             }
-#endif
+#endif //SAT_SPEC_SUPPORTED
             inquiryData[0] = peripheralDevice;
             if (device->drive_info.IdentifyData.ata.Word000 & BIT7)
             {
                 inquiryData[1] |= BIT7;
             }
             //version
-#if SAT_SPEC_SUPPORTED == 1
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED == 1
             //SPC3
             inquiryData[2] = 0x05;
-#elif SAT_SPEC_SUPPORTED == 2
+#elif defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED == 2
             //SPC4
             inquiryData[2] = 0x06;
-#elif SAT_SPEC_SUPPORTED == 3
+#elif defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED == 3
             //SPC4
             inquiryData[2] = 0x06;
-#else
+#else //SAT_SPEC_SUPPORTED
             //SPC5
             inquiryData[2] = 0x07;
-#endif
+#endif //SAT_SPEC_SUPPORTED
             //response format
             inquiryData[3] = 2;
             //additional length
@@ -3257,7 +3311,7 @@ static int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             memcpy(&inquiryData[36], ataSN, M_Min(strlen(ataSN), ATA_IDENTIFY_SN_LENGTH));
             //version descriptors (bytes 58 to 73) (8 max)
             uint16_t versionOffset = 58;
-#if SAT_SPEC_SUPPORTED < 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED < 2
             //SAM3
             inquiryData[versionOffset] = 0x00;
             inquiryData[versionOffset + 1] = 0x60;
@@ -3274,7 +3328,7 @@ static int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             inquiryData[versionOffset] = 0x03;
             inquiryData[versionOffset + 1] = 0x20;
             versionOffset += 2;
-#elif SAT_SPEC_SUPPORTED < 3
+#elif defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED < 3
             //SAM4
             inquiryData[versionOffset] = 0x00;
             inquiryData[versionOffset + 1] = 0x80;
@@ -3291,7 +3345,7 @@ static int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             inquiryData[versionOffset] = 0x04;
             inquiryData[versionOffset + 1] = 0xC0;
             versionOffset += 2;
-#elif SAT_SPEC_SUPPORTED < 4
+#elif defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED < 4
             //SAM5
             inquiryData[versionOffset] = 0x00;
             inquiryData[versionOffset + 1] = 0xA0;
@@ -3308,7 +3362,7 @@ static int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             inquiryData[versionOffset] = 0x04;
             inquiryData[versionOffset + 1] = 0xC0;
             versionOffset += 2;
-#else
+#else //SAT_SPEC_SUPPORTED
             //SAM6 - 
             inquiryData[versionOffset] = 0x00;
             inquiryData[versionOffset + 1] = 0xC0;
@@ -3332,11 +3386,11 @@ static int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 inquiryData[versionOffset + 1] = 0x20;
                 versionOffset += 2;
             }
-#endif
+#endif //SAT_SPEC_SUPPORTED
             //Transport...skipping this one since I'm not sure of what exactly to set (we could try to do parallel vs serial, but we only get to set ATA8-APT or ATA8-AST, which may not be enough)-TJE
             //ATA Version(s) ATA/ATAPI-6 through ACS-4
             //searching for specs between ATA/ATAPI-6 and ACS-3 since ACS3 is the highest thing with a value at this time.
-            if (device->drive_info.IdentifyData.ata.Word080 >= 0x0040 && device->drive_info.IdentifyData.ata.Word080 <= 0x07FF)
+            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word080))
             {
                 uint16_t specSupportedWord = device->drive_info.IdentifyData.ata.Word080;
                 uint16_t ataSpecVersion = 0;
@@ -3356,21 +3410,21 @@ static int translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                         case 8://ACS(ATA8) 1623h
                             ataSpecVersion = 0x1623;
                             break;
-#if SAT_SPEC_SUPPORTED > 1
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 1
                         case 9://ACS2 1761h
                             ataSpecVersion = 0x1761;
                             break;
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
                         case 10://ACS3 1765h
                             ataSpecVersion = 0x1765;
                             break;
-#if SAT_SPEC_SUPPORTED > 3
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
                         case 11://ACS4 1767h
                             ataSpecVersion = 0x1767;
                             break;
-#endif
-#endif
-#endif
+#endif //SAT_SPEC_SUPPORTED >3
+#endif //SAT_SPEC_SUPPORTED >2
+#endif //SAT_SPEC_SUPPORTED >1
                         default:
                             break;
                         }
@@ -3465,23 +3519,101 @@ static int translate_SCSI_Read_Capacity_Command(tDevice *device, bool readCapaci
         }
     }
     //issue an identify command
-    if (SUCCESS == ata_Identify(device, (uint8_t *)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
+    if (SUCCESS == ata_Identify(device, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000), LEGACY_DRIVE_SEC_SIZE))
     {
-        uint8_t *identifyData = (uint8_t*)&device->drive_info.IdentifyData.ata;
-        uint16_t *ident_word = (uint16_t*)&device->drive_info.IdentifyData.ata;
+        uint8_t *identifyData = C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata);
+        uint16_t *ident_word = C_CAST(uint16_t*, &device->drive_info.IdentifyData.ata);
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
         //get the MaxLBA
-        if (ident_word[83] & BIT10)
+        bool lbaModeSupported = false;
+        uint16_t cylinder = 0;
+        uint8_t head = 0;
+        uint8_t spt = 0;
+        if (is_ATA_Identify_Word_Valid(ident_word[1]) && is_ATA_Identify_Word_Valid(ident_word[3]) && is_ATA_Identify_Word_Valid(ident_word[6]))
         {
-            maxLBA = M_BytesTo8ByteValue(identifyData[207], identifyData[206], identifyData[205], identifyData[204], identifyData[203], identifyData[202], identifyData[201], identifyData[200]);
+            cylinder = M_BytesTo2ByteValue(identifyData[3], identifyData[2]);//word 1
+            head = identifyData[6];//Word3
+            spt = identifyData[12];//Word6
+            //According to ATA, word 53, bit 0 set to 1 means the words 54,-58 are valid.
+            //if set to zero they MAY be valid....so just check validity on everything
         }
-        else
+        bool words64to70Valid = false;
+        if (is_ATA_Identify_Word_Valid(ident_word[49]))
         {
+            if (ident_word[49] & BIT9)
+            {
+                lbaModeSupported = true;
+            }
+            if (ident_word[53] & BIT1)
+            {
+                words64to70Valid = true;
+            }
+        }
+        if (is_ATA_Identify_Word_Valid(ident_word[53]))
+        {
+            if ((ident_word[53] & BIT0)
+                || (is_ATA_Identify_Word_Valid(ident_word[54])
+                    && is_ATA_Identify_Word_Valid(ident_word[55])
+                    && is_ATA_Identify_Word_Valid(ident_word[56])
+                    && is_ATA_Identify_Word_Valid(ident_word[57])
+                    && is_ATA_Identify_Word_Valid(ident_word[58])))
+            {
+                //only override if these are non-zero. If all are zero, then we cannot determine the current configuration
+                //and should rely on the defaults read earlier.
+                //This is being checked again sincea device may set bit0 of word 53 meaning this is a valid field.
+                //however if the values are zero, we do not want to use them.
+                if (M_BytesTo2ByteValue(identifyData[109], identifyData[108]) > 0 && identifyData[110] > 0 && identifyData[112] > 0)
+                {
+                    cylinder = M_BytesTo2ByteValue(identifyData[109], identifyData[108]);//word 54
+                    head = identifyData[110];//Word55
+                    spt = identifyData[112];//Word56
+                }
+
+            }
+        }
+        maxLBA = C_CAST(uint64_t, cylinder) * C_CAST(uint64_t, head) * C_CAST(uint64_t, spt);
+
+        if (lbaModeSupported || (is_ATA_Identify_Word_Valid(ident_word[60]) || is_ATA_Identify_Word_Valid(ident_word[61])))
+        {
+            lbaModeSupported = true;//workaround for some USB devices that do support lbamode as can be seen by reading this LBA value
             maxLBA = M_BytesTo4ByteValue(identifyData[123], identifyData[122], identifyData[121], identifyData[120]);
         }
-        maxLBA -= 1;
+
+        bool extendedLBAFieldValid = false;
+        if (words64to70Valid && is_ATA_Identify_Word_Valid(ident_word[69]))
+        {
+            if (ident_word[69] & BIT3)
+            {
+                extendedLBAFieldValid = true;
+            }
+            if (ident_word[69] & BIT5)
+            {
+                rzatLBPRZ = true;
+            }
+            if (ident_word[69] & BIT14)
+            {
+                dratLBPME = true;
+            }
+        }
+        if (lbaModeSupported && maxLBA == MAX_28BIT)
+        {
+            //max LBA from other words since 28bit max field is maxed out
+            //check words 100-103 are valid values
+            if (is_ATA_Identify_Word_Valid(ident_word[100]) || is_ATA_Identify_Word_Valid(ident_word[101]) || is_ATA_Identify_Word_Valid(ident_word[102]) || is_ATA_Identify_Word_Valid(ident_word[103]))
+            {
+                maxLBA = M_BytesTo8ByteValue(identifyData[207], identifyData[206], identifyData[205], identifyData[204], identifyData[203], identifyData[202], identifyData[201], identifyData[200]);
+            }
+        }
+        if (extendedLBAFieldValid) //TODO: SAT version check???
+        {
+            maxLBA = M_BytesTo8ByteValue(identifyData[467], identifyData[466], identifyData[465], identifyData[464], identifyData[463], identifyData[462], identifyData[461], identifyData[460]);
+        }
+        if (lbaModeSupported)
+        {
+            maxLBA -= 1;
+        }
         //get the Sector Sizes
-        if (((ident_word[106] & BIT14) == BIT14) && ((ident_word[106] & BIT15) == 0)) //making sure this word has valid data
+        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(ident_word[106]))
         {
             //word 117 is only valid when word 106 bit 12 is set
             if ((ident_word[106] & BIT12) == BIT12)
@@ -3507,20 +3639,11 @@ static int translate_SCSI_Read_Capacity_Command(tDevice *device, bool readCapaci
             logicalSectorSize = LEGACY_DRIVE_SEC_SIZE;
             physicalSectorSizeExponent = 0;
         }
-        if (ident_word[209] & BIT14)
+        if (is_ATA_Identify_Word_Valid(ident_word[209]) && ident_word[209] & BIT14)
         {
             sectorAlignment = ident_word[209] & 0x3F;
         }
-        //DRAT and RZAT
-        if (ident_word[69] & BIT5)
-        {
-            rzatLBPRZ = true;
-        }
-        if (ident_word[69] & BIT14)
-        {
-            dratLBPME = true;
-        }
-        //Zoned info (RC Basis)...need update to SAT 4 before I can fill this in
+        //TODO: Zoned info (RC Basis)...need update to SAT 4 before I can fill this in
 
         //Got the data we wanted, now check for the Identify Device Data Log to get zoned information (add in later when translation becomes available)
     }
@@ -3554,7 +3677,7 @@ static int translate_SCSI_Read_Capacity_Command(tDevice *device, bool readCapaci
             readCapacityData[14] = M_Byte1(sectorAlignment);
             readCapacityData[15] = M_Byte0(sectorAlignment);
             //now bits related to TRIM support
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
             if (dratLBPME)
             {
                 readCapacityData[14] |= BIT7;
@@ -3907,9 +4030,9 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
         ataReturnDescriptor[11] = ataCommand.rtfr.lbaHi;
         ataReturnDescriptor[12] = ataCommand.rtfr.device;
         ataReturnDescriptor[13] = ataCommand.rtfr.status;
-#if SAT_SPEC_SUPPORTED < 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED < 2
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0x1D, true, ataReturnDescriptor);
-#else
+#else //SAT_SPEC_SUPPORTED
         //copy the result to the ata-passthrough results log
         ++device->drive_info.softSATFlags.rtfrIndex;
         if (device->drive_info.softSATFlags.rtfrIndex == 0 || device->drive_info.softSATFlags.rtfrIndex > 0x0F)
@@ -3921,7 +4044,7 @@ static int translate_SCSI_ATA_Passthrough_Command(tDevice *device, ScsiIoCtx *sc
         //set the log index
         ataReturnDescriptor[14] = device->drive_info.softSATFlags.rtfrIndex;
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0x1D, device->drive_info.softSATFlags.senseDataDescriptorFormat, ataReturnDescriptor, 1);
-#endif
+#endif //SAT_SPEC_SUPPORTED
     }
     scsiIoCtx->pAtaCmdOpts = NULL;
     return ret;
@@ -4261,7 +4384,7 @@ static int translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCtx *scsiIoC
         numberOflogicalBlocks = device->drive_info.deviceMaxLba;
     }
     //perform the write same operation...
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
     if (unmap)
     {
         //NDOP bit is not specified in this mode in SAT4...doesn't exist in SAT3
@@ -4274,10 +4397,10 @@ static int translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCtx *scsiIoC
     }
     else
     {
-#endif
+#endif //SAT_SPEC_SUPPORTED
         bool useATAWriteCommands = false;
         bool ataWritePatternZeros = false;
-#if SAT_SPEC_SUPPORTED > 3
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
         if (ndob)
         {
             //writing zeros
@@ -4289,7 +4412,7 @@ static int translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCtx *scsiIoC
             else
             {
                 //else if SCT write same, function 01 or 101 (foreground or background...SATL decides)
-                if (device->drive_info.IdentifyData.ata.Word206 & BIT0 && device->drive_info.IdentifyData.ata.Word206 & BIT2)
+                if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word206) && device->drive_info.IdentifyData.ata.Word206 & BIT0 && device->drive_info.IdentifyData.ata.Word206 & BIT2)
                 {
                     uint8_t pattern[4] = { 0 };//32bits set to zero
                     uint32_t currentTimeout = device->drive_info.defaultTimeoutSeconds;
@@ -4306,7 +4429,7 @@ static int translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCtx *scsiIoC
             }
         }
         else
-#endif
+#endif //SAT_SPEC_SUPPORTED
         {
             //write the data block
 #if 0 //remove this #if when this is supported
@@ -4319,13 +4442,13 @@ static int translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCtx *scsiIoC
             {
                 if (device->drive_info.IdentifyData.ata.Word206 & BIT0 && device->drive_info.IdentifyData.ata.Word206 & BIT2)
                 {
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
                     //If SCT - function 102 (foreground). 1 or more SCT commands
                     ret = send_ATA_SCT_Write_Same(device, 0x0102, logicalBlockAddress, numberOflogicalBlocks, scsiIoCtx->pdata, scsiIoCtx->dataLength);
-#else
+#else //SAT_SPEC_SUPPORTED
                     //If SCT - function 02 or 04 (background) 1 or more SCT commands
                     ret = send_ATA_SCT_Write_Same(device, 0x0002, logicalBlockAddress, numberOflogicalBlocks, scsiIoCtx->pdata, scsiIoCtx->dataLength);
-#endif
+#endif //SAT_SPEC_SUPPORTED
                 }
                 else
                 {
@@ -4405,11 +4528,11 @@ static int translate_SCSI_Synchronize_Cache_Command(tDevice *device, ScsiIoCtx *
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
         return BAD_PARAMETER;
     }
-    if (device->drive_info.IdentifyData.ata.Word083 & BIT13) //ext command
+    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) && device->drive_info.IdentifyData.ata.Word083 & BIT13) //ext command
     {
         ret = ata_Flush_Cache(device, true);
     }
-    else if (device->drive_info.IdentifyData.ata.Word083 & BIT12) //28bit command
+    else if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) && device->drive_info.IdentifyData.ata.Word083 & BIT12) //28bit command
     {
         ret = ata_Flush_Cache(device, false);
     }
@@ -5040,7 +5163,7 @@ static int translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoCtx *scsiIo
                         //If we need to do a write operation, we need to do it first!
                         if (performWriteOperation)
                         {
-                            if (initializationPatternLength == 0x0004 && device->drive_info.IdentifyData.ata.Word206 & BIT0 && device->drive_info.IdentifyData.ata.Word206 & BIT2)
+                            if (initializationPatternLength == 0x0004 && is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word206) && device->drive_info.IdentifyData.ata.Word206 & BIT0 && device->drive_info.IdentifyData.ata.Word206 & BIT2)
                             {
                                 //SCT write same
                                 ret = send_ATA_SCT_Write_Same(device, WRITE_SAME_BACKGROUND_USE_PATTERN_FIELD, 0, device->drive_info.deviceMaxLba, initializationPatternPtr, initializationPatternLength);
@@ -5267,7 +5390,7 @@ static int translate_SCSI_Test_Unit_Ready_Command(tDevice *device, ScsiIoCtx *sc
     if (SUCCESS != ata_Check_Power_Mode(device, &powerMode))
     {
         //check for the device fault bit
-        if (device->drive_info.lastCommandRTFRs.status & BIT5)
+        if (device->drive_info.lastCommandRTFRs.status & ATA_STATUS_BIT_DEVICE_FAULT)
         {
             //set sense data to hardware error->Logical unit failure | internal target failure
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_HARDWARE_ERROR, 0x44, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
@@ -5362,7 +5485,7 @@ static int translate_SCSI_Reassign_Blocks_Command(tDevice *device, ScsiIoCtx *sc
         reassignLBALength = M_BytesTo4ByteValue(scsiIoCtx->pdata[0], scsiIoCtx->pdata[1], scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]);
         incrementAmount = 8;//long parameters are 8 bytes in size
     }
-    if (device->drive_info.IdentifyData.ata.Word083 & BIT10)//48bit
+    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) && device->drive_info.IdentifyData.ata.Word083 & BIT10)//48bit
     {
         extCommand = true;
     }
@@ -5488,46 +5611,58 @@ static int translate_SCSI_Security_Protocol_In_Command(tDevice *device, ScsiIoCt
             ataSecurityInformation[0] = RESERVED;
             ataSecurityInformation[1] = 0x0E;//parameter list length
             //security erase time
-            ataSecurityInformation[2] = M_Byte1(device->drive_info.IdentifyData.ata.Word089 & 0x7FFF);//remove bit 15
-            ataSecurityInformation[3] = M_Byte0(device->drive_info.IdentifyData.ata.Word089);
+            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word089))
+            {
+                ataSecurityInformation[2] = M_Byte1(device->drive_info.IdentifyData.ata.Word089 & 0x7FFF);//remove bit 15
+                ataSecurityInformation[3] = M_Byte0(device->drive_info.IdentifyData.ata.Word089);
+            }
             //enhanced security erase time
-            ataSecurityInformation[4] = M_Byte1(device->drive_info.IdentifyData.ata.Word090 & 0x7FFF);//remove bit 15
-            ataSecurityInformation[5] = M_Byte0(device->drive_info.IdentifyData.ata.Word090);
+            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word090))
+            {
+                ataSecurityInformation[4] = M_Byte1(device->drive_info.IdentifyData.ata.Word090 & 0x7FFF);//remove bit 15
+                ataSecurityInformation[5] = M_Byte0(device->drive_info.IdentifyData.ata.Word090);
+            }
             //master password identifier
-            ataSecurityInformation[6] = M_Byte1(device->drive_info.IdentifyData.ata.Word092);
-            ataSecurityInformation[7] = M_Byte0(device->drive_info.IdentifyData.ata.Word092);
+            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word092))
+            {
+                ataSecurityInformation[6] = M_Byte1(device->drive_info.IdentifyData.ata.Word092);
+                ataSecurityInformation[7] = M_Byte0(device->drive_info.IdentifyData.ata.Word092);
+            }
             //maxset bit
-            if (device->drive_info.IdentifyData.ata.Word128 & BIT8)
+            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word128))
             {
-                ataSecurityInformation[8] |= BIT0;
-            }
-            //enhanced security erase supported bit
-            if (device->drive_info.IdentifyData.ata.Word128 & BIT5)
-            {
-                ataSecurityInformation[9] |= BIT5;
-            }
-            //password attempt counter exceeded bit
-            if (device->drive_info.IdentifyData.ata.Word128 & BIT4)
-            {
-                ataSecurityInformation[9] |= BIT4;
-            }
-            //frozen bit
-            if (device->drive_info.IdentifyData.ata.Word128 & BIT3)
-            {
-                ataSecurityInformation[9] |= BIT3;
-            }
-            //locked bit
-            if (device->drive_info.IdentifyData.ata.Word128 & BIT2)
-            {
-                ataSecurityInformation[9] |= BIT2;
+                if (device->drive_info.IdentifyData.ata.Word128 & BIT8)
+                {
+                    ataSecurityInformation[8] |= BIT0;
+                }
+                //enhanced security erase supported bit
+                if (device->drive_info.IdentifyData.ata.Word128 & BIT5)
+                {
+                    ataSecurityInformation[9] |= BIT5;
+                }
+                //password attempt counter exceeded bit
+                if (device->drive_info.IdentifyData.ata.Word128 & BIT4)
+                {
+                    ataSecurityInformation[9] |= BIT4;
+                }
+                //frozen bit
+                if (device->drive_info.IdentifyData.ata.Word128 & BIT3)
+                {
+                    ataSecurityInformation[9] |= BIT3;
+                }
+                //locked bit
+                if (device->drive_info.IdentifyData.ata.Word128 & BIT2)
+                {
+                    ataSecurityInformation[9] |= BIT2;
+                }
             }
             //security enabled bit
-            if (device->drive_info.IdentifyData.ata.Word085 & BIT1)
+            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT1)
             {
                 ataSecurityInformation[9] |= BIT1;
             }
             //security supported bit
-            if (device->drive_info.IdentifyData.ata.Word082 & BIT1)
+            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word082) && device->drive_info.IdentifyData.ata.Word082 & BIT1)
             {
                 ataSecurityInformation[9] |= BIT0;
             }
@@ -5811,7 +5946,7 @@ static int translate_SCSI_Security_Protocol_Out_Command(tDevice *device, ScsiIoC
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
             return FAILURE;
         }
-        else
+        else //TODO: Check that ATA security is supported before issuing commands???
         {
             uint8_t ataSecurityCommandBuffer[LEGACY_DRIVE_SEC_SIZE] = { 0 };//for use in ATA security commands that transfer data
             uint16_t *ataSecurityWordPtr = C_CAST(uint16_t*, &ataSecurityCommandBuffer[0]);
@@ -6061,7 +6196,9 @@ static int translate_SCSI_Write_Long(tDevice *device, ScsiIoCtx *scsiIoCtx)
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
-    if (device->drive_info.IdentifyData.ata.Word119 & BIT2 || device->drive_info.IdentifyData.ata.Word120 & BIT2)
+    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) && device->drive_info.IdentifyData.ata.Word086 & BIT15)/* words 119, 120 valid */
+        && ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) && device->drive_info.IdentifyData.ata.Word119 & BIT2)
+            || (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word120) && device->drive_info.IdentifyData.ata.Word120 & BIT2)))
     {
         bool correctionDisabled = false;
         bool writeUncorrectableError = false;
@@ -6195,9 +6332,9 @@ static int translate_SCSI_Sanitize_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
     uint16_t fieldPointer = 0;
     //filter out invalid fields
     if (
-#if SAT_SPEC_SUPPORTED < 4
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED < 4
         ((fieldPointer = 1) != 0 && (bitPointer = 6) != 0 && scsiIoCtx->cdb[1] & BIT6) || 
-#endif
+#endif //SAT_SPEC_SUPPORTED
         ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[2] != 0)
         || ((fieldPointer = 3) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[3] != 0)
         || ((fieldPointer = 4) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[4] != 0)
@@ -6222,7 +6359,7 @@ static int translate_SCSI_Sanitize_Command(tDevice *device, ScsiIoCtx *scsiIoCtx
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
-    if (device->drive_info.IdentifyData.ata.Word059 & BIT12)
+    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word059) && device->drive_info.IdentifyData.ata.Word059 & BIT12)
     {
         uint8_t serviceAction = 0x1F & scsiIoCtx->cdb[1];
         bool immediate = false;//this is ignored for now since there is no way to handle this without multi-threading
@@ -6475,9 +6612,9 @@ static int translate_SCSI_Read_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIo
     uint8_t senseKeySpecificDescriptor[8] = { 0 };
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
-#if SAT_SPEC_SUPPORTED > 3 && SAT_4_ERROR_HISTORY_FEATURE
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3 && SAT_4_ERROR_HISTORY_FEATURE
     //uint8_t modeSpecific = (scsiIoCtx->cdb[1] >> 5) & 0x07;
-#endif
+#endif //SAT_SPEC_SUPPORTED
     uint8_t bufferID = scsiIoCtx->cdb[2];
     uint32_t bufferOffset = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
     uint32_t allocationLength = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
@@ -6563,7 +6700,7 @@ static int translate_SCSI_Read_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIo
             }
         }
         break;
-#if SAT_SPEC_SUPPORTED > 3 && SAT_4_ERROR_HISTORY_FEATURE
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3 && SAT_4_ERROR_HISTORY_FEATURE
     case 0x1C://error history mode (optional)
         if (device->drive_info.ata_Options.generalPurposeLoggingSupported && device->drive_info.softSATFlags.currentInternalStatusLogSupported)
         {
@@ -6817,7 +6954,7 @@ static int translate_SCSI_Read_Buffer_Command(tDevice *device, ScsiIoCtx *scsiIo
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x2C, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
         }
         break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
     default:
         fieldPointer = 1;
         bitPointer = 5;
@@ -6869,11 +7006,15 @@ static int translate_SCSI_Send_Diagnostic_Command(tDevice *device, ScsiIoCtx *sc
     {
         bool smartEnabled = false;
         bool smartSelfTestSupported = false;
-        if (device->drive_info.IdentifyData.ata.Word084 & BIT1 || device->drive_info.IdentifyData.ata.Word087 & BIT1)
+        //NOTE: On some old drives this is not a reliable enough check for smart self test.
+        //      on these drives you must also issue the SMART read data command and check
+        //      if self-test is reported as supported in the SMART data as well.-TJE
+        if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) && device->drive_info.IdentifyData.ata.Word084 & BIT1)
+            || (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) && device->drive_info.IdentifyData.ata.Word087 & BIT1))
         {
             smartSelfTestSupported = true;
         }
-        if (device->drive_info.IdentifyData.ata.Word085 & BIT0)
+        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT0)
         {
             smartEnabled = true;
         }
@@ -6891,7 +7032,7 @@ static int translate_SCSI_Send_Diagnostic_Command(tDevice *device, ScsiIoCtx *sc
             else //3 read-verify commands
             {
                 bool extCommand = false;
-                if (device->drive_info.IdentifyData.ata.Word083 & BIT10)
+                if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) && device->drive_info.IdentifyData.ata.Word083 & BIT10)
                 {
                     extCommand = true;
                 }
@@ -7130,7 +7271,7 @@ static int translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx *scsi
         descriptorFormat = true;
     }
     ret = ata_Check_Power_Mode(device, &powerMode);
-    if (SUCCESS != ret && device->drive_info.IdentifyData.ata.Word059 & BIT12)
+    if (SUCCESS != ret && is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word059) && device->drive_info.IdentifyData.ata.Word059 & BIT12)
     {
         ret = SUCCESS;
         //check sanitize status
@@ -7167,7 +7308,7 @@ static int translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx *scsi
     else
     {
         bool sanitizeInProgress = false;
-        if (device->drive_info.IdentifyData.ata.Word059 & BIT12 && SUCCESS == ata_Sanitize_Status(device, false))
+        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word059) && device->drive_info.IdentifyData.ata.Word059 & BIT12 && SUCCESS == ata_Sanitize_Status(device, false))
         {
             if (device->drive_info.lastCommandRTFRs.secCntExt & BIT6)
             {
@@ -7210,7 +7351,8 @@ static int translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx *scsi
                 set_Sense_Data_For_Translation(&senseData[0], SPC3_SENSE_LEN, SENSE_KEY_NO_ERROR, 0, 0, descriptorFormat, NULL, 0);
                 break;
             }
-            if (checkDST && device->drive_info.IdentifyData.ata.Word085 & BIT0 && device->drive_info.IdentifyData.ata.Word084 & BIT1)
+            if (checkDST && (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT0)
+                && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) && device->drive_info.IdentifyData.ata.Word084 & BIT1))
             {
                 //read SMART data and check for DST in progress.
                 uint8_t smartData[512] = { 0 };
@@ -7229,7 +7371,8 @@ static int translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx *scsi
     }
     if (checkSMARTStatus)
     {
-        if (device->drive_info.IdentifyData.ata.Word085 & BIT0 && SUCCESS == ata_SMART_Return_Status(device))
+        if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT0)
+            && SUCCESS == ata_SMART_Return_Status(device))
         {
             if (device->drive_info.lastCommandRTFRs.lbaMid == 0xF4 && device->drive_info.lastCommandRTFRs.lbaHi == 0x2C)
             {
@@ -7270,11 +7413,14 @@ static int translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiI
     uint8_t senseKeySpecificDescriptor[8] = { 0 };
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
-    if (device->drive_info.IdentifyData.ata.Word083 & BIT0 || device->drive_info.IdentifyData.ata.Word086 & BIT0)
+    if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) && device->drive_info.IdentifyData.ata.Word083 & BIT0)
+        || (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) && device->drive_info.IdentifyData.ata.Word086 & BIT0))
     {
         downloadCommandSupported = true;
     }
-    if (device->drive_info.IdentifyData.ata.Word119 & BIT4 || device->drive_info.IdentifyData.ata.Word120 & BIT4)
+    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) && device->drive_info.IdentifyData.ata.Word086 & BIT15)/* words 119, 120 valid */
+        && ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) && device->drive_info.IdentifyData.ata.Word119 & BIT4) 
+            || (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word120) && device->drive_info.IdentifyData.ata.Word120 & BIT4)))
     {
         downloadMode3Supported = true;
     }
@@ -7343,7 +7489,7 @@ static int translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiI
             {
                 if ((bufferOffset & 0x1FF) == 0 && (parameterListLength & 0x1FF) == 0)
                 {
-                    if (device->drive_info.IdentifyData.ata.Word234 > blockCount && device->drive_info.IdentifyData.ata.Word234 != 0xFFFF)//check minimum transfer size
+                    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word234) && device->drive_info.IdentifyData.ata.Word234 > blockCount)//check minimum transfer size
                     {
                         fieldPointer = 6;
                         bitPointer = 7;
@@ -7351,7 +7497,7 @@ static int translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiI
                         ret = NOT_SUPPORTED;
                         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
-                    else if (device->drive_info.IdentifyData.ata.Word235 < blockCount && device->drive_info.IdentifyData.ata.Word234 != 0)//check maximum transfer size
+                    else if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word235) && device->drive_info.IdentifyData.ata.Word235 < blockCount)//check maximum transfer size
                     {
                         fieldPointer = 6;
                         bitPointer = 7;
@@ -7417,7 +7563,7 @@ static int translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiI
             {
                 if ((bufferOffset & 0x1FF) == 0 && (parameterListLength & 0x1FF) == 0)
                 {
-                    if (device->drive_info.IdentifyData.ata.Word234 > blockCount && device->drive_info.IdentifyData.ata.Word234 != 0xFFFF)//check minimum transfer size
+                    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word234) && device->drive_info.IdentifyData.ata.Word234 > blockCount)//check minimum transfer size
                     {
                         fieldPointer = 6;
                         bitPointer = 7;
@@ -7425,7 +7571,7 @@ static int translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIoCtx *scsiI
                         ret = NOT_SUPPORTED;
                         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     }
-                    else if (device->drive_info.IdentifyData.ata.Word235 < blockCount && device->drive_info.IdentifyData.ata.Word234 != 0)//check maximum transfer size
+                    else if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word235) && device->drive_info.IdentifyData.ata.Word235 < blockCount)//check maximum transfer size
                     {
                         fieldPointer = 6;
                         bitPointer = 7;
@@ -7573,13 +7719,14 @@ static int translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *sc
     }
 
     //save some information about the flush cache commands supported
-    if (device->drive_info.IdentifyData.ata.Word083 & BIT13) //ext command
+    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) && device->drive_info.IdentifyData.ata.Word083 & BIT13) //ext command
     {
         flushCacheExt = true;
     }
 
     //if EPC is supported, we do one thing....otherwise we do something else
-    if (device->drive_info.IdentifyData.ata.Word119 & BIT7)
+    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) && device->drive_info.IdentifyData.ata.Word086 & BIT15)/* words 119, 120 valid */
+        && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) && device->drive_info.IdentifyData.ata.Word119 & BIT7))
     {
         //EPC drive
         switch (powerCondition)
@@ -7704,13 +7851,13 @@ static int translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *sc
                 switch (powerConditionModifier)
                 {
                 case 0://idle a
-                    descriptor = (ataPowerConditionsDescriptor*)&powerConditionsLog[0];
+                    descriptor = C_CAST(ataPowerConditionsDescriptor*, &powerConditionsLog[0]);
                     break;
                 case 1://idle b
-                    descriptor = (ataPowerConditionsDescriptor*)&powerConditionsLog[64];
+                    descriptor = C_CAST(ataPowerConditionsDescriptor*, &powerConditionsLog[64]);
                     break;
                 case 2://idle c
-                    descriptor = (ataPowerConditionsDescriptor*)&powerConditionsLog[128];
+                    descriptor = C_CAST(ataPowerConditionsDescriptor*, &powerConditionsLog[128]);
                     break;
                 default://unsupported modifier
                     fieldPointer = 3;
@@ -7779,10 +7926,10 @@ static int translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *sc
                 switch (powerConditionModifier)
                 {
                 case 0://standby_z
-                    descriptor = (ataPowerConditionsDescriptor*)&powerConditionsLog[448];
+                    descriptor = C_CAST(ataPowerConditionsDescriptor*, &powerConditionsLog[448]);
                     break;
                 case 1://standby_y
-                    descriptor = (ataPowerConditionsDescriptor*)&powerConditionsLog[384];
+                    descriptor = C_CAST(ataPowerConditionsDescriptor*, &powerConditionsLog[384]);
                     break;
                 default://unsupported modifier
                     fieldPointer = 3;
@@ -7872,11 +8019,11 @@ static int translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *sc
         uint8_t powerMode = 0;//only used for LU_Control power condition
         bool unload = false;
         bool standbyTimersSpecifiedByStandard = false;
-        if (device->drive_info.IdentifyData.ata.Word084 & BIT13)
+        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) && device->drive_info.IdentifyData.ata.Word084 & BIT13)
         {
             unload = true;
         }
-        if (device->drive_info.IdentifyData.ata.Word049 & BIT13)
+        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word049) && device->drive_info.IdentifyData.ata.Word049 & BIT13)
         {
             standbyTimersSpecifiedByStandard = true;
         }
@@ -8076,7 +8223,7 @@ static int translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *sc
                         //ata verify command
                         uint64_t randomLba = 0;
                         bool extCommand = false;
-                        if (device->drive_info.IdentifyData.ata.Word083 & BIT10)
+                        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) && device->drive_info.IdentifyData.ata.Word083 & BIT10)
                         {
                             extCommand = true;
                         }
@@ -8191,7 +8338,8 @@ static int translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *scsiIoCtx)
         offset += increment;
     }
     //If smart self test is supported, add the self test results log (10h)
-    if (device->drive_info.IdentifyData.ata.Word084 & BIT1 || device->drive_info.IdentifyData.ata.Word087 & BIT1)
+    if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) && device->drive_info.IdentifyData.ata.Word084 & BIT1)
+        || (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) && device->drive_info.IdentifyData.ata.Word087 & BIT1))
     {
         supportedPages[offset] = LP_SELF_TEST_RESULTS;
         offset += increment;
@@ -8213,7 +8361,7 @@ static int translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *scsiIoCtx)
     //TODO: add logs
 
     //if smart is supported, add informational exceptions log page (2Fh)
-    if (device->drive_info.IdentifyData.ata.Word082 & BIT0)
+    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word082) && device->drive_info.IdentifyData.ata.Word082 & BIT0)
     {
         supportedPages[offset] = LP_INFORMATION_EXCEPTIONS;
         offset += increment;
@@ -8259,7 +8407,7 @@ static int translate_Informational_Exceptions_Log_Page_2F(tDevice *device, ScsiI
             informationalExceptions[9] = 0x00;
         }
         //set temperature reading
-        if (device->drive_info.IdentifyData.ata.Word206 & BIT0)
+        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word206) && device->drive_info.IdentifyData.ata.Word206 & BIT0)
         {
             uint8_t sctData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
             if (SUCCESS == ata_SMART_Read_Log(device, ATA_SCT_COMMAND_STATUS, sctData, LEGACY_DRIVE_SEC_SIZE))
@@ -8816,7 +8964,7 @@ static int translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiIoCtx)
     uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
     uint8_t offset = 4;
     uint8_t logPage[LEGACY_DRIVE_SEC_SIZE] = { 0 };
-    uint64_t *qwordPtr = (uint64_t*)&logPage[0];
+    uint64_t *qwordPtr = C_CAST(uint64_t*, &logPage[0]);
     bool currentValid = false;
     bool referenceValid = false;
     uint8_t senseKeySpecificDescriptor[8] = { 0 };
@@ -8910,7 +9058,7 @@ static int translate_Solid_State_Media_Log_0x11(tDevice *device, ScsiIoCtx *scsi
     uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
     uint8_t offset = 4;
     uint8_t logPage[LEGACY_DRIVE_SEC_SIZE] = { 0 };
-    uint64_t *qwordPtr = (uint64_t*)&logPage[0];
+    uint64_t *qwordPtr = C_CAST(uint64_t*, &logPage[0]);
     bool endurancevalid = false;
     uint8_t senseKeySpecificDescriptor[8] = { 0 };
     uint8_t bitPointer = 0;
@@ -9148,7 +9296,7 @@ static int translate_General_Statistics_And_Performance_Log_0x19(tDevice *device
         generalStatisticsAndPerformance[3] = M_Byte0(offset - 4);
         if (scsiIoCtx->pdata)
         {
-            memcpy(scsiIoCtx->pdata, generalStatisticsAndPerformance, M_Min(M_Min(72U, offset), scsiIoCtx->dataLength));
+            memcpy(scsiIoCtx->pdata, generalStatisticsAndPerformance, M_Min(M_Min(UINT32_C(72), offset), scsiIoCtx->dataLength));
         }
     }
     else //none of the translatable fields are valid, so say this page is not supported
@@ -9343,7 +9491,8 @@ static int translate_Application_Client_Log_Sense_0x0F(tDevice *device, ScsiIoCt
         offsetOnATAPage = (parameterCode - (2 * (ataLogPageToRead & 0x0F))) * 256;//this should adjust the offset based on the parameter code and the page we're reading.
         //each iteration through the loop will read a different page for the request
         //Read all 16 sectors of the log page we need to, then go through and set up the data to return
-        if (device->drive_info.IdentifyData.ata.Word085 & BIT5 || device->drive_info.IdentifyData.ata.Word087 & BIT5)//GPL
+        if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT5)
+            || (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) && device->drive_info.IdentifyData.ata.Word087 & BIT5))//GPL
         {
             if (SUCCESS != ata_Read_Log_Ext(device, ataLogPageToRead, 0, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
             {
@@ -9352,7 +9501,7 @@ static int translate_Application_Client_Log_Sense_0x0F(tDevice *device, ScsiIoCt
                 break;
             }
         }
-        else if (device->drive_info.IdentifyData.ata.Word085 & BIT0)//SMART read log
+        else if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT0)//SMART read log
         {
             if (SUCCESS != ata_SMART_Read_Log(device, ataLogPageToRead, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE))
             {
@@ -9436,9 +9585,9 @@ static int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCt
                 switch (subpageCode)
                 {
                 case 0://supported pages
-#if SAT_SPEC_SUPPORTED > 1
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 1
                 case 0xFF://supported pages and subpages
-#endif
+#endif //SAT_SPEC_SUPPORTED
                     ret = translate_Supported_Log_Pages(device, scsiIoCtx);//Update this page as additional pages of support are added!
                     break;
                 default:
@@ -9450,7 +9599,7 @@ static int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCt
                     break;
                 }
                 break;
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
             case 0x03://read error counters
                 switch (subpageCode)
                 {
@@ -9503,14 +9652,14 @@ static int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCt
                     break;
                 }
                 break;
-#endif
-#if SAT_SPEC_SUPPORTED > 2
+#endif //SAT_SPEC_SUPPORTED
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
             case 0x0F://application client
                 switch (subpageCode)
                 {
                 case 0:
                     //First, make sure GPL or SMART are supported/enabled and then that the device supports the host-vendor specific logs
-                    if ((device->drive_info.IdentifyData.ata.Word085 & BIT5 || device->drive_info.IdentifyData.ata.Word087 & BIT5 || device->drive_info.IdentifyData.ata.Word085 & BIT0)
+                    if ((device->drive_info.ata_Options.generalPurposeLoggingSupported || (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT0))
                         && device->drive_info.softSATFlags.hostLogsSupported)
                     {
                         ret = translate_Application_Client_Log_Sense_0x0F(device, scsiIoCtx);
@@ -9533,12 +9682,13 @@ static int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCt
                     break;
                 }
                 break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
             case LP_SELF_TEST_RESULTS://self test results
                 switch (subpageCode)
                 {
                 case 0:
-                    if (device->drive_info.IdentifyData.ata.Word084 & BIT1 || device->drive_info.IdentifyData.ata.Word087 & BIT1)
+                    if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) && device->drive_info.IdentifyData.ata.Word084 & BIT1)
+                        || (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) && device->drive_info.IdentifyData.ata.Word087 & BIT1))
                     {
                         ret = translate_Self_Test_Results_Log_0x10(device, scsiIoCtx);
                     }
@@ -9560,7 +9710,7 @@ static int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCt
                     break;
                 }
                 break;
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
             case 0x11://solid state media
                 switch (subpageCode)
                 {
@@ -9639,13 +9789,13 @@ static int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCt
                     break;
                 }
                 break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
             case 0x2F://Informational Exceptions
                 if (subpageCode == 0)
                 {
-                    if (device->drive_info.IdentifyData.ata.Word082 & BIT0)//check if SMART is supported
+                    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word082) && device->drive_info.IdentifyData.ata.Word082 & BIT0)//check if SMART is supported
                     {
-                        if (device->drive_info.IdentifyData.ata.Word085 & BIT0)//check if SMART is enabled
+                        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT0)//check if SMART is enabled
                         {
                             if (parameterPointer == 0)
                             {
@@ -9684,12 +9834,12 @@ static int translate_SCSI_Log_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCt
                     set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 }
                 break;
-#if SAT_SPEC_SUPPORTED > 1
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 1
             case 0x16://ATA Pass-through results
 
                 ret = translate_ATA_Passthrough_Results_Log_Page_16(device, scsiIoCtx);
                 break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
             default:
                 fieldPointer = 2;
                 bitPointer = 5;
@@ -9747,7 +9897,7 @@ static int translate_Application_Client_Log_Select_0x0F(tDevice *device, ScsiIoC
                 //all other bytes will be left as zeros
             }
             //now write it to the drive
-            if (device->drive_info.IdentifyData.ata.Word085 & BIT5 || device->drive_info.IdentifyData.ata.Word087 & BIT5)//GPL
+            if (scsiIoCtx->device->drive_info.ata_Options.generalPurposeLoggingSupported)//GPL
             {
                 if (SUCCESS != ata_Write_Log_Ext(device, ataLogPageToWrite, 0, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, false))
                 {
@@ -9756,7 +9906,7 @@ static int translate_Application_Client_Log_Select_0x0F(tDevice *device, ScsiIoC
                     break;
                 }
             }
-            else if (device->drive_info.IdentifyData.ata.Word085 & BIT0)//SMART read log
+            else if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT0)//SMART read log
             {
                 if (SUCCESS != ata_SMART_Write_Log(device, ataLogPageToWrite, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE, false))
                 {
@@ -9930,7 +10080,7 @@ static int translate_Application_Client_Log_Select_0x0F(tDevice *device, ScsiIoC
                 offsetOnATAPage = (parameterCode - (2 * (ataLogPageToRead & 0x0F))) * 256;//this should adjust the offset based on the parameter code and the page we're reading.
                 //each iteration through the loop will read a different page for the request
                 //Read all 16 sectors of the log page we need to, then go through and set up the data to return
-                if (device->drive_info.IdentifyData.ata.Word085 & BIT5 || device->drive_info.IdentifyData.ata.Word087 & BIT5)//GPL
+                if (scsiIoCtx->device->drive_info.ata_Options.generalPurposeLoggingSupported)//GPL
                 {
                     if (SUCCESS != ata_Read_Log_Ext(device, ataLogPageToRead, 0, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
                     {
@@ -9940,7 +10090,7 @@ static int translate_Application_Client_Log_Select_0x0F(tDevice *device, ScsiIoC
                         break;
                     }
                 }
-                else if (device->drive_info.IdentifyData.ata.Word085 & BIT0)//SMART read log
+                else if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT0)//SMART read log
                 {
                     if (SUCCESS != ata_SMART_Read_Log(device, ataLogPageToRead, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE))
                     {
@@ -9972,7 +10122,7 @@ static int translate_Application_Client_Log_Select_0x0F(tDevice *device, ScsiIoC
                     //simple memcpy is all that's necessary. We're copying all of the parameter data (number, control, length, etc) into the ATA log buffer before we write
                     memcpy(&hostLogData[offsetOnATAPage], &scsiIoCtx->pdata[parameterDataOffset], 256);
                 }
-                if (device->drive_info.IdentifyData.ata.Word085 & BIT5 || device->drive_info.IdentifyData.ata.Word087 & BIT5)//GPL
+                if (device->drive_info.ata_Options.generalPurposeLoggingSupported)//GPL
                 {
                     if (SUCCESS != ata_Write_Log_Ext(device, ataLogPageToRead, 0, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, false))
                     {
@@ -9982,7 +10132,7 @@ static int translate_Application_Client_Log_Select_0x0F(tDevice *device, ScsiIoC
                         break;
                     }
                 }
-                else if (device->drive_info.IdentifyData.ata.Word085 & BIT0)//SMART read log
+                else if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT0)//SMART read log
                 {
                     if (SUCCESS != ata_SMART_Write_Log(device, ataLogPageToRead, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE, false))
                     {
@@ -10056,13 +10206,14 @@ static int translate_SCSI_Log_Select_Command(tDevice *device, ScsiIoCtx *scsiIoC
             switch (pageCode)
             {
             //TODO: If we get page 0, this means there are 1 or more pages in the parameter data to go through...we could translate this, but for now it's not necessary since it isn't in SAT spec.
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
             case 0x0F://application client
                 switch (subpageCode)
                 {
                 case 0:
                     //First, make sure GPL or SMART are supported/enabled and then that the device supports the host-vendor specific logs
-                    if ((device->drive_info.IdentifyData.ata.Word085 & BIT5 || device->drive_info.IdentifyData.ata.Word087 & BIT5 || device->drive_info.IdentifyData.ata.Word085 & BIT0)
+                    if ((device->drive_info.ata_Options.generalPurposeLoggingSupported 
+                        || (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT0))
                         && device->drive_info.softSATFlags.hostLogsSupported)
                     {
                         ret = translate_Application_Client_Log_Select_0x0F(device, scsiIoCtx, scsiIoCtx->pdata, parameterCodeReset, saveParameters, parameterListLength);
@@ -10085,7 +10236,7 @@ static int translate_SCSI_Log_Select_Command(tDevice *device, ScsiIoCtx *scsiIoC
                     break;
                 }
                 break;
-#endif
+#endif//SAT_SPEC_SUPPORTED
             default: //not a supported page code
                 fieldPointer = 2;
                 bitPointer = 5;
@@ -10162,18 +10313,23 @@ static int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         uint16_t unmapBlockDescriptorLength = (M_BytesTo2ByteValue(scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]) / 16) * 16;//this can be set to zero, which is NOT an error. Also, I'm making sure this is a multiple of 16 to avoid partial block descriptors-TJE
         if (unmapBlockDescriptorLength > 0)
         {
-            uint8_t *trimBuffer = C_CAST(uint8_t*, calloc_aligned(device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));//allocate the max size the device supports...we'll fill in as much as we need to
-#if SAT_SPEC_SUPPORTED > 3
+            uint16_t trimBufferSize = 1;
+            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word105))
+            {
+                trimBufferSize = device->drive_info.IdentifyData.ata.Word105;
+            }
+            uint8_t *trimBuffer = C_CAST(uint8_t*, calloc_aligned(trimBufferSize * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));//allocate the max size the device supports...we'll fill in as much as we need to
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
             bool useXL = device->drive_info.softSATFlags.dataSetManagementXLSupported;
             uint8_t maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
             uint8_t descriptorSize = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 16 : 8;
             uint64_t maxUnmapRangePerDescriptor = device->drive_info.softSATFlags.dataSetManagementXLSupported ? UINT64_MAX : UINT16_MAX;
-#else
+#else //SAT_SPEC_SUPPORTED
             bool useXL = false
             uint8_t maxDescriptorsPerBlock = 64;
             uint8_t descriptorSize = 8;
             uint64_t maxUnmapRangePerDescriptor = UINT16_MAX;
-#endif
+#endif //SAT_SPEC_SUPPORTED
             //need to check to make sure there weren't any truncated block descriptors before we begin
             uint16_t minBlockDescriptorLength = M_Min(unmapBlockDescriptorLength + 8, parameterListLength);
             uint16_t unmapBlockDescriptorIter = 8;
@@ -10224,7 +10380,7 @@ static int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     break;
                 }
                 //check that we haven't had too many block descriptors yet
-                if (numberOfBlockDescriptors > (maxDescriptorsPerBlock * device->drive_info.IdentifyData.ata.Word105))
+                if (numberOfBlockDescriptors > (maxDescriptorsPerBlock * trimBufferSize))
                 {
                     //not setting sense key specific information because it's not clear in this condition what error we should point to
                     ret = FAILURE;
@@ -10233,7 +10389,7 @@ static int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     break;
                 }
                 //check that we haven't been asked to TRIM more LBAs than we care to support in this code
-                if (numberOfLBAsToTRIM > (maxDescriptorsPerBlock * device->drive_info.IdentifyData.ata.Word105 * maxUnmapRangePerDescriptor))
+                if (numberOfLBAsToTRIM > (maxDescriptorsPerBlock * trimBufferSize * maxUnmapRangePerDescriptor))
                 {
                     //not setting sense key specific information because it's not clear in this condition what error we should point to
                     ret = FAILURE;
@@ -10284,13 +10440,13 @@ static int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                     //now increment the ataTrimOffset
                     ataTrimOffset += descriptorSize;
                     //check if the ATA Trim buffer is full...if it is and there are more or potentially more block descriptors, send the command now
-                    if ((ataTrimOffset > (device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE)) && ((unmapBlockDescriptorIter + 16) < minBlockDescriptorLength))
+                    if ((ataTrimOffset > (trimBufferSize * LEGACY_DRIVE_SEC_SIZE)) && ((unmapBlockDescriptorIter + 16) < minBlockDescriptorLength))
                     {
                         //TODO: do we want to make it smart enough to only send as many 512B blocks as necessary without extras?
-                        if (SUCCESS == ata_Data_Set_Management(device, true, trimBuffer, device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE, useXL))
+                        if (SUCCESS == ata_Data_Set_Management(device, true, trimBuffer, trimBufferSize * LEGACY_DRIVE_SEC_SIZE, useXL))
                         {
                             //clear the buffer for reuse
-                            memset(trimBuffer, 0, device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE);
+                            memset(trimBuffer, 0, trimBufferSize * LEGACY_DRIVE_SEC_SIZE);
                             //reset the ataTrimOffset
                             ataTrimOffset = 0;
                         }
@@ -10312,7 +10468,7 @@ static int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             {
                 //send the data set management command with whatever is in the trim buffer at this point (all zeros is safe to send if we do get that)
                 //TODO: do we want to make it smart enough to only send as many 512B blocks as necessary without extras?
-                if (SUCCESS != ata_Data_Set_Management(device, true, trimBuffer, device->drive_info.IdentifyData.ata.Word105 * LEGACY_DRIVE_SEC_SIZE, useXL))
+                if (SUCCESS != ata_Data_Set_Management(device, true, trimBuffer, trimBufferSize * LEGACY_DRIVE_SEC_SIZE, useXL))
                 {
                     ret = FAILURE;
                     set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
@@ -10411,9 +10567,9 @@ static int translate_Mode_Sense_Control_0Ah(tDevice *device, ScsiIoCtx *scsiIoCt
         controlPage[offset + 8] = 0xFF;//busy timeout period
         controlPage[offset + 9] = 0xFF;//busy timeout period
         uint16_t smartSelfTestTime = 0;
-        if (device->drive_info.IdentifyData.ata.Word084 & BIT1 \
-            && device->drive_info.IdentifyData.ata.Word087 & BIT1 \
-            && device->drive_info.IdentifyData.ata.Word085 & BIT0)
+        if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) && device->drive_info.IdentifyData.ata.Word084 & BIT1)
+            && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) && device->drive_info.IdentifyData.ata.Word087 & BIT1)
+            && (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT0))
         {
             uint8_t smartData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
             if (SUCCESS == ata_SMART_Read_Data(device, smartData, LEGACY_DRIVE_SEC_SIZE))
@@ -10517,7 +10673,12 @@ static int translate_Mode_Sense_PATA_Control_0Ah_F1h(ScsiIoCtx *scsiIoCtx, uint8
         //current saved and default pages will be the same since we don't allow changes...
         //read the current mode and use that as a "max" value. Then set bits for everything below that.
         uint16_t currentMode = 0;//0-4 = PIO modes, 5-7 = SWDMA, 8-10 = MWDMA, 11-18 = UDMA
-        if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word088 & 0x7F00)
+        bool word88Valid = false;
+        if (is_ATA_Identify_Word_Valid(scsiIoCtx->device->drive_info.IdentifyData.ata.Word053) && (scsiIoCtx->device->drive_info.IdentifyData.ata.Word053 & BIT2))
+        {
+            word88Valid = true;
+        }
+        if (word88Valid && is_ATA_Identify_Word_Valid(scsiIoCtx->device->drive_info.IdentifyData.ata.Word088) && scsiIoCtx->device->drive_info.IdentifyData.ata.Word088 & 0x7F00)
         {
             //UDMA mode is set
             currentMode = 11;
@@ -10528,7 +10689,7 @@ static int translate_Mode_Sense_PATA_Control_0Ah_F1h(ScsiIoCtx *scsiIoCtx, uint8
                 ++currentMode;
             }
         }
-        else if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & 0x0700)
+        else if (is_ATA_Identify_Word_Valid(scsiIoCtx->device->drive_info.IdentifyData.ata.Word063) && scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & 0x0700)
         {
             //MWDMA mode is set
             currentMode = 8;
@@ -10539,7 +10700,7 @@ static int translate_Mode_Sense_PATA_Control_0Ah_F1h(ScsiIoCtx *scsiIoCtx, uint8
                 ++currentMode;
             }
         }
-        else if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word062 & 0x0700)
+        else if (is_ATA_Identify_Word_Valid(scsiIoCtx->device->drive_info.IdentifyData.ata.Word062) && scsiIoCtx->device->drive_info.IdentifyData.ata.Word062 & 0x0700)
         {
             //SWDMA mode is set (so obsolete this shouldn't ever happen)
             currentMode = 7;
@@ -10776,7 +10937,8 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
     powerConditionPage[offset + 0] = 0x1A;
     powerConditionPage[offset + 1] = 0x26;//length
     //First, we need to check if EPC is supported or not
-    if (device->drive_info.IdentifyData.ata.Word119 & BIT7)
+    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) && device->drive_info.IdentifyData.ata.Word086 & BIT15)/* words 119, 120 valid */
+        && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) && device->drive_info.IdentifyData.ata.Word119 & BIT7))
     {
         //EPC supported; perform EPC supported translation here
         //need to read the EPC log
@@ -10796,7 +10958,7 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
             //copy the timer value
             memcpy(&powerConditionPage[offset + 4], &ataPowerConditionsLog[0 + 12], 4);
             //byte swap the value
-            byte_Swap_32((uint32_t*)&powerConditionPage[offset + 4]);
+            byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 4]));
             //idle_b is bytes 64-127
             if (ataPowerConditionsLog[64 + 1] & BIT2)
             {
@@ -10805,7 +10967,7 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
             //copy the timer value
             memcpy(&powerConditionPage[offset + 12], &ataPowerConditionsLog[64 + 12], 4);
             //byte swap the value
-            byte_Swap_32((uint32_t*)&powerConditionPage[offset + 12]);
+            byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 12]));
             //idle_c is bytes 128-191
             if (ataPowerConditionsLog[128 + 1] & BIT2)
             {
@@ -10814,7 +10976,7 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
             //copy the timer value
             memcpy(&powerConditionPage[offset + 16], &ataPowerConditionsLog[128 + 12], 4);
             //byte swap the value
-            byte_Swap_32((uint32_t*)&powerConditionPage[offset + 16]);
+            byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 16]));
             //ata page 1
             //standby_y is bytes 384-447
             if (ataPowerConditionsLog[512 + 384 + 1] & BIT2)
@@ -10824,7 +10986,7 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
             //copy the timer value
             memcpy(&powerConditionPage[offset + 20], &ataPowerConditionsLog[512 + 384 + 12], 4);
             //byte swap the value
-            byte_Swap_32((uint32_t*)&powerConditionPage[offset + 20]);
+            byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 20]));
             //standby_z is  bytes 448-511
             if (ataPowerConditionsLog[512 + 448 + 1] & BIT2)
             {
@@ -10833,7 +10995,7 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
             //copy the timer value
             memcpy(&powerConditionPage[offset + 8], &ataPowerConditionsLog[512 + 448 + 12], 4);
             //byte swap the value
-            byte_Swap_32((uint32_t*)&powerConditionPage[offset + 8]);
+            byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 8]));
             break;
         case 1://changeable
             //ata page 0
@@ -10894,7 +11056,7 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
             //copy the timer value
             memcpy(&powerConditionPage[offset + 4], &ataPowerConditionsLog[0 + 4], 4);
             //byte swap the value
-            byte_Swap_32((uint32_t*)&powerConditionPage[offset + 4]);
+            byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 4]));
             //idle_b is bytes 64-127
             if (ataPowerConditionsLog[64 + 1] & BIT4)
             {
@@ -10903,7 +11065,7 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
             //copy the timer value
             memcpy(&powerConditionPage[offset + 12], &ataPowerConditionsLog[64 + 4], 4);
             //byte swap the value
-            byte_Swap_32((uint32_t*)&powerConditionPage[offset + 12]);
+            byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 12]));
             //idle_c is bytes 128-191
             if (ataPowerConditionsLog[128 + 1] & BIT4)
             {
@@ -10912,7 +11074,7 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
             //copy the timer value
             memcpy(&powerConditionPage[offset + 16], &ataPowerConditionsLog[128 + 4], 4);
             //byte swap the value
-            byte_Swap_32((uint32_t*)&powerConditionPage[offset + 16]);
+            byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 16]));
             //ata page 1
             //standby_y is bytes 384-447
             if (ataPowerConditionsLog[512 + 384 + 1] & BIT4)
@@ -10922,7 +11084,7 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
             //copy the timer value
             memcpy(&powerConditionPage[offset + 20], &ataPowerConditionsLog[512 + 384 + 4], 4);
             //byte swap the value
-            byte_Swap_32((uint32_t*)&powerConditionPage[offset + 20]);
+            byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 20]));
             //standby_z is  bytes 448-511
             if (ataPowerConditionsLog[512 + 448 + 1] & BIT4)
             {
@@ -10931,7 +11093,7 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
             //copy the timer value
             memcpy(&powerConditionPage[offset + 8], &ataPowerConditionsLog[512 + 448 + 4], 4);
             //byte swap the value
-            byte_Swap_32((uint32_t*)&powerConditionPage[offset + 8]);
+            byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 8]));
             break;
         case 3://saved
             //ata page 0
@@ -10943,7 +11105,7 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
             //copy the timer value
             memcpy(&powerConditionPage[offset + 4], &ataPowerConditionsLog[0 + 8], 4);
             //byte swap the value
-            byte_Swap_32((uint32_t*)&powerConditionPage[offset + 4]);
+            byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 4]));
             //idle_b is bytes 64-127
             if (ataPowerConditionsLog[64 + 1] & BIT3)
             {
@@ -10952,7 +11114,7 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
             //copy the timer value
             memcpy(&powerConditionPage[offset + 12], &ataPowerConditionsLog[64 + 8], 4);
             //byte swap the value
-            byte_Swap_32((uint32_t*)&powerConditionPage[offset + 12]);
+            byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 12]));
             //idle_c is bytes 128-191
             if (ataPowerConditionsLog[128 + 1] & BIT3)
             {
@@ -10961,7 +11123,7 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
             //copy the timer value
             memcpy(&powerConditionPage[offset + 16], &ataPowerConditionsLog[128 + 8], 4);
             //byte swap the value
-            byte_Swap_32((uint32_t*)&powerConditionPage[offset + 16]);
+            byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 16]));
             //ata page 1
             //standby_y is bytes 384-447
             if (ataPowerConditionsLog[512 + 384 + 1] & BIT3)
@@ -10971,7 +11133,7 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
             //copy the timer value
             memcpy(&powerConditionPage[offset + 20], &ataPowerConditionsLog[512 + 384 + 8], 4);
             //byte swap the value
-            byte_Swap_32((uint32_t*)&powerConditionPage[offset + 20]);
+            byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 20]));
             //standby_z is  bytes 448-511
             if (ataPowerConditionsLog[512 + 448 + 1] & BIT3)
             {
@@ -10980,7 +11142,7 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
             //copy the timer value
             memcpy(&powerConditionPage[offset + 8], &ataPowerConditionsLog[512 + 448 + 8], 4);
             //byte swap the value
-            byte_Swap_32((uint32_t*)&powerConditionPage[offset + 8]);
+            byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 8]));
             break;
         }
     }
@@ -10992,7 +11154,7 @@ static int translate_Mode_Sense_Power_Condition_1A(tDevice *device, ScsiIoCtx *s
         //idle_b is zero
         //idle_a is zero
         //standby_z
-        if (device->drive_info.IdentifyData.ata.Word049 & BIT13)
+        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word049) && device->drive_info.IdentifyData.ata.Word049 & BIT13)
         {
             powerConditionPage[offset + 3] |= BIT0;
             //TODO: store when the timer is changed by mode select so we can report what it was changed to...for now set all F's
@@ -11089,16 +11251,16 @@ static int translate_Mode_Sense_ATA_Power_Condition_1A_F1(tDevice *device, ScsiI
     powerConditionPage[offset + 4] = RESERVED;
     if (pageControl == 0x00 || pageControl == 0x3)//current and saved
     {
-        if (device->drive_info.IdentifyData.ata.Word086 & BIT3)
+        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) && device->drive_info.IdentifyData.ata.Word086 & BIT3)
         {
             powerConditionPage[offset + 5] |= BIT0;
-            powerConditionPage[offset + 6] = M_Byte0(device->drive_info.IdentifyData.ata.Word091);
+            powerConditionPage[offset + 6] = M_Byte0(device->drive_info.IdentifyData.ata.Word091);//assuming this is valid since the bit above was checked
         }
     }
     else if (pageControl == 0x2)//default
     {
         //TODO: how do we handle default? we should probably store what APM was when we started software SAT to know for sure. For now, match the current/saved mode
-        if (device->drive_info.IdentifyData.ata.Word086 & BIT3)
+        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) && device->drive_info.IdentifyData.ata.Word086 & BIT3)
         {
             powerConditionPage[offset + 5] |= BIT0;
             powerConditionPage[offset + 6] = M_Byte0(device->drive_info.IdentifyData.ata.Word091);
@@ -11106,7 +11268,7 @@ static int translate_Mode_Sense_ATA_Power_Condition_1A_F1(tDevice *device, ScsiI
     }
     else//changeable
     {
-        if (device->drive_info.IdentifyData.ata.Word083 & BIT3)//apm supported
+        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word083) && device->drive_info.IdentifyData.ata.Word083 & BIT3)//apm supported
         {
             //changes can be made
             powerConditionPage[offset + 5] |= BIT0;
@@ -11292,21 +11454,21 @@ static int translate_Mode_Sense_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCt
     if (pageControl == 0x1)//changeable
     {
         //check if write cache is supported
-        if (device->drive_info.IdentifyData.ata.Word082 & BIT5)
+        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word082) && device->drive_info.IdentifyData.ata.Word082 & BIT5)
         {
             caching[offset + 2] = BIT2;
         }
         //check if read-look-ahead is supported
-        if (device->drive_info.IdentifyData.ata.Word085 & BIT6)
+        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word082) && device->drive_info.IdentifyData.ata.Word082 & BIT6)
         {
             caching[offset + 12] = BIT5;
         }
     }
     else//saved, current, and default. TODO: Handle saving what the drive had when we started talking to it.
     {
-        ata_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE);
+        ata_Identify(device, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000), LEGACY_DRIVE_SEC_SIZE);
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
-        if (device->drive_info.IdentifyData.ata.Word085 & BIT5)
+        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT5)
         {
             caching[offset + 2] = BIT2;//ic = 0, abpf = 0, cap = 0, disc = 0, size = 0, wce = 1, mf = 0, rcd = 0
         }
@@ -11314,7 +11476,7 @@ static int translate_Mode_Sense_Caching_08h(tDevice *device, ScsiIoCtx *scsiIoCt
         {
             caching[offset + 2] = 0;//ic = 0, abpf = 0, cap = 0, disc = 0, size = 0, wce = 0, mf = 0, rcd = 0
         }
-        if (device->drive_info.IdentifyData.ata.Word085 & BIT6)
+        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT6)
         {
             caching[offset + 12] = 0;//fsw = 0, lbcss = 0, dra = 0, vendor specific (2bits) = 0, sync_prog(2bits) = 0, nv_dis = 0
         }
@@ -11599,13 +11761,13 @@ static int translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoC
         case 0://control
             ret = translate_Mode_Sense_Control_0Ah(device, scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
             break;
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
         case 0x01://control extension
             ret = translate_Mode_Sense_Control_Extension_0Ah_01h(scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
             break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
         case 0xF1://PATA control. Report this information BUT DO NOT ALLOW CHANGES!
-            if (device->drive_info.IdentifyData.ata.Word076 == 0 || device->drive_info.IdentifyData.ata.Word076 == 0xFFFF)//Only Serial ATA Devices will set the bits in words 76-79. Bit zero should always be set to zero, so the FFFF case won't be an issue
+            if (!is_ATA_Identify_Word_Valid_SATA(device->drive_info.IdentifyData.ata.Word076))//Only Serial ATA Devices will set the bits in words 76-79. Bit zero should always be set to zero, so the FFFF case won't be an issue
             {
                 ret = translate_Mode_Sense_PATA_Control_0Ah_F1h(scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
                 break;
@@ -11654,7 +11816,7 @@ static int translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoC
         switch (subpageCode)
         {
         case 0:
-            if (device->drive_info.IdentifyData.ata.Word082 & BIT0)
+            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word082) && device->drive_info.IdentifyData.ata.Word082 & BIT0)
             {
                 ret = translate_Mode_Sense_Informational_Exceptions_Control_1Ch(scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
             }
@@ -11680,7 +11842,7 @@ static int translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoC
         switch (subpageCode)
         {
         case 0xF1://ATA power condition (APM)
-            if (device->drive_info.IdentifyData.ata.Word083 & BIT3)//only support this page if APM is supported-TJE
+            if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) && device->drive_info.IdentifyData.ata.Word083 & BIT3)//only support this page if APM is supported-TJE
             {
                 ret = translate_Mode_Sense_ATA_Power_Condition_1A_F1(device, scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
             }
@@ -11693,11 +11855,11 @@ static int translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoC
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
             }
             break;
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
         case 0://power condition (EPC if supported or something else...)
             ret = translate_Mode_Sense_Power_Condition_1A(device, scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
             break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
         default:
             ret = NOT_SUPPORTED;
             fieldPointer = 2;
@@ -11967,7 +12129,8 @@ static int translate_Mode_Select_Power_Conditions_1A(tDevice *device, ScsiIoCtx 
     {
         saveParameters = true;
     }
-    if (device->drive_info.IdentifyData.ata.Word119 & BIT7)//EPC supported
+    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) && device->drive_info.IdentifyData.ata.Word086 & BIT15)/* words 119, 120 valid */
+        && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) && device->drive_info.IdentifyData.ata.Word119 & BIT7))//EPC supported
     {
         if (((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && pageLength != 0x0026)
             || ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && M_GETBITRANGE(ptrToBeginningOfModePage[2], 7, 6) != 0) //PM_BG_PRECEDENCE
@@ -12437,7 +12600,7 @@ static int translate_Mode_Select_Power_Conditions_1A(tDevice *device, ScsiIoCtx 
         }
         else
         {
-            if (device->drive_info.IdentifyData.ata.Word049 & BIT13)
+            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word049) && device->drive_info.IdentifyData.ata.Word049 & BIT13)
             {
                 uint32_t standby_z_timer = M_BytesTo4ByteValue(ptrToBeginningOfModePage[8], ptrToBeginningOfModePage[9], ptrToBeginningOfModePage[10], ptrToBeginningOfModePage[11]);
                 if (standby_z_timer == 0)
@@ -12925,19 +13088,19 @@ static int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIo
             switch (subpage)
             {
             case 0://power conditions
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
                 ret = translate_Mode_Select_Power_Conditions_1A(device, scsiIoCtx, &scsiIoCtx->pdata[headerLength + blockDescriptorLength], pageLength);
                 break;
-#else
+#else //SAT_SPEC_SUPPORTED
                 fieldPointer = headerLength + blockDescriptorLength;//we don't support page 0 in this version of SAT
                 bitPointer = 5;
                 set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                 ret = NOT_SUPPORTED;
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
             case 0xF1://ATA power conditions (APM)
-                if (device->drive_info.IdentifyData.ata.Word083 & BIT3)//only support this page if APM is supported-TJE
+                if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) && device->drive_info.IdentifyData.ata.Word083 & BIT3)//only support this page if APM is supported-TJE
                 {
                     ret = translate_Mode_Select_ATA_Power_Condition_1A_F1(device, scsiIoCtx, &scsiIoCtx->pdata[headerLength + blockDescriptorLength], pageLength);
                 }
@@ -13066,19 +13229,19 @@ static int translate_SCSI_Zone_Management_In_Command(tDevice *device, ScsiIoCtx 
             {
                 //need to byte swap fields to SCSI endianness.
                 //zone list length
-                byte_Swap_32((uint32_t*)&dataBuf[0]);
+                byte_Swap_32(C_CAST(uint32_t*, &dataBuf[0]));
                 //max lba
-                byte_Swap_64((uint64_t*)&dataBuf[8]);
+                byte_Swap_64(C_CAST(uint64_t*, &dataBuf[8]));
                 //now loop through the zone descriptors...
                 for (uint32_t iter = 64; iter < dataBufLength; iter += 64)
                 {
                     //first two bytes are bit fields that translate exactly the same...leave them alone
                     //zone length
-                    byte_Swap_64((uint64_t*)&dataBuf[iter + 8]);
+                    byte_Swap_64(C_CAST(uint64_t*, &dataBuf[iter + 8]));
                     //zone start LBA
-                    byte_Swap_64((uint64_t*)&dataBuf[iter + 16]);
+                    byte_Swap_64(C_CAST(uint64_t*, &dataBuf[iter + 16]));
                     //write pointer LBA
-                    byte_Swap_64((uint64_t*)&dataBuf[iter + 24]);
+                    byte_Swap_64(C_CAST(uint64_t*, &dataBuf[iter + 24]));
                 }
             }
         }
@@ -13298,7 +13461,7 @@ static int translate_SCSI_Report_Timestamp_Command(tDevice *device, ScsiIoCtx *s
     }
     if (SUCCESS == ata_Read_Log_Ext(device, ATA_DEVICE_STATS_LOG_LIST, ATA_DEVICE_STATS_LOG_GENERAL, generalStats, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
     {
-        uint64_t *qwordPtr = (uint64_t*)&generalStats[0];
+        uint64_t *qwordPtr = C_CAST(uint64_t*, &generalStats[0]);
         uint64_t ataTimestamp = qwordPtr[7] & MAX_48_BIT_LBA;
         //set up general data
         dataBuf[0] = 0x00;
@@ -13360,7 +13523,8 @@ static int translate_SCSI_Read_Media_Serial_Number_Command(tDevice *device, Scsi
         return ret;
     }
     //word 84 for supported, word 87 for validity
-    if (device->drive_info.IdentifyData.ata.Word084 & BIT2 && device->drive_info.IdentifyData.ata.Word087 & BIT2)
+    if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) && device->drive_info.IdentifyData.ata.Word084 & BIT2)
+        && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) && device->drive_info.IdentifyData.ata.Word087 & BIT2))
     {
         char ataMediaSN[61] = { 0 };
         memcpy(ataMediaSN, &device->drive_info.IdentifyData.ata.Word176, 60);
@@ -13514,7 +13678,7 @@ static int check_Operation_Code(tDevice *device, uint8_t operationCode, bool rct
         pdata[0][offset + 8] = 0xFF;
         pdata[0][offset + 9] = controlByte;//control byte
         break;
-#if SAT_SPEC_SUPPORTED > 1
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 1
     case LOG_SELECT_CMD:
         cdbLength = 10;
         *dataLength += cdbLength;
@@ -13534,7 +13698,7 @@ static int check_Operation_Code(tDevice *device, uint8_t operationCode, bool rct
         pdata[0][offset + 8] = 0xFF;
         pdata[0][offset + 9] = controlByte;//control byte
         break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
     case MODE_SENSE_6_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
@@ -13847,7 +14011,7 @@ static int check_Operation_Code(tDevice *device, uint8_t operationCode, bool rct
         pdata[0][offset + 5] = controlByte;//control byte
         break;
     case UNMAP_CMD:
-        if (device->drive_info.IdentifyData.ata.Word169 & BIT0)
+        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word169) && device->drive_info.IdentifyData.ata.Word169 & BIT0)
         {
             cdbLength = 10;
             *dataLength += cdbLength;
@@ -14102,7 +14266,7 @@ static int check_Operation_Code(tDevice *device, uint8_t operationCode, bool rct
         pdata[0][offset + 8] = 0;
         pdata[0][offset + 9] = controlByte;//control byte
         break;
-#if SAT_SPEC_SUPPORTED < 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED < 2
     case WRITE_BUFFER_CMD:
         cdbLength = 10;
         *dataLength += cdbLength;
@@ -14141,7 +14305,7 @@ static int check_Operation_Code(tDevice *device, uint8_t operationCode, bool rct
         pdata[0][offset + 8] = 0xFF;
         pdata[0][offset + 9] = controlByte;//control byte
         break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
     case SCSI_FORMAT_UNIT_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
@@ -14215,7 +14379,7 @@ static int check_Operation_Code_and_Service_Action(tDevice *device, uint8_t oper
     }
     switch (operationCode)
     {
-#if SAT_SPEC_SUPPORTED > 3 //SAT4 and higher
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3 //SAT4 and higher
     case 0x7F:
         switch (serviceAction)
         {
@@ -14265,7 +14429,7 @@ static int check_Operation_Code_and_Service_Action(tDevice *device, uint8_t oper
             break;
         }
         break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
     case 0x9E:
         switch (serviceAction)
         {
@@ -14358,7 +14522,7 @@ static int check_Operation_Code_and_Service_Action(tDevice *device, uint8_t oper
         }
         break;
     case SANITIZE_CMD:
-        if (device->drive_info.IdentifyData.ata.Word059 & BIT12)
+        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word059) && device->drive_info.IdentifyData.ata.Word059 & BIT12)
         {
             switch (serviceAction)
             {
@@ -14451,18 +14615,20 @@ static int check_Operation_Code_and_Service_Action(tDevice *device, uint8_t oper
             break;
         }
         break;
-#if SAT_SPEC_SUPPORTED > 1
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 1
     case WRITE_BUFFER_CMD:
     {
         bool downloadCommandSupported = false;
         bool downloadMode3Supported = false;
-        if (device->drive_info.IdentifyData.ata.Word083 & BIT0 \
-            || device->drive_info.IdentifyData.ata.Word086 & BIT0 \
+        if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word083) && device->drive_info.IdentifyData.ata.Word083 & BIT0)
+            || (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) && device->drive_info.IdentifyData.ata.Word086 & BIT0)
             || device->drive_info.ata_Options.downloadMicrocodeDMASupported)
         {
             downloadCommandSupported = true;
         }
-        if (device->drive_info.IdentifyData.ata.Word119 & BIT4 || device->drive_info.IdentifyData.ata.Word120 & BIT4)
+        if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) && device->drive_info.IdentifyData.ata.Word086 & BIT15)/* words 119, 120 valid */
+            && ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) && device->drive_info.IdentifyData.ata.Word119 & BIT4)
+                || (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word120) && device->drive_info.IdentifyData.ata.Word120 & BIT4)))
         {
             downloadMode3Supported = true;
         }
@@ -14647,7 +14813,7 @@ static int check_Operation_Code_and_Service_Action(tDevice *device, uint8_t oper
             pdata[0][offset + 8] = 0xFF;
             pdata[0][offset + 9] = controlByte;//control byte
             break;
-#if SAT_SPEC_SUPPORTED > 3 && SAT_4_ERROR_HISTORY_FEATURE
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3 && SAT_4_ERROR_HISTORY_FEATURE
         case 0x1C://TODO: only show this when ISL log is supported...for now this should be ok
             if (device->drive_info.softSATFlags.currentInternalStatusLogSupported || device->drive_info.softSATFlags.savedInternalStatusLogSupported)
             {
@@ -14674,13 +14840,13 @@ static int check_Operation_Code_and_Service_Action(tDevice *device, uint8_t oper
                 commandSupported = false;
             }
             break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
         default:
             commandSupported = false;
             break;
         }
         break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
     case 0x9F:
         switch (serviceAction)
         {
@@ -15137,7 +15303,7 @@ static int create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint
         //set up timeouts descriptor
         set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
     }
-#if SAT_SPEC_SUPPORTED > 1
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 1
     //WRITE_BUFFER_CMD = 0x3B + modes
     pdata[0][offset + 0] = WRITE_BUFFER_CMD;
     pdata[0][offset + 1] = RESERVED;
@@ -15157,11 +15323,15 @@ static int create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint
     }
     bool downloadCommandSupported = false;
     bool downloadMode3Supported = false;
-    if (device->drive_info.IdentifyData.ata.Word083 & BIT0 || device->drive_info.IdentifyData.ata.Word086 & BIT0 || device->drive_info.ata_Options.downloadMicrocodeDMASupported)
+    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word083) && device->drive_info.IdentifyData.ata.Word083 & BIT0)
+        || (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) && device->drive_info.IdentifyData.ata.Word086 & BIT0)
+        || device->drive_info.ata_Options.downloadMicrocodeDMASupported)
     {
         downloadCommandSupported = true;
     }
-    if (device->drive_info.IdentifyData.ata.Word119 & BIT4 || device->drive_info.IdentifyData.ata.Word120 & BIT4)
+    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) && device->drive_info.IdentifyData.ata.Word086 & BIT15)/* words 119, 120 valid */
+        && ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) && device->drive_info.IdentifyData.ata.Word119 & BIT4)
+            || (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word120) && device->drive_info.IdentifyData.ata.Word120 & BIT4)))
     {
         downloadMode3Supported = true;
     }
@@ -15288,7 +15458,7 @@ static int create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint
         set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
     }
 
-#if SAT_4_ERROR_HISTORY_FEATURE
+#if defined (SAT_4_ERROR_HISTORY_FEATURE) && SAT_4_ERROR_HISTORY_FEATURE > 0
     if (device->drive_info.softSATFlags.currentInternalStatusLogSupported || device->drive_info.softSATFlags.savedInternalStatusLogSupported)
     {
         pdata[0][offset + 0] = READ_BUFFER_CMD;
@@ -15308,8 +15478,8 @@ static int create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint
             set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
         }
     }
-#endif
-#else
+#endif //SAT_4_ERROR_HISTORY_FEATURE
+#else //SAT_SPEC_SUPPORTED
     //WRITE_BUFFER_CMD
     pdata[0][offset + 0] = WRITE_BUFFER_CMD;
     pdata[0][offset + 1] = RESERVED;
@@ -15345,7 +15515,7 @@ static int create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint
         //set up timeouts descriptor
         set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
     }
-#endif
+#endif //SAT_SPEC_SUPPORTED
     //WRITE_LONG_10_CMD = 0x3F
     pdata[0][offset + 0] = WRITE_LONG_10_CMD;
     pdata[0][offset + 1] = RESERVED;
@@ -15381,7 +15551,7 @@ static int create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint
         set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
     }
     //UNMAP_CMD = 0x42
-    if (device->drive_info.IdentifyData.ata.Word169 & BIT0)
+    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word169) && device->drive_info.IdentifyData.ata.Word169 & BIT0)
     {
         pdata[0][offset + 0] = UNMAP_CMD;
         pdata[0][offset + 1] = RESERVED;
@@ -15401,7 +15571,7 @@ static int create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint
         }
     }
     //SANITIZE_CMD = 0x48//4 possible service actions
-    if (device->drive_info.IdentifyData.ata.Word059 & BIT12)
+    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word059) && device->drive_info.IdentifyData.ata.Word059 & BIT12)
     {
         //check overwrite
         if (device->drive_info.IdentifyData.ata.Word059 & BIT14)
@@ -15482,7 +15652,7 @@ static int create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint
         }
     }
     //LOG_SELECT_CMD = 0x4C
-#if SAT_SPEC_SUPPORTED > 1
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 1
     pdata[0][offset + 0] = LOG_SELECT_CMD;
     pdata[0][offset + 1] = RESERVED;
     pdata[0][offset + 2] = M_Byte1(0);//service action msb
@@ -15499,7 +15669,7 @@ static int create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint
         //set up timeouts descriptor
         set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
     }
-#endif
+#endif //SAT_SPEC_SUPPORTED
     //LOG_SENSE_CMD = 0x4D
     pdata[0][offset + 0] = LOG_SENSE_CMD;
     pdata[0][offset + 1] = RESERVED;
@@ -15551,7 +15721,7 @@ static int create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint
         //set up timeouts descriptor
         set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
     }
-#if SAT_SPEC_SUPPORTED > 3 //SAT4 and higher
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3 //SAT4 and higher
     //ATA_PASS_THROUGH_32 = 0x7f/1ff0
     pdata[0][offset + 0] = 0x7F;
     pdata[0][offset + 1] = RESERVED;
@@ -15569,7 +15739,7 @@ static int create_All_Supported_Op_Codes_Buffer(tDevice *device, bool rctd, uint
         //set up timeouts descriptor
         set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
     }
-#endif
+#endif //SAT_SPEC_SUPPORTED
     //ATA_PASS_THROUGH_16 = 0x85
     pdata[0][offset + 0] = ATA_PASS_THROUGH_16;
     pdata[0][offset + 1] = RESERVED;
@@ -16167,10 +16337,10 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             deviceInfoAvailable = true;
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
             ////read identify data
-            //if (SUCCESS != ata_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
+            //if (SUCCESS != ata_Identify(device, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000), LEGACY_DRIVE_SEC_SIZE))
             //{
             //    //that failed, so try an identify packet device
-            //    if (SUCCESS == ata_Identify_Packet_Device(device, (uint8_t*)&device->drive_info.IdentifyData.ata.Word000, LEGACY_DRIVE_SEC_SIZE))
+            //    if (SUCCESS == ata_Identify_Packet_Device(device, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000), LEGACY_DRIVE_SEC_SIZE))
             //    {
             //        //set that we are an ATAPI_DEVICE, then this function will just encapsulate every scsi command into an ATA_PACKET command
             //        device->drive_info.drive_type = ATAPI_DRIVE;
@@ -16234,7 +16404,7 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 break;
             }
             break;
-#if SAT_SPEC_SUPPORTED > 3
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
         case 0x7F:
             //32byte CDB...check service action. We're looking for ATA Pass-through 32
         {
@@ -16253,7 +16423,7 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             }
         }
             break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
         case ATA_PASS_THROUGH_12://any command (other than asynchronous or resets) is allowed
         case ATA_PASS_THROUGH_16:
             //we likely won't ever hit this case unless we are purposely doing software SAT, but we are going to reverse the CDB and create the ataCommandOptions structure and then issue the command (or just issue it depending on the interface)
@@ -16262,11 +16432,11 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         case SCSI_FORMAT_UNIT_CMD:
             ret = translate_SCSI_Format_Unit_Command(device, scsiIoCtx);
             break;
-#if SAT_SPEC_SUPPORTED > 1 //SAT2+ supports this command.
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 1 //SAT2+ supports this command.
         case LOG_SELECT_CMD://only needs to support the application client page as of SAT4
             translate_SCSI_Log_Select_Command(device, scsiIoCtx);
             break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
         case LOG_SENSE_CMD:
             ret = translate_SCSI_Log_Sense_Command(device, scsiIoCtx);
             break;
@@ -16293,7 +16463,7 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         case REPORT_LUNS_CMD:
             ret = translate_SCSI_Report_Luns_Command(device, scsiIoCtx);
             break;
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
         case 0xA3://check the service action for this one!
             switch (scsiIoCtx->cdb[1] & 0x1F)
             {
@@ -16320,27 +16490,27 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 break;
             }
             break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
         case REQUEST_SENSE_CMD://bunch of different commands...or read the "last command sense data" and change it from fixed to descriptor, or the other way around
             ret = translate_SCSI_Request_Sense_Command(device, scsiIoCtx);
             break;
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
         case SANITIZE_CMD://ATA Sanitize
             ret = translate_SCSI_Sanitize_Command(device, scsiIoCtx);
             break;
-#endif
-#if SAT_SPEC_SUPPORTED > 1
+#endif //SAT_SPEC_SUPPORTED
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 1
         case SECURITY_PROTOCOL_IN://Trusted non-data or trusted receive or ata security
             ret = translate_SCSI_Security_Protocol_In_Command(device, scsiIoCtx);
             break;
         case SECURITY_PROTOCOL_OUT://Trusted non-data or trusted send or ata security
             ret = translate_SCSI_Security_Protocol_Out_Command(device, scsiIoCtx);
             break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
         case SEND_DIAGNOSTIC_CMD://SMART execute offline immediate
             ret = translate_SCSI_Send_Diagnostic_Command(device, scsiIoCtx);
             break;
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
         case 0xA4://Check the service action for this one!
             switch (scsiIoCtx->cdb[1] & 0x1F)
             {
@@ -16368,7 +16538,7 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 break;
             }
             break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
         case START_STOP_UNIT_CMD://Varies for EPC and NON-EPC drives
             ret = translate_SCSI_Start_Stop_Unit_Command(device, scsiIoCtx);
             break;
@@ -16379,7 +16549,7 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         case TEST_UNIT_READY_CMD://Check power mode
             ret = translate_SCSI_Test_Unit_Ready_Command(device, scsiIoCtx);
             break;
-#if SAT_SPEC_SUPPORTED > 2
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
         case UNMAP_CMD://Data Set management-TRIM
             if (device->drive_info.IdentifyData.ata.Word169 & BIT0)
             {
@@ -16390,7 +16560,7 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 invalidOperationCode = true;
             }
             break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
         case VERIFY10:
         case VERIFY12:
         case VERIFY16:
@@ -16410,7 +16580,7 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         case WRITE_BUFFER_CMD://Download Microcode or ATA Write Buffer
             ret = translate_SCSI_Write_Buffer_Command(device, scsiIoCtx);
             break;
-#if SAT_SPEC_SUPPORTED > 1
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 1
         case WRITE_LONG_10_CMD://Write Uncorrectable ext
             ret = translate_SCSI_Write_Long(device, scsiIoCtx);
             break;
@@ -16427,12 +16597,12 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 break;
             }
             break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
         case WRITE_SAME_10_CMD://Sequential write commands
         case WRITE_SAME_16_CMD://Sequential write commands
             ret = translate_SCSI_Write_Same_Command(device, scsiIoCtx);
             break;
-#if SAT_SPEC_SUPPORTED > 3
+#if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
         case ZONE_MANAGEMENT_IN://0x95
             if (device->drive_info.zonedType == ZONED_TYPE_HOST_AWARE || device->drive_info.zonedType == ZONED_TYPE_HOST_MANAGED)
             {
@@ -16453,7 +16623,7 @@ int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
                 invalidOperationCode = true;
             }
             break;
-#endif
+#endif //SAT_SPEC_SUPPORTED
         default:
             invalidOperationCode = true;
             break;
