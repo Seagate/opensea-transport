@@ -104,12 +104,38 @@ if not (target_machine.system() == 'sunos') and c.get_id().contains('gcc')
   endif
 endif
 
-src_files = ['src/asmedia_nvme_helper.c', 'src/ata_cmds.c', 'src/ata_helper.c', 'src/ata_legacy_cmds.c', 'src/cmds.c', 'src/common_public.c', 'src/csmi_helper.c', 'src/csmi_legacy_pt_cdb_helper.c', 'src/cypress_legacy_helper.c', 'src/intel_rst_helper.c', 'src/jmicron_nvme_helper.c', 'src/nec_legacy_helper.c', 'src/nvme_cmds.c', 'src/nvme_helper.c', 'src/of_nvme_helper.c', 'src/prolific_legacy_helper.c', 'src/psp_legacy_helper.c', 'src/raid_scan_helper.c', 'src/sata_helper_func.c', 'src/sat_helper.c', 'src/scsi_cmds.c', 'src/scsi_helper.c', 'src/sntl_helper.c', 'src/ti_legacy_helper.c', 'src/usb_hacks.c']
+src_files = ['src/asmedia_nvme_helper.c', 
+             'src/ata_cmds.c', 
+             'src/ata_helper.c', 
+             'src/ata_legacy_cmds.c', 
+             'src/ciss_helper.c',
+             'src/cmds.c', 
+             'src/common_public.c', 
+             'src/csmi_helper.c', 
+             'src/csmi_legacy_pt_cdb_helper.c', 
+             'src/cypress_legacy_helper.c', 
+             'src/intel_rst_helper.c', 
+             'src/jmicron_nvme_helper.c', 
+             'src/nec_legacy_helper.c', 
+             'src/nvme_cmds.c', 
+             'src/nvme_helper.c', 
+             'src/of_nvme_helper.c', 
+             'src/prolific_legacy_helper.c', 
+             'src/psp_legacy_helper.c', 
+             'src/raid_scan_helper.c', 
+             'src/sata_helper_func.c', 
+             'src/sat_helper.c', 
+             'src/scsi_cmds.c', 
+             'src/scsi_helper.c', 
+             'src/sntl_helper.c', 
+             'src/ti_legacy_helper.c', 
+             'src/usb_hacks.c']
 
 os_deps = []
 
 if target_machine.system() == 'linux'
   src_files += ['src/sg_helper.c']
+  add_project_arguments('-DENABLE_CISS', '-DENABLE_CSMI', language : 'c')
 elif target_machine.system() == 'freebsd'
   src_files += ['src/cam_helper.c']
   cam_dep = c.find_library('cam')

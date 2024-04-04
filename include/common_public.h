@@ -30,6 +30,7 @@
 #endif
 
 #include "csmi_helper.h" //because the device structure holds some csmi support structure for when we can issue csmi passthrough commands.
+#include "ciss_helper.h" //because this holds a structure to help with issuing CCISS commands
 
 #if defined (__cplusplus)
 #define __STDC_FORMAT_MACROS
@@ -1126,6 +1127,8 @@ extern "C"
 
     //forward declare csmi info to avoid including csmi_helper.h
     typedef struct _csmiDeviceInfo csmiDeviceInfo,*ptrCsmiDeviceInfo;
+    //forward declare cciss device 
+    typedef struct _cissDeviceInfo cissDeviceInfo,*ptrCissDeviceInfo;
 
 #define OS_HANDLE_NAME_MAX_LENGTH 256
 #define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
@@ -1282,6 +1285,7 @@ extern "C"
             bool isSystemDisk;//This will be set if the drive has a file system and the OS is running off of it. Ex: Windows' C:\Windows\System32, Linux's / & /boot, etc
         }fileSystemInfo;
         ptrCsmiDeviceInfo csmiDeviceData;//This is a pointer because it will only be allocated when CSMI is supported. This is also used by Intel RST NVMe passthrough which is basically an extension of CSMI
+        ptrCissDeviceInfo cissDeviceData;//This pointer is allocated only when CCISS is supported.
         uint8_t padd[6];//padd to multiple of 8 bytes
     }OSDriveInfo;
 

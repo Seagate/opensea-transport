@@ -508,6 +508,7 @@ extern "C"
         BLOCK_LIMITS_EXTENSION                          = 0xB7,
         FORMAT_PRESETS                                  = 0xB8,
         CONCURRENT_POSITIONING_RANGES                   = 0xB9,
+        CAPACITY_PRODUCT_IDENTIFICATION_MAPPING         = 0xBA,
         //C0h - FFh are Vendor specific
     }eScsiVpdPages;
 
@@ -655,6 +656,18 @@ extern "C"
 
     #define READ_CAPACITY_10_LEN 8
     #define READ_CAPACITY_16_LEN 32
+
+    typedef enum _eSCSIPeripheralQualifier
+    {
+        PERIPHERAL_QUALIFIER_ACCESSIBLE_TO_TASK_ROUTER                  = 0x00,
+        PERIPHERAL_QUALIFIER_NOT_ACCESSIBLE_TO_TASK_ROUTER_BUT_CAPABLE  = 0x01,
+        PERIPHERAL_QUALIFIER_RESERVED_2                                 = 0x02,
+        PERIPHERAL_QUALIFIER_NOT_ACCESSIBLE_TO_TASK_ROUTER              = 0x03,
+        PERIPHERAL_QUALIFIER_RESERVED_4                                 = 0x04,
+        PERIPHERAL_QUALIFIER_RESERVED_5                                 = 0x05,
+        PERIPHERAL_QUALIFIER_RESERVED_6                                 = 0x06,
+        PERIPHERAL_QUALIFIER_RESERVED_7                                 = 0x07
+    }eSCSIPeripheralQualifier;
 
     typedef enum _eSCSIPeripheralDeviceType
     {
@@ -953,6 +966,22 @@ extern "C"
     OPENSEA_TRANSPORT_API bool is_Seagate_USB_Vendor_ID(const char* t10VendorIdent);
     OPENSEA_TRANSPORT_API bool is_Seagate_SAS_Vendor_ID(const char* t10VendorIdent);
     OPENSEA_TRANSPORT_API void seagate_Serial_Number_Cleanup(const char* t10VendorIdent, char** unitSerialNumber, size_t unitSNSize);
+
+    //SCSI Architecture model status's
+    typedef enum _eSAMStatus
+    {
+        SAM_STATUS_GOOD                         = 0x00,
+        SAM_STATUS_CHECK_CONDITION              = 0x02,
+        SAM_STATUS_CONDITION_MET                = 0x03,
+        SAM_STATUS_BUSY                         = 0x04,
+        SAM_STATUS_INTERMEDIATE                 = 0x10,
+        SAM_STATUS_INTERMEDIATE_CONDITION_MET   = 0x14,
+        SAM_STATUS_RESERVATION_CONFLICT         = 0x18,
+        SAM_STATUS_COMMAND_TERMINATED           = 0x22,
+        SAM_STATUS_TASK_SET_FULL                = 0x28,
+        SAM_STATUS_ACA_ACTIVE                   = 0x30,
+        SAM_STATUS_TASK_ABORTED                 = 0x40,
+    }eSAMStatus;
 
 
     #if defined (__cplusplus)
