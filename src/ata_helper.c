@@ -1301,6 +1301,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
             case 0x0E://PCIe
                 device->drive_info.ata_Options.isParallelTransport = false;
                 device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits = true;
+                break;
             default:
                 break;
             }
