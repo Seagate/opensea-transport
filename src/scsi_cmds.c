@@ -4367,7 +4367,7 @@ int scsi_Zone_Management_Out_Std_Format_CDB(tDevice *device, eZMAction action, u
 
     cdb[OPERATION_CODE] = ZONE_MANAGEMENT_OUT;
     //set the service action
-    cdb[1] = action;
+    cdb[1] = action | cmdSpecificBits1;
     //set lba field
     cdb[2] = M_Byte7(zoneID);
     cdb[3] = M_Byte6(zoneID);
@@ -4490,7 +4490,7 @@ int scsi_Zone_Management_In_Report(tDevice* device, eZMAction action, uint8_t ac
 
     cdb[OPERATION_CODE] = ZONE_MANAGEMENT_IN;
     //set the service action
-    cdb[1] = action;
+    cdb[1] = action | actionSpecific1;
     //set lba field
     cdb[2] = M_Byte7(location);
     cdb[3] = M_Byte6(location);
