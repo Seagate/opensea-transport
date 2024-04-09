@@ -404,12 +404,12 @@ static int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
                         {
                         case XFER_DATA_IN:
                             pqiCmd.Request.Type.Direction = XFER_READ;
-                            pqiCmd.buf_size = scsiIoCtx->dataLength;
+                            pqiCmd.buf_size = C_CAST(uint16_t, scsiIoCtx->dataLength);
                             pqiCmd.buf = scsiIoCtx->pdata;
                             break;
                         case XFER_DATA_OUT:
                             pqiCmd.Request.Type.Direction = XFER_WRITE;
-                            pqiCmd.buf_size = scsiIoCtx->dataLength;
+                            pqiCmd.buf_size = C_CAST(uint16_t, scsiIoCtx->dataLength);
                             pqiCmd.buf = scsiIoCtx->pdata;
                             break;
                         case XFER_NO_DATA:
@@ -423,7 +423,14 @@ static int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
 
                         if (scsiIoCtx->timeout)
                         {
-                            pqiCmd.Request.Timeout = scsiIoCtx->timeout;
+                            if (scsiIoCtx->timeout > UINT16_MAX)
+                            {
+                                pqiCmd.Request.Timeout = UINT16_MAX;
+                            }
+                            else
+                            {
+                                pqiCmd.Request.Timeout = C_CAST(uint16_t, scsiIoCtx->timeout);
+                            }
                         }
                         else
                         {
@@ -615,12 +622,12 @@ static int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
                     {
                     case XFER_DATA_IN:
                         cissCmd.Request.Type.Direction = XFER_READ;
-                        cissCmd.buf_size = scsiIoCtx->dataLength;
+                        cissCmd.buf_size = C_CAST(uint16_t, scsiIoCtx->dataLength);
                         cissCmd.buf = scsiIoCtx->pdata;
                         break;
                     case XFER_DATA_OUT:
                         cissCmd.Request.Type.Direction = XFER_WRITE;
-                        cissCmd.buf_size = scsiIoCtx->dataLength;
+                        cissCmd.buf_size = C_CAST(uint16_t, scsiIoCtx->dataLength);
                         cissCmd.buf = scsiIoCtx->pdata;
                         break;
                     case XFER_NO_DATA:
@@ -634,7 +641,14 @@ static int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
 
                     if (scsiIoCtx->timeout)
                     {
-                        cissCmd.Request.Timeout = scsiIoCtx->timeout;
+                        if (scsiIoCtx->timeout > UINT16_MAX)
+                        {
+                            cissCmd.Request.Timeout = UINT16_MAX;
+                        }
+                        else
+                        {
+                            cissCmd.Request.Timeout = C_CAST(uint16_t, scsiIoCtx->timeout);
+                        }
                     }
                     else
                     {
@@ -823,17 +837,17 @@ static int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
                 switch (scsiIoCtx->direction)
                 {
                 case XFER_DATA_IN:
-                    cissCmd.io_direction = 0;//in is zero
-                    cissCmd.buf_len = scsiIoCtx->dataLength;
+                    cissCmd.io_direction = CPQARY3_SCSI_IN;
+                    cissCmd.buf_len = C_CAST(uint16_t, scsiIoCtx->dataLength);
                     cissCmd.buf = C_CAST(uintptr_t, scsiIoCtx->pdata);
                     break;
                 case XFER_DATA_OUT:
-                    cissCmd.io_direction = 1;//1 for out
-                    cissCmd.buf_len = scsiIoCtx->dataLength;
+                    cissCmd.io_direction = CPQARY3_SCSI_OUT;
+                    cissCmd.buf_len = C_CAST(uint16_t, scsiIoCtx->dataLength);
                     cissCmd.buf = C_CAST(uintptr_t, scsiIoCtx->pdata);
                     break;
                 case XFER_NO_DATA:
-                    cissCmd.Request.Type.Direction = 0;//setting 0 for in
+                    cissCmd.Request.Type.Direction = CPQARY3_NODATA_XFER;
                     cissCmd.buf_len = 0;
                     cissCmd.buf = C_CAST(uintptr_t, NULL);
                     break;
@@ -1082,7 +1096,14 @@ static int ciss_Big_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
 
             if (scsiIoCtx->timeout)
             {
-                cissCmd.Request.Timeout = scsiIoCtx->timeout;
+                if (scsiIoCtx->timeout > UINT16_MAX)
+                {
+                    cissCmd.Request.Timeout = UINT16_MAX;
+                }
+                else
+                {
+                    cissCmd.Request.Timeout = C_CAST(uint16_t, scsiIoCtx->timeout);
+                }
             }
             else
             {
@@ -1648,7 +1669,7 @@ int get_CISS_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                 memset(d, 0, sizeof(tDevice));
                                 d->sanity.size = ver.size;
                                 d->sanity.version = ver.version;
-                                d->dFlags = flags;
+                                d->dFlags = C_CAST(eDiscoveryOptions, flags);
                                 int ret = get_CISS_RAID_Device(handle, d);
                                 if (ret != SUCCESS)
                                 {

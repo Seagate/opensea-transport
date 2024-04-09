@@ -4042,7 +4042,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
                     DWORD returnedBytes = 0;
                     DWORD maxExtents = MAX_DISK_EXTENTS;//https://technet.microsoft.com/en-us/library/cc772180(v=ws.11).aspx
                     PVOLUME_DISK_EXTENTS diskExtents = NULL;
-                    DWORD diskExtentsSizeBytes = sizeof(VOLUME_DISK_EXTENTS) + (sizeof(DISK_EXTENT) * maxExtents);
+                    DWORD diskExtentsSizeBytes = C_CAST(DWORD, sizeof(VOLUME_DISK_EXTENTS) + (sizeof(DISK_EXTENT) * maxExtents));
                     diskExtents = C_CAST(PVOLUME_DISK_EXTENTS, malloc(diskExtentsSizeBytes));
                     if (diskExtents)
                     {
@@ -4142,7 +4142,7 @@ static int get_Win_Device(const char *filename, tDevice *device )
 
                 //save the bus types to the tDevice struct since they may be helpful in certain debug scenarios
                 device->os_info.adapterDescBusType = adapter_desc->BusType;
-                device->os_info.deviceDescBusType = device_desc->BusType;
+                device->os_info.deviceDescBusType = C_CAST(uint8_t, device_desc->BusType);//NOTE: This enum seems to be a byte in definition today, but if we run into future issues, we may need to change it. - TJE
 #if defined (WIN_DEBUG)
                 printf("WIN: get adapter IDs (VID/PID for USB or PCIe)\n");
 #endif //WIN_DEBUG

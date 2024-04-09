@@ -2682,7 +2682,7 @@ static int sntl_Translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx 
     memset(&dstLog, 0, sizeof(nvmeGetLogPageCmdOpts));
     dstLog.nsid = NVME_ALL_NAMESPACES;//TODO: by namespace instead?
     dstLog.addr = nvmDSTLog;
-    dstLog.dataLen = 564;
+    dstLog.dataLen = UINT32_C(564);
     dstLog.lid = NVME_LOG_DEV_SELF_TEST_ID;
     dstLog.rae = 1;//preserve any asynchronous events
     if (SUCCESS != nvme_Get_Log_Page(device, &dstLog))
@@ -2691,8 +2691,8 @@ static int sntl_Translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx 
         return SUCCESS;
     }
     //convert NVMe DST log to SCSI DST Log
-    uint16_t nvmDSTOffset = 4 + (parameterCode * 28);//each NVM DST entry is 28B long and the first starts at byte 4. Set this to match the parameter code since that can select an "offset" in the log
-    for (uint16_t selfTestOffset = 4; parameterCode <= 0x0014 && nvmDSTOffset < 564 && selfTestOffset <= 404U; ++parameterCode, nvmDSTOffset += 28, selfTestOffset += 20)
+    uint16_t nvmDSTOffset = C_CAST(uint16_t, UINT16_C(4) + (parameterCode * UINT16_C(28)));//each NVM DST entry is 28B long and the first starts at byte 4. Set this to match the parameter code since that can select an "offset" in the log
+    for (uint16_t selfTestOffset = UINT16_C(4); parameterCode <= 0x0014 && nvmDSTOffset < UINT16_C(564) && selfTestOffset <= UINT16_C(404); ++parameterCode, nvmDSTOffset += UINT16_C(28), selfTestOffset += UINT16_C(20))
     {
         selfTestResults[selfTestOffset] = M_Byte1(parameterCode);
         selfTestResults[selfTestOffset + 1] = M_Byte0(parameterCode);
@@ -2714,7 +2714,7 @@ static int sntl_Translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx 
                 selfTestCode = 0;
                 break;
             }
-            selfTestResults[selfTestOffset + 4] = (selfTestCode << 5) | M_Nibble0(nvmDSTLog[nvmDSTOffset]);
+            selfTestResults[selfTestOffset + 4] = C_CAST(uint8_t, (selfTestCode << 5) | M_Nibble0(nvmDSTLog[nvmDSTOffset]));
             selfTestResults[selfTestOffset + 5] = nvmDSTLog[nvmDSTOffset + 1];//segment number
             uint64_t nvmPOH = M_BytesTo8ByteValue(nvmDSTLog[nvmDSTOffset + 11], nvmDSTLog[nvmDSTOffset + 10], nvmDSTLog[nvmDSTOffset + 9], nvmDSTLog[nvmDSTOffset + 8], nvmDSTLog[nvmDSTOffset + 7], nvmDSTLog[nvmDSTOffset + 6], nvmDSTLog[nvmDSTOffset + 5], nvmDSTLog[nvmDSTOffset + 4]);
             if (nvmPOH > UINT16_MAX)
@@ -4436,7 +4436,7 @@ static int sntl_Translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *s
                 break;
             default:
                 //invalid field in parameter list...we don't support this page
-                fieldPointer = headerLength + blockDescriptorLength + 1;//plus one for subpage
+                fieldPointer = C_CAST(uint16_t, headerLength + blockDescriptorLength + UINT16_C(1));//plus one for subpage
                 bitPointer = 7;
                 sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                 ret = NOT_SUPPORTED;
@@ -4452,7 +4452,7 @@ static int sntl_Translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *s
         //        ret = sntl_Translate_Mode_Select_Control_0Ah(device, scsiIoCtx, &scsiIoCtx->pdata[headerLength + blockDescriptorLength], pageLength);
         //        break;
         //    default:
-        //        fieldPointer = headerLength + blockDescriptorLength + 1;//plus one for subpage
+        //        fieldPointer = C_CAST(uint16_t, headerLength + blockDescriptorLength + UINT16_C(1));//plus one for subpage
         //        bitPointer = 7;
         //        sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
         //        ret = NOT_SUPPORTED;
@@ -4467,7 +4467,7 @@ static int sntl_Translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *s
         //        ret = sntl_Translate_Mode_Select_Power_Conditions_1A(device, scsiIoCtx, &scsiIoCtx->pdata[headerLength + blockDescriptorLength], pageLength);
         //        break;
         //    default:
-        //        fieldPointer = headerLength + blockDescriptorLength + 1;//plus one for subpage
+        //        fieldPointer = C_CAST(uint16_t, headerLength + blockDescriptorLength + UINT16_C(1));//plus one for subpage
         //        bitPointer = 7;
         //        sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
         //        ret = NOT_SUPPORTED;
@@ -6298,7 +6298,7 @@ static int sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoC
         {
             uint8_t *dsmBuffer = C_CAST(uint8_t*, calloc_aligned(4096, sizeof(uint8_t), device->os_info.minimumAlignment));//allocate the max size the device supports...we'll fill in as much as we need to
             //need to check to make sure there weren't any truncated block descriptors before we begin
-            uint16_t minBlockDescriptorLength = M_Min(unmapBlockDescriptorLength + 8, parameterListLength);
+            uint16_t minBlockDescriptorLength = C_CAST(uint16_t, M_Min(unmapBlockDescriptorLength + 8, parameterListLength));
             uint16_t unmapBlockDescriptorIter = 8;
             uint64_t numberOfLBAsToDeallocate = 0;//this will be checked later to make sure it isn't greater than what we reported on the VPD pages
             uint16_t numberOfBlockDescriptors = 0;//this will be checked later to make sure it isn't greater than what we reported on the VPD pages

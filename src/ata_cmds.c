@@ -4511,7 +4511,7 @@ int ata_Get_Physical_Element_Status(tDevice *device, uint8_t filter, uint8_t rep
     ataCommandOptions.tfr.CommandStatus = ATA_GET_PHYSICAL_ELEMENT_STATUS;
     ataCommandOptions.tfr.SectorCount = M_Byte0(dataSize / LEGACY_DRIVE_SEC_SIZE);
     ataCommandOptions.tfr.SectorCount48 = M_Byte1(dataSize / LEGACY_DRIVE_SEC_SIZE);
-    ataCommandOptions.tfr.Feature48 = (filter << 6) | (reportType & 0x0F);//filter is 2 bits, report type is 4 bits. All others are reserved
+    ataCommandOptions.tfr.Feature48 = C_CAST(uint8_t, (filter << 6) | (reportType & 0x0F));//filter is 2 bits, report type is 4 bits. All others are reserved
     ataCommandOptions.tfr.ErrorFeature = RESERVED;
     ataCommandOptions.tfr.LbaLow = M_Byte0(startingElement);
     ataCommandOptions.tfr.LbaMid = M_Byte1(startingElement);
@@ -4784,9 +4784,9 @@ int ata_NCQ_Non_Data(tDevice *device, uint8_t subCommand /*bits 4:0*/, uint16_t 
     ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
     ataCommandOptions.tfr.CommandStatus = ATA_FPDMA_NON_DATA;
     ataCommandOptions.tfr.Feature48 = M_Byte1(C_CAST(uint64_t, subCommandSpecificFeature) << 4);
-    ataCommandOptions.tfr.ErrorFeature = (M_Nibble0(C_CAST(uint64_t, subCommandSpecificFeature)) << 4) | M_Nibble0(subCommand);
+    ataCommandOptions.tfr.ErrorFeature = C_CAST(uint8_t, (M_Nibble0(C_CAST(uint64_t, subCommandSpecificFeature)) << 4) | M_Nibble0(subCommand));
     ataCommandOptions.tfr.SectorCount48 = subCommandSpecificCount;
-    ataCommandOptions.tfr.SectorCount = ncqTag << 3;//shift into bits 7:3
+    ataCommandOptions.tfr.SectorCount = C_CAST(uint8_t, ncqTag << 3);//shift into bits 7:3
     ataCommandOptions.tfr.LbaLow = M_Byte0(lba);
     ataCommandOptions.tfr.LbaMid = M_Byte1(lba);
     ataCommandOptions.tfr.LbaHi = M_Byte3(lba);
@@ -4816,7 +4816,7 @@ int ata_NCQ_Non_Data(tDevice *device, uint8_t subCommand /*bits 4:0*/, uint16_t 
 
 int ata_NCQ_Abort_NCQ_Queue(tDevice *device, uint8_t abortType /*bits0:3*/, uint8_t prio /*bits 1:0*/, uint8_t ncqTag, uint8_t tTag)
 {
-    return ata_NCQ_Non_Data(device, 0, abortType, C_CAST(uint16_t, prio) << 6, ncqTag, C_CAST(uint64_t, tTag) << 3, 0);
+    return ata_NCQ_Non_Data(device, NCQ_NON_DATA_ABORT_NCQ_QUEUE, abortType, C_CAST(uint8_t, C_CAST(uint16_t, prio) << 6), ncqTag, C_CAST(uint32_t, tTag) << 3, 0);
 }
 
 int ata_NCQ_Deadline_Handling(tDevice *device, bool rdnc, bool wdnc, uint8_t ncqTag)
@@ -4830,19 +4830,19 @@ int ata_NCQ_Deadline_Handling(tDevice *device, bool rdnc, bool wdnc, uint8_t ncq
     {
         ft |= BIT4;
     }
-    return ata_NCQ_Non_Data(device, 1, ft >> 4, RESERVED, ncqTag, RESERVED, 0);
+    return ata_NCQ_Non_Data(device, NCQ_NON_DATA_DEADLINE_HANDLING, ft >> 4, RESERVED, ncqTag, RESERVED, 0);
 }
 
 int ata_NCQ_Set_Features(tDevice *device, eATASetFeaturesSubcommands subcommand, uint8_t subcommandCountField, uint8_t subcommandLBALo, uint8_t subcommandLBAMid, uint16_t subcommandLBAHi, uint8_t ncqTag)
 {
     uint64_t lba = M_BytesTo4ByteValue(M_Nibble0(M_Byte1(subcommandLBAHi)), M_Byte0(subcommandLBAHi), subcommandLBAMid, subcommandLBALo);
-    return ata_NCQ_Non_Data(device, UINT8_C(5), C_CAST(uint16_t, subcommand << 4), subcommandCountField, ncqTag, lba, RESERVED);
+    return ata_NCQ_Non_Data(device, NCQ_NON_DATA_SET_FEATURES, C_CAST(uint16_t, subcommand << 4), subcommandCountField, ncqTag, lba, RESERVED);
 }
 
 //ncq zeros ext
 int ata_NCQ_Zeros_Ext(tDevice *device, uint16_t numberOfLogicalSectors, uint64_t lba, bool trim, uint8_t ncqTag)
 {
-    return ata_NCQ_Non_Data(device, 6, M_Byte0(numberOfLogicalSectors) << 4, M_Byte1(numberOfLogicalSectors), ncqTag, lba, trim ? BIT1 : 0);
+    return ata_NCQ_Non_Data(device, NCQ_NON_DATA_ZERO_EXT, C_CAST(uint16_t, M_Byte0(numberOfLogicalSectors) << 4), M_Byte1(numberOfLogicalSectors), ncqTag, lba, trim ? BIT1 : 0);
 }
 
 //ncq zac management out
@@ -4862,8 +4862,8 @@ int ata_NCQ_Receive_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*
     ataCommandOptions.tfr.CommandStatus = ATA_RECEIVE_FPDMA;
     ataCommandOptions.tfr.Feature48 = M_Byte1(sectorCount);
     ataCommandOptions.tfr.ErrorFeature = M_Byte0(sectorCount);
-    ataCommandOptions.tfr.SectorCount48 = (subCommand & 0x1F) | ((prio & 0x03) << 6);//prio, subcommand
-    ataCommandOptions.tfr.SectorCount = ncqTag << 3;//shift into bits 7:3
+    ataCommandOptions.tfr.SectorCount48 = C_CAST(uint8_t, (subCommand & 0x1F) | ((prio & 0x03) << 6));//prio, subcommand
+    ataCommandOptions.tfr.SectorCount = C_CAST(uint8_t, ncqTag << 3);//shift into bits 7:3
     ataCommandOptions.tfr.LbaLow = M_Byte0(lba);
     ataCommandOptions.tfr.LbaMid = M_Byte1(lba);
     ataCommandOptions.tfr.LbaHi = M_Byte3(lba);
@@ -4925,8 +4925,8 @@ int ata_NCQ_Send_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*/, 
     ataCommandOptions.tfr.CommandStatus = ATA_SEND_FPDMA;
     ataCommandOptions.tfr.Feature48 = M_Byte1(sectorCount);
     ataCommandOptions.tfr.ErrorFeature = M_Byte0(sectorCount);
-    ataCommandOptions.tfr.SectorCount48 = (subCommand & 0x1F) | ((prio & 0x03) << 6);//prio, subcommand
-    ataCommandOptions.tfr.SectorCount = ncqTag << 3;//shift into bits 7:3
+    ataCommandOptions.tfr.SectorCount48 = C_CAST(uint8_t, (subCommand & 0x1F) | ((prio & 0x03) << 6));//prio, subcommand
+    ataCommandOptions.tfr.SectorCount = C_CAST(uint8_t, ncqTag << 3);//shift into bits 7:3
     ataCommandOptions.tfr.LbaLow = M_Byte0(lba);
     ataCommandOptions.tfr.LbaMid = M_Byte1(lba);
     ataCommandOptions.tfr.LbaHi = M_Byte3(lba);
@@ -4972,14 +4972,14 @@ int ata_NCQ_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData,
     {
         auxreg |= BIT0;
     }
-    return ata_NCQ_Send_FPDMA_Queued(device, UINT8_C(0), C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), prio, ncqTag, RESERVED, auxreg, ptrData);
+    return ata_NCQ_Send_FPDMA_Queued(device, SEND_FPDMA_DATA_SET_MANAGEMENT, C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), prio, ncqTag, RESERVED, auxreg, ptrData);
 }
 
 //ncq write log DMA ext
 int ata_NCQ_Write_Log_DMA_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint8_t prio /*bits 1:0*/, uint8_t ncqTag)
 {
     uint64_t lba = M_BytesTo8ByteValue(0, 0, RESERVED, M_Byte1(pageNumber), RESERVED, RESERVED, M_Byte0(pageNumber), logAddress);
-    return ata_NCQ_Send_FPDMA_Queued(device, UINT8_C(2), C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), prio, ncqTag, lba, RESERVED, ptrData);
+    return ata_NCQ_Send_FPDMA_Queued(device, SEND_FPDMA_WRITE_LOG_DMA_EXT, C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), prio, ncqTag, lba, RESERVED, ptrData);
 }
 
 //ncq ZAC management out
@@ -4999,8 +4999,8 @@ int ata_NCQ_Read_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba, uint8_t *
     ataCommandOptions.tfr.CommandStatus = ATA_READ_FPDMA_QUEUED_CMD;
     ataCommandOptions.tfr.Feature48 = M_Byte1(sectorCount);
     ataCommandOptions.tfr.ErrorFeature = M_Byte0(sectorCount);
-    ataCommandOptions.tfr.SectorCount48 = ((prio & 0x03) << 6);//prio
-    ataCommandOptions.tfr.SectorCount = ncqTag << 3;//shift into bits 7:3
+    ataCommandOptions.tfr.SectorCount48 = C_CAST(uint8_t, ((prio & 0x03) << 6));//prio
+    ataCommandOptions.tfr.SectorCount = C_CAST(uint8_t, ncqTag << 3);//shift into bits 7:3
     ataCommandOptions.tfr.LbaLow = M_Byte0(lba);
     ataCommandOptions.tfr.LbaMid = M_Byte1(lba);
     ataCommandOptions.tfr.LbaHi = M_Byte3(lba);
@@ -5059,8 +5059,8 @@ int ata_NCQ_Write_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba, uint8_t 
     ataCommandOptions.tfr.CommandStatus = ATA_WRITE_FPDMA_QUEUED_CMD;
     ataCommandOptions.tfr.Feature48 = M_Byte1(sectorCount);
     ataCommandOptions.tfr.ErrorFeature = M_Byte0(sectorCount);
-    ataCommandOptions.tfr.SectorCount48 = ((prio & 0x03) << 6);//prio
-    ataCommandOptions.tfr.SectorCount = ncqTag << 3;//shift into bits 7:3
+    ataCommandOptions.tfr.SectorCount48 = C_CAST(uint8_t, ((prio & 0x03) << 6));//prio
+    ataCommandOptions.tfr.SectorCount = C_CAST(uint8_t, ncqTag << 3);//shift into bits 7:3
     ataCommandOptions.tfr.LbaLow = M_Byte0(lba);
     ataCommandOptions.tfr.LbaMid = M_Byte1(lba);
     ataCommandOptions.tfr.LbaHi = M_Byte3(lba);

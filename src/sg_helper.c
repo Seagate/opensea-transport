@@ -17,8 +17,10 @@
 #if !defined (_GNU_SOURCE)
     #define _GNU_SOURCE
     #define _GNU_SOURCE_DEFINED_IN_SG_HELPER
+#if defined (_DEBUG)
     #pragma message "Defining _GNU_SOURCE since it was not already defined."
-#endif
+#endif //_DEBUG
+#endif //!defined (_GNU_SOURCE)
 
 #include <stdio.h>
 #include <dirent.h>
@@ -1634,7 +1636,14 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     // Use user's sense or local?
     if ((scsiIoCtx->senseDataSize) && (scsiIoCtx->psense != NULL))
     {
-        io_hdr.mx_sb_len = scsiIoCtx->senseDataSize;
+        if (scsiIoCtx->senseDataSize > UINT8_MAX)
+        {
+            io_hdr.mx_sb_len = UINT8_MAX;
+        }
+        else
+        {
+            io_hdr.mx_sb_len = C_CAST(uint8_t, scsiIoCtx->senseDataSize);
+        }
         io_hdr.sbp = scsiIoCtx->psense;
     }
     else
@@ -1651,23 +1660,22 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     switch (scsiIoCtx->direction)
     {
     case XFER_NO_DATA:
-    case SG_DXFER_NONE:
         io_hdr.dxfer_direction = SG_DXFER_NONE;
         break;
     case XFER_DATA_IN:
-    case SG_DXFER_FROM_DEV:
         io_hdr.dxfer_direction = SG_DXFER_FROM_DEV;
         break;
     case XFER_DATA_OUT:
-    case SG_DXFER_TO_DEV:
         io_hdr.dxfer_direction = SG_DXFER_TO_DEV;
         break;
-    case SG_DXFER_TO_FROM_DEV:
-        io_hdr.dxfer_direction = SG_DXFER_TO_FROM_DEV;
+    case XFER_DATA_IN_OUT:
+    case XFER_DATA_OUT_IN:
+    #if defined (SG_DXFER_UNKNOWN)
+        io_hdr.dxfer_direction = SG_DXFER_UNKNOWN;//using unknown because SG_DXFER_TO_FROM_DEV is described as something different to use with indirect IO as it copied into kernel buffers before transfer.
+    #else
+        io_hdr.dxfer_direction = -5;//this is what this is defined as in sg.h
+    #endif //SG_DXFER_UNKNOWN
         break;
-        //case SG_DXFER_UNKNOWN:
-        //io_hdr.dxfer_direction = SG_DXFER_UNKNOWN;
-        //break;
     default:
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
@@ -2276,7 +2284,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 memset(&getDeviceTimer, 0, sizeof(seatimer_t));
                 start_Timer(&getDeviceTimer);
 #endif
-                d->dFlags = flags;
+                d->dFlags = C_CAST(eDiscoveryOptions, flags);
                 int ret = get_Device(name, d);
 #if defined (DEGUG_SCAN_TIME)
                 stop_Timer(&getDeviceTimer);

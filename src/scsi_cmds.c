@@ -176,7 +176,7 @@ static int scsi_Send_Cdb_Int(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint
     scsiIoCtx.psense = senseBuffer;
     scsiIoCtx.senseDataSize = senseDataLen;
     memcpy(&scsiIoCtx.cdb[0], &cdb[0], cdbLen);
-    scsiIoCtx.cdbLength = cdbLen;
+    scsiIoCtx.cdbLength = C_CAST(uint8_t, cdbLen);
     scsiIoCtx.direction = dataDirection;
     scsiIoCtx.pdata = pdata;
     scsiIoCtx.dataLength = dataLen;
@@ -1596,7 +1596,7 @@ int scsi_Report_Priority(tDevice *device, uint8_t priorityReported, uint32_t all
     // Set up the CDB.
     cdb[OPERATION_CODE] = REPORT_PRIORITY_CMD;
     cdb[1] = 0x0E;
-    cdb[2] = (priorityReported & 0x03) << 6;
+    cdb[2] = C_CAST(uint8_t, (priorityReported & 0x03) << 6);
     cdb[3] = RESERVED;
     cdb[4] = RESERVED;
     cdb[5] = RESERVED;
@@ -1773,7 +1773,7 @@ int scsi_Set_Identifying_Information(tDevice *device, uint16_t restricted, uint3
     cdb[7] = M_Byte2(parameterListLength);
     cdb[8] = M_Byte1(parameterListLength);
     cdb[9] = M_Byte0(parameterListLength);
-    cdb[10] = identifyingInformationType << 1;
+    cdb[10] = C_CAST(uint8_t, identifyingInformationType << 1);
     cdb[11] = 0;
 
     //send the command
@@ -1803,7 +1803,7 @@ int scsi_Set_Priority(tDevice *device, uint8_t I_T_L_NexusToSet, uint32_t parame
 
     cdb[OPERATION_CODE] = SET_PRIORITY_CMD;
     cdb[1] = 0x0E;
-    cdb[2] = (I_T_L_NexusToSet & 0x03) << 6;//only bits 1:0 are valid on this input
+    cdb[2] = C_CAST(uint8_t, (I_T_L_NexusToSet & 0x03) << 6);//only bits 1:0 are valid on this input
     cdb[3] = RESERVED;
     cdb[4] = RESERVED;
     cdb[5] = RESERVED;
@@ -1996,7 +1996,7 @@ int scsi_Compare_And_Write(tDevice *device, uint8_t wrprotect, bool dpo, bool fu
     }
 
     cdb[OPERATION_CODE] = COMPARE_AND_WRITE;
-    cdb[1] = (wrprotect & 0x07) << 5;
+    cdb[1] = C_CAST(uint8_t, (wrprotect & 0x07) << 5);
     if (dpo)
     {
         cdb[1] |= BIT4;
@@ -2052,7 +2052,7 @@ int scsi_Format_Unit(tDevice *device, uint8_t fmtpInfo, bool longList, bool fmtD
     }
 
     cdb[OPERATION_CODE] = SCSI_FORMAT_UNIT_CMD;
-    cdb[1] = (fmtpInfo & 0x03) << 6;
+    cdb[1] = C_CAST(uint8_t, (fmtpInfo & 0x03) << 6);
     if (longList)
     {
         cdb[1] |= BIT5;
@@ -2177,7 +2177,7 @@ int scsi_Orwrite_16(tDevice *device, uint8_t orProtect, bool dpo, bool fua, uint
     }
 
     cdb[OPERATION_CODE] = ORWRITE_16;
-    cdb[1] = (orProtect & 0x07) << 5;
+    cdb[1] = C_CAST(uint8_t, (orProtect & 0x07) << 5);
     if (dpo)
     {
         cdb[1] |= BIT4;
@@ -2237,7 +2237,7 @@ int scsi_Orwrite_32(tDevice *device, uint8_t bmop, uint8_t previousGenProcessing
     cdb[7] = 0x18;//additional CDB length. This is defined as this value in the spec
     cdb[8] = 0x00;//service action
     cdb[9] = 0x0E;//service action
-    cdb[10] = (orProtect & 0x07) << 5;
+    cdb[10] = C_CAST(uint8_t, (orProtect & 0x07) << 5);
     if (dpo)
     {
         cdb[10] |= BIT4;
@@ -2425,7 +2425,7 @@ int scsi_Read_10(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool ra
     }
 
     cdb[OPERATION_CODE] = READ10;
-    cdb[1] = (rdProtect & 0x07) << 5;
+    cdb[1] = C_CAST(uint8_t, (rdProtect & 0x07) << 5);
     if (dpo)
     {
         cdb[1] |= BIT4;
@@ -2474,7 +2474,7 @@ int scsi_Read_12(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool ra
     }
 
     cdb[OPERATION_CODE] = READ12;
-    cdb[1] = (rdProtect & 0x07) << 5;
+    cdb[1] = C_CAST(uint8_t, (rdProtect & 0x07) << 5);
     if (dpo)
     {
         cdb[1] |= BIT4;
@@ -2525,7 +2525,7 @@ int scsi_Read_16(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool ra
     }
 
     cdb[OPERATION_CODE] = READ16;
-    cdb[1] = (rdProtect & 0x07) << 5;
+    cdb[1] = C_CAST(uint8_t, (rdProtect & 0x07) << 5);
     if (dpo)
     {
         cdb[1] |= BIT4;
@@ -2589,7 +2589,7 @@ int scsi_Read_32(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool ra
     cdb[7] = 0x18;//additional cdb length
     cdb[8] = 0x00;//service action MSB
     cdb[9] = 0x09;//service action LSB
-    cdb[10] = (rdProtect & 0x07) << 5;
+    cdb[10] = C_CAST(uint8_t, (rdProtect & 0x07) << 5);
     if (dpo)
     {
         cdb[10] |= BIT4;
@@ -4363,11 +4363,11 @@ int scsi_Zone_Management_Out_Std_Format_CDB(tDevice *device, eZMAction action, u
 
     //strip invalid bits from cmdspecific fields to avoid collision issues later
     cmdSpecificBits1 &= UINT8_C(0xE0);//remove bits 4:0 as these are the action field
-    M_CLEAR_BIT(actionSpecific14, 0);//remove possible collision with all bit
+    M_CLEAR_BIT8(actionSpecific14, 0);//remove possible collision with all bit
 
     cdb[OPERATION_CODE] = ZONE_MANAGEMENT_OUT;
     //set the service action
-    cdb[1] = action | cmdSpecificBits1;
+    cdb[1] = C_CAST(uint8_t, action) | cmdSpecificBits1;
     //set lba field
     cdb[2] = M_Byte7(zoneID);
     cdb[3] = M_Byte6(zoneID);
@@ -4490,7 +4490,7 @@ int scsi_Zone_Management_In_Report(tDevice* device, eZMAction action, uint8_t ac
 
     cdb[OPERATION_CODE] = ZONE_MANAGEMENT_IN;
     //set the service action
-    cdb[1] = action | actionSpecific1;
+    cdb[1] = C_CAST(uint8_t, action) | actionSpecific1;
     //set lba field
     cdb[2] = M_Byte7(location);
     cdb[3] = M_Byte6(location);
@@ -4551,7 +4551,7 @@ int scsi_Zone_Management_In_ZD(tDevice* device, eZMAction action, bool all, uint
 
     cdb[OPERATION_CODE] = ZONE_MANAGEMENT_IN;
     //set the service action
-    cdb[1] = action;
+    cdb[1] = C_CAST(uint8_t, action);
     if (all)
     {
         cdb[1] |= BIT7;
@@ -4600,17 +4600,17 @@ int scsi_Zone_Query(tDevice* device, bool all, uint64_t zoneID, uint16_t numberO
 
 int scsi_Report_Zones(tDevice* device, eZoneReportingOptions reportingOptions, bool partial, uint32_t allocationLength, uint64_t zoneStartLBA, uint8_t* ptrData)
 {
-    return scsi_Zone_Management_In_Report(device, ZM_ACTION_REPORT_ZONES, 0, zoneStartLBA, partial,reportingOptions, allocationLength, ptrData);
+    return scsi_Zone_Management_In_Report(device, ZM_ACTION_REPORT_ZONES, 0, zoneStartLBA, partial, C_CAST(uint8_t, reportingOptions), allocationLength, ptrData);
 }
 
 int scsi_Report_Realms(tDevice* device, eRealmsReportingOptions reportingOptions, uint32_t allocationLength, uint64_t realmLocator, uint8_t* ptrData)
 {
-    return scsi_Zone_Management_In_Report(device, ZM_ACTION_REPORT_REALMS, 0, realmLocator, false, reportingOptions, allocationLength, ptrData);
+    return scsi_Zone_Management_In_Report(device, ZM_ACTION_REPORT_REALMS, 0, realmLocator, false, C_CAST(uint8_t, reportingOptions), allocationLength, ptrData);
 }
 
 int scsi_Report_Zone_Domains(tDevice* device, eZoneDomainReportingOptions reportingOptions, uint32_t allocationLength, uint64_t zoneDomainLocator, uint8_t* ptrData)
 {
-    return scsi_Zone_Management_In_Report(device, ZM_ACTION_REPORT_ZONE_DOMAINS, 0, zoneDomainLocator, false, reportingOptions, allocationLength, ptrData);
+    return scsi_Zone_Management_In_Report(device, ZM_ACTION_REPORT_ZONE_DOMAINS, 0, zoneDomainLocator, false, C_CAST(uint8_t, reportingOptions), allocationLength, ptrData);
 }
 
 int scsi_Get_Physical_Element_Status(tDevice *device, uint32_t startingElement, uint32_t allocationLength, uint8_t filter, uint8_t reportType, uint8_t *ptrData)
@@ -4635,7 +4635,7 @@ int scsi_Get_Physical_Element_Status(tDevice *device, uint32_t startingElement, 
     cdb[12] = M_Byte1(allocationLength);
     cdb[13] = M_Byte0(allocationLength);
     //filter & report type bits
-    cdb[14] = (filter << 6) | (reportType & 0x0F);//filter is 2 bits, report type is 4 bits. All others are reserved;
+    cdb[14] = C_CAST(uint8_t, (filter << 6) | (reportType & 0x0F));//filter is 2 bits, report type is 4 bits. All others are reserved;
     cdb[15] = 0;//control
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -4845,7 +4845,7 @@ int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t 
     //set the service action
     cdb[1] = M_GETBITRANGE(serviceAction, 4, 0);
     //scope & type
-    cdb[2] = (M_Nibble0(scope) << 4) | M_Nibble0(type);
+    cdb[2] = M_NibblesTo1ByteValue(M_Nibble0(scope), M_Nibble0(type));
     //reserved
     cdb[3] = RESERVED;
     cdb[4] = RESERVED;

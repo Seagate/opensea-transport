@@ -1292,7 +1292,7 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         if (is_ATA_Identify_Word_Valid(ident_word[222]))
         {
             //check if the device is parallel or serial
-            uint8_t transportType = (ident_word[222] & (BIT15 | BIT14 | BIT13 | BIT12)) >> 12;
+            uint8_t transportType = C_CAST(uint8_t, (ident_word[222] & (BIT15 | BIT14 | BIT13 | BIT12)) >> 12);
             switch (transportType)
             {
             case 0x00://parallel
