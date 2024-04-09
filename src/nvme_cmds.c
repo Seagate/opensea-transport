@@ -899,7 +899,7 @@ int nvme_Format(tDevice *device, nvmeFormatCmdOpts * formatCmdOpts)
     formatCmd.cmd.adminCmd.nsid = formatCmdOpts->nsid;
 
     //Construct the correct 
-    dWord10 = M_GETBITRANGE(formatCmdOpts->ses, 2, 0) << 9; 
+    dWord10 = C_CAST(uint32_t, M_GETBITRANGE(formatCmdOpts->ses, 2, 0) << 9); 
     if (formatCmdOpts->pil) 
     {
         dWord10 |= BIT8;

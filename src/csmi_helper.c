@@ -774,7 +774,7 @@ int csmi_Controller_Firmware_Download(CSMI_HANDLE deviceHandle, uint32_t control
     ioIn.deviceHandle = deviceHandle;
     ioIn.ioctlBuffer = firmwareBuffer;
     ioIn.ioctlBufferSize = firmwareBufferTotalLength;
-    ioIn.dataLength = firmwareBufferTotalLength - sizeof(IOCTL_HEADER);
+    ioIn.dataLength = C_CAST(uint32_t, firmwareBufferTotalLength - sizeof(IOCTL_HEADER));
     ioIn.ioctlCode = CC_CSMI_SAS_FIRMWARE_DOWNLOAD;
     ioIn.ioctlDirection = CSMI_SAS_DATA_WRITE;
     ioIn.timeoutInSeconds = timeoutSeconds;
@@ -782,7 +782,7 @@ int csmi_Controller_Firmware_Download(CSMI_HANDLE deviceHandle, uint32_t control
     ioIn.csmiVerbosity = verbosity;
 
     firmwareBuffer->Information.uDownloadFlags = downloadFlags;
-    firmwareBuffer->Information.uBufferLength = firmwareBufferTotalLength - sizeof(CSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER);//-1???
+    firmwareBuffer->Information.uBufferLength = C_CAST(uint32_t, firmwareBufferTotalLength - sizeof(CSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER));//-1???
 
     if (VERBOSITY_COMMAND_NAMES <= verbosity)
     {
@@ -1280,7 +1280,7 @@ int csmi_Get_RAID_Config(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PC
     ioIn.deviceHandle = deviceHandle;
     ioIn.ioctlBuffer = raidConfigBuffer;
     ioIn.ioctlBufferSize = raidConfigBufferTotalSize;
-    ioIn.dataLength = raidConfigBufferTotalSize - sizeof(IOCTL_HEADER);
+    ioIn.dataLength = C_CAST(uint32_t, raidConfigBufferTotalSize - sizeof(IOCTL_HEADER));
     ioIn.ioctlCode = CC_CSMI_SAS_GET_RAID_CONFIG;
     ioIn.ioctlDirection = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_RAID_TIMEOUT;
@@ -1302,7 +1302,7 @@ int csmi_Get_RAID_Config(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PC
         ret = csmi_Return_To_OpenSea_Result(raidConfigBuffer->IoctlHeader.ReturnCode);
         if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
         {
-            print_CSMI_RAID_Config(&raidConfigBuffer->Configuration, raidConfigBufferTotalSize - sizeof(IOCTL_HEADER));
+            print_CSMI_RAID_Config(&raidConfigBuffer->Configuration, C_CAST(uint32_t, raidConfigBufferTotalSize - sizeof(IOCTL_HEADER)));
         }
     }
     else
@@ -2224,7 +2224,7 @@ static int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNum
     ioIn.deviceHandle = deviceHandle;
     ioIn.ioctlBuffer = sspPassthrough;
     ioIn.ioctlBufferSize = sspPassthroughBufferLength;
-    ioIn.dataLength = sspPassthroughBufferLength - sizeof(IOCTL_HEADER);
+    ioIn.dataLength = C_CAST(uint32_t, sspPassthroughBufferLength - sizeof(IOCTL_HEADER));
     ioIn.ioctlCode = CC_CSMI_SAS_SSP_PASSTHRU;
     //ioIn.ioctlDirection = CSMI_SAS_DATA_READ;//This is set below, however it may only need to be set one way....will only knwo when testing on linux since this is used there.
     ioIn.timeoutInSeconds = sspInputs->timeoutSeconds;
@@ -2244,7 +2244,7 @@ static int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNum
         memcpy(sspPassthrough->Parameters.bCDB, sspInputs->cdb, 16);
         memcpy(sspPassthrough->Parameters.bAdditionalCDB, sspInputs->cdb + 16, sspInputs->cdbLength - 16);
         sspPassthrough->Parameters.bCDBLength = 16;
-        sspPassthrough->Parameters.bAdditionalCDBLength = (sspInputs->cdbLength - 16) / sizeof(uint32_t);//this is in dwords according to the spec
+        sspPassthrough->Parameters.bAdditionalCDBLength = C_CAST(uint8_t, (sspInputs->cdbLength - 16) / sizeof(uint32_t));//this is in dwords according to the spec
     }
     else
     {
@@ -2388,7 +2388,7 @@ static int csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNum
     ioIn.deviceHandle = deviceHandle;
     ioIn.ioctlBuffer = stpPassthrough;
     ioIn.ioctlBufferSize = stpPassthroughBufferLength;
-    ioIn.dataLength = stpPassthroughBufferLength - sizeof(IOCTL_HEADER);
+    ioIn.dataLength = C_CAST(uint32_t, stpPassthroughBufferLength - sizeof(IOCTL_HEADER));
     ioIn.ioctlCode = CC_CSMI_SAS_STP_PASSTHRU;
     //ioIn.ioctlDirection = CSMI_SAS_DATA_READ;//This is set below, however it may only need to be set one way....will only knwo when testing on linux since this is used there.
     ioIn.timeoutInSeconds = stpInputs->timeoutSeconds;
@@ -3004,7 +3004,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
                         for (uint32_t raidSet = 0; !gotSASAddress && raidSet < raidInfo.Information.uNumRaidSets; ++raidSet)
                         {
                             //with the RAID info, now we can allocate and read the RAID config
-                            uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
+                            uint32_t raidConfigLength = C_CAST(uint32_t, sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES)));
                             PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                             if (raidConfig)
                             {
@@ -3591,7 +3591,7 @@ int get_CSMI_RAID_Device(const char *filename, tDevice *device)
                     for (uint32_t raidSet = 0; raidSet < raidInfo.Information.uNumRaidSets && !foundDrive; ++raidSet)
                     {
                         //need to parse the RAID info to figure out how much memory to allocate and read the 
-                        uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
+                        uint32_t raidConfigLength = C_CAST(uint32_t, sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES)));
                         PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                         if (!raidConfig)
                         {
@@ -4042,7 +4042,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, ptrRa
                             for (uint32_t raidSet = 0; raidSet < csmiRAIDInfo.Information.uNumRaidSets; ++raidSet)
                             {
                                 //start with a length that adds no padding for extra drives, then reallocate to a new size when we know the new size
-                                uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES);//Intel driver recommends allocating for 8 drives to make sure nothing is missed. Maybe check if maxdriverperset less than this to allcoate for 8???
+                                uint32_t raidConfigLength = C_CAST(uint32_t, sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));//Intel driver recommends allocating for 8 drives to make sure nothing is missed. Maybe check if maxdriverperset less than this to allcoate for 8???
                                 PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                                 if (csmiRAIDConfig)
                                 {
@@ -4528,7 +4528,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                 for (uint32_t raidSet = 0; raidSet < csmiRAIDInfo.Information.uNumRaidSets && found < numberOfDevices; ++raidSet)
                                 {
                                     //start with a length that adds no padding for extra drives, then reallocate to a new size when we know the new size
-                                    uint32_t raidConfigLength = sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES);
+                                    uint32_t raidConfigLength = C_CAST(uint32_t, sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
                                     PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
                                     if (csmiRAIDConfig)
                                     {
@@ -4930,7 +4930,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                             memset(d, 0, sizeof(tDevice));
                                                             d->sanity.size = ver.size;
                                                             d->sanity.version = ver.version;
-                                                            d->dFlags = flags;
+                                                            d->dFlags = C_CAST(eDiscoveryOptions, flags);
 #if defined (CSMI_DEBUG)
                                                             printf("GDL: Calling get_CSMI_RAID_Device\n");
 #endif //CSMI_DEBUG
@@ -4986,7 +4986,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                             memset(d, 0, sizeof(tDevice));
                                             d->sanity.size = ver.size;
                                             d->sanity.version = ver.version;
-                                            d->dFlags = flags;
+                                            d->dFlags = C_CAST(eDiscoveryOptions, flags);
                                             d->deviceVerbosity = 4;
 #if defined (CSMI_DEBUG)
                                             printf("GDL: Calling get_CSMI_RAID_Device\n");
@@ -5182,7 +5182,7 @@ static int send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
         stpInputs.flags |= CSMI_SAS_STP_DMA;
         break;
     case ATA_PROTOCOL_DEV_DIAG:
-        stpInputs.flags |= CSMI_SAS_STP_EXECUTE_DIAG;
+        stpInputs.flags |= C_CAST(uint8_t, CSMI_SAS_STP_EXECUTE_DIAG);//note: cast is to remove a warning that only shows up on this flag due to its value.
         break;
     case ATA_PROTOCOL_PACKET:
     case ATA_PROTOCOL_PACKET_DMA:

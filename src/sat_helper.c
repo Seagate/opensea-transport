@@ -1175,7 +1175,7 @@ int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCom
         ScsiIoCtx scsiIoCtx;
         memset(&scsiIoCtx, 0, sizeof(ScsiIoCtx));
         memcpy(scsiIoCtx.cdb, satCDB, satCDBLength);
-        scsiIoCtx.cdbLength = satCDBLength;
+        scsiIoCtx.cdbLength = C_CAST(uint8_t, satCDBLength);
         scsiIoCtx.dataLength = ataCommandOptions->dataSize;
         scsiIoCtx.pdata = ataCommandOptions->ptrData;
         scsiIoCtx.device = device;
@@ -8505,7 +8505,7 @@ static int translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx *scsi
                     selfTestResults[iter + 3] = 0x10;//parameter length = 10h
                     //remaining bytes 4 - 19 are translated from the data we have
                     //This translation is a little trickier to translate. We need to do: selfTestIndex - paramcode + 1 and ONLY if that result is greater than zero do we use that descriptor value
-                    int16_t ataDescriptorNumber = selfTestIndex - parameterCode + 1;
+                    int16_t ataDescriptorNumber = C_CAST(int16_t, selfTestIndex - parameterCode + INT16_C(1));
                     if (ataDescriptorNumber > 0)
                     {
                         //set the buffer offset from the descriptor number we got above - we may need to read a different page of the log if it's a multipage log
@@ -8630,7 +8630,7 @@ static int translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx *scsi
                         additionalSenseCodeQualifier = 0;
                     }
                     //set the data into the buffer now
-                    selfTestResults[iter + 4] = selfTestCode << 5;
+                    selfTestResults[iter + 4] = C_CAST(uint8_t, selfTestCode << 5);
                     selfTestResults[iter + 4] |= selfTestResult;
                     selfTestResults[iter + 5] = selfTestNumber;
                     selfTestResults[iter + 6] = M_Byte1(accumulatedPowerOnHours);
@@ -8732,7 +8732,7 @@ static int translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx *scsi
                         selfTestCode = 0;
                         break;
                     }
-                    selfTestResults[iter + 4] = selfTestCode << 5;
+                    selfTestResults[iter + 4] = C_CAST(uint8_t, selfTestCode << 5);
                     //set theself test results
                     selfTestResults[iter + 4] |= M_Nibble0(selfTestLog[ataLogOffset + 1]);
                     //set the self test number
@@ -9385,7 +9385,7 @@ static int translate_Application_Client_Log_Sense_0x0F(tDevice *device, ScsiIoCt
         return ret;
     }
     //calculate how many parameters we'll be returning.
-    uint16_t numberOfParametersToReturn = (allocationLength - 4) / (4 + 0xFC);//(4 + 0xFC) is the size of a parameter for the application client. allocation length - 4 takes into account the header of the log
+    uint16_t numberOfParametersToReturn = C_CAST(uint16_t, (allocationLength - 4) / (4 + 0xFC));//(4 + 0xFC) is the size of a parameter for the application client. allocation length - 4 takes into account the header of the log
     //set the header
     uint8_t *applicationClientLog = &scsiIoCtx->pdata[0];
     applicationClientLog[0] = 0x0F;
@@ -9488,7 +9488,7 @@ static int translate_Application_Client_Log_Sense_0x0F(tDevice *device, ScsiIoCt
             break;
         }
         //take the parameter code and figure out the offset we need to look at
-        offsetOnATAPage = (parameterCode - (2 * (ataLogPageToRead & 0x0F))) * 256;//this should adjust the offset based on the parameter code and the page we're reading.
+        offsetOnATAPage = C_CAST(uint16_t, (parameterCode - (UINT16_C(2) * (ataLogPageToRead & 0x0F))) * UINT16_C(256));//this should adjust the offset based on the parameter code and the page we're reading.
         //each iteration through the loop will read a different page for the request
         //Read all 16 sectors of the log page we need to, then go through and set up the data to return
         if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT5)
@@ -9945,10 +9945,10 @@ static int translate_Application_Client_Log_Select_0x0F(tDevice *device, ScsiIoC
         }
         else if (parameterListLength > 4 && totalParameterListLength > 4)
         {
-            uint16_t parameterDataOffset = 4;//past the 4 byte header
+            uint16_t parameterDataOffset = UINT16_C(4);//past the 4 byte header
             uint8_t parameterLength = 0xFC;//ideally, this won't ever change if the command was formatted correctly.
             //Loop through the parameters and check lengths, parameter codes, and parameter control bytes to make sure they are valid
-            for (parameterDataOffset = 4; parameterDataOffset < parameterListLength && parameterDataOffset < totalParameterListLength; parameterDataOffset += parameterLength + 4)
+            for (parameterDataOffset = UINT16_C(4); parameterDataOffset < parameterListLength && parameterDataOffset < totalParameterListLength; parameterDataOffset += C_CAST(uint16_t, parameterLength + UINT16_C(4)))
             {
                 uint16_t parameterCode = M_BytesTo2ByteValue(ptrData[parameterDataOffset + 0], ptrData[parameterDataOffset + 1]);
                 bool disableUpdate = ptrData[parameterDataOffset + 2] & BIT7;
@@ -10077,7 +10077,7 @@ static int translate_Application_Client_Log_Select_0x0F(tDevice *device, ScsiIoC
                     break;
                 }
                 //take the parameter code and figure out the offset we need to look at
-                offsetOnATAPage = (parameterCode - (2 * (ataLogPageToRead & 0x0F))) * 256;//this should adjust the offset based on the parameter code and the page we're reading.
+                offsetOnATAPage = C_CAST(uint16_t, (parameterCode - (UINT16_C(2) * (ataLogPageToRead & 0x0F))) * UINT16_C(256));//this should adjust the offset based on the parameter code and the page we're reading.
                 //each iteration through the loop will read a different page for the request
                 //Read all 16 sectors of the log page we need to, then go through and set up the data to return
                 if (scsiIoCtx->device->drive_info.ata_Options.generalPurposeLoggingSupported)//GPL
@@ -10107,12 +10107,12 @@ static int translate_Application_Client_Log_Select_0x0F(tDevice *device, ScsiIoC
                     break;
                 }
                 //need another for loop to go through the ATA log data we just read so that we can modify the data before we write it.
-                for (uint8_t perATAPageCounter = C_CAST(uint8_t, offsetOnATAPage / UINT16_C(256)); perATAPageCounter < UINT8_C(32) && offsetOnATAPage < (UINT16_C(16) * LEGACY_DRIVE_SEC_SIZE) && parameterDataOffset < parameterListLength && parameterDataOffset < totalParameterListLength; offsetOnATAPage += UINT16_C(256), parameterDataOffset += parameterLength + UINT16_C(4), ++perATAPageCounter)
+                for (uint8_t perATAPageCounter = C_CAST(uint8_t, offsetOnATAPage / UINT16_C(256)); perATAPageCounter < UINT8_C(32) && offsetOnATAPage < (UINT16_C(16) * LEGACY_DRIVE_SEC_SIZE) && parameterDataOffset < parameterListLength && parameterDataOffset < totalParameterListLength; offsetOnATAPage += UINT16_C(256), parameterDataOffset += C_CAST(uint16_t, parameterLength + UINT16_C(4)), ++perATAPageCounter)
                 {
                     //first, we need to make sure that we write the correct parameters in the right place on the page
                     parameterCode = M_BytesTo2ByteValue(ptrData[parameterDataOffset + 0], ptrData[parameterDataOffset + 1]);
                     parameterLength = ptrData[parameterDataOffset + 3];
-                    offsetOnATAPage = (parameterCode - (2 * (ataLogPageToRead & 0x0F))) * UINT16_C(256);//this should adjust the offset based on the parameter code and the page we're reading.
+                    offsetOnATAPage = C_CAST(uint16_t, (parameterCode - (UINT16_C(2) * (ataLogPageToRead & 0x0F))) * UINT16_C(256));//this should adjust the offset based on the parameter code and the page we're reading.
                     perATAPageCounter = C_CAST(uint8_t, offsetOnATAPage / UINT16_C(256));
                     if (perATAPageCounter > UINT8_C(32))
                     {
@@ -10331,7 +10331,7 @@ static int translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
             uint64_t maxUnmapRangePerDescriptor = UINT16_MAX;
 #endif //SAT_SPEC_SUPPORTED
             //need to check to make sure there weren't any truncated block descriptors before we begin
-            uint16_t minBlockDescriptorLength = M_Min(unmapBlockDescriptorLength + 8, parameterListLength);
+            uint16_t minBlockDescriptorLength = C_CAST(uint16_t, M_Min(unmapBlockDescriptorLength + UINT16_C(8), parameterListLength));
             uint16_t unmapBlockDescriptorIter = 8;
             uint64_t numberOfLBAsToTRIM = 0;//this will be checked later to make sure it isn't greater than what we reported on the VPD pages
             uint16_t numberOfBlockDescriptors = 0;//this will be checked later to make sure it isn't greater than what we reported on the VPD pages
@@ -10574,13 +10574,13 @@ static int translate_Mode_Sense_Control_0Ah(tDevice *device, ScsiIoCtx *scsiIoCt
             uint8_t smartData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
             if (SUCCESS == ata_SMART_Read_Data(device, smartData, LEGACY_DRIVE_SEC_SIZE))
             {
-                if (smartData[373] != 0xFF)
+                if (smartData[373] != UINT8_MAX)
                 {
                     smartSelfTestTime = UINT16_C(60) * C_CAST(uint16_t, smartData[373]);
                 }
                 else
                 {
-                    smartSelfTestTime = M_Min(0xFFFF, ((C_CAST(uint16_t, smartData[376]) * UINT16_C(256)) + C_CAST(uint16_t, smartData[375])) * UINT16_C(60));
+                    smartSelfTestTime = C_CAST(uint16_t, M_Min(UINT16_MAX, ((C_CAST(uint16_t, smartData[376]) * UINT16_C(256)) + C_CAST(uint16_t, smartData[375])) * UINT16_C(60)));
                 }
             }
         }
@@ -13061,7 +13061,7 @@ static int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIo
                 break;
             default:
                 //invalid field in parameter list...we don't support this page
-                fieldPointer = headerLength + blockDescriptorLength + 1;//plus one for subpage
+                fieldPointer = C_CAST(uint16_t, headerLength + blockDescriptorLength + UINT16_C(1));//plus one for subpage
                 bitPointer = 7;
                 set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                 ret = NOT_SUPPORTED;
@@ -13076,7 +13076,7 @@ static int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIo
                 ret = translate_Mode_Select_Control_0Ah(device, scsiIoCtx, &scsiIoCtx->pdata[headerLength + blockDescriptorLength], pageLength);
                 break;
             default:
-                fieldPointer = headerLength + blockDescriptorLength + 1;//plus one for subpage
+                fieldPointer = C_CAST(uint16_t, headerLength + blockDescriptorLength + UINT16_C(1));//plus one for subpage
                 bitPointer = 7;
                 set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                 ret = NOT_SUPPORTED;
@@ -13092,7 +13092,7 @@ static int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIo
                 ret = translate_Mode_Select_Power_Conditions_1A(device, scsiIoCtx, &scsiIoCtx->pdata[headerLength + blockDescriptorLength], pageLength);
                 break;
 #else //SAT_SPEC_SUPPORTED
-                fieldPointer = headerLength + blockDescriptorLength;//we don't support page 0 in this version of SAT
+                fieldPointer = C_CAST(uint16_t, headerLength + blockDescriptorLength);//we don't support page 0 in this version of SAT
                 bitPointer = 5;
                 set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                 ret = NOT_SUPPORTED;
@@ -13107,7 +13107,7 @@ static int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIo
                 else
                 {
                     //invalid field in parameter list...we don't support this page
-                    fieldPointer = headerLength + blockDescriptorLength + 1;//plus one for subpage
+                    fieldPointer = C_CAST(uint16_t, headerLength + blockDescriptorLength + UINT16_C(1));//plus one for subpage
                     bitPointer = 7;
                     set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                     ret = NOT_SUPPORTED;
@@ -13115,7 +13115,7 @@ static int translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoCtx *scsiIo
                 }
                 break;
             default:
-                fieldPointer = headerLength + blockDescriptorLength + 1;//plus one for subpage
+                fieldPointer = C_CAST(uint16_t, headerLength + blockDescriptorLength + UINT16_C(1));//plus one for subpage
                 bitPointer = 7;
                 set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
                 ret = NOT_SUPPORTED;
@@ -14859,7 +14859,7 @@ static int check_Operation_Code_and_Service_Action(tDevice *device, uint8_t oper
                 return MEMORY_FAILURE;
             }
             pdata[0][offset + 0] = operationCode;
-            pdata[0][offset + 1] = (serviceAction & 0x001F) | BIT7 | BIT6 | BIT5;
+            pdata[0][offset + 1] = C_CAST(uint8_t, (serviceAction & 0x001F) | BIT7 | BIT6 | BIT5);
             pdata[0][offset + 2] = 0xFF;
             pdata[0][offset + 3] = 0xFF;
             pdata[0][offset + 4] = 0xFF;

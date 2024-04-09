@@ -277,7 +277,7 @@ extern "C"
         tDevice          *device;
         uint8_t         cdb[64]; //64 just so if we ever get there.
         uint8_t         cdbLength;
-        int8_t          direction;
+        eDataTransferDirection direction;
         uint8_t         *pdata;
         uint32_t        dataLength;
         uint8_t         *psense;
@@ -646,16 +646,16 @@ extern "C"
         LP_INFORMATION_EXCEPTIONS_LEN = 12,//setting to 12 since a SAT device will only likely return 12 bytes of data....this shouldn't be used when reading this page from a SAS device.
     }eScsiLogPageLengths;
 
-    #define MODE_PARAMETER_HEADER_6_LEN 4
-    #define MODE_PARAMETER_HEADER_10_LEN 8
+    #define MODE_PARAMETER_HEADER_6_LEN  UINT8_C(4)
+    #define MODE_PARAMETER_HEADER_10_LEN UINT8_C(8)
 
-    #define SHORT_LBA_BLOCK_DESCRIPTOR_LEN 8 //for mode sense/select 6
-    #define LONG_LBA_BLOCK_DESCRIPTOR_LEN 16 //for mode sense/select 10
+    #define SHORT_LBA_BLOCK_DESCRIPTOR_LEN UINT8_C(8) //for mode sense/select 6
+    #define LONG_LBA_BLOCK_DESCRIPTOR_LEN  UINT8_C(16) //for mode sense/select 10
 
-    #define LOG_PAGE_HEADER_LENGTH 4
+    #define LOG_PAGE_HEADER_LENGTH UINT8_C(4)
 
-    #define READ_CAPACITY_10_LEN 8
-    #define READ_CAPACITY_16_LEN 32
+    #define READ_CAPACITY_10_LEN UINT8_C(8)
+    #define READ_CAPACITY_16_LEN UINT8_C(32)
 
     typedef enum _eSCSIPeripheralQualifier
     {

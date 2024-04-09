@@ -3334,7 +3334,7 @@ int fill_In_Device_Info(tDevice *device)
             {
                 uint16_t offset = 4;//start of pages to dummy up
                 //in here we will set up a fake supported VPD pages buffer so that we try to read the unit serial number page, the SAT page, and device identification page
-                inq_buf[0] = peripheralQualifier << 5;
+                inq_buf[0] = C_CAST(uint8_t, peripheralQualifier << 5);
                 inq_buf[0] |= peripheralDeviceType;
                 //set page code
                 inq_buf[1] = 0x00;

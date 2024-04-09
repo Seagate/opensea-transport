@@ -122,7 +122,7 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
         ioctl->SrbIoCtrl.HeaderLength = sizeof(SRB_IO_CONTROL);
         memcpy(ioctl->SrbIoCtrl.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
         ioctl->SrbIoCtrl.ControlCode = C_CAST(ULONG, NVME_PASS_THROUGH_SRB_IO_CODE);
-        ioctl->SrbIoCtrl.Length = bufferSize - sizeof(SRB_IO_CONTROL);
+        ioctl->SrbIoCtrl.Length = C_CAST(ULONG, bufferSize - sizeof(SRB_IO_CONTROL));
         ioctl->SrbIoCtrl.Timeout = 15;
 
         memset(&commandTimer, 0, sizeof(seatimer_t));
@@ -391,7 +391,7 @@ int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
         ioctl->SrbIoCtrl.HeaderLength = sizeof(SRB_IO_CONTROL);
         memcpy(ioctl->SrbIoCtrl.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
         ioctl->SrbIoCtrl.ControlCode = C_CAST(ULONG, NVME_PASS_THROUGH_SRB_IO_CODE);
-        ioctl->SrbIoCtrl.Length = bufferSize - sizeof(SRB_IO_CONTROL);
+        ioctl->SrbIoCtrl.Length = C_CAST(ULONG, bufferSize - sizeof(SRB_IO_CONTROL));
         ioctl->SrbIoCtrl.Timeout = nvmeIoCtx->timeout;
 
         memset(&commandTimer, 0, sizeof(seatimer_t));
