@@ -716,7 +716,7 @@ int nvme_Get_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
     //getFeatures.dataSize = featCmdOpts.dataSize; //TODO: allow this since a get features could return other data
     getFeatures.cmd.adminCmd.nsid = featCmdOpts->nsid;
 
-    dWord10 = featCmdOpts->sel << 8; 
+    dWord10 = C_CAST(uint32_t, featCmdOpts->sel) << 8; 
     dWord10 |= featCmdOpts->fid;
 
     getFeatures.cmd.adminCmd.cdw10 = dWord10;
@@ -760,7 +760,7 @@ int nvme_Set_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
     setFeatures.ptrData = featCmdOpts->dataPtr;
     setFeatures.dataSize = featCmdOpts->dataLength;
 
-    dWord10 = featCmdOpts->sv << 31; 
+    dWord10 = C_CAST(uint32_t, featCmdOpts->sv) << 31; 
     dWord10 |= featCmdOpts->fid;
 
     setFeatures.cmd.adminCmd.cdw10 = dWord10;
@@ -982,7 +982,7 @@ int nvme_Reservation_Register(tDevice *device, uint8_t changePersistThroughPower
     nvmCmd.ptrData = ptrData;
     nvmCmd.timeout = 15;
 
-    nvmCmd.cmd.nvmCmd.cdw10 = changePersistThroughPowerLossState << 30;
+    nvmCmd.cmd.nvmCmd.cdw10 = C_CAST(uint32_t, changePersistThroughPowerLossState) << 30;
     if (ignoreExistingKey)
     {
         nvmCmd.cmd.nvmCmd.cdw10 |= BIT3;
@@ -1020,7 +1020,7 @@ int nvme_Reservation_Acquire(tDevice *device, uint8_t reservationType, bool igno
     nvmCmd.ptrData = ptrData;
     nvmCmd.timeout = 15;
 
-    nvmCmd.cmd.nvmCmd.cdw10 = reservationType << 8;
+    nvmCmd.cmd.nvmCmd.cdw10 = C_CAST(uint32_t, reservationType) << 8;
     if (ignoreExistingKey)
     {
         nvmCmd.cmd.nvmCmd.cdw10 |= BIT3;
@@ -1058,7 +1058,7 @@ int nvme_Reservation_Release(tDevice *device, uint8_t reservationType, bool igno
     nvmCmd.ptrData = ptrData;
     nvmCmd.timeout = 15;
 
-    nvmCmd.cmd.nvmCmd.cdw10 = reservationType << 8;
+    nvmCmd.cmd.nvmCmd.cdw10 = C_CAST(uint32_t, reservationType) << 8;
     if (ignoreExistingKey)
     {
         nvmCmd.cmd.nvmCmd.cdw10 |= BIT3;
@@ -1085,24 +1085,30 @@ int nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegisters * ctrlRegs)
 {
     int ret = UNKNOWN;
     //For now lets first get the page aligned one & then copy the 
-    int dataSize = getpagesize();
-    uint8_t * barRegs = calloc_aligned(dataSize,sizeof(uint8_t), dataSize);
-    if (!barRegs)
+    size_t dataSize = int32_to_sizet(getpagesize());
+    if (dataSize > 0 && dataSize <= UINT32_MAX)
     {
-        return MEMORY_FAILURE;
+        uint8_t * barRegs = calloc_aligned(dataSize, sizeof(uint8_t), dataSize);
+        if (!barRegs)
+        {
+            return MEMORY_FAILURE;
+        }
+        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+        {
+            printf("Reading PCI Bar Registers\n");
+        }
+        ret = pci_Read_Bar_Reg( device, barRegs, C_CAST(uint32_t, dataSize) );
+        if (ret == SUCCESS) 
+        {
+            memcpy(ctrlRegs,barRegs,sizeof(nvmeBarCtrlRegisters));
+        }
+        
+        safe_Free_aligned(barRegs)
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    else
     {
-        printf("Reading PCI Bar Registers\n");
+        ret = MEMORY_FAILURE;
     }
-    ret = pci_Read_Bar_Reg( device, barRegs, C_CAST(uint32_t, dataSize) );
-    if (ret == SUCCESS) 
-    {
-        memcpy(ctrlRegs,barRegs,sizeof(nvmeBarCtrlRegisters));
-    }
-    
-    safe_Free_aligned(barRegs)
-
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("PCI Bar Registers", ret);

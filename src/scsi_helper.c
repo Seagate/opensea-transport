@@ -1014,7 +1014,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         {
             print_sense_key(senseKeyRetDesc[senseKey].desc, senseKey);
         }
-        ret = senseKeyRetDesc[senseKey].ret;
+        ret = C_CAST(int, senseKeyRetDesc[senseKey].ret);
     }
     else
     {
@@ -1085,7 +1085,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
             // Return code of -1 means follow return code determined by sense key, do not change
             if (asc_ascq_result->ret > KEEP_SENSE_KEY_ERROR)
             {
-                ret = C_CAST(eReturnValues, asc_ascq_result->ret);
+                ret = asc_ascq_result->ret;
             }
         }
         else

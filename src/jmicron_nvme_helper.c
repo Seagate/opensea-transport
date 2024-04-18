@@ -313,7 +313,7 @@ int send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
                 nvmCmd->commandCompletionData.dw0Valid = true;
                 nvmCmd->commandCompletionData.dw3Valid = true;
                 nvmCmd->commandCompletionData.commandSpecific = M_BytesTo4ByteValue(jmPayload[11], jmPayload[10], jmPayload[9], jmPayload[8]);
-                nvmCmd->commandCompletionData.statusAndCID = M_BytesTo2ByteValue(jmPayload[23], jmPayload[22]) << 17;//only the status field is returned so shift it into the place it's expected to be.
+                nvmCmd->commandCompletionData.statusAndCID = C_CAST(uint32_t, M_BytesTo2ByteValue(jmPayload[23], jmPayload[22])) << 17;//only the status field is returned so shift it into the place it's expected to be.
                 //All other fields are reserved in the documentation.
             }
         }
