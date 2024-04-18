@@ -56,7 +56,28 @@ static bool is_SmartPQI_Unique_IOCTLs_Supported(int fd)
 #if defined (__FreeBSD__)
     pqi_pci_info_t pciInfo;
     memset(&pciInfo, 0, sizeof(pqi_pci_info_t));
+#if defined __clang__
+// clang specific because behavior can differ even with the GCC diagnostic being "compatible"
+// https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#elif defined __GNUC__
+//temporarily disable the warning for sign conversion because ioctl definition 
+// in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and 
+// in others is defined as ioctl(int, int, ...)
+//While debugging there does not seem to be a real conversion issue here.
+//These ioctls still work in either situation, so disabling the warning seems best since there is not
+//another way I have found to determine when to cast or not cast the sign conversion.-TJE
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif //__clang__, __GNUC__
     if (0 == ioctl(fd, SMARTPQI_GETPCIINFO, &pciInfo))
+#if defined __clang__
+#pragma clang diagnostic pop
+#elif defined __GNUC__
+//reenable the unused function warning
+#pragma GCC diagnostic pop
+#endif //__clang__, __GNUC__
     {
         supported = true;
     }
@@ -76,7 +97,28 @@ static bool supports_CISS_IOCTLs(int fd)
 #if defined (__linux__) || defined (__FreeBSD__)
     cciss_pci_info_struct pciInfo;
     memset(&pciInfo, 0, sizeof(cciss_pci_info_struct));
+#if defined __clang__
+// clang specific because behavior can differ even with the GCC diagnostic being "compatible"
+// https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#elif defined __GNUC__
+//temporarily disable the warning for sign conversion because ioctl definition 
+// in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and 
+// in others is defined as ioctl(int, int, ...)
+//While debugging there does not seem to be a real conversion issue here.
+//These ioctls still work in either situation, so disabling the warning seems best since there is not
+//another way I have found to determine when to cast or not cast the sign conversion.-TJE
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif //__clang__, __GNUC__
     if (0 == ioctl(fd, CCISS_GETPCIINFO, &pciInfo))
+#if defined __clang__
+#pragma clang diagnostic pop
+#elif defined __GNUC__
+//reenable the unused function warning
+#pragma GCC diagnostic pop
+#endif //__clang__, __GNUC__
     {
         supported = true;
     }
@@ -90,7 +132,28 @@ static bool supports_CISS_IOCTLs(int fd)
 #elif defined (__sun)
     cpqary3_ctlr_info_t ctrlInfo;
     memset(&ctrlInfo, 0, sizeof(cpqary3_ctlr_info_t));
+#if defined __clang__
+// clang specific because behavior can differ even with the GCC diagnostic being "compatible"
+// https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#elif defined __GNUC__
+//temporarily disable the warning for sign conversion because ioctl definition 
+// in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and 
+// in others is defined as ioctl(int, int, ...)
+//While debugging there does not seem to be a real conversion issue here.
+//These ioctls still work in either situation, so disabling the warning seems best since there is not
+//another way I have found to determine when to cast or not cast the sign conversion.-TJE
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif //__clang__, __GNUC__
     if (0 == ioctl(fd, CPQARY3_IOCTL_CTLR_INFO, &ctrlInfo))
+#if defined __clang__
+#pragma clang diagnostic pop
+#elif defined __GNUC__
+//reenable the unused function warning
+#pragma GCC diagnostic pop
+#endif //__clang__, __GNUC__
     {
         supported = true;
     }
@@ -441,7 +504,28 @@ static int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
                         ret = OS_PASSTHROUGH_FAILURE;//OS_COMMAND_NOT_AVAILABLE, OS_COMMAND_BLOCKED
 
                         start_Timer(&commandTimer);
+#if defined __clang__
+// clang specific because behavior can differ even with the GCC diagnostic being "compatible"
+// https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#elif defined __GNUC__
+//temporarily disable the warning for sign conversion because ioctl definition 
+// in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and 
+// in others is defined as ioctl(int, int, ...)
+//While debugging there does not seem to be a real conversion issue here.
+//These ioctls still work in either situation, so disabling the warning seems best since there is not
+//another way I have found to determine when to cast or not cast the sign conversion.-TJE
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif //__clang__, __GNUC__
                         ret = ioctl(scsiIoCtx->device->os_info.cissDeviceData->cissHandle, CCISS_PASSTHRU, &pqiCmd);
+#if defined __clang__
+#pragma clang diagnostic pop
+#elif defined __GNUC__
+//reenable the unused function warning
+#pragma GCC diagnostic pop
+#endif //__clang__, __GNUC__
                         stop_Timer(&commandTimer);
 
                         //Copy and sense data we received, then need to check for errors
@@ -659,7 +743,28 @@ static int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
                     ret = OS_PASSTHROUGH_FAILURE;//OS_COMMAND_NOT_AVAILABLE, OS_COMMAND_BLOCKED
 
                     start_Timer(&commandTimer);
+#if defined __clang__
+// clang specific because behavior can differ even with the GCC diagnostic being "compatible"
+// https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#elif defined __GNUC__
+//temporarily disable the warning for sign conversion because ioctl definition 
+// in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and 
+// in others is defined as ioctl(int, int, ...)
+//While debugging there does not seem to be a real conversion issue here.
+//These ioctls still work in either situation, so disabling the warning seems best since there is not
+//another way I have found to determine when to cast or not cast the sign conversion.-TJE
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif //__clang__, __GNUC__
                     ret = ioctl(scsiIoCtx->device->os_info.cissDeviceData->cissHandle, CCISS_PASSTHRU, &cissCmd);
+#if defined __clang__
+#pragma clang diagnostic pop
+#elif defined __GNUC__
+//reenable the unused function warning
+#pragma GCC diagnostic pop
+#endif //__clang__, __GNUC__
                     stop_Timer(&commandTimer);
 
                     //Copy and sense data we received, then need to check for errors
@@ -868,7 +973,28 @@ static int ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
                 ret = OS_PASSTHROUGH_FAILURE;//OS_COMMAND_NOT_AVAILABLE, OS_COMMAND_BLOCKED
 
                 start_Timer(&commandTimer);
+#if defined __clang__
+// clang specific because behavior can differ even with the GCC diagnostic being "compatible"
+// https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#elif defined __GNUC__
+//temporarily disable the warning for sign conversion because ioctl definition 
+// in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and 
+// in others is defined as ioctl(int, int, ...)
+//While debugging there does not seem to be a real conversion issue here.
+//These ioctls still work in either situation, so disabling the warning seems best since there is not
+//another way I have found to determine when to cast or not cast the sign conversion.-TJE
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif //__clang__, __GNUC__
                 ret = ioctl(scsiIoCtx->device->os_info.cissDeviceData->cissHandle, CPQARY3_IOCTL_SCSI_PASS, &cissCmd);
+#if defined __clang__
+#pragma clang diagnostic pop
+#elif defined __GNUC__
+//reenable the unused function warning
+#pragma GCC diagnostic pop
+#endif //__clang__, __GNUC__
                 stop_Timer(&commandTimer);
 
                 //Copy and sense data we received, then need to check for errors
@@ -1114,7 +1240,28 @@ static int ciss_Big_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
             ret = OS_PASSTHROUGH_FAILURE;//OS_COMMAND_NOT_AVAILABLE, OS_COMMAND_BLOCKED
 
             start_Timer(&commandTimer);
+#if defined __clang__
+// clang specific because behavior can differ even with the GCC diagnostic being "compatible"
+// https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#elif defined __GNUC__
+//temporarily disable the warning for sign conversion because ioctl definition 
+// in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and 
+// in others is defined as ioctl(int, int, ...)
+//While debugging there does not seem to be a real conversion issue here.
+//These ioctls still work in either situation, so disabling the warning seems best since there is not
+//another way I have found to determine when to cast or not cast the sign conversion.-TJE
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif //__clang__, __GNUC__
             ret = ioctl(scsiIoCtx->device->os_info.cissDeviceData->cissHandle, CCISS_BIG_PASSTHRU, &cissCmd);
+#if defined __clang__
+#pragma clang diagnostic pop
+#elif defined __GNUC__
+//reenable the unused function warning
+#pragma GCC diagnostic pop
+#endif //__clang__, __GNUC__
             stop_Timer(&commandTimer);
 
             //Copy and sense data we received, then need to check for errors
@@ -1378,7 +1525,7 @@ int close_CISS_RAID_Device(tDevice *device)
     {
         if (close(device->os_info.cissDeviceData->cissHandle))
         {
-            device->os_info.last_error = errno;
+            device->os_info.last_error = C_CAST(unsigned int, errno);
         }
         else
         {

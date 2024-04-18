@@ -322,14 +322,35 @@ static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParam
     ioctlHeader->Direction = csmiIoInParams->ioctlDirection;
     //issue the IO
     start_Timer(timer);
+#if defined __clang__
+// clang specific because behavior can differ even with the GCC diagnostic being "compatible"
+// https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#elif defined __GNUC__
+//temporarily disable the warning for sign conversion because ioctl definition 
+// in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and 
+// in others is defined as ioctl(int, int, ...)
+//While debugging there does not seem to be a real conversion issue here.
+//These ioctls still work in either situation, so disabling the warning seems best since there is not
+//another way I have found to determine when to cast or not cast the sign conversion.-TJE
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif //__clang__, __GNUC__
     localIoctlReturn = ioctl(csmiIoInParams->deviceHandle, csmiIoInParams->ioctlCode, csmiIoInParams->ioctlBuffer);
+#if defined __clang__
+#pragma clang diagnostic pop
+#elif defined __GNUC__
+//reenable the unused function warning
+#pragma GCC diagnostic pop
+#endif //__clang__, __GNUC__
     stop_Timer(timer);
     lastError = errno;
     if (csmiIoOutParams->lastError)
     {
-        *csmiIoOutParams->lastError = lastError;
+        *csmiIoOutParams->lastError = C_CAST(unsigned int, lastError);
     }
-#endif
+#endif //_WIN32
     if (VERBOSITY_COMMAND_NAMES <= csmiIoInParams->csmiVerbosity)
     {
         printf("\tCSMI IO results:\n");
@@ -2346,7 +2367,7 @@ typedef struct _csmiSTPIn
     uint8_t portIdentifier;//can set CSMI_SAS_IGNORE_PORT
     uint8_t connectionRate;//strongly recommend leaving as negotiated
     uint8_t destinationSASAddress[8];
-    uint8_t flags;//read, write, unspecified, must also specify pio, dma, etc for the protocol of the command being issued.
+    uint32_t flags;//read, write, unspecified, must also specify pio, dma, etc for the protocol of the command being issued.
     void *commandFIS;//pointer to a 20 byte array for a H2D fis.
     uint8_t *ptrData;//pointer to buffer to use as source for writes. This will be used for reads as well.
     uint32_t dataLength;//length of data to read or write
@@ -3327,7 +3348,7 @@ int close_CSMI_RAID_Device(tDevice *device)
 #else //_WIN32
         if(close(device->os_info.fd))
         {
-            device->os_info.last_error = errno;
+            device->os_info.last_error = C_CAST(unsigned int, errno);
         }
         else
         {
@@ -3937,7 +3958,7 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, ptrRa
     ptrRaidHandleToScan raidList = NULL;
     ptrRaidHandleToScan previousRaidListEntry = NULL;
     uint32_t controllerNumber = 0;
-    int found = 0, raidConfigDrivesFound = 0, phyInfoDrivesFound = 0;
+    uint32_t found = 0, raidConfigDrivesFound = 0, phyInfoDrivesFound = 0;
 
     if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
     {
@@ -5182,7 +5203,7 @@ static int send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
         stpInputs.flags |= CSMI_SAS_STP_DMA;
         break;
     case ATA_PROTOCOL_DEV_DIAG:
-        stpInputs.flags |= C_CAST(uint8_t, CSMI_SAS_STP_EXECUTE_DIAG);//note: cast is to remove a warning that only shows up on this flag due to its value.
+        stpInputs.flags |= CSMI_SAS_STP_EXECUTE_DIAG;//note: cast is to remove a warning that only shows up on this flag due to its value.
         break;
     case ATA_PROTOCOL_PACKET:
     case ATA_PROTOCOL_PACKET_DMA:

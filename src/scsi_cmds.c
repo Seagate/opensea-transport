@@ -265,7 +265,7 @@ int scsi_Report_Supported_Operation_Codes(tDevice *device, bool rctd, uint8_t re
     {
         cdb[2] |= BIT7;
     }
-    cdb[2] |= (reportingOptions & 0x07); //bit 0,1,2 only valid
+    cdb[2] |= C_CAST(uint8_t, reportingOptions & UINT8_C(0x07)); //bit 0,1,2 only valid
     cdb[3] = requestedOperationCode;
     cdb[4] = M_Byte1(reequestedServiceAction);
     cdb[5] = M_Byte0(reequestedServiceAction);
@@ -419,8 +419,8 @@ int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit,
     {
         return MEMORY_FAILURE;
     }
-    overwriteBuffer[0] = overwritePasses & 0x1F;
-    overwriteBuffer[0] |= (test & 0x03) << 5;
+    overwriteBuffer[0] = overwritePasses & UINT8_C(0x1F);
+    overwriteBuffer[0] |= C_CAST(uint8_t, (C_CAST(uint8_t, test) & UINT8_C(0x03)) << 5);
     if (invertBetweenPasses)
     {
         overwriteBuffer[0] |= BIT7;
@@ -492,8 +492,8 @@ int scsi_Log_Sense_Cmd(tDevice *device, bool saveParameters, uint8_t pageControl
     {
         cdb[1] |= 0x01;
     }
-    cdb[2] |= (pageControl & 0x03) << 6;
-    cdb[2] |= pageCode & 0x3F;
+    cdb[2] |= C_CAST(uint8_t, (pageControl & UINT8_C(0x03)) << 6);
+    cdb[2] |= C_CAST(uint8_t, pageCode & UINT8_C(0x3F));
     cdb[3] = subpageCode;
     cdb[4] = RESERVED;
     cdb[5] = M_Byte1(paramPointer);
@@ -590,14 +590,14 @@ int scsi_Log_Select_Cmd(tDevice *device, bool pcr, bool sp, uint8_t pageControl,
     cdb[OPERATION_CODE] = LOG_SELECT_CMD;
     if (sp)
     {
-        cdb[1] |= 0x01;
+        cdb[1] |= UINT8_C(0x01);
     }
     if (pcr)
     {
         cdb[1] |= BIT1;
     }
-    cdb[2] |= (pageControl & 0x03) << 6;
-    cdb[2] |= pageCode & 0x3F;
+    cdb[2] |= C_CAST(uint8_t, (pageControl & UINT8_C(0x03)) << 6);
+    cdb[2] |= C_CAST(uint8_t, pageCode & UINT8_C(0x3F));
     cdb[3] = subpageCode;
     cdb[4] = RESERVED;
     cdb[5] = RESERVED;
@@ -630,11 +630,11 @@ int scsi_Send_Diagnostic(tDevice *device, uint8_t selfTestCode, uint8_t pageForm
     }
     // Set up the CDB.
     cdb[OPERATION_CODE] = SEND_DIAGNOSTIC_CMD; //Send Diagnostic
-    cdb[1] |= selfTestCode << 5;
-    cdb[1] |= (pageFormat & 0x01) << 4;
-    cdb[1] |= (selfTestBit & 0x01) << 2;
-    cdb[1] |= (deviceOffLIne & 0x01) << 1;
-    cdb[1] |= (unitOffLine & 0x01);
+    cdb[1] |= C_CAST(uint8_t, selfTestCode << 5);
+    cdb[1] |= C_CAST(uint8_t, (pageFormat & UINT8_C(0x01)) << 4);
+    cdb[1] |= C_CAST(uint8_t, (selfTestBit & UINT8_C(0x01)) << 2);
+    cdb[1] |= C_CAST(uint8_t, (deviceOffLIne & UINT8_C(0x01)) << 1);
+    cdb[1] |= C_CAST(uint8_t, (unitOffLine & UINT8_C(0x01)));
     cdb[3] = M_Byte1(parameterListLength);
     cdb[4] = M_Byte0(parameterListLength);
     //send the command
@@ -730,8 +730,8 @@ int scsi_Mode_Sense_6(tDevice * device, uint8_t pageCode, uint8_t allocationLeng
     {
         cdb[1] |= BIT3;
     }
-    cdb[2] |= (pageControl & 0x03) << 6;
-    cdb[2] |= pageCode & 0x3F;
+    cdb[2] |= C_CAST(uint8_t, (pageControl & UINT8_C(0x03)) << 6);
+    cdb[2] |= C_CAST(uint8_t, pageCode & UINT8_C(0x3F));
     cdb[3] = subPageCode;
     cdb[4] = allocationLength;
     cdb[5] = 0;//control
@@ -830,8 +830,8 @@ int scsi_Mode_Sense_10(tDevice *device, uint8_t pageCode, uint32_t allocationLen
     {
         cdb[1] |= BIT3;
     }
-    cdb[2] |= (pageControl & 0x03) << 6;
-    cdb[2] |= pageCode & 0x3F;
+    cdb[2] |= C_CAST(uint8_t, (pageControl & UINT8_C(0x03)) << 6);
+    cdb[2] |= C_CAST(uint8_t, pageCode & UINT8_C(0x3F));
     cdb[3] = subPageCode;
     cdb[4] = RESERVED; //reserved
     cdb[5] = RESERVED; //reserved
@@ -1032,7 +1032,7 @@ int scsi_Write_Buffer(tDevice *device, eWriteBufferMode mode, uint8_t modeSpecif
     // Set up the CDB.
     cdb[OPERATION_CODE] = WRITE_BUFFER_CMD;
     cdb[1] = C_CAST(uint8_t, mode);
-    cdb[1] |= (modeSpecific & 0x07) << 5;
+    cdb[1] |= C_CAST(uint8_t, (modeSpecific & UINT8_C(0x07)) << 5);
     cdb[2] = bufferID;
     cdb[3] = M_Byte2(bufferOffset);
     cdb[4] = M_Byte1(bufferOffset);
@@ -1351,8 +1351,8 @@ int scsi_Read_Buffer_16(tDevice *device, uint8_t mode, uint8_t modeSpecific, uin
     // Set up the CDB.
     cdb[OPERATION_CODE] = READ_BUFFER_16_CMD;
     //set the mode
-    cdb[1] = mode & 0x1F;
-    cdb[1] |= modeSpecific << 5;
+    cdb[1] = mode & UINT8_C(0x1F);
+    cdb[1] |= C_CAST(uint8_t, modeSpecific << 5);
     cdb[2] = M_Byte7(bufferOffset);
     cdb[3] = M_Byte6(bufferOffset);
     cdb[4] = M_Byte5(bufferOffset);
@@ -1996,7 +1996,7 @@ int scsi_Compare_And_Write(tDevice *device, uint8_t wrprotect, bool dpo, bool fu
     }
 
     cdb[OPERATION_CODE] = COMPARE_AND_WRITE;
-    cdb[1] = C_CAST(uint8_t, (wrprotect & 0x07) << 5);
+    cdb[1] = C_CAST(uint8_t, C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5));
     if (dpo)
     {
         cdb[1] |= BIT4;
@@ -2017,7 +2017,7 @@ int scsi_Compare_And_Write(tDevice *device, uint8_t wrprotect, bool dpo, bool fu
     cdb[11] = RESERVED;
     cdb[12] = RESERVED;
     cdb[13] = numberOfLogicalBlocks;
-    cdb[14] = groupNumber & 0x1F;
+    cdb[14] = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[15] = 0;//control
     
     //send the command
@@ -2052,7 +2052,7 @@ int scsi_Format_Unit(tDevice *device, uint8_t fmtpInfo, bool longList, bool fmtD
     }
 
     cdb[OPERATION_CODE] = SCSI_FORMAT_UNIT_CMD;
-    cdb[1] = C_CAST(uint8_t, (fmtpInfo & 0x03) << 6);
+    cdb[1] = C_CAST(uint8_t, (fmtpInfo & UINT8_C(0x03)) << 6);
     if (longList)
     {
         cdb[1] |= BIT5;
@@ -2065,10 +2065,10 @@ int scsi_Format_Unit(tDevice *device, uint8_t fmtpInfo, bool longList, bool fmtD
     {
         cdb[1] |= BIT3;
     }
-    cdb[1] |= (defectListFormat & 0x07);
+    cdb[1] |= C_CAST(uint8_t, (defectListFormat & UINT8_C(0x07)));
     cdb[2] = vendorSpecific;
     cdb[3] = RESERVED;//used to be marked obsolete
-    cdb[4] = ffmt & 0x03;//used to be marked obsolete
+    cdb[4] = ffmt & UINT8_C(0x03);//used to be marked obsolete
     cdb[5] = 0;//control
 
     //send the command
@@ -2198,7 +2198,7 @@ int scsi_Orwrite_16(tDevice *device, uint8_t orProtect, bool dpo, bool fua, uint
     cdb[11] = M_Byte2(transferLengthBlocks);
     cdb[12] = M_Byte1(transferLengthBlocks);
     cdb[13] = M_Byte0(transferLengthBlocks);
-    cdb[14] = groupNumber & 0x1F;
+    cdb[14] = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[15] = 0;//control
 
     //send the command
@@ -2233,7 +2233,7 @@ int scsi_Orwrite_32(tDevice *device, uint8_t bmop, uint8_t previousGenProcessing
     cdb[3] = previousGenProcessing & 0x0F;
     cdb[4] = RESERVED;
     cdb[5] = RESERVED;
-    cdb[6] = groupNumber & 0x1F;
+    cdb[6] = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[7] = 0x18;//additional CDB length. This is defined as this value in the spec
     cdb[8] = 0x00;//service action
     cdb[9] = 0x0E;//service action
@@ -2303,7 +2303,7 @@ int scsi_Prefetch_10(tDevice *device, bool immediate, uint32_t logicalBlockAddre
     cdb[3] = M_Byte2(logicalBlockAddress);
     cdb[4] = M_Byte1(logicalBlockAddress);
     cdb[5] = M_Byte0(logicalBlockAddress);
-    cdb[6] = groupNumber & 0x1F;
+    cdb[6] = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[7] = M_Byte1(prefetchLength);
     cdb[8] = M_Byte0(prefetchLength);
     cdb[9] = 0;//control
@@ -2344,7 +2344,7 @@ int scsi_Prefetch_16(tDevice *device, bool immediate, uint64_t logicalBlockAddre
     cdb[11] = M_Byte2(prefetchLength);
     cdb[12] = M_Byte1(prefetchLength);
     cdb[13] = M_Byte0(prefetchLength);
-    cdb[14] = groupNumber & 0x1F;
+    cdb[14] = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[15] = 0;//control
 
     //send the command
@@ -2442,7 +2442,7 @@ int scsi_Read_10(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool ra
     cdb[3] = M_Byte2(logicalBlockAddress);
     cdb[4] = M_Byte1(logicalBlockAddress);
     cdb[5] = M_Byte0(logicalBlockAddress);
-    cdb[6] = groupNumber & 0x1F;
+    cdb[6] = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[7] = M_Byte1(transferLengthBlocks);
     cdb[8] = M_Byte0(transferLengthBlocks);
     cdb[9] = 0;//control
@@ -2495,7 +2495,7 @@ int scsi_Read_12(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool ra
     cdb[7] = M_Byte2(transferLengthBlocks);
     cdb[8] = M_Byte1(transferLengthBlocks);
     cdb[9] = M_Byte0(transferLengthBlocks);
-    cdb[10] = groupNumber & 0x1F;
+    cdb[10] = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[11] = 0;//control
 
     //send the command
@@ -2550,7 +2550,7 @@ int scsi_Read_16(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool ra
     cdb[11] = M_Byte2(transferLengthBlocks);
     cdb[12] = M_Byte1(transferLengthBlocks);
     cdb[13] = M_Byte0(transferLengthBlocks);
-    cdb[14] = groupNumber & 0x1F;
+    cdb[14] = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[15] = 0;//control
 
     //send the command
@@ -2585,7 +2585,7 @@ int scsi_Read_32(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool ra
     cdb[3] = RESERVED;
     cdb[4] = RESERVED;
     cdb[5] = RESERVED;
-    cdb[6] = groupNumber & 0x1F;
+    cdb[6] = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[7] = 0x18;//additional cdb length
     cdb[8] = 0x00;//service action MSB
     cdb[9] = 0x09;//service action LSB
@@ -2660,7 +2660,7 @@ int scsi_Read_Defect_Data_10(tDevice *device, bool requestPList, bool requestGLi
     {
         cdb[2] |= BIT3;
     }
-    cdb[2] |= defectListFormat & 0x07;
+    cdb[2] |= C_CAST(uint8_t, defectListFormat & UINT8_C(0x07));
     cdb[3] = RESERVED;
     cdb[4] = RESERVED;
     cdb[5] = RESERVED;
@@ -2704,7 +2704,7 @@ int scsi_Read_Defect_Data_12(tDevice *device, bool requestPList, bool requestGLi
     {
         cdb[1] |= BIT3;
     }
-    cdb[1] |= defectListFormat & 0x07;
+    cdb[1] |= C_CAST(uint8_t, defectListFormat & UINT8_C(0x07));
     cdb[2] = M_Byte3(addressDescriptorIndex);
     cdb[3] = M_Byte2(addressDescriptorIndex);
     cdb[4] = M_Byte1(addressDescriptorIndex);
@@ -2927,8 +2927,8 @@ int scsi_Start_Stop_Unit(tDevice *device, bool immediate, uint8_t powerCondition
         cdb[1] |= BIT0;
     }
     cdb[2] = RESERVED;
-    cdb[3] |= powerConditionModifier & 0x0F;
-    cdb[4] |= (powerCondition & 0x0F) << 4;
+    cdb[3] |= C_CAST(uint8_t, powerConditionModifier & UINT8_C(0x0F));
+    cdb[4] |= C_CAST(uint8_t, (powerCondition & UINT8_C(0x0F)) << 4);
     if (noFlush)
     {
         cdb[4] |= BIT2;
@@ -2971,7 +2971,7 @@ int scsi_Synchronize_Cache_10(tDevice *device, bool immediate, uint32_t logicalB
     cdb[3] = M_Byte2(logicalBlockAddress);
     cdb[4] = M_Byte1(logicalBlockAddress);
     cdb[5] = M_Byte0(logicalBlockAddress);
-    cdb[6] |= groupNumber & 0x1F;
+    cdb[6] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[7] = M_Byte1(numberOfLogicalBlocks);
     cdb[8] = M_Byte0(numberOfLogicalBlocks);
     cdb[9] = 0;//control
@@ -3012,7 +3012,7 @@ int scsi_Synchronize_Cache_16(tDevice *device, bool immediate, uint64_t logicalB
     cdb[11] = M_Byte2(numberOfLogicalBlocks);
     cdb[12] = M_Byte1(numberOfLogicalBlocks);
     cdb[13] = M_Byte0(numberOfLogicalBlocks);
-    cdb[14] |= groupNumber & 0x1F;
+    cdb[14] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[15] = 0;//control
 
     //send the command
@@ -3043,7 +3043,7 @@ int scsi_Unmap(tDevice *device, bool anchor, uint8_t groupNumber, uint16_t param
     cdb[3] = RESERVED;
     cdb[4] = RESERVED;
     cdb[5] = RESERVED;
-    cdb[6] |= groupNumber & 0x1F;
+    cdb[6] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[7] = M_Byte1(parameterListLength);
     cdb[8] = M_Byte0(parameterListLength);
     cdb[9] = 0;//control
@@ -3075,17 +3075,17 @@ int scsi_Verify_10(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteChe
     }
 
     cdb[OPERATION_CODE] = VERIFY10;
-    cdb[1] |= (vrprotect & 0x07) << 5;
+    cdb[1] |= C_CAST(uint8_t, (vrprotect & UINT8_C(0x07)) << 5);
     if (dpo)
     {
         cdb[1] |= BIT4;
     }
-    cdb[1] |= (byteCheck & 0x03) << 1;
+    cdb[1] |= C_CAST(uint8_t, (byteCheck & UINT8_C(0x03)) << 1);
     cdb[2] = M_Byte3(logicalBlockAddress);
     cdb[3] = M_Byte2(logicalBlockAddress);
     cdb[4] = M_Byte1(logicalBlockAddress);
     cdb[5] = M_Byte0(logicalBlockAddress);
-    cdb[6] |= groupNumber & 0x1F;
+    cdb[6] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[7] = M_Byte1(verificationLength);
     cdb[8] = M_Byte0(verificationLength);
     cdb[9] = 0;//control
@@ -3119,12 +3119,12 @@ int scsi_Verify_12(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteChe
     }
 
     cdb[OPERATION_CODE] = VERIFY12;
-    cdb[1] |= (vrprotect & 0x07) << 5;
+    cdb[1] |= C_CAST(uint8_t, (vrprotect & UINT8_C(0x07)) << 5);
     if (dpo)
     {
         cdb[1] |= BIT4;
     }
-    cdb[1] |= (byteCheck & 0x03) << 1;
+    cdb[1] |= C_CAST(uint8_t, (byteCheck & UINT8_C(0x03)) << 1);
     cdb[2] = M_Byte3(logicalBlockAddress);
     cdb[3] = M_Byte2(logicalBlockAddress);
     cdb[4] = M_Byte1(logicalBlockAddress);
@@ -3133,7 +3133,7 @@ int scsi_Verify_12(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteChe
     cdb[7] = M_Byte2(verificationLength);
     cdb[8] = M_Byte1(verificationLength);
     cdb[9] = M_Byte0(verificationLength);
-    cdb[10] |= groupNumber & 0x1F;
+    cdb[10] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[11] = 0;//control
 
     //if byteCheck is set to 00b or 10b, then no data is transfered according to spec....not sure if this check should be here of it should always say data out even when the transfer wont occur-TJE
@@ -3165,12 +3165,12 @@ int scsi_Verify_16(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteChe
     }
 
     cdb[OPERATION_CODE] = VERIFY16;
-    cdb[1] |= (vrprotect & 0x07) << 5;
+    cdb[1] |= C_CAST(uint8_t, (vrprotect & UINT8_C(0x07)) << 5);
     if (dpo)
     {
         cdb[1] |= BIT4;
     }
-    cdb[1] |= (byteCheck & 0x03) << 1;
+    cdb[1] |= C_CAST(uint8_t, (byteCheck & UINT8_C(0x03)) << 1);
     cdb[2] = M_Byte7(logicalBlockAddress);
     cdb[3] = M_Byte6(logicalBlockAddress);
     cdb[4] = M_Byte5(logicalBlockAddress);
@@ -3183,7 +3183,7 @@ int scsi_Verify_16(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteChe
     cdb[11] = M_Byte2(verificationLength);
     cdb[12] = M_Byte1(verificationLength);
     cdb[13] = M_Byte0(verificationLength);
-    cdb[14] |= groupNumber & 0x1F;
+    cdb[14] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[15] = 0;//control
 
     //if byteCheck is set to 00b or 10b, then no data is transfered according to spec....not sure if this check should be here of it should always say data out even when the transfer wont occur-TJE
@@ -3220,16 +3220,16 @@ int scsi_Verify_32(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteChe
     cdb[3] = RESERVED;
     cdb[4] = RESERVED;
     cdb[5] = RESERVED;
-    cdb[6] |= groupNumber & 0x1F;
+    cdb[6] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[7] = 0x18;//additional CDB length
     cdb[8] = 0x00;//service action MSB
     cdb[9] = 0x0A;//service action LSB
-    cdb[10] |= (vrprotect & 0x07) << 5;
+    cdb[10] |= C_CAST(uint8_t, (vrprotect & UINT8_C(0x07)) << 5);
     if (dpo)
     {
         cdb[10] |= BIT4;
     }
-    cdb[10] |= (byteCheck & 0x03) << 1;
+    cdb[10] |= C_CAST(uint8_t, (byteCheck & UINT8_C(0x03)) << 1);
     cdb[11] = RESERVED;
     cdb[12] = M_Byte7(logicalBlockAddress);
     cdb[13] = M_Byte6(logicalBlockAddress);
@@ -3313,7 +3313,7 @@ int scsi_Write_10(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint32
     }
 
     cdb[OPERATION_CODE] = WRITE10;
-    cdb[1] |= (wrprotect & 0x07) << 5;
+    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
     if (dpo)
     {
         cdb[1] |= BIT4;
@@ -3326,7 +3326,7 @@ int scsi_Write_10(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint32
     cdb[3] = M_Byte2(logicalBlockAddress);
     cdb[4] = M_Byte1(logicalBlockAddress);
     cdb[5] = M_Byte0(logicalBlockAddress);
-    cdb[6] |= groupNumber & 0x1F;
+    cdb[6] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[7] = M_Byte1(transferLengthBlocks);
     cdb[8] = M_Byte0(transferLengthBlocks);
     cdb[9] = 0;//control
@@ -3358,7 +3358,7 @@ int scsi_Write_12(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint32
     }
 
     cdb[OPERATION_CODE] = WRITE12;
-    cdb[1] |= (wrprotect & 0x07) << 5;
+    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
     if (dpo)
     {
         cdb[1] |= BIT4;
@@ -3375,7 +3375,7 @@ int scsi_Write_12(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint32
     cdb[7] = M_Byte2(transferLengthBlocks);
     cdb[8] = M_Byte1(transferLengthBlocks);
     cdb[9] = M_Byte0(transferLengthBlocks);
-    cdb[10] |= groupNumber & 0x1F;
+    cdb[10] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[11] = 0;//control
 
     //send the command
@@ -3405,7 +3405,7 @@ int scsi_Write_16(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint64
     }
 
     cdb[OPERATION_CODE] = WRITE16;
-    cdb[1] |= (wrprotect & 0x07) << 5;
+    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
     if (dpo)
     {
         cdb[1] |= BIT4;
@@ -3426,7 +3426,7 @@ int scsi_Write_16(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint64
     cdb[11] = M_Byte2(transferLengthBlocks);
     cdb[12] = M_Byte1(transferLengthBlocks);
     cdb[13] = M_Byte0(transferLengthBlocks);
-    cdb[14] |= groupNumber & 0x1F;
+    cdb[14] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[15] = 0;//control
 
     //send the command
@@ -3461,11 +3461,11 @@ int scsi_Write_32(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint64
     cdb[3] = RESERVED;
     cdb[4] = RESERVED;
     cdb[5] = RESERVED;
-    cdb[6] |= groupNumber & 0x1F;
+    cdb[6] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[7] = 0x18;//additional CDB length
     cdb[8] = 0x00;//service action MSB
     cdb[9] = 0x0B;//service action LSB
-    cdb[10] |= (wrprotect & 0x07) << 5;
+    cdb[10] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
     if (dpo)
     {
         cdb[10] |= BIT4;
@@ -3523,17 +3523,17 @@ int scsi_Write_And_Verify_10(tDevice *device, uint8_t wrprotect, bool dpo, uint8
     }
 
     cdb[OPERATION_CODE] = WRITE_AND_VERIFY_10;
-    cdb[1] |= (wrprotect & 0x07) << 5;
+    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
     if (dpo)
     {
         cdb[1] |= BIT4;
     }
-    cdb[1] |= (byteCheck & 0x03) << 1;
+    cdb[1] |= C_CAST(uint8_t, (byteCheck & UINT8_C(0x03)) << 1);
     cdb[2] = M_Byte3(logicalBlockAddress);
     cdb[3] = M_Byte2(logicalBlockAddress);
     cdb[4] = M_Byte1(logicalBlockAddress);
     cdb[5] = M_Byte0(logicalBlockAddress);
-    cdb[6] |= groupNumber & 0x1F;
+    cdb[6] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[7] = M_Byte1(transferLengthBlocks);
     cdb[8] = M_Byte0(transferLengthBlocks);
     cdb[9] = 0;//control
@@ -3565,12 +3565,12 @@ int scsi_Write_And_Verify_12(tDevice *device, uint8_t wrprotect, bool dpo, uint8
     }
 
     cdb[OPERATION_CODE] = WRITE_AND_VERIFY_12;
-    cdb[1] |= (wrprotect & 0x07) << 5;
+    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
     if (dpo)
     {
         cdb[1] |= BIT4;
     }
-    cdb[1] |= (byteCheck & 0x03) << 1;
+    cdb[1] |= C_CAST(uint8_t, (byteCheck & UINT8_C(0x03)) << 1);
     cdb[2] = M_Byte3(logicalBlockAddress);
     cdb[3] = M_Byte2(logicalBlockAddress);
     cdb[4] = M_Byte1(logicalBlockAddress);
@@ -3579,7 +3579,7 @@ int scsi_Write_And_Verify_12(tDevice *device, uint8_t wrprotect, bool dpo, uint8
     cdb[7] = M_Byte2(transferLengthBlocks);
     cdb[8] = M_Byte1(transferLengthBlocks);
     cdb[9] = M_Byte0(transferLengthBlocks);
-    cdb[10] |= groupNumber & 0x1F;
+    cdb[10] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[11] = 0;//control
 
     //send the command
@@ -3609,12 +3609,12 @@ int scsi_Write_And_Verify_16(tDevice *device, uint8_t wrprotect, bool dpo, uint8
     }
 
     cdb[OPERATION_CODE] = WRITE_AND_VERIFY_16;
-    cdb[1] |= (wrprotect & 0x07) << 5;
+    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
     if (dpo)
     {
         cdb[1] |= BIT4;
     }
-    cdb[1] |= (byteCheck & 0x03) << 1;
+    cdb[1] |= C_CAST(uint8_t, (byteCheck & UINT8_C(0x03)) << 1);
     cdb[2] = M_Byte7(logicalBlockAddress);
     cdb[3] = M_Byte6(logicalBlockAddress);
     cdb[4] = M_Byte5(logicalBlockAddress);
@@ -3627,7 +3627,7 @@ int scsi_Write_And_Verify_16(tDevice *device, uint8_t wrprotect, bool dpo, uint8
     cdb[11] = M_Byte2(transferLengthBlocks);
     cdb[12] = M_Byte1(transferLengthBlocks);
     cdb[13] = M_Byte0(transferLengthBlocks);
-    cdb[14] |= groupNumber & 0x1F;
+    cdb[14] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[15] = 0;//control
 
     //send the command
@@ -3662,16 +3662,16 @@ int scsi_Write_And_Verify_32(tDevice *device, uint8_t wrprotect, bool dpo, uint8
     cdb[3] = RESERVED;
     cdb[4] = RESERVED;
     cdb[5] = RESERVED;
-    cdb[6] |= groupNumber & 0x1F;
+    cdb[6] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[7] = 0x18;//additional CDB length
     cdb[8] = 0x00;//service action MSB
     cdb[9] = 0x0C;//service action LSB
-    cdb[10] |= (wrprotect & 0x07) << 5;
+    cdb[10] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
     if (dpo)
     {
         cdb[10] |= BIT4;
     }
-    cdb[10] |= (byteCheck & 0x03) << 1;
+    cdb[10] |= C_CAST(uint8_t, (byteCheck & UINT8_C(0x03)) << 1);
     cdb[11] = RESERVED;
     cdb[12] = M_Byte7(logicalBlockAddress);
     cdb[13] = M_Byte6(logicalBlockAddress);
@@ -3839,7 +3839,7 @@ int scsi_Write_Same_10(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
     }
 
     cdb[OPERATION_CODE] = WRITE_SAME_10_CMD;
-    cdb[1] |= (wrprotect & 0x07) << 5;
+    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
     if (anchor)
     {
         cdb[1] |= BIT4;
@@ -3892,7 +3892,7 @@ int scsi_Write_Same_16(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
     }
 
     cdb[OPERATION_CODE] = WRITE_SAME_16_CMD;
-    cdb[1] |= (wrprotect & 0x07) << 5;
+    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
     if (anchor)
     {
         cdb[1] |= BIT4;
@@ -3972,7 +3972,7 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
     cdb[7] = 0x18;//additional cdb length
     cdb[8] = 0x00;//service action MSB
     cdb[9] = 0x0D;//service action LSB
-    cdb[10] |= (wrprotect & 0x07) << 5;
+    cdb[10] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
     if (anchor)
     {
         cdb[10] |= BIT4;
@@ -4065,7 +4065,7 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    }
 //
 //    cdb[OPERATION_CODE] = XDWRITEREAD_10;
-//    cdb[1] |= (wrprotect & 0x07) << 5;
+//    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
 //    if (dpo == true)
 //    {
 //        cdb[1] |= BIT4;
@@ -4086,7 +4086,7 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    cdb[3] = C_CAST(uint8_t, logicalBlockAddress >> 16);
 //    cdb[4] = C_CAST(uint8_t, logicalBlockAddress >> 8);
 //    cdb[5] = C_CAST(uint8_t, logicalBlockAddress);
-//    cdb[6] = groupNumber & 0x1F;
+//    cdb[6] = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
 //    cdb[7] = C_CAST(uint8_t, transferLength >> 8);
 //    cdb[8] = C_CAST(uint8_t, transferLength);
 //    cdb[9] = 0;//control
@@ -4162,11 +4162,11 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    cdb[3] = RESERVED;
 //    cdb[4] = RESERVED;
 //    cdb[5] = RESERVED;
-//    cdb[6] = groupNumber & 0x1F;
+//    cdb[6] = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
 //    cdb[7] = 0x18;//additional CDB length
 //    cdb[8] = 0x00;//service action MSB
 //    cdb[9] = 0x07;//service action LSB
-//    cdb[10] |= (wrprotect & 0x07) << 5;
+//    cdb[10] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
 //    if (dpo == true)
 //    {
 //        cdb[10] |= BIT4;
@@ -4262,7 +4262,7 @@ int scsi_xp_Write_10(tDevice *device, bool dpo, bool fua, bool xoprinfo, uint32_
     cdb[3] = M_Byte2(logicalBlockAddress);
     cdb[4] = M_Byte1(logicalBlockAddress);
     cdb[5] = M_Byte0(logicalBlockAddress);
-    cdb[6] = groupNumber & 0x1F;
+    cdb[6] = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[7] = M_Byte1(transferLength);
     cdb[8] = M_Byte0(transferLength);
     cdb[9] = 0;//control
@@ -4297,7 +4297,7 @@ int scsi_xp_Write_32(tDevice *device, bool dpo, bool fua, bool xoprinfo, uint64_
     cdb[3] = RESERVED;
     cdb[4] = RESERVED;
     cdb[5] = RESERVED;
-    cdb[6] = groupNumber & 0x1F;
+    cdb[6] = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     cdb[7] = 0x18;//additional CDB length
     cdb[8] = 0x00;//service action MSB
     cdb[9] = 0x06;//service action LSB

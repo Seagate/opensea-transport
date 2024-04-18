@@ -8412,18 +8412,20 @@ static int translate_Informational_Exceptions_Log_Page_2F(tDevice *device, ScsiI
             uint8_t sctData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
             if (SUCCESS == ata_SMART_Read_Log(device, ATA_SCT_COMMAND_STATUS, sctData, LEGACY_DRIVE_SEC_SIZE))
             {
-                int8_t hdaTemperature = sctData[200];
-                if (hdaTemperature < 0)
-                {
-                    informationalExceptions[10] = 0x00;
-                }
-                else if (C_CAST(uint8_t, hdaTemperature) == 0x80)
+                if (sctData[200] == UINT8_C(0x80))
                 {
                     informationalExceptions[10] = 0xFF;
                 }
                 else
                 {
-                    informationalExceptions[10] = C_CAST(uint8_t, hdaTemperature);
+                    if (sctData[200] & 0x80)//if the sign bit is set, then the termperature is negative since this is a 2's compliment value
+                    {
+                        informationalExceptions[10] = 0x00;
+                    }
+                    else
+                    {
+                        informationalExceptions[10] = sctData[200];
+                    }
                 }
             }
             else
@@ -8509,7 +8511,7 @@ static int translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx *scsi
                     if (ataDescriptorNumber > 0)
                     {
                         //set the buffer offset from the descriptor number we got above - we may need to read a different page of the log if it's a multipage log
-                        ataLogOffset = ((ataDescriptorNumber * 26) - 26) + 4;
+                        ataLogOffset = ((C_CAST(uint32_t, ataDescriptorNumber) * 26) - 26) + 4;
                         uint16_t pageNumber = C_CAST(uint16_t, ataLogOffset / LEGACY_DRIVE_SEC_SIZE);
                         if (pageNumber > 0 && lastPageRead != pageNumber)
                         {
@@ -14535,7 +14537,7 @@ static int check_Operation_Code_and_Service_Action(tDevice *device, uint8_t oper
                     return MEMORY_FAILURE;
                 }
                 pdata[0][offset + 0] = operationCode;
-                pdata[0][offset + 1] = (serviceAction & 0x001F) | BIT5;//TODO: add immediate and znr bit support
+                pdata[0][offset + 1] = C_CAST(uint8_t, (serviceAction & UINT16_C(0x001F)) | BIT5);//TODO: add immediate and znr bit support
                 pdata[0][offset + 2] = RESERVED;
                 pdata[0][offset + 3] = RESERVED;
                 pdata[0][offset + 4] = RESERVED;
@@ -14546,9 +14548,9 @@ static int check_Operation_Code_and_Service_Action(tDevice *device, uint8_t oper
                 pdata[0][offset + 9] = controlByte;//control byte
                 break;
             case 2://block erase
-                //fallthrough
+                M_FALLTHROUGH
             case 3://cryptographic erase
-                //fallthrough
+                M_FALLTHROUGH
             case 0x1F://exit failure mode
                 cdbLength = 10;
                 *dataLength += cdbLength;
@@ -14558,7 +14560,7 @@ static int check_Operation_Code_and_Service_Action(tDevice *device, uint8_t oper
                     return MEMORY_FAILURE;
                 }
                 pdata[0][offset + 0] = operationCode;
-                pdata[0][offset + 1] = (serviceAction & 0x001F) | BIT5;//TODO: add immediate and znr bit support
+                pdata[0][offset + 1] = C_CAST(uint8_t, (serviceAction & UINT16_C(0x001F)) | BIT5);//TODO: add immediate and znr bit support
                 pdata[0][offset + 2] = RESERVED;
                 pdata[0][offset + 3] = RESERVED;
                 pdata[0][offset + 4] = RESERVED;
@@ -14716,7 +14718,7 @@ static int check_Operation_Code_and_Service_Action(tDevice *device, uint8_t oper
                     return MEMORY_FAILURE;
                 }
                 pdata[0][offset + 0] = operationCode;
-                pdata[0][offset + 1] = (serviceAction & 0x001F) | BIT7;//service action plus mode specific set for power cycle activation
+                pdata[0][offset + 1] = C_CAST(uint8_t, (serviceAction & UINT16_C(0x001F)) | BIT7);//service action plus mode specific set for power cycle activation
                 pdata[0][offset + 2] = 0;
                 pdata[0][offset + 3] = 0x3F;
                 pdata[0][offset + 4] = 0xFE;
