@@ -44,7 +44,6 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-D_FORTIFY_SOURCE=3',
   '-D_GLIBCXX_ASSERTIONS',
   '-fstrict-flex-arrays=1', #NOTE: Using level 1 since Windows often uses [1] at the end of it's structures. opensea-*libs has used this in a few places too.
-  '-fstack-clash-protection',
   '-fstack-protector-strong',
   '-fno-delete-null-pointer-checks',
   '-fno-strict-overflow',
@@ -55,6 +54,17 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-Werror=incompatible-pointer-types',
   '-Werror=int-conversion'
   ]
+
+  if c.get_id().contains('gcc') and target_machine.system() == 'windows'
+    #According to the link below, this is not needed in Windows...it also causes a bug in some versions of GCC for Windows.
+    #https://gcc.gnu.org/bugzilla/show_bug.cgi?id=90458
+    #NOTE: While this appears to be fixed for versions 11 and 12, the current CI is failing on this with
+    #      version 12.2. If we want to or need to enable this, it should be done based on which versions we
+    #      know have been patched for this. -TJE
+  else
+    warning_flags += '-fstack-clash-protection'
+  endif
+
   if target_machine.cpu_family() == 'ppc64'
     #power pc builds generate a lot of warnings/notes about ABI changes since GCC-5
     #this flag is disabling them because this is way too noisy.
