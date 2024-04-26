@@ -834,7 +834,7 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
 //This could be useful to put into a function for all nix systems to use since it could be useful for them too.
 long get_Device_Page_Size(void)
 {
-#if defined (_POSIX_VERSION) && _POSIX_VERSION >= 200112L
+#if defined (POSIX_2001)
     //use sysconf: http://man7.org/linux/man-pages/man3/sysconf.3.html
     return sysconf(_SC_PAGESIZE);
 #else
