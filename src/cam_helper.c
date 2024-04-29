@@ -1234,7 +1234,7 @@ int get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, M_ATTR_UNUSED uint64_t flags)
 {
     int returnValue = SUCCESS;
-    int numberOfDevices = 0;
+    uint32_t numberOfDevices = 0;
     uint32_t driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     char name[80]; //Because get device needs char
     int fd = 0;
@@ -1264,7 +1264,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     uint32_t totalDevs = num_da_devs + num_ada_devs + num_nvme_devs;
 
     char **devs = C_CAST(char **, calloc(totalDevs + 1, sizeof(char *)));
-    int i = 0, j = 0, k=0;
+    uint32_t i = 0, j = 0, k=0;
     for (i = 0; i < num_da_devs; ++i)
     {
         size_t devNameStringLength = (strlen("/dev/") + strlen(danamelist[i]->d_name) + 1) * sizeof(char);
@@ -1518,9 +1518,9 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         nvmeIoCtx->device->os_info.last_error = C_CAST(unsigned int, errno);
 		ret = OS_PASSTHROUGH_FAILURE;
 		printf("\nError : %d", nvmeIoCtx->device->os_info.last_error);
-		printf("Error %s\n", strerror(nvmeIoCtx->device->os_info.last_error));
+		printf("Error %s\n", strerror(C_CAST(int, nvmeIoCtx->device->os_info.last_error)));
 		printf("\n OS_PASSTHROUGH_FAILURE. ");
-		print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
+		print_Errno_To_Screen(C_CAST(int, nvmeIoCtx->device->os_info.last_error));
 	}
 	else
 	{
@@ -1587,7 +1587,7 @@ int os_nvme_Reset(tDevice *device)
 		if (device->deviceVerbosity > VERBOSITY_COMMAND_VERBOSE && device->os_info.last_error != 0)
 		{
 			printf("Error :");
-			print_Errno_To_Screen(device->os_info.last_error);
+			print_Errno_To_Screen(C_CAST(int, device->os_info.last_error));
 		}
 	}
 	else
@@ -1657,7 +1657,7 @@ int os_Unmount_File_Systems_On_Device(tDevice *device)
 #endif
     if (partitionCount > 0)
     {
-        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
         if (parts)
         {
             if (SUCCESS == get_Partition_List(device->os_info.name, parts, partitionCount))
