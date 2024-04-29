@@ -145,7 +145,7 @@ static int set_Device_Partition_Info(tDevice* device)
         device->os_info.fileSystemInfo.fileSystemInfoValid = true;
         device->os_info.fileSystemInfo.hasActiveFileSystem = false;
         device->os_info.fileSystemInfo.isSystemDisk = false;
-        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
         if (parts)
         {
             if (SUCCESS == get_Partition_List(device->os_info.name, parts, partitionCount))
@@ -1191,7 +1191,18 @@ int get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 	{
 		safe_Free(nvmenamelist)
 	}
-	*numberOfDevices = num_da_devs + num_ada_devs + num_nvme_devs;
+    if (num_da_devs > 0)
+    {
+        *numberOfDevices += C_CAST(uint32_t, num_da_devs);
+    }
+    if (num_ada_devs > 0)
+    {
+        *numberOfDevices += C_CAST(uint32_t, num_ada_devs);
+    }
+    if (num_nvme_devs > 0)
+    {
+        *numberOfDevices += C_CAST(uint32_t, num_nvme_devs);
+    }
     
     return SUCCESS;
 }
@@ -1224,21 +1235,35 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 {
     int returnValue = SUCCESS;
     int numberOfDevices = 0;
-    int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
+    uint32_t driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     char name[80]; //Because get device needs char
     int fd = 0;
     tDevice * d = NULL;
-	int num_da_devs = 0, num_ada_devs = 0, num_nvme_devs = 0;
+    int scandirres = 0;
+	uint32_t num_da_devs = 0, num_ada_devs = 0, num_nvme_devs = 0;
 	
     struct dirent **danamelist;
     struct dirent **adanamelist;
 	struct dirent **nvmenamelist;
 
-    num_da_devs = scandir("/dev", &danamelist, da_filter, alphasort);
-    num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
-	num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
+    scandirres = scandir("/dev", &danamelist, da_filter, alphasort);
+    if (scandirres > 0)
+    {
+        num_da_devs = C_CAST(uint32_t, scandirres);
+    }
+    scandirres = scandir("/dev", &adanamelist, ada_filter, alphasort);
+    if (scandirres > 0)
+    {
+        num_ada_devs = C_CAST(uint32_t, scandirres);
+    }
+	scandirres = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
+    if (scandirres > 0)
+    {
+        num_nvme_devs = C_CAST(uint32_t, scandirres);
+    }
+    uint32_t totalDevs = num_da_devs + num_ada_devs + num_nvme_devs;
 
-    char **devs = C_CAST(char **, calloc(num_da_devs + num_ada_devs + num_nvme_devs + 1, sizeof(char *)));
+    char **devs = C_CAST(char **, calloc(totalDevs + 1, sizeof(char *)));
     int i = 0, j = 0, k=0;
     for (i = 0; i < num_da_devs; ++i)
     {
@@ -1255,7 +1280,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         safe_Free(adanamelist[j])
     }
 
-	for (k = 0; i < (num_da_devs + num_ada_devs + num_nvme_devs) && k < num_nvme_devs; ++i, ++j, ++k)
+	for (k = 0; i < (totalDevs) && k < num_nvme_devs; ++i, ++j, ++k)
 	{
         size_t devNameStringLength = (strlen("/dev/") + strlen(nvmenamelist[k]->d_name) + 1) * sizeof(char);
 		devs[i] = C_CAST(char *, malloc(devNameStringLength));
@@ -1281,9 +1306,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
-        for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_da_devs + num_ada_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
+        for (driveNumber = 0; ((driveNumber >= 0 && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < totalDevs) && found < numberOfDevices); ++driveNumber)
         {
-            if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
+            if (!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
             {
                 continue;
             }
@@ -1488,9 +1513,9 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 	start_Timer(&commandTimer);
 	ioctlResult = ioctl(nvmeIoCtx->device->os_info.fd, NVME_PASSTHROUGH_CMD, &pt);
 	stop_Timer(&commandTimer);
-	nvmeIoCtx->device->os_info.last_error = errno;
 	if (ioctlResult < 0)
 	{
+        nvmeIoCtx->device->os_info.last_error = C_CAST(unsigned int, errno);
 		ret = OS_PASSTHROUGH_FAILURE;
 		printf("\nError : %d", nvmeIoCtx->device->os_info.last_error);
 		printf("Error %s\n", strerror(nvmeIoCtx->device->os_info.last_error));
@@ -1558,7 +1583,7 @@ int os_nvme_Reset(tDevice *device)
 	if (ioRes < 0)
 	{
 		//failed
-		device->os_info.last_error = errno;
+		device->os_info.last_error = C_CAST(unsigned int, errno);
 		if (device->deviceVerbosity > VERBOSITY_COMMAND_VERBOSE && device->os_info.last_error != 0)
 		{
 			printf("Error :");
@@ -1650,7 +1675,7 @@ int os_Unmount_File_Systems_On_Device(tDevice *device)
                     if (0 > unmount((parts + iter)->mntPath, MNT_FORCE))
                     {
                         ret = FAILURE;
-                        device->os_info.last_error = errno;
+                        device->os_info.last_error = C_CAST(unsigned int, errno);
                         if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
                         {
                             printf("Unable to unmount %s: \n", (parts + iter)->mntPath);
