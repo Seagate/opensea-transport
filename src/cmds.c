@@ -30,7 +30,9 @@ int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode, bool znr)
         ret = ata_Sanitize_Block_Erase(device, exitFailureMode, znr);
         break;
     case NVME_DRIVE:
-        ret = nvme_Sanitize(device, false, false, 0, exitFailureMode, SANITIZE_NVM_BLOCK_ERASE, 0);
+        //TODO: Reusing ZNR arg for the no-deallocate option.
+        //      If NVMe's zoned device command set adds a separate ZNR argument, we will need to create a different function/API to handle both bits-TJE
+        ret = nvme_Sanitize(device, znr, false, 0, exitFailureMode, SANITIZE_NVM_BLOCK_ERASE, 0);
         break;
     case SCSI_DRIVE:
         ret = scsi_Sanitize_Block_Erase(device, exitFailureMode, true, znr);
@@ -54,7 +56,9 @@ int send_Sanitize_Crypto_Erase(tDevice *device, bool exitFailureMode, bool znr)
         ret = ata_Sanitize_Crypto_Scramble(device, exitFailureMode, znr);
         break;
     case NVME_DRIVE:
-        ret = nvme_Sanitize(device, false, false, 0, exitFailureMode, SANITIZE_NVM_CRYPTO, 0);
+        //TODO: Reusing ZNR arg for the no-deallocate option.
+        //      If NVMe's zoned device command set adds a separate ZNR argument, we will need to create a different function/API to handle both bits-TJE
+        ret = nvme_Sanitize(device, znr, false, 0, exitFailureMode, SANITIZE_NVM_CRYPTO, 0);
         break;
     case SCSI_DRIVE:
         ret = scsi_Sanitize_Cryptographic_Erase(device, exitFailureMode, true, znr);
@@ -82,7 +86,13 @@ int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool in
         {
             ataPattern = M_BytesTo4ByteValue(pattern[3], pattern[2], pattern[1], pattern[0]);
         }
-        ret = ata_Sanitize_Overwrite_Erase(device, exitFailureMode, invertBetweenPasses, overwritePasses & 0x0F, ataPattern, znr, false);
+        //Note: ATA drives have a "definitive ending pattern bit"
+        //      In order to be consistent with SCSI and NVMe specifications, this should be set when the
+        //      Device supports it. Basically it means that the provided pattern WILL DEFINITELY be the
+        //      pattern on the drive no matter how many passes or inversions happen.
+        //      When this is not supported/set then the device may or may not be consistent with this behavior...it's up to the firmware to decide.
+        //      Because of this, this bit will be set when it is discovered as supported whenever possible -TJE
+        ret = ata_Sanitize_Overwrite_Erase(device, exitFailureMode, invertBetweenPasses, overwritePasses & 0x0F, ataPattern, znr, device->drive_info.ata_Options.sanitizeOverwriteDefinitiveEndingPattern);
     }
         break;
     case NVME_DRIVE:
@@ -92,7 +102,9 @@ int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool in
         {
             nvmPattern = M_BytesTo4ByteValue(pattern[3], pattern[2], pattern[1], pattern[0]);
         }
-        ret = nvme_Sanitize(device, false, invertBetweenPasses, overwritePasses, exitFailureMode, SANITIZE_NVM_OVERWRITE, nvmPattern);
+        //TODO: Reusing ZNR arg for the no-deallocate option.
+        //      If NVMe's zoned device command set adds a separate ZNR argument, we will need to create a different function/API to handle both bits-TJE
+        ret = nvme_Sanitize(device, znr, invertBetweenPasses, overwritePasses, exitFailureMode, SANITIZE_NVM_OVERWRITE, nvmPattern);
     }
         break;
     case SCSI_DRIVE:
