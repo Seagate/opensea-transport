@@ -1526,6 +1526,10 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                         uint64_t supportedCapabilitiesQWord = M_BytesTo8ByteValue(logBuffer[15], logBuffer[14], logBuffer[13], logBuffer[12], logBuffer[11], logBuffer[10], logBuffer[9], logBuffer[8]);
                         if (supportedCapabilitiesQWord & ATA_ID_DATA_QWORD_VALID_BIT)
                         {
+                            if (supportedCapabilitiesQWord & BIT51)
+                            {
+                                device->drive_info.ata_Options.sanitizeOverwriteDefinitiveEndingPattern = true;
+                            }
                             if (supportedCapabilitiesQWord & BIT50)
                             {
                                 device->drive_info.softSATFlags.dataSetManagementXLSupported = true;

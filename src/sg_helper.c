@@ -444,6 +444,7 @@ static void get_SYS_FS_ATA_Info(const char *inHandleLink, sysFSLowLevelDeviceInf
     printf("ATA interface!\n");
     #endif
     sysFsInfo->interface_type = IDE_INTERFACE;
+    sysFsInfo->drive_type = ATA_DRIVE;//changed to ATAPI later if we detect it
     //get vendor and product IDs of the controller attached to this device.
     char fullPciPath[PATH_MAX] = { 0 };
     snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
@@ -527,6 +528,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     printf("USB interface!\n");
     #endif
     sysFsInfo->interface_type = USB_INTERFACE;
+    sysFsInfo->drive_type = SCSI_DRIVE;//changed later if detected as ATA or NVMe
     //set the USB VID and PID. NOTE: There may be a better way to do this, but this seems to work for now.
     char fullPciPath[PATH_MAX] = { 0 };
     snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
@@ -614,6 +616,7 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     printf("FireWire interface!\n");
     #endif
     sysFsInfo->interface_type = IEEE_1394_INTERFACE;
+    sysFsInfo->drive_type = SCSI_DRIVE;//changed later if detected as ATA
     //TODO: investigate some way of saving vendor/product like information for firewire.
     char fullFWPath[PATH_MAX] = { 0 };
     snprintf(fullFWPath, PATH_MAX, "%s", inHandleLink);
@@ -677,6 +680,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     printf("SCSI interface!\n");
     #endif
     sysFsInfo->interface_type = SCSI_INTERFACE;
+    sysFsInfo->drive_type = SCSI_DRIVE;//changed later if detected as ATA or NVMe or anything else
     //get vendor and product IDs of the controller attached to this device.
 
     char fullPciPath[PATH_MAX] = { 0 };
@@ -904,6 +908,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo * 
             else
             {
                 //unknown. Time to exit gracefully
+                printf("SCSI interface, unknown drive type\n");
                 sysFsInfo->interface_type = SCSI_INTERFACE;
                 sysFsInfo->drive_type = UNKNOWN_DRIVE;
                 return;
