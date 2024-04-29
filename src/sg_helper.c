@@ -2259,7 +2259,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     }
     uint32_t totalDevs = num_sg_devs + num_sd_devs + num_nvme_devs;
     
-    char **devs = C_CAST(char **, calloc( + 1, sizeof(char *)));
+    char **devs = C_CAST(char **, calloc(totalDevs + 1, sizeof(char *)));
     uint32_t i = 0;
     uint32_t j = 0;
     //add sg/sd devices to the list
