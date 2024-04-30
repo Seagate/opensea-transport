@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# SPDX-License-Identifier: MPL-2.0
 function usage {
     echo "This script will copy all files required to build opensea-transport to the edk2/UDK path specified."
     echo "How to use: copy_files.sh <path to edk2 directory>"
