@@ -143,7 +143,7 @@ static int set_Device_Partition_Info(tDevice* device)
         device->os_info.fileSystemInfo.fileSystemInfoValid = true;
         device->os_info.fileSystemInfo.hasActiveFileSystem = false;
         device->os_info.fileSystemInfo.isSystemDisk = false;
-        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
         if (parts)
         {
             if (SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
@@ -187,10 +187,10 @@ int get_Device(const char *filename, tDevice *device)
 {
     int ret = SUCCESS;
 
-    if((device->os_info.fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
+    if ((device->os_info.fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
     {
         perror("open");
-        device->os_info.fd = errno;
+        device->os_info.last_error = C_CAST(unsigned int, errno);
         printf("open failure\n");
         ret = FAILURE;
     }
@@ -451,7 +451,7 @@ int close_Device(tDevice *device)
     if(device)
     {
         retValue = close(device->os_info.fd);
-        device->os_info.last_error = errno;
+        device->os_info.last_error = C_CAST(unsigned int, errno);
         if(retValue == 0)
         {
             device->os_info.fd = -1;
@@ -496,7 +496,10 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
         safe_Free(namelist[iter])
     }
     safe_Free(namelist)
-    *numberOfDevices = num_devs;
+    if (num_devs >= 0)
+    {
+        *numberOfDevices = C_CAST(uint32_t, num_devs);
+    }
     M_USE_UNUSED(flags); 
     return SUCCESS;
 }
@@ -528,18 +531,23 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, M_ATTR_UNUSED uint64_t flags)
 {
     int returnValue = SUCCESS;
-    int numberOfDevices = 0;
-    int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
+    uint32_t numberOfDevices = 0;
+    uint32_t num_rdsk = 0;
+    uint32_t driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     char name[80] = { 0 }; //Because get device needs char
     int fd;
     tDevice * d = NULL;
     
     struct dirent **namelist;
-    int num_devs = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
+    int scandirres = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
+    if (scandirres > 0)
+    {
+        num_rdsk = C_CAST(uint32_t, scandirres);
+    }
     
-    char **devs = C_CAST(char **, calloc(num_devs + 1, sizeof(char *)));
-    int i = 0;
-    for(; i < num_devs; i++)
+    char **devs = C_CAST(char **, calloc(num_rdsk + 1, sizeof(char *)));
+    uint32_t i = 0;
+    for(; i < num_rdsk; i++)
     {
         size_t handleSize = (strlen("/dev/rdsk/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, malloc(handleSize));
@@ -562,9 +570,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
-        for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_devs)) && (found < numberOfDevices)); ++driveNumber)
+        for (driveNumber = 0; ((driveNumber >= 0 && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < num_rdsk) && (found < numberOfDevices)); ++driveNumber)
         {
-            if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
+            if (!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
             {
                 continue;
             }
@@ -707,7 +715,7 @@ int os_Unmount_File_Systems_On_Device(tDevice *device)
 #endif
     if (partitionCount > 0)
     {
-        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
         if (parts)
         {
             if (SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
@@ -729,7 +737,7 @@ int os_Unmount_File_Systems_On_Device(tDevice *device)
                         if (0 > umountResult)
                         {
                             ret = FAILURE;
-                            device->os_info.last_error = errno;
+                            device->os_info.last_error = C_CAST(unsigned int, errno);
                             if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
                             {
                                 printf("Unable to unmount %s: \n", (parts + iter)->mntPath);
