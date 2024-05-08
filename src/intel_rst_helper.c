@@ -198,7 +198,7 @@ static void printf_Intel_Firmware_SRB_Status(uint32_t srbStatus)
 }
 
 //generic function to handle taking in the various RAID FW Requests to keep code from being dumplicated
-static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t dataRequestLength, uint32_t timeoutSeconds, uint32_t intelFirmwareFunction, uint32_t intelFirmwareFlags, bool readFirmwareInfo, uint32_t *returnCode)
+static eReturnValues intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t dataRequestLength, uint32_t timeoutSeconds, uint32_t intelFirmwareFunction, uint32_t intelFirmwareFlags, bool readFirmwareInfo, uint32_t *returnCode)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (device)
@@ -431,7 +431,7 @@ bool supports_Intel_Firmware_Download(tDevice *device)
 }
 
 //The idea with this function is that it can handle NVMe or SCSI with generic inputs that will work to reduce code
-static int internal_Intel_FWDL_Function_Download(tDevice *device, uint32_t flags, uint32_t *returnCode, uint8_t* imagePtr, uint32_t imageDataLength, uint32_t imageOffset, uint8_t firmwareSlot, uint32_t timeoutSeconds)
+static eReturnValues internal_Intel_FWDL_Function_Download(tDevice *device, uint32_t flags, uint32_t *returnCode, uint8_t* imagePtr, uint32_t imageDataLength, uint32_t imageOffset, uint8_t firmwareSlot, uint32_t timeoutSeconds)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device && imagePtr)
@@ -462,7 +462,7 @@ static int internal_Intel_FWDL_Function_Download(tDevice *device, uint32_t flags
     return ret;
 }
 
-static int internal_Intel_FWDL_Function_Activate(tDevice *device, uint32_t flags, uint32_t *returnCode, uint8_t firmwareSlot, uint32_t timeoutSeconds)
+static eReturnValues internal_Intel_FWDL_Function_Activate(tDevice *device, uint32_t flags, uint32_t *returnCode, uint8_t firmwareSlot, uint32_t timeoutSeconds)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device)
