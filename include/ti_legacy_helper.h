@@ -49,7 +49,7 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int build_TI_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptions, bool olderOpCode, bool forceMode, uint8_t modeValue);
+    eReturnValues build_TI_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptions, bool olderOpCode, bool forceMode, uint8_t modeValue);
 
     //-----------------------------------------------------------------------------
     //
@@ -65,7 +65,7 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int send_TI_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions);
+    eReturnValues send_TI_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions);
 
 #if defined (__cplusplus)
 }

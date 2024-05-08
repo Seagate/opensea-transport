@@ -19,7 +19,7 @@
 #include "jmicron_nvme_helper.h"
 #include "scsi_helper_func.h" //for ability to send a SCSI IO
 
-int build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirection *cdbDataDirection, uint8_t * dataPtr, uint32_t dataSize, eJMNvmeProtocol jmProtocol, eJMNvmeVendorControl jmCtrl, nvmeCmdCtx * nvmCmd)
+eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirection *cdbDataDirection, uint8_t * dataPtr, uint32_t dataSize, eJMNvmeProtocol jmProtocol, eJMNvmeVendorControl jmCtrl, nvmeCmdCtx * nvmCmd)
 {
     if (!cdb)
     {
@@ -239,9 +239,9 @@ int build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirection *cdbData
     return SUCCESS;
 }
 
-int send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
+eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     uint8_t jmCDB[JMICRON_NVME_CDB_SIZE] = { 0 };
     uint8_t jmPayload[JMICRON_NVME_CMD_PAYLOAD_SIZE] = { 0 };
     eDataTransferDirection jmCDBDir = 0;
@@ -293,7 +293,7 @@ int send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
     {
         return ret;
     }
-    int sendRet = scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, nvmCmd->ptrData, nvmCmd->dataSize, jmCDBDir, NULL, 0, nvmCmd->timeout);
+    eReturnValues sendRet = scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, nvmCmd->ptrData, nvmCmd->dataSize, jmCDBDir, NULL, 0, nvmCmd->timeout);
     //NOTE: do not fail the command or anything else YET.
     //Need to request the response information from the command.
     //TODO: There may be some sense data outputs where the return response info won't work or isn't necessary, but they don't seem documented today. Most likely only for illegal requests.
@@ -335,12 +335,12 @@ int send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
     return ret;
 }
 
-static int jm_NVMe_Normal_Shutdown(tDevice *device)
+static eReturnValues jm_NVMe_Normal_Shutdown(tDevice *device)
 {
     uint8_t cdb[JMICRON_NVME_CDB_SIZE] = { 0 };
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
     uint8_t jmPayload[JMICRON_NVME_CMD_PAYLOAD_SIZE] = { 0 };
-    int ret = build_JM_NVMe_CDB_And_Payload(cdb, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_SET_PAYLOAD, JM_VENDOR_CTRL_NVME_NORMAL_SHUTDOWN, NULL);
+    eReturnValues ret = build_JM_NVMe_CDB_And_Payload(cdb, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_SET_PAYLOAD, JM_VENDOR_CTRL_NVME_NORMAL_SHUTDOWN, NULL);
     if (ret == SUCCESS)
     {
         ret = scsi_Send_Cdb(device, cdb, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, NULL, 0, 15);
@@ -353,12 +353,12 @@ static int jm_NVMe_Normal_Shutdown(tDevice *device)
     return ret;
 }
 
-static int jm_NVMe_MCU_Reset(tDevice *device)
+static eReturnValues jm_NVMe_MCU_Reset(tDevice *device)
 {
     uint8_t cdb[JMICRON_NVME_CDB_SIZE] = { 0 };
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
     uint8_t jmPayload[JMICRON_NVME_CMD_PAYLOAD_SIZE] = { 0 };
-    int ret = build_JM_NVMe_CDB_And_Payload(cdb, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_SET_PAYLOAD, JM_VENDOR_CTRL_MCU_RESET, NULL);
+    eReturnValues ret = build_JM_NVMe_CDB_And_Payload(cdb, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_SET_PAYLOAD, JM_VENDOR_CTRL_MCU_RESET, NULL);
     if (ret == SUCCESS)
     {
         ret = scsi_Send_Cdb(device, cdb, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, NULL, 0, 15);
@@ -372,9 +372,9 @@ static int jm_NVMe_MCU_Reset(tDevice *device)
 }
 
 
-int jm_nvme_Reset(tDevice *device)
+eReturnValues jm_nvme_Reset(tDevice *device)
 {
-    int ret = OS_COMMAND_NOT_AVAILABLE;
+    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
         printf("Sending JMicron NVMe Reset\n");
@@ -397,9 +397,9 @@ int jm_nvme_Reset(tDevice *device)
     return ret;
 }
 
-int jm_nvme_Subsystem_Reset(tDevice *device)
+eReturnValues jm_nvme_Subsystem_Reset(tDevice *device)
 {
-    int ret = OS_COMMAND_NOT_AVAILABLE;
+    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
         printf("Sending JMicron NVMe Subsystem Reset\n");

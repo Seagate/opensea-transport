@@ -38,7 +38,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int sntl_Translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx);
+    eReturnValues sntl_Translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx);
 
 #if defined (__cplusplus)
 }

@@ -19,9 +19,9 @@
 
 //This is the private function so that it can be called by the ATA layer as well and make everything follow one single code path instead of multiple.
 //This will enhance debug output since it will consistently be in one place for SCSI passthrough commands.
-int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields)
+eReturnValues private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     bool localSenseFieldsAllocated = false;
     ptrSenseDataFields localSenseFields = NULL;
     if (!pSenseFields)
@@ -55,7 +55,7 @@ int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields)
         printf("\n");
     }
     //send the command
-    int sendIOret = send_IO(scsiIoCtx);
+    eReturnValues sendIOret = send_IO(scsiIoCtx);
     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity && scsiIoCtx->psense)
     {
         printf("\n  Sense Data Buffer:\n");
@@ -134,9 +134,9 @@ int private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSenseFields)
 
 //created this function as internal where we can add more flags for now so we can preserve previous functionality at this time.
 //Did this so that write buffer can set the first and last segment flags for FWDL commands
-static int scsi_Send_Cdb_Int(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata, uint32_t dataLen, eDataTransferDirection dataDirection, uint8_t *senseData, uint32_t senseDataLen, uint32_t timeoutSeconds, bool fwdlFirstSegment, bool fwdlLastSegment)
+static eReturnValues scsi_Send_Cdb_Int(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata, uint32_t dataLen, eDataTransferDirection dataDirection, uint8_t *senseData, uint32_t senseDataLen, uint32_t timeoutSeconds, bool fwdlFirstSegment, bool fwdlLastSegment)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ScsiIoCtx scsiIoCtx;
     memset(&scsiIoCtx, 0, sizeof(ScsiIoCtx));
     uint8_t *senseBuffer = senseData;
@@ -176,7 +176,7 @@ static int scsi_Send_Cdb_Int(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint
     scsiIoCtx.device = device;
     scsiIoCtx.psense = senseBuffer;
     scsiIoCtx.senseDataSize = senseDataLen;
-    memcpy(&scsiIoCtx.cdb[0], &cdb[0], cdbLen);
+    memcpy(&scsiIoCtx.cdb[0], &cdb[0], C_CAST(size_t, cdbLen));//this cast to size_t should be safe since cdbLen should never be negative and should match a common value in the enum-TJE
     scsiIoCtx.cdbLength = C_CAST(uint8_t, cdbLen);
     scsiIoCtx.direction = dataDirection;
     scsiIoCtx.pdata = pdata;
@@ -200,14 +200,14 @@ static int scsi_Send_Cdb_Int(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint
     return ret;
 }
 
-int scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata, uint32_t dataLen, eDataTransferDirection dataDirection, uint8_t *senseData, uint32_t senseDataLen, uint32_t timeoutSeconds)
+eReturnValues scsi_Send_Cdb(tDevice *device, uint8_t *cdb, eCDBLen cdbLen, uint8_t *pdata, uint32_t dataLen, eDataTransferDirection dataDirection, uint8_t *senseData, uint32_t senseDataLen, uint32_t timeoutSeconds)
 {
     return scsi_Send_Cdb_Int(device, cdb, cdbLen, pdata, dataLen, dataDirection, senseData, senseDataLen, timeoutSeconds, false, false);
 }
 
-int scsi_SecurityProtocol_In(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, bool inc512, uint32_t allocationLength, uint8_t *ptrData)
+eReturnValues scsi_SecurityProtocol_In(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, bool inc512, uint32_t allocationLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12]       = { 0 };
     uint32_t  dataLength = allocationLength;
 
@@ -248,9 +248,9 @@ int scsi_SecurityProtocol_In(tDevice *device, uint8_t securityProtocol, uint16_t
     return ret;
 }
 
-int scsi_Report_Supported_Operation_Codes(tDevice *device, bool rctd, uint8_t reportingOptions, uint8_t requestedOperationCode, uint16_t reequestedServiceAction, uint32_t allocationLength, uint8_t *ptrData)
+eReturnValues scsi_Report_Supported_Operation_Codes(tDevice *device, bool rctd, uint8_t reportingOptions, uint8_t requestedOperationCode, uint16_t reequestedServiceAction, uint32_t allocationLength, uint8_t *ptrData)
 {
-    int       ret       = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12]       = { 0 };
     senseDataFields senseFields;
     memset(&senseFields, 0, sizeof(senseDataFields));
@@ -339,9 +339,9 @@ int scsi_Report_Supported_Operation_Codes(tDevice *device, bool rctd, uint8_t re
     return ret;
 }
 
-int scsi_Sanitize_Cmd(tDevice *device, eScsiSanitizeFeature sanitizeFeature, bool immediate, bool znr, bool ause, uint16_t parameterListLength, uint8_t *ptrData)
+eReturnValues scsi_Sanitize_Cmd(tDevice *device, eScsiSanitizeFeature sanitizeFeature, bool immediate, bool znr, bool ause, uint16_t parameterListLength, uint8_t *ptrData)
 {
-    int       ret       = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10]       = { 0 };
     eDataTransferDirection dataDir = XFER_NO_DATA;
     
@@ -393,24 +393,24 @@ int scsi_Sanitize_Cmd(tDevice *device, eScsiSanitizeFeature sanitizeFeature, boo
     return ret;
 }
 
-int scsi_Sanitize_Block_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate, bool znr)
+eReturnValues scsi_Sanitize_Block_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate, bool znr)
 {
     return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_BLOCK_ERASE, immediate, znr, allowUnrestrictedSanitizeExit, 0, NULL);
 }
 
-int scsi_Sanitize_Cryptographic_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate, bool znr)
+eReturnValues scsi_Sanitize_Cryptographic_Erase(tDevice *device, bool allowUnrestrictedSanitizeExit, bool immediate, bool znr)
 {
     return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE, immediate, znr, allowUnrestrictedSanitizeExit, 0, NULL);
 }
 
-int scsi_Sanitize_Exit_Failure_Mode(tDevice *device)
+eReturnValues scsi_Sanitize_Exit_Failure_Mode(tDevice *device)
 {
     return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_EXIT_FAILURE_MODE, false, false, false, 0, NULL);
 }
 
-int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit, bool znr, bool immediate, bool invertBetweenPasses, eScsiSanitizeOverwriteTest test, uint8_t overwritePasses, uint8_t *pattern, uint16_t patternLengthBytes)
+eReturnValues scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit, bool znr, bool immediate, bool invertBetweenPasses, eScsiSanitizeOverwriteTest test, uint8_t overwritePasses, uint8_t *pattern, uint16_t patternLengthBytes)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     if ((patternLengthBytes != 0 && pattern == NULL) || (patternLengthBytes > device->drive_info.deviceBlockSize))
     {
         return BAD_PARAMETER;
@@ -438,9 +438,9 @@ int scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit,
     return ret;
 }
 
-int scsi_Request_Sense_Cmd(tDevice *device, bool descriptorBit, uint8_t *pdata, uint16_t dataSize)
+eReturnValues scsi_Request_Sense_Cmd(tDevice *device, bool descriptorBit, uint8_t *pdata, uint16_t dataSize)
 {
-    int       ret       = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_6]       = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -476,9 +476,9 @@ int scsi_Request_Sense_Cmd(tDevice *device, bool descriptorBit, uint8_t *pdata, 
     return ret;
 }
 
-int scsi_Log_Sense_Cmd(tDevice *device, bool saveParameters, uint8_t pageControl, uint8_t pageCode, uint8_t subpageCode, uint16_t paramPointer, uint8_t *ptrData, uint16_t dataSize)
+eReturnValues scsi_Log_Sense_Cmd(tDevice *device, bool saveParameters, uint8_t pageControl, uint8_t pageCode, uint8_t subpageCode, uint16_t paramPointer, uint8_t *ptrData, uint16_t dataSize)
 {
-    int       ret       = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10]       = { 0 };
     senseDataFields senseFields;
     memset(&senseFields, 0, sizeof(senseDataFields));
@@ -577,9 +577,9 @@ int scsi_Log_Sense_Cmd(tDevice *device, bool saveParameters, uint8_t pageControl
     return ret;
 }
 
-int scsi_Log_Select_Cmd(tDevice *device, bool pcr, bool sp, uint8_t pageControl, uint8_t pageCode, uint8_t subpageCode, uint16_t parameterListLength, uint8_t* ptrData, uint32_t dataSize)
+eReturnValues scsi_Log_Select_Cmd(tDevice *device, bool pcr, bool sp, uint8_t pageControl, uint8_t pageCode, uint8_t subpageCode, uint16_t parameterListLength, uint8_t* ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     uint8_t cdb[CDB_LEN_10] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -621,9 +621,9 @@ int scsi_Log_Select_Cmd(tDevice *device, bool pcr, bool sp, uint8_t pageControl,
     return ret;
 }
 
-int scsi_Send_Diagnostic(tDevice *device, uint8_t selfTestCode, uint8_t pageFormat, uint8_t selfTestBit, uint8_t deviceOffLIne, uint8_t unitOffLine, uint16_t parameterListLength, uint8_t *pdata, uint16_t dataSize, uint32_t timeoutSeconds)
+eReturnValues scsi_Send_Diagnostic(tDevice *device, uint8_t selfTestCode, uint8_t pageFormat, uint8_t selfTestBit, uint8_t deviceOffLIne, uint8_t unitOffLine, uint16_t parameterListLength, uint8_t *pdata, uint16_t dataSize, uint32_t timeoutSeconds)
 {
-    int       ret       = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_6]       = { 0 };
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -654,9 +654,9 @@ int scsi_Send_Diagnostic(tDevice *device, uint8_t selfTestCode, uint8_t pageForm
     return ret;
 }
 
-int scsi_Read_Capacity_10(tDevice *device, uint8_t *pdata, uint16_t dataSize)
+eReturnValues scsi_Read_Capacity_10(tDevice *device, uint8_t *pdata, uint16_t dataSize)
 {
-    int       ret       = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10]       = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -682,9 +682,9 @@ int scsi_Read_Capacity_10(tDevice *device, uint8_t *pdata, uint16_t dataSize)
     return ret;
 }
 
-int scsi_Read_Capacity_16(tDevice *device, uint8_t *pdata, uint32_t dataSize)
+eReturnValues scsi_Read_Capacity_16(tDevice *device, uint8_t *pdata, uint32_t dataSize)
 {
-    int       ret       = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16]       = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -715,9 +715,9 @@ int scsi_Read_Capacity_16(tDevice *device, uint8_t *pdata, uint32_t dataSize)
     return ret;
 }
 
-int scsi_Mode_Sense_6(tDevice * device, uint8_t pageCode, uint8_t allocationLength, uint8_t subPageCode, bool DBD, eScsiModePageControl pageControl, uint8_t *ptrData)
+eReturnValues scsi_Mode_Sense_6(tDevice * device, uint8_t pageCode, uint8_t allocationLength, uint8_t subPageCode, bool DBD, eScsiModePageControl pageControl, uint8_t *ptrData)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     uint8_t cdb[CDB_LEN_6] = { 0 };
     senseDataFields senseFields;
     memset(&senseFields, 0, sizeof(senseDataFields));
@@ -810,9 +810,9 @@ int scsi_Mode_Sense_6(tDevice * device, uint8_t pageCode, uint8_t allocationLeng
     return ret;
 }
 
-int scsi_Mode_Sense_10(tDevice *device, uint8_t pageCode, uint32_t allocationLength, uint8_t subPageCode, bool DBD, bool LLBAA, eScsiModePageControl pageControl, uint8_t *ptrData)
+eReturnValues scsi_Mode_Sense_10(tDevice *device, uint8_t pageCode, uint32_t allocationLength, uint8_t subPageCode, bool DBD, bool LLBAA, eScsiModePageControl pageControl, uint8_t *ptrData)
 {
-    int       ret       = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10]       = { 0 };
     senseDataFields senseFields;
     memset(&senseFields, 0, sizeof(senseDataFields));
@@ -922,9 +922,9 @@ int scsi_Mode_Sense_10(tDevice *device, uint8_t pageCode, uint32_t allocationLen
     return ret;
 }
 
-int scsi_Mode_Select_6(tDevice *device, uint8_t parameterListLength, bool pageFormat, bool savePages, bool resetToDefaults, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues scsi_Mode_Select_6(tDevice *device, uint8_t parameterListLength, bool pageFormat, bool savePages, bool resetToDefaults, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     uint8_t cdb[CDB_LEN_6] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -966,9 +966,9 @@ int scsi_Mode_Select_6(tDevice *device, uint8_t parameterListLength, bool pageFo
     return ret;
 }
 
-int scsi_Mode_Select_10(tDevice *device, uint16_t parameterListLength, bool pageFormat, bool savePages, bool resetToDefaults, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues scsi_Mode_Select_10(tDevice *device, uint16_t parameterListLength, bool pageFormat, bool savePages, bool resetToDefaults, uint8_t *ptrData, uint32_t dataSize)
 {
-    int       ret       = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10]       = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1015,9 +1015,9 @@ int scsi_Mode_Select_10(tDevice *device, uint16_t parameterListLength, bool page
     return ret;
 }
 
-int scsi_Write_Buffer(tDevice *device, eWriteBufferMode mode, uint8_t modeSpecific, uint8_t bufferID, uint32_t bufferOffset, uint32_t parameterListLength, uint8_t *ptrData, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds)
+eReturnValues scsi_Write_Buffer(tDevice *device, eWriteBufferMode mode, uint8_t modeSpecific, uint8_t bufferID, uint32_t bufferOffset, uint32_t parameterListLength, uint8_t *ptrData, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
     uint32_t writeBufferTimeout = timeoutSeconds;
     if (writeBufferTimeout == 0)
@@ -1059,9 +1059,9 @@ int scsi_Write_Buffer(tDevice *device, eWriteBufferMode mode, uint8_t modeSpecif
     return ret;
 }
 
-int scsi_Inquiry(tDevice *device, uint8_t *pdata, uint32_t dataLength, uint8_t pageCode, bool evpd, bool cmdDt)
+eReturnValues scsi_Inquiry(tDevice *device, uint8_t *pdata, uint32_t dataLength, uint8_t pageCode, bool evpd, bool cmdDt)
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t cdb[CDB_LEN_6] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1210,9 +1210,9 @@ int scsi_Inquiry(tDevice *device, uint8_t *pdata, uint32_t dataLength, uint8_t p
     return ret;
 }
 
-int scsi_Read_Media_Serial_Number(tDevice *device, uint32_t allocationLength, uint8_t *ptrData)
+eReturnValues scsi_Read_Media_Serial_Number(tDevice *device, uint32_t allocationLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1250,9 +1250,9 @@ int scsi_Read_Media_Serial_Number(tDevice *device, uint32_t allocationLength, ui
     return ret;
 }
 
-int scsi_Read_Attribute(tDevice *device, uint8_t serviceAction, uint32_t restricted, uint8_t logicalVolumeNumber, uint8_t partitionNumber, uint16_t firstAttributeIdentifier, uint32_t allocationLength, bool cacheBit, uint8_t*ptrData)
+eReturnValues scsi_Read_Attribute(tDevice *device, uint8_t serviceAction, uint32_t restricted, uint8_t logicalVolumeNumber, uint8_t partitionNumber, uint16_t firstAttributeIdentifier, uint32_t allocationLength, bool cacheBit, uint8_t*ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1298,9 +1298,9 @@ int scsi_Read_Attribute(tDevice *device, uint8_t serviceAction, uint32_t restric
     return ret;
 }
 
-int scsi_Read_Buffer(tDevice *device, uint8_t mode, uint8_t bufferID, uint32_t bufferOffset, uint32_t allocationLength, uint8_t *ptrData)
+eReturnValues scsi_Read_Buffer(tDevice *device, uint8_t mode, uint8_t bufferID, uint32_t bufferOffset, uint32_t allocationLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1339,9 +1339,9 @@ int scsi_Read_Buffer(tDevice *device, uint8_t mode, uint8_t bufferID, uint32_t b
     return ret;
 }
 
-int scsi_Read_Buffer_16(tDevice *device, uint8_t mode, uint8_t modeSpecific, uint8_t bufferID, uint64_t bufferOffset, uint32_t allocationLength, uint8_t *ptrData)
+eReturnValues scsi_Read_Buffer_16(tDevice *device, uint8_t mode, uint8_t modeSpecific, uint8_t bufferID, uint64_t bufferOffset, uint32_t allocationLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1387,9 +1387,9 @@ int scsi_Read_Buffer_16(tDevice *device, uint8_t mode, uint8_t modeSpecific, uin
     return ret;
 }
 
-int scsi_Receive_Diagnostic_Results(tDevice *device, bool pcv, uint8_t pageCode, uint16_t allocationLength, uint8_t *ptrData, uint32_t timeoutSeconds)
+eReturnValues scsi_Receive_Diagnostic_Results(tDevice *device, bool pcv, uint8_t pageCode, uint16_t allocationLength, uint8_t *ptrData, uint32_t timeoutSeconds)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_6] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1424,9 +1424,9 @@ int scsi_Receive_Diagnostic_Results(tDevice *device, bool pcv, uint8_t pageCode,
     return ret;
 }
 
-int scsi_Remove_I_T_Nexus(tDevice *device, uint32_t parameterListLength, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues scsi_Remove_I_T_Nexus(tDevice *device, uint32_t parameterListLength, uint8_t *ptrData, uint32_t dataSize)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1464,9 +1464,9 @@ int scsi_Remove_I_T_Nexus(tDevice *device, uint32_t parameterListLength, uint8_t
     return ret;
 }
 
-int scsi_Report_Aliases(tDevice *device, uint32_t allocationLength, uint8_t *ptrData)
+eReturnValues scsi_Report_Aliases(tDevice *device, uint32_t allocationLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1504,9 +1504,9 @@ int scsi_Report_Aliases(tDevice *device, uint32_t allocationLength, uint8_t *ptr
     return ret;
 }
 
-int scsi_Report_Identifying_Information(tDevice *device, uint16_t restricted, uint32_t allocationLength, uint8_t identifyingInformationType, uint8_t *ptrData)
+eReturnValues scsi_Report_Identifying_Information(tDevice *device, uint16_t restricted, uint32_t allocationLength, uint8_t identifyingInformationType, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1544,9 +1544,9 @@ int scsi_Report_Identifying_Information(tDevice *device, uint16_t restricted, ui
     return ret;
 }
 
-int scsi_Report_Luns(tDevice *device, uint8_t selectReport, uint32_t allocationLength, uint8_t *ptrData)
+eReturnValues scsi_Report_Luns(tDevice *device, uint8_t selectReport, uint32_t allocationLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1584,9 +1584,9 @@ int scsi_Report_Luns(tDevice *device, uint8_t selectReport, uint32_t allocationL
     return ret;
 }
 
-int scsi_Report_Priority(tDevice *device, uint8_t priorityReported, uint32_t allocationLength, uint8_t *ptrData)
+eReturnValues scsi_Report_Priority(tDevice *device, uint8_t priorityReported, uint32_t allocationLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1624,9 +1624,9 @@ int scsi_Report_Priority(tDevice *device, uint8_t priorityReported, uint32_t all
     return ret;
 }
 
-int scsi_Report_Supported_Task_Management_Functions(tDevice *device, bool repd, uint32_t allocationLength, uint8_t *ptrData)
+eReturnValues scsi_Report_Supported_Task_Management_Functions(tDevice *device, bool repd, uint32_t allocationLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1667,9 +1667,9 @@ int scsi_Report_Supported_Task_Management_Functions(tDevice *device, bool repd, 
     return ret;
 }
 
-int scsi_Report_Timestamp(tDevice *device, uint32_t allocationLength, uint8_t *ptrData)
+eReturnValues scsi_Report_Timestamp(tDevice *device, uint32_t allocationLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
     ScsiIoCtx scsiIoCtx;
     memset(&scsiIoCtx, 0, sizeof(ScsiIoCtx));
@@ -1709,9 +1709,9 @@ int scsi_Report_Timestamp(tDevice *device, uint32_t allocationLength, uint8_t *p
     return ret;
 }
 
-int scsi_SecurityProtocol_Out(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, bool inc512, uint32_t transferLength, uint8_t *ptrData, uint32_t timeout)
+eReturnValues scsi_SecurityProtocol_Out(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, bool inc512, uint32_t transferLength, uint8_t *ptrData, uint32_t timeout)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
     uint32_t  dataLength = transferLength;
 
@@ -1754,9 +1754,9 @@ int scsi_SecurityProtocol_Out(tDevice *device, uint8_t securityProtocol, uint16_
     return ret;
 }
 
-int scsi_Set_Identifying_Information(tDevice *device, uint16_t restricted, uint32_t parameterListLength, uint8_t identifyingInformationType, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues scsi_Set_Identifying_Information(tDevice *device, uint16_t restricted, uint32_t parameterListLength, uint8_t identifyingInformationType, uint8_t *ptrData, uint32_t dataSize)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1792,9 +1792,9 @@ int scsi_Set_Identifying_Information(tDevice *device, uint16_t restricted, uint3
     }
     return ret;
 }
-int scsi_Set_Priority(tDevice *device, uint8_t I_T_L_NexusToSet, uint32_t parameterListLength, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues scsi_Set_Priority(tDevice *device, uint8_t I_T_L_NexusToSet, uint32_t parameterListLength, uint8_t *ptrData, uint32_t dataSize)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1831,9 +1831,9 @@ int scsi_Set_Priority(tDevice *device, uint8_t I_T_L_NexusToSet, uint32_t parame
     return ret;
 }
 
-int scsi_Set_Target_Port_Groups(tDevice *device, uint32_t parameterListLength, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues scsi_Set_Target_Port_Groups(tDevice *device, uint32_t parameterListLength, uint8_t *ptrData, uint32_t dataSize)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1870,9 +1870,9 @@ int scsi_Set_Target_Port_Groups(tDevice *device, uint32_t parameterListLength, u
     return ret;
 }
 
-int scsi_Set_Timestamp(tDevice *device, uint32_t parameterListLength, uint8_t *ptrData)
+eReturnValues scsi_Set_Timestamp(tDevice *device, uint32_t parameterListLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1909,9 +1909,9 @@ int scsi_Set_Timestamp(tDevice *device, uint32_t parameterListLength, uint8_t *p
     return ret;
 }
 
-int scsi_Test_Unit_Ready(tDevice *device, scsiStatus * pReturnStatus)
+eReturnValues scsi_Test_Unit_Ready(tDevice *device, scsiStatus * pReturnStatus)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_6] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1940,9 +1940,9 @@ int scsi_Test_Unit_Ready(tDevice *device, scsiStatus * pReturnStatus)
     return ret;
 }
 
-int scsi_Write_Attribute(tDevice *device, bool wtc, uint32_t restricted, uint8_t logicalVolumeNumber, uint8_t partitionNumber, uint32_t parameterListLength, uint8_t *ptrData)
+eReturnValues scsi_Write_Attribute(tDevice *device, bool wtc, uint32_t restricted, uint8_t logicalVolumeNumber, uint8_t partitionNumber, uint32_t parameterListLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1986,9 +1986,9 @@ int scsi_Write_Attribute(tDevice *device, bool wtc, uint32_t restricted, uint8_t
     return ret;
 }
 
-int scsi_Compare_And_Write(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint64_t logicalBlockAddress, uint8_t numberOfLogicalBlocks, uint8_t groupNumber, uint8_t *ptrData, uint32_t transferLengthBytes)
+eReturnValues scsi_Compare_And_Write(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint64_t logicalBlockAddress, uint8_t numberOfLogicalBlocks, uint8_t groupNumber, uint8_t *ptrData, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2037,9 +2037,9 @@ int scsi_Compare_And_Write(tDevice *device, uint8_t wrprotect, bool dpo, bool fu
     return ret;
 }
 
-int scsi_Format_Unit(tDevice *device, uint8_t fmtpInfo, bool longList, bool fmtData, bool cmplst, uint8_t defectListFormat, uint8_t vendorSpecific, uint8_t *ptrData, uint32_t dataSize, uint8_t ffmt, uint32_t timeoutSeconds)
+eReturnValues scsi_Format_Unit(tDevice *device, uint8_t fmtpInfo, bool longList, bool fmtData, bool cmplst, uint8_t defectListFormat, uint8_t vendorSpecific, uint8_t *ptrData, uint32_t dataSize, uint8_t ffmt, uint32_t timeoutSeconds)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_6] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2088,9 +2088,9 @@ int scsi_Format_Unit(tDevice *device, uint8_t fmtpInfo, bool longList, bool fmtD
     return ret;
 }
 
-int scsi_Format_With_Preset(tDevice* device, bool immed, bool fmtmaxlba, uint32_t presetID, uint32_t timeoutSeconds)
+eReturnValues scsi_Format_With_Preset(tDevice* device, bool immed, bool fmtmaxlba, uint32_t presetID, uint32_t timeoutSeconds)
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t cdb[CDB_LEN_10] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2124,9 +2124,9 @@ int scsi_Format_With_Preset(tDevice* device, bool immed, bool fmtmaxlba, uint32_
     return ret;
 }
 
-int scsi_Get_Lba_Status(tDevice *device, uint64_t logicalBlockAddress, uint32_t allocationLength, uint8_t *ptrData)
+eReturnValues scsi_Get_Lba_Status(tDevice *device, uint64_t logicalBlockAddress, uint32_t allocationLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2167,9 +2167,9 @@ int scsi_Get_Lba_Status(tDevice *device, uint64_t logicalBlockAddress, uint32_t 
     return ret;
 }
 
-int scsi_Orwrite_16(tDevice *device, uint8_t orProtect, bool dpo, bool fua, uint64_t logicalBlockAddress, uint32_t transferLengthBlocks, uint8_t groupNumber, uint8_t *ptrData, uint32_t transferLengthBytes)
+eReturnValues scsi_Orwrite_16(tDevice *device, uint8_t orProtect, bool dpo, bool fua, uint64_t logicalBlockAddress, uint32_t transferLengthBlocks, uint8_t groupNumber, uint8_t *ptrData, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2218,9 +2218,9 @@ int scsi_Orwrite_16(tDevice *device, uint8_t orProtect, bool dpo, bool fua, uint
     return ret;
 }
 
-int scsi_Orwrite_32(tDevice *device, uint8_t bmop, uint8_t previousGenProcessing, uint8_t groupNumber, uint8_t orProtect, bool dpo, bool fua, uint64_t logicalBlockAddress, uint32_t expectedORWgen, uint32_t newORWgen, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
+eReturnValues scsi_Orwrite_32(tDevice *device, uint8_t bmop, uint8_t previousGenProcessing, uint8_t groupNumber, uint8_t orProtect, bool dpo, bool fua, uint64_t logicalBlockAddress, uint32_t expectedORWgen, uint32_t newORWgen, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_32] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2285,9 +2285,9 @@ int scsi_Orwrite_32(tDevice *device, uint8_t bmop, uint8_t previousGenProcessing
     return ret;
 }
 
-int scsi_Prefetch_10(tDevice *device, bool immediate, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t prefetchLength)
+eReturnValues scsi_Prefetch_10(tDevice *device, bool immediate, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t prefetchLength)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2318,9 +2318,9 @@ int scsi_Prefetch_10(tDevice *device, bool immediate, uint32_t logicalBlockAddre
     return ret;
 }
 
-int scsi_Prefetch_16(tDevice *device, bool immediate, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t prefetchLength)
+eReturnValues scsi_Prefetch_16(tDevice *device, bool immediate, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t prefetchLength)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2357,9 +2357,9 @@ int scsi_Prefetch_16(tDevice *device, bool immediate, uint64_t logicalBlockAddre
     return ret;
 }
 
-int scsi_Prevent_Allow_Medium_Removal(tDevice *device, uint8_t prevent)
+eReturnValues scsi_Prevent_Allow_Medium_Removal(tDevice *device, uint8_t prevent)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_6] = { 0 };
     
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2383,9 +2383,9 @@ int scsi_Prevent_Allow_Medium_Removal(tDevice *device, uint8_t prevent)
     return ret;
 }
 
-int scsi_Read_6(tDevice *device, uint32_t logicalBlockAddress, uint8_t transferLengthBlocks, uint8_t* ptrData, uint32_t transferLengthBytes)
+eReturnValues scsi_Read_6(tDevice *device, uint32_t logicalBlockAddress, uint8_t transferLengthBlocks, uint8_t* ptrData, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_6] = { 0 };
 
     if (!ptrData && transferLengthBlocks == 0)
@@ -2415,9 +2415,9 @@ int scsi_Read_6(tDevice *device, uint32_t logicalBlockAddress, uint8_t transferL
     return ret;
 }
 
-int scsi_Read_10(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool rarc, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
+eReturnValues scsi_Read_10(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool rarc, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2464,9 +2464,9 @@ int scsi_Read_10(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool ra
     return ret;
 }
 
-int scsi_Read_12(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool rarc, uint32_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
+eReturnValues scsi_Read_12(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool rarc, uint32_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2515,9 +2515,9 @@ int scsi_Read_12(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool ra
     return ret;
 }
 
-int scsi_Read_16(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool rarc, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
+eReturnValues scsi_Read_16(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool rarc, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2570,9 +2570,9 @@ int scsi_Read_16(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool ra
     return ret;
 }
 
-int scsi_Read_32(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool rarc, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t expectedInitialLogicalBlockRefTag, uint16_t expectedLogicalBlockAppTag, uint16_t logicalBlockAppTagMask, uint32_t transferLengthBytes)
+eReturnValues scsi_Read_32(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool rarc, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t expectedInitialLogicalBlockRefTag, uint16_t expectedLogicalBlockAppTag, uint16_t logicalBlockAppTagMask, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_32] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2641,9 +2641,9 @@ int scsi_Read_32(tDevice *device, uint8_t rdProtect, bool dpo, bool fua, bool ra
     return ret;
 }
 
-int scsi_Read_Defect_Data_10(tDevice *device, bool requestPList, bool requestGList, uint8_t defectListFormat, uint16_t allocationLength, uint8_t* ptrData)
+eReturnValues scsi_Read_Defect_Data_10(tDevice *device, bool requestPList, bool requestGList, uint8_t defectListFormat, uint16_t allocationLength, uint8_t* ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2686,9 +2686,9 @@ int scsi_Read_Defect_Data_10(tDevice *device, bool requestPList, bool requestGLi
     return ret;
 }
 
-int scsi_Read_Defect_Data_12(tDevice *device, bool requestPList, bool requestGList, uint8_t defectListFormat, uint32_t addressDescriptorIndex, uint32_t allocationLength, uint8_t* ptrData)
+eReturnValues scsi_Read_Defect_Data_12(tDevice *device, bool requestPList, bool requestGList, uint8_t defectListFormat, uint32_t addressDescriptorIndex, uint32_t allocationLength, uint8_t* ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2733,9 +2733,9 @@ int scsi_Read_Defect_Data_12(tDevice *device, bool requestPList, bool requestGLi
     return ret;
 }
 
-int scsi_Read_Long_10(tDevice *device, bool physicalBlock, bool correctBit, uint32_t logicalBlockAddress, uint16_t byteTransferLength, uint8_t *ptrData)
+eReturnValues scsi_Read_Long_10(tDevice *device, bool physicalBlock, bool correctBit, uint32_t logicalBlockAddress, uint16_t byteTransferLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2777,9 +2777,9 @@ int scsi_Read_Long_10(tDevice *device, bool physicalBlock, bool correctBit, uint
     return ret;
 }
 
-int scsi_Read_Long_16(tDevice *device, bool physicalBlock, bool correctBit, uint64_t logicalBlockAddress, uint16_t byteTransferLength, uint8_t *ptrData)
+eReturnValues scsi_Read_Long_16(tDevice *device, bool physicalBlock, bool correctBit, uint64_t logicalBlockAddress, uint16_t byteTransferLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2827,9 +2827,9 @@ int scsi_Read_Long_16(tDevice *device, bool physicalBlock, bool correctBit, uint
     return ret;
 }
 
-int scsi_Reassign_Blocks(tDevice *device, bool longLBA, bool longList, uint32_t dataSize, uint8_t *ptrData)
+eReturnValues scsi_Reassign_Blocks(tDevice *device, bool longLBA, bool longList, uint32_t dataSize, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_6] = { 0 };
 
     if (!ptrData)
@@ -2866,9 +2866,9 @@ int scsi_Reassign_Blocks(tDevice *device, bool longLBA, bool longList, uint32_t 
     return ret;
 }
 
-int scsi_Report_Referrals(tDevice *device, uint64_t logicalBlockAddress, uint32_t allocationLength, bool one_seg, uint8_t *ptrData)
+eReturnValues scsi_Report_Referrals(tDevice *device, uint64_t logicalBlockAddress, uint32_t allocationLength, bool one_seg, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2912,9 +2912,9 @@ int scsi_Report_Referrals(tDevice *device, uint64_t logicalBlockAddress, uint32_
     return ret;
 }
 
-int scsi_Start_Stop_Unit(tDevice *device, bool immediate, uint8_t powerConditionModifier, uint8_t powerCondition, bool noFlush, bool loej, bool start)
+eReturnValues scsi_Start_Stop_Unit(tDevice *device, bool immediate, uint8_t powerConditionModifier, uint8_t powerCondition, bool noFlush, bool loej, bool start)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_6] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2953,9 +2953,9 @@ int scsi_Start_Stop_Unit(tDevice *device, bool immediate, uint8_t powerCondition
     return ret;
 }
 
-int scsi_Synchronize_Cache_10(tDevice *device, bool immediate, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t numberOfLogicalBlocks)
+eReturnValues scsi_Synchronize_Cache_10(tDevice *device, bool immediate, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t numberOfLogicalBlocks)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2986,9 +2986,9 @@ int scsi_Synchronize_Cache_10(tDevice *device, bool immediate, uint32_t logicalB
     return ret;
 }
 
-int scsi_Synchronize_Cache_16(tDevice *device, bool immediate, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t numberOfLogicalBlocks)
+eReturnValues scsi_Synchronize_Cache_16(tDevice *device, bool immediate, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t numberOfLogicalBlocks)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3025,9 +3025,9 @@ int scsi_Synchronize_Cache_16(tDevice *device, bool immediate, uint64_t logicalB
     return ret;
 }
 
-int scsi_Unmap(tDevice *device, bool anchor, uint8_t groupNumber, uint16_t parameterListLength, uint8_t *ptrData)
+eReturnValues scsi_Unmap(tDevice *device, bool anchor, uint8_t groupNumber, uint16_t parameterListLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3065,9 +3065,9 @@ int scsi_Unmap(tDevice *device, bool anchor, uint8_t groupNumber, uint16_t param
     return ret;
 }
 
-int scsi_Verify_10(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteCheck, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t verificationLength, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues scsi_Verify_10(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteCheck, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t verificationLength, uint8_t *ptrData, uint32_t dataSize)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3109,9 +3109,9 @@ int scsi_Verify_10(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteChe
     return ret;
 }
 
-int scsi_Verify_12(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteCheck, uint32_t logicalBlockAddress, uint8_t groupNumber, uint32_t verificationLength, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues scsi_Verify_12(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteCheck, uint32_t logicalBlockAddress, uint8_t groupNumber, uint32_t verificationLength, uint8_t *ptrData, uint32_t dataSize)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3155,9 +3155,9 @@ int scsi_Verify_12(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteChe
     return ret;
 }
 
-int scsi_Verify_16(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteCheck, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t verificationLength, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues scsi_Verify_16(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteCheck, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t verificationLength, uint8_t *ptrData, uint32_t dataSize)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3205,9 +3205,9 @@ int scsi_Verify_16(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteChe
     return ret;
 }
 
-int scsi_Verify_32(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteCheck, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t verificationLength, uint8_t *ptrData, uint32_t dataSize, uint32_t expectedInitialLogicalBlockRefTag, uint16_t expectedLogicalBlockAppTag, uint16_t logicalBlockAppTagMask)
+eReturnValues scsi_Verify_32(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteCheck, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t verificationLength, uint8_t *ptrData, uint32_t dataSize, uint32_t expectedInitialLogicalBlockRefTag, uint16_t expectedLogicalBlockAppTag, uint16_t logicalBlockAppTagMask)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_32] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3271,9 +3271,9 @@ int scsi_Verify_32(tDevice *device, uint8_t vrprotect, bool dpo, uint8_t byteChe
     return ret;
 }
 
-int scsi_Write_6(tDevice *device, uint32_t logicalBlockAddress, uint8_t transferLengthBlocks, uint8_t* ptrData, uint32_t transferLengthBytes)
+eReturnValues scsi_Write_6(tDevice *device, uint32_t logicalBlockAddress, uint8_t transferLengthBlocks, uint8_t* ptrData, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_6] = { 0 };
 
     if (!ptrData && transferLengthBlocks == 0)
@@ -3303,9 +3303,9 @@ int scsi_Write_6(tDevice *device, uint32_t logicalBlockAddress, uint8_t transfer
     return ret;
 }
 
-int scsi_Write_10(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
+eReturnValues scsi_Write_10(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3348,9 +3348,9 @@ int scsi_Write_10(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint32
     return ret;
 }
 
-int scsi_Write_12(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint32_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
+eReturnValues scsi_Write_12(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint32_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3395,9 +3395,9 @@ int scsi_Write_12(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint32
     return ret;
 }
 
-int scsi_Write_16(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
+eReturnValues scsi_Write_16(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3446,9 +3446,9 @@ int scsi_Write_16(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint64
     return ret;
 }
 
-int scsi_Write_32(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t expectedInitialLogicalBlockRefTag, uint16_t expectedLogicalBlockAppTag, uint16_t logicalBlockAppTagMask, uint32_t transferLengthBytes)
+eReturnValues scsi_Write_32(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t expectedInitialLogicalBlockRefTag, uint16_t expectedLogicalBlockAppTag, uint16_t logicalBlockAppTagMask, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_32] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3513,9 +3513,9 @@ int scsi_Write_32(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, uint64
     return ret;
 }
 
-int scsi_Write_And_Verify_10(tDevice *device, uint8_t wrprotect, bool dpo, uint8_t byteCheck, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
+eReturnValues scsi_Write_And_Verify_10(tDevice *device, uint8_t wrprotect, bool dpo, uint8_t byteCheck, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3555,9 +3555,9 @@ int scsi_Write_And_Verify_10(tDevice *device, uint8_t wrprotect, bool dpo, uint8
     return ret;
 }
 
-int scsi_Write_And_Verify_12(tDevice *device, uint8_t wrprotect, bool dpo, uint8_t byteCheck, uint32_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
+eReturnValues scsi_Write_And_Verify_12(tDevice *device, uint8_t wrprotect, bool dpo, uint8_t byteCheck, uint32_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_12] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3599,9 +3599,9 @@ int scsi_Write_And_Verify_12(tDevice *device, uint8_t wrprotect, bool dpo, uint8
     return ret;
 }
 
-int scsi_Write_And_Verify_16(tDevice *device, uint8_t wrprotect, bool dpo, uint8_t byteCheck, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
+eReturnValues scsi_Write_And_Verify_16(tDevice *device, uint8_t wrprotect, bool dpo, uint8_t byteCheck, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3647,9 +3647,9 @@ int scsi_Write_And_Verify_16(tDevice *device, uint8_t wrprotect, bool dpo, uint8
     return ret;
 }
 
-int scsi_Write_And_Verify_32(tDevice *device, uint8_t wrprotect, bool dpo, uint8_t byteCheck, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t expectedInitialLogicalBlockRefTag, uint16_t expectedLogicalBlockAppTag, uint16_t logicalBlockAppTagMask, uint32_t transferLengthBytes)
+eReturnValues scsi_Write_And_Verify_32(tDevice *device, uint8_t wrprotect, bool dpo, uint8_t byteCheck, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLengthBlocks, uint8_t *ptrData, uint32_t expectedInitialLogicalBlockRefTag, uint16_t expectedLogicalBlockAppTag, uint16_t logicalBlockAppTagMask, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_32] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3711,9 +3711,9 @@ int scsi_Write_And_Verify_32(tDevice *device, uint8_t wrprotect, bool dpo, uint8
     return ret;
 }
 
-int scsi_Write_Long_10(tDevice *device, bool correctionDisabled, bool writeUncorrectable, bool physicalBlock, uint32_t logicalBlockAddress, uint16_t byteTransferLength, uint8_t *ptrData)
+eReturnValues scsi_Write_Long_10(tDevice *device, bool correctionDisabled, bool writeUncorrectable, bool physicalBlock, uint32_t logicalBlockAddress, uint16_t byteTransferLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3759,9 +3759,9 @@ int scsi_Write_Long_10(tDevice *device, bool correctionDisabled, bool writeUncor
     return ret;
 }
 
-int scsi_Write_Long_16(tDevice *device, bool correctionDisabled, bool writeUncorrectable, bool physicalBlock, uint64_t logicalBlockAddress, uint16_t byteTransferLength, uint8_t *ptrData)
+eReturnValues scsi_Write_Long_16(tDevice *device, bool correctionDisabled, bool writeUncorrectable, bool physicalBlock, uint64_t logicalBlockAddress, uint16_t byteTransferLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3814,9 +3814,9 @@ int scsi_Write_Long_16(tDevice *device, bool correctionDisabled, bool writeUncor
     return ret;
 }
 
-int scsi_Write_Same_10(tDevice *device, uint8_t wrprotect, bool anchor, bool unmap, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t numberOfLogicalBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
+eReturnValues scsi_Write_Same_10(tDevice *device, uint8_t wrprotect, bool anchor, bool unmap, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t numberOfLogicalBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
 
     uint32_t timeout = 0;
@@ -3867,9 +3867,9 @@ int scsi_Write_Same_10(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
     return ret;
 }
 
-int scsi_Write_Same_16(tDevice *device, uint8_t wrprotect, bool anchor, bool unmap, bool noDataOut, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t numberOfLogicalBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
+eReturnValues scsi_Write_Same_16(tDevice *device, uint8_t wrprotect, bool anchor, bool unmap, bool noDataOut, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t numberOfLogicalBlocks, uint8_t *ptrData, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_16] = { 0 };
 
     uint32_t timeout = 0;
@@ -3938,9 +3938,9 @@ int scsi_Write_Same_16(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
     return ret;
 }
 
-int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unmap, bool noDataOut, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t numberOfLogicalBlocks, uint8_t *ptrData, uint32_t expectedInitialLogicalBlockRefTag, uint16_t expectedLogicalBlockAppTag, uint16_t logicalBlockAppTagMask, uint32_t transferLengthBytes)
+eReturnValues scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unmap, bool noDataOut, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t numberOfLogicalBlocks, uint8_t *ptrData, uint32_t expectedInitialLogicalBlockRefTag, uint16_t expectedLogicalBlockAppTag, uint16_t logicalBlockAppTagMask, uint32_t transferLengthBytes)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_32] = { 0 };
 
     uint32_t timeout = 0;
@@ -4048,9 +4048,9 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //!   \return SUCCESS = pass, !SUCCESS = something when wrong
 //
 //-----------------------------------------------------------------------------
-//int scsi_xd_Write_Read_10(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, bool disableWrite, bool xoprinfo, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t transferLength, uint8_t *ptrDataOut, uint8_t *ptrDataIn)
+//eReturnValues scsi_xd_Write_Read_10(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, bool disableWrite, bool xoprinfo, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t transferLength, uint8_t *ptrDataOut, uint8_t *ptrDataIn)
 //{
-//    int       ret = FAILURE;
+//    eReturnValues ret = FAILURE;
 //    uint8_t   cdb[CDB_LEN_10] = { 0 };
 //    ScsiIoCtx scsiIoCtx;
 //    memset(&scsiIoCtx, 0, sizeof(ScsiIoCtx));
@@ -4140,9 +4140,9 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //!   \return SUCCESS = pass, !SUCCESS = something when wrong
 //
 //-----------------------------------------------------------------------------
-//int scsi_xd_Write_Read_32(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, bool disableWrite, bool xoprinfo, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLength, uint8_t *ptrDataOut, uint8_t *ptrDataIn)
+//eReturnValues scsi_xd_Write_Read_32(tDevice *device, uint8_t wrprotect, bool dpo, bool fua, bool disableWrite, bool xoprinfo, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLength, uint8_t *ptrDataOut, uint8_t *ptrDataIn)
 //{
-//    int       ret = FAILURE;
+//    eReturnValues ret = FAILURE;
 //    uint8_t   cdb[CDB_LEN_32] = { 0 };
 //    ScsiIoCtx scsiIoCtx;
 //    memset(&scsiIoCtx, 0, sizeof(ScsiIoCtx));
@@ -4231,9 +4231,9 @@ int scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor, bool unm
 //    return ret;
 //}
 
-int scsi_xp_Write_10(tDevice *device, bool dpo, bool fua, bool xoprinfo, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t transferLength, uint8_t *ptrData)
+eReturnValues scsi_xp_Write_10(tDevice *device, bool dpo, bool fua, bool xoprinfo, uint32_t logicalBlockAddress, uint8_t groupNumber, uint16_t transferLength, uint8_t *ptrData)
 {
-    int       ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t   cdb[CDB_LEN_10] = { 0 };
 
     if (!ptrData)
@@ -4277,9 +4277,9 @@ int scsi_xp_Write_10(tDevice *device, bool dpo, bool fua, bool xoprinfo, uint32_
     return ret;
 }
 
-int scsi_xp_Write_32(tDevice *device, bool dpo, bool fua, bool xoprinfo, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLength, uint8_t *ptrData)
+eReturnValues scsi_xp_Write_32(tDevice *device, bool dpo, bool fua, bool xoprinfo, uint64_t logicalBlockAddress, uint8_t groupNumber, uint32_t transferLength, uint8_t *ptrData)
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t cdb[CDB_LEN_32] = { 0 };
 
     if (!ptrData)
@@ -4345,9 +4345,9 @@ int scsi_xp_Write_32(tDevice *device, bool dpo, bool fua, bool xoprinfo, uint64_
     return ret;
 }
 
-int scsi_Zone_Management_Out_Std_Format_CDB(tDevice *device, eZMAction action, uint64_t zoneID, uint16_t zoneCount, bool all, uint16_t commandSPecific_10_11, uint8_t cmdSpecificBits1, uint8_t actionSpecific14)//94h
+eReturnValues scsi_Zone_Management_Out_Std_Format_CDB(tDevice *device, eZMAction action, uint64_t zoneID, uint16_t zoneCount, bool all, uint16_t commandSPecific_10_11, uint8_t cmdSpecificBits1, uint8_t actionSpecific14)//94h
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t cdb[CDB_LEN_16] = { 0 };
 
     switch (action)
@@ -4403,7 +4403,7 @@ int scsi_Zone_Management_Out_Std_Format_CDB(tDevice *device, eZMAction action, u
     return ret;
 }
 
-int scsi_Close_Zone(tDevice *device, bool all, uint64_t zoneID, uint16_t zoneCount)
+eReturnValues scsi_Close_Zone(tDevice *device, bool all, uint64_t zoneID, uint16_t zoneCount)
 {
     if (all)
     {
@@ -4415,7 +4415,7 @@ int scsi_Close_Zone(tDevice *device, bool all, uint64_t zoneID, uint16_t zoneCou
     }
 }
 
-int scsi_Finish_Zone(tDevice *device, bool all, uint64_t zoneID, uint16_t zoneCount)
+eReturnValues scsi_Finish_Zone(tDevice *device, bool all, uint64_t zoneID, uint16_t zoneCount)
 {
     if (all)
     {
@@ -4427,7 +4427,7 @@ int scsi_Finish_Zone(tDevice *device, bool all, uint64_t zoneID, uint16_t zoneCo
     }
 }
 
-int scsi_Open_Zone(tDevice *device, bool all, uint64_t zoneID, uint16_t zoneCount)
+eReturnValues scsi_Open_Zone(tDevice *device, bool all, uint64_t zoneID, uint16_t zoneCount)
 {
     if (all)
     {
@@ -4439,7 +4439,7 @@ int scsi_Open_Zone(tDevice *device, bool all, uint64_t zoneID, uint16_t zoneCoun
     }
 }
 
-int scsi_Reset_Write_Pointers(tDevice *device, bool all, uint64_t zoneID, uint16_t zoneCount)
+eReturnValues scsi_Reset_Write_Pointers(tDevice *device, bool all, uint64_t zoneID, uint16_t zoneCount)
 {
     if (all)
     {
@@ -4451,7 +4451,7 @@ int scsi_Reset_Write_Pointers(tDevice *device, bool all, uint64_t zoneID, uint16
     }
 }
 
-int scsi_Sequentialize_Zone(tDevice* device, bool all, uint64_t zoneID, uint16_t zoneCount)
+eReturnValues scsi_Sequentialize_Zone(tDevice* device, bool all, uint64_t zoneID, uint16_t zoneCount)
 {
     if (all)
     {
@@ -4463,9 +4463,9 @@ int scsi_Sequentialize_Zone(tDevice* device, bool all, uint64_t zoneID, uint16_t
     }
 }
 
-int scsi_Zone_Management_In_Report(tDevice* device, eZMAction action, uint8_t actionSpecific1, uint64_t location, bool partial, uint8_t reportingOptions, uint32_t allocationLength, uint8_t* ptrData)//95h
+eReturnValues scsi_Zone_Management_In_Report(tDevice* device, eZMAction action, uint8_t actionSpecific1, uint64_t location, bool partial, uint8_t reportingOptions, uint32_t allocationLength, uint8_t* ptrData)//95h
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t cdb[CDB_LEN_16] = { 0 };
     eDataTransferDirection dataDir = XFER_NO_DATA;
 
@@ -4528,9 +4528,9 @@ int scsi_Zone_Management_In_Report(tDevice* device, eZMAction action, uint8_t ac
 }
 
 //for zone activate and zone query commands
-int scsi_Zone_Management_In_ZD(tDevice* device, eZMAction action, bool all, uint64_t zoneID, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint16_t allocationLength, uint8_t* ptrData)//95h
+eReturnValues scsi_Zone_Management_In_ZD(tDevice* device, eZMAction action, bool all, uint64_t zoneID, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint16_t allocationLength, uint8_t* ptrData)//95h
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t cdb[CDB_LEN_16] = { 0 };
     eDataTransferDirection dataDir = XFER_NO_DATA;
 
@@ -4589,34 +4589,34 @@ int scsi_Zone_Management_In_ZD(tDevice* device, eZMAction action, bool all, uint
     return ret;
 }
 
-int scsi_Zone_Activate(tDevice* device, bool all, uint64_t zoneID, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint16_t allocationLength, uint8_t* ptrData)
+eReturnValues scsi_Zone_Activate(tDevice* device, bool all, uint64_t zoneID, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint16_t allocationLength, uint8_t* ptrData)
 {
     return scsi_Zone_Management_In_ZD(device, ZM_ACTION_ZONE_ACTIVATE, all, zoneID, numberOfZones, otherZoneDomainID, allocationLength, ptrData);
 }
 
-int scsi_Zone_Query(tDevice* device, bool all, uint64_t zoneID, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint16_t allocationLength, uint8_t* ptrData)
+eReturnValues scsi_Zone_Query(tDevice* device, bool all, uint64_t zoneID, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint16_t allocationLength, uint8_t* ptrData)
 {
     return scsi_Zone_Management_In_ZD(device, ZM_ACTION_ZONE_QUERY, all, zoneID, numberOfZones, otherZoneDomainID, allocationLength, ptrData);
 }
 
-int scsi_Report_Zones(tDevice* device, eZoneReportingOptions reportingOptions, bool partial, uint32_t allocationLength, uint64_t zoneStartLBA, uint8_t* ptrData)
+eReturnValues scsi_Report_Zones(tDevice* device, eZoneReportingOptions reportingOptions, bool partial, uint32_t allocationLength, uint64_t zoneStartLBA, uint8_t* ptrData)
 {
     return scsi_Zone_Management_In_Report(device, ZM_ACTION_REPORT_ZONES, 0, zoneStartLBA, partial, C_CAST(uint8_t, reportingOptions), allocationLength, ptrData);
 }
 
-int scsi_Report_Realms(tDevice* device, eRealmsReportingOptions reportingOptions, uint32_t allocationLength, uint64_t realmLocator, uint8_t* ptrData)
+eReturnValues scsi_Report_Realms(tDevice* device, eRealmsReportingOptions reportingOptions, uint32_t allocationLength, uint64_t realmLocator, uint8_t* ptrData)
 {
     return scsi_Zone_Management_In_Report(device, ZM_ACTION_REPORT_REALMS, 0, realmLocator, false, C_CAST(uint8_t, reportingOptions), allocationLength, ptrData);
 }
 
-int scsi_Report_Zone_Domains(tDevice* device, eZoneDomainReportingOptions reportingOptions, uint32_t allocationLength, uint64_t zoneDomainLocator, uint8_t* ptrData)
+eReturnValues scsi_Report_Zone_Domains(tDevice* device, eZoneDomainReportingOptions reportingOptions, uint32_t allocationLength, uint64_t zoneDomainLocator, uint8_t* ptrData)
 {
     return scsi_Zone_Management_In_Report(device, ZM_ACTION_REPORT_ZONE_DOMAINS, 0, zoneDomainLocator, false, C_CAST(uint8_t, reportingOptions), allocationLength, ptrData);
 }
 
-int scsi_Get_Physical_Element_Status(tDevice *device, uint32_t startingElement, uint32_t allocationLength, uint8_t filter, uint8_t reportType, uint8_t *ptrData)
+eReturnValues scsi_Get_Physical_Element_Status(tDevice *device, uint32_t startingElement, uint32_t allocationLength, uint8_t filter, uint8_t reportType, uint8_t *ptrData)
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t cdb[CDB_LEN_16] = { 0 };
     cdb[OPERATION_CODE] = 0x9E;
     //set the service action
@@ -4657,9 +4657,9 @@ int scsi_Get_Physical_Element_Status(tDevice *device, uint32_t startingElement, 
     return ret;
 }
 
-int scsi_Remove_And_Truncate(tDevice *device, uint64_t requestedCapacity, uint32_t elementIdentifier)
+eReturnValues scsi_Remove_And_Truncate(tDevice *device, uint64_t requestedCapacity, uint32_t elementIdentifier)
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t cdb[CDB_LEN_16] = { 0 };
 
     uint32_t timeout = 0;
@@ -4705,9 +4705,9 @@ int scsi_Remove_And_Truncate(tDevice *device, uint64_t requestedCapacity, uint32
     return ret;
 }
 
-int scsi_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elementIdentifier)
+eReturnValues scsi_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elementIdentifier)
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t cdb[CDB_LEN_16] = { 0 };
 
     uint32_t timeout = 0;
@@ -4753,9 +4753,9 @@ int scsi_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elementIdenti
     return ret;
 }
 
-int scsi_Restore_Elements_And_Rebuild(tDevice *device)
+eReturnValues scsi_Restore_Elements_And_Rebuild(tDevice *device)
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t cdb[CDB_LEN_16] = { 0 };
 
     uint32_t timeout = 0;
@@ -4799,9 +4799,9 @@ int scsi_Restore_Elements_And_Rebuild(tDevice *device)
     return ret;
 }
 
-int scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t allocationLength, uint8_t *ptrData)
+eReturnValues scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t allocationLength, uint8_t *ptrData)
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t cdb[CDB_LEN_10] = { 0 };
     cdb[OPERATION_CODE] = PERSISTENT_RESERVE_IN_CMD;
     //set the service action
@@ -4838,9 +4838,9 @@ int scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t 
     return ret;
 }
 
-int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t scope, uint8_t type, uint32_t parameterListLength, uint8_t *ptrData)
+eReturnValues scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t scope, uint8_t type, uint32_t parameterListLength, uint8_t *ptrData)
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t cdb[CDB_LEN_10] = { 0 };
     cdb[OPERATION_CODE] = PERSISTENT_RESERVE_OUT_CMD;
     //set the service action
@@ -4878,9 +4878,9 @@ int scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t 
     return ret;
 }
 
-int scsi_Rezero_Unit(tDevice* device)
+eReturnValues scsi_Rezero_Unit(tDevice* device)
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint8_t cdb[CDB_LEN_6] = { 0 };
     cdb[OPERATION_CODE] = REZERO_UNIT_CMD;
     cdb[1] = RESERVED;//technically has lun in here, but that is old SCSI2 ism that is long gone and is autofilled by low-level drivers on these old devices -TJE

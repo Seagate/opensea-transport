@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include "common.h"
 #include "scsi_helper.h"
 #include "sat_helper.h"
 #include "nvme_helper.h"
@@ -38,7 +39,7 @@ extern "C"
     // \fn send_IO(scsiIoCtx * scsiIoCtx)
     // \brief Function to send IO to the device.
     // \param scsiIoCtx
-    int send_IO( ScsiIoCtx *scsiIoCtx );
+    eReturnValues send_IO( ScsiIoCtx *scsiIoCtx );
 
     //-----------------------------------------------------------------------------
     //
@@ -54,7 +55,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int os_Device_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Device_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -70,7 +71,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int os_Bus_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Bus_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -86,7 +87,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int os_Controller_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Controller_Reset(tDevice *device);
 
 
     //-----------------------------------------------------------------------------
@@ -107,16 +108,16 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize );
+    eReturnValues pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize );
 
-    int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
+    eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
 
     //to be used with a deep scan???
-    //int nvme_Namespace_Rescan(int fd);//rescans a controller for namespaces. This must be a file descriptor without a namespace. EX: /dev/nvme0 and NOT /dev/nvme0n1
+    //eReturnValues nvme_Namespace_Rescan(int fd);//rescans a controller for namespaces. This must be a file descriptor without a namespace. EX: /dev/nvme0 and NOT /dev/nvme0n1
 
-    OPENSEA_TRANSPORT_API int os_nvme_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_nvme_Reset(tDevice *device);
 
-    OPENSEA_TRANSPORT_API int os_nvme_Subsystem_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_nvme_Subsystem_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -131,7 +132,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int os_Lock_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Lock_Device(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -146,13 +147,13 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int os_Unlock_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Unlock_Device(tDevice *device);
 
-    OPENSEA_TRANSPORT_API int os_Update_File_System_Cache(tDevice* device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Update_File_System_Cache(tDevice* device);
 
-    OPENSEA_TRANSPORT_API int os_Unmount_File_Systems_On_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device);
 
-    OPENSEA_TRANSPORT_API int os_Erase_Boot_Sectors(tDevice* device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Erase_Boot_Sectors(tDevice* device);
 
 #if defined (__cplusplus)
 }

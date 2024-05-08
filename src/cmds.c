@@ -22,9 +22,9 @@
 #include "platform_helper.h"
 #include "usb_hacks.h"
 
-int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode, bool znr)
+eReturnValues send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode, bool znr)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
@@ -48,9 +48,9 @@ int send_Sanitize_Block_Erase(tDevice *device, bool exitFailureMode, bool znr)
     return ret;
 }
 
-int send_Sanitize_Crypto_Erase(tDevice *device, bool exitFailureMode, bool znr)
+eReturnValues send_Sanitize_Crypto_Erase(tDevice *device, bool exitFailureMode, bool znr)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
@@ -74,9 +74,9 @@ int send_Sanitize_Crypto_Erase(tDevice *device, bool exitFailureMode, bool znr)
     return ret;
 }
 
-int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool invertBetweenPasses, uint8_t overwritePasses, uint8_t *pattern, uint16_t patternLength, bool znr)
+eReturnValues send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool invertBetweenPasses, uint8_t overwritePasses, uint8_t *pattern, uint16_t patternLength, bool znr)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     bool localPattern = false;
     switch (device->drive_info.drive_type)
     {
@@ -138,9 +138,9 @@ int send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMode, bool in
     return ret;
 }
 
-int send_Sanitize_Exit_Failure_Mode(tDevice *device)
+eReturnValues send_Sanitize_Exit_Failure_Mode(tDevice *device)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
@@ -159,9 +159,9 @@ int send_Sanitize_Exit_Failure_Mode(tDevice *device)
     return ret;
 }
 
-int spin_down_drive(tDevice *device, bool sleepState)
+eReturnValues spin_down_drive(tDevice *device, bool sleepState)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
@@ -238,9 +238,9 @@ int spin_down_drive(tDevice *device, bool sleepState)
 //!   \return SUCCESS = pass, !SUCCESS = something when wrong
 //
 //-----------------------------------------------------------------------------
-int fill_Drive_Info_Data(tDevice *device)
+eReturnValues fill_Drive_Info_Data(tDevice *device)
 {
-    int status = SUCCESS;
+    eReturnValues status = SUCCESS;
     #ifdef _DEBUG
     printf("%s: -->\n",__FUNCTION__);
     #endif
@@ -317,9 +317,9 @@ int fill_Drive_Info_Data(tDevice *device)
     return status;
 }
 
-int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber, bool existingImage, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds, bool nvmeForceCA, uint8_t commitAction, bool forceDisableReset)
+eReturnValues firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t offset, uint32_t xferLen, uint8_t *ptrData, uint8_t slotNumber, bool existingImage, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds, bool nvmeForceCA, uint8_t commitAction, bool forceDisableReset)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
 #ifdef _DEBUG
     printf("-->%s\n",__FUNCTION__);
 #endif
@@ -523,14 +523,14 @@ int firmware_Download_Command(tDevice *device, eDownloadMode dlMode, uint32_t of
     return ret;
 }
 
-int firmware_Download_Activate(tDevice *device, uint8_t slotNumber, bool existingImage, uint32_t timeoutSeconds, bool nvmeForceCA, uint8_t commitAction, bool forceDisableReset)
+eReturnValues firmware_Download_Activate(tDevice *device, uint8_t slotNumber, bool existingImage, uint32_t timeoutSeconds, bool nvmeForceCA, uint8_t commitAction, bool forceDisableReset)
 {
     return firmware_Download_Command(device, DL_FW_ACTIVATE, 0, 0, NULL, slotNumber, existingImage, false, false, timeoutSeconds, nvmeForceCA, commitAction, forceDisableReset);
 }
 
-int security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     switch(device->drive_info.drive_type)
     {
     case ATA_DRIVE:
@@ -592,9 +592,9 @@ int security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityPr
     return ret;
 }
 
-int security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
@@ -658,9 +658,9 @@ int security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securit
     return ret;
 }
 
-int write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBlocks, uint8_t *pattern)
+eReturnValues write_Same(tDevice *device, uint64_t startingLba, uint64_t numberOfLogicalBlocks, uint8_t *pattern)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     bool noDataTransfer = false;
     if (!pattern)
     {
@@ -807,9 +807,9 @@ bool is_Write_Psuedo_Uncorrectable_Supported(tDevice *device)
     return supported;
 }
 
-int write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
+eReturnValues write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     bool multipleLogicalPerPhysical = false;//used to set the physical block bit when applicable
     uint16_t logicalPerPhysicalBlocks = C_CAST(uint16_t, device->drive_info.devicePhyBlockSize / device->drive_info.deviceBlockSize);
     if (logicalPerPhysicalBlocks > 1)
@@ -891,9 +891,9 @@ bool is_Write_Flagged_Uncorrectable_Supported(tDevice *device)
     return supported;
 }
 
-int write_Flagged_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
+eReturnValues write_Flagged_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     //This will only flag individual logical blocks
     switch (device->drive_info.drive_type)
     {
@@ -928,9 +928,9 @@ int write_Flagged_Uncorrectable_Error(tDevice *device, uint64_t corruptLBA)
     return ret;
 }
 
-int ata_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues ata_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = SUCCESS;//assume success
+    eReturnValues ret = SUCCESS;//assume success
     uint32_t sectors = 0;
     //make sure that the data size is at least logical sector in size
     if (dataSize < device->drive_info.deviceBlockSize)
@@ -1179,9 +1179,9 @@ int ata_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrDa
     return ret;
 }
 
-int ata_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues ata_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = SUCCESS;//assume success
+    eReturnValues ret = SUCCESS;//assume success
     uint32_t sectors = 0;
     bool writeDMAFUA = false;
     //make sure that the data size is at least logical sector in size
@@ -1451,9 +1451,9 @@ static void get_SCSI_DPO_FUA_Support(tDevice* device)
     return;
 }
 
-int scsi_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues scsi_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = SUCCESS;//assume success
+    eReturnValues ret = SUCCESS;//assume success
     uint32_t sectors = 0;
     bool fua = false;
     //make sure that the data size is at least logical sector in size
@@ -1541,9 +1541,9 @@ int scsi_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrD
     return ret;
 }
 
-int scsi_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues scsi_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = SUCCESS;//assume success
+    eReturnValues ret = SUCCESS;//assume success
     uint32_t sectors = 0;
     bool fua = false;
     //make sure that the data size is at least logical sector in size
@@ -1628,7 +1628,7 @@ int scsi_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t *ptr
     return ret;
 }
 
-int io_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
+eReturnValues io_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
 {
     //make sure that the data size is at least logical sector in size
     if (dataSize < device->drive_info.deviceBlockSize)
@@ -1658,7 +1658,7 @@ int io_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrDat
     }
 }
 
-int io_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
+eReturnValues io_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
 {
     //make sure that the data size is at least logical sector in size
     if (dataSize < device->drive_info.deviceBlockSize)
@@ -1688,7 +1688,7 @@ int io_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrDa
     }
 }
 
-int read_LBA(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
+eReturnValues read_LBA(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
 {
     if (device->os_info.osReadWriteRecommended)
     {
@@ -1702,7 +1702,7 @@ int read_LBA(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrDa
 }
 
 
-int write_LBA(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
+eReturnValues write_LBA(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
 {
     if (device->os_info.osReadWriteRecommended)
     {
@@ -1715,9 +1715,9 @@ int write_LBA(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrD
     }
 }
 
-int ata_Read_Verify(tDevice *device, uint64_t lba, uint32_t range)
+eReturnValues ata_Read_Verify(tDevice *device, uint64_t lba, uint32_t range)
 {
-    int ret = SUCCESS;//assume success
+    eReturnValues ret = SUCCESS;//assume success
     if (device->drive_info.ata_Options.fourtyEightBitAddressFeatureSetSupported)
     {
         //use 48bit commands by default
@@ -1805,9 +1805,9 @@ int ata_Read_Verify(tDevice *device, uint64_t lba, uint32_t range)
     return ret;
 }
 
-int scsi_Verify(tDevice *device, uint64_t lba, uint32_t range)
+eReturnValues scsi_Verify(tDevice *device, uint64_t lba, uint32_t range)
 {
-    int ret = SUCCESS;//assume success
+    eReturnValues ret = SUCCESS;//assume success
     //there's no real way to tell when scsi drive supports verify 10 vs verify 16 (which are all we will care about in here), so just based on transfer length and the maxLBA
     if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && range <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
     {
@@ -1822,9 +1822,9 @@ int scsi_Verify(tDevice *device, uint64_t lba, uint32_t range)
     return ret;
 }
 
-int nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
+eReturnValues nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT7 && range < (UINT16_MAX + 1))
     {
         //nvme verify command is supported
@@ -1848,7 +1848,7 @@ int nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
     return ret;
 }
 
-int verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
+eReturnValues verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
 {
     if (device->os_info.osReadWriteRecommended)
     {
@@ -1879,7 +1879,7 @@ int verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
     }
 }
 
-int ata_Flush_Cache_Command(tDevice *device)
+eReturnValues ata_Flush_Cache_Command(tDevice *device)
 {
     bool ext = false;
     if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) && device->drive_info.IdentifyData.ata.Word083 & BIT13)
@@ -1889,11 +1889,11 @@ int ata_Flush_Cache_Command(tDevice *device)
     return ata_Flush_Cache(device, ext);
 }
 
-int scsi_Synchronize_Cache_Command(tDevice *device)
+eReturnValues scsi_Synchronize_Cache_Command(tDevice *device)
 {
     //synch/flush cache introduced in SCSI2. Not going to check for it though since some USB drives do support this command and report SCSI or no version. - TJE
     //there's no real way to tell when SCSI drive supports synchronize cache 10 vs synchronize cache 16 (which are all we will care about in here), so just based on the maxLBA
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA)
     {
         ret = scsi_Synchronize_Cache_10(device, false, 0, 0, 0);
@@ -1911,7 +1911,7 @@ int scsi_Synchronize_Cache_Command(tDevice *device)
     return ret;
 }
 
-int flush_Cache(tDevice *device)
+eReturnValues flush_Cache(tDevice *device)
 {
     if (device->os_info.osReadWriteRecommended)
     {
@@ -1942,9 +1942,9 @@ int flush_Cache(tDevice *device)
     }
 }
 
-int close_Zone(tDevice *device, bool closeAll, uint64_t zoneID, uint16_t zoneCount)
+eReturnValues close_Zone(tDevice *device, bool closeAll, uint64_t zoneID, uint16_t zoneCount)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
@@ -1960,9 +1960,9 @@ int close_Zone(tDevice *device, bool closeAll, uint64_t zoneID, uint16_t zoneCou
     return ret;
 }
 
-int finish_Zone(tDevice *device, bool finishAll, uint64_t zoneID, uint16_t zoneCount)
+eReturnValues finish_Zone(tDevice *device, bool finishAll, uint64_t zoneID, uint16_t zoneCount)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
@@ -1978,9 +1978,9 @@ int finish_Zone(tDevice *device, bool finishAll, uint64_t zoneID, uint16_t zoneC
     return ret;
 }
 
-int open_Zone(tDevice *device, bool openAll, uint64_t zoneID, uint16_t zoneCount)
+eReturnValues open_Zone(tDevice *device, bool openAll, uint64_t zoneID, uint16_t zoneCount)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
@@ -1996,9 +1996,9 @@ int open_Zone(tDevice *device, bool openAll, uint64_t zoneID, uint16_t zoneCount
     return ret;
 }
 
-int reset_Write_Pointer(tDevice *device, bool resetAll, uint64_t zoneID, uint16_t zoneCount)
+eReturnValues reset_Write_Pointer(tDevice *device, bool resetAll, uint64_t zoneID, uint16_t zoneCount)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
@@ -2014,9 +2014,9 @@ int reset_Write_Pointer(tDevice *device, bool resetAll, uint64_t zoneID, uint16_
     return ret;
 }
 
-int report_Zones(tDevice *device, eZoneReportingOptions reportingOptions, bool partial, uint64_t zoneLocator, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues report_Zones(tDevice *device, eZoneReportingOptions reportingOptions, bool partial, uint64_t zoneLocator, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:

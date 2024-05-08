@@ -47,9 +47,9 @@
 //2 - reserved
 //3 - DW10, byte 0 (bits 7:0) - CNS
 //4 - 15 are reserved
-static int build_Basic_Passthrough_CDB(nvmeCmdCtx *nvmCmd, uint8_t* cdb)
+static eReturnValues build_Basic_Passthrough_CDB(nvmeCmdCtx *nvmCmd, uint8_t* cdb)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (!nvmCmd || !cdb)
     {
         return BAD_PARAMETER;
@@ -130,9 +130,9 @@ static int build_Basic_Passthrough_CDB(nvmeCmdCtx *nvmCmd, uint8_t* cdb)
     return ret;
 }
 
-int send_ASMedia_Basic_NVMe_Passthrough_Cmd(nvmeCmdCtx *nvmCmd)
+eReturnValues send_ASMedia_Basic_NVMe_Passthrough_Cmd(nvmeCmdCtx *nvmCmd)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     uint8_t cdb[ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE] = { 0 };
     ret = build_Basic_Passthrough_CDB(nvmCmd, cdb);
     if (ret == SUCCESS)
@@ -146,9 +146,9 @@ int send_ASMedia_Basic_NVMe_Passthrough_Cmd(nvmeCmdCtx *nvmCmd)
     return ret;
 }
 
-static int build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransferDirection *cdbDataDirection, eASM_NVMPacket_Operation asmOperation, uint8_t parameter1, nvmeCmdCtx *nvmCmd, uint8_t * dataPtr, uint32_t dataSize)
+static eReturnValues build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransferDirection *cdbDataDirection, eASM_NVMPacket_Operation asmOperation, uint8_t parameter1, nvmeCmdCtx *nvmCmd, uint8_t * dataPtr, uint32_t dataSize)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
 
     if (!cdb || !cdbDataDirection)
     {
@@ -465,9 +465,9 @@ static int build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransferDirection
 
 //NOTE: There is currently a bug in this code on the data phase command being rejected for invalid field in CDB.
 //      This will debugged once I get a device in hand to figure out what is going wrong.
-int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
+eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     uint8_t asmCDB[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
     uint8_t asmPayload[ASM_NVMP_DWORDS_DATA_PACKET_SIZE] = { 0 };
     eDataTransferDirection asmCDBDir = 0;
@@ -528,7 +528,7 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
         }
         return ret;
     }
-    int sendRet = scsi_Send_Cdb(nvmCmd->device, asmCDB, ASMEDIA_NVME_PACKET_CDB_SIZE, dataPhasePtr, dataPhaseSize, asmCDBDir, NULL, 0, 15);
+    eReturnValues sendRet = scsi_Send_Cdb(nvmCmd->device, asmCDB, ASMEDIA_NVME_PACKET_CDB_SIZE, dataPhasePtr, dataPhaseSize, asmCDBDir, NULL, 0, 15);
 
     if (localMemory)
     {
@@ -584,11 +584,11 @@ int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     return ret;
 }
 
-static int asm_nvme_Shutdown(tDevice *device, bool withShutdownProcessing)
+static eReturnValues asm_nvme_Shutdown(tDevice *device, bool withShutdownProcessing)
 {
     uint8_t cdb[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
-    int ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_POWER_DOWN_NVME, withShutdownProcessing ? 1 : 0, NULL, NULL, 0);
+    eReturnValues ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_POWER_DOWN_NVME, withShutdownProcessing ? 1 : 0, NULL, NULL, 0);
     if (ret == SUCCESS)
     {
         //send it
@@ -601,11 +601,11 @@ static int asm_nvme_Shutdown(tDevice *device, bool withShutdownProcessing)
     return ret;
 }
 
-static int asm_nvme_Reset_Bridge(tDevice *device)
+static eReturnValues asm_nvme_Reset_Bridge(tDevice *device)
 {
     uint8_t cdb[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
-    int ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_RESET_BRIDGE, 0, NULL, NULL, 0);
+    eReturnValues ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_RESET_BRIDGE, 0, NULL, NULL, 0);
     if (ret == SUCCESS)
     {
         //send it
@@ -618,11 +618,11 @@ static int asm_nvme_Reset_Bridge(tDevice *device)
     return ret;
 }
 
-static int asm_nvme_Relink_Bridge(tDevice *device, bool normalShutdownBeforeDisconnect)
+static eReturnValues asm_nvme_Relink_Bridge(tDevice *device, bool normalShutdownBeforeDisconnect)
 {
     uint8_t cdb[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
-    int ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_RELINK_USB, normalShutdownBeforeDisconnect ? 1 : 0, NULL, NULL, 0);
+    eReturnValues ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_RELINK_USB, normalShutdownBeforeDisconnect ? 1 : 0, NULL, NULL, 0);
     if (ret == SUCCESS)
     {
         //send it
@@ -635,7 +635,7 @@ static int asm_nvme_Relink_Bridge(tDevice *device, bool normalShutdownBeforeDisc
     return ret;
 }
 
-int asm_nvme_Reset(tDevice *device)
+eReturnValues asm_nvme_Reset(tDevice *device)
 {
     //shutdown, then reset bridge
     if (SUCCESS == asm_nvme_Shutdown(device, true))
@@ -663,7 +663,7 @@ int asm_nvme_Reset(tDevice *device)
     }
 }
 
-int asm_nvme_Subsystem_Reset(tDevice *device)
+eReturnValues asm_nvme_Subsystem_Reset(tDevice *device)
 {
     //relink USB command
     return asm_nvme_Relink_Bridge(device, true);

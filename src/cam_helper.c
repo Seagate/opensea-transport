@@ -89,9 +89,9 @@ typedef struct _spartitionInfo
 }spartitionInfo, * ptrsPartitionInfo;
 //partitionInfoList is a pointer to the beginning of the list
 //listCount is the number of these structures, which should be returned by get_Partition_Count
-static int get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
+static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
 {
-    int result = SUCCESS;
+    eReturnValues result = SUCCESS;
     int matchesFound = 0;
     if (listCount > 0)
     {
@@ -133,9 +133,9 @@ static int get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo par
     return result;
 }
 
-static int set_Device_Partition_Info(tDevice* device)
+static eReturnValues set_Device_Partition_Info(tDevice* device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     int partitionCount = 0;
     partitionCount = get_Partition_Count(device->os_info.name);
 #if defined (_DEBUG)
@@ -186,12 +186,13 @@ static int set_Device_Partition_Info(tDevice* device)
     return ret;
 }
 
-int get_Device( const char *filename, tDevice *device )
+eReturnValues get_Device( const char *filename, tDevice *device )
 {
     struct ccb_getdev cgd;
     struct ccb_pathinq cpi;
     union ccb         *ccb = NULL;
-    int               ret  = SUCCESS, this_drive_type = 0;
+    eReturnValues ret = SUCCESS;
+    int this_drive_type = 0;
     char devName[20] = { 0 };
     int devUnit = 0;
 	char *deviceHandle = NULL;
@@ -444,9 +445,9 @@ int get_Device( const char *filename, tDevice *device )
     return ret;
 }
 
-int send_IO( ScsiIoCtx *scsiIoCtx )
+eReturnValues send_IO( ScsiIoCtx *scsiIoCtx )
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     //printf("%s -->\n",__FUNCTION__);
 
     if (scsiIoCtx->device->drive_info.interface_type == SCSI_INTERFACE)
@@ -503,9 +504,9 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     return ret;
 }
 
-int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
+eReturnValues send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
 {
-    int              ret       = SUCCESS;
+    eReturnValues ret = SUCCESS;
     union ccb        *ccb      = NULL;
     struct ccb_ataio *ataio    = NULL;
     u_int32_t        direction = 0;
@@ -714,9 +715,9 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
                 /* Always asking for the results at this time. */
                 ccb->ataio.cmd.flags |= CAM_ATAIO_NEEDRESULT;
                 start_Timer(&commandTimer);
-                ret = cam_send_ccb(scsiIoCtx->device->os_info.cam_dev, ccb);
+                int ioctlResult = cam_send_ccb(scsiIoCtx->device->os_info.cam_dev, ccb);
                 stop_Timer(&commandTimer);
-                if (ret < 0)
+                if (ioctlResult < 0)
                 {
                     perror("error sending ATA I/O");
                     cam_error_print(scsiIoCtx->device->os_info.cam_dev, ccb, CAM_ESF_ALL /*error string flags*/, CAM_EPF_ALL, stdout);
@@ -828,12 +829,12 @@ int send_Ata_Cam_IO( ScsiIoCtx *scsiIoCtx )
 }
 
 
-int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
+eReturnValues send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
 {
     #if defined (_DEBUG)
     printf("--> %s\n", __FUNCTION__);
     #endif
-    int ret = 0;
+    eReturnValues ret = SUCCESS;
     //device * device = scsiIoCtx->device;
     struct ccb_scsiio *csio = NULL;
     union ccb         *ccb  = NULL;
@@ -961,9 +962,9 @@ int send_Scsi_Cam_IO( ScsiIoCtx *scsiIoCtx )
         seatimer_t commandTimer;
         memset(&commandTimer, 0, sizeof(seatimer_t));
         start_Timer(&commandTimer);
-        ret = cam_send_ccb(scsiIoCtx->device->os_info.cam_dev, ccb);
+        int ioctlResult = cam_send_ccb(scsiIoCtx->device->os_info.cam_dev, ccb);
         stop_Timer(&commandTimer);
-        if (ret < 0)
+        if (ioctlResult < 0)
         {
             perror("cam_send_cdb");
         }
@@ -1134,7 +1135,7 @@ static int ada_filter( const struct dirent *entry )
     }
 }
 
-int close_Device(tDevice *dev)
+eReturnValues close_Device(tDevice *dev)
 {
     if (dev->os_info.cam_dev)
     {
@@ -1161,7 +1162,7 @@ int close_Device(tDevice *dev)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
+eReturnValues get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 {
 	int  num_da_devs = 0, num_ada_devs = 0;
 	int num_nvme_devs = 0;
@@ -1232,9 +1233,9 @@ int get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, M_ATTR_UNUSED uint64_t flags)
+eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, M_ATTR_UNUSED uint64_t flags)
 {
-    int returnValue = SUCCESS;
+    eReturnValues returnValue = SUCCESS;
     uint32_t numberOfDevices = 0;
     uint32_t driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     char name[80]; //Because get device needs char
@@ -1331,7 +1332,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 d->deviceVerbosity = temp;
                 d->sanity.size = ver.size;
                 d->sanity.version = ver.version;
-                int ret = get_Device(name, d);
+                eReturnValues ret = get_Device(name, d);
                 if (ret != SUCCESS)
                 {
                     failedGetDeviceCount++;
@@ -1368,29 +1369,29 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     return returnValue;
 }
 
-int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Flush(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Flush(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Device_Reset(tDevice *device)
+eReturnValues os_Device_Reset(tDevice *device)
 {
-    int ret = OS_COMMAND_NOT_AVAILABLE;
+    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     union ccb *ccb = cam_getccb(device->os_info.cam_dev);
     if (ccb)
     {
@@ -1413,9 +1414,9 @@ int os_Device_Reset(tDevice *device)
     return ret;
 }
     
-int os_Bus_Reset(tDevice *device)
+eReturnValues os_Bus_Reset(tDevice *device)
 {
-    int ret = OS_COMMAND_NOT_AVAILABLE;
+    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     union ccb *ccb = cam_getccb(device->os_info.cam_dev);
     if (ccb)
     {
@@ -1438,17 +1439,17 @@ int os_Bus_Reset(tDevice *device)
     return ret;
 }
 
-int os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
+eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
 #if defined(DISABLE_NVME_PASSTHROUGH)
     return OS_COMMAND_NOT_AVAILABLE;
 #else //DISABLE_NVME_PASSTHROUGH
-	int ret = SUCCESS;
+	eReturnValues ret = SUCCESS;
 	int32_t ioctlResult = 0;
 	seatimer_t commandTimer;
 	memset(&commandTimer, 0, sizeof(commandTimer));
@@ -1559,10 +1560,10 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 #endif //DISABLE_NVME_PASSTHROUGH
 }
 
-int os_nvme_Reset(tDevice *device)
+eReturnValues os_nvme_Reset(tDevice *device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-	int ret = OS_PASSTHROUGH_FAILURE;
+	eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 	int handleToReset = device->os_info.fd;
 	seatimer_t commandTimer;
 	int ioRes = 0;
@@ -1603,23 +1604,23 @@ int os_nvme_Reset(tDevice *device)
 #endif //DISABLE_NVME_PASSTHROUGH
 }
 
-int os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Lock_Device(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Lock_Device(M_ATTR_UNUSED tDevice *device)
 {
     //There is nothing to lock since you cannot open a CAM device with O_NONBLOCK
     return SUCCESS;
 }
 
-int os_Unlock_Device(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Unlock_Device(M_ATTR_UNUSED tDevice *device)
 {
     //There is nothing to unlock since you cannot open a CAM device with O_NONBLOCK
     return SUCCESS;
@@ -1632,7 +1633,7 @@ int os_Unlock_Device(M_ATTR_UNUSED tDevice *device)
 //This looks very similar to the Linux getmntent:
 //getfsent ???https://www.freebsd.org/cgi/man.cgi?query=getfsent&sektion=3&apropos=0&manpath=FreeBSD+13.0-RELEASE+and+Ports
 
-int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
 {
     //TODO: I have not found an analog to Linux which is usually the most helpful for figuring out what to do.
     //      I haven't found any other API or IOCTL that reloads the partition table on the disk (which is pretty close)
@@ -1643,14 +1644,14 @@ int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
     return NOT_SUPPORTED;
 }
 
-int os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Unmount_File_Systems_On_Device(tDevice *device)
+eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     int partitionCount = 0;
     partitionCount = get_Partition_Count(device->os_info.name);
 #if defined (_DEBUG)

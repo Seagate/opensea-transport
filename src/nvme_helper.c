@@ -46,9 +46,9 @@ static void fill_NVMe_Strings_From_Ctrl_Data(uint8_t* ptrCtrlData, char nvmMN[NV
 // \brief Sends a set Identify etc commands & fills in the device information
 // \param device device struture
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-int fill_In_NVMe_Device_Info(tDevice *device)
+eReturnValues fill_In_NVMe_Device_Info(tDevice *device)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     
     //set some pointers to where we want to fill in information...we're doing this so that on USB, we can store some info about the child drive, without disrupting the standard drive_info that has already been filled in by the fill_SCSI_Info function
     uint64_t *fillWWN = &device->drive_info.worldWideName;
@@ -269,9 +269,9 @@ void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord, bool *doNotRetr
 
 //TODO: this function needs to be expanded as new status codes are added
 //TODO: use doNotRetry and more bits in some useful way?
-int check_NVMe_Status(uint32_t nvmeStatusDWord)
+eReturnValues check_NVMe_Status(uint32_t nvmeStatusDWord)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     //bool doNotRetry = nvmeStatusDWord & BIT31;
     //bool more  = nvmeStatusDWord & BIT30;
     uint8_t statusCodeType = M_GETBITRANGE(nvmeStatusDWord, 27, 25);
@@ -1025,9 +1025,9 @@ char *nvme_cmd_to_string(int admin, uint8_t opcode)
     return "Unknown";
 }
 
-int nvme_Get_SMART_Log_Page(tDevice *device, uint32_t nsid, uint8_t * pData, uint32_t dataLen)
+eReturnValues nvme_Get_SMART_Log_Page(tDevice *device, uint32_t nsid, uint8_t * pData, uint32_t dataLen)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
     nvmeSmartLog * smartLog; // in case we need to align memory
 #ifdef _DEBUG
@@ -1054,9 +1054,9 @@ int nvme_Get_SMART_Log_Page(tDevice *device, uint32_t nsid, uint8_t * pData, uin
     return ret;
 }
 
-int nvme_Get_ERROR_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen)
+eReturnValues nvme_Get_ERROR_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
 #ifdef _DEBUG
     printf("-->%s\n",__FUNCTION__);
@@ -1079,9 +1079,9 @@ int nvme_Get_ERROR_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen)
     return ret;
 }
 
-int nvme_Get_FWSLOTS_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen)
+eReturnValues nvme_Get_FWSLOTS_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
 #ifdef _DEBUG
     printf("-->%s\n",__FUNCTION__);
@@ -1104,9 +1104,9 @@ int nvme_Get_FWSLOTS_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen
     return ret;
 }
 
-int nvme_Get_CmdSptEfft_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen)
+eReturnValues nvme_Get_CmdSptEfft_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
 #ifdef _DEBUG
     printf("-->%s\n",__FUNCTION__);
@@ -1129,9 +1129,9 @@ int nvme_Get_CmdSptEfft_Log_Page(tDevice *device, uint8_t * pData, uint32_t data
     return ret;
 }
 
-int nvme_Get_DevSelfTest_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen)
+eReturnValues nvme_Get_DevSelfTest_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
 #ifdef _DEBUG
     printf("-->%s\n",__FUNCTION__);
@@ -1154,9 +1154,9 @@ int nvme_Get_DevSelfTest_Log_Page(tDevice *device, uint8_t * pData, uint32_t dat
     return ret;
 }
 //Seagate unique?
-int nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *ExtdSMARTInfo)
+eReturnValues nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *ExtdSMARTInfo)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     nvmeGetLogPageCmdOpts getExtSMARTLog;
     memset(&getExtSMARTLog, 0, sizeof(nvmeGetLogPageCmdOpts));
     getExtSMARTLog.dataLen = sizeof(EXTENDED_SMART_INFO_T);

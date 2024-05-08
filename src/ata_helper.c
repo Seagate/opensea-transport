@@ -67,9 +67,9 @@ static bool is_Buffer_Non_Zero(uint8_t* ptrData, uint32_t dataLen)
 }
 
 //This will send a read log ext command, and if it's DMA and sense data tells us that we had an invalid field in CDB, then we retry with PIO mode
-int send_ATA_Read_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint16_t featureRegister)
+eReturnValues send_ATA_Read_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint16_t featureRegister)
 {
-    int ret = NOT_SUPPORTED;
+    eReturnValues ret = NOT_SUPPORTED;
     if (device->drive_info.ata_Options.generalPurposeLoggingSupported)
     {
         bool dmaRetry = false;
@@ -118,9 +118,9 @@ int send_ATA_Read_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t page
     return ret;
 }
 
-int send_ATA_Write_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, bool forceRTFRs)
+eReturnValues send_ATA_Write_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, bool forceRTFRs)
 {
-    int ret = NOT_SUPPORTED;
+    eReturnValues ret = NOT_SUPPORTED;
     if (device->drive_info.ata_Options.generalPurposeLoggingSupported)
     {
         bool dmaRetry = false;
@@ -161,9 +161,9 @@ int send_ATA_Write_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pag
     return ret;
 }
 
-int send_ATA_SCT(tDevice *device, eDataTransferDirection direction, uint8_t logAddress, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs)
+eReturnValues send_ATA_SCT(tDevice *device, eDataTransferDirection direction, uint8_t logAddress, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     if (logAddress != ATA_SCT_COMMAND_STATUS && logAddress != ATA_SCT_DATA_TRANSFER)
     {
         return BAD_PARAMETER;
@@ -207,9 +207,9 @@ int send_ATA_SCT(tDevice *device, eDataTransferDirection direction, uint8_t logA
     return ret;
 }
 
-int send_ATA_SCT_Status(tDevice *device, uint8_t *dataBuf, uint32_t dataSize)
+eReturnValues send_ATA_SCT_Status(tDevice *device, uint8_t *dataBuf, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     if (dataSize < LEGACY_DRIVE_SEC_SIZE)
     {
         return FAILURE;
@@ -219,9 +219,9 @@ int send_ATA_SCT_Status(tDevice *device, uint8_t *dataBuf, uint32_t dataSize)
     return ret;
 }
 
-int send_ATA_SCT_Command(tDevice *device, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs)
+eReturnValues send_ATA_SCT_Command(tDevice *device, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     if (dataSize < LEGACY_DRIVE_SEC_SIZE)
     {
         return FAILURE;
@@ -231,18 +231,18 @@ int send_ATA_SCT_Command(tDevice *device, uint8_t *dataBuf, uint32_t dataSize, b
     return ret;
 }
 
-int send_ATA_SCT_Data_Transfer(tDevice *device, eDataTransferDirection direction, uint8_t *dataBuf, uint32_t dataSize)
+eReturnValues send_ATA_SCT_Data_Transfer(tDevice *device, eDataTransferDirection direction, uint8_t *dataBuf, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
 
     ret = send_ATA_SCT(device, direction, ATA_SCT_DATA_TRANSFER, dataBuf, dataSize, false);
 
     return ret;
 }
 
-int send_ATA_SCT_Read_Write_Long(tDevice *device, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested)
+eReturnValues send_ATA_SCT_Read_Write_Long(tDevice *device, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     uint8_t readWriteLongCommandSector[LEGACY_DRIVE_SEC_SIZE] = { 0 };
 
     //action code
@@ -306,9 +306,9 @@ int send_ATA_SCT_Read_Write_Long(tDevice *device, eSCTRWLMode mode, uint64_t lba
     return ret;
 }
 
-int send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode, uint64_t startLBA, uint64_t fillCount, uint8_t *pattern, uint64_t patternLength)
+eReturnValues send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode, uint64_t startLBA, uint64_t fillCount, uint8_t *pattern, uint64_t patternLength)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     uint8_t *writeSameBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!writeSameBuffer)
     {
@@ -385,9 +385,9 @@ int send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode
     return ret;
 }
 
-int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit)
+eReturnValues send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     uint8_t *errorRecoveryBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!errorRecoveryBuffer)
     {
@@ -424,9 +424,9 @@ int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, 
     return ret;
 }
 
-int send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags)
+eReturnValues send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     uint8_t *featureControlBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!featureControlBuffer)
     {
@@ -480,9 +480,9 @@ int send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_
     return ret;
 }
 
-int send_ATA_SCT_Data_Table(tDevice *device, uint16_t functionCode, uint16_t tableID, uint8_t *dataBuf, uint32_t dataSize)
+eReturnValues send_ATA_SCT_Data_Table(tDevice *device, uint16_t functionCode, uint16_t tableID, uint8_t *dataBuf, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
 
     if (!dataBuf)
     {
@@ -513,9 +513,9 @@ int send_ATA_SCT_Data_Table(tDevice *device, uint16_t functionCode, uint16_t tab
     return ret;
 }
 
-int send_ATA_Download_Microcode_Cmd(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, uint8_t *pData, uint32_t dataLen, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds)
+eReturnValues send_ATA_Download_Microcode_Cmd(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, uint8_t *pData, uint32_t dataLen, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds)
 {
-    int ret = NOT_SUPPORTED;
+    eReturnValues ret = NOT_SUPPORTED;
     bool dmaRetry = false;
     if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.downloadMicrocodeDMASupported)
     {
@@ -551,9 +551,9 @@ int send_ATA_Download_Microcode_Cmd(tDevice *device, eDownloadMicrocodeFeatures 
     return ret;
 }
 
-int send_ATA_Trusted_Send_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues send_ATA_Trusted_Send_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = NOT_SUPPORTED;
+    eReturnValues ret = NOT_SUPPORTED;
     bool dmaRetry = false;
     static bool dmaTrustedCmd = true;
     if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && dmaTrustedCmd && device->drive_info.ata_Options.dmaSupported)
@@ -590,9 +590,9 @@ int send_ATA_Trusted_Send_Cmd(tDevice *device, uint8_t securityProtocol, uint16_
     return ret;
 }
 
-int send_ATA_Trusted_Receive_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues send_ATA_Trusted_Receive_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = NOT_SUPPORTED;
+    eReturnValues ret = NOT_SUPPORTED;
     bool dmaRetry = false;
     static bool dmaTrustedCmd = true;
     if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && dmaTrustedCmd && device->drive_info.ata_Options.dmaSupported)
@@ -629,9 +629,9 @@ int send_ATA_Trusted_Receive_Cmd(tDevice *device, uint8_t securityProtocol, uint
     return ret;
 }
 
-int send_ATA_Read_Buffer_Cmd(tDevice *device, uint8_t *ptrData)
+eReturnValues send_ATA_Read_Buffer_Cmd(tDevice *device, uint8_t *ptrData)
 {
-    int ret = NOT_SUPPORTED;
+    eReturnValues ret = NOT_SUPPORTED;
     bool dmaRetry = false;
     if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.readBufferDMASupported)
     {
@@ -667,9 +667,9 @@ int send_ATA_Read_Buffer_Cmd(tDevice *device, uint8_t *ptrData)
     return ret;
 }
 
-int send_ATA_Write_Buffer_Cmd(tDevice *device, uint8_t *ptrData)
+eReturnValues send_ATA_Write_Buffer_Cmd(tDevice *device, uint8_t *ptrData)
 {
-    int ret = NOT_SUPPORTED;
+    eReturnValues ret = NOT_SUPPORTED;
     bool dmaRetry = false;
     if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && device->drive_info.ata_Options.writeBufferDMASupported)
     {
@@ -705,9 +705,9 @@ int send_ATA_Write_Buffer_Cmd(tDevice *device, uint8_t *ptrData)
     return ret;
 }
 
-int send_ATA_Read_Stream_Cmd(tDevice *device, uint8_t streamID, bool notSequential, bool readContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues send_ATA_Read_Stream_Cmd(tDevice *device, uint8_t streamID, bool notSequential, bool readContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = NOT_SUPPORTED;
+    eReturnValues ret = NOT_SUPPORTED;
     bool dmaRetry = false;
     static bool streamDMA = true;
     if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && streamDMA && device->drive_info.ata_Options.dmaSupported)
@@ -744,9 +744,9 @@ int send_ATA_Read_Stream_Cmd(tDevice *device, uint8_t streamID, bool notSequenti
     return ret;
 }
 
-int send_ATA_Write_Stream_Cmd(tDevice *device, uint8_t streamID, bool flush, bool writeContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues send_ATA_Write_Stream_Cmd(tDevice *device, uint8_t streamID, bool flush, bool writeContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = NOT_SUPPORTED;
+    eReturnValues ret = NOT_SUPPORTED;
     bool dmaRetry = false;
     static bool streamDMA = true;
     if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && streamDMA && device->drive_info.ata_Options.dmaSupported)
@@ -882,9 +882,9 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData, char ataMN[AT
     return;
 }
 
-int fill_In_ATA_Drive_Info(tDevice *device)
+eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     //Both pointers pointing to the same data. 
     uint16_t *ident_word = &device->drive_info.IdentifyData.ata.Word000;
     uint8_t *identifyData = C_CAST(uint8_t *, &device->drive_info.IdentifyData.ata.Word000);
@@ -2219,9 +2219,9 @@ bool is_Checksum_Valid(uint8_t *ptrData, uint32_t dataSize, uint32_t *firstInval
     return isValid;
 }
 
-int set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize)
+eReturnValues set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (!ptrData)
     {
         return BAD_PARAMETER;
@@ -2320,9 +2320,9 @@ static bool is_Current_CHS_Info_Valid(tDevice *device)
 //}
 
 //device parameter needed so we can see the current CHS configuration and translate properly...
-int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t *lba)
+eReturnValues convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t *lba)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (lba)
     {
         if (is_CHS_Mode_Supported(device))
@@ -2344,9 +2344,9 @@ int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_
     return ret;
 }
 
-int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_t *head, uint8_t *sector)
+eReturnValues convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_t *head, uint8_t *sector)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     lba &= MAX_28_BIT_LBA;
     if (cylinder && head &&sector)
     {

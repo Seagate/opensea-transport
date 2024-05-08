@@ -22,9 +22,9 @@
 
 //TODO: commands that do not include retries. Currently only retries versions are implemented.
 
-int ata_Legacy_Format_Track(tDevice *device, uint8_t feature, uint8_t sectorCount, uint8_t sectorNumber, uint8_t cylinderLow, uint8_t cylinderHigh, uint8_t *ptrData, uint32_t dataSize, eAtaProtocol protocol, bool lbaMode)
+eReturnValues ata_Legacy_Format_Track(tDevice *device, uint8_t feature, uint8_t sectorCount, uint8_t sectorNumber, uint8_t cylinderLow, uint8_t cylinderHigh, uint8_t *ptrData, uint32_t dataSize, eAtaProtocol protocol, bool lbaMode)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
@@ -82,9 +82,9 @@ int ata_Legacy_Format_Track(tDevice *device, uint8_t feature, uint8_t sectorCoun
     return ret;
 }
 
-int ata_Legacy_Recalibrate(tDevice *device, uint8_t lowCmdNibble, bool chsMode)
+eReturnValues ata_Legacy_Recalibrate(tDevice *device, uint8_t lowCmdNibble, bool chsMode)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
@@ -145,9 +145,9 @@ int ata_Legacy_Recalibrate(tDevice *device, uint8_t lowCmdNibble, bool chsMode)
     return ret;
 }
 
-int ata_Legacy_Read_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd)
+eReturnValues ata_Legacy_Read_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
@@ -229,9 +229,9 @@ int ata_Legacy_Read_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, ui
     return ret;
 }
 
-int ata_Legacy_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd)
+eReturnValues ata_Legacy_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
@@ -306,9 +306,9 @@ int ata_Legacy_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t hea
     return ret;
 }
 
-int ata_Legacy_Set_Max_Address_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volitileValue)
+eReturnValues ata_Legacy_Set_Max_Address_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volitileValue)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
@@ -347,9 +347,9 @@ int ata_Legacy_Set_Max_Address_CHS(tDevice *device, uint16_t newMaxCylinder, uin
     return ret;
 }
 
-int ata_Legacy_Set_Max_Address_Ext_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volatileValue)
+eReturnValues ata_Legacy_Set_Max_Address_Ext_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volatileValue)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
@@ -390,9 +390,9 @@ int ata_Legacy_Set_Max_Address_Ext_CHS(tDevice *device, uint16_t newMaxCylinder,
     return ret;
 }
 
-int ata_Legacy_Read_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd)
+eReturnValues ata_Legacy_Read_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
@@ -460,9 +460,9 @@ int ata_Legacy_Read_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head
     return ret;
 }
 
-int ata_Legacy_Read_Verify_Sectors_CHS(tDevice *device, bool extendedCmd, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector)
+eReturnValues ata_Legacy_Read_Verify_Sectors_CHS(tDevice *device, bool extendedCmd, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
@@ -525,9 +525,9 @@ int ata_Legacy_Read_Verify_Sectors_CHS(tDevice *device, bool extendedCmd, uint16
     return ret;
 }
 
-int ata_Legacy_Read_Verify_Sectors_No_Retry_CHS(tDevice *device, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector)
+eReturnValues ata_Legacy_Read_Verify_Sectors_No_Retry_CHS(tDevice *device, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
@@ -564,9 +564,9 @@ int ata_Legacy_Read_Verify_Sectors_No_Retry_CHS(tDevice *device, uint16_t number
     return ret;
 }
 
-int ata_Read_Verify_Sectors_No_Retry(tDevice *device, uint16_t numberOfSectors, uint64_t LBA)
+eReturnValues ata_Read_Verify_Sectors_No_Retry(tDevice *device, uint16_t numberOfSectors, uint64_t LBA)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
@@ -604,9 +604,9 @@ int ata_Read_Verify_Sectors_No_Retry(tDevice *device, uint16_t numberOfSectors, 
     return ret;
 }
 
-int ata_Legacy_Write_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua)
+eReturnValues ata_Legacy_Write_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
@@ -694,9 +694,9 @@ int ata_Legacy_Write_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, u
     return ret;
 }
 
-int ata_Legacy_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua)
+eReturnValues ata_Legacy_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
@@ -779,9 +779,9 @@ int ata_Legacy_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t he
     return ret;
 }
 
-int ata_Legacy_Write_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd)
+eReturnValues ata_Legacy_Write_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
@@ -848,9 +848,9 @@ int ata_Legacy_Write_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t hea
     return ret;
 }
 //Lower nibble of command opcode is allowed on really really old drives.
-int ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t lowCmdNibble)
+eReturnValues ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t lowCmdNibble)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
@@ -887,9 +887,9 @@ int ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_
     return ret;
 }
 
-int ata_Legacy_Seek(tDevice *device, uint32_t lba, uint8_t lowCmdNibble)
+eReturnValues ata_Legacy_Seek(tDevice *device, uint32_t lba, uint8_t lowCmdNibble)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
@@ -927,9 +927,9 @@ int ata_Legacy_Seek(tDevice *device, uint32_t lba, uint8_t lowCmdNibble)
     return ret;
 }
 
-int ata_Legacy_Read_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues ata_Legacy_Read_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
@@ -979,9 +979,9 @@ int ata_Legacy_Read_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, u
     return ret;
 }
 
-int ata_Legacy_Read_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues ata_Legacy_Read_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
@@ -1031,9 +1031,9 @@ int ata_Legacy_Read_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *p
     return ret;
 }
 
-int ata_Legacy_Write_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues ata_Legacy_Write_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
@@ -1082,9 +1082,9 @@ int ata_Legacy_Write_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, 
     return ret;
 }
 
-int ata_Legacy_Write_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues ata_Legacy_Write_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
@@ -1134,9 +1134,9 @@ int ata_Legacy_Write_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *
     return ret;
 }
 
-int ata_Legacy_Write_Same_CHS(tDevice *device, uint8_t subcommand, uint8_t numberOfSectorsToWrite, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues ata_Legacy_Write_Same_CHS(tDevice *device, uint8_t subcommand, uint8_t numberOfSectorsToWrite, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
@@ -1194,9 +1194,9 @@ int ata_Legacy_Write_Same_CHS(tDevice *device, uint8_t subcommand, uint8_t numbe
     return ret;
 }
 
-int ata_Legacy_Write_Same(tDevice *device, uint8_t subcommand, uint8_t numberOfSectorsToWrite, uint32_t lba, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues ata_Legacy_Write_Same(tDevice *device, uint8_t subcommand, uint8_t numberOfSectorsToWrite, uint32_t lba, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
@@ -1255,9 +1255,9 @@ int ata_Legacy_Write_Same(tDevice *device, uint8_t subcommand, uint8_t numberOfS
     return ret;
 }
 
-int ata_Legacy_Write_Verify_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues ata_Legacy_Write_Verify_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
@@ -1298,9 +1298,9 @@ int ata_Legacy_Write_Verify_CHS(tDevice *device, uint16_t cylinder, uint8_t head
     return ret;
 }
 
-int ata_Legacy_Write_Verify(tDevice *device, uint32_t lba, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues ata_Legacy_Write_Verify(tDevice *device, uint32_t lba, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
@@ -1342,9 +1342,9 @@ int ata_Legacy_Write_Verify(tDevice *device, uint32_t lba, uint8_t *ptrData, uin
     return ret;
 }
 
-int ata_Legacy_Identify_Device_DMA(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues ata_Legacy_Identify_Device_DMA(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand identify;
     memset(&identify, 0, sizeof(ataPassthroughCommand));
     identify.commandType = ATA_CMD_TYPE_TASKFILE;
@@ -1417,9 +1417,9 @@ int ata_Legacy_Identify_Device_DMA(tDevice *device, uint8_t *ptrData, uint32_t d
     return ret;
 }
 
-int ata_Legacy_Check_Power_Mode(tDevice *device, uint8_t *powerMode)
+eReturnValues ata_Legacy_Check_Power_Mode(tDevice *device, uint8_t *powerMode)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandDirection = XFER_NO_DATA;

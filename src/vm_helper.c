@@ -642,7 +642,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 //map a block handle (sd) to a generic handle (sg or bsg)
 //incoming handle can be either sd, sg, or bsg type
 //TODO: handle kernels before 2.6 in some other way. This depends on mapping in the file system provided by 2.6 and later.
-int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char **blockHandle)
+eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char **blockHandle)
 {
     if (handle == NULL)
     {
@@ -845,11 +845,11 @@ long get_Device_Page_Size(void)
 }
 
 #define LIN_MAX_HANDLE_LENGTH 16
-int get_Device(const char *filename, tDevice *device)
+eReturnValues get_Device(const char *filename, tDevice *device)
 {
     char *deviceHandle = NULL;
-    int ret = SUCCESS, k = 0;
-    int rc;
+    eReturnValues ret = SUCCESS;
+    eReturnValues rc;
     struct nvme_adapter_list nvmeAdptList;
     bool isScsi = false;
     char *nvmeDevName;
@@ -1121,13 +1121,13 @@ int get_Device(const char *filename, tDevice *device)
 }
 //http://www.tldp.org/HOWTO/SCSI-Generic-HOWTO/scsi_reset.html
 //sgResetType should be one of the values from the link above...so bus or device...controller will work but that shouldn't be done ever.
-int sg_reset(int fd, int resetType)
+eReturnValues sg_reset(int fd, int resetType)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     
-    ret = ioctl(fd, SG_SCSI_RESET, &resetType);
+    int ioctlResult = ioctl(fd, SG_SCSI_RESET, &resetType);
 
-    if (ret < 0)
+    if (ioctlResult < 0)
     {
         #if defined(_DEBUG)
         printf("Reset failure! errorcode: %d, errno: %d\n",ret, errno);
@@ -1159,24 +1159,24 @@ int sg_reset(int fd, int resetType)
     return ret;
 }
 
-int os_Device_Reset(tDevice *device)
+eReturnValues os_Device_Reset(tDevice *device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_DEVICE);
 }
 
-int os_Bus_Reset(tDevice *device)
+eReturnValues os_Bus_Reset(tDevice *device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_BUS);
 }
 
-int os_Controller_Reset(tDevice *device)
+eReturnValues os_Controller_Reset(tDevice *device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_HOST);
 }
 
-int send_IO( ScsiIoCtx *scsiIoCtx )
+eReturnValues send_IO( ScsiIoCtx *scsiIoCtx )
 {
-    int ret = FAILURE;    
+    eReturnValues ret = FAILURE;    
 #ifdef _DEBUG
     printf("-->%s \n",__FUNCTION__);
 #endif
@@ -1228,11 +1228,11 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     return ret;
 }
 
-int send_sg_io( ScsiIoCtx *scsiIoCtx )
+eReturnValues send_sg_io( ScsiIoCtx *scsiIoCtx )
 {
     sg_io_hdr_t io_hdr;
     uint8_t     *localSenseBuffer = NULL;
-    int         ret          = SUCCESS;
+    eReturnValues         ret          = SUCCESS;
     seatimer_t  commandTimer;
 #ifdef _DEBUG
     printf("-->%s \n",__FUNCTION__);
@@ -1343,10 +1343,10 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     //print_io_hdr(&io_hdr);
     //printf("scsiIoCtx->device->os_info.fd = %d\n", scsiIoCtx->device->os_info.fd);
     start_Timer(&commandTimer);
-    ret = ioctl(scsiIoCtx->device->os_info.fd, SG_IO, &io_hdr);
+    int ioctlResult = ioctl(scsiIoCtx->device->os_info.fd, SG_IO, &io_hdr);
     stop_Timer(&commandTimer);
     scsiIoCtx->device->os_info.last_error = errno;
-    if (ret < 0)
+    if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
         if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
@@ -1623,10 +1623,10 @@ static int nvme_filter( const struct dirent *entry)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
+eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
     int  num_devs = 0, num_nvme_devs = 0;
-    int rc;
+    eReturnValues rc;
     struct nvme_adapter_list nvmeAdptList;
 
     struct dirent **namelist;
@@ -1685,16 +1685,16 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
+eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
 {
-    int returnValue = SUCCESS;
+    eReturnValues returnValue = SUCCESS;
     int numberOfDevices = 0;
     int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     char name[128] = { 0 }; //Because get device needs char
     int fd;
     tDevice * d = NULL;
     struct nvme_adapter_list nvmeAdptList;
-    int rc;
+    eReturnValues rc;
 #if defined (DEGUG_SCAN_TIME)
     seatimer_t getDeviceTimer;
     seatimer_t getDeviceListTimer;
@@ -1779,7 +1779,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 start_Timer(&getDeviceTimer);
 #endif
                 d->dFlags = flags;
-                int ret = get_Device(name, d);
+                eReturnValues ret = get_Device(name, d);
 #if defined (DEGUG_SCAN_TIME)
                 stop_Timer(&getDeviceTimer);
                 printf("Time to get %s = %fms\n", name, get_Milli_Seconds(getDeviceTimer));
@@ -1837,7 +1837,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int close_Device(tDevice *dev)
+eReturnValues close_Device(tDevice *dev)
 {
     int retValue = 0;
     bool isNVMe = false;
@@ -1881,10 +1881,10 @@ int close_Device(tDevice *dev)
     }
 }
 
-int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
+eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 {
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-    int ret = 0;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
+    eReturnValues ret = 0;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
     struct usr_io uio;
 
 #ifdef _DEBUG
@@ -2062,13 +2062,13 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 #endif //DISABLE_NVME_PASSTHROUGH
 }
 
-int os_nvme_Reset(tDevice *device)
+eReturnValues os_nvme_Reset(tDevice *device)
 {
     //This is a stub. If this is possible, this should perform an nvme reset;
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-int os_nvme_Subsystem_Reset(tDevice *device)
+eReturnValues os_nvme_Subsystem_Reset(tDevice *device)
 {
     //This is a stub. If this is possible, this should perform an nvme subsystem reset;
     return OS_COMMAND_NOT_AVAILABLE;
@@ -2076,10 +2076,10 @@ int os_nvme_Subsystem_Reset(tDevice *device)
 
 //Case to remove this from sg_helper.h/c and have a platform/lin/pci-herlper.h vs platform/win/pci-helper.c 
 
-int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
+eReturnValues pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
 {
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     int fd=0;
     void * barRegs = NULL;
     char sysfsPath[PATH_MAX];
@@ -2114,29 +2114,29 @@ int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
 #endif //DISABLE_NVME_PASSTHROUGH
 }
 
-int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Flush(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Flush(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Lock_Device(tDevice *device)
+eReturnValues os_Lock_Device(tDevice *device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (device->drive_info.drive_type == NVME_DRIVE)
     {
         //Not sure what to do
@@ -2153,9 +2153,9 @@ int os_Lock_Device(tDevice *device)
     return ret;
 }
 
-int os_Unlock_Device(tDevice *device)
+eReturnValues os_Unlock_Device(tDevice *device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (device->drive_info.drive_type == NVME_DRIVE)
     {
         //Not sure what to do
@@ -2172,19 +2172,19 @@ int os_Unlock_Device(tDevice *device)
     return ret;
 }
 
-int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
 {
     //note: linux code for blkrrprt might work
     //TODO: Complete this stub when this is figured out - TJE
     return NOT_SUPPORTED;
 }
 
-int os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }

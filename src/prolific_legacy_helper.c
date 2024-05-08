@@ -18,9 +18,9 @@
 #include "ata_helper_func.h"
 
 
-int build_Prolific_Legacy_Passthrough_CDBs(uint8_t lowCDB[16], uint8_t hiCDB[16], bool *highCDBValid, ataPassthroughCommand *ataCommandOptions)
+eReturnValues build_Prolific_Legacy_Passthrough_CDBs(uint8_t lowCDB[16], uint8_t hiCDB[16], bool *highCDBValid, ataPassthroughCommand *ataCommandOptions)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
         *highCDBValid = true;
@@ -77,9 +77,9 @@ int build_Prolific_Legacy_Passthrough_CDBs(uint8_t lowCDB[16], uint8_t hiCDB[16]
     return ret;
 }
 
-int get_RTFRs_From_Prolific_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, int commandRet)
+eReturnValues get_RTFRs_From_Prolific_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, eReturnValues commandRet)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (commandRet == OS_PASSTHROUGH_FAILURE)
     {
         return commandRet;
@@ -111,9 +111,9 @@ int get_RTFRs_From_Prolific_Legacy(tDevice *device, ataPassthroughCommand *ataCo
     return ret;
 }
 
-int send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
+eReturnValues send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     uint8_t prolificLowCDB[CDB_LEN_16] = { 0 };
     uint8_t prolificHighCDB[CDB_LEN_16] = { 0 };
     bool highCDBValid = false;

@@ -48,9 +48,9 @@ bool os_Is_Infinite_Timeout_Supported(void)
 
 #define UEFI_HANDLE_STRING_LENGTH 64
 
-int get_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void **pPassthru, uint32_t controllerID)
+eReturnValues get_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void **pPassthru, uint32_t controllerID)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     EFI_STATUS uefiStatus = EFI_SUCCESS;
     EFI_HANDLE *handle = NULL;
     UINTN nodeCount = 0;
@@ -105,7 +105,7 @@ void close_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void **pPassthru, uint32_t con
     return;
 }
 //ATA PT since UDK 2010
-int get_ATA_Passthru_Protocol_Ptr(EFI_ATA_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
+eReturnValues get_ATA_Passthru_Protocol_Ptr(EFI_ATA_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
 {
     EFI_GUID ataPtGUID = EFI_ATA_PASS_THRU_PROTOCOL_GUID;
     return get_Passthru_Protocol_Ptr(ataPtGUID, C_CAST(void**, pPassthru), controllerID);
@@ -117,7 +117,7 @@ void close_ATA_Passthru_Protocol_Ptr(EFI_ATA_PASS_THRU_PROTOCOL **pPassthru, uin
     return close_Passthru_Protocol_Ptr(ataPtGUID, C_CAST(void**, pPassthru), controllerID);
 }
 
-int get_SCSI_Passthru_Protocol_Ptr(EFI_SCSI_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
+eReturnValues get_SCSI_Passthru_Protocol_Ptr(EFI_SCSI_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
 {
     EFI_GUID scsiPtGUID = EFI_SCSI_PASS_THRU_PROTOCOL_GUID;
     return get_Passthru_Protocol_Ptr(scsiPtGUID, C_CAST(void**, pPassthru), controllerID);
@@ -129,7 +129,7 @@ void close_SCSI_Passthru_Protocol_Ptr(EFI_SCSI_PASS_THRU_PROTOCOL **pPassthru, u
     return close_Passthru_Protocol_Ptr(scsiPtGUID, C_CAST(void**, pPassthru), controllerID);
 }
 
-int get_Ext_SCSI_Passthru_Protocol_Ptr(EFI_EXT_SCSI_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
+eReturnValues get_Ext_SCSI_Passthru_Protocol_Ptr(EFI_EXT_SCSI_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
 {
     EFI_GUID scsiPtGUID = EFI_EXT_SCSI_PASS_THRU_PROTOCOL_GUID;
     return get_Passthru_Protocol_Ptr(scsiPtGUID, C_CAST(void**, pPassthru), controllerID);
@@ -143,7 +143,7 @@ void close_Ext_SCSI_Passthru_Protocol_Ptr(EFI_EXT_SCSI_PASS_THRU_PROTOCOL **pPas
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 //NVMe since UDK 2015
-int get_NVMe_Passthru_Protocol_Ptr(EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
+eReturnValues get_NVMe_Passthru_Protocol_Ptr(EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL **pPassthru, uint32_t controllerID)
 {
     EFI_GUID nvmePtGUID = EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL_GUID;
     return get_Passthru_Protocol_Ptr(nvmePtGUID, C_CAST(void**, pPassthru), controllerID);
@@ -162,7 +162,7 @@ void close_NVMe_Passthru_Protocol_Ptr(EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL **pPass
 //scsiEx:<controllerID>:<target>:<lun>
 //nvme:<controllerID>:<namespaceID>
 
-int get_Device(const char *filename, tDevice *device)
+eReturnValues get_Device(const char *filename, tDevice *device)
 {
     char interface[10] = { 0 };
     snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
@@ -171,7 +171,7 @@ int get_Device(const char *filename, tDevice *device)
     if (strstr(filename, "ata"))
     {
         int res = sscanf(filename, "%3s:%" SCNx16 ":%" SCNx16 ":%" SCNx16, &interface, &device->os_info.controllerNum, & device->os_info.address.ata.port, &device->os_info.address.ata.portMultiplierPort);
-        if(res >= 4 && res != EOF)
+        if (res >= 4 && res != EOF)
         {
             device->drive_info.interface_type = IDE_INTERFACE;
             device->drive_info.drive_type = ATA_DRIVE;
@@ -342,13 +342,13 @@ int get_Device(const char *filename, tDevice *device)
     return fill_Drive_Info_Data(device);
 }
 
-int device_Reset(ScsiIoCtx *scsiIoCtx)
+eReturnValues device_Reset(ScsiIoCtx *scsiIoCtx)
 {
     //need to investigate if there is a way to do this in uefi
     return NOT_SUPPORTED;
 }
 
-int bus_Reset(ScsiIoCtx *scsiIoCtx)
+eReturnValues bus_Reset(ScsiIoCtx *scsiIoCtx)
 {
     //need to investigate if there is a way to do this in uefi
     return NOT_SUPPORTED;
@@ -437,9 +437,9 @@ void print_UEFI_SCSI_Target_Status(uint8_t targetStatus)
     }
 }
 
-int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
+eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     EFI_STATUS Status = EFI_SUCCESS;
     EFI_SCSI_PASS_THRU_PROTOCOL *pPassthru;
     #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -447,7 +447,7 @@ int send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
     printf("Sending UEFI SCSI Passthru Command\n");
     set_Console_Colors(true, DEFAULT);
     #endif
-    if(SUCCESS == get_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
+    if (SUCCESS == get_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
     {
         seatimer_t commandTimer;
         uint8_t *alignedPointer = scsiIoCtx->pdata;
@@ -746,9 +746,9 @@ void print_UEFI_SCSI_Ex_Target_Status(uint8_t targetStatus)
 }
 
 //TODO: This was added later, prevously only SCSI passthrough existed. May need to add #if defiend (some UDK version)
-int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
+eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     EFI_STATUS Status = EFI_SUCCESS;
     EFI_EXT_SCSI_PASS_THRU_PROTOCOL *pPassthru;
     #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -1013,9 +1013,9 @@ int send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
 }
 
 //TODO: This was added later, prevously only SCSI passthrough existed. May need to add #if defined (some UDK version)
-int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
+eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     EFI_STATUS Status = EFI_SUCCESS;
     EFI_ATA_PASS_THRU_PROTOCOL *pPassthru;
     #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -1361,9 +1361,9 @@ int send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int send_IO( ScsiIoCtx *scsiIoCtx )
+eReturnValues send_IO( ScsiIoCtx *scsiIoCtx )
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
         printf("Sending command with send_IO\n");
@@ -1409,10 +1409,10 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     return ret;
 }
 
-int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
+eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 {
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     EFI_STATUS Status = EFI_SUCCESS;
     EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL *pPassthru;
     #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -1765,12 +1765,12 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 #endif //DISABLE_NVME_PASSTHROUGH
 }
 
-int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize)
+eReturnValues pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-int os_nvme_Reset(tDevice *device)
+eReturnValues os_nvme_Reset(tDevice *device)
 {
     //This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code otherwise compile without ifdefs
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
@@ -1785,7 +1785,7 @@ int os_nvme_Reset(tDevice *device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-int os_nvme_Subsystem_Reset(tDevice *device)
+eReturnValues os_nvme_Subsystem_Reset(tDevice *device)
 {
     //This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code otherwise compile without ifdefs
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
@@ -1800,7 +1800,7 @@ int os_nvme_Subsystem_Reset(tDevice *device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-int close_Device(tDevice *device)
+eReturnValues close_Device(tDevice *device)
 {
     return NOT_SUPPORTED;
 }
@@ -1872,9 +1872,9 @@ uint32_t get_ATA_Device_Count()
     return deviceCount;
 }
 
-int get_ATA_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint32_t *index)
+eReturnValues get_ATA_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint32_t *index)
 {
-    int ret = NOT_SUPPORTED;
+    eReturnValues ret = NOT_SUPPORTED;
     uint32_t deviceCount = 0;
     EFI_STATUS uefiStatus = EFI_SUCCESS;
     EFI_ATA_PASS_THRU_PROTOCOL *pPassthru;
@@ -2008,9 +2008,9 @@ uint32_t get_SCSI_Device_Count()
     return deviceCount;
 }
 
-int get_SCSI_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint32_t *index)
+eReturnValues get_SCSI_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint32_t *index)
 {
-    int ret = NOT_SUPPORTED;
+    eReturnValues ret = NOT_SUPPORTED;
     uint32_t deviceCount = 0;
     EFI_STATUS uefiStatus = EFI_SUCCESS;
     EFI_SCSI_PASS_THRU_PROTOCOL *pPassthru;
@@ -2139,9 +2139,9 @@ uint32_t get_SCSIEx_Device_Count()
     return deviceCount;
 }
 
-int get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint32_t *index)
+eReturnValues get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint32_t *index)
 {
-    int ret = NOT_SUPPORTED;
+    eReturnValues ret = NOT_SUPPORTED;
     uint32_t deviceCount = 0;
     EFI_STATUS uefiStatus = EFI_SUCCESS;
     EFI_EXT_SCSI_PASS_THRU_PROTOCOL *pPassthru;
@@ -2272,10 +2272,10 @@ uint32_t get_NVMe_Device_Count()
 #endif //DISABLE_NVME_PASSTHROUGH
 }
 
-int get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint32_t *index)
+eReturnValues get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint32_t *index)
 {
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-    int ret = NOT_SUPPORTED;
+    eReturnValues ret = NOT_SUPPORTED;
     uint32_t deviceCount = 0;
     EFI_STATUS uefiStatus = EFI_SUCCESS;
     EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL *pPassthru;
@@ -2361,7 +2361,7 @@ int get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, vers
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
+eReturnValues get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 {
     //TODO: handle flags
     *numberOfDevices += get_ATA_Device_Count();
@@ -2395,7 +2395,7 @@ int get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, M_ATTR_UNUSED uint64_t flags)
+eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, M_ATTR_UNUSED uint64_t flags)
 {
     uint32_t index = 0;
     //TODO: handle flags and validate size of device list and version block
@@ -2406,49 +2406,49 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     return SUCCESS;
 }
 
-int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Flush(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Flush(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Lock_Device(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Lock_Device(M_ATTR_UNUSED tDevice *device)
 {
     return SUCCESS;
 }
 
-int os_Unlock_Device(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Unlock_Device(M_ATTR_UNUSED tDevice *device)
 {
     return SUCCESS;
 }
 
-int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
 {
     //TODO: Complete this stub when this is figured out - TJE
     return NOT_SUPPORTED;
 }
 
-int os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
 {
     //edk2 might have some kind of partition function we can call for the device to erase it
     return NOT_SUPPORTED;
 }
 
-int os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }

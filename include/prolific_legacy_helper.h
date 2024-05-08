@@ -48,7 +48,7 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int build_Prolific_Legacy_Passthrough_CDBs(uint8_t lowCDB[16], uint8_t hiCDB[16], bool *highCDBValid, ataPassthroughCommand *ataCommandOptions);
+    eReturnValues build_Prolific_Legacy_Passthrough_CDBs(uint8_t lowCDB[16], uint8_t hiCDB[16], bool *highCDBValid, ataPassthroughCommand *ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
@@ -65,7 +65,7 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int get_RTFRs_From_Prolific_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, int commandRet);
+    eReturnValues get_RTFRs_From_Prolific_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, eReturnValues commandRet);
 
     //-----------------------------------------------------------------------------
     //
@@ -81,7 +81,7 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions);
+    eReturnValues send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions);
 
 #if defined (__cplusplus)
 }

@@ -142,9 +142,9 @@ void print_Last_Error(int lastError)
 }
 #endif //_WIN32
 
-static int csmi_Return_To_OpenSea_Result(uint32_t returnCode)
+static eReturnValues csmi_Return_To_OpenSea_Result(uint32_t returnCode)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     switch (returnCode)
     {
     case CSMI_SAS_STATUS_SUCCESS:
@@ -246,9 +246,9 @@ typedef struct _csmiIOout
 }csmiIOout, *ptrCsmiIOout;
 
 //static because this should be an internal function to be reused below for getting the other data
-static int issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParams)
+static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmiIoOutParams)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     int localIoctlReturn = 0;//This is OK in Windows because BOOL is a typedef for int
     seatimer_t *timer = NULL; 
     bool localTimer = false;
@@ -508,9 +508,9 @@ static void print_CSMI_Driver_Info(PCSMI_SAS_DRIVER_INFO driverInfo)
     return;
 }
 
-int csmi_Get_Driver_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_DRIVER_INFO_BUFFER driverInfoBuffer, eVerbosityLevels verbosity)
+eReturnValues csmi_Get_Driver_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_DRIVER_INFO_BUFFER driverInfoBuffer, eVerbosityLevels verbosity)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
     memset(&ioIn, 0, sizeof(csmiIOin));
@@ -632,9 +632,9 @@ static void print_CSMI_Controller_Configuration(PCSMI_SAS_CNTLR_CONFIG config)
     }
 }
 
-int csmi_Get_Controller_Configuration(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_CONFIG_BUFFER ctrlConfigBuffer, eVerbosityLevels verbosity)
+eReturnValues csmi_Get_Controller_Configuration(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_CONFIG_BUFFER ctrlConfigBuffer, eVerbosityLevels verbosity)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
     memset(&ioIn, 0, sizeof(csmiIOin));
@@ -731,9 +731,9 @@ static void print_CSMI_Controller_Status(PCSMI_SAS_CNTLR_STATUS status)
     return;
 }
 
-int csmi_Get_Controller_Status(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_STATUS_BUFFER ctrlStatusBuffer, eVerbosityLevels verbosity)
+eReturnValues csmi_Get_Controller_Status(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_STATUS_BUFFER ctrlStatusBuffer, eVerbosityLevels verbosity)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
     memset(&ioIn, 0, sizeof(csmiIOin));
@@ -782,9 +782,9 @@ int csmi_Get_Controller_Status(CSMI_HANDLE deviceHandle, uint32_t controllerNumb
 
 //NOTE: This function needs the firmwareBuffer to be allocated with additional length for the firmware to send to the controller.
 //In order to make this simple, we will assume the caller has already copied the controller firmware to the buffer, but we still need the total length
-int csmi_Controller_Firmware_Download(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER firmwareBuffer, uint32_t firmwareBufferTotalLength, uint32_t downloadFlags, eVerbosityLevels verbosity, uint32_t timeoutSeconds)
+eReturnValues csmi_Controller_Firmware_Download(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER firmwareBuffer, uint32_t firmwareBufferTotalLength, uint32_t downloadFlags, eVerbosityLevels verbosity, uint32_t timeoutSeconds)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
     memset(&ioIn, 0, sizeof(csmiIOin));
@@ -881,9 +881,9 @@ static void print_CSMI_RAID_Info(PCSMI_SAS_RAID_INFO raidInfo)
 //	Maximum # of drives per set: 128
 
 
-int csmi_Get_RAID_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_INFO_BUFFER raidInfoBuffer, eVerbosityLevels verbosity)
+eReturnValues csmi_Get_RAID_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_INFO_BUFFER raidInfoBuffer, eVerbosityLevels verbosity)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
     memset(&ioIn, 0, sizeof(csmiIOin));
@@ -1288,9 +1288,9 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
 //NOTE: This buffer should be allocated as sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES)) at minimum. If the device identification VPD page is returned instead, it may be longer
 //      RAID set index must be lower than the number of raid sets listed as supported by RAID INFO
 //NOTE: Dataype field may not be supported depending on which version of CSMI is supported. Intel RST will not support this.
-int csmi_Get_RAID_Config(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_CONFIG_BUFFER raidConfigBuffer, uint32_t raidConfigBufferTotalSize, uint32_t raidSetIndex, uint8_t dataType, eVerbosityLevels verbosity)
+eReturnValues csmi_Get_RAID_Config(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_CONFIG_BUFFER raidConfigBuffer, uint32_t raidConfigBufferTotalSize, uint32_t raidSetIndex, uint8_t dataType, eVerbosityLevels verbosity)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
     memset(&ioIn, 0, sizeof(csmiIOin));
@@ -2048,9 +2048,9 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //			Signal Class: Unknown
 
 //Caller allocated full buffer, then we fill in the rest and send it. Data length not needed since this one is a fixed size
-int csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_PHY_INFO_BUFFER phyInfoBuffer, eVerbosityLevels verbosity)
+eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_PHY_INFO_BUFFER phyInfoBuffer, eVerbosityLevels verbosity)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
     memset(&ioIn, 0, sizeof(csmiIOin));
@@ -2097,9 +2097,9 @@ int csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI
     return ret;
 }
 
-int csmi_Set_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_SET_PHY_INFO_BUFFER phyInfoBuffer, eVerbosityLevels verbosity)
+eReturnValues csmi_Set_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_SET_PHY_INFO_BUFFER phyInfoBuffer, eVerbosityLevels verbosity)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
     memset(&ioIn, 0, sizeof(csmiIOin));
@@ -2142,9 +2142,9 @@ int csmi_Set_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI
     return ret;
 }
 
-int csmi_Get_Link_Errors(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_LINK_ERRORS_BUFFER linkErrorsBuffer, uint8_t phyIdentifier, bool resetCounts, eVerbosityLevels verbosity)
+eReturnValues csmi_Get_Link_Errors(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_LINK_ERRORS_BUFFER linkErrorsBuffer, uint8_t phyIdentifier, bool resetCounts, eVerbosityLevels verbosity)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
     memset(&ioIn, 0, sizeof(csmiIOin));
@@ -2220,9 +2220,9 @@ typedef struct _csmiSSPOut
     uint8_t connectionStatus;
 }csmiSSPOut, *ptrCsmiSSPOut;
 
-static int csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, ptrCsmiSSPIn sspInputs, ptrCsmiSSPOut sspOutputs, eVerbosityLevels verbosity)
+static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, ptrCsmiSSPIn sspInputs, ptrCsmiSSPOut sspOutputs, eVerbosityLevels verbosity)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
     PCSMI_SAS_SSP_PASSTHRU_BUFFER sspPassthrough = NULL;
@@ -2384,9 +2384,9 @@ typedef struct _csmiSTPOut
     bool retryAsSSPPassthrough;//This may be set, but will only be set, if the driver does not support STP passthrough, but DOES support taking a SCSI translatable CDB. This cannot tell whether to use SAT or legacy CSMI passthrough though...that's a trial and error thing unless we figure out which drivers and versions require that. -TJE
 }csmiSTPOut, *ptrCsmiSTPOut;
 
-static int csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, ptrCsmiSTPIn stpInputs, ptrCsmiSTPOut stpOutputs, eVerbosityLevels verbosity)
+static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, ptrCsmiSTPIn stpInputs, ptrCsmiSTPOut stpOutputs, eVerbosityLevels verbosity)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
     PCSMI_SAS_STP_PASSTHRU_BUFFER stpPassthrough = NULL;
@@ -2514,9 +2514,9 @@ static void print_CSMI_SATA_Signature(PCSMI_SAS_SATA_SIGNATURE signature)
 }
 
 //TODO: consider using a pointer to a FIS to fill in on completion instead...
-int csmi_Get_SATA_Signature(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_SATA_SIGNATURE_BUFFER sataSignatureBuffer, uint8_t phyIdentifier, eVerbosityLevels verbosity)
+eReturnValues csmi_Get_SATA_Signature(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_SATA_SIGNATURE_BUFFER sataSignatureBuffer, uint8_t phyIdentifier, eVerbosityLevels verbosity)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
     memset(&ioIn, 0, sizeof(csmiIOin));
@@ -2581,9 +2581,9 @@ static void print_CSMI_Get_SCSI_Address(PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAd
 }
 
 //TODO: input/output structures for this instead???
-int csmi_Get_SCSI_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddressBuffer, uint8_t sasAddress[8], uint8_t lun[8], eVerbosityLevels verbosity)
+eReturnValues csmi_Get_SCSI_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddressBuffer, uint8_t sasAddress[8], uint8_t lun[8], eVerbosityLevels verbosity)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
     memset(&ioIn, 0, sizeof(csmiIOin));
@@ -2649,9 +2649,9 @@ static void print_CSMI_Device_Address(PCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER addres
 }
 
 //TODO: input/output structures for this instead???
-int csmi_Get_Device_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER deviceAddressBuffer, uint8_t hostIndex, uint8_t path, uint8_t target, uint8_t lun, eVerbosityLevels verbosity)
+eReturnValues csmi_Get_Device_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER deviceAddressBuffer, uint8_t hostIndex, uint8_t path, uint8_t target, uint8_t lun, eVerbosityLevels verbosity)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
     memset(&ioIn, 0, sizeof(csmiIOin));
@@ -2830,9 +2830,9 @@ static void print_CSMI_Connector_Info(PCSMI_SAS_CONNECTOR_INFO_BUFFER connectorI
     return;
 }
 
-int csmi_Get_Connector_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CONNECTOR_INFO_BUFFER connectorInfoBuffer, eVerbosityLevels verbosity)
+eReturnValues csmi_Get_Connector_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CONNECTOR_INFO_BUFFER connectorInfoBuffer, eVerbosityLevels verbosity)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
     memset(&ioIn, 0, sizeof(csmiIOin));
@@ -2879,9 +2879,9 @@ int csmi_Get_Connector_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber,
     return ret;
 }
 
-static int csmi_Get_Basic_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_DRIVER_INFO_BUFFER driverInfo, PCSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig, PCSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus, eVerbosityLevels verbosity)
+static eReturnValues csmi_Get_Basic_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_DRIVER_INFO_BUFFER driverInfo, PCSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig, PCSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus, eVerbosityLevels verbosity)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (deviceHandle != CSMI_INVALID_HANDLE && driverInfo && controllerConfig)
     {
         if (SUCCESS != csmi_Get_Driver_Info(deviceHandle, controllerNumber, driverInfo, verbosity))
@@ -2912,8 +2912,8 @@ bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, eVerbosityLevels verbosit
     if (deviceHandle != CSMI_INVALID_HANDLE)
     {
         //Send the following 2 IOs to check if CSMI passthrough is supported on a device that is NOT a RAID device, meaning it is not configured as a member of a RAID.
-        //int csmi_Get_Driver_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_DRIVER_INFO_BUFFER driverInfoBuffer, eVerbosityLevels verbosity)
-        //int csmi_Get_Controller_Configuration(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_CONFIG_BUFFER ctrlConfigBuffer, eVerbosityLevels verbosity)
+        //eReturnValues csmi_Get_Driver_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_DRIVER_INFO_BUFFER driverInfoBuffer, eVerbosityLevels verbosity)
+        //eReturnValues csmi_Get_Controller_Configuration(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_CONFIG_BUFFER ctrlConfigBuffer, eVerbosityLevels verbosity)
         CSMI_SAS_DRIVER_INFO_BUFFER driverInfo;
         CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
         CSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus;
@@ -2949,9 +2949,9 @@ bool device_Supports_CSMI_With_RST(tDevice *device)
 //This is really only here for Windows, but could be used under Linux if you wanted to use CSMI instead of SGIO, but that really is unnecessary
 //controller number is to target the CSMI IOCTL inputs on non-windows. hostController is a SCSI address number, which may or may not be different...If these end up the same on Linux, this should be update to remove the duplicate parameters. If not, delete part of this comment.
 //NOTE: this does not handle Intel NVMe devices in JBOD mode right now. These devices will be handled separately from this function which focuses on SATA/SAS
-int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device, uint8_t controllerNumber, uint8_t hostController, uint8_t pathidBus, uint8_t targetID, uint8_t lun)
+eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device, uint8_t controllerNumber, uint8_t hostController, uint8_t pathidBus, uint8_t targetID, uint8_t lun)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     device->os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, calloc(1, sizeof(csmiDeviceInfo)));
     if (device->os_info.csmiDeviceData)
     {
@@ -3336,7 +3336,7 @@ int jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int close_CSMI_RAID_Device(tDevice *device)
+eReturnValues close_CSMI_RAID_Device(tDevice *device)
 {
     if (device)
     {
@@ -3368,9 +3368,9 @@ int close_CSMI_RAID_Device(tDevice *device)
 }
 
 //TODO: Accept SASAddress and SASLun inputs
-int get_CSMI_RAID_Device(const char *filename, tDevice *device)
+eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     uint32_t controllerNum = 0, portID = 0, phyID = 0, lun = 0;
     //Need to open this handle and setup some information then fill in the device information.
     if (!(validate_Device_Struct(device->sanity)))
@@ -3947,7 +3947,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, ptrRaidHandleToScan *beginningOfList)
+eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, ptrRaidHandleToScan *beginningOfList)
 {
     CSMI_HANDLE fd = CSMI_INVALID_HANDLE;
 #if defined (_WIN32)
@@ -4364,9 +4364,9 @@ int get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t flags, ptrRa
 //!                     Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags, ptrRaidHandleToScan *beginningOfList)
+eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags, ptrRaidHandleToScan *beginningOfList)
 {
-    int returnValue = SUCCESS;
+    eReturnValues returnValue = SUCCESS;
     uint32_t numberOfDevices = 0;
     CSMI_HANDLE fd = CSMI_INVALID_HANDLE;
 #if defined (_WIN32)
@@ -4438,7 +4438,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 eCSMISecurityAccess csmiAccess = CSMI_SECURITY_ACCESS_NONE;//only really needed in Windows - TJE
 #if defined (_WIN32)
                 //Get the controller number from the scsi handle since we need it later!
-                int ret = sscanf(raidList->handle, "\\\\.\\SCSI%d:", &controllerNumber);
+                eReturnValues ret = sscanf(raidList->handle, "\\\\.\\SCSI%d:", &controllerNumber);
                 if (ret == 0 || ret == EOF)
                 {
                     printf("WARNING: Unable to scan controller number! raid handle = %s\t ret = %d\n", raidList->handle, ret);
@@ -4952,7 +4952,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                                             memset(d, 0, sizeof(tDevice));
                                                             d->sanity.size = ver.size;
                                                             d->sanity.version = ver.version;
-                                                            d->dFlags = C_CAST(eDiscoveryOptions, flags);
+                                                            d->dFlags =  flags;
 #if defined (CSMI_DEBUG)
                                                             printf("GDL: Calling get_CSMI_RAID_Device\n");
 #endif //CSMI_DEBUG
@@ -5008,7 +5008,7 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                             memset(d, 0, sizeof(tDevice));
                                             d->sanity.size = ver.size;
                                             d->sanity.version = ver.version;
-                                            d->dFlags = C_CAST(eDiscoveryOptions, flags);
+                                            d->dFlags =  flags;
                                             d->deviceVerbosity = 4;
 #if defined (CSMI_DEBUG)
                                             printf("GDL: Calling get_CSMI_RAID_Device\n");
@@ -5094,9 +5094,9 @@ int get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     return returnValue;
 }
 
-static int send_SSP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
+static eReturnValues send_SSP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (!scsiIoCtx)
     {
         return BAD_PARAMETER;
@@ -5150,9 +5150,9 @@ static int send_SSP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-static int send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
+static eReturnValues send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (!scsiIoCtx || !scsiIoCtx->pAtaCmdOpts)
     {
         return BAD_PARAMETER;
@@ -5342,9 +5342,9 @@ static int send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int send_CSMI_IO(ScsiIoCtx *scsiIoCtx)
+eReturnValues send_CSMI_IO(ScsiIoCtx *scsiIoCtx)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SATA || scsiIoCtx->device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_STP))
     {
         ret = send_STP_Passthrough_Command(scsiIoCtx);

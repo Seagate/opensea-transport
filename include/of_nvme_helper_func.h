@@ -45,13 +45,13 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_OFNVME_IO(nvmeCmdCtx *nvmeIoCtx);
+    OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx *nvmeIoCtx);
 
-    OPENSEA_TRANSPORT_API int send_OFNVME_Add_Namespace(tDevice * device);
+    OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Add_Namespace(tDevice * device);
 
-    OPENSEA_TRANSPORT_API int send_OFNVME_Remove_Namespace(tDevice * device);
+    OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Remove_Namespace(tDevice * device);
 
-    OPENSEA_TRANSPORT_API int send_OFNVME_Reset(tDevice * device);
+    OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Reset(tDevice * device);
 
 #if defined (__cplusplus)
 }

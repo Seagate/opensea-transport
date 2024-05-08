@@ -17,9 +17,9 @@
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
 
-int build_NEC_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptions)
+eReturnValues build_NEC_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptions)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     memset(cdb, 0, CDB_LEN_16);
     cdb[OPERATION_CODE] = NEC_WRITE_OPCODE;
     cdb[1] = NEC_WRAPPER_SIGNATURE;
@@ -88,9 +88,9 @@ int build_NEC_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptio
     return ret;
 }
 
-int get_RTFRs_From_NEC_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, int commandRet)
+eReturnValues get_RTFRs_From_NEC_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, eReturnValues commandRet)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (commandRet == OS_PASSTHROUGH_FAILURE)
     {
         return commandRet;
@@ -120,9 +120,9 @@ int get_RTFRs_From_NEC_Legacy(tDevice *device, ataPassthroughCommand *ataCommand
     return ret;
 }
 
-int send_NEC_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
+eReturnValues send_NEC_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     uint8_t necCDB[CDB_LEN_16] = { 0 };
     uint8_t *senseData = NULL;//only allocate if the pointer in the ataCommandOptions is NULL
     bool localSenseData = false;

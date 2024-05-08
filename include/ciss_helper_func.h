@@ -42,15 +42,15 @@ extern "C"
 
     bool is_Supported_ciss_Dev(const char * devName);
 
-    int issue_io_ciss_Dev(ScsiIoCtx * scsiIoCtx);
+    eReturnValues issue_io_ciss_Dev(ScsiIoCtx * scsiIoCtx);
 
-    int get_CISS_RAID_Device(const char *filename, tDevice *device);
+    eReturnValues get_CISS_RAID_Device(const char *filename, tDevice *device);
 
-    int close_CISS_RAID_Device(tDevice *device);
+    eReturnValues close_CISS_RAID_Device(tDevice *device);
 
-    int get_CISS_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags, ptrRaidHandleToScan *beginningOfList);
+    eReturnValues get_CISS_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags, ptrRaidHandleToScan *beginningOfList);
 
-    int get_CISS_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags, ptrRaidHandleToScan *beginningOfList);
+    eReturnValues get_CISS_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags, ptrRaidHandleToScan *beginningOfList);
 
 #if defined (__cplusplus)
 }

@@ -184,9 +184,9 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
     return supported;
 }
 
-int send_OFNVME_Reset(tDevice * device)
+eReturnValues send_OFNVME_Reset(tDevice * device)
 {
-    int ret = OS_COMMAND_NOT_AVAILABLE;//Start with this since older drivers may or may not support this.
+    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;//Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
     memset(&ofnvmeReset, 0, sizeof(SRB_IO_CONTROL));
 
@@ -248,9 +248,9 @@ int send_OFNVME_Reset(tDevice * device)
     return ret;
 }
 
-int send_OFNVME_Add_Namespace(tDevice * device)
+eReturnValues send_OFNVME_Add_Namespace(tDevice * device)
 {
-    int ret = OS_COMMAND_NOT_AVAILABLE;//Start with this since older drivers may or may not support this.
+    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;//Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
     memset(&ofnvmeReset, 0, sizeof(SRB_IO_CONTROL));
 
@@ -312,9 +312,9 @@ int send_OFNVME_Add_Namespace(tDevice * device)
     return ret;
 }
 
-int send_OFNVME_Remove_Namespace(tDevice * device)
+eReturnValues send_OFNVME_Remove_Namespace(tDevice * device)
 {
-    int ret = OS_COMMAND_NOT_AVAILABLE;//Start with this since older drivers may or may not support this.
+    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;//Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
     memset(&ofnvmeReset, 0, sizeof(SRB_IO_CONTROL));
 
@@ -376,9 +376,9 @@ int send_OFNVME_Remove_Namespace(tDevice * device)
     return ret;
 }
 
-int send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
+eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 #if defined (OFNVME_DEBUG)
     printf("ofnvme: NVM passthrough request\n");
 #endif //OFNVME_DEBUG
