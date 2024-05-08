@@ -1002,9 +1002,9 @@ static int cmp_Asc_Ascq(ascAscqRetDesc* a, ascAscqRetDesc* b)
     }
 }
 
-int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t asc, uint8_t ascq, uint8_t fru)
+eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t asc, uint8_t ascq, uint8_t fru)
 {
-    int ret = UNKNOWN;//if this gets returned from this function, then something is not right...
+    eReturnValues ret = UNKNOWN;//if this gets returned from this function, then something is not right...
     ascAscqRetDesc* asc_ascq_result = NULL;
     ascAscqRetDesc asc_ascq_key = {asc, ascq, 0, 0};
     //first check the senseKey
@@ -1015,7 +1015,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         {
             print_sense_key(senseKeyRetDesc[senseKey].desc, senseKey);
         }
-        ret = C_CAST(int, senseKeyRetDesc[senseKey].ret);
+        ret = senseKeyRetDesc[senseKey].ret;
     }
     else
     {
@@ -1086,7 +1086,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
             // Return code of -1 means follow return code determined by sense key, do not change
             if (asc_ascq_result->ret > KEEP_SENSE_KEY_ERROR)
             {
-                ret = asc_ascq_result->ret;
+                ret = C_CAST(eReturnValues, asc_ascq_result->ret);
             }
         }
         else
@@ -2071,9 +2071,9 @@ void copy_Read_Capacity_Info(uint32_t *logicalBlockSize, uint32_t *physicalBlock
     }
 }
 
-int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
+eReturnValues check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     bool issueSATIdentify = true;//default to ALWAYS reading this unless something else says not to. - TJE
     if (device->drive_info.interface_type == IDE_INTERFACE || device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
     {
@@ -2676,9 +2676,9 @@ void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSeria
 // \brief Sends a set of INQUIRY commands & fills in the device information
 // \param device device struture
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-int fill_In_Device_Info(tDevice *device)
+eReturnValues fill_In_Device_Info(tDevice *device)
 {
-    int           ret      = FAILURE;
+    eReturnValues ret = FAILURE;
     #ifdef _DEBUG
     printf("%s: -->\n",__FUNCTION__);
     #endif
@@ -3695,7 +3695,7 @@ int fill_In_Device_Info(tDevice *device)
         //      but this DOES NOT WORK. For whatever reason, some report 512B logical, 4k physical....for no apparent reason. - TJE
 
         //printf("passthrough type set to %d\n", device->drive_info.passThroughHacks.passthroughType);
-        int satCheck = FAILURE;
+        eReturnValues satCheck = FAILURE;
         //if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just issue a SAT identify in here to set things up...might reduce multiple commands later
         if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE) 
             && device->drive_info.media_type != MEDIA_UNKNOWN && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
@@ -3709,7 +3709,7 @@ int fill_In_Device_Info(tDevice *device)
             (satCheck != SUCCESS && checkJMicronNVMe)
             )
         {
-            int scsiRet = ret;
+            eReturnValues scsiRet = ret;
             if (checkJMicronNVMe)
             {
                 device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;

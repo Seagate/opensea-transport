@@ -280,9 +280,9 @@ typedef struct _spartitionInfo
 }spartitionInfo, *ptrsPartitionInfo;
 //partitionInfoList is a pointer to the beginning of the list
 //listCount is the number of these structures, which should be returned by get_Partition_Count
-static int get_Partition_List(const char * blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
+static eReturnValues get_Partition_List(const char * blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
 {
-    int result = SUCCESS;
+    eReturnValues result = SUCCESS;
     int matchesFound = 0;
     if (listCount > 0)
     {
@@ -1054,7 +1054,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 //map a block handle (sd) to a generic handle (sg or bsg)
 //incoming handle can be either sd, sg, or bsg type
 //TODO: handle kernels before 2.6 in some other way. This depends on mapping in the file system provided by 2.6 and later.
-int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char **blockHandle)
+eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char **blockHandle)
 {
     if (handle == NULL)
     {
@@ -1243,9 +1243,9 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
     return UNKNOWN;
 }
 
-static int set_Device_Partition_Info(tDevice* device)
+static eReturnValues set_Device_Partition_Info(tDevice* device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     int partitionCount = 0;
     char* blockHandle = device->os_info.name;
     if (device->os_info.secondHandleValid && !is_Block_Device_Handle(blockHandle))
@@ -1302,10 +1302,10 @@ static int set_Device_Partition_Info(tDevice* device)
 }
 
 #define LIN_MAX_HANDLE_LENGTH 16
-static int get_Lin_Device(const char *filename, tDevice *device)
+static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
 {
     char *deviceHandle = NULL;
-    int ret = SUCCESS, k = 0;
+    eReturnValues ret = SUCCESS, k = 0;
     #if defined (_DEBUG)
     printf("%s: Getting device for %s\n", __FUNCTION__, filename);
     #endif
@@ -1315,7 +1315,7 @@ static int get_Lin_Device(const char *filename, tDevice *device)
         //printf("\tBlock handle found, mapping...\n");
         char *genHandle = NULL;
         char *blockHandle = NULL;
-        int mapResult = map_Block_To_Generic_Handle(filename, &genHandle, &blockHandle);
+        eReturnValues mapResult = map_Block_To_Generic_Handle(filename, &genHandle, &blockHandle);
         #if defined (_DEBUG)
         printf("sg = %s\tsd = %s\n", genHandle, blockHandle);
         #endif
@@ -1394,11 +1394,11 @@ static int get_Lin_Device(const char *filename, tDevice *device)
             //Do NVMe specific setup and enumeration
             device->drive_info.drive_type = NVME_DRIVE;
             device->drive_info.interface_type = NVME_INTERFACE;
-            ret = ioctl(device->os_info.fd, NVME_IOCTL_ID);
-            if (ret < 0)
+            int ioctlResult = ioctl(device->os_info.fd, NVME_IOCTL_ID);
+            if (ioctlResult < 0)
             {
                  perror("nvme_ioctl_id");
-                 return ret;
+                 return FAILURE;
             }
             device->drive_info.namespaceID = C_CAST(uint32_t, ret);
             device->os_info.osType = OS_LINUX;
@@ -1515,7 +1515,7 @@ static int get_Lin_Device(const char *filename, tDevice *device)
     return ret;
 }
 
-int get_Device(const char *filename, tDevice *device)
+eReturnValues get_Device(const char *filename, tDevice *device)
 {
     #if defined (ENABLE_CISS)
     if (is_Supported_ciss_Dev(filename))
@@ -1528,13 +1528,13 @@ int get_Device(const char *filename, tDevice *device)
 
 //http://www.tldp.org/HOWTO/SCSI-Generic-HOWTO/scsi_reset.html
 //sgResetType should be one of the values from the link above...so bus or device...controller will work but that shouldn't be done ever.
-static int sg_reset(int fd, int resetType)
+static eReturnValues sg_reset(int fd, int resetType)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     
-    ret = ioctl(fd, SG_SCSI_RESET, &resetType);
+    int ioctlResult = ioctl(fd, SG_SCSI_RESET, &resetType);
 
-    if (ret < 0)
+    if (ioctlResult < 0)
     {
         #if defined(_DEBUG)
         printf("Reset failure! errorcode: %d, errno: %d\n",ret, errno);
@@ -1558,7 +1558,7 @@ static int sg_reset(int fd, int resetType)
         resetType = SG_SCSI_RESET_NOTHING;
         while (errno == EBUSY)
         {
-            ret = ioctl(fd, SG_SCSI_RESET, &resetType);
+            ioctlResult = ioctl(fd, SG_SCSI_RESET, &resetType);
         }
         ret = SUCCESS;
         //printf("Reset Success!\n");
@@ -1566,24 +1566,24 @@ static int sg_reset(int fd, int resetType)
     return ret;
 }
 
-int os_Device_Reset(tDevice *device)
+eReturnValues os_Device_Reset(tDevice *device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_DEVICE);
 }
 
-int os_Bus_Reset(tDevice *device)
+eReturnValues os_Bus_Reset(tDevice *device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_BUS);
 }
 
-int os_Controller_Reset(tDevice *device)
+eReturnValues os_Controller_Reset(tDevice *device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_HOST);
 }
 
-int send_IO( ScsiIoCtx *scsiIoCtx )
+eReturnValues send_IO( ScsiIoCtx *scsiIoCtx )
 {
-    int ret = FAILURE;    
+    eReturnValues ret = FAILURE;    
 #ifdef _DEBUG
     printf("-->%s \n",__FUNCTION__);
 #endif
@@ -1635,11 +1635,11 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     return ret;
 }
 
-int send_sg_io( ScsiIoCtx *scsiIoCtx )
+eReturnValues send_sg_io( ScsiIoCtx *scsiIoCtx )
 {
     sg_io_hdr_t io_hdr;
     uint8_t     *localSenseBuffer = NULL;
-    int         ret          = SUCCESS;
+    eReturnValues         ret          = SUCCESS;
     seatimer_t  commandTimer;
 #ifdef _DEBUG
     printf("-->%s \n",__FUNCTION__);
@@ -1756,9 +1756,9 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     //print_io_hdr(&io_hdr);
     //printf("scsiIoCtx->device->os_info.fd = %d\n", scsiIoCtx->device->os_info.fd);
     start_Timer(&commandTimer);
-    ret = ioctl(scsiIoCtx->device->os_info.fd, SG_IO, &io_hdr);
+    int ioctlResult = ioctl(scsiIoCtx->device->os_info.fd, SG_IO, &io_hdr);
     stop_Timer(&commandTimer);
-    if (ret < 0)
+    if (ioctlResult < 0)
     {
         scsiIoCtx->device->os_info.last_error = C_CAST(unsigned int, errno);
         ret = OS_PASSTHROUGH_FAILURE;
@@ -2057,7 +2057,7 @@ static int nvme_filter( const struct dirent *entry)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
+eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
     uint32_t num_devs = 0, num_nvme_devs = 0;
     int scandirresult = 0;
@@ -2170,7 +2170,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 
 #if defined (ENABLE_CISS)
     uint32_t cissDeviceCount = 0;
-    int cissRet = get_CISS_RAID_Device_Count(&cissDeviceCount, flags, &beginRaidHandleList);
+    eReturnValues cissRet = get_CISS_RAID_Device_Count(&cissDeviceCount, flags, &beginRaidHandleList);
     if (cissRet == SUCCESS)
     {
         *numberOfDevices += cissDeviceCount;
@@ -2208,9 +2208,9 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
+eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
 {
-    int returnValue = SUCCESS;
+    eReturnValues returnValue = SUCCESS;
     uint32_t numberOfDevices = 0;
     uint32_t driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     char name[80] = { 0 }; //Because get device needs char
@@ -2341,8 +2341,8 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 memset(&getDeviceTimer, 0, sizeof(seatimer_t));
                 start_Timer(&getDeviceTimer);
 #endif
-                d->dFlags = C_CAST(eDiscoveryOptions, flags);
-                int ret = get_Device(name, d);
+                d->dFlags =  flags;
+                eReturnValues ret = get_Device(name, d);
 #if defined (DEGUG_SCAN_TIME)
                 stop_Timer(&getDeviceTimer);
                 printf("Time to get %s = %fms\n", name, get_Milli_Seconds(getDeviceTimer));
@@ -2404,7 +2404,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         uint32_t cissDeviceCount = numberOfDevices - found;
         if (cissDeviceCount > 0)
         {
-            int cissRet = get_CISS_RAID_Device_List(&ptrToDeviceList[found], cissDeviceCount * sizeof(tDevice), ver, flags, &beginRaidHandleList);
+            eReturnValues cissRet = get_CISS_RAID_Device_List(&ptrToDeviceList[found], cissDeviceCount * sizeof(tDevice), ver, flags, &beginRaidHandleList);
             if (returnValue == SUCCESS && cissRet != SUCCESS)
             {
                 //this will override the normal ret if it is already set to success with the CISS return value
@@ -2451,7 +2451,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int close_Device(tDevice *dev)
+eReturnValues close_Device(tDevice *dev)
 {
     int retValue = 0;
     if (dev)
@@ -2490,10 +2490,10 @@ int close_Device(tDevice *dev)
     }
 }
 
-int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
+eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-    int ret = SUCCESS;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
+    eReturnValues ret = SUCCESS;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
     seatimer_t commandTimer;
     memset(&commandTimer, 0, sizeof(commandTimer));
     struct nvme_admin_cmd adminCmd;
@@ -2725,11 +2725,11 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 #endif //DISABLE_NVME_PASSTHROUGH
 }
 
-static int linux_NVMe_Reset(tDevice *device, bool subsystemReset)
+static eReturnValues linux_NVMe_Reset(tDevice *device, bool subsystemReset)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     //Can only do a reset on a controller handle. Need to get the controller handle if this is a namespace handle!!!
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     int handleToReset = device->os_info.fd;
     seatimer_t commandTimer;
     memset(&commandTimer, 0, sizeof(commandTimer));
@@ -2809,10 +2809,10 @@ static int linux_NVMe_Reset(tDevice *device, bool subsystemReset)
 #endif //DISABLE_NVME_PASSTHROUGH
 }
 
-int os_nvme_Reset(tDevice *device)
+eReturnValues os_nvme_Reset(tDevice *device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
         printf("Sending NVMe Reset\n");
@@ -2828,10 +2828,10 @@ int os_nvme_Reset(tDevice *device)
 #endif //DISABLE_NVME_PASSTHROUGH
 }
 
-int os_nvme_Subsystem_Reset(tDevice *device)
+eReturnValues os_nvme_Subsystem_Reset(tDevice *device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
         printf("Sending NVMe Subsystem Reset\n");
@@ -2852,10 +2852,10 @@ int os_nvme_Subsystem_Reset(tDevice *device)
 //TODO: Should we rework the linux_NVMe_Reset call to handle this too?
 #if defined (_DEBUG)
 //making this a debug flagged call since it is currently an unused function. We should look into how to appropriately support this.-TJE
-static int nvme_Namespace_Rescan(int fd)
+static eReturnValues nvme_Namespace_Rescan(int fd)
 {
 #if defined (NVME_IOCTL_RESCAN) //This IOCTL is not available on older kernels, which is why this is checked like this - TJE
-   int ret = OS_PASSTHROUGH_FAILURE;
+   eReturnValues ret = OS_PASSTHROUGH_FAILURE;
    int ioRes = ioctl(fd, NVME_IOCTL_RESCAN);
    if (ioRes < 0)
    {
@@ -2877,10 +2877,10 @@ static int nvme_Namespace_Rescan(int fd)
 
 //Case to remove this from sg_helper.h/c and have a platform/lin/pci-herlper.h vs platform/win/pci-helper.c 
 
-int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
+eReturnValues pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     int fd=0;
     void * barRegs = NULL;
     char sysfsPath[PATH_MAX];
@@ -2918,9 +2918,9 @@ int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
 //This is used to open device->os_info.fd2 which is where we will store
 //a /dev/sd handle which is a block device handle for SCSI devices.
 //This will do nothing on NVMe as it is not needed. - TJE
-static int open_fd2(tDevice *device)
+static eReturnValues open_fd2(tDevice *device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if(device->os_info.secondHandleValid && !device->os_info.secondHandleOpened)
     {
         if ((device->os_info.fd2 = open(device->os_info.secondName, O_RDWR | O_NONBLOCK)) < 0)
@@ -2943,30 +2943,30 @@ static int open_fd2(tDevice *device)
     return ret;
 }
 
-int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Flush(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Flush(M_ATTR_UNUSED tDevice *device)
 {
     //BLKFLSBUF
     return NOT_SUPPORTED;
 }
 
-int os_Lock_Device(tDevice *device)
+eReturnValues os_Lock_Device(tDevice *device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     //Get flags
     int flags = fcntl(device->os_info.fd, F_GETFL);
     //disable O_NONBLOCK
@@ -2976,9 +2976,9 @@ int os_Lock_Device(tDevice *device)
     return ret;
 }
 
-int os_Unlock_Device(tDevice *device)
+eReturnValues os_Unlock_Device(tDevice *device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     //Get flags
     int flags = fcntl(device->os_info.fd, F_GETFL);
     //enable O_NONBLOCK
@@ -2988,9 +2988,9 @@ int os_Unlock_Device(tDevice *device)
     return ret;
 }
 
-int os_Update_File_System_Cache(tDevice* device)
+eReturnValues os_Update_File_System_Cache(tDevice* device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     int *fdToRescan = &device->os_info.fd;
     #if defined (_DEBUG)
     printf("Updating file system cache\n");
@@ -3024,15 +3024,15 @@ int os_Update_File_System_Cache(tDevice* device)
     return ret;
 }
 
-int os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
 {
     //TODO: if BLKZEROOUT available, use this to write zeroes to begining and end of the drive???
     return NOT_SUPPORTED;
 }
 
-int os_Unmount_File_Systems_On_Device(tDevice *device)
+eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     int partitionCount = 0;
     char *blockHandle = device->os_info.name;
     if (device->os_info.secondHandleValid && !is_Block_Device_Handle(blockHandle))

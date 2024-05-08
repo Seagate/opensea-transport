@@ -17,7 +17,7 @@
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
 
-int build_Cypress_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptions)
+eReturnValues build_Cypress_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptions)
 {
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
@@ -53,9 +53,9 @@ int build_Cypress_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandO
     return SUCCESS;
 }
 
-int get_RTFRs_From_Cypress_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, int commandRet)
+eReturnValues get_RTFRs_From_Cypress_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, eReturnValues commandRet)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (commandRet == OS_PASSTHROUGH_FAILURE)
     {
         return commandRet;
@@ -81,9 +81,9 @@ int get_RTFRs_From_Cypress_Legacy(tDevice *device, ataPassthroughCommand *ataCom
     return ret;
 }
 
-int send_Cypress_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
+eReturnValues send_Cypress_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     uint8_t cypressCDB[CDB_LEN_16] = { 0 };
     uint8_t *senseData = NULL;//only allocate if the pointer in the ataCommandOptions is NULL
     bool localSenseData = false;

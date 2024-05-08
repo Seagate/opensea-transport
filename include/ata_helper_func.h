@@ -39,7 +39,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
@@ -57,7 +57,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Sanitize_Command(tDevice *device, eATASanitizeFeature sanitizeFeature, uint64_t lba, uint16_t sectorCount);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Sanitize_Command(tDevice *device, eATASanitizeFeature sanitizeFeature, uint64_t lba, uint16_t sectorCount);
 
     //-----------------------------------------------------------------------------
     //
@@ -73,7 +73,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Sanitize_Status(tDevice *device, bool clearFailureMode);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Sanitize_Status(tDevice *device, bool clearFailureMode);
 
     //-----------------------------------------------------------------------------
     //
@@ -90,7 +90,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Sanitize_Crypto_Scramble(tDevice *device, bool failureModeBit, bool znr);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Sanitize_Crypto_Scramble(tDevice *device, bool failureModeBit, bool znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -107,7 +107,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Sanitize_Block_Erase(tDevice *device, bool failureModeBit, bool znr);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Sanitize_Block_Erase(tDevice *device, bool failureModeBit, bool znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -128,7 +128,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Sanitize_Overwrite_Erase(tDevice *device, bool failureModeBit, bool invertBetweenPasses, uint8_t numberOfPasses, uint32_t overwritePattern, bool znr, bool definitiveEndingPattern);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Sanitize_Overwrite_Erase(tDevice *device, bool failureModeBit, bool invertBetweenPasses, uint8_t numberOfPasses, uint32_t overwritePattern, bool znr, bool definitiveEndingPattern);
 
     //-----------------------------------------------------------------------------
     //
@@ -143,7 +143,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Sanitize_Freeze_Lock(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Sanitize_Freeze_Lock(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -158,7 +158,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Sanitize_Anti_Freeze_Lock(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Sanitize_Anti_Freeze_Lock(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -179,7 +179,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Read_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, bool useDMA, uint16_t featureRegister);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Read_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, bool useDMA, uint16_t featureRegister);
 
     //-----------------------------------------------------------------------------
     //
@@ -200,7 +200,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Write_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, bool useDMA, bool forceRTFRs);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Write_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, bool useDMA, bool forceRTFRs);
 
     //-----------------------------------------------------------------------------
     //
@@ -218,7 +218,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SMART_Read_Log(tDevice *device, uint8_t logAddress, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SMART_Read_Log(tDevice *device, uint8_t logAddress, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -237,7 +237,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SMART_Write_Log(tDevice *device, uint8_t logAddress, uint8_t *ptrData, uint32_t dataSize, bool forceRTFRs);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SMART_Write_Log(tDevice *device, uint8_t logAddress, uint8_t *ptrData, uint32_t dataSize, bool forceRTFRs);
 
     //-----------------------------------------------------------------------------
     //
@@ -259,7 +259,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *ptrData, uint32_t dataSize, uint32_t timeout, bool forceRTFRs, uint8_t countReg);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo, uint8_t *ptrData, uint32_t dataSize, uint32_t timeout, bool forceRTFRs, uint8_t countReg);
 
     //-----------------------------------------------------------------------------
     //
@@ -276,7 +276,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SMART_Read_Data(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SMART_Read_Data(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -293,7 +293,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SMART_Offline(tDevice *device, uint8_t subcommand, uint32_t timeout);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SMART_Offline(tDevice *device, uint8_t subcommand, uint32_t timeout);
 
     //-----------------------------------------------------------------------------
     //
@@ -308,7 +308,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SMART_Return_Status(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SMART_Return_Status(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -323,7 +323,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SMART_Enable_Operations(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SMART_Enable_Operations(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -338,7 +338,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SMART_Disable_Operations(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SMART_Disable_Operations(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -355,7 +355,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SMART_Read_Thresholds(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SMART_Read_Thresholds(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -370,7 +370,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SMART_Save_Attributes(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SMART_Save_Attributes(tDevice *device);
     
     //-----------------------------------------------------------------------------
     //
@@ -386,7 +386,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SMART_Attribute_Autosave(tDevice *device, bool enable);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SMART_Attribute_Autosave(tDevice *device, bool enable);
 
     //-----------------------------------------------------------------------------
     //
@@ -402,7 +402,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_SMART_Auto_Offline(tDevice *device, bool enable);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SMART_Auto_Offline(tDevice *device, bool enable);
 
     //This assumes standard ATA identify like reported from ata_Identify or page 1 of the ID data log. 512B long and as reported by the standards.
     OPENSEA_TRANSPORT_API void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData, char ataMN[ATA_IDENTIFY_MN_LENGTH + 1], char ataSN[ATA_IDENTIFY_SN_LENGTH + 1], char ataFW[ATA_IDENTIFY_FW_LENGTH + 1]);
@@ -422,7 +422,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Identify(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Identify(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -438,7 +438,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Security_Disable_Password(tDevice *device, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Security_Disable_Password(tDevice *device, uint8_t *ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -453,7 +453,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Security_Erase_Prepare(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Security_Erase_Prepare(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -470,7 +470,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Security_Erase_Unit(tDevice *device, uint8_t *ptrData, uint32_t timeout);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Security_Erase_Unit(tDevice *device, uint8_t *ptrData, uint32_t timeout);
 
     //-----------------------------------------------------------------------------
     //
@@ -486,7 +486,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Security_Set_Password(tDevice *device, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Security_Set_Password(tDevice *device, uint8_t *ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -502,7 +502,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Security_Unlock(tDevice *device, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Security_Unlock(tDevice *device, uint8_t *ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -517,7 +517,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Security_Freeze_Lock(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Security_Freeze_Lock(tDevice *device);
     
     //-----------------------------------------------------------------------------
     //
@@ -541,7 +541,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, bool useDMA, uint8_t *pData, uint32_t dataLen, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, bool useDMA, uint8_t *pData, uint32_t dataLen, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -590,7 +590,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Accessible_Max_Address_Feature(tDevice* device, uint16_t feature, uint64_t lba, ataReturnTFRs* rtfrs, uint16_t sectorCount);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Accessible_Max_Address_Feature(tDevice* device, uint16_t feature, uint64_t lba, ataReturnTFRs* rtfrs, uint16_t sectorCount);
 
     //-----------------------------------------------------------------------------
     //
@@ -606,7 +606,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Get_Native_Max_Address_Ext(tDevice *device, uint64_t *nativeMaxLBA);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Get_Native_Max_Address_Ext(tDevice *device, uint64_t *nativeMaxLBA);
 
     //-----------------------------------------------------------------------------
     //
@@ -623,7 +623,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Set_Accessible_Max_Address_Ext(tDevice* device, uint64_t newMaxLBA, bool changeId);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Set_Accessible_Max_Address_Ext(tDevice* device, uint64_t newMaxLBA, bool changeId);
 
     //-----------------------------------------------------------------------------
     //
@@ -638,7 +638,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Freeze_Accessible_Max_Address_Ext(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Freeze_Accessible_Max_Address_Ext(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -655,7 +655,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Read_Native_Max_Address(tDevice *device, uint64_t *nativeMaxLBA, bool ext); //obsolete on new drives
+    OPENSEA_TRANSPORT_API eReturnValues ata_Read_Native_Max_Address(tDevice *device, uint64_t *nativeMaxLBA, bool ext); //obsolete on new drives
 
     //-----------------------------------------------------------------------------
     //
@@ -675,7 +675,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Set_Max(tDevice *device, eHPAFeature setMaxFeature, uint32_t newMaxLBA, bool volatileValue, uint8_t *ptrData, uint32_t dataLength); //obsolete on new drives
+    OPENSEA_TRANSPORT_API eReturnValues ata_Set_Max(tDevice *device, eHPAFeature setMaxFeature, uint32_t newMaxLBA, bool volatileValue, uint8_t *ptrData, uint32_t dataLength); //obsolete on new drives
 
     //-----------------------------------------------------------------------------
     //
@@ -692,7 +692,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Set_Max_Address(tDevice *device, uint32_t newMaxLBA, bool voltileValue);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Set_Max_Address(tDevice *device, uint32_t newMaxLBA, bool voltileValue);
 
     //-----------------------------------------------------------------------------
     //
@@ -709,7 +709,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Set_Max_Password(tDevice *device, uint8_t *ptrData, uint32_t dataLength);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Set_Max_Password(tDevice *device, uint8_t *ptrData, uint32_t dataLength);
 
     //-----------------------------------------------------------------------------
     //
@@ -724,7 +724,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Set_Max_Lock(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Set_Max_Lock(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -741,7 +741,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Set_Max_Unlock(tDevice *device, uint8_t *ptrData, uint32_t dataLength);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Set_Max_Unlock(tDevice *device, uint8_t *ptrData, uint32_t dataLength);
 
     //-----------------------------------------------------------------------------
     //
@@ -756,7 +756,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Set_Max_Freeze_Lock(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Set_Max_Freeze_Lock(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -773,7 +773,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Set_Max_Address_Ext(tDevice *device, uint64_t newMaxLBA, bool volatileValue); //obsolete on new drives
+    OPENSEA_TRANSPORT_API eReturnValues ata_Set_Max_Address_Ext(tDevice *device, uint64_t newMaxLBA, bool volatileValue); //obsolete on new drives
 
     //ATA SCT definitions that were here were removed in favor of the versions starting with send_ in ata_helper since those include retries as needed to work around adapter issues
     // and reduce confusion on the code that was implemented for performing SCT operations more easily.
@@ -792,7 +792,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Check_Power_Mode(tDevice *device, uint8_t *powerMode);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Check_Power_Mode(tDevice *device, uint8_t *powerMode);
 
     //-----------------------------------------------------------------------------
     //
@@ -812,7 +812,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Configure_Stream(tDevice *device, uint8_t streamID, bool addRemoveStreamBit, bool readWriteStreamBit, uint8_t defaultCCTL, uint16_t allocationUnit);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Configure_Stream(tDevice *device, uint8_t streamID, bool addRemoveStreamBit, bool readWriteStreamBit, uint8_t defaultCCTL, uint16_t allocationUnit);
 
     //-----------------------------------------------------------------------------
     //
@@ -831,7 +831,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uint32_t dataSize, bool xl);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uint32_t dataSize, bool xl);
 
     //-----------------------------------------------------------------------------
     //
@@ -847,7 +847,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Execute_Device_Diagnostic(tDevice *device, uint8_t* diagnosticCode);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Execute_Device_Diagnostic(tDevice *device, uint8_t* diagnosticCode);
 
     //-----------------------------------------------------------------------------
     //
@@ -863,7 +863,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Flush_Cache(tDevice *device, bool extendedCommand);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Flush_Cache(tDevice *device, bool extendedCommand);
 
     //-----------------------------------------------------------------------------
     //
@@ -879,7 +879,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Idle(tDevice *device, uint8_t standbyTimerPeriod);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Idle(tDevice *device, uint8_t standbyTimerPeriod);
 
     //-----------------------------------------------------------------------------
     //
@@ -895,7 +895,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Idle_Immediate(tDevice *device, bool unloadFeature);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Idle_Immediate(tDevice *device, bool unloadFeature);
 
     //-----------------------------------------------------------------------------
     //
@@ -912,7 +912,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Read_Buffer(tDevice *device, uint8_t *ptrData, bool useDMA);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Read_Buffer(tDevice *device, uint8_t *ptrData, bool useDMA);
 
     //-----------------------------------------------------------------------------
     //
@@ -932,7 +932,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Read_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Read_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
 
     //-----------------------------------------------------------------------------
     //
@@ -952,7 +952,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Read_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Read_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
 
     //-----------------------------------------------------------------------------
     //
@@ -972,7 +972,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Read_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Read_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
 
     //-----------------------------------------------------------------------------
     //
@@ -991,7 +991,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Read_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Read_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1014,7 +1014,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Read_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID, bool notSequential, bool readContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Read_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID, bool notSequential, bool readContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1032,7 +1032,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Read_Verify_Sectors(tDevice *device, bool extendedCmd, uint16_t numberOfSectors, uint64_t LBA);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Read_Verify_Sectors(tDevice *device, bool extendedCmd, uint16_t numberOfSectors, uint64_t LBA);
 
     //-----------------------------------------------------------------------------
     //
@@ -1050,7 +1050,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Request_Sense_Data(tDevice *device, uint8_t *senseKey, uint8_t *additionalSenseCode, uint8_t *additionalSenseCodeQualifier);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Request_Sense_Data(tDevice *device, uint8_t *senseKey, uint8_t *additionalSenseCode, uint8_t *additionalSenseCodeQualifier);
 
     //-----------------------------------------------------------------------------
     //
@@ -1066,7 +1066,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Set_Date_And_Time(tDevice *device, uint64_t timeStamp);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Set_Date_And_Time(tDevice *device, uint64_t timeStamp);
 
     //-----------------------------------------------------------------------------
     //
@@ -1082,7 +1082,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Set_Multiple_Mode(tDevice *device, uint8_t drqDataBlockCount);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Set_Multiple_Mode(tDevice *device, uint8_t drqDataBlockCount);
 
     //-----------------------------------------------------------------------------
     //
@@ -1097,7 +1097,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Sleep(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Sleep(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1113,7 +1113,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Standby(tDevice *device, uint8_t standbyTimerPeriod);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Standby(tDevice *device, uint8_t standbyTimerPeriod);
 
     //-----------------------------------------------------------------------------
     //
@@ -1128,7 +1128,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Standby_Immediate(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Standby_Immediate(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1146,7 +1146,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Trusted_Non_Data(tDevice *device, uint8_t securityProtocol, bool trustedSendReceiveBit, uint16_t securityProtocolSpecific);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Trusted_Non_Data(tDevice *device, uint8_t securityProtocol, bool trustedSendReceiveBit, uint16_t securityProtocolSpecific);
 
     //-----------------------------------------------------------------------------
     //
@@ -1166,7 +1166,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Trusted_Receive(tDevice *device, bool useDMA, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Trusted_Receive(tDevice *device, bool useDMA, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1186,7 +1186,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Trusted_Send(tDevice *device, bool useDMA, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Trusted_Send(tDevice *device, bool useDMA, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1203,7 +1203,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Write_Buffer(tDevice *device, uint8_t *ptrData, bool useDMA);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Write_Buffer(tDevice *device, uint8_t *ptrData, bool useDMA);
 
     //-----------------------------------------------------------------------------
     //
@@ -1223,7 +1223,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Write_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Write_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua);
 
     //-----------------------------------------------------------------------------
     //
@@ -1243,7 +1243,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Write_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Write_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua);
 
     //-----------------------------------------------------------------------------
     //
@@ -1262,7 +1262,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Write_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Write_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd);
 
     //
     //  ata_Write_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize)
@@ -1279,7 +1279,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Write_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Write_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1302,7 +1302,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Write_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID, bool flush, bool writeContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Write_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID, bool flush, bool writeContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1321,7 +1321,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Write_Uncorrectable(tDevice *device, uint8_t unrecoverableOptions, uint16_t numberOfSectors, uint64_t LBA);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Write_Uncorrectable(tDevice *device, uint8_t unrecoverableOptions, uint16_t numberOfSectors, uint64_t LBA);
 
     //-----------------------------------------------------------------------------
     //
@@ -1341,7 +1341,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_NV_Cache_Feature(tDevice *device, eNVCacheFeatures feature, uint16_t count, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NV_Cache_Feature(tDevice *device, eNVCacheFeatures feature, uint16_t count, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1359,7 +1359,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_NV_Cache_Add_LBAs_To_Cache(tDevice *device, bool populateImmediately, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NV_Cache_Add_LBAs_To_Cache(tDevice *device, bool populateImmediately, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1375,7 +1375,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_NV_Flush_NV_Cache(tDevice *device, uint32_t minNumberOfLogicalBlocks);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NV_Flush_NV_Cache(tDevice *device, uint32_t minNumberOfLogicalBlocks);
 
     //-----------------------------------------------------------------------------
     //
@@ -1390,7 +1390,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_NV_Cache_Disable(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NV_Cache_Disable(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1405,7 +1405,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_NV_Cache_Enable(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NV_Cache_Enable(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1421,7 +1421,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_NV_Query_Misses(tDevice *device, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NV_Query_Misses(tDevice *device, uint8_t *ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1439,7 +1439,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_NV_Query_Pinned_Set(tDevice *device, uint64_t dataBlockNumber, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NV_Query_Pinned_Set(tDevice *device, uint64_t dataBlockNumber, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1457,7 +1457,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_NV_Remove_LBAs_From_Cache(tDevice *device, bool unpinAll, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NV_Remove_LBAs_From_Cache(tDevice *device, bool unpinAll, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1477,21 +1477,21 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Set_Features(tDevice *device, uint8_t subcommand, uint8_t subcommandCountField, uint8_t subcommandLBALo, uint8_t subcommandLBAMid, uint16_t subcommandLBAHi);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Set_Features(tDevice *device, uint8_t subcommand, uint8_t subcommandCountField, uint8_t subcommandLBALo, uint8_t subcommandLBAMid, uint16_t subcommandLBAHi);
 
-    OPENSEA_TRANSPORT_API int ata_EPC_Restore_Power_Condition_Settings(tDevice *device, uint8_t powerConditionID, bool defaultBit, bool save);
+    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Restore_Power_Condition_Settings(tDevice *device, uint8_t powerConditionID, bool defaultBit, bool save);
 
-    OPENSEA_TRANSPORT_API int ata_EPC_Go_To_Power_Condition(tDevice *device, uint8_t powerConditionID, bool delayedEntry, bool holdPowerCondition);
+    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Go_To_Power_Condition(tDevice *device, uint8_t powerConditionID, bool delayedEntry, bool holdPowerCondition);
 
-    OPENSEA_TRANSPORT_API int ata_EPC_Set_Power_Condition_Timer(tDevice *device, uint8_t powerConditionID, uint16_t timerValue, bool timerUnits, bool enable, bool save);
+    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Set_Power_Condition_Timer(tDevice *device, uint8_t powerConditionID, uint16_t timerValue, bool timerUnits, bool enable, bool save);
 
-    OPENSEA_TRANSPORT_API int ata_EPC_Set_Power_Condition_State(tDevice *device, uint8_t powerConditionID, bool enable, bool save);
+    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Set_Power_Condition_State(tDevice *device, uint8_t powerConditionID, bool enable, bool save);
 
-    OPENSEA_TRANSPORT_API int ata_EPC_Enable_EPC_Feature_Set(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Enable_EPC_Feature_Set(tDevice *device);
 
-    OPENSEA_TRANSPORT_API int ata_EPC_Disable_EPC_Feature_Set(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Disable_EPC_Feature_Set(tDevice *device);
 
-    OPENSEA_TRANSPORT_API int ata_EPC_Set_EPC_Power_Source(tDevice *device, uint8_t powerSource);
+    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Set_EPC_Power_Source(tDevice *device, uint8_t powerSource);
 
     //-----------------------------------------------------------------------------
     //
@@ -1506,7 +1506,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    int ata_Soft_Reset(tDevice *device);
+    eReturnValues ata_Soft_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1521,7 +1521,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    int ata_Hard_Reset(tDevice *device);
+    eReturnValues ata_Hard_Reset(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1538,7 +1538,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Identify_Packet_Device(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Identify_Packet_Device(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1556,7 +1556,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Device_Configuration_Overlay_Feature(tDevice *device, eDCOFeatures dcoFeature, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Device_Configuration_Overlay_Feature(tDevice *device, eDCOFeatures dcoFeature, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1571,7 +1571,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Restore(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_DCO_Restore(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1586,7 +1586,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Freeze_Lock(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_DCO_Freeze_Lock(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1604,7 +1604,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Identify(tDevice *device, bool useDMA, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_DCO_Identify(tDevice *device, bool useDMA, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1622,7 +1622,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_DCO_Set(tDevice *device, bool useDMA, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_DCO_Set(tDevice *device, bool useDMA, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1638,7 +1638,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int fill_In_ATA_Drive_Info(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1692,7 +1692,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_ZAC_Management_In(tDevice* device, eZMAction action, uint8_t actionSpecificFeatureExt, uint8_t actionSpecificFeatureBits, uint16_t returnPageCount, uint64_t actionSpecificLBA, uint16_t actionSpecificAUX, uint8_t* ptrData, uint32_t dataSize);//4Ah
+    OPENSEA_TRANSPORT_API eReturnValues ata_ZAC_Management_In(tDevice* device, eZMAction action, uint8_t actionSpecificFeatureExt, uint8_t actionSpecificFeatureBits, uint16_t returnPageCount, uint64_t actionSpecificLBA, uint16_t actionSpecificAUX, uint8_t* ptrData, uint32_t dataSize);//4Ah
 
     //-----------------------------------------------------------------------------
     //
@@ -1714,7 +1714,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_ZAC_Management_Out(tDevice* device, eZMAction action, uint8_t actionSpecificFeatureExt, uint16_t pagesToSend_ActionSpecific, uint64_t actionSpecificLBA, uint16_t actionSpecificAUX, uint8_t* ptrData, uint32_t dataSize);//9Fh
+    OPENSEA_TRANSPORT_API eReturnValues ata_ZAC_Management_Out(tDevice* device, eZMAction action, uint8_t actionSpecificFeatureExt, uint16_t pagesToSend_ActionSpecific, uint64_t actionSpecificLBA, uint16_t actionSpecificAUX, uint8_t* ptrData, uint32_t dataSize);//9Fh
 
     //-----------------------------------------------------------------------------
     //
@@ -1732,7 +1732,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Close_Zone_Ext(tDevice *device, bool closeAll, uint64_t zoneID, uint16_t zoneCount);//non-data
+    OPENSEA_TRANSPORT_API eReturnValues ata_Close_Zone_Ext(tDevice *device, bool closeAll, uint64_t zoneID, uint16_t zoneCount);//non-data
 
     //-----------------------------------------------------------------------------
     //
@@ -1750,7 +1750,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Finish_Zone_Ext(tDevice *device, bool finishAll, uint64_t zoneID, uint16_t zoneCount);//non-data
+    OPENSEA_TRANSPORT_API eReturnValues ata_Finish_Zone_Ext(tDevice *device, bool finishAll, uint64_t zoneID, uint16_t zoneCount);//non-data
 
     //-----------------------------------------------------------------------------
     //
@@ -1768,7 +1768,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Open_Zone_Ext(tDevice *device, bool openAll, uint64_t zoneID, uint16_t zoneCount);//non-data
+    OPENSEA_TRANSPORT_API eReturnValues ata_Open_Zone_Ext(tDevice *device, bool openAll, uint64_t zoneID, uint16_t zoneCount);//non-data
 
     //-----------------------------------------------------------------------------
     //
@@ -1789,18 +1789,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Report_Zones_Ext(tDevice* device, eZoneReportingOptions reportingOptions, bool partial, uint16_t returnPageCount, uint64_t zoneLocator, uint8_t* ptrData, uint32_t dataSize);//dma in
+    OPENSEA_TRANSPORT_API eReturnValues ata_Report_Zones_Ext(tDevice* device, eZoneReportingOptions reportingOptions, bool partial, uint16_t returnPageCount, uint64_t zoneLocator, uint8_t* ptrData, uint32_t dataSize);//dma in
 
-    OPENSEA_TRANSPORT_API int ata_Report_Realms_Ext(tDevice* device, eRealmsReportingOptions reportingOptions, uint16_t returnPageCount, uint64_t realmLocator, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Report_Realms_Ext(tDevice* device, eRealmsReportingOptions reportingOptions, uint16_t returnPageCount, uint64_t realmLocator, uint8_t* ptrData, uint32_t dataSize);
 
-    OPENSEA_TRANSPORT_API int ata_Report_Zone_Domains_Ext(tDevice* device, eZoneDomainReportingOptions reportingOptions, uint16_t returnPageCount, uint64_t zoneDomainLocator, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Report_Zone_Domains_Ext(tDevice* device, eZoneDomainReportingOptions reportingOptions, uint16_t returnPageCount, uint64_t zoneDomainLocator, uint8_t* ptrData, uint32_t dataSize);
 
     //recommend using numZonesSF for compatibility! Not likely possible to use AUX registers! numZonesSF means the number of zones was set by set features and is reported in the ID data log
-    OPENSEA_TRANSPORT_API int ata_Zone_Activate_Ext(tDevice* device, bool all, uint16_t returnPageCount, uint64_t zoneID, bool numZonesSF, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Zone_Activate_Ext(tDevice* device, bool all, uint16_t returnPageCount, uint64_t zoneID, bool numZonesSF, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint8_t* ptrData, uint32_t dataSize);
     //recommend using numZonesSF for compatibility! Not likely possible to use AUX registers! numZonesSF means the number of zones was set by set features and is reported in the ID data log
-    OPENSEA_TRANSPORT_API int ata_Zone_Query_Ext(tDevice* device, bool all, uint16_t returnPageCount, uint64_t zoneID, bool numZonesSF, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Zone_Query_Ext(tDevice* device, bool all, uint16_t returnPageCount, uint64_t zoneID, bool numZonesSF, uint16_t numberOfZones, uint8_t otherZoneDomainID, uint8_t* ptrData, uint32_t dataSize);
 
-    OPENSEA_TRANSPORT_API int ata_Sequentialize_Zone_Ext(tDevice* device, bool all, uint64_t zoneID, uint16_t zoneCount);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Sequentialize_Zone_Ext(tDevice* device, bool all, uint64_t zoneID, uint16_t zoneCount);
 
     //-----------------------------------------------------------------------------
     //
@@ -1817,7 +1817,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Reset_Write_Pointers_Ext(tDevice *device, bool resetAll, uint64_t zoneID, uint16_t zoneCount);//non-data
+    OPENSEA_TRANSPORT_API eReturnValues ata_Reset_Write_Pointers_Ext(tDevice *device, bool resetAll, uint64_t zoneID, uint16_t zoneCount);//non-data
 
     //-----------------------------------------------------------------------------
     //
@@ -1832,7 +1832,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Media_Eject(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Media_Eject(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1847,7 +1847,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Get_Media_Status(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Get_Media_Status(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1862,7 +1862,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Media_Lock(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Media_Lock(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1877,7 +1877,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Media_Unlock(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Media_Unlock(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1895,7 +1895,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Zeros_Ext(tDevice *device, uint16_t numberOfLogicalSectors, uint64_t lba, bool trim);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Zeros_Ext(tDevice *device, uint16_t numberOfLogicalSectors, uint64_t lba, bool trim);
 
     //-----------------------------------------------------------------------------
     //
@@ -1912,7 +1912,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Set_Sector_Configuration_Ext(tDevice *device, uint16_t commandCheck, uint8_t sectorConfigurationDescriptorIndex);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Set_Sector_Configuration_Ext(tDevice *device, uint16_t commandCheck, uint8_t sectorConfigurationDescriptorIndex);
 
     //-----------------------------------------------------------------------------
     //
@@ -1932,7 +1932,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Get_Physical_Element_Status(tDevice *device, uint8_t filter, uint8_t reportType, uint64_t startingElement, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Get_Physical_Element_Status(tDevice *device, uint8_t filter, uint8_t reportType, uint64_t startingElement, uint8_t *ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1949,7 +1949,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Remove_Element_And_Truncate(tDevice *device, uint32_t elementIdentifier, uint64_t requestedMaxLBA);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Remove_Element_And_Truncate(tDevice *device, uint32_t elementIdentifier, uint64_t requestedMaxLBA);
 
     //-----------------------------------------------------------------------------
     //
@@ -1965,7 +1965,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elementIdentifier);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elementIdentifier);
 
     //-----------------------------------------------------------------------------
     //
@@ -1980,9 +1980,9 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int ata_Restore_Elements_And_Rebuild(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Restore_Elements_And_Rebuild(tDevice *device);
 
-    OPENSEA_TRANSPORT_API int ata_Mutate_Ext(tDevice* device, bool requestMaximumAccessibleCapacity, uint32_t requestedConfigurationID);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Mutate_Ext(tDevice* device, bool requestMaximumAccessibleCapacity, uint32_t requestedConfigurationID);
 
     //-----------------------------------------------------------------------------
     //
@@ -2031,99 +2031,99 @@ extern "C"
     //!   \return SUCCESS = everything worked, !SUCCESS = error check return code.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize);
 
     //A couple helper functions to help with Legacu drives
     OPENSEA_TRANSPORT_API bool is_LBA_Mode_Supported(tDevice *device);
 
     OPENSEA_TRANSPORT_API bool is_CHS_Mode_Supported(tDevice *device);
 
-    OPENSEA_TRANSPORT_API int convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t *lba);
+    OPENSEA_TRANSPORT_API eReturnValues convert_CHS_To_LBA(tDevice *device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t *lba);
 
-    OPENSEA_TRANSPORT_API int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_t *head, uint8_t *sector);
+    OPENSEA_TRANSPORT_API eReturnValues convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_t *head, uint8_t *sector);
 
     /////////////////////////////////////////////////////////////////////////////////
     /// Obsolete ATA Commands. These commands are from specs prior to ATA-ATAPI 7 ///
     /////////////////////////////////////////////////////////////////////////////////
 
     //Last seen in ATA-3. All inputs are vendor specific and outputs are vendor specific. Protocol is vendor specific.
-    OPENSEA_TRANSPORT_API int ata_Legacy_Format_Track(tDevice *device, uint8_t feature, uint8_t sectorCount, uint8_t sectorNumber, uint8_t cylinderLow, uint8_t cylinderHigh, uint8_t *ptrData, uint32_t dataSize, eAtaProtocol protocol, bool lbaMode);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Format_Track(tDevice *device, uint8_t feature, uint8_t sectorCount, uint8_t sectorNumber, uint8_t cylinderLow, uint8_t cylinderHigh, uint8_t *ptrData, uint32_t dataSize, eAtaProtocol protocol, bool lbaMode);
 
     //Last seen in ATA-3. Prior to ATA3, the lower nibble of the command could be 0 - F.
-    OPENSEA_TRANSPORT_API int ata_Legacy_Recalibrate(tDevice *device, uint8_t lowCmdNibble, bool chsMode);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Recalibrate(tDevice *device, uint8_t lowCmdNibble, bool chsMode);
 
-    OPENSEA_TRANSPORT_API int ata_Legacy_Read_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Read_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
 
-    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
 
-    OPENSEA_TRANSPORT_API int ata_Legacy_Set_Max_Address_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volitileValue);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Set_Max_Address_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volitileValue);
 
-    OPENSEA_TRANSPORT_API int ata_Legacy_Set_Max_Address_Ext_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volatileValue);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Set_Max_Address_Ext_CHS(tDevice *device, uint16_t newMaxCylinder, uint8_t newMaxHead, uint8_t newMaxSector, bool volatileValue);
 
-    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Read_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd);
 
-    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Verify_Sectors_CHS(tDevice *device, bool extendedCmd, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Read_Verify_Sectors_CHS(tDevice *device, bool extendedCmd, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector);
 
-    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Verify_Sectors_No_Retry_CHS(tDevice *device, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Read_Verify_Sectors_No_Retry_CHS(tDevice *device, uint16_t numberOfSectors, uint16_t cylinder, uint8_t head, uint8_t sector);
 
-    OPENSEA_TRANSPORT_API int ata_Read_Verify_Sectors_No_Retry(tDevice *device, uint16_t numberOfSectors, uint64_t LBA);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Read_Verify_Sectors_No_Retry(tDevice *device, uint16_t numberOfSectors, uint64_t LBA);
 
-    OPENSEA_TRANSPORT_API int ata_Legacy_Write_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua);
 
-    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd, bool fua);
 
-    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Sectors_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize, bool extendedCmd);
 
-    OPENSEA_TRANSPORT_API int ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t lowCmdNibble);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t lowCmdNibble);
 
     //last seen in ATA-ATAPI 6.
-    OPENSEA_TRANSPORT_API int ata_Legacy_Seek(tDevice *device, uint32_t lba, uint8_t lowCmdNibble);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Seek(tDevice *device, uint32_t lba, uint8_t lowCmdNibble);
 
     //last seen in ATA-3
-    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
-    OPENSEA_TRANSPORT_API int ata_Legacy_Read_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Read_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Read_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
     //last seen in ATA-3
-    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
-    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Long_CHS(tDevice *device, bool retires, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Long(tDevice *device, bool retires, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
 
     //last seen in ATA-2
     //Sub command 22h = LBA (or Cyl lo, hi, head#), and sec number specify where to start. count specifies how many sectors to write. Taking in lba mode by default since CHS is dead. (528MB and higher are recommended to implement LBA)
     //Sub command DDh = initialize all usable sectors. Number of sectors field is ignored
-    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Same_CHS(tDevice *device, uint8_t subcommand, uint8_t numberOfSectorsToWrite, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
-    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Same(tDevice *device, uint8_t subcommand, uint8_t numberOfSectorsToWrite, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Same_CHS(tDevice *device, uint8_t subcommand, uint8_t numberOfSectorsToWrite, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Same(tDevice *device, uint8_t subcommand, uint8_t numberOfSectorsToWrite, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
 
     //last seen in ATA-3
-    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Verify_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
-    OPENSEA_TRANSPORT_API int ata_Legacy_Write_Verify(tDevice *device, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Verify_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Verify(tDevice *device, uint32_t lba, uint8_t *ptrData, uint32_t dataSize);
 
     //last seen in ATA-3
-    OPENSEA_TRANSPORT_API int ata_Legacy_Identify_Device_DMA(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Identify_Device_DMA(tDevice *device, uint8_t *ptrData, uint32_t dataSize);
 
-    OPENSEA_TRANSPORT_API int ata_Legacy_Check_Power_Mode(tDevice *device, uint8_t *powerMode);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Check_Power_Mode(tDevice *device, uint8_t *powerMode);
 
 
     //These functions below are commands that can be sent in PIO or DMA Mode.
     //They will automatically try DMA if it is supported, then retry with PIO mode if the Translator or Driver doesn't support issuing DMA mode commands.
-    OPENSEA_TRANSPORT_API int send_ATA_Read_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint16_t featureRegister);
-    OPENSEA_TRANSPORT_API int send_ATA_Write_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, bool forceRTFRs);
-    OPENSEA_TRANSPORT_API int send_ATA_Download_Microcode_Cmd(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, uint8_t *pData, uint32_t dataLen, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds);
-    OPENSEA_TRANSPORT_API int send_ATA_Trusted_Send_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
-    OPENSEA_TRANSPORT_API int send_ATA_Trusted_Receive_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
-    OPENSEA_TRANSPORT_API int send_ATA_Read_Buffer_Cmd(tDevice *device, uint8_t *ptrData);
-    OPENSEA_TRANSPORT_API int send_ATA_Write_Buffer_Cmd(tDevice *device, uint8_t *ptrData);
-    OPENSEA_TRANSPORT_API int send_ATA_Read_Stream_Cmd(tDevice *device, uint8_t streamID, bool notSequential, bool readContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
-    OPENSEA_TRANSPORT_API int send_ATA_Write_Stream_Cmd(tDevice *device, uint8_t streamID, bool flush, bool writeContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_Read_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint16_t featureRegister);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_Write_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, bool forceRTFRs);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_Download_Microcode_Cmd(tDevice *device, eDownloadMicrocodeFeatures subCommand, uint16_t blockCount, uint16_t bufferOffset, uint8_t *pData, uint32_t dataLen, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_Trusted_Send_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_Trusted_Receive_Cmd(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_Read_Buffer_Cmd(tDevice *device, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_Write_Buffer_Cmd(tDevice *device, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_Read_Stream_Cmd(tDevice *device, uint8_t streamID, bool notSequential, bool readContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_Write_Stream_Cmd(tDevice *device, uint8_t streamID, bool flush, bool writeContinuous, uint8_t commandCCTL, uint64_t LBA, uint8_t *ptrData, uint32_t dataSize);
 
     //Similar to above, but for SCT stuff. This will automatically retry from DMA to PIO mode. Also removes GPL flag. Now depends on if device supports GPL or not internally (can be flipped in device->drive_info.ata_Options.generalPurposeLoggingSupported if you want to force a SMART command)
-    OPENSEA_TRANSPORT_API int send_ATA_SCT(tDevice *device, eDataTransferDirection direction, uint8_t logAddress, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs);
-    OPENSEA_TRANSPORT_API int send_ATA_SCT_Status(tDevice *device, uint8_t *dataBuf, uint32_t dataSize);
-    OPENSEA_TRANSPORT_API int send_ATA_SCT_Command(tDevice *device, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs);
-    OPENSEA_TRANSPORT_API int send_ATA_SCT_Data_Transfer(tDevice *device, eDataTransferDirection direction, uint8_t *dataBuf, uint32_t dataSize);
-    OPENSEA_TRANSPORT_API int send_ATA_SCT_Read_Write_Long(tDevice *device, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested);
-    OPENSEA_TRANSPORT_API int send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode, uint64_t startLBA, uint64_t fillCount, uint8_t *pattern, uint64_t patternLength);
-    OPENSEA_TRANSPORT_API int send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit);
-    OPENSEA_TRANSPORT_API int send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags);
-    OPENSEA_TRANSPORT_API int send_ATA_SCT_Data_Table(tDevice *device, uint16_t functionCode, uint16_t tableID, uint8_t *dataBuf, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_SCT(tDevice *device, eDataTransferDirection direction, uint8_t logAddress, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_SCT_Status(tDevice *device, uint8_t *dataBuf, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_SCT_Command(tDevice *device, uint8_t *dataBuf, uint32_t dataSize, bool forceRTFRs);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_SCT_Data_Transfer(tDevice *device, eDataTransferDirection direction, uint8_t *dataBuf, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_SCT_Read_Write_Long(tDevice *device, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode, uint64_t startLBA, uint64_t fillCount, uint8_t *pattern, uint64_t patternLength);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags);
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_SCT_Data_Table(tDevice *device, uint16_t functionCode, uint16_t tableID, uint8_t *dataBuf, uint32_t dataSize);
 
     //NCQ command definitions
     //NOTE: You can try these all you want, but it is basically impossible to issue these in passthrough.
@@ -2131,18 +2131,18 @@ extern "C"
     //      libata in Linux will allow most of them.
     //      No other HBAs or operating systems are known to support/allow these to be issued.
     //      Stick to the synchronous commands whenever possible due to how limited support for these commands is.
-    OPENSEA_TRANSPORT_API int ata_NCQ_Non_Data(tDevice *device, uint8_t subCommand /*bits 4:0*/, uint16_t subCommandSpecificFeature /*bits 11:0*/, uint8_t subCommandSpecificCount, uint8_t ncqTag /*bits 5:0*/, uint64_t lba, uint32_t auxilary);
-    OPENSEA_TRANSPORT_API int ata_NCQ_Abort_NCQ_Queue(tDevice *device, uint8_t abortType /*bits0:3*/, uint8_t prio /*bits 1:0*/, uint8_t ncqTag, uint8_t tTag);
-    OPENSEA_TRANSPORT_API int ata_NCQ_Deadline_Handling(tDevice *device, bool rdnc, bool wdnc, uint8_t ncqTag);
-    OPENSEA_TRANSPORT_API int ata_NCQ_Set_Features(tDevice *device, eATASetFeaturesSubcommands subcommand, uint8_t subcommandCountField, uint8_t subcommandLBALo, uint8_t subcommandLBAMid, uint16_t subcommandLBAHi, uint8_t ncqTag);
-    OPENSEA_TRANSPORT_API int ata_NCQ_Zeros_Ext(tDevice *device, uint16_t numberOfLogicalSectors, uint64_t lba, bool trim, uint8_t ncqTag);
-    OPENSEA_TRANSPORT_API int ata_NCQ_Receive_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*/, uint16_t sectorCount /*ft*/, uint8_t prio /*bits 1:0*/, uint8_t ncqTag, uint64_t lba, uint32_t auxilary, uint8_t *ptrData);
-    OPENSEA_TRANSPORT_API int ata_NCQ_Read_Log_DMA_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint16_t featureRegister, uint8_t prio /*bits 1:0*/, uint8_t ncqTag);
-    OPENSEA_TRANSPORT_API int ata_NCQ_Send_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*/, uint16_t sectorCount /*ft*/, uint8_t prio /*bits 1:0*/, uint8_t ncqTag, uint64_t lba, uint32_t auxilary, uint8_t *ptrData);
-    OPENSEA_TRANSPORT_API int ata_NCQ_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uint32_t dataSize, uint8_t prio /*bits 1:0*/, uint8_t ncqTag);
-    OPENSEA_TRANSPORT_API int ata_NCQ_Write_Log_DMA_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint8_t prio /*bits 1:0*/, uint8_t ncqTag);
-    OPENSEA_TRANSPORT_API int ata_NCQ_Read_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba, uint8_t *ptrData, uint16_t sectorCount, uint8_t prio, uint8_t ncqTag, uint8_t icc);
-    OPENSEA_TRANSPORT_API int ata_NCQ_Write_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba, uint8_t *ptrData, uint16_t sectorCount, uint8_t prio, uint8_t ncqTag, uint8_t icc);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NCQ_Non_Data(tDevice *device, uint8_t subCommand /*bits 4:0*/, uint16_t subCommandSpecificFeature /*bits 11:0*/, uint8_t subCommandSpecificCount, uint8_t ncqTag /*bits 5:0*/, uint64_t lba, uint32_t auxilary);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NCQ_Abort_NCQ_Queue(tDevice *device, uint8_t abortType /*bits0:3*/, uint8_t prio /*bits 1:0*/, uint8_t ncqTag, uint8_t tTag);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NCQ_Deadline_Handling(tDevice *device, bool rdnc, bool wdnc, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NCQ_Set_Features(tDevice *device, eATASetFeaturesSubcommands subcommand, uint8_t subcommandCountField, uint8_t subcommandLBALo, uint8_t subcommandLBAMid, uint16_t subcommandLBAHi, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NCQ_Zeros_Ext(tDevice *device, uint16_t numberOfLogicalSectors, uint64_t lba, bool trim, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NCQ_Receive_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*/, uint16_t sectorCount /*ft*/, uint8_t prio /*bits 1:0*/, uint8_t ncqTag, uint64_t lba, uint32_t auxilary, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NCQ_Read_Log_DMA_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint16_t featureRegister, uint8_t prio /*bits 1:0*/, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NCQ_Send_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*/, uint16_t sectorCount /*ft*/, uint8_t prio /*bits 1:0*/, uint8_t ncqTag, uint64_t lba, uint32_t auxilary, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NCQ_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* ptrData, uint32_t dataSize, uint8_t prio /*bits 1:0*/, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NCQ_Write_Log_DMA_Ext(tDevice *device, uint8_t logAddress, uint16_t pageNumber, uint8_t *ptrData, uint32_t dataSize, uint8_t prio /*bits 1:0*/, uint8_t ncqTag);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NCQ_Read_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba, uint8_t *ptrData, uint16_t sectorCount, uint8_t prio, uint8_t ncqTag, uint8_t icc);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NCQ_Write_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba, uint8_t *ptrData, uint16_t sectorCount, uint8_t prio, uint8_t ncqTag, uint8_t icc);
 
 
 

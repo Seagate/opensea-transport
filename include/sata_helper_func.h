@@ -25,7 +25,7 @@ extern "C"
 
     void print_FIS(void *fis, uint32_t fisLengthBytes);
 
-    int build_H2D_FIS_From_ATA_PT_Command(ptrSataH2DFis h2dFis, ataTFRBlock *ataPTCmd, uint8_t pmPort);
+    eReturnValues build_H2D_FIS_From_ATA_PT_Command(ptrSataH2DFis h2dFis, ataTFRBlock *ataPTCmd, uint8_t pmPort);
 
 #if defined (__cplusplus)
 }

@@ -615,7 +615,7 @@ void print_Low_Level_Info(tDevice* device)
         printf("\t\t\t\tLUN: %" PRIu8 "\n", device->os_info.scsi_addr.Lun);
         printf("\t\t\tos drive number: %" PRIu32 "\n", device->os_info.os_drive_number);
         printf("\t\t\tSRB type: %d\n", device->os_info.srbtype);
-        printf("\t\t\tAlignment Mask: %Xh\n", device->os_info.alignmentMask);
+        printf("\t\t\tAlignment Mask: %lXh\n", device->os_info.alignmentMask);
         printf("\t\t\tIOCTL Type: ");
         switch (device->os_info.ioType)
         {
@@ -1013,11 +1013,11 @@ void print_Low_Level_Info(tDevice* device)
     }
 }
 
-int load_Bin_Buf(char *filename, void *myBuf, size_t bufSize)
+size_t load_Bin_Buf(char *filename, void *myBuf, size_t bufSize)
 {
-    //int ret = UNKNOWN;
+    //eReturnValues ret = UNKNOWN;
     FILE     *fp;
-    int bytesRead = 0;
+    size_t bytesRead = 0;
 
     //Open file
 
@@ -1029,7 +1029,7 @@ int load_Bin_Buf(char *filename, void *myBuf, size_t bufSize)
     fseek(fp, 0, SEEK_SET); //should open to start but hey
 
     //Read file contents into buffer
-    bytesRead = C_CAST(int, fread(myBuf, 1, bufSize, fp));//I don't like this. This should return size_t, but I don't want to change the API too much right now -TJE
+    bytesRead = fread(myBuf, 1, bufSize, fp);
     fclose(fp);
 
     return bytesRead;
@@ -1235,7 +1235,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                 getDeviceflags |= GET_DEVICE_FUNCS_IGNORE_CSMI;
             }
 #endif
-            int ret = get_Device_List(deviceList, deviceCount * sizeof(tDevice), version, getDeviceflags);
+            eReturnValues ret = get_Device_List(deviceList, deviceCount * sizeof(tDevice), version, getDeviceflags);
             if (ret == SUCCESS || ret == WARN_NOT_ALL_DEVICES_ENUMERATED)
             {
                 bool printToScreen = true;
@@ -1509,7 +1509,7 @@ bool validate_Device_Struct(versionBlock sanity)
     }
 }
 
-int get_Opensea_Transport_Version(apiVersionInfo * ver)
+eReturnValues get_Opensea_Transport_Version(apiVersionInfo * ver)
 {
     if (ver)
     {
@@ -1524,7 +1524,7 @@ int get_Opensea_Transport_Version(apiVersionInfo * ver)
     }
 }
 
-int get_Version_Block(versionBlock * blk)
+eReturnValues get_Version_Block(versionBlock * blk)
 {
     if (blk)
     {
@@ -2981,7 +2981,7 @@ bool is_Sector_Size_Emulation_Active(tDevice *device)
     }
 }
 
-int calculate_Checksum(uint8_t *pBuf, uint32_t blockSize)
+eReturnValues calculate_Checksum(uint8_t *pBuf, uint32_t blockSize)
 {
     if (
         (blockSize > LEGACY_DRIVE_SEC_SIZE)
@@ -3276,11 +3276,11 @@ uint64_t align_LBA(tDevice *device, uint64_t LBA)
 }
 
 
-int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag)
+eReturnValues remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag)
 {
     volatile uint32_t i, j;
     bool sameSlNo = false;
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
 
     if (!deviceList || !numberOfDevices)
     {
@@ -3343,10 +3343,10 @@ int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDe
     return ret;
 }
 
-int remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint32_t * numberOfDevices)
+eReturnValues remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint32_t * numberOfDevices)
 {
     uint32_t i;
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
 
 #ifdef _DEBUG
     printf("Removing Drive with index : %d \n", driveToRemoveIdx);
@@ -3416,7 +3416,7 @@ void print_tDevice_Size(void)
     printf("\tdriveInfo = %zu\n", sizeof(driveInfo));
     printf("\tvoid* raid_device = %zu\n", sizeof(void*));
     printf("\tissue_io_func = %zu\n", sizeof(issue_io_func));
-    printf("\teDiscoveryOptions = %zu\n", sizeof(eDiscoveryOptions));
+    printf("\teDiscoveryOptions = %zu\n", sizeof(uint64_t));
     printf("\teVerbosityLevels = %zu\n", sizeof(eVerbosityLevels));
     printf("\n--Important offsets--\n");
     printf("tDevice = 0\n");

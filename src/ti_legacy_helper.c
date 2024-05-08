@@ -17,9 +17,9 @@
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
 
-int build_TI_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptions, bool olderOpCode, bool forceMode, uint8_t modeValue)
+eReturnValues build_TI_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptions, bool olderOpCode, bool forceMode, uint8_t modeValue)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (olderOpCode)
     {
         cdb[OPERATION_CODE] = TI_LEGACY_OPCODE_OLD;
@@ -61,9 +61,9 @@ int build_TI_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOption
     return ret;
 }
 
-int send_TI_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
+eReturnValues send_TI_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     uint8_t *senseData = NULL;//only allocate if the pointer in the ataCommandOptions is NULL
     bool localSenseData = false;
     uint8_t tiCDB[CDB_LEN_16] = { 0 };

@@ -16,6 +16,7 @@
 #pragma once
 
 #include "common.h"
+#include "common_platform.h"
 #include "version.h"
 #if defined (VMK_CROSS_COMP)
 #include "vm_nvme_lib.h"
@@ -1219,7 +1220,7 @@ extern "C"
         SCSI_ADDRESS        scsi_addr;
         uint32_t            os_drive_number;
         int                 srbtype; //this will be used to filter when a controller supports the new SCSI PassThrough EX IOCTLs
-        int                 alignmentMask;//save the alignment mask. This may be needed on some controllers....not currently used but SHOULD be added later for the SCSI IOCTL DIRECT EX
+        unsigned long       alignmentMask;//save the alignment mask. This may be needed on some controllers....not currently used but SHOULD be added later for the SCSI IOCTL DIRECT EX
         eWindowsIOCTLType   ioType;//This will be set during get_Device so we know how to talk to the drive (Mostly for ATA). Only change this if you know what you're doing.
         eWindowsIOCTLMethod ioMethod;//Use this to force using DIRECT or Double Buffered IOCTLs for each command. By default the library will decide...typically 16KiB or less will use double buffered for compatibility purposes. This is ignored for IDE and SMART IOCTLs since they are only double buffered.
         struct {
@@ -1290,25 +1291,22 @@ extern "C"
         uint8_t padd[6];//padd to multiple of 8 bytes
     }OSDriveInfo;
 
-    typedef enum _eDiscoveryOptions
-    {
-        DEFAULT_DISCOVERY,
-        FAST_SCAN, //Gets the basic information for a quick scan like SeaChest displays on the command line.
-        DO_NOT_WAKE_DRIVE, //e.g OK to send commands that do NOT access media
-        NO_DRIVE_CMD,
-        OPEN_HANDLE_ONLY,
-        BUS_RESCAN_ALLOWED = BIT15,//this may wake the drive!
+    #define DEFAULT_DISCOVERY 0
+    #define FAST_SCAN 1 //Gets the basic information for a quick scan like SeaChest displays on the command line.
+    #define DO_NOT_WAKE_DRIVE 2 //e.g OK to send commands that do NOT access media
+    #define NO_DRIVE_CMD 3
+    #define OPEN_HANDLE_ONLY 4
+    #define BUS_RESCAN_ALLOWED BIT15 //this may wake the drive!
         //Flags below are bitfields...so multiple can be set. Flags above should be checked by only checking the first word of this enum.
-        FORCE_ATA_PIO_ONLY = BIT16, //troubleshooting option to only send PIO versions of commands (used in get_Device/fill_Drive_Info).
-        FORCE_ATA_DMA_SAT_MODE = BIT17, //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
-        FORCE_ATA_UDMA_SAT_MODE = BIT18, //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
-        GET_DEVICE_FUNCS_IGNORE_CSMI = BIT19, //use this bit in get_Device_Count and get_Device_List to ignore CSMI devices.
-        GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES = BIT20, //matches v2
-        GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE = BIT21, //matches v3
-        GET_DEVICE_FUNCS_VERBOSE_BUFFERS = BIT22, //matches v4
-    } eDiscoveryOptions;
+    #define FORCE_ATA_PIO_ONLY BIT16 //troubleshooting option to only send PIO versions of commands (used in get_Device/fill_Drive_Info).
+    #define FORCE_ATA_DMA_SAT_MODE BIT17 //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
+    #define FORCE_ATA_UDMA_SAT_MODE BIT18 //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
+    #define GET_DEVICE_FUNCS_IGNORE_CSMI BIT19 //use this bit in get_Device_Count and get_Device_List to ignore CSMI devices.
+    #define GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES BIT20 //matches v2
+    #define GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE BIT21 //matches v3
+    #define GET_DEVICE_FUNCS_VERBOSE_BUFFERS BIT22 //matches v4
 
-    typedef int (*issue_io_func)( void * );
+    typedef eReturnValues (*issue_io_func)( void * );
 
     #define DEVICE_BLOCK_VERSION    (9)
 
@@ -1328,7 +1326,7 @@ extern "C"
         void                *raid_device;
         issue_io_func       issue_io;//scsi IO function pointer for raid or other driver/custom interface to send commands
         issue_io_func       issue_nvme_io;//nvme IO function pointer for raid or other driver/custom interface to send commands
-        eDiscoveryOptions   dFlags;
+        uint64_t            dFlags;
         eVerbosityLevels    deviceVerbosity;
         uint32_t            delay_io;
     }tDevice;
@@ -1612,7 +1610,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_Opensea_Transport_Version(apiVersionInfo *ver);
+    OPENSEA_TRANSPORT_API eReturnValues get_Opensea_Transport_Version(apiVersionInfo *ver);
 
     //-----------------------------------------------------------------------------
     //
@@ -1627,7 +1625,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_Version_Block(versionBlock * ver);
+    OPENSEA_TRANSPORT_API eReturnValues get_Version_Block(versionBlock * ver);
 
     OPENSEA_TRANSPORT_API bool validate_Device_Struct(versionBlock sanity);
 
@@ -1647,7 +1645,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_Device(const char *filename, tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues get_Device(const char *filename, tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1666,7 +1664,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags);
+    OPENSEA_TRANSPORT_API eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags);
 
     //-----------------------------------------------------------------------------
     //
@@ -1692,7 +1690,7 @@ extern "C"
     //!   \return SUCCESS - pass, WARN_NOT_ALL_DEVICES_ENUMERATED - some deviec had trouble being enumerated. Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags);
+    OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags);
 
 
     //-----------------------------------------------------------------------------
@@ -1708,7 +1706,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int close_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1740,10 +1738,10 @@ extern "C"
     //!   \param[in] bufSize = amount of data to be written
     //!
     //  Exit:
-    //!   \return SUCCESS on successful completion, !SUCCESS if problems encountered
+    //!   \return size_t bytes read
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int load_Bin_Buf(char *filename, void *myBuf, size_t bufSize);
+    OPENSEA_TRANSPORT_API size_t load_Bin_Buf(char *filename, void *myBuf, size_t bufSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2131,7 +2129,7 @@ extern "C"
     //!   \return int SUCCESS if passes !SUCCESS if fails for some reason.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int calculate_Checksum(uint8_t *pBuf, uint32_t blockSize);
+    OPENSEA_TRANSPORT_API eReturnValues calculate_Checksum(uint8_t *pBuf, uint32_t blockSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2211,9 +2209,9 @@ extern "C"
         uint8_t raid;
     }removeDuplicateDriveType;
 
-    OPENSEA_TRANSPORT_API int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag);
+    OPENSEA_TRANSPORT_API eReturnValues remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag);
 
-    OPENSEA_TRANSPORT_API int remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint32_t * numberOfDevices);
+    OPENSEA_TRANSPORT_API eReturnValues remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint32_t * numberOfDevices);
 
     OPENSEA_TRANSPORT_API bool is_CSMI_Device(tDevice *device);
     OPENSEA_TRANSPORT_API bool is_Removable_Media(tDevice *device);

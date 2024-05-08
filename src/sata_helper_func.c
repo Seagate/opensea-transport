@@ -16,9 +16,9 @@
 #include "sata_types.h"
 #include "sata_helper_func.h"
 
-int build_H2D_FIS_From_ATA_PT_Command(ptrSataH2DFis h2dFis, ataTFRBlock *ataPTCmd, uint8_t pmPort)
+eReturnValues build_H2D_FIS_From_ATA_PT_Command(ptrSataH2DFis h2dFis, ataTFRBlock *ataPTCmd, uint8_t pmPort)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (!h2dFis || !ataPTCmd)
     {
         return BAD_PARAMETER;

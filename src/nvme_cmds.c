@@ -21,7 +21,7 @@
 #include "jmicron_nvme_helper.h"
 #include "asmedia_nvme_helper.h"
 
-int nvme_Reset(tDevice *device)
+eReturnValues nvme_Reset(tDevice *device)
 {
     switch (device->drive_info.passThroughHacks.passthroughType)
     {
@@ -38,7 +38,7 @@ int nvme_Reset(tDevice *device)
     }
 }
 
-int nvme_Subsystem_Reset(tDevice *device)
+eReturnValues nvme_Subsystem_Reset(tDevice *device)
 {
     switch (device->drive_info.passThroughHacks.passthroughType)
     {
@@ -55,9 +55,9 @@ int nvme_Subsystem_Reset(tDevice *device)
     }
 }
 
-int nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
+eReturnValues nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     cmdCtx->device = device;
     //check the opcode bits for data direction and the data direction and make sure they match!
     //If they don't match, return an error for BAD_PARAMETER. Most OS passthroughs parse the op code to figure this out
@@ -191,9 +191,9 @@ int nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
     return ret;
 }
 
-int nvme_Abort_Command(tDevice *device, uint16_t commandIdentifier, uint16_t submissionQueueIdentifier)
+eReturnValues nvme_Abort_Command(tDevice *device, uint16_t commandIdentifier, uint16_t submissionQueueIdentifier)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     nvmeCmdCtx adminCommand;
     memset(&adminCommand, 0, sizeof(nvmeCmdCtx));
     adminCommand.commandType = NVM_ADMIN_CMD;
@@ -216,9 +216,9 @@ int nvme_Abort_Command(tDevice *device, uint16_t commandIdentifier, uint16_t sub
     return ret;
 }
 
-int nvme_Asynchronous_Event_Request(tDevice *device, uint8_t *logPageIdentifier, uint8_t *asynchronousEventInformation, uint8_t *asynchronousEventType)
+eReturnValues nvme_Asynchronous_Event_Request(tDevice *device, uint8_t *logPageIdentifier, uint8_t *asynchronousEventInformation, uint8_t *asynchronousEventType)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     nvmeCmdCtx adminCommand;
     memset(&adminCommand, 0, sizeof(nvmeCmdCtx));
     adminCommand.commandType = NVM_ADMIN_CMD;
@@ -255,9 +255,9 @@ int nvme_Asynchronous_Event_Request(tDevice *device, uint8_t *logPageIdentifier,
     return ret;
 }
 
-int nvme_Device_Self_Test(tDevice *device, uint32_t nsid, uint8_t selfTestCode)
+eReturnValues nvme_Device_Self_Test(tDevice *device, uint32_t nsid, uint8_t selfTestCode)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     nvmeCmdCtx adminCommand;
     memset(&adminCommand, 0, sizeof(nvmeCmdCtx));
     adminCommand.commandType = NVM_ADMIN_CMD;
@@ -289,9 +289,9 @@ int nvme_Device_Self_Test(tDevice *device, uint32_t nsid, uint8_t selfTestCode)
     return ret;
 }
 
-int nvme_Security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t nvmeSecuritySpecificField, uint8_t *ptrData, uint32_t dataLength)
+eReturnValues nvme_Security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t nvmeSecuritySpecificField, uint8_t *ptrData, uint32_t dataLength)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     nvmeCmdCtx adminCommand;
     memset(&adminCommand, 0, sizeof(nvmeCmdCtx));
     adminCommand.commandType = NVM_ADMIN_CMD;
@@ -317,9 +317,9 @@ int nvme_Security_Send(tDevice *device, uint8_t securityProtocol, uint16_t secur
     return ret;
 }
 
-int nvme_Security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t nvmeSecuritySpecificField, uint8_t *ptrData, uint32_t dataLength)
+eReturnValues nvme_Security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t nvmeSecuritySpecificField, uint8_t *ptrData, uint32_t dataLength)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     nvmeCmdCtx adminCommand;
     memset(&adminCommand, 0, sizeof(nvmeCmdCtx));
     adminCommand.commandType = NVM_ADMIN_CMD;
@@ -345,9 +345,9 @@ int nvme_Security_Receive(tDevice *device, uint8_t securityProtocol, uint16_t se
     return ret;
 }
 
-int nvme_Verify(tDevice* device, uint64_t startingLBA, bool limitedRetry, bool fua, uint16_t numberOfLogicalBlocks)
+eReturnValues nvme_Verify(tDevice* device, uint64_t startingLBA, bool limitedRetry, bool fua, uint16_t numberOfLogicalBlocks)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     nvmeCmdCtx nvmCommand;
     memset(&nvmCommand, 0, sizeof(nvmeCmdCtx));
     nvmCommand.commandType = NVM_CMD;
@@ -380,9 +380,9 @@ int nvme_Verify(tDevice* device, uint64_t startingLBA, bool limitedRetry, bool f
     return ret;
 }
 
-int nvme_Write_Uncorrectable(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks)
+eReturnValues nvme_Write_Uncorrectable(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     nvmeCmdCtx nvmCommand;
     memset(&nvmCommand, 0, sizeof(nvmeCmdCtx));
     nvmCommand.commandType = NVM_CMD;
@@ -409,9 +409,9 @@ int nvme_Write_Uncorrectable(tDevice *device, uint64_t startingLBA, uint16_t num
     return ret;
 }
 
-int nvme_Dataset_Management(tDevice *device, uint8_t numberOfRanges, bool deallocate, bool integralDatasetForWrite, bool integralDatasetForRead, uint8_t *ptrData, uint32_t dataLength)
+eReturnValues nvme_Dataset_Management(tDevice *device, uint8_t numberOfRanges, bool deallocate, bool integralDatasetForWrite, bool integralDatasetForRead, uint8_t *ptrData, uint32_t dataLength)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     nvmeCmdCtx nvmCommand;
     memset(&nvmCommand, 0, sizeof(nvmeCmdCtx));
     nvmCommand.commandType = NVM_CMD;
@@ -450,9 +450,9 @@ int nvme_Dataset_Management(tDevice *device, uint8_t numberOfRanges, bool deallo
     return ret;
 }
 
-int nvme_Flush(tDevice *device)
+eReturnValues nvme_Flush(tDevice *device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     nvmeCmdCtx nvmCommand;
     memset(&nvmCommand, 0, sizeof(nvmeCmdCtx));
     nvmCommand.commandType = NVM_CMD;
@@ -477,9 +477,9 @@ int nvme_Flush(tDevice *device)
     return ret;
 }
 
-int nvme_Write(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks, bool limitedRetry, bool fua, uint8_t protectionInformationField, uint8_t directiveType, uint8_t *ptrData, uint32_t dataLength)
+eReturnValues nvme_Write(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks, bool limitedRetry, bool fua, uint8_t protectionInformationField, uint8_t directiveType, uint8_t *ptrData, uint32_t dataLength)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     nvmeCmdCtx nvmCommand;
     memset(&nvmCommand, 0, sizeof(nvmeCmdCtx));
     nvmCommand.commandType = NVM_CMD;
@@ -520,9 +520,9 @@ int nvme_Write(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBl
     return ret;
 }
 
-int nvme_Read(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks, bool limitedRetry, bool fua, uint8_t protectionInformationField, uint8_t *ptrData, uint32_t dataLength)
+eReturnValues nvme_Read(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks, bool limitedRetry, bool fua, uint8_t protectionInformationField, uint8_t *ptrData, uint32_t dataLength)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     nvmeCmdCtx nvmCommand;
     memset(&nvmCommand, 0, sizeof(nvmeCmdCtx));
     nvmCommand.commandType = NVM_CMD;
@@ -562,9 +562,9 @@ int nvme_Read(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlo
     return ret;
 }
 
-int nvme_Compare(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks, bool limitedRetry, bool fua, uint8_t protectionInformationField, uint8_t *ptrData, uint32_t dataLength)
+eReturnValues nvme_Compare(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks, bool limitedRetry, bool fua, uint8_t protectionInformationField, uint8_t *ptrData, uint32_t dataLength)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     nvmeCmdCtx nvmCommand;
     memset(&nvmCommand, 0, sizeof(nvmeCmdCtx));
     nvmCommand.commandType = NVM_CMD;
@@ -605,9 +605,9 @@ int nvme_Compare(tDevice *device, uint64_t startingLBA, uint16_t numberOfLogical
 }
 
 
-int nvme_Firmware_Image_Dl(tDevice *device, uint32_t bufferOffset, uint32_t numberOfBytes, uint8_t *ptrData, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds)
+eReturnValues nvme_Firmware_Image_Dl(tDevice *device, uint32_t bufferOffset, uint32_t numberOfBytes, uint8_t *ptrData, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     nvmeCmdCtx ImageDl;
     memset(&ImageDl, 0, sizeof(ImageDl));
 
@@ -639,9 +639,9 @@ int nvme_Firmware_Image_Dl(tDevice *device, uint32_t bufferOffset, uint32_t numb
     return ret;
 }
 
-int nvme_Firmware_Commit(tDevice *device, nvmeFWCommitAction commitAction, uint8_t firmwareSlot, uint32_t timeoutSeconds)
+eReturnValues nvme_Firmware_Commit(tDevice *device, nvmeFWCommitAction commitAction, uint8_t firmwareSlot, uint32_t timeoutSeconds)
 {
-    int ret = BAD_PARAMETER;
+    eReturnValues ret = BAD_PARAMETER;
     nvmeCmdCtx FirmwareCommit;
 
     if (firmwareSlot > 7)
@@ -653,7 +653,7 @@ int nvme_Firmware_Commit(tDevice *device, nvmeFWCommitAction commitAction, uint8
     FirmwareCommit.cmd.adminCmd.opcode = NVME_ADMIN_CMD_ACTIVATE_FW;
     FirmwareCommit.commandType = NVM_ADMIN_CMD;
     FirmwareCommit.commandDirection = XFER_NO_DATA;
-    FirmwareCommit.cmd.adminCmd.cdw10 = (commitAction << 3); // 05:03 Bits CA
+    FirmwareCommit.cmd.adminCmd.cdw10 = (C_CAST(uint32_t, commitAction) << 3); // 05:03 Bits CA
     FirmwareCommit.cmd.adminCmd.cdw10 |= (firmwareSlot & 0x07); // 02:00 Bits Firmware Slot
     FirmwareCommit.timeout = timeoutSeconds;
     if (FirmwareCommit.timeout == 0)
@@ -674,10 +674,10 @@ int nvme_Firmware_Commit(tDevice *device, nvmeFWCommitAction commitAction, uint8
     return ret;
 }
 
-int nvme_Identify(tDevice *device, uint8_t *ptrData, uint32_t nvmeNamespace, uint32_t cns)
+eReturnValues nvme_Identify(tDevice *device, uint8_t *ptrData, uint32_t nvmeNamespace, uint32_t cns)
 {
     nvmeCmdCtx identify;
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     memset(&identify, 0, sizeof(identify));
     identify.cmd.adminCmd.opcode = NVME_ADMIN_CMD_IDENTIFY;
     identify.commandType = NVM_ADMIN_CMD;
@@ -701,9 +701,9 @@ int nvme_Identify(tDevice *device, uint8_t *ptrData, uint32_t nvmeNamespace, uin
     return ret;
 }
 
-int nvme_Get_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
+eReturnValues nvme_Get_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
 {
-    int ret = UNKNOWN; 
+    eReturnValues ret = UNKNOWN; 
     nvmeCmdCtx getFeatures;
     uint32_t dWord10 = 0;
     memset(&getFeatures, 0, sizeof(getFeatures));
@@ -748,9 +748,9 @@ int nvme_Get_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
     return ret;
 }
 
-int nvme_Set_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
+eReturnValues nvme_Set_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
 {
-    int ret = UNKNOWN; 
+    eReturnValues ret = UNKNOWN; 
     nvmeCmdCtx setFeatures;
     uint32_t dWord10 = 0;
     memset(&setFeatures, 0, sizeof(setFeatures));
@@ -783,9 +783,9 @@ int nvme_Set_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
     return ret;
 }
 
-int nvme_Sanitize(tDevice *device, bool noDeallocateAfterSanitize, bool invertBetweenOverwritePasses, uint8_t overWritePassCount, bool allowUnrestrictedSanitizeExit, uint8_t sanitizeAction, uint32_t overwritePattern)
+eReturnValues nvme_Sanitize(tDevice *device, bool noDeallocateAfterSanitize, bool invertBetweenOverwritePasses, uint8_t overWritePassCount, bool allowUnrestrictedSanitizeExit, uint8_t sanitizeAction, uint32_t overwritePattern)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     nvmeCmdCtx nvmCommand;
     memset(&nvmCommand, 0, sizeof(nvmeCmdCtx));
     nvmCommand.commandType = NVM_ADMIN_CMD;
@@ -826,9 +826,9 @@ int nvme_Sanitize(tDevice *device, bool noDeallocateAfterSanitize, bool invertBe
     return ret;
 }
 
-int nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts)
+eReturnValues nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts)
 {
-    int ret = UNKNOWN; 
+    eReturnValues ret = UNKNOWN; 
     nvmeCmdCtx getLogPage;
     uint32_t dWord10 = 0;
     uint32_t numDwords = 0;
@@ -878,9 +878,9 @@ int nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts
 }
 
 
-int nvme_Format(tDevice *device, nvmeFormatCmdOpts * formatCmdOpts)
+eReturnValues nvme_Format(tDevice *device, nvmeFormatCmdOpts * formatCmdOpts)
 {
-    int ret = UNKNOWN; 
+    eReturnValues ret = UNKNOWN; 
     nvmeCmdCtx formatCmd;
     uint32_t dWord10 = 0;
     //Setting this check so we are not corrupting dWord10 
@@ -931,9 +931,9 @@ int nvme_Format(tDevice *device, nvmeFormatCmdOpts * formatCmdOpts)
     return ret;
 }
 
-int nvme_Reservation_Report(tDevice *device, bool extendedDataStructure, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues nvme_Reservation_Report(tDevice *device, bool extendedDataStructure, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     nvmeCmdCtx nvmCmd;
     memset(&nvmCmd, 0, sizeof(nvmeCmdCtx));
     nvmCmd.cmd.nvmCmd.opcode = NVME_CMD_RESERVATION_REPORT;
@@ -968,9 +968,9 @@ int nvme_Reservation_Report(tDevice *device, bool extendedDataStructure, uint8_t
     return ret;
 }
 
-int nvme_Reservation_Register(tDevice *device, uint8_t changePersistThroughPowerLossState, bool ignoreExistingKey, uint8_t reservationRegisterAction, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues nvme_Reservation_Register(tDevice *device, uint8_t changePersistThroughPowerLossState, bool ignoreExistingKey, uint8_t reservationRegisterAction, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     nvmeCmdCtx nvmCmd;
     memset(&nvmCmd, 0, sizeof(nvmeCmdCtx));
     nvmCmd.cmd.nvmCmd.opcode = NVME_CMD_RESERVATION_REGISTER;
@@ -1006,9 +1006,9 @@ int nvme_Reservation_Register(tDevice *device, uint8_t changePersistThroughPower
     return ret;
 }
 
-int nvme_Reservation_Acquire(tDevice *device, uint8_t reservationType, bool ignoreExistingKey, uint8_t reservtionAcquireAction, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues nvme_Reservation_Acquire(tDevice *device, uint8_t reservationType, bool ignoreExistingKey, uint8_t reservtionAcquireAction, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     nvmeCmdCtx nvmCmd;
     memset(&nvmCmd, 0, sizeof(nvmeCmdCtx));
     nvmCmd.cmd.nvmCmd.opcode = NVME_CMD_RESERVATION_ACQUIRE;
@@ -1044,9 +1044,9 @@ int nvme_Reservation_Acquire(tDevice *device, uint8_t reservationType, bool igno
     return ret;
 }
 
-int nvme_Reservation_Release(tDevice *device, uint8_t reservationType, bool ignoreExistingKey, uint8_t reservtionReleaseAction, uint8_t *ptrData, uint32_t dataSize)
+eReturnValues nvme_Reservation_Release(tDevice *device, uint8_t reservationType, bool ignoreExistingKey, uint8_t reservtionReleaseAction, uint8_t *ptrData, uint32_t dataSize)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     nvmeCmdCtx nvmCmd;
     memset(&nvmCmd, 0, sizeof(nvmeCmdCtx));
     nvmCmd.cmd.nvmCmd.opcode = NVME_CMD_RESERVATION_RELEASE;
@@ -1082,9 +1082,9 @@ int nvme_Reservation_Release(tDevice *device, uint8_t reservationType, bool igno
     return ret;
 }
 
-int nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegisters * ctrlRegs)
+eReturnValues nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegisters * ctrlRegs)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     //For now lets first get the page aligned one & then copy the 
     size_t dataSize = int32_to_sizet(getpagesize());
     if (dataSize > 0 && dataSize <= UINT32_MAX)

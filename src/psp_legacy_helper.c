@@ -17,9 +17,9 @@
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
 
-int enable_Disable_ATA_Passthrough(tDevice *device, bool enable)
+eReturnValues enable_Disable_ATA_Passthrough(tDevice *device, bool enable)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     uint8_t cdb[CDB_LEN_12] = { 0 };
     uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
     cdb[OPERATION_CODE] = PSP_OPCODE;
@@ -47,9 +47,9 @@ int enable_Disable_ATA_Passthrough(tDevice *device, bool enable)
     return ret;
 }
 
-int build_PSP_Legacy_CDB(uint8_t *cdb, uint8_t *cdbLen, ataPassthroughCommand *ataCommandOptions)
+eReturnValues build_PSP_Legacy_CDB(uint8_t *cdb, uint8_t *cdbLen, ataPassthroughCommand *ataCommandOptions)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
         *cdbLen = PSP_EXT_COMMAND_CDB_LEN;
@@ -120,9 +120,9 @@ int build_PSP_Legacy_CDB(uint8_t *cdb, uint8_t *cdbLen, ataPassthroughCommand *a
     return ret;
 }
 
-int get_RTFRs_From_PSP_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, int commandRet)
+eReturnValues get_RTFRs_From_PSP_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, eReturnValues commandRet)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if(commandRet == OS_PASSTHROUGH_FAILURE)
     {
         return commandRet;
@@ -156,9 +156,9 @@ int get_RTFRs_From_PSP_Legacy(tDevice *device, ataPassthroughCommand *ataCommand
     return ret;
 }
 
-int send_PSP_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
+eReturnValues send_PSP_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     uint8_t cdbLen = PSP_EXT_COMMAND_CDB_LEN;
     uint8_t pspCDB[PSP_EXT_COMMAND_CDB_LEN] = { 0 };
     uint8_t *senseData = NULL;//only allocate if the pointer in the ataCommandOptions is NULL

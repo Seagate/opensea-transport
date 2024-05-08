@@ -200,7 +200,7 @@ static void printf_Intel_Firmware_SRB_Status(uint32_t srbStatus)
 //generic function to handle taking in the various RAID FW Requests to keep code from being dumplicated
 static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t dataRequestLength, uint32_t timeoutSeconds, uint32_t intelFirmwareFunction, uint32_t intelFirmwareFlags, bool readFirmwareInfo, uint32_t *returnCode)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (device)
     {
         size_t allocationSize = sizeof(IOCTL_RAID_FIRMWARE_BUFFER) + dataRequestLength;
@@ -433,7 +433,7 @@ bool supports_Intel_Firmware_Download(tDevice *device)
 //The idea with this function is that it can handle NVMe or SCSI with generic inputs that will work to reduce code
 static int internal_Intel_FWDL_Function_Download(tDevice *device, uint32_t flags, uint32_t *returnCode, uint8_t* imagePtr, uint32_t imageDataLength, uint32_t imageOffset, uint8_t firmwareSlot, uint32_t timeoutSeconds)
 {
-    int ret = OS_COMMAND_NOT_AVAILABLE;
+    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device && imagePtr)
     {
         uint32_t allocationSize = sizeof(INTEL_STORAGE_FIRMWARE_DOWNLOAD_V2) + imageDataLength;
@@ -464,7 +464,7 @@ static int internal_Intel_FWDL_Function_Download(tDevice *device, uint32_t flags
 
 static int internal_Intel_FWDL_Function_Activate(tDevice *device, uint32_t flags, uint32_t *returnCode, uint8_t firmwareSlot, uint32_t timeoutSeconds)
 {
-    int ret = OS_COMMAND_NOT_AVAILABLE;
+    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device)
     {
         uint32_t allocationSize = sizeof(INTEL_STORAGE_FIRMWARE_ACTIVATE);
@@ -543,9 +543,9 @@ static bool is_Compatible_SCSI_FWDL_IO(ScsiIoCtx *scsiIoCtx, bool *isActivate)
     return compatible;
 }
 
-int send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx)
+eReturnValues send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx)
 {
-    int ret = OS_COMMAND_NOT_AVAILABLE;
+    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     bool isActivate = false;
     if (is_Compatible_SCSI_FWDL_IO(scsiIoCtx, &isActivate))
     {
@@ -611,9 +611,9 @@ int send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx)
 
     //NOTE: This function will handle calling appropriate NVMe firmware update function as well
     //NOTE2: This will not issue whatever command you want. Only certain commands are supported by the driver. This function will attempt any command given in case driver updates allow other commands in the future.
-static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
+static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (nvmeIoCtx)
     {
         seatimer_t commandTimer;
@@ -876,9 +876,9 @@ static void dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, uint32_t returnCode)
     }
 }
 
-int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx)
+eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (nvmeIoCtx)
     {
         if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
@@ -943,9 +943,9 @@ int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
-int send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx)
+eReturnValues send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 #if defined (INTRST_DEBUG)
     printf("Intel: NVM passthrough request\n");
 #endif //INTRST_DEBUG
@@ -985,9 +985,9 @@ int send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
-int send_Intel_NVM_SCSI_Command(ScsiIoCtx *scsiIoCtx)
+eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx *scsiIoCtx)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 #if defined (INTRST_DEBUG)
     printf("Intel: Received SCSI command for translation\n");
 #endif //INTRST_DEBUG

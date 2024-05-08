@@ -41,7 +41,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx);
+    OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -57,7 +57,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx);
+    OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -73,7 +73,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_Intel_NVM_SCSI_Command(ScsiIoCtx *scsiIoCtx);
+    OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx *scsiIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -105,7 +105,7 @@ extern "C"
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx);
+    OPENSEA_TRANSPORT_API eReturnValues send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx);
 
     //TODO: Define other Intel RST unique calls here based on what is in intel_rst_defs.h
 
